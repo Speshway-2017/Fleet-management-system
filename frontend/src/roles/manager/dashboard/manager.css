@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+
+/* Style custom variables */
+:root {
+  --color-bg-primary: #F5F7FA;
+  --color-sidebar: #0D0D0D;
+  --color-card: #FFFFFF;
+  --color-primary-orange: #C65D0E;
+  --color-orange-hover: #B65109;
+  --color-dark-text: #1B2430;
+  --color-light-text: #6B7280;
+  --color-border: #E5E7EB;
+  --color-success: #16A34A;
+  --color-danger: #DC2626;
+  --color-warning: #F59E0B;
+
+  --font-poppins: 'Poppins', 'Segoe UI', sans-serif;
+  --font-nunito: 'Nunito', 'Segoe UI', sans-serif;
+}
+
+/* Font utilities */
+.font-poppins {
+  font-family: var(--font-poppins) !important;
+}
+
+.font-nunito {
+  font-family: var(--font-nunito) !important;
+}
+
+/* Hide default shared header navigation */
+nav.flex.items-center.justify-between.border-b {
+  display: none !important;
+}
+
+body {
+  background-color: var(--color-bg-primary) !important;
+  font-family: var(--font-nunito);
+}
+
+/* Custom Scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.25);
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.45);
+}
+
+/* Card Micro-animations */
+.hover-card-trigger {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hover-card-trigger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.01);
+}
+
+.sidebar-link-transition {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Pulsing radar for markers */
+@keyframes pulse-orange {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.8;
+  }
+}
+
+.pulsing-dot {
+  animation: pulse-orange 2s infinite ease-in-out;
+}
+
+/* Smooth transitions */
+.smooth-transition {
+  transition: all 0.3s ease;
+}
+
+/* Leaflet marker reset formatting */
+.custom-leaflet-marker {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Grayscale filter for OpenStreetMap tiles */
+.map-tiles-grayscale {
+  filter: grayscale(100%) brightness(95%) contrast(90%);
+}
