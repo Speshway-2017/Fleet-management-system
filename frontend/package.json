@@ -22,6 +22,7 @@
     "react-hot-toast": "^2.6.0",
     "react-map-gl": "^8.1.1",
     "react-router-dom": "^7.18.1",
+    "tesseract.js": "^7.0.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

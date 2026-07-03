@@ -9,6 +9,11 @@ import AdminDashboard from "@/roles/admin/pages/AdminDashboard";
 import UserManagement from "@/roles/admin/pages/UserManagement";
 import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
 import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
+import VehicleManagement from "@/roles/manager/pages/VehicleManagement";
+import AddVehiclePage from "@/roles/manager/pages/AddVehiclePage";
+import VehiclesListPage from "@/roles/manager/pages/VehiclesListPage";
+import VehicleDetailsPage from "@/roles/manager/pages/VehicleDetailsPage";
+import VehicleEditPage from "@/roles/manager/pages/VehicleEditPage";
 
 function HomeRedirect() {
   const { isAuthenticated, role } = useAuth();
@@ -36,6 +41,11 @@ export default function App() {
           <Route element={<ProtectedRoute allowedRoles={["manager"]} />}>
             <Route element={<AppLayout />}>
               <Route path="/manager" element={<ManagerDashboard />} />
+              <Route path="/manager/vehicle-management" element={<VehicleManagement />} />
+              <Route path="/manager/vehicles-list" element={<VehiclesListPage />} />
+              <Route path="/manager/vehicle-details/:id" element={<VehicleDetailsPage />} />
+              <Route path="/manager/vehicle-edit/:id" element={<VehicleEditPage />} />
+              <Route path="/manager/add-vehicle" element={<AddVehiclePage />} />
               <Route path="/manager/map" element={<FleetMapPage />} />
             </Route>
           </Route>
