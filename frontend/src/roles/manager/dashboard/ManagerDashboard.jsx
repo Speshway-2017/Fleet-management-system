@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Truck, 
   Zap, 
@@ -22,6 +23,7 @@ import { dashboardApi } from "./dashboardApi";
 import "./manager.css";
 
 export default function ManagerDashboard() {
+  const navigate = useNavigate();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [retryTrigger, setRetryTrigger] = useState(0);
@@ -159,8 +161,8 @@ export default function ManagerDashboard() {
             <div className="flex items-center justify-between mb-4 shrink-0">
               <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Compliance Expiry</h3>
               <button 
-                onClick={() => toast.success("Loading complete compliance records...")}
-                className="text-xs text-[#C65D0E] hover:underline font-poppins font-bold"
+                onClick={() => navigate("/manager/vehicles-list")}
+                className="text-xs text-[#C65D0E] hover:underline font-poppins font-bold cursor-pointer"
               >
                 View All
               </button>

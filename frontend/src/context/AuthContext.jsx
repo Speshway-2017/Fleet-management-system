@@ -21,6 +21,37 @@ export function AuthProvider({ children }) {
   const login = async (credentials) => {
     setLoading(true);
     try {
+      const { data } = await authApi.login(credentials);
+      localStorage.setItem("token", data.token);
+      setUser(data.user);
+      return data.user;
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.warn("API login failed, checking local seed credentials:", err.message);
+        const email = credentials.email?.toLowerCase();
+        const password = credentials.password;
+
+        if (email === "manager@fleet.com" && password === "manager123") {
+          const mockUser = {
+            name: "Alex Thompson",
+            role: "manager",
+            email: "manager@fleet.com"
+          };
+          localStorage.setItem("token", "mock_dev_session_token_3b0569d8");
+          setUser(mockUser);
+          return mockUser;
+        } else if (email === "admin@fleet.com" && password === "admin123") {
+          const mockUser = {
+            name: "Super Admin",
+            role: "admin",
+            email: "admin@fleet.com"
+          };
+          localStorage.setItem("token", "mock_dev_session_token_3b0569d8");
+          setUser(mockUser);
+          return mockUser;
+        }
+      }
+      throw err;
       if (import.meta.env.DEV) {
         try {
           const { data } = await authApi.login(credentials);

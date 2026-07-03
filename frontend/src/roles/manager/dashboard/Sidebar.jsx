@@ -22,7 +22,7 @@ import "./manager.css";
 
 const MENU_ITEMS = [
   { label: "Dashboard", to: "/manager", icon: LayoutDashboard, isRealRoute: true },
-  { label: "Vehicles", to: "/manager/vehicles", icon: Truck, isRealRoute: false },
+  { label: "Vehicle Management", to: "/manager/vehicle-management", icon: Truck, isRealRoute: true },
   { label: "Drivers", to: "/manager/drivers", icon: Users, isRealRoute: false },
   { label: "Trips", to: "/manager/trips", icon: Route, isRealRoute: false },
   { label: "Live Tracking", to: "/manager/map", icon: MapPin, isRealRoute: true },
@@ -51,16 +51,16 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
   };
 
   const navContent = (
-    <div className="flex flex-col h-full bg-[#0D0D0D] text-gray-400 border-r border-[#1e1e1e] select-none">
+    <div className="flex flex-col h-full bg-[#0F0F10] text-gray-400 border-r border-[#1B1B1D]/50 select-none">
       {/* Brand Header */}
-      <div className="flex items-center justify-between px-6 py-5 border-b border-[#1e1e1e] shrink-0">
+      <div className="flex items-center justify-between px-6 py-5 border-b border-[#1B1B1D]/50 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="bg-[#C65D0E] text-white p-2 rounded-xl">
+          <div className="bg-[#B45A0A] text-white p-2 rounded-xl">
             <Truck className="w-6 h-6" />
           </div>
           <div>
             <h1 className="font-poppins font-bold text-white text-lg tracking-wide leading-none">FleetManagement</h1>
-            <span className="text-xs text-[#6B7280] font-medium font-nunito mt-1 block">Fleet Manager</span>
+            <span className="text-xs text-[#64748B] font-medium font-nunito mt-1 block">Manager</span>
           </div>
         </div>
         {mobileOpen && (
@@ -85,8 +85,8 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
               onClick={(e) => handleMenuClick(e, item)}
               className={`flex items-center gap-3.5 px-6 py-3 font-poppins text-sm border-l-4 sidebar-link-transition ${
                 isActive
-                  ? "border-[#C65D0E] bg-[#1e140c]/40 text-[#C65D0E] font-semibold"
-                  : "border-transparent hover:text-white hover:bg-gray-900/50"
+                  ? "border-[#B45A0A] bg-[#1B1B1D] text-[#B45A0A] font-semibold"
+                  : "border-transparent hover:text-white hover:bg-[#1B1B1D]/30"
               }`}
             >
               <Icon className="w-5 h-5 shrink-0" />

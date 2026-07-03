@@ -68,7 +68,7 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
             className="relative p-2.5 text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none transition-colors duration-150"
           >
             <Bell className="w-5.5 h-5.5" />
-            <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#C65D0E] border-2 border-white rounded-full pulsing-dot" />
+            <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#B45A0A] border-2 border-white rounded-full pulsing-dot" />
           </button>
 
           {notiMenuOpen && (
@@ -82,7 +82,7 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
                       setNotiMenuOpen(false);
                       toast.success("Notifications dismissed.");
                     }} 
-                    className="text-xs text-[#C65D0E] hover:underline font-semibold"
+                    className="text-xs text-[#B45A0A] hover:underline font-semibold"
                   >
                     Dismiss All
                   </button>
@@ -109,8 +109,8 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
             }}
             className="flex items-center gap-3 p-1 hover:bg-gray-100 rounded-2xl focus:outline-none transition-colors"
           >
-            <div className="w-9 h-9 rounded-full bg-[#C65D0E]/10 border border-[#C65D0E]/20 flex items-center justify-center overflow-hidden">
-              <User className="w-5 h-5 text-[#C65D0E]" />
+            <div className="w-9 h-9 rounded-full bg-[#B45A0A]/10 border border-[#B45A0A]/20 flex items-center justify-center overflow-hidden">
+              <User className="w-5 h-5 text-[#B45A0A]" />
             </div>
             <div className="hidden sm:block text-left leading-tight pr-1">
               <p className="font-poppins font-semibold text-sm text-[#1B2430] leading-none">
