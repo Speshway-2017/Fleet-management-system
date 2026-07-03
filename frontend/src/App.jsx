@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import LoginPage from "@/roles/admin/pages/LoginPage";
+import SignupPage from "@/roles/admin/pages/SignupPage";
 import UnauthorizedPage from "@/components/common/UnauthorizedPage";
 import AdminDashboard from "@/roles/admin/pages/AdminDashboard";
 import UserManagement from "@/roles/admin/pages/UserManagement";
@@ -24,6 +25,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
