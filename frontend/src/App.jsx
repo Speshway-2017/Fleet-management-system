@@ -3,7 +3,7 @@ import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
-import LoginPage from "@/components/common/LoginPage";
+import LoginPage from "@/roles/admin/pages/LoginPage";
 import UnauthorizedPage from "@/components/common/UnauthorizedPage";
 import AdminDashboard from "@/roles/admin/pages/AdminDashboard";
 import UserManagement from "@/roles/admin/pages/UserManagement";
