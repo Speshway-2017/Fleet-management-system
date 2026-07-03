@@ -25,14 +25,18 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col lg:flex-row bg-[#FAFBFC] font-sans">
       {/* Visual Side (Left) */}
       <div className="w-full lg:w-[45%] min-h-[450px] lg:min-h-screen relative overflow-hidden flex flex-col justify-start p-6 lg:p-10 lg:py-12 text-gray-800">
-        {/* Background Image */}
+        {/* Background Image — full truck visible */}
         <div
-          className="absolute top-0 left-0 w-full h-[108%] bg-cover bg-[position:55%_bottom] z-0"
+          className="absolute inset-0 w-full h-full bg-no-repeat bg-bottom z-0"
           style={{
             backgroundImage:
               "url('https://images.unsplash.com/photo-1592838064575-70ed626d3a0e?q=80&w=2018&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
+            backgroundSize: "cover",
           }}
         />
+
+        {/* Light overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/70 via-white/30 to-black/20 z-10 pointer-events-none" />
 
         {/* Top Header Logo */}
         <div className="relative z-20 flex items-center gap-3">
@@ -49,7 +53,7 @@ export default function LoginPage() {
         </div>
 
         {/* Text Block and Stats */}
-        <div className="relative z-20 mt-3 lg:mt-5 space-y-4 lg:space-y-5">
+        <div className="relative z-20 mt-2 lg:mt-3.5 space-y-4 lg:space-y-5">
           <div className="space-y-1.5 lg:space-y-2">
             <h1 className="font-display text-xl lg:text-[26px] font-extrabold text-[#A14000] leading-[1.2] tracking-tight">
               Fleet Management <br />
@@ -66,7 +70,7 @@ export default function LoginPage() {
               <div className="text-xl lg:text-2xl font-black text-[#A14000] tracking-tight">
                 99.9%
               </div>
-              <div className="text-[8.5px] font-extrabold text-gray-500 tracking-wider uppercase">
+              <div className="text-[8.5px] font-extrabold text-[#A14000] tracking-wider uppercase">
                 UPTIME
               </div>
             </div>
@@ -74,7 +78,7 @@ export default function LoginPage() {
               <div className="text-xl lg:text-2xl font-black text-[#A14000] tracking-tight">
                 15k+
               </div>
-              <div className="text-[8.5px] font-extrabold text-gray-500 tracking-wider uppercase">
+              <div className="text-[8.5px] font-extrabold text-[#A14000] tracking-wider uppercase">
                 VEHICLES
               </div>
             </div>
@@ -249,10 +253,10 @@ export default function LoginPage() {
           <div className="text-center text-xs text-gray-500">
             Don't have an account?{" "}
             <a
-              href="#signup"
+              href="/signup"
               onClick={(e) => {
                 e.preventDefault();
-                toast.error("Sign up is disabled in this demo.");
+                navigate("/signup");
               }}
               className="font-bold text-gray-700 hover:text-gray-900 transition-colors"
             >
