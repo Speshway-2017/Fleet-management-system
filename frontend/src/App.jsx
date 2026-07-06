@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import ScrollToTop from "@/components/common/ScrollToTop";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import LoginPage from "@/roles/admin/pages/LoginPage";
@@ -16,6 +17,13 @@ import AddVehiclePage from "@/roles/manager/pages/AddVehiclePage";
 import VehiclesListPage from "@/roles/manager/pages/VehiclesListPage";
 import VehicleDetailsPage from "@/roles/manager/pages/VehicleDetailsPage";
 import VehicleEditPage from "@/roles/manager/pages/VehicleEditPage";
+import DriversManagementPage from "@/roles/manager/pages/DriversManagementPage";
+import DriversListPage from "@/roles/manager/pages/DriversListPage";
+import DriverProfilePage from "@/roles/manager/pages/DriverProfilePage";
+import AssignVehiclePage from "@/roles/manager/pages/AssignVehiclePage";
+import AddDriverPage from "@/roles/manager/pages/AddDriverPage";
+import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
+import TripsListPage from "@/roles/manager/pages/TripsListPage";
 
 import PublicHome from "@/pages/PublicHome";
 
@@ -29,6 +37,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <Toaster position="top-right" />
         <Routes>
           <Route path="/" element={<HomeRedirect />} />
@@ -53,6 +62,13 @@ export default function App() {
               <Route path="/manager/vehicle-edit/:id" element={<VehicleEditPage />} />
               <Route path="/manager/add-vehicle" element={<AddVehiclePage />} />
               <Route path="/manager/map" element={<FleetMapPage />} />
+              <Route path="/manager/drivers" element={<DriversManagementPage />} />
+              <Route path="/manager/drivers-list" element={<DriversListPage />} />
+              <Route path="/manager/trips" element={<TripsManagementPage />} />
+              <Route path="/manager/trips-list" element={<TripsListPage />} />
+              <Route path="/manager/driver-profile/:id" element={<DriverProfilePage />} />
+              <Route path="/manager/driver-assign-vehicle/:id" element={<AssignVehiclePage />} />
+              <Route path="/manager/add-driver" element={<AddDriverPage />} />
             </Route>
           </Route>
 

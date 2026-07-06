@@ -954,18 +954,18 @@ export default function VehicleManagement() {
                           <div className="flex items-center justify-end gap-1">
                             {/* View Details */}
                             <button
-                              onClick={() => openDetailsModal(v)}
+                              onClick={() => navigate(`/manager/vehicle-details/${v.id}`)}
                               title="View details"
-                              className="p-2 text-[#64748B] hover:text-[#B45A0A] hover:bg-[#FDF3EC] rounded-lg transition-colors cursor-pointer"
+                              className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
 
                             {/* Edit */}
                             <button
-                              onClick={() => openEditModal(v)}
+                              onClick={() => navigate(`/manager/vehicle-edit/${v.id}`)}
                               title="Edit vehicle"
-                              className="p-2 text-[#64748B] hover:text-blue-600 hover:bg-blue-50/80 rounded-lg transition-colors cursor-pointer"
+                              className="p-2 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer"
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
@@ -974,7 +974,7 @@ export default function VehicleManagement() {
                             <button
                               onClick={() => openDeleteModal(v)}
                               title="Delete vehicle"
-                              className="p-2 text-[#64748B] hover:text-[#EF4444] hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                              className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-4.5 h-4.5" />
                             </button>
