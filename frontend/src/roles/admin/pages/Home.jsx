@@ -1,6 +1,13 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Home({ setActiveTab }) {
+  const navigate = useNavigate();
+  const { isAuthenticated, user, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const handleAction = (label) => {
     toast.success(`Action triggered: ${label}`);
   };
@@ -8,12 +15,12 @@ export default function Home({ setActiveTab }) {
   return (
     <div className="bg-bg-page min-h-screen flex flex-col font-sans">
       {/* 1. Header/Navbar */}
-      <header className="bg-white border-b border-border-custom px-8 h-20 flex items-center justify-between sticky top-0 z-30">
+      <header className="bg-white border-b border-border-custom px-4 sm:px-6 md:px-8 h-20 flex items-center justify-between sticky top-0 z-30">
         {/* Logo Section */}
         <div className="flex items-center gap-3">
           <img src="/brand-logo.png" alt="Fleet Management Logo" className="h-10 w-auto rounded-lg object-contain" />
           <div>
-            <h1 className="font-display font-bold text-secondary tracking-wide text-base">Fleet Management</h1>
+            <h1 className="font-display font-bold text-secondary tracking-wide text-sm sm:text-base hidden xs:block sm:block">Fleet Management</h1>
           </div>
         </div>
 
@@ -46,21 +53,87 @@ export default function Home({ setActiveTab }) {
         </nav>
 
         {/* Right CTA Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          {isAuthenticated ? (
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-body hidden sm:inline-block">
+                {user?.name || "Admin"}
+              </span>
+              <button
+                onClick={() => {
+                  logout();
+                  navigate("/login");
+                }}
+                className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-secondary/10 text-secondary font-semibold text-[11px] sm:text-xs transition-all hover:bg-secondary/20 active:scale-[0.98] cursor-pointer"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => navigate("/login")}
+                className="px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl border border-secondary text-secondary font-semibold text-[11px] sm:text-xs transition-all hover:bg-secondary/5 active:scale-[0.98] cursor-pointer"
+              >
+                Login
+              </button>
+              <button
+                onClick={() => navigate("/signup")}
+                className="px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl bg-secondary text-white font-semibold text-[11px] sm:text-xs transition-all hover:bg-accent shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
+              >
+                Get Started
+              </button>
+            </>
+          )}
+
+          {/* Mobile Menu Toggle Button */}
           <button
-            onClick={() => handleAction("Navbar Login")}
-            className="px-5 py-2.5 rounded-xl border border-secondary text-secondary font-semibold text-xs transition-all hover:bg-secondary/5 active:scale-[0.98] cursor-pointer"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 rounded-xl text-secondary hover:bg-secondary/10 transition-colors cursor-pointer"
+            aria-label="Toggle mobile menu"
           >
-            Login
-          </button>
-          <button
-            onClick={() => handleAction("Navbar Get Started")}
-            className="px-5 py-2.5 rounded-xl bg-secondary text-white font-semibold text-xs transition-all hover:bg-accent shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
-          >
-            Get Started
+            {mobileMenuOpen ? (
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
           </button>
         </div>
       </header>
+
+      {/* Mobile Dropdown Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-white border-b border-border-custom px-6 py-4 space-y-3 shadow-lg sticky top-20 z-20">
+          <button
+            onClick={() => { setActiveTab?.("home"); setMobileMenuOpen(false); }}
+            className="block w-full text-left py-2 font-semibold text-sm text-heading hover:text-secondary transition-colors"
+          >
+            Home
+          </button>
+          <button
+            onClick={() => { setActiveTab?.("performance"); setMobileMenuOpen(false); }}
+            className="block w-full text-left py-2 font-semibold text-sm text-body hover:text-secondary transition-colors"
+          >
+            Performance
+          </button>
+          <button
+            onClick={() => { setActiveTab?.("about"); setMobileMenuOpen(false); }}
+            className="block w-full text-left py-2 font-semibold text-sm text-body hover:text-secondary transition-colors"
+          >
+            About
+          </button>
+          <button
+            onClick={() => { setActiveTab?.("contact"); setMobileMenuOpen(false); }}
+            className="block w-full text-left py-2 font-semibold text-sm text-body hover:text-secondary transition-colors"
+          >
+            Contact Us
+          </button>
+        </div>
+      )}
 
       {/* 2. Hero Section */}
       <section className="relative w-full overflow-hidden border-b border-border-custom bg-white">
@@ -75,9 +148,9 @@ export default function Home({ setActiveTab }) {
         <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent md:bg-gradient-to-r md:from-white/90 md:via-white/70 md:to-transparent lg:bg-gradient-to-r lg:from-white/80 lg:via-white/60 lg:to-transparent" />
 
         {/* Content Container */}
-        <div className="relative max-w-7xl mx-auto px-8 py-28 md:py-44 lg:py-52 min-h-[500px] md:min-h-[650px] lg:min-h-[750px] grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-16 sm:py-28 md:py-44 lg:py-52 min-h-[450px] sm:min-h-[500px] md:min-h-[650px] lg:min-h-[750px] grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
           <div className="space-y-6 max-w-lg">
-            <h2 className="font-display text-4xl md:text-5xl font-black text-heading leading-tight tracking-tight">
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black text-heading leading-tight tracking-tight">
               Smarter Fleet Control. <br />
               Better <span className="text-secondary">Business</span> Performance.
             </h2>
@@ -86,7 +159,7 @@ export default function Home({ setActiveTab }) {
             </p>
 
             {/* Checklist */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-2">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 py-2">
               <div className="flex items-center gap-2 text-sm font-semibold text-heading">
                 <svg className="h-5 w-5 text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -110,7 +183,11 @@ export default function Home({ setActiveTab }) {
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <button
-                onClick={() => handleAction("Hero Get Started")}
+                onClick={() => {
+                  localStorage.removeItem("user");
+                  localStorage.removeItem("token");
+                  navigate("/signup");
+                }}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-secondary px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-accent shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
               >
                 Get Started
@@ -133,11 +210,11 @@ export default function Home({ setActiveTab }) {
       </section>
 
       {/* 3. Features Section */}
-      <section className="py-20 bg-white px-8">
-        <div className="max-w-6xl mx-auto space-y-16">
+      <section className="py-12 sm:py-20 bg-white px-4 sm:px-6 md:px-8">
+        <div className="max-w-6xl mx-auto space-y-12 sm:space-y-16">
           {/* Centered Heading */}
           <div className="text-center space-y-4 max-w-2xl mx-auto">
-            <h3 className="font-display text-3xl font-extrabold text-heading tracking-tight">
+            <h3 className="font-display text-2xl sm:text-3xl font-extrabold text-heading tracking-tight">
               Everything Your Fleet Needs
             </h3>
             <p className="text-sm md:text-base text-body leading-relaxed">
@@ -146,7 +223,7 @@ export default function Home({ setActiveTab }) {
           </div>
 
           {/* 3x2 Grid Cards layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-[54px] lg:gap-x-[129px] gap-x-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-x-[129px] gap-y-8 lg:gap-y-[54px]">
             {/* Card 1: GPS Tracking */}
             <div className="rounded-3xl bg-[#FFDBCC] border border-[#FFDBCC] p-8 space-y-6 hover:shadow-lg hover:shadow-secondary/5 transition-all duration-300">
               <div className="h-12 w-12 rounded-2xl bg-primary text-secondary flex items-center justify-center shadow-md">
@@ -242,8 +319,8 @@ export default function Home({ setActiveTab }) {
       </section>
 
       {/* 4. Ready to Take Control of Your Fleet? CTA Section */}
-      <section className="bg-bg-page py-12 px-8">
-        <div className="max-w-5xl mx-auto rounded-3xl bg-white border border-border-custom p-12 text-center space-y-6 shadow-sm">
+      <section className="bg-bg-page py-8 sm:py-12 px-4 sm:px-6 md:px-8">
+        <div className="max-w-5xl mx-auto rounded-3xl bg-white border border-border-custom p-6 sm:p-8 md:p-12 text-center space-y-6 shadow-sm">
           <h3 className="font-display text-2xl md:text-3xl font-extrabold text-secondary">
             Ready to Take Control of Your Fleet?
           </h3>
@@ -252,7 +329,11 @@ export default function Home({ setActiveTab }) {
           </p>
           <div className="pt-2">
             <button
-              onClick={() => handleAction("Footer Free Trial CTA")}
+              onClick={() => {
+                localStorage.removeItem("user");
+                localStorage.removeItem("token");
+                navigate("/signup");
+              }}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-primary-dark shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
             >
               Start Your Free Trial
@@ -265,8 +346,8 @@ export default function Home({ setActiveTab }) {
       </section>
 
       {/* 5. Footer (Dark Background) */}
-      <footer className="bg-primary text-gray-300 pt-16 pb-8 px-8 mt-auto">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 pb-12 border-b border-gray-800">
+      <footer className="bg-primary text-gray-300 pt-12 sm:pt-16 pb-8 px-4 sm:px-6 md:px-8 mt-auto">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 pb-12 border-b border-gray-800">
           {/* Column 1: Brand Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">

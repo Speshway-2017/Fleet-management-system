@@ -24,11 +24,11 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="p-8 space-y-8 bg-bg-page min-h-screen">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6 md:space-y-8 bg-bg-page min-h-screen">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-extrabold text-heading tracking-tight">User Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-heading tracking-tight">User Management</h1>
           <p className="text-sm text-body">
             Manage system operators, assign access privileges, and review team roles.
           </p>
@@ -36,7 +36,7 @@ export default function UserManagement() {
         <div>
           <button
             onClick={handleAddUserPlaceholder}
-            className="inline-flex items-center gap-2 rounded-xl bg-secondary px-5 py-3 text-sm font-semibold text-white hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-xl bg-secondary px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-white hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
           >
             <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />

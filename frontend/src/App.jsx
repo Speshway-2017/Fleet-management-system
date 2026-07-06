@@ -5,6 +5,7 @@ import ProtectedRoute from "@/routes/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import LoginPage from "@/roles/admin/pages/LoginPage";
 import SignupPage from "@/roles/admin/pages/SignupPage";
+import Signup1 from "@/roles/admin/pages/Signup1";
 import UnauthorizedPage from "@/components/common/UnauthorizedPage";
 import AdminDashboard from "@/roles/admin/pages/AdminDashboard";
 import UserManagement from "@/roles/admin/pages/UserManagement";
@@ -16,9 +17,11 @@ import VehiclesListPage from "@/roles/manager/pages/VehiclesListPage";
 import VehicleDetailsPage from "@/roles/manager/pages/VehicleDetailsPage";
 import VehicleEditPage from "@/roles/manager/pages/VehicleEditPage";
 
+import PublicHome from "@/pages/PublicHome";
+
 function HomeRedirect() {
   const { isAuthenticated, role } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <PublicHome />;
   return <Navigate to={role === "admin" ? "/admin" : "/manager"} replace />;
 }
 
@@ -31,6 +34,7 @@ export default function App() {
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/signup1" element={<Signup1 />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>

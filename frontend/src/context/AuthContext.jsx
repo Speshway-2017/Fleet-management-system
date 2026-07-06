@@ -56,6 +56,7 @@ export function AuthProvider({ children }) {
         try {
           const { data } = await authApi.login(credentials);
           localStorage.setItem("token", data.token);
+          localStorage.setItem("user", JSON.stringify(data.user));
           setUser(data.user);
           return data.user;
         } catch (apiError) {
@@ -64,11 +65,13 @@ export function AuthProvider({ children }) {
           if (email === "admin@fleet.com" && password === "password") {
             const mockUser = { name: "Admin User", email: "admin@fleet.com", role: "admin" };
             localStorage.setItem("token", "dev-mock-token");
+            localStorage.setItem("user", JSON.stringify(mockUser));
             setUser(mockUser);
             return mockUser;
           } else if (email === "manager@fleet.com" && password === "password") {
             const mockUser = { name: "Manager User", email: "manager@fleet.com", role: "manager" };
             localStorage.setItem("token", "dev-mock-token");
+            localStorage.setItem("user", JSON.stringify(mockUser));
             setUser(mockUser);
             return mockUser;
           } else {
@@ -78,6 +81,7 @@ export function AuthProvider({ children }) {
       } else {
         const { data } = await authApi.login(credentials);
         localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
         setUser(data.user);
         return data.user;
       }
@@ -88,13 +92,24 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
   };
 
+  const storedUser = (() => {
+    try {
+      const stored = localStorage.getItem("user");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const currentUser = user || storedUser;
+
   const value = {
-    user,
-    role: user?.role ?? null,
-    isAuthenticated: !!user,
+    user: currentUser,
+    role: currentUser?.role ?? null,
+    isAuthenticated: !!currentUser,
     loading,
     login,
     logout,
