@@ -1,0 +1,121 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+
+/* Style custom variables */
+:root {
+  --color-bg-primary: #F5F7FA;
+  --color-sidebar: #0F0F10;
+  --color-sidebar-active: #1B1B1D;
+  --color-card: #FFFFFF;
+  --color-primary-orange: #B45A0A;
+  --color-orange-hover: #9A4D08;
+  --color-primary-light: #FDF3EC;
+  --color-dark-text: #1E293B;
+  --color-light-text: #64748B;
+  --color-placeholder: #94A3B8;
+  --color-border: #E7EAF0;
+  --color-success: #22C55E;
+  --color-danger: #EF4444;
+  --color-warning: #F59E0B;
+  --color-info: #3B82F6;
+
+  --font-poppins: 'Poppins', 'Segoe UI', sans-serif;
+  --font-nunito: 'Nunito', 'Segoe UI', sans-serif;
+}
+
+/* Font utilities */
+.font-poppins {
+  font-family: var(--font-poppins) !important;
+}
+
+.font-nunito {
+  font-family: var(--font-nunito) !important;
+}
+
+/* Hide default shared header navigation */
+nav.flex.items-center.justify-between.border-b {
+  display: none !important;
+}
+
+body {
+  background-color: var(--color-bg-primary) !important;
+  font-family: var(--font-nunito);
+}
+
+/* Custom Scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.25);
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.45);
+}
+
+/* Card Micro-animations */
+.hover-card-trigger {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hover-card-trigger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.01);
+}
+
+.sidebar-link-transition {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Pulsing radar for markers */
+@keyframes pulse-orange {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.8;
+  }
+}
+
+.pulsing-dot {
+  animation: pulse-orange 2s infinite ease-in-out;
+}
+
+/* Smooth transitions */
+.smooth-transition {
+  transition: all 0.3s ease;
+}
+
+/* Leaflet marker reset formatting */
+.custom-leaflet-marker {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Grayscale filter for OpenStreetMap tiles */
+.map-tiles-grayscale {
+  filter: grayscale(100%) brightness(95%) contrast(90%);
+}
+
+/* Slide in from right animation */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

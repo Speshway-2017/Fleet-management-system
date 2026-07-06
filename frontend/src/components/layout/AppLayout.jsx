@@ -6,6 +6,8 @@ const NAV_ITEMS = {
   admin: [
     { to: "/admin", label: "Dashboard", icon: "mdi:view-dashboard-outline" },
     { to: "/admin/users", label: "Users", icon: "mdi:account-group" },
+    { to: "/admin/dashboard", label: "Dashboard" },
+
   ],
   manager: [
     { to: "/manager", label: "Dashboard", icon: "mdi:view-dashboard-outline" },
