@@ -64,13 +64,6 @@ export default function LoginPage() {
             <label htmlFor="password" className="text-xs font-bold text-gray-700 block">
               Password
             </label>
-            <button
-              type="button"
-              onClick={() => toast.error("Password reset is not configured for this demo.")}
-              className="text-[9px] font-bold text-[#A14000] hover:underline uppercase tracking-wide"
-            >
-              Forgot Password?
-            </button>
           </div>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
@@ -106,15 +99,24 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Remember me */}
-        <div className="flex items-center gap-2">
-          <input
-            id="remember-me" type="checkbox" defaultChecked
-            className="h-4 w-4 accent-[#A14000] border-gray-300 rounded cursor-pointer"
-          />
-          <label htmlFor="remember-me" className="text-xs font-semibold text-gray-500 select-none cursor-pointer">
-            Remember me for 30 days
-          </label>
+        {/* Remember me & Forgot Password */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <input
+              id="remember-me" type="checkbox" defaultChecked
+              className="h-4 w-4 accent-[#A14000] border-gray-300 rounded cursor-pointer"
+            />
+            <label htmlFor="remember-me" className="text-xs font-semibold text-gray-500 select-none cursor-pointer">
+              Remember me for 30 days
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/forgot-password")}
+            className="text-xs font-bold text-[#A14000] hover:text-[#7d3200] transition-colors"
+          >
+            Forgot password?
+          </button>
         </div>
 
         {/* Submit */}
