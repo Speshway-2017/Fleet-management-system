@@ -4,7 +4,11 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
-import LoginPage from "@/components/common/LoginPage";
+import LoginPage from "@/roles/admin/pages/LoginPage";
+import SignupPage from "@/roles/admin/pages/SignupPage";
+import Signup1 from "@/roles/admin/pages/Signup1";
+import ForgotPasswordPage from "@/roles/admin/pages/ForgotPasswordPage";
+import OtpVerificationPage from "@/roles/admin/pages/OtpVerificationPage";
 import UnauthorizedPage from "@/components/common/UnauthorizedPage";
 import AdminDashboard from "@/roles/admin/pages/AdminDashboard";
 import UserManagement from "@/roles/admin/pages/UserManagement";
@@ -24,10 +28,14 @@ import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
 import TripsListPage from "@/roles/manager/pages/TripsListPage";
 import CreateTripPage from "@/roles/manager/pages/CreateTripPage";
 import TripDetailsPage from "@/roles/manager/pages/TripDetailsPage";
+// import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
+// import TripsListPage from "@/roles/manager/pages/TripsListPage";
+
+import PublicHome from "@/pages/PublicHome";
 
 function HomeRedirect() {
   const { isAuthenticated, role } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <PublicHome />;
   return <Navigate to={role === "admin" ? "/admin" : "/manager"} replace />;
 }
 
@@ -40,6 +48,10 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/signup1" element={<Signup1 />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/otp-verification" element={<OtpVerificationPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
@@ -64,6 +76,8 @@ export default function App() {
               <Route path="/manager/trips-list" element={<TripsListPage />} />
               <Route path="/manager/create-trip" element={<CreateTripPage />} />
               <Route path="/manager/trip-details/:id" element={<TripDetailsPage />} />
+              {/* <Route path="/manager/trips" element={<TripsManagementPage />} />
+              <Route path="/manager/trips-list" element={<TripsListPage />} /> */}
               <Route path="/manager/driver-profile/:id" element={<DriverProfilePage />} />
               <Route path="/manager/driver-assign-vehicle/:id" element={<AssignVehiclePage />} />
               <Route path="/manager/add-driver" element={<AddDriverPage />} />
