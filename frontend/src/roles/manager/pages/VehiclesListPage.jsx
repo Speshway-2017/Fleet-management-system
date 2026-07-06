@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Plus, Search, ChevronDown, Eye, Edit2, Trash2, FileText, MapPin, X, AlertTriangle, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Plus, Search, ChevronDown, Eye, Edit2, Trash2, FileText, MapPin, X, AlertTriangle, SlidersHorizontal, Users } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import L from "leaflet";
@@ -205,13 +205,22 @@ export default function VehiclesListPage() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => navigate("/manager/add-vehicle")}
-              className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 cursor-pointer"
-            >
-              <Plus className="w-4.5 h-4.5" />
-              <span>Add Vehicle</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate("/manager/drivers")}
+                className="px-4 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all flex items-center gap-2 shadow-sm font-poppins cursor-pointer"
+              >
+                <Users className="w-4 h-4" />
+                <span>View All Drivers</span>
+              </button>
+              <button
+                onClick={() => navigate("/manager/add-vehicle")}
+                className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 cursor-pointer"
+              >
+                <Plus className="w-4.5 h-4.5" />
+                <span>Add Vehicle</span>
+              </button>
+            </div>
           </div>
 
           {/* KPI Cards */}

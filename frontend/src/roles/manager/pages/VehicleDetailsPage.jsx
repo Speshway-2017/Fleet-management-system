@@ -18,6 +18,8 @@ export default function VehicleDetailsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [previewDocument, setPreviewDocument] = useState(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [driversList, setDriversList] = useState([]);
 
   // Location coordinates for different branches (mock data)
   const branchCoordinates = {
@@ -42,6 +44,14 @@ export default function VehicleDetailsPage() {
     }
     setLoading(false);
   }, [id, navigate]);
+
+  // Load drivers when assign modal opens
+  useEffect(() => {
+    if (showAssignModal) {
+      const list = JSON.parse(localStorage.getItem("fleet_drivers") || "[]");
+      setDriversList(list);
+    }
+  }, [showAssignModal]);
 
   // Initialize map
   useEffect(() => {
@@ -89,6 +99,32 @@ export default function VehicleDetailsPage() {
     localStorage.setItem("fleet_vehicles", JSON.stringify(updated));
     toast.success("Vehicle deleted successfully!");
     navigate("/manager/vehicles-list");
+  };
+
+  const handleAssignDriver = (driverName) => {
+    // 1. Update vehicle's driver name
+    const vehiclesList = JSON.parse(localStorage.getItem("fleet_vehicles") || "[]");
+    const updatedVehicles = vehiclesList.map(v => 
+      v.id === vehicle.id ? { ...v, driver: driverName } : v
+    );
+    localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
+
+    // 2. Update driver assignments
+    const dList = JSON.parse(localStorage.getItem("fleet_drivers") || "[]");
+    const updatedDrivers = dList.map(d => {
+      if (d.assignedVehicle === vehicle.plateNumber) {
+        return { ...d, assignedVehicle: "Unassigned", status: "Available" };
+      }
+      if (d.name === driverName && driverName !== "Unassigned") {
+        return { ...d, assignedVehicle: vehicle.plateNumber, status: "Available" };
+      }
+      return d;
+    });
+    localStorage.setItem("fleet_drivers", JSON.stringify(updatedDrivers));
+
+    setVehicle({ ...vehicle, driver: driverName });
+    toast.success(`Assigned driver ${driverName} successfully!`);
+    setShowAssignModal(false);
   };
 
   if (loading || !vehicle) {
@@ -159,7 +195,15 @@ export default function VehicleDetailsPage() {
                   </div>
                   <div>
                     <p className="text-xs text-[#64748B] font-bold uppercase">Driver</p>
-                    <p className="text-sm font-bold text-[#1E293B] mt-2">{vehicle.driver}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <p className="text-sm font-bold text-[#1E293B]">{vehicle.driver}</p>
+                      <button
+                        onClick={() => setShowAssignModal(true)}
+                        className="text-xs text-[#B45A0A] hover:underline font-bold cursor-pointer"
+                      >
+                        {vehicle.driver === "Unassigned" ? "(Assign)" : "(Change)"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -508,6 +552,81 @@ export default function VehicleDetailsPage() {
                 <Trash2 className="w-4 h-4" />
                 Delete Vehicle
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Driver Modal */}
+      {showAssignModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 border border-[#E7EAF0] relative">
+            <button
+              onClick={() => setShowAssignModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-xl font-bold font-poppins text-[#1E293B]">Assign Driver</h3>
+                <p className="text-xs text-[#64748B] mt-1 font-medium">
+                  Select a driver from the active roster to assign to this vehicle ({vehicle.plateNumber}).
+                </p>
+              </div>
+
+              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                {/* Unassign option */}
+                <div 
+                  onClick={() => handleAssignDriver("Unassigned")}
+                  className="p-3 bg-red-50 hover:bg-red-100/70 border border-red-100 rounded-xl flex items-center justify-between cursor-pointer transition-colors"
+                >
+                  <div>
+                    <p className="font-bold text-xs text-red-700">Leave Unassigned</p>
+                    <span className="text-[10px] text-red-500 font-medium">Remove current driver from this vehicle</span>
+                  </div>
+                </div>
+
+                {driversList.map(d => (
+                  <div 
+                    key={d.id}
+                    onClick={() => handleAssignDriver(d.name)}
+                    className={`p-3 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
+                      d.assignedVehicle === vehicle.plateNumber
+                        ? "bg-indigo-50/50 border-indigo-200"
+                        : "bg-white hover:bg-gray-50 border-[#E7EAF0]"
+                    }`}
+                  >
+                    <div>
+                      <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
+                      <span className="text-[10px] text-[#64748B] block mt-0.5">DL: {d.licenseNumber} ({d.licenseType})</span>
+                    </div>
+                    {d.assignedVehicle !== "Unassigned" && d.assignedVehicle !== vehicle.plateNumber ? (
+                      <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
+                        {d.assignedVehicle}
+                      </span>
+                    ) : d.assignedVehicle === vehicle.plateNumber ? (
+                      <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                        Currently Assigned
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                        Available
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E7EAF0]">
+                <button
+                  onClick={() => setShowAssignModal(false)}
+                  className="px-4.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-semibold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
