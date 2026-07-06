@@ -1,6 +1,12 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useAuth } from "@/context/AuthContext";
 
 export default function About({ setActiveTab }) {
+  const navigate = useNavigate();
+  const { isAuthenticated, user, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const handleAction = (label) => {
     toast.success(`Action triggered: ${label}`);
   };
@@ -16,32 +22,32 @@ export default function About({ setActiveTab }) {
   return (
     <div className="bg-bg-page min-h-screen flex flex-col font-sans">
       {/* 1. Header/Navbar */}
-      <header className="bg-white border-b border-border-custom px-8 h-20 flex items-center justify-between sticky top-0 z-30">
+      <header className="bg-white border-b border-border-custom px-4 sm:px-6 md:px-8 h-20 flex items-center justify-between sticky top-0 z-30">
         {/* Logo Section */}
         <div className="flex items-center gap-3">
           <img src="/brand-logo.png" alt="Fleet Management Logo" className="h-10 w-auto rounded-lg object-contain" />
           <div>
-            <h1 className="font-display font-bold text-secondary tracking-wide text-base">Fleet Management</h1>
+            <h1 className="font-display font-bold text-secondary tracking-wide text-sm sm:text-base hidden xs:block sm:block">Fleet Management</h1>
           </div>
         </div>
 
         {/* Center Links */}
         <nav className="hidden md:flex items-center gap-8">
           <button
-            onClick={() => setActiveTab("home")}
-            className="text-sm font-semibold text-body hover:text-heading transition-colors py-2 cursor-pointer bg-transparent border-none"
+            onClick={() => setActiveTab?.("home")}
+            className="text-sm font-semibold text-body hover:text-heading transition-colors py-2 bg-transparent border-none cursor-pointer text-left"
           >
             Home
           </button>
           <button
-            onClick={() => setActiveTab("performance")}
-            className="text-sm font-semibold text-body hover:text-heading transition-colors py-2 cursor-pointer bg-transparent border-none"
+            onClick={() => setActiveTab?.("performance")}
+            className="text-sm font-semibold text-body hover:text-heading transition-colors py-2 bg-transparent border-none cursor-pointer text-left"
           >
             Performance
           </button>
           <button
-            onClick={() => setActiveTab("about")}
-            className="text-sm font-semibold text-heading relative py-2 border-b-2 border-secondary cursor-pointer bg-transparent border-none"
+            onClick={() => setActiveTab?.("about")}
+            className="text-sm font-semibold text-heading relative py-2 border-b-2 border-secondary bg-transparent border-none cursor-pointer text-left"
           >
             About
           </button>
@@ -54,41 +60,111 @@ export default function About({ setActiveTab }) {
         </nav>
 
         {/* Right CTA Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          {isAuthenticated ? (
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-body hidden sm:inline-block">
+                {user?.name || "Admin"}
+              </span>
+              <button
+                onClick={() => {
+                  logout();
+                  navigate("/login");
+                }}
+                className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-secondary/10 text-secondary font-semibold text-[11px] sm:text-xs transition-all hover:bg-secondary/20 active:scale-[0.98] cursor-pointer"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => navigate("/login")}
+                className="px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl border border-secondary text-secondary font-semibold text-[11px] sm:text-xs transition-all hover:bg-secondary/5 active:scale-[0.98] cursor-pointer"
+              >
+                Login
+              </button>
+              <button
+                onClick={() => navigate("/signup")}
+                className="px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl bg-secondary text-white font-semibold text-[11px] sm:text-xs transition-all hover:bg-accent shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
+              >
+                Get Started
+              </button>
+            </>
+          )}
+
+          {/* Mobile Menu Toggle Button */}
           <button
-            onClick={() => handleAction("Navbar Login")}
-            className="px-5 py-2.5 rounded-xl border border-secondary text-secondary font-semibold text-xs transition-all hover:bg-secondary/5 active:scale-[0.98] cursor-pointer"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 rounded-xl text-secondary hover:bg-secondary/10 transition-colors cursor-pointer"
+            aria-label="Toggle mobile menu"
           >
-            Login
-          </button>
-          <button
-            onClick={() => handleAction("Navbar Get Started")}
-            className="px-5 py-2.5 rounded-xl bg-secondary text-white font-semibold text-xs transition-all hover:bg-accent shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
-          >
-            Get Started
+            {mobileMenuOpen ? (
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
           </button>
         </div>
       </header>
 
+      {/* Mobile Dropdown Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-white border-b border-border-custom px-6 py-4 space-y-3 shadow-lg sticky top-20 z-20">
+          <button
+            onClick={() => { setActiveTab?.("home"); setMobileMenuOpen(false); }}
+            className="block w-full text-left py-2 font-semibold text-sm text-body hover:text-secondary transition-colors"
+          >
+            Home
+          </button>
+          <button
+            onClick={() => { setActiveTab?.("performance"); setMobileMenuOpen(false); }}
+            className="block w-full text-left py-2 font-semibold text-sm text-body hover:text-secondary transition-colors"
+          >
+            Performance
+          </button>
+          <button
+            onClick={() => { setActiveTab?.("about"); setMobileMenuOpen(false); }}
+            className="block w-full text-left py-2 font-semibold text-sm text-heading hover:text-secondary transition-colors"
+          >
+            About
+          </button>
+          <button
+            onClick={() => { setActiveTab?.("contact"); setMobileMenuOpen(false); }}
+            className="block w-full text-left py-2 font-semibold text-sm text-body hover:text-secondary transition-colors"
+          >
+            Contact Us
+          </button>
+        </div>
+      )}
+
       {/* 2. Our Story Section */}
-      <section className="py-20 px-8 bg-white border-b border-border-custom">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          {/* Left Column: Story Text */}
+      <section className="py-12 sm:py-20 px-4 sm:px-6 md:px-8 bg-white border-b border-border-custom">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center">
+          {/* Left Column: Text Content */}
           <div className="space-y-6">
             <span className="text-secondary font-bold text-xs uppercase tracking-widest block font-display">
               Our Story
             </span>
-            <h2 className="text-4xl md:text-5xl font-black font-display text-heading leading-tight tracking-tight">
-              Built by Fleet Operators, <br />
-              <span className="text-secondary">For Fleet Operators</span>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold font-display text-heading tracking-tight leading-tight">
+              Built for Fleet Operators, by Logistics Experts
             </h2>
-            <p className="text-sm md:text-base text-body font-medium leading-relaxed">
-              FleetCommand was founded in 2018 after our co-founders spent years fighting with disconnected tools, spreadsheets, and reactive maintenance. We built the platform we always wished existed.
-            </p>
+            <div className="space-y-4 text-sm md:text-base text-body font-medium leading-relaxed">
+              <p>
+                Founded in 2021, FleetCommand began with a simple observation: most fleet management tools were either too complicated for daily operations or too basic for enterprise needs.
+              </p>
+              <p>
+                Our team of logistics veterans and enterprise engineers came together to build a platform that bridges the gap — powerful analytics wrapped in an intuitive, driver-friendly interface.
+              </p>
+            </div>
           </div>
 
           {/* Right Column: 2x2 Stats Grid */}
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pt-4">
             {/* Card 1 */}
             <div className="bg-[#FFDBCC] rounded-3xl p-6 text-center space-y-1 shadow-sm">
               <span className="text-3xl font-extrabold text-heading font-display block tracking-tight">2018</span>
@@ -114,14 +190,14 @@ export default function About({ setActiveTab }) {
       </section>
 
       {/* 3. Our Mission Section */}
-      <section className="py-20 px-8 bg-bg-page border-b border-border-custom">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+      <section className="py-12 sm:py-20 px-4 sm:px-6 md:px-8 bg-bg-page border-b border-border-custom">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-start">
           {/* Left Column: Mission Content */}
           <div className="space-y-6">
             <span className="text-secondary font-bold text-xs uppercase tracking-widest block font-display">
               Our Mission
             </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold font-display text-heading tracking-tight leading-tight">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-display text-heading tracking-tight leading-tight">
               Eliminating Blind Spots in Fleet Operations
             </h2>
             <div className="space-y-4 text-sm md:text-base text-body font-medium leading-relaxed">
@@ -205,13 +281,13 @@ export default function About({ setActiveTab }) {
       </section>
 
       {/* 4. Journey Timeline Section */}
-      <section className="py-20 px-8 bg-white border-b border-border-custom text-center">
-        <div className="max-w-3xl mx-auto space-y-12">
+      <section className="py-12 sm:py-20 px-4 sm:px-6 md:px-8 bg-white border-b border-border-custom text-center">
+        <div className="max-w-3xl mx-auto space-y-8 sm:space-y-12">
           <div className="space-y-2">
             <span className="text-secondary font-bold text-xs uppercase tracking-widest block font-display">
               Timeline
             </span>
-            <h3 className="text-3xl font-extrabold font-display text-heading tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-extrabold font-display text-heading tracking-tight">
               Our Journey
             </h3>
           </div>
@@ -235,8 +311,8 @@ export default function About({ setActiveTab }) {
       </section>
 
       {/* 5. Footer (Dark Background) */}
-      <footer className="bg-primary text-gray-300 pt-16 pb-8 px-8 mt-auto">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 pb-12 border-b border-gray-800">
+      <footer className="bg-primary text-gray-300 pt-12 sm:pt-16 pb-8 px-4 sm:px-6 md:px-8 mt-auto">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 pb-12 border-b border-gray-800">
           {/* Column 1: Brand Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">

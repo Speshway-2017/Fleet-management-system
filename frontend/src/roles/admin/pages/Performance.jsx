@@ -1,6 +1,12 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Performance({ setActiveTab }) {
+  const navigate = useNavigate();
+  const { isAuthenticated, user, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const handleAction = (label) => {
     toast.success(`Action triggered: ${label}`);
   };
@@ -30,26 +36,26 @@ export default function Performance({ setActiveTab }) {
   return (
     <div className="bg-bg-page min-h-screen flex flex-col font-sans">
       {/* 1. Header/Navbar */}
-      <header className="bg-white border-b border-border-custom px-8 h-20 flex items-center justify-between sticky top-0 z-30">
+      <header className="bg-white border-b border-border-custom px-4 sm:px-6 md:px-8 h-20 flex items-center justify-between sticky top-0 z-30">
         {/* Logo Section */}
         <div className="flex items-center gap-3">
           <img src="/brand-logo.png" alt="Fleet Management Logo" className="h-10 w-auto rounded-lg object-contain" />
           <div>
-            <h1 className="font-display font-bold text-secondary tracking-wide text-base">Fleet Management</h1>
+            <h1 className="font-display font-bold text-secondary tracking-wide text-sm sm:text-base hidden xs:block sm:block">Fleet Management</h1>
           </div>
         </div>
 
         {/* Center Links */}
         <nav className="hidden md:flex items-center gap-8">
           <button
-            onClick={() => setActiveTab("home")}
-            className="text-sm font-semibold text-body hover:text-heading transition-colors py-2 cursor-pointer bg-transparent border-none"
+            onClick={() => setActiveTab?.("home")}
+            className="text-sm font-semibold text-body hover:text-heading transition-colors py-2 bg-transparent border-none cursor-pointer text-left"
           >
             Home
           </button>
           <button
-            onClick={() => setActiveTab("performance")}
-            className="text-sm font-semibold text-heading relative py-2 border-b-2 border-secondary cursor-pointer bg-transparent border-none"
+            onClick={() => setActiveTab?.("performance")}
+            className="text-sm font-semibold text-heading relative py-2 border-b-2 border-secondary bg-transparent border-none cursor-pointer text-left"
           >
             Performance
           </button>
@@ -68,28 +74,94 @@ export default function Performance({ setActiveTab }) {
         </nav>
 
         {/* Right CTA Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          {isAuthenticated ? (
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-body hidden sm:inline-block">
+                {user?.name || "Admin"}
+              </span>
+              <button
+                onClick={() => {
+                  logout();
+                  navigate("/login");
+                }}
+                className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-secondary/10 text-secondary font-semibold text-[11px] sm:text-xs transition-all hover:bg-secondary/20 active:scale-[0.98] cursor-pointer"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => navigate("/login")}
+                className="px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl border border-secondary text-secondary font-semibold text-[11px] sm:text-xs transition-all hover:bg-secondary/5 active:scale-[0.98] cursor-pointer"
+              >
+                Login
+              </button>
+              <button
+                onClick={() => navigate("/signup")}
+                className="px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl bg-secondary text-white font-semibold text-[11px] sm:text-xs transition-all hover:bg-accent shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
+              >
+                Get Started
+              </button>
+            </>
+          )}
+
+          {/* Mobile Menu Toggle Button */}
           <button
-            onClick={() => handleAction("Navbar Login")}
-            className="px-5 py-2.5 rounded-xl border border-secondary text-secondary font-semibold text-xs transition-all hover:bg-secondary/5 active:scale-[0.98] cursor-pointer"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 rounded-xl text-secondary hover:bg-secondary/10 transition-colors cursor-pointer"
+            aria-label="Toggle mobile menu"
           >
-            Login
-          </button>
-          <button
-            onClick={() => handleAction("Navbar Get Started")}
-            className="px-5 py-2.5 rounded-xl bg-secondary text-white font-semibold text-xs transition-all hover:bg-accent shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
-          >
-            Get Started
+            {mobileMenuOpen ? (
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
           </button>
         </div>
       </header>
 
-      <section className="bg-white py-12 px-8 border-b border-border-custom text-center">
+      {/* Mobile Dropdown Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-white border-b border-border-custom px-6 py-4 space-y-3 shadow-lg sticky top-20 z-20">
+          <button
+            onClick={() => { setActiveTab?.("home"); setMobileMenuOpen(false); }}
+            className="block w-full text-left py-2 font-semibold text-sm text-body hover:text-secondary transition-colors"
+          >
+            Home
+          </button>
+          <button
+            onClick={() => { setActiveTab?.("performance"); setMobileMenuOpen(false); }}
+            className="block w-full text-left py-2 font-semibold text-sm text-heading hover:text-secondary transition-colors"
+          >
+            Performance
+          </button>
+          <button
+            onClick={() => { setActiveTab?.("about"); setMobileMenuOpen(false); }}
+            className="block w-full text-left py-2 font-semibold text-sm text-body hover:text-secondary transition-colors"
+          >
+            About
+          </button>
+          <button
+            onClick={() => { setActiveTab?.("contact"); setMobileMenuOpen(false); }}
+            className="block w-full text-left py-2 font-semibold text-sm text-body hover:text-secondary transition-colors"
+          >
+            Contact Us
+          </button>
+        </div>
+      )}
+
+      <section className="bg-white py-8 sm:py-12 px-4 sm:px-6 md:px-8 border-b border-border-custom text-center">
         <div className="max-w-6xl mx-auto space-y-3 flex flex-col items-center">
           <span className="text-secondary font-bold text-xs uppercase tracking-widest block font-display">
             Analytics Dashboard
           </span>
-          <h2 className="text-4xl md:text-5xl font-black text-secondary font-display tracking-tight leading-none">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-secondary font-display tracking-tight leading-none">
             Fleet Performance
           </h2>
           <p className="text-sm md:text-base text-body font-medium max-w-2xl leading-relaxed text-center">
@@ -99,8 +171,8 @@ export default function Performance({ setActiveTab }) {
       </section>
 
       {/* 3. Analytics Cards Row */}
-      <section className="py-10 px-8 bg-bg-page">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <section className="py-6 sm:py-10 px-4 sm:px-6 md:px-8 bg-bg-page">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {/* Card 1: Total Organizations */}
           <div className="bg-[#FFDBCC] rounded-3xl p-6 flex flex-col justify-between shadow-sm relative overflow-hidden h-36 md:h-40">
             <div className="flex justify-between items-start">
@@ -176,10 +248,10 @@ export default function Performance({ setActiveTab }) {
       </section>
 
       {/* 4. Charts Block */}
-      <section className="pb-16 px-8 bg-bg-page">
-        <div className="max-w-6xl mx-auto space-y-8">
+      <section className="pb-10 sm:pb-16 px-4 sm:px-6 md:px-8 bg-bg-page">
+        <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
           {/* Card 5: Weekly Platform Activity (Full Width) */}
-          <div className="bg-white rounded-3xl border border-border-custom p-8 space-y-8 shadow-sm">
+          <div className="bg-white rounded-3xl border border-border-custom p-5 sm:p-8 space-y-6 sm:space-y-8 shadow-sm">
             <div className="space-y-1">
               <h3 className="font-display font-extrabold text-heading text-lg">Weekly Platform Activity</h3>
               <p className="text-xs text-body">Active vs suspended vs inactive organizations</p>
@@ -198,7 +270,7 @@ export default function Performance({ setActiveTab }) {
               </div>
 
               {/* Bars container */}
-              <div className="relative z-10 w-full h-full flex items-end justify-around px-8">
+              <div className="relative z-10 w-full h-full flex items-end justify-around px-2 sm:px-8 overflow-x-auto">
                 {weeklyData.map((item, idx) => (
                   <div key={idx} className="flex flex-col items-center gap-2 h-full justify-end group cursor-pointer w-12">
                     {/* Tooltip */}
@@ -219,9 +291,9 @@ export default function Performance({ setActiveTab }) {
           </div>
 
           {/* Grid for Organization Growth and Donut Status */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
             {/* Left Card: Organization Growth Trend */}
-            <div className="bg-white rounded-3xl border border-border-custom p-8 space-y-8 shadow-sm">
+            <div className="bg-white rounded-3xl border border-border-custom p-5 sm:p-8 space-y-6 sm:space-y-8 shadow-sm">
               <div className="flex justify-between items-start">
                 <div className="space-y-1">
                   <h3 className="font-display font-extrabold text-heading text-lg">Organization Growth Trend</h3>
@@ -244,7 +316,7 @@ export default function Performance({ setActiveTab }) {
                 </div>
 
                 {/* Bars container */}
-                <div className="relative z-10 w-full h-full flex items-end justify-around px-4">
+                <div className="relative z-10 w-full h-full flex items-end justify-around px-2 sm:px-4 overflow-x-auto">
                   {monthlyData.map((item, idx) => (
                     <div key={idx} className="flex flex-col items-center gap-2 h-full justify-end group cursor-pointer w-10">
                       {/* Tooltip */}
@@ -265,7 +337,7 @@ export default function Performance({ setActiveTab }) {
             </div>
 
             {/* Right Card: Organization Status Donut */}
-            <div className="bg-white rounded-3xl border border-border-custom p-8 space-y-8 shadow-sm flex flex-col justify-between">
+            <div className="bg-white rounded-3xl border border-border-custom p-5 sm:p-8 space-y-6 sm:space-y-8 shadow-sm flex flex-col justify-between">
               <div className="space-y-1">
                 <h3 className="font-display font-extrabold text-heading text-lg">Organization Status</h3>
                 <p className="text-xs text-body">Current organization distribution</p>
@@ -352,8 +424,8 @@ export default function Performance({ setActiveTab }) {
       </section>
 
       {/* 5. Footer (Dark Background) */}
-      <footer className="bg-primary text-gray-300 pt-16 pb-8 px-8 mt-auto">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 pb-12 border-b border-gray-800">
+      <footer className="bg-primary text-gray-300 pt-12 sm:pt-16 pb-8 px-4 sm:px-6 md:px-8 mt-auto">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 pb-12 border-b border-gray-800">
           {/* Column 1: Brand Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">

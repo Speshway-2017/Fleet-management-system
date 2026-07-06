@@ -28,7 +28,7 @@ export default function LoginPage() {
       onBack={() => navigate("/")}
     >
       {/* ── Heading ── */}
-      <h2 className="text-center font-display text-2xl font-bold text-gray-900 mb-2">
+      <h2 className="text-center font-display text-xl sm:text-2xl font-bold text-gray-900 mb-2">
         Welcome back
       </h2>
       <p className="text-center text-xs text-gray-400 mb-8 font-medium">

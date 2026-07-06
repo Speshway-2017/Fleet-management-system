@@ -36,26 +36,26 @@ function PasswordRule({ met, label }) {
 // ── Stepper for Step 1 → only shows step 1 active ──────────────────────────
 function StepperStep1() {
   return (
-    <div className="flex items-center justify-center gap-3 mb-7">
+    <div className="flex items-center justify-center gap-1.5 sm:gap-3 mb-5 sm:mb-7">
       {/* Step 1 — active */}
-      <div className="flex items-center gap-2">
-        <div className="h-9 w-9 rounded-full bg-[#A14000] text-white flex items-center justify-center text-sm font-black shadow-sm">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-[#A14000] text-white flex items-center justify-center text-xs sm:text-sm font-black shadow-sm">
           1
         </div>
-        <span className="text-[11px] font-bold text-gray-700 uppercase tracking-wide">Account Info</span>
+        <span className="text-[9px] sm:text-[11px] font-bold text-gray-700 uppercase tracking-tight sm:tracking-wide">Account Info</span>
       </div>
 
       {/* Connector */}
-      <svg className="h-4 w-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+      <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
       </svg>
 
       {/* Step 2 — inactive */}
-      <div className="flex items-center gap-2">
-        <div className="h-9 w-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-sm font-black shadow-sm">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs sm:text-sm font-black shadow-sm">
           2
         </div>
-        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Set Password</span>
+        <span className="text-[9px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-tight sm:tracking-wide">Set Password</span>
       </div>
     </div>
   );
@@ -64,28 +64,28 @@ function StepperStep1() {
 // ── Stepper for Step 2 → step 1 complete, step 2 active ────────────────────
 function StepperStep2() {
   return (
-    <div className="flex items-center justify-center gap-3 mb-7">
+    <div className="flex items-center justify-center gap-1.5 sm:gap-3 mb-5 sm:mb-7">
       {/* Step 1 — completed */}
-      <div className="flex items-center gap-2">
-        <div className="h-9 w-9 rounded-full bg-[#A14000] text-white flex items-center justify-center shadow-sm">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-[#A14000] text-white flex items-center justify-center shadow-sm">
+          <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Account Info</span>
+        <span className="text-[9px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-tight sm:tracking-wide">Account Info</span>
       </div>
 
       {/* Connector */}
-      <svg className="h-4 w-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+      <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
       </svg>
 
       {/* Step 2 — active */}
-      <div className="flex items-center gap-2">
-        <div className="h-9 w-9 rounded-full bg-[#A14000] text-white flex items-center justify-center text-sm font-black shadow-sm">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-[#A14000] text-white flex items-center justify-center text-xs sm:text-sm font-black shadow-sm">
           2
         </div>
-        <span className="text-[11px] font-bold text-gray-700 uppercase tracking-wide">Set Password</span>
+        <span className="text-[9px] sm:text-[11px] font-bold text-gray-700 uppercase tracking-tight sm:tracking-wide">Set Password</span>
       </div>
     </div>
   );
@@ -152,7 +152,7 @@ export default function SignupPage() {
         <>
           <StepperStep1 />
 
-          <h2 className="font-display text-2xl font-bold text-gray-900 mb-1">Create Your Account</h2>
+          <h2 className="font-display text-xl sm:text-2xl font-bold text-gray-900 mb-1">Create Your Account</h2>
           <p className="text-xs text-gray-400 mb-6 font-medium">Start your 14-day free trial.</p>
 
           <form onSubmit={handleNextStep} className="space-y-5">
@@ -220,7 +220,7 @@ export default function SignupPage() {
         <>
           <StepperStep2 />
 
-          <h2 className="font-display text-2xl font-bold text-gray-900 mb-2">Set Your Password</h2>
+          <h2 className="font-display text-xl sm:text-2xl font-bold text-gray-900 mb-2">Set Your Password</h2>
           <p className="text-sm text-gray-400 font-medium mb-6">
             Welcome, {form.fullName || "😊"}! Choose a strong password to secure your account.
           </p>

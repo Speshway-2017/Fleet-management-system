@@ -12,9 +12,11 @@ import UserManagement from "@/roles/admin/pages/UserManagement";
 import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
 import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
 
+import PublicHome from "@/pages/PublicHome";
+
 function HomeRedirect() {
   const { isAuthenticated, role } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <PublicHome />;
   return <Navigate to={role === "admin" ? "/admin" : "/manager"} replace />;
 }
 
