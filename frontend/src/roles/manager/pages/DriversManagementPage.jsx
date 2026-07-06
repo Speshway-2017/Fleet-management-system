@@ -267,7 +267,7 @@ export default function DriversManagementPage() {
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
 
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-8 animate-fade-in">
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-4 animate-fade-in">
           
           {/* --- KPI CARDS --- */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -340,7 +340,7 @@ export default function DriversManagementPage() {
           </div>
 
           {/* --- PAGE HEADER --- */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4">
             <div>
               <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
                 Driver Management

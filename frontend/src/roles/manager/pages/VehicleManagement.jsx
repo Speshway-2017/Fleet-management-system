@@ -533,7 +533,7 @@ export default function VehicleManagement() {
         {/* Top Header (72px) */}
         <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
 
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-8 animate-fade-in">
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-4 animate-fade-in">
 
           {/* --- KPI SECTION --- */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -605,218 +605,221 @@ export default function VehicleManagement() {
             </div>
 
           </div>
-
-          {/* --- PAGE HEADER --- */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-6">
-            <div>
-              <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
-                Vehicle Management
-              </h1>
-              <p className="text-sm text-[#64748B] mt-1 font-medium">
-                Manage, assign and monitor all fleet vehicles across your organization.
-              </p>
-            </div>
-
-            {/* Header buttons */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleExportCSV}
-                className="px-4 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all flex items-center gap-2 shadow-sm font-poppins cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                <span>Export Vehicles</span>
-              </button>
-
-              <button
-                onClick={openAddModal}
-                className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 font-poppins cursor-pointer"
-              >
-                <Plus className="w-4.5 h-4.5" />
-                <span>Add Vehicle</span>
-              </button>
-            </div>
-          </div>
-
-          {/* --- ADVANCED FILTER SECTION --- */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4">
-
-            {/* Primary search & quick filters */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Search Vehicles */}
-              <div className="md:col-span-2 relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#94A3B8]">
-                  <Search className="w-4.5 h-4.5" />
-                </span>
-                <input
-                  type="text"
-                  placeholder="Search vehicles by name, model, plate, or driver..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A] transition-colors"
-                />
+          {/* Group Header and Filters inside a wrapper to reduce empty gap */}
+          <div className="space-y-3">
+            
+            {/* --- PAGE HEADER --- */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4">
+              <div>
+                <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
+                  Vehicle Management
+                </h1>
+                <p className="text-sm text-[#64748B] mt-1 font-medium">
+                  Manage, assign and monitor all fleet vehicles across your organization.
+                </p>
               </div>
 
-              {/* Status Filter */}
-              <div className="relative">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
-                >
-                  <option>All Statuses</option>
-                  <option>Available</option>
-                  <option>On Trip</option>
-                  <option>Idle</option>
-                  <option>Maintenance</option>
-                  <option>Out of Service</option>
-                </select>
-                <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
-                  <ChevronDown className="w-4 h-4" />
-                </span>
-              </div>
-
-              {/* Vehicle Type */}
-              <div className="relative">
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
-                >
-                  <option>All Types</option>
-                  <option>Truck</option>
-                  <option>Van</option>
-                  <option>Tipper</option>
-                  <option>Trailer</option>
-                  <option>Bus</option>
-                </select>
-                <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
-                  <ChevronDown className="w-4 h-4" />
-                </span>
-              </div>
-            </div>
-
-            {/* Expander Trigger */}
-            <div className="flex items-center justify-between border-t border-[#E7EAF0]/60 pt-4">
+              {/* Header buttons */}
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowMoreFilters(!showMoreFilters)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${showMoreFilters || branchFilter !== "All Branches" || fuelFilter !== "All Fuel Types" || ownershipFilter !== "All Ownerships" || availFilter !== "All Availabilities" || dateAddedFilter
-                      ? "bg-[#FDF3EC] text-[#B45A0A]"
-                      : "text-[#64748B] hover:text-[#1E293B]"
-                    }`}
+                  onClick={handleExportCSV}
+                  className="px-4 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all flex items-center gap-2 shadow-sm font-poppins cursor-pointer"
                 >
-                  <Filter className="w-3.5 h-3.5" />
-                  <span>More Filters</span>
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-250 ${showMoreFilters ? "rotate-180" : ""}`} />
+                  <Download className="w-4 h-4" />
+                  <span>Export Vehicles</span>
                 </button>
 
-                {(search || statusFilter !== "All Statuses" || typeFilter !== "All Types" || branchFilter !== "All Branches" || fuelFilter !== "All Fuel Types" || ownershipFilter !== "All Ownerships" || availFilter !== "All Availabilities" || dateAddedFilter) && (
-                  <button
-                    onClick={handleResetFilters}
-                    className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                    <span>Reset Filters</span>
-                  </button>
-                )}
-              </div>
-
-              <div className="text-xs text-[#64748B] font-medium font-poppins">
-                Showing <span className="font-bold text-[#1E293B]">{filteredVehicles.length}</span> of {vehicles.length} vehicles
+                <button
+                  onClick={openAddModal}
+                  className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 font-poppins cursor-pointer"
+                >
+                  <Plus className="w-4.5 h-4.5" />
+                  <span>Add Vehicle</span>
+                </button>
               </div>
             </div>
 
-            {/* Collapsible Additional Filters */}
-            {showMoreFilters && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 border-t border-[#E7EAF0]/60 pt-4 animate-fade-in">
-                {/* Branch */}
+            {/* --- ADVANCED FILTER SECTION --- */}
+            <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4">
+
+              {/* Primary search & quick filters */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Search Vehicles */}
+                <div className="md:col-span-2 relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#94A3B8]">
+                    <Search className="w-4.5 h-4.5" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Search vehicles by name, model, plate, or driver..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A] transition-colors"
+                  />
+                </div>
+
+                {/* Status Filter */}
                 <div className="relative">
-                  <label className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider block mb-1">Branch</label>
                   <select
-                    value={branchFilter}
-                    onChange={(e) => setBranchFilter(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none appearance-none"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
                   >
-                    <option>All Branches</option>
-                    <option>Pune</option>
-                    <option>Mumbai</option>
-                    <option>Delhi</option>
-                    <option>Bengaluru</option>
-                    <option>Chennai</option>
-                    <option>Hyderabad</option>
-                    <option>Ahmedabad</option>
+                    <option>All Statuses</option>
+                    <option>Available</option>
+                    <option>On Trip</option>
+                    <option>Idle</option>
+                    <option>Maintenance</option>
+                    <option>Out of Service</option>
                   </select>
-                  <span className="absolute bottom-2.5 right-3 flex items-center pointer-events-none text-[#64748B]">
-                    <ChevronDown className="w-3.5 h-3.5" />
+                  <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
+                    <ChevronDown className="w-4 h-4" />
                   </span>
                 </div>
 
-                {/* Fuel Type */}
+                {/* Vehicle Type */}
                 <div className="relative">
-                  <label className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider block mb-1">Fuel Type</label>
                   <select
-                    value={fuelFilter}
-                    onChange={(e) => setFuelFilter(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none appearance-none"
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
                   >
-                    <option>All Fuel Types</option>
-                    <option>Diesel</option>
-                    <option>CNG</option>
-                    <option>Electric</option>
+                    <option>All Types</option>
+                    <option>Truck</option>
+                    <option>Van</option>
+                    <option>Tipper</option>
+                    <option>Trailer</option>
+                    <option>Bus</option>
                   </select>
-                  <span className="absolute bottom-2.5 right-3 flex items-center pointer-events-none text-[#64748B]">
-                    <ChevronDown className="w-3.5 h-3.5" />
+                  <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
+                    <ChevronDown className="w-4 h-4" />
                   </span>
-                </div>
-
-                {/* Ownership */}
-                <div className="relative">
-                  <label className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider block mb-1">Ownership</label>
-                  <select
-                    value={ownershipFilter}
-                    onChange={(e) => setOwnershipFilter(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none appearance-none"
-                  >
-                    <option>All Ownerships</option>
-                    <option>Owned</option>
-                    <option>Leased</option>
-                  </select>
-                  <span className="absolute bottom-2.5 right-3 flex items-center pointer-events-none text-[#64748B]">
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-
-                {/* Availability */}
-                <div className="relative">
-                  <label className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider block mb-1">Availability</label>
-                  <select
-                    value={availFilter}
-                    onChange={(e) => setAvailFilter(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none appearance-none"
-                  >
-                    <option>All Availabilities</option>
-                    <option>Immediate</option>
-                    <option>Scheduled</option>
-                  </select>
-                  <span className="absolute bottom-2.5 right-3 flex items-center pointer-events-none text-[#64748B]">
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-
-                {/* Date Added */}
-                <div>
-                  <label className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider block mb-1">Date Added</label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      value={dateAddedFilter}
-                      onChange={(e) => setDateAddedFilter(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none"
-                    />
-                  </div>
                 </div>
               </div>
-            )}
+
+              {/* Expander Trigger */}
+              <div className="flex items-center justify-between border-t border-[#E7EAF0]/60 pt-4">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setShowMoreFilters(!showMoreFilters)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${showMoreFilters || branchFilter !== "All Branches" || fuelFilter !== "All Fuel Types" || ownershipFilter !== "All Ownerships" || availFilter !== "All Availabilities" || dateAddedFilter
+                        ? "bg-[#FDF3EC] text-[#B45A0A]"
+                        : "text-[#64748B] hover:text-[#1E293B]"
+                      }`}
+                  >
+                    <Filter className="w-3.5 h-3.5" />
+                    <span>More Filters</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-250 ${showMoreFilters ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {(search || statusFilter !== "All Statuses" || typeFilter !== "All Types" || branchFilter !== "All Branches" || fuelFilter !== "All Fuel Types" || ownershipFilter !== "All Ownerships" || availFilter !== "All Availabilities" || dateAddedFilter) && (
+                    <button
+                      onClick={handleResetFilters}
+                      className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Reset Filters</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="text-xs text-[#64748B] font-medium font-poppins">
+                  Showing <span className="font-bold text-[#1E293B]">{filteredVehicles.length}</span> of {vehicles.length} vehicles
+                </div>
+              </div>
+
+              {/* Collapsible Additional Filters */}
+              {showMoreFilters && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 border-t border-[#E7EAF0]/60 pt-4 animate-fade-in">
+                  {/* Branch */}
+                  <div className="relative">
+                    <label className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider block mb-1">Branch</label>
+                    <select
+                      value={branchFilter}
+                      onChange={(e) => setBranchFilter(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none appearance-none"
+                    >
+                      <option>All Branches</option>
+                      <option>Pune</option>
+                      <option>Mumbai</option>
+                      <option>Delhi</option>
+                      <option>Bengaluru</option>
+                      <option>Chennai</option>
+                      <option>Hyderabad</option>
+                      <option>Ahmedabad</option>
+                    </select>
+                    <span className="absolute bottom-2.5 right-3 flex items-center pointer-events-none text-[#64748B]">
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+
+                  {/* Fuel Type */}
+                  <div className="relative">
+                    <label className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider block mb-1">Fuel Type</label>
+                    <select
+                      value={fuelFilter}
+                      onChange={(e) => setFuelFilter(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none appearance-none"
+                    >
+                      <option>All Fuel Types</option>
+                      <option>Diesel</option>
+                      <option>CNG</option>
+                      <option>Electric</option>
+                    </select>
+                    <span className="absolute bottom-2.5 right-3 flex items-center pointer-events-none text-[#64748B]">
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+
+                  {/* Ownership */}
+                  <div className="relative">
+                    <label className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider block mb-1">Ownership</label>
+                    <select
+                      value={ownershipFilter}
+                      onChange={(e) => setOwnershipFilter(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none appearance-none"
+                    >
+                      <option>All Ownerships</option>
+                      <option>Owned</option>
+                      <option>Leased</option>
+                    </select>
+                    <span className="absolute bottom-2.5 right-3 flex items-center pointer-events-none text-[#64748B]">
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+
+                  {/* Availability */}
+                  <div className="relative">
+                    <label className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider block mb-1">Availability</label>
+                    <select
+                      value={availFilter}
+                      onChange={(e) => setAvailFilter(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none appearance-none"
+                    >
+                      <option>All Availabilities</option>
+                      <option>Immediate</option>
+                      <option>Scheduled</option>
+                    </select>
+                    <span className="absolute bottom-2.5 right-3 flex items-center pointer-events-none text-[#64748B]">
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+
+                  {/* Date Added */}
+                  <div>
+                    <label className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider block mb-1">Date Added</label>
+                    <div className="relative">
+                      <input
+                        type="date"
+                        value={dateAddedFilter}
+                        onChange={(e) => setDateAddedFilter(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* --- FLEET INVENTORY TABLE --- */}
