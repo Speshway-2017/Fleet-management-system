@@ -1,4 +1,7 @@
-import axiosClient from "@/api/axiosClient";
+import { mockUsers } from "@/data/mockUsers";
+import { mockFleetOverview } from "@/data/mockFleetOverview";
+
+let users = [...mockUsers];
 
 const MOCK_USERS = [
   { id: 1, name: "Admin User", email: "admin@fleet.com", role: "admin" },
@@ -17,38 +20,30 @@ const MOCK_OVERVIEW = {
 
 export const adminApi = {
   getUsers: async () => {
-    try {
-      return await axiosClient.get("/admin/users");
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.warn("API getUsers failed, returning mock data in DEV:", error);
-        return { data: MOCK_USERS };
-      }
-      throw error;
-    }
+    return { data: users.map(({ password, ...u }) => u) };
   },
   createUser: async (payload) => {
-    try {
-      return await axiosClient.post("/admin/users", payload);
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        const newUser = { id: Date.now(), ...payload };
-        return { data: newUser };
-      }
-      throw error;
-    }
+    const newUser = {
+      id: users.length + 1,
+      ...payload,
+    };
+    users.push(newUser);
+    return { data: newUser };
   },
-  updateUser: (id, payload) => axiosClient.put(`/admin/users/${id}`, payload),
-  deleteUser: (id) => axiosClient.delete(`/admin/users/${id}`),
-  getFleetOverview: async () => {
-    try {
-      return await axiosClient.get("/admin/fleet/overview");
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        return { data: MOCK_OVERVIEW };
-      }
-      throw error;
+  updateUser: async (id, payload) => {
+    const index = users.findIndex((u) => u.id === id);
+    if (index !== -1) {
+      users[index] = { ...users[index], ...payload };
+      return { data: users[index] };
     }
+    throw new Error("User not found");
+  },
+  deleteUser: async (id) => {
+    users = users.filter((u) => u.id !== id);
+    return { data: { id } };
+  },
+  getFleetOverview: async () => {
+    return { data: mockFleetOverview };
   },
 };
 

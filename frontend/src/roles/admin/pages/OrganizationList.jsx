@@ -13,6 +13,7 @@ import {
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import KPICard from "@/components/common/KPICard";
+import OrganizationTabs from "@/components/admin/OrganizationTabs";
 
 // --- Mock Data ---
 
