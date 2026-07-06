@@ -17,6 +17,7 @@ import OrganizationList from "@/roles/admin/pages/OrganizationList";
 import UserManagement from "@/roles/admin/pages/UserManagement";
 import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
 import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
+import FastagDashboard from "@/roles/manager/pages/FastagDashboard";
 import VehicleManagement from "@/roles/manager/pages/VehicleManagement";
 import AddVehiclePage from "@/roles/manager/pages/AddVehiclePage";
 import VehiclesListPage from "@/roles/manager/pages/VehiclesListPage";
@@ -78,6 +79,21 @@ export default function App() {
               <Route path="/manager/vehicle-edit/:id" element={<VehicleEditPage />} />
               <Route path="/manager/add-vehicle" element={<AddVehiclePage />} />
               <Route path="/manager/map" element={<FleetMapPage />} />
+              <Route path="/manager/fastag" element={<FastagDashboard />} />
+              {/* Placeholder routes for other sidebar items */}
+              <Route path="/manager/vehicles" element={<div className="p-8"><h1 className="text-2xl font-bold">Vehicles Page</h1></div>} />
+
+
+              <Route path="/manager/tracking" element={<div className="p-8"><h1 className="text-2xl font-bold">Live Tracking Page</h1></div>} />
+              <Route path="/manager/routes" element={<div className="p-8"><h1 className="text-2xl font-bold">Route Optimization Page</h1></div>} />
+
+              <Route path="/manager/maintenance" element={<div className="p-8"><h1 className="text-2xl font-bold">Maintenance Page</h1></div>} />
+              <Route path="/manager/ewaybills" element={<div className="p-8"><h1 className="text-2xl font-bold">E-Way Bills Page</h1></div>} />
+              <Route path="/manager/documents" element={<div className="p-8"><h1 className="text-2xl font-bold">Documents Page</h1></div>} />
+              <Route path="/manager/analytics" element={<div className="p-8"><h1 className="text-2xl font-bold">Analytics Page</h1></div>} />
+              <Route path="/manager/reports" element={<div className="p-8"><h1 className="text-2xl font-bold">Reports Page</h1></div>} />
+              <Route path="/manager/notifications" element={<div className="p-8"><h1 className="text-2xl font-bold">Notifications Page</h1></div>} />
+              <Route path="/manager/settings" element={<div className="p-8"><h1 className="text-2xl font-bold">Settings Page</h1></div>} />
               <Route path="/manager/drivers" element={<DriversManagementPage />} />
               <Route path="/manager/drivers-list" element={<DriversListPage />} />
               <Route path="/manager/trips" element={<TripsManagementPage />} />
