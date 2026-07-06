@@ -2,14 +2,10 @@ import { useState } from "react";
 import { ArrowLeft, Upload, Check, X, FileText, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
 import { extractDataFromAllDocuments, identifyDocumentType } from "../utils/documentParser";
-import "../dashboard/manager.css";
 
 export default function AddVehiclePage() {
   const navigate = useNavigate();
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     // Basic Information
@@ -205,13 +201,7 @@ export default function AddVehiclePage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
-
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar">
+    <div className="p-6 lg:p-8">
           {/* Page Header */}
           <div className="flex items-center gap-4 mb-8">
             <button
@@ -548,8 +538,6 @@ export default function AddVehiclePage() {
               </div>
             </form>
           </div>
-        </main>
-      </div>
     </div>
   );
 }

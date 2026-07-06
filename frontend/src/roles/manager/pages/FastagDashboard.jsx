@@ -1,9 +1,11 @@
-
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
+import { CreditCard, Truck } from "lucide-react";
 import { mockWalletBalance, mockTollTransactions, mockMonthlySpending } from "@/data/mockFastag";
 
 export default function FastagDashboard() {
+  const navigate = useNavigate();
   const [period] = useState("Last 6 Months");
 
   return (
@@ -11,13 +13,13 @@ export default function FastagDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-xl font-bold text-gray-800">FASTag &amp; Toll Dashboard</h1>
+          <h1 className="text-xl font-bold text-gray-800">FASTag & Toll Dashboard</h1>
           <p className="text-gray-500 mt-2">
             Real-time monitoring of toll expenditure and wallet liquidity across 142 vehicles.
           </p>
         </div>
         <button className="bg-gradient-to-r from-amber-700 to-amber-800 text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-amber-500/30 hover:from-amber-800 hover:to-amber-900 transition-all">
-          <Icon icon="mdi:credit-card-fast" width="24" height="24" />
+          <CreditCard width="24" height="24" />
           Quick Recharge
         </button>
       </div>
@@ -62,7 +64,7 @@ export default function FastagDashboard() {
             </div>
 
             <div className="border-t border-white/10 pt-6">
-              <button className="w-full border border-white/30 text-white px-6 py-2 rounded-lg font-medium hover:bg-white/10 transition-colors">
+              <button onClick={() => navigate('/manager/fastag/history')} className="w-full border border-white/30 text-white px-6 py-2 rounded-lg font-medium hover:bg-white/10 transition-colors">
                 View History
               </button>
             </div>
@@ -99,7 +101,7 @@ export default function FastagDashboard() {
       <div className="bg-white rounded-3xl border border-gray-200 shadow-sm">
         <div className="flex items-center justify-between px-8 py-6 border-b border-gray-200">
           <h2 className="text-lg font-medium text-gray-700">Recent Transactions</h2>
-          <button className="text-amber-700 font-medium text-sm hover:text-amber-800">
+          <button onClick={() => navigate('/manager/fastag/history')} className="text-amber-700 font-medium text-sm hover:text-amber-800">
             View All
           </button>
         </div>
@@ -133,7 +135,7 @@ export default function FastagDashboard() {
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <Icon icon="mdi:truck-delivery" width="32" height="32" className="text-blue-600" />
+                        <Truck width="32" height="32" className="text-blue-600" />
                       </div>
                       <div>
                         <p className="font-semibold text-gray-800 text-lg">{txn.vehicleId}</p>
@@ -175,4 +177,3 @@ export default function FastagDashboard() {
     </div>
   );
 }
-

@@ -14,9 +14,6 @@ import {
   Clock
 } from "lucide-react";
 import toast from "react-hot-toast";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
-import "../dashboard/manager.css";
 
 const MOCK_ROUTES = [
   {
@@ -82,7 +79,6 @@ const MOCK_ROUTES = [
 ];
 
 export default function RouteOptimizationPage() {
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedRouteId, setSelectedRouteId] = useState("r1");
   const [routes, setRoutes] = useState(MOCK_ROUTES);
@@ -236,140 +232,134 @@ export default function RouteOptimizationPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
+    <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
+      {/* Page Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="font-poppins font-black text-2xl text-[#1E293B]">Route Optimization</h2>
+          <p className="text-sm text-[#64748B] font-medium mt-1">Pune-Mumbai-Nashik-Kolhapur Logistics</p>
+        </div>
+        <span className="text-[10px] font-bold px-3 py-1.5 bg-orange-50 border border-orange-100 text-[#B45A0A] rounded-lg font-poppins">
+          {routes.length} Active
+        </span>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column: Map */}
+        <div className="lg:col-span-8 relative rounded-2xl border border-[#E7EAF0] shadow-sm overflow-hidden">
+          <div ref={mapRef} className="w-full h-[600px]" />
+        </div>
+        
+        {/* Right Column: Routes List */}
+        <div className="lg:col-span-4 bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-5 flex flex-col space-y-4 max-h-[600px] overflow-hidden">
+          <h3 className="font-poppins font-black text-sm text-[#1E293B]">Active Routes</h3>
 
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
-
-        <main className="flex-1 p-0 relative overflow-hidden flex min-h-[calc(100vh-72px)] select-none">
-          
-          {/* Map display */}
-          <div ref={mapRef} className="w-full h-full absolute inset-0 z-0" />
-
-          {/* Top banner / overlay label */}
-          <div className="absolute left-6 top-6 z-[1000] bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-xl border border-[#E7EAF0]/80 shadow-md">
-            <h2 className="font-poppins font-black text-sm text-[#1E293B]">Route Optimization</h2>
-            <p className="text-[10px] text-[#64748B] font-medium block mt-0.5">Pune-Mumbai-Nashik-Kolhapur Logistics</p>
+          {/* Route Search */}
+          <div className="relative shrink-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+            <input
+              type="text"
+              placeholder="Search active routes..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-medium"
+            />
           </div>
 
-          {/* Right Floating active routes card container */}
-          <div className="absolute right-6 top-6 bottom-6 w-[350px] bg-white/95 backdrop-blur-md rounded-2xl border border-[#E7EAF0]/80 shadow-2xl p-5 z-[1000] flex flex-col space-y-4 max-h-[85vh] overflow-hidden">
-            
-            <div className="flex items-center justify-between shrink-0">
-              <h3 className="font-poppins font-black text-sm text-[#1E293B]">Active Routes</h3>
-              <span className="text-[9px] font-bold px-2 py-0.5 bg-orange-50 border border-orange-100 text-[#B45A0A] rounded-lg font-poppins">
-                {routes.length} Active
-              </span>
-            </div>
-
-            {/* Route Search */}
-            <div className="relative shrink-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
-              <input
-                type="text"
-                placeholder="Search active routes..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-medium"
-              />
-            </div>
-
-            {/* Scrollable routes cards list */}
-            <div className="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar">
-              {filteredRoutes.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 text-xs">No active routes available</div>
-              ) : (
-                filteredRoutes.map(r => (
-                  <div
-                    key={r.id}
-                    onClick={() => setSelectedRouteId(r.id)}
-                    className={`p-4 border.5 rounded-xl transition-all cursor-pointer flex flex-col space-y-3 relative ${
-                      selectedRouteId === r.id
-                        ? "border-[#B45A0A] bg-orange-50/10 shadow-sm"
-                        : "border-[#E7EAF0] bg-white hover:bg-gray-50/50"
-                    }`}
-                  >
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-[8px] font-bold text-gray-400 font-poppins uppercase tracking-wider block">{r.routeNumber}</span>
-                        <h4 className="font-bold text-xs text-[#1E293B] font-poppins mt-0.5">{r.vehicleName}</h4>
-                      </div>
-                      <span className="px-2 py-0.5 bg-emerald-50 text-[#22C55E] text-[10px] font-bold rounded-lg font-poppins">
-                        {r.efficiency} EFFICIENCY
-                      </span>
+          {/* Scrollable routes cards list */}
+          <div className="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar">
+            {filteredRoutes.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-xs">No active routes available</div>
+            ) : (
+              filteredRoutes.map(r => (
+                <div
+                  key={r.id}
+                  onClick={() => setSelectedRouteId(r.id)}
+                  className={`p-4 border.5 rounded-xl transition-all cursor-pointer flex flex-col space-y-3 relative ${
+                    selectedRouteId === r.id
+                      ? "border-[#B45A0A] bg-orange-50/10 shadow-sm"
+                      : "border-[#E7EAF0] bg-white hover:bg-gray-50/50"
+                  }`}
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[8px] font-bold text-gray-400 font-poppins uppercase tracking-wider block">{r.routeNumber}</span>
+                      <h4 className="font-bold text-xs text-[#1E293B] font-poppins mt-0.5">{r.vehicleName}</h4>
                     </div>
+                    <span className="px-2 py-0.5 bg-emerald-50 text-[#22C55E] text-[10px] font-bold rounded-lg font-poppins">
+                      {r.efficiency} EFFICIENCY
+                    </span>
+                  </div>
 
-                    {/* Stats details */}
-                    <div className="grid grid-cols-2 gap-2 select-none">
-                      <div className="bg-gray-50 rounded-lg p-2 text-center border border-gray-100">
-                        <span className="text-[8px] font-bold text-[#64748B] uppercase block">Dist. Saved</span>
-                        <span className="text-xs font-black text-[#1E293B] mt-0.5 inline-block">{r.distanceSaved}</span>
-                      </div>
-                      <div className={`rounded-lg p-2 text-center border ${getAlertColor(r.alertsSeverity)}`}>
-                        <span className="text-[8px] font-bold uppercase block opacity-85">Traffic Alerts</span>
-                        <span className="text-xs font-black mt-0.5 inline-block">{r.trafficAlerts}</span>
-                      </div>
+                  {/* Stats details */}
+                  <div className="grid grid-cols-2 gap-2 select-none">
+                    <div className="bg-gray-50 rounded-lg p-2 text-center border border-gray-100">
+                      <span className="text-[8px] font-bold text-[#64748B] uppercase block">Dist. Saved</span>
+                      <span className="text-xs font-black text-[#1E293B] mt-0.5 inline-block">{r.distanceSaved}</span>
                     </div>
-
-                    {/* Action buttons row */}
-                    <div className="grid grid-cols-2 gap-2 shrink-0 pt-1" onClick={e => e.stopPropagation()}>
-                      <button
-                        onClick={() => handleReRoute(r)}
-                        className="py-1.5 px-3 border border-[#E7EAF0] hover:bg-gray-50 rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer"
-                      >
-                        Re-route
-                      </button>
-                      <button
-                        onClick={() => handleAcceptRoute(r)}
-                        className="py-1.5 px-3 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-[10px] font-bold shadow-sm shadow-[#B45A0A]/10 transition-colors cursor-pointer"
-                      >
-                        Accept
-                      </button>
+                    <div className={`rounded-lg p-2 text-center border ${getAlertColor(r.alertsSeverity)}`}>
+                      <span className="text-[8px] font-bold uppercase block opacity-85">Traffic Alerts</span>
+                      <span className="text-xs font-black mt-0.5 inline-block">{r.trafficAlerts}</span>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
 
-            {/* Savings bottom row */}
+                  {/* Action buttons row */}
+                  <div className="grid grid-cols-2 gap-2 shrink-0 pt-1" onClick={e => e.stopPropagation()}>
+                    <button
+                      onClick={() => handleReRoute(r)}
+                      className="py-1.5 px-3 border border-[#E7EAF0] hover:bg-gray-50 rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer"
+                    >
+                      Re-route
+                    </button>
+                    <button
+                      onClick={() => handleAcceptRoute(r)}
+                      className="py-1.5 px-3 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-[10px] font-bold shadow-sm shadow-[#B45A0A]/10 transition-colors cursor-pointer"
+                    >
+                      Accept
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Route Summary & Actions */}
+          <div className="space-y-4 pt-4 border-t border-[#E7EAF0]">
             <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center justify-between shrink-0 select-none">
               <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Fleet Savings Today</span>
               <span className="text-sm font-black text-[#B45A0A] font-poppins">₹2,410.50</span>
             </div>
+            
+            <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 space-y-3.5 select-none">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black text-[#1E293B] uppercase tracking-wider font-poppins">Route Summary</span>
+                <span className="px-2 py-0.5 bg-white text-[#B45A0A] text-[9px] font-bold rounded-lg font-poppins">94% AVG</span>
+              </div>
 
+              <div className="grid grid-cols-2 gap-2 select-none">
+                <div>
+                  <span className="text-[8px] font-bold text-[#64748B] uppercase block">Fuel Saved</span>
+                  <span className="text-xs font-black text-emerald-600 block mt-0.5">14.2%</span>
+                </div>
+                <div>
+                  <span className="text-[8px] font-bold text-[#64748B] uppercase block">Avg. Delay</span>
+                  <span className="text-xs font-black text-blue-600 block mt-0.5">-12m</span>
+                </div>
+              </div>
+
+              <button
+                onClick={handleRunOptimizer}
+                disabled={isOptimizing}
+                className="w-full py-2 bg-slate-900 hover:bg-slate-950 text-white rounded-xl text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-md disabled:opacity-60 cursor-pointer"
+              >
+                <Sparkles className={`w-3.5 h-3.5 text-orange-400 ${isOptimizing ? "animate-spin" : ""}`} />
+                <span>{isOptimizing ? "Optimizing..." : "Run Auto-Optimizer"}</span>
+              </button>
+            </div>
           </div>
 
-          {/* Floating Route Summary Overlay bottom-center */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md border border-[#E7EAF0] rounded-2xl shadow-xl p-4 z-[1000] w-[260px] flex flex-col space-y-3.5 select-none text-center">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black text-[#1E293B] uppercase tracking-wider font-poppins">Route Summary</span>
-              <span className="px-2 py-0.5 bg-orange-50 text-[#B45A0A] text-[9px] font-bold rounded-lg font-poppins">94% AVG</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 select-none">
-              <div>
-                <span className="text-[8px] font-bold text-[#64748B] uppercase block">Fuel Saved</span>
-                <span className="text-xs font-black text-emerald-600 block mt-0.5">14.2%</span>
-              </div>
-              <div>
-                <span className="text-[8px] font-bold text-[#64748B] uppercase block">Avg. Delay</span>
-                <span className="text-xs font-black text-blue-600 block mt-0.5">-12m</span>
-              </div>
-            </div>
-
-            <button
-              onClick={handleRunOptimizer}
-              disabled={isOptimizing}
-              className="w-full py-2 bg-slate-900 hover:bg-slate-950 text-white rounded-xl text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-md disabled:opacity-60 cursor-pointer"
-            >
-              <Sparkles className={`w-3.5 h-3.5 text-orange-400 ${isOptimizing ? "animate-spin" : ""}`} />
-              <span>{isOptimizing ? "Optimizing..." : "Run Auto-Optimizer"}</span>
-            </button>
-          </div>
-
-        </main>
+        </div>
       </div>
     </div>
   );

@@ -31,9 +31,6 @@ import {
   ArrowRight
 } from "lucide-react";
 import toast from "react-hot-toast";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
-import "../dashboard/manager.css";
 
 const INITIAL_VEHICLES = [
   {
@@ -212,7 +209,6 @@ const MOCK_ACTIVITIES = [
 
 export default function VehicleManagement() {
   const navigate = useNavigate();
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [vehicles, setVehicles] = useState(() => {
     const saved = localStorage.getItem("fleet_vehicles");
     return saved ? JSON.parse(saved) : INITIAL_VEHICLES;
@@ -525,15 +521,7 @@ export default function VehicleManagement() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      {/* Navigation Sidebar */}
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
-
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        {/* Top Header (72px) */}
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-4 animate-fade-in">
+    <div className="p-6 lg:p-8 space-y-4 animate-fade-in">
 
           {/* --- KPI SECTION --- */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1291,8 +1279,7 @@ export default function VehicleManagement() {
 
           </div>
 
-        </main>
-      </div>
+
 
       {/* Floating Add Vehicle Button */}
       <button

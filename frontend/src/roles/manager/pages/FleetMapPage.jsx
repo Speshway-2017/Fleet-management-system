@@ -18,9 +18,6 @@ import {
   ChevronDown
 } from "lucide-react";
 import toast from "react-hot-toast";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
-import "../dashboard/manager.css";
 
 const TRACKING_VEHICLES = [
   {
@@ -110,7 +107,6 @@ const TRACKING_VEHICLES = [
 ];
 
 export default function FleetMapPage() {
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedVehicleId, setSelectedVehicleId] = useState("v1");
   const [isSatellite, setIsSatellite] = useState(false);
@@ -275,74 +271,101 @@ export default function FleetMapPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
+    <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
+      {/* Page Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="font-poppins font-black text-2xl text-[#1E293B]">Fleet Live Map</h2>
+          <p className="text-sm text-[#64748B] font-medium mt-1">Track all active vehicles and routes in real-time</p>
+        </div>
+        <span className="text-[10px] font-bold px-3 py-1.5 bg-orange-50 border border-orange-100 text-[#B45A0A] rounded-lg font-poppins tracking-wide">
+          {TRACKING_VEHICLES.length} LIVE
+        </span>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column: Vehicles List */}
+        <div className="lg:col-span-3 bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-5 flex flex-col space-y-4 max-h-[600px] overflow-hidden">
+          <h3 className="font-poppins font-black text-sm text-[#1E293B]">Active Vehicles</h3>
 
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
-
-        {/* Outer tracking viewport (calc height to fit exactly) */}
-        <main className="flex-1 p-0 relative overflow-hidden flex min-h-[calc(100vh-72px)]">
-          
-          {/* Main Map Box */}
-          <div ref={mapRef} className="w-full h-full absolute inset-0 z-0" />
-
-          {/* Left Floating sidebar panel */}
-          <div className="absolute left-6 top-6 bottom-6 w-[320px] bg-white/95 backdrop-blur-md rounded-2xl border border-[#E7EAF0]/80 shadow-2xl p-5 z-[1000] flex flex-col space-y-4 max-h-[85vh] overflow-hidden select-none">
-            <div className="flex items-center justify-between shrink-0">
-              <h2 className="font-poppins font-black text-base text-[#1E293B] flex items-center gap-1.5">
-                Active Vehicles
-              </h2>
-              <span className="px-2 py-0.5 bg-orange-50 border border-orange-100 text-[#B45A0A] text-[9px] font-bold rounded-lg font-poppins tracking-wide">
-                {TRACKING_VEHICLES.length} LIVE
-              </span>
-            </div>
-
-            {/* Filter search bar */}
-            <div className="relative shrink-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
-              <input
-                type="text"
-                placeholder="Search active vehicles..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-medium"
-              />
-            </div>
-
-            {/* Vehicles items list */}
-            <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
-              {filteredVehicles.length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center">No matching vehicles</p>
-              ) : (
-                filteredVehicles.map(v => (
-                  <div
-                    key={v.id}
-                    onClick={() => setSelectedVehicleId(v.id)}
-                    className={`p-3 border.5 rounded-xl cursor-pointer transition-all flex items-start justify-between select-none ${
-                      selectedVehicleId === v.id
-                        ? "border-[#B45A0A] bg-orange-50/20 shadow-sm"
-                        : "border-[#E7EAF0] bg-white hover:bg-gray-50/60"
-                    }`}
-                  >
-                    <div>
-                      <p className="font-bold text-xs text-[#1E293B] font-poppins">{v.plateNumber}</p>
-                      <span className="text-[10px] text-[#64748B] font-medium block mt-0.5">
-                        {v.driver} • {v.name}
-                      </span>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${getStatusBadge(v.status)}`}>
-                      {v.status.replace("ON TRANSIT", "TRANSIT")}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
+          {/* Filter search bar */}
+          <div className="relative shrink-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+            <input
+              type="text"
+              placeholder="Search active vehicles..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-medium"
+            />
           </div>
 
-          {/* Right Floating Details Panel */}
+          {/* Vehicles items list */}
+          <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+            {filteredVehicles.length === 0 ? (
+              <p className="text-xs text-gray-400 py-4 text-center">No matching vehicles</p>
+            ) : (
+              filteredVehicles.map(v => (
+                <div
+                  key={v.id}
+                  onClick={() => setSelectedVehicleId(v.id)}
+                  className={`p-3 border.5 rounded-xl cursor-pointer transition-all flex items-start justify-between select-none ${
+                    selectedVehicleId === v.id
+                      ? "border-[#B45A0A] bg-orange-50/20 shadow-sm"
+                      : "border-[#E7EAF0] bg-white hover:bg-gray-50/60"
+                  }`}
+                >
+                  <div>
+                    <p className="font-bold text-xs text-[#1E293B] font-poppins">{v.plateNumber}</p>
+                    <span className="text-[10px] text-[#64748B] font-medium block mt-0.5">
+                      {v.driver} • {v.name}
+                    </span>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${getStatusBadge(v.status)}`}>
+                    {v.status.replace("ON TRANSIT", "TRANSIT")}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Middle Column: Map */}
+        <div className="lg:col-span-6 relative rounded-2xl border border-[#E7EAF0] shadow-sm overflow-hidden">
+          <div ref={mapRef} className="w-full h-[600px]" />
+          
+          {/* Map Controls */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-4 py-2 border border-[#E7EAF0] rounded-2xl shadow-xl z-[1000] flex items-center gap-3 select-none font-poppins text-xs font-bold text-[#1E293B]">
+            <button
+              onClick={() => setIsTrafficOn(!isTrafficOn)}
+              className={`px-3 py-1.5 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all ${
+                isTrafficOn
+                  ? "bg-[#B45A0A] text-white"
+                  : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B]"
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span>Traffic {isTrafficOn ? "ON" : "OFF"}</span>
+            </button>
+            <span className="text-gray-300">|</span>
+            <button
+              onClick={() => setIsSatellite(!isSatellite)}
+              className={`px-3 py-1.5 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all ${
+                isSatellite
+                  ? "bg-[#B45A0A] text-white"
+                  : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B]"
+              }`}
+            >
+              {isSatellite ? <MapIcon className="w-3.5 h-3.5" /> : <Layers className="w-3.5 h-3.5" />}
+              <span>{isSatellite ? "Default Map" : "Satellite View"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Right Column: Vehicle Details */}
+        <div className="lg:col-span-3">
           {selectedVehicle && (
-            <div className="absolute right-6 top-6 bottom-6 w-[350px] bg-white/95 backdrop-blur-md rounded-2xl border border-[#E7EAF0]/80 shadow-2xl p-5 z-[1000] flex flex-col space-y-4 max-h-[85vh] overflow-y-auto custom-scrollbar select-none animate-slide-in-right">
+            <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-5 flex flex-col space-y-4 h-full max-h-[600px] overflow-y-auto custom-scrollbar select-none">
               
               {/* Header card info */}
               <div className="flex items-center justify-between border-b border-[#E7EAF0]/60 pb-3 shrink-0">
@@ -350,22 +373,13 @@ export default function FleetMapPage() {
                   <MapPin className="w-4 h-4 text-[#B45A0A]" />
                   <span className="font-poppins font-black text-sm text-[#1E293B] uppercase">{selectedVehicle.plateNumber}</span>
                 </div>
-                <div className="flex items-center gap-1.5 select-none">
-                  <button
-                    onClick={() => toast.success("Share link copied to clipboard")}
-                    title="Share Live link"
-                    className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <Share2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setSelectedVehicleId("")}
-                    title="Close"
-                    className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
+                <button
+                  onClick={() => toast.success("Share link copied to clipboard")}
+                  title="Share Live link"
+                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
               </div>
 
               {/* Driver info row */}
@@ -435,35 +449,8 @@ export default function FleetMapPage() {
 
             </div>
           )}
+        </div>
 
-          {/* Bottom Center Map Controllers overlay */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-4 py-2 border border-[#E7EAF0] rounded-2xl shadow-xl z-[1000] flex items-center gap-3 select-none font-poppins text-xs font-bold text-[#1E293B]">
-            <button
-              onClick={() => setIsTrafficOn(!isTrafficOn)}
-              className={`px-3 py-1.5 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all ${
-                isTrafficOn
-                  ? "bg-[#B45A0A] text-white"
-                  : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B]"
-              }`}
-            >
-              <Compass className="w-3.5 h-3.5" />
-              <span>Traffic {isTrafficOn ? "ON" : "OFF"}</span>
-            </button>
-            <span className="text-gray-300">|</span>
-            <button
-              onClick={() => setIsSatellite(!isSatellite)}
-              className={`px-3 py-1.5 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all ${
-                isSatellite
-                  ? "bg-[#B45A0A] text-white"
-                  : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B]"
-              }`}
-            >
-              {isSatellite ? <MapIcon className="w-3.5 h-3.5" /> : <Layers className="w-3.5 h-3.5" />}
-              <span>{isSatellite ? "Default Map" : "Satellite View"}</span>
-            </button>
-          </div>
-
-        </main>
       </div>
     </div>
   );
