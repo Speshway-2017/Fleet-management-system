@@ -52,7 +52,7 @@ export default function LoginPage() {
               id="email" type="email" placeholder="name@organization.com"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
               required
             />
           </div>
@@ -77,7 +77,7 @@ export default function LoginPage() {
               placeholder="••••••••"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+              className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
               required
             />
             <button
@@ -104,7 +104,7 @@ export default function LoginPage() {
           <div className="flex items-center gap-2">
             <input
               id="remember-me" type="checkbox" defaultChecked
-              className="h-4 w-4 accent-[#A14000] border-gray-300 rounded cursor-pointer"
+              className="h-4 w-4 accent-[#A14000] border-[#A14000] rounded cursor-pointer"
             />
             <label htmlFor="remember-me" className="text-xs font-semibold text-gray-500 select-none cursor-pointer">
               Remember me for 30 days

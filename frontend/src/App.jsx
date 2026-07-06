@@ -9,6 +9,7 @@ import SignupPage from "@/roles/admin/pages/SignupPage";
 import Signup1 from "@/roles/admin/pages/Signup1";
 import ForgotPasswordPage from "@/roles/admin/pages/ForgotPasswordPage";
 import OtpVerificationPage from "@/roles/admin/pages/OtpVerificationPage";
+import ResetPasswordPage from "@/roles/admin/pages/ResetPasswordPage";
 import UnauthorizedPage from "@/components/common/UnauthorizedPage";
 import AdminDashboard from "@/roles/admin/pages/AdminDashboard";
 import UserManagement from "@/roles/admin/pages/UserManagement";
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="/signup1" element={<Signup1 />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/otp-verification" element={<OtpVerificationPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>

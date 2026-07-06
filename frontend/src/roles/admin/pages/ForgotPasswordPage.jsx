@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
               placeholder="name@organization.com"
               value={contact}
               onChange={(e) => setContact(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
               required
             />
           </div>
