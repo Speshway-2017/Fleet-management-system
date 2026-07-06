@@ -1,20 +1,19 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  LayoutDashboard,
   Building2,
-  Users,
-  BarChart3,
-  Settings,
-  LogOut,
-  Bell,
   ArrowUpRight,
-  TrendingUp,
   Activity,
   CheckCircle2,
   UserCheck,
-  Plus
+  Plus,
+  TrendingUp,
+  Users,
+  BarChart3
 } from "lucide-react";
+import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
+import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
+import KPICard from "@/components/common/KPICard";
 import {
   LineChart,
   Line,
@@ -64,124 +63,15 @@ const recentActivities = [
 
 // --- Components ---
 
-function Sidebar() {
-  return (
-    <div className="w-[260px] bg-[#1a2332] text-slate-300 flex flex-col h-screen sticky top-0 flex-shrink-0">
-      {/* Logo Area */}
-      <div className="p-6 pb-4 border-b border-[#2a3241]/50">
-        <div className="flex items-center gap-3 mb-1">
-          <img src="/logo.png" alt="Logo" className="w-9 h-9 rounded-full bg-white p-1" />
-          <span className="font-bold text-white text-lg tracking-tight">Fleet Management</span>
-        </div>
-        <div className="text-[11px] text-slate-400 pl-12 font-medium">Super Admin</div>
-      </div>
-
-      {/* Navigation */}
-      <div className="flex-1 py-6 space-y-1">
-        <p className="px-8 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Main Menu</p>
-        
-        <Link to="/admin/dashboard" className="flex items-center gap-3 px-8 py-3.5 bg-[#252f3f] text-[#f97316] font-semibold border-l-[3px] border-[#f97316] transition-colors">
-          <LayoutDashboard className="w-[18px] h-[18px]" />
-          Dashboard
-        </Link>
-        
-        <Link to="#" className="flex items-center gap-3 px-8 py-3.5 text-slate-400 hover:bg-[#252f3f] hover:text-white transition-colors border-l-[3px] border-transparent">
-          <Building2 className="w-[18px] h-[18px]" />
-          Organizations
-        </Link>
-        
-        <Link to="#" className="flex items-center gap-3 px-8 py-3.5 text-slate-400 hover:bg-[#252f3f] hover:text-white transition-colors border-l-[3px] border-transparent">
-          <Users className="w-[18px] h-[18px]" />
-          Fleet Managers
-        </Link>
-        
-        <Link to="#" className="flex items-center gap-3 px-8 py-3.5 text-slate-400 hover:bg-[#252f3f] hover:text-white transition-colors border-l-[3px] border-transparent">
-          <BarChart3 className="w-[18px] h-[18px]" />
-          Analytics
-        </Link>
-        
-        <Link to="#" className="flex items-center gap-3 px-8 py-3.5 text-slate-400 hover:bg-[#252f3f] hover:text-white transition-colors border-l-[3px] border-transparent">
-          <Settings className="w-[18px] h-[18px]" />
-          Settings
-        </Link>
-      </div>
-
-      {/* Logout */}
-      <div className="p-4 mb-4">
-        <Link to="/login" className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-[#252f3f] hover:text-white transition-colors">
-          <LogOut className="w-[18px] h-[18px]" />
-          Logout
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-function TopNav() {
-  return (
-    <header className="h-[72px] bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
-      <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">Dashboard</h1>
-      
-      <div className="flex items-center gap-6">
-        <button className="relative text-slate-400 hover:text-slate-600 transition-colors">
-          <Bell className="w-[22px] h-[22px]" />
-          <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white"></span>
-        </button>
-        
-        <div className="flex items-center gap-3 pl-6 border-l border-slate-200 cursor-pointer">
-          <div className="w-9 h-9 rounded-full bg-[#1a2332] text-white flex items-center justify-center font-bold text-xs">
-            SA
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-bold text-slate-800">Super Admin</span>
-            <span className="text-[9px] font-bold text-green-500 uppercase tracking-widest mt-0.5">Online</span>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function KPICard({ title, value, subtitle, icon, iconBg, trendText, trendColor, isTrendUp }) {
-  return (
-    <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between h-36 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{title}</p>
-          <h3 className="text-2xl font-black text-slate-800 tracking-tight">{value}</h3>
-        </div>
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${iconBg}`}>
-          {icon}
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-2 mt-auto">
-        {trendText && (
-          <>
-            <span className={`text-[11px] font-bold flex items-center gap-0.5 ${trendColor}`}>
-              {isTrendUp ? <ArrowUpRight className="w-3 h-3" /> : null}
-              {trendText}
-            </span>
-            <span className="text-[11px] text-slate-400">{subtitle}</span>
-          </>
-        )}
-        {!trendText && subtitle && (
-          <span className="text-[11px] text-slate-400">{subtitle}</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // --- Main Page ---
 
 function Dashboard() {
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
-      <Sidebar />
+      <NewAdminSidebar activeItem="dashboard" />
       
       <div className="flex-1 flex flex-col min-w-0">
-        <TopNav />
+        <NewAdminTopNav title="Dashboard" />
         
         <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
           
