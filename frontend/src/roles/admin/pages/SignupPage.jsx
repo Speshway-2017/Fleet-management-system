@@ -167,7 +167,7 @@ export default function SignupPage() {
                 </span>
                 <input id="email" type="email" placeholder="name@organization.com"
                   value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
                   required />
               </div>
             </div>
@@ -183,7 +183,7 @@ export default function SignupPage() {
                 </span>
                 <input id="fullName" type="text" placeholder="John Doe"
                   value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
                   required />
               </div>
             </div>
@@ -199,7 +199,7 @@ export default function SignupPage() {
                 </span>
                 <input id="companyName" type="text" placeholder="FleetCorp Enterprises"
                   value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
                   required />
               </div>
             </div>
@@ -237,7 +237,7 @@ export default function SignupPage() {
                 </span>
                 <input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••"
                   value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
                   required />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
@@ -257,7 +257,7 @@ export default function SignupPage() {
                 </span>
                 <input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} placeholder="••••••••"
                   value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                  className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
                   required />
                 <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
@@ -281,7 +281,7 @@ export default function SignupPage() {
             <div className="flex items-start gap-2.5">
               <input id="terms" type="checkbox" checked={agreeToTerms}
                 onChange={(e) => setAgreeToTerms(e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-[#A14000] border-gray-300 rounded cursor-pointer" />
+                className="mt-0.5 h-4 w-4 accent-[#A14000] border-[#A14000] rounded cursor-pointer" />
               <label htmlFor="terms" className="text-xs text-gray-600 cursor-pointer leading-relaxed">
                 I agree to the{" "}
                 <a href="#" onClick={(e) => e.preventDefault()} className="text-[#A14000] font-semibold hover:underline">Terms of Service</a>

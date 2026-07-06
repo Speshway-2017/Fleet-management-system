@@ -117,7 +117,7 @@ export default function Signup1() {
             <input
               id="s1-password" type={showPassword ? "text" : "password"} placeholder="••••••••"
               value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+              className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
               required />
             <button type="button" onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
@@ -138,7 +138,7 @@ export default function Signup1() {
             <input
               id="s1-confirm" type={showConfirmPassword ? "text" : "password"} placeholder="••••••••"
               value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-              className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+              className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
               required />
             <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
@@ -162,7 +162,7 @@ export default function Signup1() {
         <div className="flex items-start gap-2.5">
           <input id="s1-terms" type="checkbox" checked={agreeToTerms}
             onChange={(e) => setAgreeToTerms(e.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-[#A14000] border-gray-300 rounded cursor-pointer" />
+            className="mt-0.5 h-4 w-4 accent-[#A14000] border-[#A14000] rounded cursor-pointer" />
           <label htmlFor="s1-terms" className="text-xs text-gray-600 cursor-pointer leading-relaxed">
             I agree to the{" "}
             <a href="#" onClick={(e) => e.preventDefault()} className="text-[#A14000] font-semibold hover:underline">Terms of Service</a>
