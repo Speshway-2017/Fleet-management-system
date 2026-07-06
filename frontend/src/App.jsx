@@ -8,6 +8,7 @@ import LoginPage from "@/roles/admin/pages/LoginPage";
 import SignupPage from "@/roles/admin/pages/SignupPage";
 import Signup1 from "@/roles/admin/pages/Signup1";
 import ForgotPasswordPage from "@/roles/admin/pages/ForgotPasswordPage";
+import OtpVerificationPage from "@/roles/admin/pages/OtpVerificationPage";
 import UnauthorizedPage from "@/components/common/UnauthorizedPage";
 import AdminDashboard from "@/roles/admin/pages/AdminDashboard";
 import UserManagement from "@/roles/admin/pages/UserManagement";
@@ -23,8 +24,8 @@ import DriversListPage from "@/roles/manager/pages/DriversListPage";
 import DriverProfilePage from "@/roles/manager/pages/DriverProfilePage";
 import AssignVehiclePage from "@/roles/manager/pages/AssignVehiclePage";
 import AddDriverPage from "@/roles/manager/pages/AddDriverPage";
-import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
-import TripsListPage from "@/roles/manager/pages/TripsListPage";
+// import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
+// import TripsListPage from "@/roles/manager/pages/TripsListPage";
 
 import PublicHome from "@/pages/PublicHome";
 
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/signup1" element={<Signup1 />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/otp-verification" element={<OtpVerificationPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
@@ -66,8 +68,8 @@ export default function App() {
               <Route path="/manager/map" element={<FleetMapPage />} />
               <Route path="/manager/drivers" element={<DriversManagementPage />} />
               <Route path="/manager/drivers-list" element={<DriversListPage />} />
-              <Route path="/manager/trips" element={<TripsManagementPage />} />
-              <Route path="/manager/trips-list" element={<TripsListPage />} />
+              {/* <Route path="/manager/trips" element={<TripsManagementPage />} />
+              <Route path="/manager/trips-list" element={<TripsListPage />} /> */}
               <Route path="/manager/driver-profile/:id" element={<DriverProfilePage />} />
               <Route path="/manager/driver-assign-vehicle/:id" element={<AssignVehiclePage />} />
               <Route path="/manager/add-driver" element={<AddDriverPage />} />

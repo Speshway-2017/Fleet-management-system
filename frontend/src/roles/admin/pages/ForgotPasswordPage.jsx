@@ -19,7 +19,7 @@ export default function ForgotPasswordPage() {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
       toast.success("OTP sent successfully!");
-      // navigate("/otp-verification"); // We can navigate to OTP screen next if it exists
+      navigate("/otp-verification");
     } catch {
       toast.error("Failed to send OTP. Please try again.");
     } finally {
