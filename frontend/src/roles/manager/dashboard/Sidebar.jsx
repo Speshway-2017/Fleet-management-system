@@ -1,21 +1,21 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  Truck, 
-  Users, 
-  Route, 
-  MapPin, 
-  Compass, 
-  Fuel, 
-  Wrench, 
-  FileText, 
-  CreditCard, 
-  FolderOpen, 
-  BarChart3, 
-  ClipboardList, 
-  Bell, 
+import {
+  LayoutDashboard,
+  Truck,
+  Users,
+  Route,
+  MapPin,
+  Compass,
+  Fuel,
+  Wrench,
+  FileText,
+  CreditCard,
+  FolderOpen,
+  BarChart3,
+  ClipboardList,
+  Bell,
   Settings,
-  X 
+  X
 } from "lucide-react";
 import toast from "react-hot-toast";
 import "./manager.css";
@@ -64,8 +64,8 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
           </div>
         </div>
         {mobileOpen && (
-          <button 
-            onClick={() => setMobileOpen(false)} 
+          <button
+            onClick={() => setMobileOpen(false)}
             className="lg:hidden text-gray-400 hover:text-white p-1 rounded-lg focus:outline-none"
           >
             <X className="w-5 h-5" />
@@ -83,11 +83,10 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
               key={item.label}
               to={item.to}
               onClick={(e) => handleMenuClick(e, item)}
-              className={`flex items-center gap-3.5 px-6 py-3 font-poppins text-sm border-l-4 sidebar-link-transition ${
-                isActive
+              className={`flex items-center gap-3.5 px-6 py-3 font-poppins text-sm border-l-4 sidebar-link-transition ${isActive
                   ? "border-[#B45A0A] bg-[#1B1B1D] text-[#B45A0A] font-semibold"
                   : "border-transparent hover:text-white hover:bg-[#1B1B1D]/30"
-              }`}
+                }`}
             >
               <Icon className="w-5 h-5 shrink-0" />
               <span>{item.label}</span>
