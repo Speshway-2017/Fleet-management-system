@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Building2,
   ArrowUpRight,
@@ -66,6 +66,7 @@ const recentActivities = [
 // --- Main Page ---
 
 function Dashboard() {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
       <NewAdminSidebar activeItem="dashboard" />
@@ -221,7 +222,7 @@ function Dashboard() {
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col">
               <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
                 <h3 className="font-bold text-slate-800 text-sm">Recent Activities</h3>
-                <button className="text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors">View All</button>
+                <Link to="/admin/organizations" className="text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors">View All</Link>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
@@ -234,7 +235,7 @@ function Dashboard() {
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {recentActivities.map((act, i) => (
-                      <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                      <tr key={i} onClick={() => navigate('/admin/organizations/details/1')} className="hover:bg-slate-50/50 transition-colors cursor-pointer">
                         <td className="py-3.5 px-5 text-slate-400 font-mono text-[11px] whitespace-nowrap">{act.time}</td>
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-2.5">
@@ -255,7 +256,7 @@ function Dashboard() {
               <h3 className="font-bold text-white text-sm mb-5">Quick Actions</h3>
               
               <div className="space-y-3.5 flex-1">
-                <button className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
+                <Link to="/admin/organizations/add" className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
                   <div className="w-10 h-10 rounded-full bg-orange-500/10 text-orange-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
                     <Plus className="w-4 h-4" />
                   </div>
@@ -263,7 +264,7 @@ function Dashboard() {
                     <div className="font-bold text-slate-200 text-[13px]">Add Organization</div>
                     <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">Onboard a new enterprise partner</div>
                   </div>
-                </button>
+                </Link>
                 
                 <button className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
                   <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
