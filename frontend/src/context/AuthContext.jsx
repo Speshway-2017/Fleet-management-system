@@ -38,6 +38,7 @@ export function AuthProvider({ children }) {
             email: "manager@fleet.com"
           };
           localStorage.setItem("token", "mock_dev_session_token_3b0569d8");
+          localStorage.setItem("user", JSON.stringify(mockUser));
           setUser(mockUser);
           return mockUser;
         } else if (email === "admin@fleet.com" && password === "admin123") {
@@ -47,6 +48,7 @@ export function AuthProvider({ children }) {
             email: "admin@fleet.com"
           };
           localStorage.setItem("token", "mock_dev_session_token_3b0569d8");
+          localStorage.setItem("user", JSON.stringify(mockUser));
           setUser(mockUser);
           return mockUser;
         }

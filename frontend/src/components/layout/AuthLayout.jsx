@@ -24,7 +24,7 @@ export default function AuthLayout({ children, backLabel, onBack }) {
           {/* Logo + brand */}
           <div className="flex items-center gap-3 mb-5">
             <div className="bg-white rounded-full p-1 shadow-md border border-gray-100 flex items-center justify-center h-10 w-10 flex-shrink-0">
-              <img src="/brand-logo.png" alt="Fleet Management Logo" className="h-7 w-7 object-contain" />
+              <img src="/logo.png" alt="Fleet Management Logo" className="h-7 w-7 object-contain" />
             </div>
             <span className="font-bold text-gray-900 text-sm tracking-wide">
               Fleet Management
@@ -82,7 +82,7 @@ export default function AuthLayout({ children, backLabel, onBack }) {
           {/* Centered logo */}
           <div className="flex justify-center mb-5">
             <div className="bg-white rounded-full p-1.5 shadow-sm border border-gray-100 flex items-center justify-center h-14 w-14">
-              <img src="/brand-logo.png" alt="Fleet Management Logo" className="h-10 w-10 object-contain" />
+              <img src="/logo.png" alt="Fleet Management Logo" className="h-10 w-10 object-contain" />
             </div>
           </div>
 
