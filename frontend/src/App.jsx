@@ -22,6 +22,8 @@ import AssignVehiclePage from "@/roles/manager/pages/AssignVehiclePage";
 import AddDriverPage from "@/roles/manager/pages/AddDriverPage";
 import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
 import TripsListPage from "@/roles/manager/pages/TripsListPage";
+import CreateTripPage from "@/roles/manager/pages/CreateTripPage";
+import TripDetailsPage from "@/roles/manager/pages/TripDetailsPage";
 
 function HomeRedirect() {
   const { isAuthenticated, role } = useAuth();
@@ -60,6 +62,8 @@ export default function App() {
               <Route path="/manager/drivers-list" element={<DriversListPage />} />
               <Route path="/manager/trips" element={<TripsManagementPage />} />
               <Route path="/manager/trips-list" element={<TripsListPage />} />
+              <Route path="/manager/create-trip" element={<CreateTripPage />} />
+              <Route path="/manager/trip-details/:id" element={<TripDetailsPage />} />
               <Route path="/manager/driver-profile/:id" element={<DriverProfilePage />} />
               <Route path="/manager/driver-assign-vehicle/:id" element={<AssignVehiclePage />} />
               <Route path="/manager/add-driver" element={<AddDriverPage />} />
