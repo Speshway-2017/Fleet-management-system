@@ -13,6 +13,7 @@ import {
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import KPICard from "@/components/common/KPICard";
+import OrganizationTabs from "@/components/admin/OrganizationTabs";
 
 // --- Mock Data ---
 
@@ -54,11 +55,8 @@ export default function OrganizationList() {
         <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
           
           {/* Tabs */}
-          <div className="flex items-center gap-6 mb-8 border-b border-slate-200 pb-4">
-            <button className="px-5 py-2 bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm">Organization List</button>
-            <button className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Add Organization</button>
-            <button className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Organization Details</button>
-            <button className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Edit Organization</button>
+          <div className="flex items-center justify-between gap-6 mb-8 border-b border-slate-200 pb-4">
+            <OrganizationTabs activeTab="list" />
           </div>
 
           {/* KPI Grid */}
@@ -103,10 +101,10 @@ export default function OrganizationList() {
                   className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
                 />
               </div>
-              <button className="flex items-center justify-center gap-2 bg-[#A14000] hover:bg-[#8a3700] text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm whitespace-nowrap">
+              <Link to="/admin/organizations/add" className="flex items-center justify-center gap-2 bg-[#A14000] hover:bg-[#8a3700] text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm whitespace-nowrap">
                 <Plus className="w-4 h-4" />
                 Add Organization
-              </button>
+              </Link>
             </div>
 
             {/* Table */}
