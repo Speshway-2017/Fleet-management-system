@@ -55,8 +55,11 @@ export default function OrganizationList() {
         <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
           
           {/* Tabs */}
-          <div className="flex items-center justify-between gap-6 mb-8 border-b border-slate-200 pb-4">
-            <OrganizationTabs activeTab="list" />
+          <div className="flex items-center gap-6 mb-8 border-b border-slate-200 pb-4">
+            <button className="px-5 py-2 bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm">Organization List</button>
+            <Link to="/admin/organizations/add" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2">Add Organization</Link>
+            <Link to="/admin/organizations/details/1" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2">Organization Details</Link>
+            <button className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Edit Organization</button>
           </div>
 
           {/* KPI Grid */}
@@ -122,7 +125,12 @@ export default function OrganizationList() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {organizations.map((org) => (
+                  {organizations
+                    .filter(org => 
+                      org.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                      org.industry.toLowerCase().includes(searchTerm.toLowerCase())
+                    )
+                    .map((org) => (
                     <tr key={org.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
@@ -141,9 +149,9 @@ export default function OrganizationList() {
                       <td className="py-4 px-6 text-sm text-slate-500 font-medium">{org.date}</td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-3">
-                          <button className="text-slate-400 hover:text-slate-600 transition-colors" title="View Details">
+                          <Link to={`/admin/organizations/details/${org.id}`} className="text-slate-400 hover:text-slate-600 transition-colors" title="View Details">
                             <Eye className="w-4 h-4" />
-                          </button>
+                          </Link>
                           <button className="text-slate-400 hover:text-[#A14000] transition-colors" title="Edit">
                             <Pencil className="w-4 h-4" />
                           </button>

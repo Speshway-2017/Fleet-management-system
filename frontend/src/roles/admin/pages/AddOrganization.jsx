@@ -1,31 +1,23 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Upload } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
-import OrganizationTabs from "@/components/admin/OrganizationTabs";
 
 export default function AddOrganization() {
-  const navigate = useNavigate();
   const [form, setForm] = useState({
-    name: "",
-    email: "",
-    industry: "",
-    phone: "",
-    address: "",
-    city: "",
-    state: "",
-    country: "",
-    plan: "",
-    status: ""
+    name: "", industry: "", email: "", phone: "", address: "",
+    city: "", state: "", country: "", plan: "", status: ""
   });
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Simulate save
-    navigate("/admin/organizations");
+    console.log("Submitting:", form);
   };
 
   return (
@@ -33,17 +25,24 @@ export default function AddOrganization() {
       <NewAdminSidebar activeItem="organizations" />
       
       <div className="flex-1 flex flex-col min-w-0">
-        <NewAdminTopNav title="Add Organization" />
+        <NewAdminTopNav title="Organizations" />
         
         <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
           
+          {/* Tabs */}
+          <div className="flex items-center gap-6 mb-8 border-b border-slate-200 pb-4">
+            <Link to="/admin/organizations" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Organization List</Link>
+            <button className="px-5 py-2 bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm">Add Organization</button>
+            <Link to="/admin/organizations/details/1" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Organization Details</Link>
+            <button className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Edit Organization</button>
+          </div>
+
           <form onSubmit={handleSubmit}>
-            {/* Tabs & Action Buttons */}
-            <div className="flex items-center justify-between gap-6 mb-8 border-b border-slate-200 pb-4 flex-wrap">
-              <OrganizationTabs activeTab="add" />
-              
+            {/* Header Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+              <h2 className="text-lg font-bold text-slate-800">Add New Organization</h2>
               <div className="flex items-center gap-3">
-                <Link to="/admin/organizations" className="px-5 py-2.5 text-sm font-bold text-slate-500 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 hover:text-slate-700 transition-colors">
+                <Link to="/admin/organizations" className="px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 transition-colors">
                   Cancel
                 </Link>
                 <button type="submit" className="px-5 py-2.5 text-sm font-bold text-white bg-[#A14000] border border-[#A14000] rounded-lg shadow-sm hover:bg-[#8a3700] transition-colors">
@@ -52,147 +51,66 @@ export default function AddOrganization() {
               </div>
             </div>
 
-            {/* Organization Information Section */}
-            <div className="mb-6">
+            {/* Form Section */}
+            <div className="mb-8">
               <h3 className="font-bold text-slate-800 text-sm mb-4">Organization Information</h3>
-              <div className="bg-white rounded-xl p-6 lg:p-8 border border-slate-200 shadow-sm">
+              <div className="bg-white rounded-xl p-8 border border-slate-200 shadow-sm">
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                  {/* Organization Name */}
+                  {/* Org Name */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">Organization Name</label>
-                    <input 
-                      type="text" 
-                      name="name"
-                      placeholder="e.g. ABC Logistics" 
-                      value={form.name}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50"
-                      required
-                    />
+                    <input type="text" name="name" placeholder="Organization Name" value={form.name} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
                   </div>
-
-                  {/* Email Address */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 block">Email Address</label>
-                    <input 
-                      type="email" 
-                      name="email"
-                      placeholder="contact@organization.com" 
-                      value={form.email}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50"
-                      required
-                    />
-                  </div>
-
                   {/* Industry */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">Industry</label>
-                    <select 
-                      name="industry"
-                      value={form.industry}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50 appearance-none"
-                    >
-                      <option value="" disabled className="text-slate-400">Select industry</option>
-                      <option value="Freight">Freight</option>
-                      <option value="Logistics">Logistics</option>
-                      <option value="Transportation">Transportation</option>
-                      <option value="Courier">Courier</option>
-                    </select>
+                    <input type="text" name="industry" placeholder="Industry" value={form.industry} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
                   </div>
-
-                  {/* Phone Number */}
+                  {/* Email */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 block">Email Address</label>
+                    <input type="email" name="email" placeholder="Email Address" value={form.email} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
+                  </div>
+                  {/* Phone */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">Phone Number</label>
-                    <input 
-                      type="tel" 
-                      name="phone"
-                      placeholder="+1 (555) 000-0000" 
-                      value={form.phone}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50"
-                    />
+                    <input type="tel" name="phone" placeholder="Phone Number" value={form.phone} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
                   </div>
-
-                  {/* Address (Full Width) */}
+                  {/* Address */}
                   <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs font-bold text-slate-700 block">Address</label>
-                    <input 
-                      type="text" 
-                      name="address"
-                      placeholder="Street address" 
-                      value={form.address}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50"
-                    />
+                    <label className="text-xs font-bold text-slate-700 block">Street Address</label>
+                    <input type="text" name="address" placeholder="Street Address" value={form.address} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
                   </div>
-
                   {/* City */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">City</label>
-                    <input 
-                      type="text" 
-                      name="city"
-                      placeholder="City" 
-                      value={form.city}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50"
-                    />
+                    <input type="text" name="city" placeholder="City" value={form.city} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
                   </div>
-
                   {/* State */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">State</label>
-                    <input 
-                      type="text" 
-                      name="state"
-                      placeholder="State" 
-                      value={form.state}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50"
-                    />
+                    <input type="text" name="state" placeholder="State" value={form.state} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
                   </div>
-
                   {/* Country */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">Country</label>
-                    <input 
-                      type="text" 
-                      name="country"
-                      placeholder="Country" 
-                      value={form.country}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50"
-                    />
+                    <input type="text" name="country" placeholder="Country" value={form.country} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
                   </div>
-
                   {/* Subscription Plan */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">Subscription Plan</label>
-                    <select 
-                      name="plan"
-                      value={form.plan}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50 appearance-none"
-                    >
+                    <select name="plan" value={form.plan} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50 appearance-none">
                       <option value="" disabled className="text-slate-400">Select plan</option>
                       <option value="Enterprise">Enterprise</option>
                       <option value="Professional">Professional</option>
                       <option value="Standard">Standard</option>
                     </select>
                   </div>
-
                   {/* Status */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">Status</label>
-                    <select 
-                      name="status"
-                      value={form.status}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50 appearance-none"
-                    >
+                    <select name="status" value={form.status} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50 appearance-none">
                       <option value="" disabled className="text-slate-400">Select status</option>
                       <option value="Active">Active</option>
                       <option value="Pending">Pending Approval</option>
