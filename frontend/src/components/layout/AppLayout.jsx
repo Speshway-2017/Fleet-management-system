@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 
 const NAV_ITEMS = {
   admin: [
-    { to: "/admin", label: "Dashboard" },
+    { to: "/admin/dashboard", label: "Dashboard" },
     { to: "/admin/users", label: "Users" },
   ],
   manager: [

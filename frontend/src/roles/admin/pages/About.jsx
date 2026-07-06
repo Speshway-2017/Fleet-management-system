@@ -25,7 +25,7 @@ export default function About({ setActiveTab }) {
       <header className="bg-white border-b border-border-custom px-4 sm:px-6 md:px-8 h-20 flex items-center justify-between sticky top-0 z-30">
         {/* Logo Section */}
         <div className="flex items-center gap-3">
-          <img src="/brand-logo.png" alt="Fleet Management Logo" className="h-10 w-auto rounded-lg object-contain" />
+          <img src="/logo.png" alt="Fleet Management Logo" className="h-10 w-auto rounded-lg object-contain" />
           <div>
             <h1 className="font-display font-bold text-secondary tracking-wide text-sm sm:text-base hidden xs:block sm:block">Fleet Management</h1>
           </div>
@@ -316,7 +316,7 @@ export default function About({ setActiveTab }) {
           {/* Column 1: Brand Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <img src="/brand-logo.png" alt="Fleet Management Logo" className="h-9 w-auto rounded-lg object-contain bg-white/10 p-0.5" />
+              <img src="/logo.png" alt="Fleet Management Logo" className="h-9 w-auto rounded-lg object-contain bg-white/10 p-0.5" />
               <h4 className="font-display font-bold text-white tracking-wide text-sm">Fleet Management</h4>
             </div>
             <p className="text-xs text-muted leading-relaxed max-w-xs">

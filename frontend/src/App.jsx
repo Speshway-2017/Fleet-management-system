@@ -12,6 +12,7 @@ import OtpVerificationPage from "@/roles/admin/pages/OtpVerificationPage";
 import ResetPasswordPage from "@/roles/admin/pages/ResetPasswordPage";
 import UnauthorizedPage from "@/components/common/UnauthorizedPage";
 import AdminDashboard from "@/roles/admin/pages/AdminDashboard";
+import Dashboard from "@/roles/admin/pages/Dashboard";
 import UserManagement from "@/roles/admin/pages/UserManagement";
 import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
 import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
@@ -37,7 +38,7 @@ import PublicHome from "@/pages/PublicHome";
 function HomeRedirect() {
   const { isAuthenticated, role } = useAuth();
   if (!isAuthenticated) return <PublicHome />;
-  return <Navigate to={role === "admin" ? "/admin" : "/manager"} replace />;
+  return <Navigate to={role === "admin" ? "/admin/dashboard" : "/manager"} replace />;
 }
 
 export default function App() {
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+            <Route path="/admin/dashboard" element={<Dashboard />} />
             <Route element={<AppLayout />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UserManagement />} />
