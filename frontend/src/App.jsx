@@ -34,6 +34,10 @@ import TripsListPage from "@/roles/manager/pages/TripsListPage";
 import RouteOptimizationPage from "@/roles/manager/pages/RouteOptimizationPage";
 import CreateTripPage from "@/roles/manager/pages/CreateTripPage";
 import FuelManagementPage from "@/roles/manager/pages/FuelManagementPage";
+import MaintenanceManagementPage from "@/roles/manager/pages/MaintenanceManagementPage";
+import UpcomingServicesPage from "@/roles/manager/pages/UpcomingServicesPage";
+import ScheduleServicePage from "@/roles/manager/pages/ScheduleServicePage";
+import ServiceDetailsPage from "@/roles/manager/pages/ServiceDetailsPage";
 import TripDetailsPage from "@/roles/manager/pages/TripDetailsPage";
 // import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
 // import TripsListPage from "@/roles/manager/pages/TripsListPage";
@@ -109,6 +113,10 @@ export default function App() {
               <Route path="/manager/add-driver" element={<AddDriverPage />} />
               <Route path="/manager/route" element={<RouteOptimizationPage />} />
               <Route path="/manager/fuel" element={<FuelManagementPage />} />
+              <Route path="/manager/maintenance" element={<MaintenanceManagementPage />} />
+              <Route path="/manager/maintenance/upcoming" element={<UpcomingServicesPage />} />
+              <Route path="/manager/maintenance/schedule" element={<ScheduleServicePage />} />
+              <Route path="/manager/maintenance/details/:id" element={<ServiceDetailsPage />} />
             </Route>
           </Route>
 
