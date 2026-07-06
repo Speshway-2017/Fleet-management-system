@@ -27,7 +27,9 @@ import AssignVehiclePage from "@/roles/manager/pages/AssignVehiclePage";
 import AddDriverPage from "@/roles/manager/pages/AddDriverPage";
 import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
 import TripsListPage from "@/roles/manager/pages/TripsListPage";
+import RouteOptimizationPage from "@/roles/manager/pages/RouteOptimizationPage";
 import CreateTripPage from "@/roles/manager/pages/CreateTripPage";
+import FuelManagementPage from "@/roles/manager/pages/FuelManagementPage";
 import TripDetailsPage from "@/roles/manager/pages/TripDetailsPage";
 // import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
 // import TripsListPage from "@/roles/manager/pages/TripsListPage";
@@ -83,6 +85,8 @@ export default function App() {
               <Route path="/manager/driver-profile/:id" element={<DriverProfilePage />} />
               <Route path="/manager/driver-assign-vehicle/:id" element={<AssignVehiclePage />} />
               <Route path="/manager/add-driver" element={<AddDriverPage />} />
+              <Route path="/manager/route" element={<RouteOptimizationPage />} />
+              <Route path="/manager/fuel" element={<FuelManagementPage />} />
             </Route>
           </Route>
 
