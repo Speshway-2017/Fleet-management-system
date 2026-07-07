@@ -26,6 +26,7 @@ import SystemHealth from "@/roles/admin/pages/SystemHealth";
 import AuditLogs from "@/roles/admin/pages/AuditLogs";
 import Settings from "@/roles/admin/pages/Settings";
 import SecuritySettings from "@/roles/admin/pages/SecuritySettings";
+import NotificationSettings from "@/roles/admin/pages/NotificationSettings";
 import UserManagement from "@/roles/admin/pages/UserManagement";
 import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
 import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
@@ -113,6 +114,7 @@ export default function App() {
             <Route path="/admin/audit-logs" element={<AuditLogs />} />
             <Route path="/admin/settings" element={<Settings />} />
             <Route path="/admin/settings/security" element={<SecuritySettings />} />
+            <Route path="/admin/settings/notifications" element={<NotificationSettings />} />
             <Route element={<AppLayout />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UserManagement />} />
