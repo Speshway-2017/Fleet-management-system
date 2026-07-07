@@ -1,0 +1,167 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  Users,
+  CheckCircle2,
+  Mail,
+  XCircle,
+  Search,
+  UserPlus,
+  Eye,
+  Pencil
+} from "lucide-react";
+import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
+import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
+import KPICard from "@/components/common/KPICard";
+
+// --- Mock Data ---
+
+const managers = [
+  { id: 1, name: "James Carter", initials: "JC", org: "ABC Logistics", email: "j.carter@abclogistics.com", phone: "+1 555-0101", status: "Active", lastLogin: "2 hours ago" },
+  { id: 2, name: "Sarah Mitchell", initials: "SM", org: "XYZ Transport", email: "s.mitchell@xyztransport.com", phone: "+1 555-0102", status: "Active", lastLogin: "1 day ago" },
+  { id: 3, name: "David Lee", initials: "DL", org: "VRL Freight", email: "d.lee@vrlfreight.com", phone: "+1 555-0103", status: "Invited", lastLogin: "Never" },
+  { id: 4, name: "Maria Santos", initials: "MS", org: "Swift Cargo", email: "m.santos@swiftcargo.com", phone: "+1 555-0104", status: "Active", lastLogin: "3 days ago" },
+  { id: 5, name: "Kevin Brown", initials: "KB", org: "Peak Logistics", email: "k.brown@peaklogistics.com", phone: "+1 555-0105", status: "Inactive", lastLogin: "2 weeks ago" },
+  { id: 6, name: "Emma Wilson", initials: "EW", org: "Global Express", email: "e.wilson@globalexpress.com", phone: "+1 555-0106", status: "Active", lastLogin: "5 hours ago" },
+];
+
+function StatusBadge({ status }) {
+  if (status === "Active") {
+    return <span className="text-[11px] font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-full tracking-wide">Active</span>;
+  }
+  if (status === "Invited") {
+    return <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full tracking-wide">Invited</span>;
+  }
+  if (status === "Inactive") {
+    return <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full tracking-wide">Inactive</span>;
+  }
+  return <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full tracking-wide">{status}</span>;
+}
+
+export default function FleetManagerList() {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredManagers = managers.filter(manager => 
+    manager.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    manager.org.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
+      <NewAdminSidebar activeItem="fleet-managers" />
+      
+      <div className="flex-1 flex flex-col min-w-0">
+        <NewAdminTopNav title="Fleet Managers" />
+        
+        <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
+          
+          {/* Tabs */}
+          <div className="flex items-center gap-6 mb-8 border-b border-slate-200 pb-4">
+            <button className="px-5 py-2 bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm">Fleet Manager List</button>
+            <Link to="/admin/fleet-managers/add" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Add Fleet Manager</Link>
+            <Link to="/admin/fleet-managers/details" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Manager Details</Link>
+            <Link to="/admin/fleet-managers/edit" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Edit Manager</Link>
+          </div>
+
+          {/* KPI Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+            <KPICard 
+              title="TOTAL MANAGERS" 
+              value="48" 
+              icon={<Users className="w-5 h-5 text-slate-600" />}
+              iconBg="bg-slate-100"
+            />
+            <KPICard 
+              title="ACTIVE" 
+              value="36" 
+              icon={<CheckCircle2 className="w-5 h-5 text-green-600" />}
+              iconBg="bg-green-50 border border-green-100"
+            />
+            <KPICard 
+              title="INVITED" 
+              value="4" 
+              icon={<Mail className="w-5 h-5 text-blue-600" />}
+              iconBg="bg-blue-50 border border-blue-100"
+            />
+            <KPICard 
+              title="INACTIVE" 
+              value="8" 
+              icon={<XCircle className="w-5 h-5 text-slate-400" />}
+              iconBg="bg-slate-100"
+            />
+          </div>
+
+          {/* Table Area */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            {/* Toolbar */}
+            <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="Search managers..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+                />
+              </div>
+              <Link to="/admin/fleet-managers/add" className="flex items-center justify-center gap-2 bg-[#A14000] hover:bg-[#8a3700] text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm whitespace-nowrap">
+                <UserPlus className="w-4 h-4" />
+                Add Fleet Manager
+              </Link>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-center border-collapse min-w-[800px]">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-left">Name</th>
+                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Organization</th>
+                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Email</th>
+                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Phone</th>
+                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Status</th>
+                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Last Login</th>
+                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredManagers.map((manager) => (
+                    <tr key={manager.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-4 px-6 whitespace-nowrap text-left">
+                        <div className="flex items-center justify-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">
+                            {manager.initials}
+                          </div>
+                          <span className="text-sm font-semibold text-slate-800">{manager.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{manager.org}</td>
+                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{manager.email}</td>
+                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{manager.phone}</td>
+                      <td className="py-4 px-6 whitespace-nowrap text-center">
+                        <StatusBadge status={manager.status} />
+                      </td>
+                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{manager.lastLogin}</td>
+                      <td className="py-4 px-6 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-3 flex-nowrap w-max mx-auto">
+                          <Link to={`/admin/fleet-managers/details`} className="text-slate-400 hover:text-slate-600 transition-colors" title="View Details">
+                            <Eye className="w-4 h-4" />
+                          </Link>
+                          <Link to={`/admin/fleet-managers/edit`} className="text-slate-400 hover:text-[#A14000] transition-colors" title="Edit">
+                            <Pencil className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+        </main>
+      </div>
+    </div>
+  );
+}
