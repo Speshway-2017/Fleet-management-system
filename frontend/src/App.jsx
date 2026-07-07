@@ -20,6 +20,7 @@ import UserManagement from "@/roles/admin/pages/UserManagement";
 import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
 import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
 import FastagDashboard from "@/roles/manager/pages/FastagDashboard";
+import TollHistoryPage from "@/roles/manager/pages/TollHistoryPage";
 import VehicleManagement from "@/roles/manager/pages/VehicleManagement";
 import AddVehiclePage from "@/roles/manager/pages/AddVehiclePage";
 import VehiclesListPage from "@/roles/manager/pages/VehiclesListPage";
@@ -88,6 +89,7 @@ export default function App() {
               <Route path="/manager/add-vehicle" element={<AddVehiclePage />} />
               <Route path="/manager/map" element={<FleetMapPage />} />
               <Route path="/manager/fastag" element={<FastagDashboard />} />
+              <Route path="/manager/fastag/history" element={<TollHistoryPage />} />
               {/* Placeholder routes for other sidebar items */}
               <Route path="/manager/vehicles" element={<div className="p-8"><h1 className="text-2xl font-bold">Vehicles Page</h1></div>} />
 

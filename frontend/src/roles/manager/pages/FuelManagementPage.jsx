@@ -14,9 +14,6 @@ import {
   HelpCircle
 } from "lucide-react";
 import toast from "react-hot-toast";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
-import "../dashboard/manager.css";
 
 const INITIAL_FUEL_LOGS = [
   {
@@ -70,7 +67,6 @@ const INITIAL_FUEL_LOGS = [
 ];
 
 export default function FuelManagementPage() {
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [logs, setLogs] = useState(INITIAL_FUEL_LOGS);
   const [selectedLog, setSelectedLog] = useState(null);
@@ -383,9 +379,6 @@ Status:          PAID & VERIFIED
             </div>
 
           </div>
-
-        </main>
-      </div>
 
       {/* Resolution Modal */}
       {resolutionModalOpen && selectedLog && (

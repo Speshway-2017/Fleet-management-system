@@ -12,14 +12,10 @@ import {
   CheckCircle2
 } from "lucide-react";
 import toast from "react-hot-toast";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
-import "../dashboard/manager.css";
 
 export default function AssignVehiclePage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [driver, setDriver] = useState(null);
   const [vehicles, setVehicles] = useState([]);
   const [search, setSearch] = useState("");
@@ -30,8 +26,8 @@ export default function AssignVehiclePage() {
     // 1. Fetch driver
     const savedDrivers = localStorage.getItem("fleet_drivers");
     if (savedDrivers) {
-      const list = JSON.parse(savedDrivers);
-      const found = list.find(d => d.id === Number(id));
+      const driversList = JSON.parse(savedDrivers);
+      const found = driversList.find(d => d.id === Number(id));
       if (found) {
         setDriver(found);
       } else {
@@ -115,7 +111,7 @@ export default function AssignVehiclePage() {
     const matchesSearch =
       v.name.toLowerCase().includes(query) ||
       v.plateNumber.toLowerCase().includes(query) ||
-      v.manufacturer.toLowerCase().includes(query);
+      (v.manufacturer && v.manufacturer.toLowerCase().includes(query));
 
     const matchesStatus = statusFilter === "All Statuses" || v.status === statusFilter;
     const matchesType = typeFilter === "All Types" || v.type === typeFilter;
@@ -140,203 +136,193 @@ export default function AssignVehiclePage() {
 
   if (!driver) {
     return (
-      <div className="min-h-screen bg-[#F5F7FB] flex items-center justify-center font-poppins">
+      <div className="min-h-screen bg-[#F5F7FB] flex items-center justify-center font-poppins p-6 lg:p-8">
         <p className="text-gray-500 font-semibold">Loading Assignment Context...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
+    <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
+      {/* --- HEADER --- */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-6">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate(`/manager/driver-profile/${driver.id}`)}
+            className="p-2.5 bg-white border border-[#E7EAF0] hover:bg-[#F5F7FB] rounded-xl text-[#64748B] hover:text-[#1E293B] transition-all cursor-pointer"
+            title="Back to profile"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="font-poppins font-black text-2xl text-[#1E293B] tracking-tight">Assign Vehicle</h1>
+            <p className="text-sm text-[#64748B] mt-0.5 font-medium">
+              Select a fleet vehicle to assign to <strong className="text-[#1E293B]">{driver.name}</strong>.
+            </p>
+          </div>
+        </div>
+      </div>
 
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
+      {/* --- DRIVER QUICK RESUME INFO CARD --- */}
+      <div className="p-5 bg-white border border-[#E7EAF0] rounded-2xl flex items-center justify-between shadow-sm select-none mt-6">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 bg-[#FDF3EC] text-[#B45A0A] rounded-xl flex items-center justify-center font-bold text-sm font-poppins">
+            {driver.name.split(" ").map(n => n[0]).join("").toUpperCase()}
+          </div>
+          <div>
+            <p className="font-bold text-[#1E293B] text-sm">{driver.name}</p>
+            <span className="text-[11px] text-[#64748B] font-semibold mt-0.5 block">DL No: {driver.licenseNumber} • Rating: {driver.rating} ★</span>
+          </div>
+        </div>
+        <div className="text-right">
+          <span className="text-[10px] font-bold text-gray-400 block uppercase">Current Assignment</span>
+          <span className="text-sm font-extrabold text-[#EF4444] mt-0.5 block">{driver.assignedVehicle}</span>
+        </div>
+      </div>
 
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-8 animate-fade-in">
+      {/* --- VEHICLES SEARCH AND FILTERS --- */}
+      <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           
-          {/* --- HEADER --- */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-6">
-            <div className="flex items-center gap-4">
+          {/* Search Vehicles */}
+          <div className="md:col-span-2 relative">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#94A3B8]">
+              <Search className="w-4.5 h-4.5" />
+            </span>
+            <input
+              type="text"
+              placeholder="Search vehicles by model, plate number, or manufacturer..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] transition-colors"
+            />
+          </div>
+
+          {/* Status Filter */}
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+            >
+              <option>All Statuses</option>
+              <option>Available</option>
+              <option>On Trip</option>
+              <option>Idle</option>
+              <option>Maintenance</option>
+            </select>
+            <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
+              <ChevronDown className="w-4 h-4" />
+            </span>
+          </div>
+
+          {/* Type Filter */}
+          <div className="relative">
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+            >
+              <option>All Types</option>
+              <option>Truck</option>
+              <option>Van</option>
+              <option>Tipper</option>
+              <option>Trailer</option>
+              <option>Bus</option>
+            </select>
+            <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
+              <ChevronDown className="w-4 h-4" />
+            </span>
+          </div>
+
+        </div>
+
+        <div className="flex items-center justify-between border-t border-[#E7EAF0]/60 pt-4">
+          <div className="flex items-center gap-3">
+            {(search || statusFilter !== "All Statuses" || typeFilter !== "All Types") && (
               <button
-                onClick={() => navigate(`/manager/driver-profile/${driver.id}`)}
-                className="p-2.5 bg-white border border-[#E7EAF0] hover:bg-[#F5F7FB] rounded-xl text-[#64748B] hover:text-[#1E293B] transition-all cursor-pointer"
-                title="Back to profile"
+                onClick={handleResetFilters}
+                className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <RefreshCw className="w-3 h-3" />
+                <span>Reset Filters</span>
               </button>
-              <div>
-                <h1 className="font-poppins font-black text-2xl text-[#1E293B] tracking-tight">Assign Vehicle</h1>
-                <p className="text-sm text-[#64748B] mt-0.5 font-medium">
-                  Select a fleet vehicle to assign to <strong className="text-[#1E293B]">{driver.name}</strong>.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* --- DRIVER QUICK RESUME INFO CARD --- */}
-          <div className="p-5 bg-white border border-[#E7EAF0] rounded-2xl flex items-center justify-between shadow-sm select-none">
-            <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 bg-[#FDF3EC] text-[#B45A0A] rounded-xl flex items-center justify-center font-bold text-sm font-poppins">
-                {driver.name.split(" ").map(n => n[0]).join("").toUpperCase()}
-              </div>
-              <div>
-                <p className="font-bold text-[#1E293B] text-sm">{driver.name}</p>
-                <span className="text-[11px] text-[#64748B] font-semibold mt-0.5 block">DL No: {driver.licenseNumber} • Rating: {driver.rating}★</span>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] font-bold text-gray-400 block uppercase">Current Assignment</span>
-              <span className="text-sm font-extrabold text-[#EF4444] mt-0.5 block">{driver.assignedVehicle}</span>
-            </div>
-          </div>
-
-          {/* --- VEHICLES SEARCH AND FILTERS --- */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              
-              {/* Search Vehicles */}
-              <div className="md:col-span-2 relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#94A3B8]">
-                  <Search className="w-4.5 h-4.5" />
-                </span>
-                <input
-                  type="text"
-                  placeholder="Search vehicles by model, plate number, or manufacturer..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] transition-colors"
-                />
-              </div>
-
-              {/* Status Filter */}
-              <div className="relative">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
-                >
-                  <option>All Statuses</option>
-                  <option>Available</option>
-                  <option>On Trip</option>
-                  <option>Idle</option>
-                  <option>Maintenance</option>
-                </select>
-                <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
-                  <ChevronDown className="w-4 h-4" />
-                </span>
-              </div>
-
-              {/* Type Filter */}
-              <div className="relative">
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
-                >
-                  <option>All Types</option>
-                  <option>Truck</option>
-                  <option>Van</option>
-                  <option>Tipper</option>
-                  <option>Trailer</option>
-                  <option>Bus</option>
-                </select>
-                <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
-                  <ChevronDown className="w-4 h-4" />
-                </span>
-              </div>
-
-            </div>
-
-            <div className="flex items-center justify-between border-t border-[#E7EAF0]/60 pt-4">
-              <div className="flex items-center gap-3">
-                {(search || statusFilter !== "All Statuses" || typeFilter !== "All Types") && (
-                  <button
-                    onClick={handleResetFilters}
-                    className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                    <span>Reset Filters</span>
-                  </button>
-                )}
-              </div>
-              <div className="text-xs text-[#64748B] font-medium font-poppins">
-                Showing <span className="font-bold text-[#1E293B]">{filteredVehicles.length}</span> candidate vehicles
-              </div>
-            </div>
-          </div>
-
-          {/* --- VEHICLES SELECTION GRID --- */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {filteredVehicles.length === 0 ? (
-              <div className="col-span-2 py-12 text-center text-gray-400 font-medium">
-                No vehicles matching the criteria.
-              </div>
-            ) : (
-              filteredVehicles.map((v) => (
-                <div key={v.id} className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-[#FDF3EC] text-[#B45A0A] p-2.5 rounded-xl border border-[#FDF3EC]/50 shrink-0">
-                          <Truck className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <h4 className="font-poppins font-bold text-sm text-[#1E293B]">{v.name}</h4>
-                          <span className="text-[11px] text-[#64748B] font-semibold mt-0.5 block">{v.manufacturer} • {v.type}</span>
-                        </div>
-                      </div>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${getStatusBadge(v.status)}`}>
-                        {v.status}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 bg-gray-50/50 p-3 rounded-xl border border-gray-100 text-xs font-semibold text-gray-500 select-none">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-[#64748B]" />
-                        <span>Branch: {v.branch}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Fuel className="w-3.5 h-3.5 text-[#64748B]" />
-                        <span>Fuel Type: {v.fuelType}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs pt-1">
-                      <span className="text-gray-500 font-medium">Plate Number:</span>
-                      <span className="font-bold text-[#1E293B] uppercase tracking-wider">{v.plateNumber}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs border-t border-[#E7EAF0]/60 pt-3">
-                      <span className="text-gray-500 font-medium">Current Driver:</span>
-                      {v.driver && v.driver !== "Unassigned" ? (
-                        <span className="font-bold text-[#1E293B]">{v.driver}</span>
-                      ) : (
-                        <span className="font-bold text-[#EF4444]">Unassigned</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-6 pt-4 border-t border-[#E7EAF0]/60">
-                    <button
-                      onClick={() => handleAssign(v)}
-                      className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                        v.status === "Maintenance" || v.status === "Out of Service"
-                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                          : "bg-white hover:bg-[#B45A0A] hover:text-white text-[#B45A0A] border border-[#B45A0A] shadow-sm hover:shadow-md"
-                      }`}
-                      disabled={v.status === "Maintenance" || v.status === "Out of Service"}
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Select and Assign Vehicle</span>
-                    </button>
-                  </div>
-                </div>
-              ))
             )}
           </div>
+          <div className="text-xs text-[#64748B] font-medium font-poppins">
+            Showing <span className="font-bold text-[#1E293B]">{filteredVehicles.length}</span> candidate vehicles
+          </div>
+        </div>
+      </div>
 
-        </main>
+      {/* --- VEHICLES SELECTION GRID --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        {filteredVehicles.length === 0 ? (
+          <div className="col-span-2 py-12 text-center text-gray-400 font-medium">
+            No vehicles matching the criteria.
+          </div>
+        ) : (
+          filteredVehicles.map((v) => (
+            <div key={v.id} className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-[#FDF3EC] text-[#B45A0A] p-2.5 rounded-xl border border-[#FDF3EC]/50 shrink-0">
+                      <Truck className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-poppins font-bold text-sm text-[#1E293B]">{v.name}</h4>
+                      <span className="text-[11px] text-[#64748B] font-semibold mt-0.5 block">{v.manufacturer} • {v.type}</span>
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${getStatusBadge(v.status)}`}>
+                    {v.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 bg-gray-50/50 p-3 rounded-xl border border-gray-100 text-xs font-semibold text-gray-500 select-none">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#64748B]" />
+                    <span>Branch: {v.branch}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Fuel className="w-3.5 h-3.5 text-[#64748B]" />
+                    <span>Fuel Type: {v.fuelType}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <span className="text-gray-500 font-medium">Plate Number:</span>
+                  <span className="font-bold text-[#1E293B] uppercase tracking-wider">{v.plateNumber}</span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs border-t border-[#E7EAF0]/60 pt-3">
+                  <span className="text-gray-500 font-medium">Current Driver:</span>
+                  {v.driver && v.driver !== "Unassigned" ? (
+                    <span className="font-bold text-[#1E293B]">{v.driver}</span>
+                  ) : (
+                    <span className="font-bold text-[#EF4444]">Unassigned</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-[#E7EAF0]/60">
+                <button
+                  onClick={() => handleAssign(v)}
+                  className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    v.status === "Maintenance" || v.status === "Out of Service"
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-white hover:bg-[#B45A0A] hover:text-white text-[#B45A0A] border border-[#B45A0A] shadow-sm hover:shadow-md"
+                  }`}
+                  disabled={v.status === "Maintenance" || v.status === "Out of Service"}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Select and Assign Vehicle</span>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

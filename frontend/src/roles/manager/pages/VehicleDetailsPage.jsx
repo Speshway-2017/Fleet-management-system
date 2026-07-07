@@ -4,16 +4,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
-import "../dashboard/manager.css";
 
 export default function VehicleDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [vehicle, setVehicle] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -129,290 +125,276 @@ export default function VehicleDetailsPage() {
 
   if (loading || !vehicle) {
     return (
-      <div className="min-h-screen flex bg-[#F5F7FB]">
-        <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
-        <div className="flex-1 flex flex-col">
-          <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
-          <main className="flex-1 flex items-center justify-center">
-            <p className="text-[#64748B]">Loading...</p>
-          </main>
-        </div>
+      <div className="min-h-screen flex items-center justify-center p-6 lg:p-8 bg-[#F5F7FB]">
+        <p className="text-[#64748B]">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
+    <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
+      {/* Page Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <button
+          onClick={() => navigate("/manager/vehicles-list")}
+          className="p-2 hover:bg-white rounded-lg transition-colors cursor-pointer"
+        >
+          <ArrowLeft className="w-5 h-5 text-[#64748B]" />
+        </button>
+        <h1 className="text-2xl lg:text-3xl font-black font-poppins text-[#1E293B]">
+          View vehicle details
+        </h1>
+      </div>
 
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
+      {/* Top Vehicle Info Card */}
+      <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 mb-6">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+          {/* Left side - Vehicle Info */}
+          <div className="flex-1">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="bg-[#FDF3EC] p-4 rounded-lg flex-shrink-0">
+                <FileText className="w-8 h-8 text-[#B45A0A]" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className="text-2xl font-bold text-[#1E293B]">{vehicle.name}</h2>
+                  <span className="px-3 py-1 bg-orange-100 text-[#B45A0A] rounded-full text-xs font-bold">
+                    {vehicle.status}
+                  </span>
+                </div>
+                <p className="text-sm text-[#64748B]">{vehicle.manufacturer}</p>
+                <p className="text-lg font-bold text-[#1E293B] mt-2 uppercase">{vehicle.plateNumber}</p>
+              </div>
+            </div>
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8 custom-scrollbar">
-          {/* Page Header */}
-          <div className="flex items-center gap-4 mb-6">
-            <button
-              onClick={() => navigate("/manager/vehicles-list")}
-              className="p-2 hover:bg-white rounded-lg transition-colors cursor-pointer"
-            >
-              <ArrowLeft className="w-5 h-5 text-[#64748B]" />
-            </button>
-            <h1 className="text-2xl lg:text-3xl font-black font-poppins text-[#1E293B]">
-              View vehicle details
-            </h1>
+            {/* Quick Info Row */}
+            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-[#E7EAF0]">
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase">Registration</p>
+                <p className="text-sm font-bold text-[#1E293B] mt-2">{vehicle.registrationNumber || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase">Type</p>
+                <p className="text-sm font-bold text-[#1E293B] mt-2">{vehicle.type}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase">Driver</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <p className="text-sm font-bold text-[#1E293B]">{vehicle.driver}</p>
+                  <button
+                    onClick={() => setShowAssignModal(true)}
+                    className="text-xs text-[#B45A0A] hover:underline font-bold cursor-pointer"
+                  >
+                    {vehicle.driver === "Unassigned" ? "(Assign)" : "(Change)"}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Top Vehicle Info Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 mb-6">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
-              {/* Left side - Vehicle Info */}
-              <div className="flex-1">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="bg-[#FDF3EC] p-4 rounded-lg flex-shrink-0">
-                    <FileText className="w-8 h-8 text-[#B45A0A]" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h2 className="text-2xl font-bold text-[#1E293B]">{vehicle.name}</h2>
-                      <span className="px-3 py-1 bg-orange-100 text-[#B45A0A] rounded-full text-xs font-bold">
-                        {vehicle.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-[#64748B]">{vehicle.manufacturer}</p>
-                    <p className="text-lg font-bold text-[#1E293B] mt-2 uppercase">{vehicle.plateNumber}</p>
-                  </div>
-                </div>
+          {/* Right side - Actions */}
+          <div className="flex items-center gap-2 md:ml-auto">
+            <button
+              onClick={() => navigate(`/manager/vehicle-edit/${vehicle.id}`)}
+              className="px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <Edit2 className="w-4 h-4" />
+              EDIT
+            </button>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="px-4 py-2.5 border border-red-300 hover:bg-red-50 rounded-lg text-sm font-bold text-red-600 transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+              DELETE
+            </button>
+          </div>
+        </div>
+      </div>
 
-                {/* Quick Info Row */}
-                <div className="grid grid-cols-3 gap-4 pt-4 border-t border-[#E7EAF0]">
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase">Registration</p>
-                    <p className="text-sm font-bold text-[#1E293B] mt-2">{vehicle.registrationNumber || "N/A"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase">Type</p>
-                    <p className="text-sm font-bold text-[#1E293B] mt-2">{vehicle.type}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase">Driver</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <p className="text-sm font-bold text-[#1E293B]">{vehicle.driver}</p>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Sections */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* General Information */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
+            <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
+              General Information
+            </h3>
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Vehicle Name</p>
+                <p className="text-sm font-semibold text-[#1E293B]">{vehicle.name}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Manufacturer</p>
+                <p className="text-sm font-semibold text-[#1E293B]">{vehicle.manufacturer}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Model</p>
+                <p className="text-sm font-semibold text-[#1E293B]">{vehicle.model || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Year</p>
+                <p className="text-sm font-semibold text-[#1E293B]">{vehicle.year || "N/A"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Registration & Status */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
+            <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
+              Registration & Status
+            </h3>
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Plate Number</p>
+                <p className="text-sm font-semibold text-[#1E293B] uppercase">{vehicle.plateNumber}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Status</p>
+                <span className={`px-2 py-1 rounded text-xs font-bold inline-block ${
+                  vehicle.status === "Available" ? "bg-green-100 text-green-700" :
+                  vehicle.status === "On Trip" ? "bg-orange-100 text-orange-700" :
+                  vehicle.status === "Maintenance" ? "bg-red-100 text-red-700" :
+                  "bg-gray-100 text-gray-700"
+                }`}>
+                  {vehicle.status}
+                </span>
+              </div>
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Fuel Type</p>
+                <p className="text-sm font-semibold text-[#1E293B]">{vehicle.fuelType}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Ownership</p>
+                <p className="text-sm font-semibold text-[#1E293B]">{vehicle.ownership}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Service & Insurance */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
+            <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
+              Service & Insurance
+            </h3>
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Insurance Expiry</p>
+                <p className="text-sm font-semibold text-[#1E293B]">
+                  {new Date(vehicle.insuranceExpiry).toLocaleDateString("en-IN")}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Last Service</p>
+                <p className="text-sm font-semibold text-[#1E293B]">
+                  {new Date(vehicle.lastService).toLocaleDateString("en-IN")}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Next Service Due</p>
+                <p className="text-sm font-semibold text-[#1E293B]">
+                  {new Date(vehicle.nextService).toLocaleDateString("en-IN")}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Availability</p>
+                <p className="text-sm font-semibold text-[#1E293B]">{vehicle.availability}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Documents Section */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
+            <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
+              Vehicle Documents
+            </h3>
+            {vehicle.documents && vehicle.documents.length > 0 ? (
+              <div className="space-y-3">
+                {vehicle.documents.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between p-3 bg-[#F5F7FB] border border-[#E7EAF0] rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <FileText className="w-5 h-5 text-[#B45A0A] flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-[#1E293B] truncate">{doc.name}</p>
+                        <p className="text-[10px] text-[#64748B]">{doc.size} KB • {doc.uploadDate}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-2">
                       <button
-                        onClick={() => setShowAssignModal(true)}
-                        className="text-xs text-[#B45A0A] hover:underline font-bold cursor-pointer"
+                        onClick={() => setPreviewDocument(doc)}
+                        className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                        title="View Document"
                       >
-                        {vehicle.driver === "Unassigned" ? "(Assign)" : "(Change)"}
+                        <Eye className="w-4 h-4 text-blue-600" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          const link = document.createElement("a");
+                          link.href = doc.data;
+                          link.download = doc.name;
+                          link.click();
+                        }}
+                        className="p-2 hover:bg-green-100 rounded-lg transition-colors cursor-pointer"
+                        title="Download"
+                      >
+                        <Download className="w-4 h-4 text-green-600" />
                       </button>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
+            ) : (
+              <div className="text-center py-8 bg-[#F5F7FB] rounded-lg border border-dashed border-[#E7EAF0]">
+                <FileText className="w-12 h-12 text-[#94A3B8] mx-auto mb-3 opacity-50" />
+                <p className="text-sm text-[#64748B]">No documents uploaded</p>
+              </div>
+            )}
+          </div>
+        </div>
 
-              {/* Right side - Actions */}
-              <div className="flex items-center gap-2 md:ml-auto">
-                <button
-                  onClick={() => navigate(`/manager/vehicle-edit/${vehicle.id}`)}
-                  className="px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <Edit2 className="w-4 h-4" />
-                  EDIT
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="px-4 py-2.5 border border-red-300 hover:bg-red-50 rounded-lg text-sm font-bold text-red-600 transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  DELETE
-                </button>
+        {/* Right Column - Summary & Map */}
+        <div className="space-y-6">
+          {/* Summary Card */}
+          <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl border border-orange-200 p-6">
+            <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-4">Vehicle Summary</h3>
+            <div className="space-y-4 text-sm">
+              <div>
+                <p className="text-xs text-[#64748B] font-medium">Registration No.</p>
+                <p className="font-bold text-[#1E293B] mt-1 uppercase">{vehicle.plateNumber}</p>
+              </div>
+              <div className="border-t border-orange-200 pt-4">
+                <p className="text-xs text-[#64748B] font-medium">FASTag Balance</p>
+                <p className="font-bold text-[#1E293B] mt-1">₹{vehicle.fastagBalance?.toLocaleString("en-IN") || "0"}</p>
+              </div>
+              <div className="border-t border-orange-200 pt-4">
+                <p className="text-xs text-[#64748B] font-medium">Branch</p>
+                <p className="font-bold text-[#1E293B] mt-1">{vehicle.branch}</p>
+              </div>
+              <div className="border-t border-orange-200 pt-4">
+                <p className="text-xs text-[#64748B] font-medium">Date Added</p>
+                <p className="font-bold text-[#1E293B] mt-1">
+                  {vehicle.dateAdded ? new Date(vehicle.dateAdded).toLocaleDateString("en-IN") : "N/A"}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Sections */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* General Information */}
-              <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
-                <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
-                  General Information
-                </h3>
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Vehicle Name</p>
-                    <p className="text-sm font-semibold text-[#1E293B]">{vehicle.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Manufacturer</p>
-                    <p className="text-sm font-semibold text-[#1E293B]">{vehicle.manufacturer}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Model</p>
-                    <p className="text-sm font-semibold text-[#1E293B]">{vehicle.model || "N/A"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Year</p>
-                    <p className="text-sm font-semibold text-[#1E293B]">{vehicle.year || "N/A"}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Registration & Status */}
-              <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
-                <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
-                  Registration & Status
-                </h3>
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Plate Number</p>
-                    <p className="text-sm font-semibold text-[#1E293B] uppercase">{vehicle.plateNumber}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Status</p>
-                    <span className={`px-2 py-1 rounded text-xs font-bold inline-block ${
-                      vehicle.status === "Available" ? "bg-green-100 text-green-700" :
-                      vehicle.status === "On Trip" ? "bg-orange-100 text-orange-700" :
-                      vehicle.status === "Maintenance" ? "bg-red-100 text-red-700" :
-                      "bg-gray-100 text-gray-700"
-                    }`}>
-                      {vehicle.status}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Fuel Type</p>
-                    <p className="text-sm font-semibold text-[#1E293B]">{vehicle.fuelType}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Ownership</p>
-                    <p className="text-sm font-semibold text-[#1E293B]">{vehicle.ownership}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Service & Insurance */}
-              <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
-                <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
-                  Service & Insurance
-                </h3>
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Insurance Expiry</p>
-                    <p className="text-sm font-semibold text-[#1E293B]">
-                      {new Date(vehicle.insuranceExpiry).toLocaleDateString("en-IN")}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Last Service</p>
-                    <p className="text-sm font-semibold text-[#1E293B]">
-                      {new Date(vehicle.lastService).toLocaleDateString("en-IN")}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Next Service Due</p>
-                    <p className="text-sm font-semibold text-[#1E293B]">
-                      {new Date(vehicle.nextService).toLocaleDateString("en-IN")}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Availability</p>
-                    <p className="text-sm font-semibold text-[#1E293B]">{vehicle.availability}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Documents Section */}
-              <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
-                <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
-                  Vehicle Documents
-                </h3>
-                {vehicle.documents && vehicle.documents.length > 0 ? (
-                  <div className="space-y-3">
-                    {vehicle.documents.map((doc) => (
-                      <div key={doc.id} className="flex items-center justify-between p-3 bg-[#F5F7FB] border border-[#E7EAF0] rounded-lg hover:bg-gray-50 transition-colors">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <FileText className="w-5 h-5 text-[#B45A0A] flex-shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-[#1E293B] truncate">{doc.name}</p>
-                            <p className="text-[10px] text-[#64748B]">{doc.size} KB • {doc.uploadDate}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 ml-2">
-                          <button
-                            onClick={() => setPreviewDocument(doc)}
-                            className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
-                            title="View Document"
-                          >
-                            <Eye className="w-4 h-4 text-blue-600" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              const link = document.createElement("a");
-                              link.href = doc.data;
-                              link.download = doc.name;
-                              link.click();
-                            }}
-                            className="p-2 hover:bg-green-100 rounded-lg transition-colors cursor-pointer"
-                            title="Download"
-                          >
-                            <Download className="w-4 h-4 text-green-600" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 bg-[#F5F7FB] rounded-lg border border-dashed border-[#E7EAF0]">
-                    <FileText className="w-12 h-12 text-[#94A3B8] mx-auto mb-3 opacity-50" />
-                    <p className="text-sm text-[#64748B]">No documents uploaded</p>
-                  </div>
-                )}
-              </div>
+          {/* Location Map */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] overflow-hidden">
+            <div className="p-4 border-b border-[#E7EAF0]">
+              <h3 className="text-sm font-bold text-[#1E293B] flex items-center gap-2 uppercase">
+                <MapPin className="w-4 h-4 text-[#B45A0A]" />
+                Location
+              </h3>
             </div>
-
-            {/* Right Column - Summary & Map */}
-            <div className="space-y-6">
-              {/* Summary Card */}
-              <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl border border-orange-200 p-6">
-                <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-4">Vehicle Summary</h3>
-                <div className="space-y-4 text-sm">
-                  <div>
-                    <p className="text-xs text-[#64748B] font-medium">Registration No.</p>
-                    <p className="font-bold text-[#1E293B] mt-1 uppercase">{vehicle.plateNumber}</p>
-                  </div>
-                  <div className="border-t border-orange-200 pt-4">
-                    <p className="text-xs text-[#64748B] font-medium">FASTag Balance</p>
-                    <p className="font-bold text-[#1E293B] mt-1">₹{vehicle.fastagBalance?.toLocaleString("en-IN") || "0"}</p>
-                  </div>
-                  <div className="border-t border-orange-200 pt-4">
-                    <p className="text-xs text-[#64748B] font-medium">Branch</p>
-                    <p className="font-bold text-[#1E293B] mt-1">{vehicle.branch}</p>
-                  </div>
-                  <div className="border-t border-orange-200 pt-4">
-                    <p className="text-xs text-[#64748B] font-medium">Date Added</p>
-                    <p className="font-bold text-[#1E293B] mt-1">
-                      {vehicle.dateAdded ? new Date(vehicle.dateAdded).toLocaleDateString("en-IN") : "N/A"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Location Map */}
-              <div className="bg-white rounded-2xl border border-[#E7EAF0] overflow-hidden">
-                <div className="p-4 border-b border-[#E7EAF0]">
-                  <h3 className="text-sm font-bold text-[#1E293B] flex items-center gap-2 uppercase">
-                    <MapPin className="w-4 h-4 text-[#B45A0A]" />
-                    Location
-                  </h3>
-                </div>
-                <div 
-                  ref={mapRef}
-                  className="w-full h-64 rounded-b-lg"
-                  style={{ zIndex: 1 }}
-                />
-              </div>
-            </div>
+            <div 
+              ref={mapRef}
+              className="w-full h-64 rounded-b-lg"
+              style={{ zIndex: 1 }}
+            />
           </div>
-        </main>
+        </div>
       </div>
 
       {/* Document Preview Modal */}

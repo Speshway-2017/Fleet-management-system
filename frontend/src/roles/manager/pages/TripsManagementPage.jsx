@@ -23,9 +23,6 @@ import {
   Truck
 } from "lucide-react";
 import toast from "react-hot-toast";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
-import "../dashboard/manager.css";
 
 const INITIAL_TRIPS = [
   {
@@ -97,7 +94,6 @@ const INITIAL_TRIPS = [
 
 export default function TripsManagementPage() {
   const navigate = useNavigate();
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [trips, setTrips] = useState(() => {
     const saved = localStorage.getItem("fleet_trips");
     return saved ? JSON.parse(saved) : INITIAL_TRIPS;
@@ -303,13 +299,7 @@ export default function TripsManagementPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
-
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-6 animate-fade-in">
+    <div className="p-6 lg:p-8 space-y-6 animate-fade-in">
           
           {/* Header Area */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#E7EAF0] pb-6">
@@ -569,11 +559,6 @@ export default function TripsManagementPage() {
               </table>
             </div>
           </div>
-
-        </main>
-      </div>
-
-
 
       {/* --- DELETE CONFIRMATION MODAL --- */}
       {showDeleteConfirm && selectedTrip && (
