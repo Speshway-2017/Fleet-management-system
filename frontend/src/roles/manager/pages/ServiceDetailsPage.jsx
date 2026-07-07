@@ -12,9 +12,6 @@ import {
   AlertTriangle
 } from "lucide-react";
 import toast from "react-hot-toast";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
-import "../dashboard/manager.css";
 
 const INITIAL_WORK_ORDERS = [
   {
@@ -55,7 +52,6 @@ const INITIAL_WORK_ORDERS = [
 export default function ServiceDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [workOrders, setWorkOrders] = useState([]);
   const [order, setOrder] = useState(null);
 
@@ -108,7 +104,7 @@ export default function ServiceDetailsPage() {
 
   if (!order) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">
+      <div className="flex items-center justify-center bg-gray-50 text-gray-500 min-h-full p-8">
         <div className="flex flex-col items-center gap-2">
           <div className="w-8 h-8 border-4 border-t-[#B45A0A] border-r-transparent rounded-full animate-spin" />
           <p className="text-xs font-bold font-poppins">Loading Service details...</p>
@@ -118,13 +114,7 @@ export default function ServiceDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
-
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-4 animate-fade-in">
+    <div className="p-6 lg:p-8 space-y-4 font-nunito text-[#1E293B] bg-[#F5F7FB] min-h-full">
           
           {/* Header block */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4">
@@ -339,8 +329,6 @@ export default function ServiceDetailsPage() {
 
           </div>
 
-        </main>
-      </div>
     </div>
   );
 }

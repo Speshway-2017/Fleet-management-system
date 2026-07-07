@@ -6,9 +6,6 @@ import {
   ChevronDown
 } from "lucide-react";
 import toast from "react-hot-toast";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
-import "../dashboard/manager.css";
 
 const INITIAL_WORK_ORDERS = [
   {
@@ -48,7 +45,6 @@ const INITIAL_WORK_ORDERS = [
 
 export default function ScheduleServicePage() {
   const navigate = useNavigate();
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [vehicles, setVehicles] = useState([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [selectedServiceType, setSelectedServiceType] = useState("General Service");
@@ -117,13 +113,7 @@ export default function ScheduleServicePage() {
   const costEst = getEstimatedCost();
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
-
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-4 animate-fade-in">
+    <div className="p-6 lg:p-8 space-y-4 font-nunito text-[#1E293B] bg-[#F5F7FB] min-h-full">
           
           {/* Header block */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4">
@@ -342,8 +332,6 @@ export default function ScheduleServicePage() {
 
           </div>
 
-        </main>
-      </div>
     </div>
   );
 }

@@ -11,7 +11,25 @@ export default function NotificationDetailsPage() {
   };
 
   const handleAction = (action) => {
-    toast.success(`${action} action triggered!`);
+    switch (action) {
+      case "Dispatch Warning":
+        toast.success("Warning dispatched to driver!");
+        break;
+      case "Call Driver":
+        navigate("/manager/driver-profile/1", { state: { fromNotification: true } });
+        break;
+      case "View Analytics":
+        navigate("/manager/analytics", { state: { fromNotification: true } });
+        break;
+      case "Schedule Now":
+        navigate("/manager/maintenance/schedule", { state: { fromNotification: true } });
+        break;
+      case "Track Live":
+        navigate("/manager/map", { state: { fromNotification: true } });
+        break;
+      default:
+        toast.success(`${action} action triggered!`);
+    }
   };
 
   return (
@@ -65,15 +83,15 @@ export default function NotificationDetailsPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="p-4 bg-blue-50 rounded-xl text-center">
+              <div className="p-4 bg-amber-50 rounded-xl text-center">
                 <p className="text-xs text-gray-500 uppercase mb-1">Recorded Speed</p>
                 <p className="text-xl font-extrabold text-red-600">95 MPH</p>
               </div>
-              <div className="p-4 bg-blue-50 rounded-xl text-center">
+              <div className="p-4 bg-amber-50 rounded-xl text-center">
                 <p className="text-xs text-gray-500 uppercase mb-1">Speed Limit</p>
                 <p className="text-xl font-extrabold text-gray-700">65 MPH</p>
               </div>
-              <div className="p-4 bg-blue-50 rounded-xl text-center">
+              <div className="p-4 bg-amber-50 rounded-xl text-center">
                 <p className="text-xs text-gray-500 uppercase mb-1">Duration</p>
                 <p className="text-xl font-extrabold text-gray-700">04:12 Min</p>
               </div>
@@ -116,7 +134,7 @@ export default function NotificationDetailsPage() {
             </div>
             <div className="relative h-80 bg-gray-200">
               <div className="absolute inset-0 flex items-center justify-center">
-                <Icon icon="mdi:google-maps" className="w-40 h-40 text-blue-400 opacity-30" />
+                <Icon icon="mdi:google-maps" className="w-40 h-40 text-amber-400 opacity-30" />
               </div>
               <div className="absolute right-4 top-4 flex flex-col gap-2">
                 <button className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50">
@@ -176,7 +194,7 @@ export default function NotificationDetailsPage() {
             </div>
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-green-500 rounded-full flex items-center justify-center text-white font-bold">
+                <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center text-white font-bold">
                   MR
                 </div>
                 <div>
@@ -185,11 +203,11 @@ export default function NotificationDetailsPage() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-200">
-                <div className="p-3 bg-blue-50 rounded-lg">
+                <div className="p-3 bg-amber-50 rounded-lg">
                   <p className="text-xs text-gray-500 mb-1">Daily Drive Time</p>
                   <p className="text-lg font-bold text-gray-800">06:45h</p>
                 </div>
-                <div className="p-3 bg-blue-50 rounded-lg">
+                <div className="p-3 bg-amber-50 rounded-lg">
                   <p className="text-xs text-gray-500 mb-1">Safety Score</p>
                   <p className="text-lg font-bold text-amber-700">8.4/10</p>
                 </div>
