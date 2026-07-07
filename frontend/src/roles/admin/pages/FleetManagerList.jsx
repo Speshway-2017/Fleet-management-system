@@ -56,11 +56,11 @@ export default function FleetManagerList() {
         <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
           
           {/* Tabs */}
-          <div className="flex items-center gap-6 mb-8 border-b border-slate-200 pb-4">
-            <button className="px-5 py-2 bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm">Fleet Manager List</button>
-            <Link to="/admin/fleet-managers/add" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Add Fleet Manager</Link>
-            <Link to="/admin/fleet-managers/details" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Manager Details</Link>
-            <Link to="/admin/fleet-managers/edit" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Edit Manager</Link>
+          <div className="inline-flex items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
+            <button className="px-6 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-full shadow-sm">Fleet Manager List</button>
+            <Link to="/admin/fleet-managers/add" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Add Fleet Manager</Link>
+            <Link to="/admin/fleet-managers/details" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Manager Details</Link>
+            <Link to="/admin/fleet-managers/edit" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Edit Manager</Link>
           </div>
 
           {/* KPI Grid */}
