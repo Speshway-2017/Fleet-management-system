@@ -1,4 +1,5 @@
-import { Outlet, NavLink, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard,
@@ -17,6 +18,12 @@ import {
   Bell,
   Settings,
   ChevronDown,
+  LogOut,
+  User,
+  Mail,
+  Building2,
+  ShieldCheck,
+  X,
 } from "lucide-react";
 
 const MENU_ITEMS = [
@@ -44,8 +51,10 @@ const ADMIN_ITEMS = [
 ];
 
 export default function AppLayout() {
-  const { user, role } = useAuth();
+  const { user, role, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [profileOpen, setProfileOpen] = useState(false);
   const links = role === "admin" ? ADMIN_ITEMS : MENU_ITEMS;
 
   return (
@@ -107,21 +116,60 @@ export default function AppLayout() {
             <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-md">
               <Bell className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center text-orange-600">
-                <Users className="w-5 h-5" />
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-800">
-                  {user?.name || "Alex Thompson"}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {role === "admin" ? "Admin" : "Fleet Manager"}
-                </p>
-              </div>
-              <button className="p-1 text-gray-500 hover:bg-gray-100 rounded-md">
-                <ChevronDown className="w-4 h-4" />
+            <div className="relative">
+              {/* Profile Trigger */}
+              <button 
+                onClick={() => setProfileOpen(!profileOpen)}
+                className="flex items-center gap-3 hover:bg-gray-50 p-1.5 rounded-xl transition-all cursor-pointer text-left border-none bg-transparent"
+              >
+                <div className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center text-orange-600">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div className="text-right hidden sm:block">
+                  <p className="text-sm font-medium text-gray-800 leading-none">
+                    {user?.name || "Alex Thompson"}
+                  </p>
+                  <span className="text-[10px] text-gray-500 mt-1 block">
+                    {role === "admin" ? "Admin" : "Fleet Manager"}
+                  </span>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${profileOpen ? 'rotate-180' : ''}`} />
               </button>
+
+              {/* Dropdown Menu */}
+              {profileOpen && (
+                <>
+                  {/* Invisible overlay to close dropdown on click outside */}
+                  <div 
+                    className="fixed inset-0 z-10" 
+                    onClick={() => setProfileOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-xl shadow-lg p-1.5 z-20 animate-fade-in origin-top-right">
+                    <button
+                      onClick={() => {
+                        setProfileOpen(false);
+                        navigate("/manager/profile");
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-bold text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                    >
+                      <User className="w-4 h-4 text-gray-500" />
+                      <span>Profile</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setProfileOpen(false);
+                        logout();
+                        navigate("/login");
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>

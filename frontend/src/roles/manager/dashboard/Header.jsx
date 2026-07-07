@@ -134,12 +134,12 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
                 <button
                   onClick={() => {
                     setUserMenuOpen(false);
-                    toast.success("Profile panel under construction");
+                    navigate("/manager/profile");
                   }}
                   className="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-gray-700 flex items-center gap-2"
                 >
                   <User className="w-4 h-4" />
-                  My Profile
+                  Profile
                 </button>
                 <button
                   onClick={handleLogout}
