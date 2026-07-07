@@ -44,6 +44,13 @@ import RouteOptimizationPage from "@/roles/manager/pages/RouteOptimizationPage";
 import CreateTripPage from "@/roles/manager/pages/CreateTripPage";
 import FuelManagementPage from "@/roles/manager/pages/FuelManagementPage";
 import MaintenanceManagementPage from "@/roles/manager/pages/MaintenanceManagementPage";
+import AnalyticsPage from "@/roles/manager/pages/AnalyticsPage";
+import NotificationsPage from "@/roles/manager/pages/NotificationsPage";
+import NotificationDetailsPage from "@/roles/manager/pages/NotificationDetailsPage";
+import ReportsPage from "@/roles/manager/pages/ReportsPage";
+import SettingsPage from "@/roles/manager/pages/SettingsPage";
+import ChangePasswordPage from "@/roles/manager/pages/ChangePasswordPage";
+import EWayBillsPage from "@/roles/manager/pages/EWayBillsPage";
 import UpcomingServicesPage from "@/roles/manager/pages/UpcomingServicesPage";
 import ScheduleServicePage from "@/roles/manager/pages/ScheduleServicePage";
 import ServiceDetailsPage from "@/roles/manager/pages/ServiceDetailsPage";
@@ -119,7 +126,8 @@ export default function App() {
               <Route path="/manager/routes" element={<div className="p-8"><h1 className="text-2xl font-bold">Route Optimization Page</h1></div>} />
 
               <Route path="/manager/maintenance" element={<div className="p-8"><h1 className="text-2xl font-bold">Maintenance Page</h1></div>} />
-              <Route path="/manager/ewaybills" element={<div className="p-8"><h1 className="text-2xl font-bold">E-Way Bills Page</h1></div>} />
+              <Route path="/manager/eway" element={<EWayBillsPage />} />
+              <Route path="/manager/settings" element={<SettingsPage />} />
               <Route path="/manager/documents" element={<DocumentManagement />} />
               <Route path="/manager/documents/list" element={<DocumentsListPage />} />
               <Route path="/manager/documents/compliance-audit" element={<ComplianceAuditPage />} />
@@ -143,6 +151,13 @@ export default function App() {
               <Route path="/manager/add-driver" element={<AddDriverPage />} />
               <Route path="/manager/route" element={<RouteOptimizationPage />} />
               <Route path="/manager/fuel" element={<FuelManagementPage />} />
+              <Route path="/manager/analytics" element={<AnalyticsPage />} />
+              <Route path="/manager/reports" element={<ReportsPage />} />
+              <Route path="/manager/notifications" element={<NotificationsPage />} />
+              <Route path="/manager/notifications/:id" element={<NotificationDetailsPage />} />
+              <Route path="/manager/settings" element={<SettingsPage />} />
+              <Route path="/manager/change-password" element={<ChangePasswordPage />} />
+              <Route path="/manager/eway" element={<EWayBillsPage />} />
               <Route path="/manager/maintenance" element={<MaintenanceManagementPage />} />
               <Route path="/manager/maintenance/upcoming" element={<UpcomingServicesPage />} />
               <Route path="/manager/maintenance/schedule" element={<ScheduleServicePage />} />

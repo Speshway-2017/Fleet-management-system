@@ -29,13 +29,13 @@ const MENU_ITEMS = [
   { label: "Route Optimization", to: "/manager/route", icon: Compass, isRealRoute: true },
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel, isRealRoute: true },
   { label: "Maintenance", to: "/manager/maintenance", icon: Wrench, isRealRoute: true },
-  { label: "E-Way Bills", to: "/manager/eway", icon: FileText, isRealRoute: false },
-  { label: "FASTag & Toll", to: "/manager/fastag", icon: CreditCard, isRealRoute: false },
-  { label: "Documents", to: "/manager/documents", icon: FolderOpen, isRealRoute: false },
-  { label: "Analytics", to: "/manager/analytics", icon: BarChart3, isRealRoute: false },
-  { label: "Reports", to: "/manager/reports", icon: ClipboardList, isRealRoute: false },
-  { label: "Notifications", to: "/manager/notifications", icon: Bell, isRealRoute: false },
-  { label: "Settings", to: "/manager/settings", icon: Settings, isRealRoute: false },
+  { label: "E-Way Bills", to: "/manager/eway", icon: FileText, isRealRoute: true },
+  { label: "FASTag & Toll", to: "/manager/fastag", icon: CreditCard, isRealRoute: true },
+  { label: "Documents", to: "/manager/documents", icon: FolderOpen, isRealRoute: true },
+  { label: "Analytics", to: "/manager/analytics", icon: BarChart3, isRealRoute: true },
+  { label: "Reports", to: "/manager/reports", icon: ClipboardList, isRealRoute: true },
+  { label: "Notifications", to: "/manager/notifications", icon: Bell, isRealRoute: true },
+  { label: "Settings", to: "/manager/settings", icon: Settings, isRealRoute: true },
 ];
 
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
