@@ -55,12 +55,11 @@ export default function OrganizationList() {
         <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
           
           {/* Tabs */}
-          <div className="flex items-center gap-6 mb-8 border-b border-slate-200 pb-4">
-            <button className="px-5 py-2 bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm">Organization List</button>
-            <Link to="/admin/organizations/edit" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Edit Organization</Link>
-            <Link to="/admin/organizations/add" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2">Add Organization</Link>
-            <Link to="/admin/organizations/details/1" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2">Organization Details</Link>
-            <button className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Edit Organization</button>
+          <div className="inline-flex items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
+            <button className="px-6 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-full shadow-sm">Organization List</button>
+            <Link to="/admin/organizations/add" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Add Organization</Link>
+            <Link to="/admin/organizations/details" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Organization Details</Link>
+            <Link to="/admin/organizations/edit" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Edit Organization</Link>
           </div>
 
           {/* KPI Grid */}
