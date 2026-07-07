@@ -58,7 +58,7 @@ export default function AppLayout() {
   const links = role === "admin" ? ADMIN_ITEMS : MENU_ITEMS;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Sidebar */}
       <aside className="w-64 flex flex-col bg-[#0F0F10] text-gray-400 border-r border-[#1B1B1D]/50 shrink-0">
         {/* Brand Header */}
@@ -81,7 +81,7 @@ export default function AppLayout() {
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex-1 overflow-y-auto py-4">
+        <nav className="flex-1 overflow-y-auto py-4 scrollbar-hide">
           {links.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.to;
@@ -104,9 +104,9 @@ export default function AppLayout() {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
+        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm shrink-0">
           <div className="flex items-center gap-4">
             <h2 className="text-lg font-semibold text-gray-800">
               {role === "admin" ? "Admin Workspace" : "Manager Workspace"}
@@ -175,7 +175,7 @@ export default function AppLayout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
           <Outlet />
         </main>
       </div>

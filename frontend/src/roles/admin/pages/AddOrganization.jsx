@@ -30,13 +30,11 @@ export default function AddOrganization() {
         <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
           
           {/* Tabs */}
-          <div className="flex items-center gap-6 mb-8 border-b border-slate-200 pb-4">
-            <Link to="/admin/organizations" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Organization List</Link>
-            <button className="px-5 py-2 bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm">Add Organization</button>
-            <Link to="/admin/organizations/details" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Organization Details</Link>
-            <Link to="/admin/organizations/edit" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Edit Organization</Link>
-            <Link to="/admin/organizations/details/1" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Organization Details</Link>
-            <button className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Edit Organization</button>
+          <div className="inline-flex items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
+            <Link to="/admin/organizations" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Organization List</Link>
+            <button className="px-6 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-full shadow-sm">Add Organization</button>
+            <Link to="/admin/organizations/details" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Organization Details</Link>
+            <Link to="/admin/organizations/edit" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Edit Organization</Link>
           </div>
 
           <form onSubmit={handleSubmit}>

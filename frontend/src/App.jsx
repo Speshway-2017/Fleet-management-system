@@ -17,11 +17,18 @@ import OrganizationList from "@/roles/admin/pages/OrganizationList";
 import AddOrganization from "@/roles/admin/pages/AddOrganization";
 import OrganizationDetails from "@/roles/admin/pages/OrganizationDetails";
 import EditOrganization from "@/roles/admin/pages/EditOrganization";
+import FleetManagerList from "@/roles/admin/pages/FleetManagerList";
+import AddFleetManager from "@/roles/admin/pages/AddFleetManager";
+import ManagerDetails from "@/roles/admin/pages/ManagerDetails";
+import EditFleetManager from "@/roles/admin/pages/EditFleetManager";
+import Analytics from "@/roles/admin/pages/Analytics";
 import UserManagement from "@/roles/admin/pages/UserManagement";
 import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
 import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
 import FastagDashboard from "@/roles/manager/pages/FastagDashboard";
 import TollHistoryPage from "@/roles/manager/pages/TollHistoryPage";
+import FastagReceiptPage from "@/roles/manager/pages/FastagReceiptPage";
+import FastagRechargePage from "@/roles/manager/pages/FastagRechargePage";
 import VehicleManagement from "@/roles/manager/pages/VehicleManagement";
 import AddVehiclePage from "@/roles/manager/pages/AddVehiclePage";
 import VehiclesListPage from "@/roles/manager/pages/VehiclesListPage";
@@ -46,6 +53,12 @@ import ProfilePage from "@/roles/manager/pages/ProfilePage";
 import EditProfilePage from "@/roles/manager/pages/EditProfilePage";
 import ManagerResetPasswordPage from "@/roles/manager/pages/ManagerResetPasswordPage";
 import TwoFactorPage from "@/roles/manager/pages/TwoFactorPage";
+import DocumentManagement from "@/roles/manager/pages/DocumentManagement";
+import ViewDocument from "@/roles/manager/pages/ViewDocument";
+import EditDocument from "@/roles/manager/pages/EditDocument";
+import UploadDocument from "@/roles/manager/pages/UploadDocument";
+import DocumentsListPage from "@/roles/manager/pages/DocumentsListPage";
+import ComplianceAuditPage from "@/roles/manager/pages/ComplianceAuditPage";
 // import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
 // import TripsListPage from "@/roles/manager/pages/TripsListPage";
 
@@ -80,6 +93,11 @@ export default function App() {
             <Route path="/admin/organizations/details" element={<OrganizationDetails />} />
             <Route path="/admin/organizations/edit" element={<EditOrganization />} />
             <Route path="/admin/organizations/details/:id" element={<OrganizationDetails />} />
+            <Route path="/admin/fleet-managers" element={<FleetManagerList />} />
+            <Route path="/admin/fleet-managers/add" element={<AddFleetManager />} />
+            <Route path="/admin/fleet-managers/details" element={<ManagerDetails />} />
+            <Route path="/admin/fleet-managers/edit" element={<EditFleetManager />} />
+            <Route path="/admin/analytics" element={<Analytics />} />
             <Route element={<AppLayout />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UserManagement />} />
@@ -97,6 +115,8 @@ export default function App() {
               <Route path="/manager/map" element={<FleetMapPage />} />
               <Route path="/manager/fastag" element={<FastagDashboard />} />
               <Route path="/manager/fastag/history" element={<TollHistoryPage />} />
+              <Route path="/manager/fastag/receipt/:id" element={<FastagReceiptPage />} />
+              <Route path="/manager/fastag/recharge" element={<FastagRechargePage />} />
               {/* Placeholder routes for other sidebar items */}
               <Route path="/manager/vehicles" element={<div className="p-8"><h1 className="text-2xl font-bold">Vehicles Page</h1></div>} />
 
@@ -106,7 +126,12 @@ export default function App() {
 
               <Route path="/manager/maintenance" element={<div className="p-8"><h1 className="text-2xl font-bold">Maintenance Page</h1></div>} />
               <Route path="/manager/ewaybills" element={<div className="p-8"><h1 className="text-2xl font-bold">E-Way Bills Page</h1></div>} />
-              <Route path="/manager/documents" element={<div className="p-8"><h1 className="text-2xl font-bold">Documents Page</h1></div>} />
+              <Route path="/manager/documents" element={<DocumentManagement />} />
+              <Route path="/manager/documents/list" element={<DocumentsListPage />} />
+              <Route path="/manager/documents/compliance-audit" element={<ComplianceAuditPage />} />
+              <Route path="/manager/documents/upload" element={<UploadDocument />} />
+              <Route path="/manager/documents/view/:id" element={<ViewDocument />} />
+              <Route path="/manager/documents/edit/:id" element={<EditDocument />} />
               <Route path="/manager/analytics" element={<div className="p-8"><h1 className="text-2xl font-bold">Analytics Page</h1></div>} />
               <Route path="/manager/reports" element={<div className="p-8"><h1 className="text-2xl font-bold">Reports Page</h1></div>} />
               <Route path="/manager/notifications" element={<div className="p-8"><h1 className="text-2xl font-bold">Notifications Page</h1></div>} />
