@@ -362,6 +362,7 @@ Status:          PAID & VERIFIED
           </div>
 
       </div>
+      </div>
 
       {/* Resolution Modal */}
       {resolutionModalOpen && selectedLog && (

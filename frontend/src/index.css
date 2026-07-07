@@ -27,7 +27,6 @@ body {
   font-family: var(--font-sans);
   background-color: var(--color-bg-page);
   color: var(--color-body);
-  overflow: hidden;
 }
 
 /* Hide scrollbars for certain elements, but keep functionality */
