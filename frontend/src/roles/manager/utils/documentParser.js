@@ -106,20 +106,58 @@ export function parseVehicleDetails(text) {
     data.engineCC = engineMatch[1];
   }
 
-  // Extract Insurance Expiry Date
-  const insuranceMatch = text.match(/(?:insurance\s*(?:expiry|validity|exp|till|upto|valid\s*upto)|valid\s*(?:till|upto)|expires?)\s*[:=]?\s*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i);
-  if (insuranceMatch) {
-    const dateStr = insuranceMatch[1];
-    const insuranceDate = parseDate(dateStr);
-    if (insuranceDate) data.insuranceExpiry = insuranceDate;
+  // Extract Insurance Expiry Date - More robust pattern
+  const insurancePatterns = [
+    /(?:insurance\s*(?:expiry|validity|exp|till|upto|valid\s*upto|expires|valid|expire)|valid\s*(?:till|upto|until)|policy\s*(?:expiry|till|expires|ends|end\s*date))\s*[:=]?\s*(\d{1,2}[-\/\.]\d{1,2}[-\/\.]\d{2,4})/i,
+    /(\d{1,2}[-\/\.]\d{1,2}[-\/\.]\d{2,4})\s*(?:to|till|upto|-|–)?(?:\s*\d{1,2}[-\/\.]\d{1,2}[-\/\.]\d{2,4})?(?=\s*(?:insurance|policy|expiry|valid|expires|coverage))/i
+  ];
+  
+  for (let pattern of insurancePatterns) {
+    const insuranceMatch = text.match(pattern);
+    if (insuranceMatch) {
+      const dateStr = insuranceMatch[1];
+      const insuranceDate = parseDate(dateStr);
+      if (insuranceDate) {
+        data.insuranceExpiry = insuranceDate;
+        break;
+      }
+    }
   }
 
-  // Extract Last Service Date
-  const serviceMatch = text.match(/(?:last\s*(?:service|servicing|served)|service(?:d)?)\s*(?:date|on)?\s*[:=]?\s*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i);
-  if (serviceMatch) {
-    const dateStr = serviceMatch[1];
-    const serviceDate = parseDate(dateStr);
-    if (serviceDate) data.lastService = serviceDate;
+  // Extract Last Service Date - More robust pattern
+  const servicePatterns = [
+    /(?:last\s*(?:service|servicing|served|checked|inspection)|service(?:d)?|next\s*service\s*due|last\s*checked)\s*(?:date|on|at)?\s*[:=]?\s*(\d{1,2}[-\/\.]\d{1,2}[-\/\.]\d{2,4})/i,
+    /(?:service\s*(?:history|record|date|on)|serviced?(?:\s*on)?)\s*[:=]?\s*(\d{1,2}[-\/\.]\d{1,2}[-\/\.]\d{2,4})/i
+  ];
+  
+  for (let pattern of servicePatterns) {
+    const serviceMatch = text.match(pattern);
+    if (serviceMatch) {
+      const dateStr = serviceMatch[1];
+      const serviceDate = parseDate(dateStr);
+      if (serviceDate) {
+        data.lastService = serviceDate;
+        break;
+      }
+    }
+  }
+
+  // Extract Next Service Due
+  const nextServicePatterns = [
+    /(?:next\s*(?:service|servicing|maintenance|check|inspection)\s*(?:due|date|at|on)?)\s*[:=]?\s*(\d{1,2}[-\/\.]\d{1,2}[-\/\.]\d{2,4})/i,
+    /(?:service\s*due|due\s*for\s*service)\s*[:=]?\s*(\d{1,2}[-\/\.]\d{1,2}[-\/\.]\d{2,4})/i
+  ];
+  
+  for (let pattern of nextServicePatterns) {
+    const nextMatch = text.match(pattern);
+    if (nextMatch) {
+      const dateStr = nextMatch[1];
+      const nextDate = parseDate(dateStr);
+      if (nextDate) {
+        data.nextService = nextDate;
+        break;
+      }
+    }
   }
 
   // Extract Transmission Type
@@ -136,10 +174,23 @@ export function parseVehicleDetails(text) {
   }
 
   // Extract Ownership Type
-  const ownershipMatch = text.match(/(?:ownership|owned|ownership\s*type)\s*[:=]?\s*(owned|financed|lease|leased)/i);
+  const ownershipMatch = text.match(/(?:ownership|owned|ownership\s*type)\s*[:=]?\s*(owned|financed|finance|lease|leased)/i);
   if (ownershipMatch) {
     const ownership = ownershipMatch[1].toLowerCase();
-    data.ownership = ownership.charAt(0).toUpperCase() + ownership.slice(1);
+    if (ownership.includes('finance')) {
+      data.ownership = 'Financed';
+    } else if (ownership.includes('lease')) {
+      data.ownership = 'Leased';
+    } else {
+      data.ownership = 'Owned';
+    }
+  }
+
+  // Extract Availability
+  const availabilityMatch = text.match(/(?:availability|available|availability\s*status)\s*[:=]?\s*(immediate|scheduled|ready|available)/i);
+  if (availabilityMatch) {
+    const avail = availabilityMatch[1].toLowerCase();
+    data.availability = avail.includes('schedule') ? 'Scheduled' : 'Immediate';
   }
 
   // Extract Registration State

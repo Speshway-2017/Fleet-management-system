@@ -9,8 +9,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import toast from "react-hot-toast";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import "../dashboard/manager.css";
 
 const INITIAL_WORK_ORDERS = [
@@ -51,7 +50,6 @@ const INITIAL_WORK_ORDERS = [
 
 export default function MaintenanceManagementPage() {
   const navigate = useNavigate();
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [workOrders, setWorkOrders] = useState([]);
   const [search, setSearch] = useState("");
 
@@ -99,24 +97,19 @@ export default function MaintenanceManagementPage() {
   const overdueCount = workOrders.filter(w => new Date(w.scheduledDate) < new Date() && w.status !== "Completed").length;
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
-
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-4 animate-fade-in">
-          
-          {/* Header row */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4">
-            <div>
-              <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
-                Maintenance Management
-              </h1>
-              <p className="text-sm text-[#64748B] mt-1 font-medium font-nunito">
-                Manage vehicle servicing, schedule garage work orders, and track mechanics logs.
-              </p>
-            </div>
+    <div className="w-full px-6 md:px-8 py-8">
+      <Breadcrumb />
+      
+      {/* Header row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4 mb-6">
+        <div>
+          <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
+            Maintenance Management
+          </h1>
+          <p className="text-sm text-[#64748B] mt-1 font-medium font-nunito">
+            Manage vehicle servicing, schedule garage work orders, and track mechanics logs.
+          </p>
+        </div>
             
             <div className="flex items-center gap-3 shrink-0 select-none">
               <button
@@ -326,9 +319,6 @@ export default function MaintenanceManagementPage() {
               </div>
             </div>
           </div>
-
-        </main>
-      </div>
-    </div>
-  );
+        </div>
+    );
 }

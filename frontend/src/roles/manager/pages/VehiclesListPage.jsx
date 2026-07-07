@@ -388,8 +388,8 @@ export default function VehiclesListPage() {
           </div>
 
           {/* Vehicles Table */}
-          <div className="bg-white rounded-xl border border-[#E7EAF0] overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="bg-white rounded-xl border border-[#E7EAF0] overflow-hidden w-full min-w-0">
+            <div className="w-full overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0]">

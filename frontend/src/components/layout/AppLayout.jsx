@@ -60,7 +60,7 @@ export default function AppLayout() {
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 flex flex-col bg-[#0F0F10] text-gray-400 border-r border-[#1B1B1D]/50 shrink-0">
+      <aside className="w-64 flex flex-col bg-[#0F0F10] text-gray-400 border-r border-[#1B1B1D]/50 shrink-0 sticky top-0 h-fit max-h-screen">
         {/* Brand Header */}
         <div className="flex items-center px-4 py-6 border-b border-[#1B1B1D]/50 shrink-0">
           <div className="flex items-center gap-2">
@@ -81,7 +81,15 @@ export default function AppLayout() {
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex-1 overflow-y-auto py-4 scrollbar-hide">
+        <nav className="flex-1 overflow-y-auto py-4 max-h-[calc(100vh-90px)]" style={{
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}>
+          <style>{`
+            nav::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
           {links.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.to;

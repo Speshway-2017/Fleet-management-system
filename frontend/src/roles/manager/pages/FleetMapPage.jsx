@@ -390,7 +390,7 @@ export default function FleetMapPage() {
                   </div>
                   <div>
                     <h5 className="font-poppins font-bold text-[#1E293B] text-xs">{selectedVehicle.driver}</h5>
-                    <span className="text-[10px] text-[#64748B] block mt-0.5">Rating: {selectedVehicle.rating} ★ | Exp: 8 Years</span>
+                    <span className="text-[10px] text-[#64748B] block mt-0.5">Exp: 8 Years</span>
                   </div>
                 </div>
                 <a

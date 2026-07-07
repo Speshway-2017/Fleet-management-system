@@ -389,7 +389,6 @@ export default function TripDetailsPage() {
               <div>
                 <h5 className="font-poppins font-bold text-[#1E293B] text-sm">{trip.driverName}</h5>
                 <div className="flex items-center gap-1 text-[11px] text-[#64748B] font-semibold mt-0.5">
-                  <span>Rating: 4.8 ★</span>
                 </div>
               </div>
             </div>
