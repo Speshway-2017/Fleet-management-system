@@ -42,6 +42,10 @@ import UpcomingServicesPage from "@/roles/manager/pages/UpcomingServicesPage";
 import ScheduleServicePage from "@/roles/manager/pages/ScheduleServicePage";
 import ServiceDetailsPage from "@/roles/manager/pages/ServiceDetailsPage";
 import TripDetailsPage from "@/roles/manager/pages/TripDetailsPage";
+import ProfilePage from "@/roles/manager/pages/ProfilePage";
+import EditProfilePage from "@/roles/manager/pages/EditProfilePage";
+import ManagerResetPasswordPage from "@/roles/manager/pages/ManagerResetPasswordPage";
+import TwoFactorPage from "@/roles/manager/pages/TwoFactorPage";
 // import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
 // import TripsListPage from "@/roles/manager/pages/TripsListPage";
 
@@ -124,6 +128,10 @@ export default function App() {
               <Route path="/manager/maintenance/upcoming" element={<UpcomingServicesPage />} />
               <Route path="/manager/maintenance/schedule" element={<ScheduleServicePage />} />
               <Route path="/manager/maintenance/details/:id" element={<ServiceDetailsPage />} />
+              <Route path="/manager/profile" element={<ProfilePage />} />
+              <Route path="/manager/profile/edit" element={<EditProfilePage />} />
+              <Route path="/manager/profile/reset-password" element={<ManagerResetPasswordPage />} />
+              <Route path="/manager/profile/2fa" element={<TwoFactorPage />} />
             </Route>
           </Route>
 
