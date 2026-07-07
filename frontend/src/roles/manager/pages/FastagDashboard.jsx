@@ -18,7 +18,10 @@ export default function FastagDashboard() {
             Real-time monitoring of toll expenditure and wallet liquidity across 142 vehicles.
           </p>
         </div>
-        <button className="bg-gradient-to-r from-amber-700 to-amber-800 text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-amber-500/30 hover:from-amber-800 hover:to-amber-900 transition-all">
+        <button 
+          onClick={() => navigate('/manager/fastag/recharge')}
+          className="bg-gradient-to-r from-amber-700 to-amber-800 text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-amber-500/30 hover:from-amber-800 hover:to-amber-900 transition-all"
+        >
           <CreditCard width="24" height="24" />
           Quick Recharge
         </button>
@@ -164,7 +167,10 @@ export default function FastagDashboard() {
                     </span>
                   </td>
                   <td className="px-8 py-6">
-                    <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600">
+                    <button 
+                      onClick={() => navigate(`/manager/fastag/receipt/${txn.id}`)}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
+                    >
                       <Icon icon="mdi:receipt-text-outline" width="24" height="24" />
                     </button>
                   </td>

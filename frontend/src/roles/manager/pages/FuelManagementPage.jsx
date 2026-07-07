@@ -104,12 +104,12 @@ export default function FuelManagementPage() {
       prev.map(l =>
         l.id === selectedLog.id
           ? {
-            ...l,
-            status: "resolved",
-            fuelStation: `Resolved: ${selectedLog.fuelStation}`,
-            total: "Resolved",
-            qty: "0.0 L"
-          }
+              ...l,
+              status: "resolved",
+              fuelStation: `Resolved: ${selectedLog.fuelStation}`,
+              total: "Resolved",
+              qty: "0.0 L"
+            }
           : l
       )
     );
@@ -161,232 +161,212 @@ Status:          PAID & VERIFIED
   };
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
+    <div className="p-6 space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
+          Fuel Management
+        </h1>
+        <p className="text-sm text-[#64748B] mt-1 font-medium font-nunito">
+          Monitor diesel logs, average fleet efficiency, and resolve fuel siphoning alerts.
+        </p>
+      </div>
 
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-5 animate-fade-in">
-
-          {/* Page Header */}
-          <div>
-            <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
-              Fuel Management
-            </h1>
-            <p className="text-sm text-[#64748B] mt-1 font-medium font-nunito">
-              Monitor diesel logs, average fleet efficiency, and resolve fuel siphoning alerts.
-            </p>
+      {/* --- KPI SECTION --- */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* KPI 1: Fuel Spend */}
+        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Total Fuel Spend</span>
+              <h3 className="text-2xl font-extrabold text-[#1E293B] mt-2 font-poppins">
+                ₹{totalSpend.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              </h3>
+            </div>
+            <div className="bg-[#FDF3EC] text-[#B45A0A] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
+              <CreditCard className="w-6 h-6" />
+            </div>
           </div>
-
-          {/* --- KPI SECTION --- */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-
-            {/* KPI 1: Fuel Spend */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Total Fuel Spend</span>
-                  <h3 className="text-2xl font-extrabold text-[#1E293B] mt-2 font-poppins">
-                    ₹{totalSpend.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </h3>
-                </div>
-                <div className="bg-[#FDF3EC] text-[#B45A0A] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
-                  <CreditCard className="w-6 h-6" />
-                </div>
-              </div>
-              <div className="mt-4 flex items-center text-xs text-[#22C55E] gap-1 font-semibold">
-                <TrendingUp className="w-3.5 h-3.5" />
-                <span>+22.4% vs last month</span>
-              </div>
-            </div>
-
-            {/* KPI 2: Mileage */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Avg Fleet Mileage</span>
-                  <h3 className="text-2xl font-extrabold text-[#1E293B] mt-2 font-poppins">4.2 km/l</h3>
-                </div>
-                <div className="bg-emerald-50 text-[#22C55E] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
-                  <Gauge className="w-6 h-6" />
-                </div>
-              </div>
-              <div className="mt-4 text-xs text-[#22C55E] font-medium">
-                Optimized consumption: <span className="font-bold">-0.8% drop</span>
-              </div>
-            </div>
-
-            {/* KPI 3: Anomalies */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Theft & Anomalies</span>
-                  <h3 className="text-2xl font-extrabold text-red-600 mt-2 font-poppins">
-                    {anomaliesCount < 10 ? `0${anomaliesCount}` : anomaliesCount}
-                  </h3>
-                </div>
-                <div className="bg-red-50 text-red-600 p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
-                  <AlertTriangle className="w-6 h-6 animate-pulse" />
-                </div>
-              </div>
-              <div className="mt-4 text-xs text-red-500 font-semibold flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                <span>{anomaliesCount} High Priority Alerts</span>
-              </div>
-            </div>
-
+          <div className="mt-4 flex items-center text-xs text-[#22C55E] gap-1 font-semibold">
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span>+22.4% vs last month</span>
           </div>
+        </div>
 
-          {/* Table Container */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm overflow-hidden flex flex-col">
+        {/* KPI 2: Mileage */}
+        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Avg Fleet Mileage</span>
+              <h3 className="text-2xl font-extrabold text-[#1E293B] mt-2 font-poppins">4.2 km/l</h3>
+            </div>
+            <div className="bg-emerald-50 text-[#22C55E] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
+              <Gauge className="w-6 h-6" />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-[#22C55E] font-medium">
+            Optimized consumption: <span className="font-bold">-0.8% drop</span>
+          </div>
+        </div>
 
-            {/* Table Header Filter controls */}
-            <div className="px-6 py-5 border-b border-[#E7EAF0] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 bg-white">
-              <h3 className="font-poppins font-black text-lg text-[#1E293B]">Recent Fuel Entries</h3>
+        {/* KPI 3: Anomalies */}
+        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Theft & Anomalies</span>
+              <h3 className="text-2xl font-extrabold text-red-600 mt-2 font-poppins">
+                {anomaliesCount < 10 ? `0${anomaliesCount}` : anomaliesCount}
+              </h3>
+            </div>
+            <div className="bg-red-50 text-red-600 p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
+              <AlertTriangle className="w-6 h-6 animate-pulse" />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-red-500 font-semibold flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span>{anomaliesCount} High Priority Alerts</span>
+          </div>
+        </div>
+      </div>
 
-              <div className="flex items-center gap-3">
-                {/* Search field */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
-                  <input
-                    type="text"
-                    placeholder="Search vehicle or driver..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 pr-4 py-2 border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-medium w-[220px]"
-                  />
-                </div>
+      {/* Table Container */}
+      <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm overflow-hidden flex flex-col">
+        {/* Table Header Filter controls */}
+        <div className="px-6 py-5 border-b border-[#E7EAF0] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 bg-white">
+          <h3 className="font-poppins font-black text-lg text-[#1E293B]">Recent Fuel Entries</h3>
 
-                {/* Filter option */}
-                <button className="px-4 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all flex items-center gap-2 cursor-pointer">
-                  <Filter className="w-3.5 h-3.5" />
-                  <span>Filters</span>
-                </button>
-              </div>
+          <div className="flex items-center gap-3">
+            {/* Search field */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+              <input
+                type="text"
+                placeholder="Search vehicle or driver..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 pr-4 py-2 border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-medium w-[220px]"
+              />
             </div>
 
-            {/* Responsive Table */}
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left border-collapse text-sm font-nunito">
-                <thead>
-                  <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
-                    <th className="py-4 px-6">Vehicle ID</th>
-                    <th className="py-4 px-6">Driver</th>
-                    <th className="py-4 px-6">Timestamp</th>
-                    <th className="py-4 px-6">Fuel Station</th>
-                    <th className="py-4 px-6">Qty (Liters)</th>
-                    <th className="py-4 px-6">Total Amount</th>
-                    <th className="py-4 px-6 text-right">Receipt / Action</th>
+            {/* Filter option */}
+            <button className="px-4 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all flex items-center gap-2 cursor-pointer">
+              <Filter className="w-3.5 h-3.5" />
+              <span>Filters</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Responsive Table */}
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left border-collapse text-sm font-nunito">
+            <thead>
+              <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
+                <th className="py-4 px-6">Vehicle ID</th>
+                <th className="py-4 px-6">Driver</th>
+                <th className="py-4 px-6">Timestamp</th>
+                <th className="py-4 px-6">Fuel Station</th>
+                <th className="py-4 px-6">Qty (Liters)</th>
+                <th className="py-4 px-6">Total Amount</th>
+                <th className="py-4 px-6 text-right">Receipt / Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E7EAF0]/60">
+              {filteredLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-gray-400 font-medium font-nunito">
+                    No fuel logs found matching filters.
+                  </td>
+                </tr>
+              ) : (
+                filteredLogs.map(l => (
+                  <tr
+                    key={l.id}
+                    className={`hover:bg-[#F5F7FB]/50 transition-colors ${l.status === "anomaly" ? "bg-red-50/30" : ""}`}
+                  >
+                    {/* Vehicle ID cell */}
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      <div className="flex items-center gap-2.5">
+                        {/* Accent indicator line */}
+                        <div className={`w-1 h-8 rounded-full ${l.status === "anomaly" ? "bg-red-500" : l.status === "resolved" ? "bg-emerald-500" : "bg-[#B45A0A]"}`} />
+                        <div>
+                          <p className="font-bold text-[#1E293B] font-poppins text-xs">{l.vehicleId}</p>
+                          <span className="text-[10px] text-[#64748B] block mt-0.5">{l.vehicleName}</span>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Driver */}
+                    <td className="py-4 px-6 font-semibold text-xs text-[#1E293B] whitespace-nowrap">
+                      {l.driver}
+                    </td>
+
+                    {/* Timestamp */}
+                    <td className={`py-4 px-6 text-xs whitespace-nowrap ${l.status === "anomaly" ? "text-red-500 font-bold" : "text-gray-500"}`}>
+                      {l.timestamp}
+                    </td>
+
+                    {/* Station */}
+                    <td className={`py-4 px-6 text-xs whitespace-nowrap ${l.status === "anomaly" ? "text-red-600 font-bold" : "text-gray-700"}`}>
+                      {l.fuelStation}
+                    </td>
+
+                    {/* Quantity */}
+                    <td className={`py-4 px-6 text-xs font-black whitespace-nowrap ${l.status === "anomaly" ? "text-red-600" : "text-gray-900"}`}>
+                      {l.qty}
+                    </td>
+
+                    {/* Total Spend */}
+                    <td className="py-4 px-6 text-xs font-black text-gray-900 whitespace-nowrap">
+                      {l.total}
+                    </td>
+
+                    {/* Receipt/Action */}
+                    <td className="py-4 px-6 text-right whitespace-nowrap">
+                      {l.status === "anomaly" ? (
+                        <button
+                          onClick={() => handleResolveAnomaly(l)}
+                          className="px-3.5 py-1.5 bg-[#EF4444] hover:bg-red-700 text-white rounded-lg text-[10px] font-black shadow-sm transition-colors cursor-pointer"
+                        >
+                          Resolve
+                        </button>
+                      ) : l.status === "resolved" ? (
+                        <span className="text-emerald-600 text-xs font-bold flex items-center justify-end gap-1 select-none">
+                          <CheckCircle className="w-4 h-4" />
+                          Resolved
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleDownloadReceipt(l)}
+                          title="Download slip receipt"
+                          className="p-2 text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer inline-flex"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
+                      )}
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E7EAF0]/60">
-                  {filteredLogs.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-gray-400 font-medium font-nunito">
-                        No fuel logs found matching filters.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredLogs.map(l => (
-                      <tr
-                        key={l.id}
-                        className={`hover:bg-[#F5F7FB]/50 transition-colors ${l.status === "anomaly" ? "bg-red-50/30" : ""
-                          }`}
-                      >
-                        {/* Vehicle ID cell */}
-                        <td className="py-4 px-6 whitespace-nowrap">
-                          <div className="flex items-center gap-2.5">
-                            {/* Accent indicator line */}
-                            <div className={`w-1 h-8 rounded-full ${l.status === "anomaly"
-                                ? "bg-red-500"
-                                : l.status === "resolved"
-                                  ? "bg-emerald-500"
-                                  : "bg-[#B45A0A]"
-                              }`} />
-                            <div>
-                              <p className="font-bold text-[#1E293B] font-poppins text-xs">{l.vehicleId}</p>
-                              <span className="text-[10px] text-[#64748B] block mt-0.5">{l.vehicleName}</span>
-                            </div>
-                          </div>
-                        </td>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-                        {/* Driver */}
-                        <td className="py-4 px-6 font-semibold text-xs text-[#1E293B] whitespace-nowrap">
-                          {l.driver}
-                        </td>
-
-                        {/* Timestamp */}
-                        <td className={`py-4 px-6 text-xs whitespace-nowrap ${l.status === "anomaly" ? "text-red-500 font-bold" : "text-gray-500"}`}>
-                          {l.timestamp}
-                        </td>
-
-                        {/* Station */}
-                        <td className={`py-4 px-6 text-xs whitespace-nowrap ${l.status === "anomaly" ? "text-red-600 font-bold" : "text-gray-700"}`}>
-                          {l.fuelStation}
-                        </td>
-
-                        {/* Quantity */}
-                        <td className={`py-4 px-6 text-xs font-black whitespace-nowrap ${l.status === "anomaly" ? "text-red-600" : "text-gray-900"}`}>
-                          {l.qty}
-                        </td>
-
-                        {/* Total Spend */}
-                        <td className="py-4 px-6 text-xs font-black text-gray-900 whitespace-nowrap">
-                          {l.total}
-                        </td>
-
-                        {/* Receipt/Action */}
-                        <td className="py-4 px-6 text-right whitespace-nowrap">
-                          {l.status === "anomaly" ? (
-                            <button
-                              onClick={() => handleResolveAnomaly(l)}
-                              className="px-3.5 py-1.5 bg-[#EF4444] hover:bg-red-700 text-white rounded-lg text-[10px] font-black shadow-sm transition-colors cursor-pointer"
-                            >
-                              Resolve
-                            </button>
-                          ) : l.status === "resolved" ? (
-                            <span className="text-emerald-600 text-xs font-bold flex items-center justify-end gap-1 select-none">
-                              <CheckCircle className="w-4 h-4" />
-                              Resolved
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => handleDownloadReceipt(l)}
-                              title="Download slip receipt"
-                              className="p-2 text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer inline-flex"
-                            >
-                              <FileText className="w-4 h-4" />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Table Footer info */}
-            <div className="px-6 py-4 border-t border-[#E7EAF0]/60 flex items-center justify-between shrink-0 bg-white select-none">
-              <span className="text-xs text-[#64748B] font-medium font-poppins">
-                Showing <span className="font-bold text-[#1E293B]">{filteredLogs.length}</span> of {logs.length} entries
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button disabled className="px-2.5 py-1 bg-gray-50 border border-gray-200 rounded text-xs text-gray-400 font-bold opacity-60">Prev</button>
-                <button disabled className="px-2.5 py-1 bg-gray-50 border border-gray-200 rounded text-xs text-gray-400 font-bold opacity-60">Next</button>
-              </div>
-            </div>
-
+        {/* Table Footer info */}
+        <div className="px-6 py-4 border-t border-[#E7EAF0]/60 flex items-center justify-between shrink-0 bg-white select-none">
+          <span className="text-xs text-[#64748B] font-medium font-poppins">
+            Showing <span className="font-bold text-[#1E293B]">{filteredLogs.length}</span> of {logs.length} entries
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button disabled className="px-2.5 py-1 bg-gray-50 border border-gray-200 rounded text-xs text-gray-400 font-bold opacity-60">Prev</button>
+            <button disabled className="px-2.5 py-1 bg-gray-50 border border-gray-200 rounded text-xs text-gray-400 font-bold opacity-60">Next</button>
           </div>
-        </main>
+
       </div>
 
       {/* Resolution Modal */}
       {resolutionModalOpen && selectedLog && (
         <div className="fixed inset-0 bg-[#0F0F10]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] select-none animate-fade-in">
           <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-2xl p-6 w-full max-w-md flex flex-col space-y-4">
-
             <div className="flex items-center justify-between border-b border-[#E7EAF0] pb-3">
               <h4 className="font-poppins font-black text-sm text-[#1E293B] flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-red-500" />
@@ -434,11 +414,9 @@ Status:          PAID & VERIFIED
                 </button>
               </div>
             </form>
-
           </div>
         </div>
       )}
-
     </div>
   );
 }

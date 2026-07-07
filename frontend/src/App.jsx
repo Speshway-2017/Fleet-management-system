@@ -26,6 +26,8 @@ import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
 import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
 import FastagDashboard from "@/roles/manager/pages/FastagDashboard";
 import TollHistoryPage from "@/roles/manager/pages/TollHistoryPage";
+import FastagReceiptPage from "@/roles/manager/pages/FastagReceiptPage";
+import FastagRechargePage from "@/roles/manager/pages/FastagRechargePage";
 import VehicleManagement from "@/roles/manager/pages/VehicleManagement";
 import AddVehiclePage from "@/roles/manager/pages/AddVehiclePage";
 import VehiclesListPage from "@/roles/manager/pages/VehiclesListPage";
@@ -46,6 +48,12 @@ import UpcomingServicesPage from "@/roles/manager/pages/UpcomingServicesPage";
 import ScheduleServicePage from "@/roles/manager/pages/ScheduleServicePage";
 import ServiceDetailsPage from "@/roles/manager/pages/ServiceDetailsPage";
 import TripDetailsPage from "@/roles/manager/pages/TripDetailsPage";
+import DocumentManagement from "@/roles/manager/pages/DocumentManagement";
+import ViewDocument from "@/roles/manager/pages/ViewDocument";
+import EditDocument from "@/roles/manager/pages/EditDocument";
+import UploadDocument from "@/roles/manager/pages/UploadDocument";
+import DocumentsListPage from "@/roles/manager/pages/DocumentsListPage";
+import ComplianceAuditPage from "@/roles/manager/pages/ComplianceAuditPage";
 // import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
 // import TripsListPage from "@/roles/manager/pages/TripsListPage";
 
@@ -101,6 +109,8 @@ export default function App() {
               <Route path="/manager/map" element={<FleetMapPage />} />
               <Route path="/manager/fastag" element={<FastagDashboard />} />
               <Route path="/manager/fastag/history" element={<TollHistoryPage />} />
+              <Route path="/manager/fastag/receipt/:id" element={<FastagReceiptPage />} />
+              <Route path="/manager/fastag/recharge" element={<FastagRechargePage />} />
               {/* Placeholder routes for other sidebar items */}
               <Route path="/manager/vehicles" element={<div className="p-8"><h1 className="text-2xl font-bold">Vehicles Page</h1></div>} />
 
@@ -110,7 +120,12 @@ export default function App() {
 
               <Route path="/manager/maintenance" element={<div className="p-8"><h1 className="text-2xl font-bold">Maintenance Page</h1></div>} />
               <Route path="/manager/ewaybills" element={<div className="p-8"><h1 className="text-2xl font-bold">E-Way Bills Page</h1></div>} />
-              <Route path="/manager/documents" element={<div className="p-8"><h1 className="text-2xl font-bold">Documents Page</h1></div>} />
+              <Route path="/manager/documents" element={<DocumentManagement />} />
+              <Route path="/manager/documents/list" element={<DocumentsListPage />} />
+              <Route path="/manager/documents/compliance-audit" element={<ComplianceAuditPage />} />
+              <Route path="/manager/documents/upload" element={<UploadDocument />} />
+              <Route path="/manager/documents/view/:id" element={<ViewDocument />} />
+              <Route path="/manager/documents/edit/:id" element={<EditDocument />} />
               <Route path="/manager/analytics" element={<div className="p-8"><h1 className="text-2xl font-bold">Analytics Page</h1></div>} />
               <Route path="/manager/reports" element={<div className="p-8"><h1 className="text-2xl font-bold">Reports Page</h1></div>} />
               <Route path="/manager/notifications" element={<div className="p-8"><h1 className="text-2xl font-bold">Notifications Page</h1></div>} />
