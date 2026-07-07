@@ -27,4 +27,34 @@ body {
   font-family: var(--font-sans);
   background-color: var(--color-bg-page);
   color: var(--color-body);
+  overflow: hidden;
+}
+
+/* Hide scrollbars for certain elements, but keep functionality */
+.scrollbar-hide::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-hide::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-hide::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.scrollbar-hide:hover::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+/* For Firefox */
+.scrollbar-hide {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.scrollbar-hide:hover {
+  scrollbar-color: #475569 transparent;
 }
