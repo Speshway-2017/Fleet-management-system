@@ -113,16 +113,16 @@ export default function OrganizationList() {
 
             {/* Table */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[800px]">
+              <table className="w-full text-center border-collapse min-w-[800px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Organization</th>
-                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Industry</th>
-                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Fleet Managers</th>
-                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Plan</th>
-                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status</th>
-                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Created Date</th>
-                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-left">Organization</th>
+                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Industry</th>
+                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Fleet Managers</th>
+                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Plan</th>
+                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Status</th>
+                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Created Date</th>
+                    <th className="py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -133,23 +133,23 @@ export default function OrganizationList() {
                     )
                     .map((org) => (
                     <tr key={org.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
+                      <td className="py-4 px-6 whitespace-nowrap text-left">
+                        <div className="flex items-center justify-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">
                             {org.name.substring(0, 2).toUpperCase()}
                           </div>
                           <span className="text-sm font-semibold text-slate-800">{org.name}</span>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-sm text-slate-500 font-medium">{org.industry}</td>
-                      <td className="py-4 px-6 text-sm text-slate-500 font-medium">{org.managers}</td>
-                      <td className="py-4 px-6 text-sm text-slate-500 font-medium">{org.plan}</td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.industry}</td>
+                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.managers}</td>
+                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.plan}</td>
+                      <td className="py-4 px-6 whitespace-nowrap text-center">
                         <StatusBadge status={org.status} />
                       </td>
-                      <td className="py-4 px-6 text-sm text-slate-500 font-medium">{org.date}</td>
-                      <td className="py-4 px-6 text-right">
-                        <div className="flex items-center justify-end gap-3">
+                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.date}</td>
+                      <td className="py-4 px-6 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-3 flex-nowrap w-max mx-auto">
                           <Link to="/admin/organizations/details" className="text-slate-400 hover:text-slate-600 transition-colors" title="View Details">
                             <Eye className="w-4 h-4" />
                           </Link>

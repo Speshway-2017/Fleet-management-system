@@ -17,6 +17,7 @@ import OrganizationList from "@/roles/admin/pages/OrganizationList";
 import AddOrganization from "@/roles/admin/pages/AddOrganization";
 import OrganizationDetails from "@/roles/admin/pages/OrganizationDetails";
 import EditOrganization from "@/roles/admin/pages/EditOrganization";
+import FleetManagerList from "@/roles/admin/pages/FleetManagerList";
 import UserManagement from "@/roles/admin/pages/UserManagement";
 import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
 import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
@@ -76,6 +77,7 @@ export default function App() {
             <Route path="/admin/organizations/details" element={<OrganizationDetails />} />
             <Route path="/admin/organizations/edit" element={<EditOrganization />} />
             <Route path="/admin/organizations/details/:id" element={<OrganizationDetails />} />
+            <Route path="/admin/fleet-managers" element={<FleetManagerList />} />
             <Route element={<AppLayout />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UserManagement />} />
