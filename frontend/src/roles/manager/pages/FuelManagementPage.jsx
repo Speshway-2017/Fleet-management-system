@@ -360,7 +360,7 @@ Status:          PAID & VERIFIED
             <button disabled className="px-2.5 py-1 bg-gray-50 border border-gray-200 rounded text-xs text-gray-400 font-bold opacity-60">Prev</button>
             <button disabled className="px-2.5 py-1 bg-gray-50 border border-gray-200 rounded text-xs text-gray-400 font-bold opacity-60">Next</button>
           </div>
-        </div>
+
       </div>
 
       {/* Resolution Modal */}
