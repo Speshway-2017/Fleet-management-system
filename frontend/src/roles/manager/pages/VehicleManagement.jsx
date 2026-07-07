@@ -521,7 +521,7 @@ export default function VehicleManagement() {
   };
 
   return (
-    <div className="p-6 lg:p-8 space-y-4 animate-fade-in">
+    <div className="p-6 lg:p-8 space-y-4 animate-fade-in max-w-full overflow-x-hidden">
 
           {/* --- KPI SECTION --- */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -811,7 +811,7 @@ export default function VehicleManagement() {
           </div>
 
           {/* --- FLEET INVENTORY TABLE --- */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm overflow-hidden flex flex-col">
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm overflow-hidden flex flex-col w-full min-w-0">
             <div className="px-6 py-5 border-b border-[#E7EAF0] flex items-center justify-between shrink-0">
               <h3 className="font-poppins font-black text-lg text-[#1E293B]">Fleet Inventory</h3>
               <button
@@ -823,7 +823,7 @@ export default function VehicleManagement() {
               </button>
             </div>
 
-            <div className="overflow-x-auto custom-scrollbar">
+            <div className="w-full overflow-x-auto custom-scrollbar">
               <table className="w-full text-left border-collapse text-sm font-nunito">
                 <thead>
                   <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">

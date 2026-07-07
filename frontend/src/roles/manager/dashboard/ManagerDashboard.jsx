@@ -177,16 +177,16 @@ export default function ManagerDashboard() {
                     <th className="py-2.5 px-3 text-right rounded-r-lg">STATUS</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody>
                   {compliance.map((row) => (
                     <tr key={row.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="py-3.5 px-3 font-poppins font-semibold text-[#1B2430]">{row.vehicle.replace(/-/g, " ")}</td>
                       <td className="py-3.5 px-3 text-gray-500 font-medium">{row.document}</td>
                       <td className="py-3.5 px-3 text-right">
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold tracking-wide ${
-                          row.statusType === "danger" ? "bg-red-50 text-[#DC2626]" :
-                          row.statusType === "warning" ? "bg-amber-50 text-[#F59E0B]" :
-                          "bg-emerald-50 text-[#16A34A]"
+                        <span className={`inline-block px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider font-poppins transition-colors ${
+                          row.statusType === "danger" ? "bg-red-100 text-white bg-gradient-to-r from-red-600 to-red-700 shadow-md shadow-red-200" :
+                          row.statusType === "warning" ? "bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-amber-200" :
+                          "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md shadow-green-200"
                         }`}>
                           {row.status}
                         </span>

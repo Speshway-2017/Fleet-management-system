@@ -25,6 +25,13 @@ export default function AddVehiclePage() {
     seatingCapacity: "2",
     engineCC: "",
     
+    // Insurance & Compliance (extracted from documents)
+    insuranceExpiry: "",
+    lastService: "",
+    nextService: "",
+    ownership: "Owned",
+    availability: "Immediate",
+    
     // Document Upload
     uploadedDocuments: []
   });
@@ -173,12 +180,12 @@ export default function AddVehiclePage() {
         driver: "Unassigned",
         status: "Available",
         fastagBalance: 5000,
-        insuranceExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        lastService: new Date().toISOString().split('T')[0],
-        nextService: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        insuranceExpiry: formData.insuranceExpiry || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        lastService: formData.lastService || new Date().toISOString().split('T')[0],
+        nextService: formData.nextService || new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         branch: "Pune",
-        ownership: "Owned",
-        availability: "Immediate",
+        ownership: formData.ownership,
+        availability: formData.availability,
         dateAdded: new Date().toISOString().split('T')[0],
         documents: uploadedFiles.map(f => ({
           id: f.id,
@@ -397,6 +404,76 @@ export default function AddVehiclePage() {
                       onChange={handleInputChange}
                       className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3B: Insurance & Compliance */}
+              <div className="border-t border-[#E7EAF0] pt-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-6 h-6 bg-[#FDF3EC] border border-[#B45A0A] rounded flex items-center justify-center text-xs font-bold text-[#B45A0A]">3B</div>
+                  <h2 className="text-lg font-bold text-[#1E293B]">Insurance & Compliance</h2>
+                </div>
+                <p className="text-xs text-[#64748B] mb-4">Document-related information auto-filled from uploaded files</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Insurance Expiry Date</label>
+                    <input
+                      type="date"
+                      name="insuranceExpiry"
+                      value={formData.insuranceExpiry || ""}
+                      onChange={handleInputChange}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Last Service Date</label>
+                    <input
+                      type="date"
+                      name="lastService"
+                      value={formData.lastService || ""}
+                      onChange={handleInputChange}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Next Service Due</label>
+                    <input
+                      type="date"
+                      name="nextService"
+                      value={formData.nextService || ""}
+                      onChange={handleInputChange}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Ownership</label>
+                    <select
+                      name="ownership"
+                      value={formData.ownership || "Owned"}
+                      onChange={handleInputChange}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                    >
+                      <option value="Owned">Owned</option>
+                      <option value="Financed">Financed</option>
+                      <option value="Leased">Leased</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Availability</label>
+                    <select
+                      name="availability"
+                      value={formData.availability || "Immediate"}
+                      onChange={handleInputChange}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                    >
+                      <option value="Immediate">Immediate</option>
+                      <option value="Scheduled">Scheduled</option>
+                    </select>
                   </div>
                 </div>
               </div>
