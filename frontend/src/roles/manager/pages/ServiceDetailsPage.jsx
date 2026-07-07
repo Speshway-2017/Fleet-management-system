@@ -106,7 +106,7 @@ export default function ServiceDetailsPage() {
 
   if (!order) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">
+      <div className="flex items-center justify-center bg-gray-50 text-gray-500 min-h-full p-8">
         <div className="flex flex-col items-center gap-2">
           <div className="w-8 h-8 border-4 border-t-[#B45A0A] border-r-transparent rounded-full animate-spin" />
           <p className="text-xs font-bold font-poppins">Loading Service details...</p>

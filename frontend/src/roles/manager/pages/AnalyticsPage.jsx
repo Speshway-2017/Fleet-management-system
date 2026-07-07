@@ -158,7 +158,7 @@ export default function AnalyticsPage() {
                 <span className="text-gray-700 font-medium">Fuel Expenditures</span>
                 <span className="text-gray-600 text-sm">₹1,42,000 (57%)</span>
               </div>
-              <div className="h-3 bg-blue-100 rounded-full overflow-hidden">
+              <div className="h-3 bg-amber-100 rounded-full overflow-hidden">
                 <div className="h-full bg-black rounded-full" style={{width: '57%'}} />
               </div>
             </div>
@@ -167,7 +167,7 @@ export default function AnalyticsPage() {
                 <span className="text-gray-700 font-medium">Maintenance & Repairs</span>
                 <span className="text-gray-600 text-sm">₹64,500 (26%)</span>
               </div>
-              <div className="h-3 bg-blue-100 rounded-full overflow-hidden">
+              <div className="h-3 bg-amber-100 rounded-full overflow-hidden">
                 <div className="h-full bg-amber-700 rounded-full" style={{width: '26%'}} />
               </div>
             </div>
@@ -176,21 +176,21 @@ export default function AnalyticsPage() {
                 <span className="text-gray-700 font-medium">Tolls & FASTag</span>
                 <span className="text-gray-600 text-sm">₹41,890 (17%)</span>
               </div>
-              <div className="h-3 bg-blue-100 rounded-full overflow-hidden">
+              <div className="h-3 bg-amber-100 rounded-full overflow-hidden">
                 <div className="h-full bg-gray-600 rounded-full" style={{width: '17%'}} />
               </div>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-4 mt-8">
-            <div className="p-3 bg-blue-50 rounded-lg">
+            <div className="p-3 bg-amber-50 rounded-lg">
               <p className="text-xs text-gray-600 uppercase">Avg / Mile</p>
               <p className="text-lg font-bold text-gray-800">₹ 18.4</p>
             </div>
-            <div className="p-3 bg-blue-50 rounded-lg">
+            <div className="p-3 bg-amber-50 rounded-lg">
               <p className="text-xs text-gray-600 uppercase">Top Spender</p>
               <p className="text-lg font-bold text-gray-800">Fleet-A</p>
             </div>
-            <div className="p-3 bg-blue-50 rounded-lg">
+            <div className="p-3 bg-amber-50 rounded-lg">
               <p className="text-xs text-gray-600 uppercase">Anomalies</p>
               <p className="text-lg font-bold text-gray-800">04</p>
             </div>
