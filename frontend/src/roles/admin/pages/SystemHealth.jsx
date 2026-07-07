@@ -39,7 +39,7 @@ export default function SystemHealth() {
           <div className="inline-flex items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
             <Link to="/admin/analytics" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Platform Analytics</Link>
             <button className="px-6 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-full shadow-sm">System Health</button>
-            <button className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors cursor-not-allowed">Audit Logs</button>
+            <Link to="/admin/audit-logs" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Audit Logs</Link>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-10">

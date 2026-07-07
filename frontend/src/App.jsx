@@ -23,6 +23,7 @@ import ManagerDetails from "@/roles/admin/pages/ManagerDetails";
 import EditFleetManager from "@/roles/admin/pages/EditFleetManager";
 import Analytics from "@/roles/admin/pages/Analytics";
 import SystemHealth from "@/roles/admin/pages/SystemHealth";
+import AuditLogs from "@/roles/admin/pages/AuditLogs";
 import UserManagement from "@/roles/admin/pages/UserManagement";
 import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
 import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
@@ -100,6 +101,7 @@ export default function App() {
             <Route path="/admin/fleet-managers/edit" element={<EditFleetManager />} />
             <Route path="/admin/analytics" element={<Analytics />} />
             <Route path="/admin/system-health" element={<SystemHealth />} />
+            <Route path="/admin/audit-logs" element={<AuditLogs />} />
             <Route element={<AppLayout />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UserManagement />} />
