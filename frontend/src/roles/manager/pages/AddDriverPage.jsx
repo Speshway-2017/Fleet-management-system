@@ -11,14 +11,9 @@ import {
   FileUp
 } from "lucide-react";
 import toast from "react-hot-toast";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
-import "../dashboard/manager.css";
-
 export default function AddDriverPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const isEditMode = Boolean(id);
 
   const [formData, setFormData] = useState({
@@ -103,13 +98,7 @@ export default function AddDriverPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
-
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-8 animate-fade-in">
+    <div className="p-6 lg:p-8 space-y-8 animate-fade-in">
           
           {/* --- HEADER --- */}
           <div className="flex items-center gap-4 border-b border-[#E7EAF0] pb-6">
@@ -323,8 +312,6 @@ export default function AddDriverPage() {
 
           </form>
 
-        </main>
-      </div>
     </div>
   );
 }

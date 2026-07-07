@@ -19,6 +19,7 @@ export default function OrganizationDetails() {
             <Link to="/admin/organizations/add" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Add Organization</Link>
             <button className="px-5 py-2 bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm">Organization Details</button>
             <Link to="/admin/organizations/edit" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Edit Organization</Link>
+            <button className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Edit Organization</button>
           </div>
 
           {/* Breadcrumb & Actions */}
@@ -36,9 +37,9 @@ export default function OrganizationDetails() {
               <Link to="/admin/organizations" className="px-5 py-2.5 text-sm font-bold text-slate-500 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 hover:text-slate-700 transition-colors">
                 Back to List
               </Link>
-              <Link to="/admin/organizations/edit" className="px-5 py-2.5 text-sm font-bold text-white bg-[#A14000] border border-[#A14000] rounded-lg shadow-sm hover:bg-[#8a3700] transition-colors">
+              <button className="px-5 py-2.5 text-sm font-bold text-white bg-[#A14000] border border-[#A14000] rounded-lg shadow-sm hover:bg-[#8a3700] transition-colors">
                 Edit Organization
-              </Link>
+              </button>
             </div>
           </div>
 

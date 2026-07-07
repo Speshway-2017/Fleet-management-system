@@ -3,9 +3,7 @@ import { ArrowLeft, Plus, Search, ChevronDown, Eye, Edit2, Trash2, FileText, Map
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import L from "leaflet";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
-import "../dashboard/manager.css";
+
 
 // Fix Leaflet marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -20,7 +18,7 @@ export default function VehiclesListPage() {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [vehicles, setVehicles] = useState([]);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -180,13 +178,7 @@ export default function VehiclesListPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
-
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
           {/* Page Header */}
           <div className="flex items-center justify-between gap-4 border-b border-[#E7EAF0] pb-6">
             <div className="flex items-center gap-3">
@@ -542,8 +534,7 @@ export default function VehiclesListPage() {
               </div>
             </div>
           </div>
-        </main>
-      </div>
+
 
       {/* Delete Confirmation Modal */}
       {deleteModalOpen && selectedVehicle && (

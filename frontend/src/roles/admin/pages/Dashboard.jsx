@@ -236,7 +236,7 @@ function Dashboard() {
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {recentActivities.map((act, i) => (
-                      <tr key={i} onClick={() => navigate('/admin/organizations/details')} className="hover:bg-slate-50/50 transition-colors cursor-pointer">
+                      <tr key={i} onClick={() => navigate('/admin/organizations/details/1')} className="hover:bg-slate-50/50 transition-colors cursor-pointer">
                         <td className="py-3.5 px-5 text-slate-400 font-mono text-[11px] whitespace-nowrap">{act.time}</td>
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-2.5">

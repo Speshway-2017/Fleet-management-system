@@ -13,6 +13,7 @@ import {
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import KPICard from "@/components/common/KPICard";
+import OrganizationTabs from "@/components/admin/OrganizationTabs";
 
 // --- Mock Data ---
 
@@ -56,9 +57,10 @@ export default function OrganizationList() {
           {/* Tabs */}
           <div className="flex items-center gap-6 mb-8 border-b border-slate-200 pb-4">
             <button className="px-5 py-2 bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm">Organization List</button>
-            <Link to="/admin/organizations/add" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Add Organization</Link>
-            <Link to="/admin/organizations/details" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Organization Details</Link>
             <Link to="/admin/organizations/edit" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Edit Organization</Link>
+            <Link to="/admin/organizations/add" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2">Add Organization</Link>
+            <Link to="/admin/organizations/details/1" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2">Organization Details</Link>
+            <button className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">Edit Organization</button>
           </div>
 
           {/* KPI Grid */}
@@ -125,7 +127,10 @@ export default function OrganizationList() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {organizations
-                    .filter(org => org.name.toLowerCase().includes(searchTerm.toLowerCase()) || org.industry.toLowerCase().includes(searchTerm.toLowerCase()))
+                    .filter(org => 
+                      org.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                      org.industry.toLowerCase().includes(searchTerm.toLowerCase())
+                    )
                     .map((org) => (
                     <tr key={org.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="py-4 px-6">

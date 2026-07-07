@@ -19,9 +19,6 @@ import {
   X
 } from "lucide-react";
 import toast from "react-hot-toast";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
-import "../dashboard/manager.css";
 
 const INITIAL_DRIVERS = [
   {
@@ -164,7 +161,6 @@ const INITIAL_DRIVERS = [
 
 export default function DriversManagementPage() {
   const navigate = useNavigate();
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [drivers, setDrivers] = useState(() => {
     const saved = localStorage.getItem("fleet_drivers");
     return saved ? JSON.parse(saved) : INITIAL_DRIVERS;
@@ -261,13 +257,7 @@ export default function DriversManagementPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
-
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-4 animate-fade-in">
+    <div className="p-6 lg:p-8 space-y-4 animate-fade-in">
           
           {/* --- KPI CARDS --- */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -559,9 +549,6 @@ export default function DriversManagementPage() {
               </table>
             </div>
           </div>
-
-        </main>
-      </div>
 
       {/* Floating Add Driver Button */}
       <button

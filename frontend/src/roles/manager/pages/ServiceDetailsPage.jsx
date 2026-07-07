@@ -1,0 +1,346 @@
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  Wrench,
+  CheckCircle,
+  X,
+  FileText,
+  User,
+  ArrowLeft,
+  Truck,
+  Battery,
+  AlertTriangle
+} from "lucide-react";
+import toast from "react-hot-toast";
+import Sidebar from "../dashboard/Sidebar";
+import Header from "../dashboard/Header";
+import "../dashboard/manager.css";
+
+const INITIAL_WORK_ORDERS = [
+  {
+    id: "wo1",
+    vehicleId: "MH-12-AB-5678",
+    vehicleName: "Ashok Leyland 3118",
+    serviceType: "Tire Rotation",
+    scheduledDate: "2026-07-10",
+    status: "Scheduled",
+    cost: "₹4,500.00",
+    specialist: "Dayanand M",
+    garage: "G-Tech Car Care, Pune Bypass"
+  },
+  {
+    id: "wo2",
+    vehicleId: "KA-02-AB-1456",
+    vehicleName: "Tata Ace Gold",
+    serviceType: "Engine Oil Change",
+    scheduledDate: "2026-07-12",
+    status: "In Progress",
+    cost: "₹3,200.00",
+    specialist: "Karan Singh",
+    garage: "HP garage hub, Mumbai Corridor"
+  },
+  {
+    id: "wo3",
+    vehicleId: "AP-39-EP-9465",
+    vehicleName: "Bharat Benz 211",
+    serviceType: "Brake Inspection",
+    scheduledDate: "2026-07-15",
+    status: "Scheduled",
+    cost: "₹2,800.00",
+    specialist: "Ramesh P",
+    garage: "Speedway Center, Bangalore road"
+  }
+];
+
+export default function ServiceDetailsPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [workOrders, setWorkOrders] = useState([]);
+  const [order, setOrder] = useState(null);
+
+  // Load from local storage
+  useEffect(() => {
+    const saved = localStorage.getItem("fleet_work_orders");
+    let currentOrders = [];
+    if (saved) {
+      currentOrders = JSON.parse(saved);
+      setWorkOrders(currentOrders);
+    } else {
+      localStorage.setItem("fleet_work_orders", JSON.stringify(INITIAL_WORK_ORDERS));
+      currentOrders = INITIAL_WORK_ORDERS;
+      setWorkOrders(INITIAL_WORK_ORDERS);
+    }
+
+    const matched = currentOrders.find(w => String(w.id) === String(id));
+    if (matched) {
+      setOrder(matched);
+    } else if (currentOrders.length > 0) {
+      setOrder(currentOrders[0]);
+    }
+  }, [id]);
+
+  const [vehicleDetails, setVehicleDetails] = useState(null);
+
+  useEffect(() => {
+    if (!order) return;
+    const savedVehicles = localStorage.getItem("fleet_vehicles");
+    if (savedVehicles) {
+      const list = JSON.parse(savedVehicles);
+      const match = list.find(v => v.plateNumber.replace(/\s+/g, "").toLowerCase() === order.vehicleId.replace(/\s+/g, "").toLowerCase());
+      if (match) {
+        setVehicleDetails(match);
+      }
+    }
+  }, [order]);
+
+  const handleCompleteOrder = () => {
+    if (!order) return;
+
+    const updated = workOrders.map(w =>
+      w.id === order.id ? { ...w, status: "Completed" } : w
+    );
+    setWorkOrders(updated);
+    localStorage.setItem("fleet_work_orders", JSON.stringify(updated));
+    setOrder({ ...order, status: "Completed" });
+    toast.success("Maintenance work order completed successfully!");
+  };
+
+  if (!order) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-8 h-8 border-4 border-t-[#B45A0A] border-r-transparent rounded-full animate-spin" />
+          <p className="text-xs font-bold font-poppins">Loading Service details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
+      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
+
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
+
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-4 animate-fade-in">
+          
+          {/* Header block */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
+                  Vehicle {order.vehicleId}
+                </h1>
+                <span className={`inline-block px-2.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider font-poppins mt-1 ${
+                  order.status === "Completed"
+                    ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                    : "bg-amber-50 text-[#B45A0A] border border-amber-100"
+                }`}>
+                  {order.status === "Completed" ? "AVAILABLE" : "IN GARAGE"}
+                </span>
+              </div>
+              <p className="text-sm text-[#64748B] mt-1 font-medium font-nunito">
+                Comprehensive parts checklists and mechanic specialists diagnostics for {order.vehicleName}.
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-3 shrink-0 select-none">
+              <button
+                onClick={() => navigate("/manager/maintenance")}
+                className="px-4 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] hover:text-[#1E293B] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to Overview</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Metadata Cards row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 select-none">
+            
+            {/* Meta 1: Progress */}
+            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-4 shadow-sm">
+              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Service Progress</span>
+              <p className="text-sm font-black text-slate-800 mt-1 flex items-center gap-1">
+                <CheckCircle className={`w-4 h-4 ${order.status === "Completed" ? "text-emerald-500" : "text-amber-500"}`} />
+                {order.status}
+              </p>
+            </div>
+
+            {/* Meta 2: Garage */}
+            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-4 shadow-sm">
+              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Garage Name</span>
+              <p className="text-sm font-black text-slate-800 mt-1 truncate">{order.garage.split(",")[0]}</p>
+            </div>
+
+            {/* Meta 3: Specialist */}
+            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-4 shadow-sm">
+              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Specialist Mechanic</span>
+              <p className="text-sm font-black text-slate-800 mt-1 flex items-center gap-1">
+                <User className="w-4 h-4 text-[#B45A0A]" />
+                {order.specialist}
+              </p>
+            </div>
+
+            {/* Meta 4: Cost */}
+            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-4 shadow-sm">
+              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Total Bill Amount</span>
+              <p className="text-sm font-black text-[#B45A0A] mt-1 font-poppins">{order.cost}</p>
+            </div>
+
+          </div>
+
+          {/* Content Split columns */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+             {/* Detailed task log table left */}
+            <div className="lg:col-span-2 space-y-6">
+              
+              <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm overflow-hidden flex flex-col p-6 space-y-4">
+                <h3 className="font-poppins font-black text-lg text-[#1E293B]">Detailed Service Log</h3>
+                
+                <div className="overflow-x-auto custom-scrollbar">
+                  <table className="w-full text-left border-collapse text-xs font-nunito">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-100 text-[#64748B] font-poppins font-bold uppercase tracking-wider">
+                        <th className="py-2.5 px-4">Task Description</th>
+                        <th className="py-2.5 px-4 text-center">Qty</th>
+                        <th className="py-2.5 px-4 text-right">Unit Price</th>
+                        <th className="py-2.5 px-4 text-right">Total Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50 text-gray-700">
+                      <tr>
+                        <td className="py-3 px-4 font-semibold text-[#1E293B]">10K Service Checkup</td>
+                        <td className="py-3 px-4 text-center">1</td>
+                        <td className="py-3 px-4 text-right">₹2,500.00</td>
+                        <td className="py-3 px-4 text-right">₹2,500.00</td>
+                      </tr>
+                      <tr>
+                        <td className="py-3 px-4 font-semibold text-[#1E293B]">Engine Oil & Oil Filter Replacement</td>
+                        <td className="py-3 px-4 text-center">1</td>
+                        <td className="py-3 px-4 text-right">₹4,200.00</td>
+                        <td className="py-3 px-4 text-right">₹4,200.00</td>
+                      </tr>
+                      <tr>
+                        <td className="py-3 px-4 font-semibold text-[#1E293B]">Brake Pad Overhaul & Clean</td>
+                        <td className="py-3 px-4 text-center">1</td>
+                        <td className="py-3 px-4 text-right">₹1,800.00</td>
+                        <td className="py-3 px-4 text-right">₹1,800.00</td>
+                      </tr>
+                      <tr>
+                        <td className="py-3 px-4 font-semibold text-[#1E293B]">Air filter swap</td>
+                        <td className="py-3 px-4 text-center">1</td>
+                        <td className="py-3 px-4 text-right">₹800.00</td>
+                        <td className="py-3 px-4 text-right">₹800.00</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="border-t border-[#E7EAF0]/60 pt-4 flex items-center justify-between select-none">
+                  <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">Total Estimated Service Cost:</span>
+                  <span className="text-base font-black text-[#B45A0A] font-poppins">₹9,300.00</span>
+                </div>
+              </div>
+
+              {/* Vehicle Specifications details list block */}
+              <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4">
+                <h3 className="font-poppins font-black text-lg text-[#1E293B]">Vehicle Profile Details</h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-nunito">
+                  <div className="p-3.5 bg-gray-50/50 rounded-xl border border-gray-100 flex items-center justify-between">
+                    <span className="text-[#64748B] font-semibold">Model Name:</span>
+                    <span className="font-bold text-[#1E293B]">{order.vehicleName}</span>
+                  </div>
+                  <div className="p-3.5 bg-gray-50/50 rounded-xl border border-gray-100 flex items-center justify-between">
+                    <span className="text-[#64748B] font-semibold">Plate Number:</span>
+                    <span className="font-bold text-[#1E293B] font-poppins">{order.vehicleId}</span>
+                  </div>
+                  <div className="p-3.5 bg-gray-50/50 rounded-xl border border-gray-100 flex items-center justify-between">
+                    <span className="text-[#64748B] font-semibold">Assigned Driver:</span>
+                    <span className="font-bold text-[#1E293B]">{vehicleDetails ? vehicleDetails.driver : "Rajesh Kumar"}</span>
+                  </div>
+                  <div className="p-3.5 bg-gray-50/50 rounded-xl border border-gray-100 flex items-center justify-between">
+                    <span className="text-[#64748B] font-semibold">Odometer Mileage:</span>
+                    <span className="font-bold text-[#1E293B]">{vehicleDetails ? `${parseInt(vehicleDetails.odometer).toLocaleString("en-IN")} km` : "42,500 km"}</span>
+                  </div>
+                  <div className="p-3.5 bg-gray-50/50 rounded-xl border border-gray-100 flex items-center justify-between">
+                    <span className="text-[#64748B] font-semibold">Fuel Status:</span>
+                    <span className="font-bold text-[#1E293B]">{vehicleDetails ? `${vehicleDetails.fuelLevel}%` : "78%"}</span>
+                  </div>
+                  <div className="p-3.5 bg-gray-50/50 rounded-xl border border-gray-100 flex items-center justify-between">
+                    <span className="text-[#64748B] font-semibold">Registration Authority:</span>
+                    <span className="font-bold text-[#1E293B]">MH RTO Office, Pune</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Checklist & telematics gauge right */}
+            <div className="space-y-6">
+              
+              {/* Instructions checklist */}
+              <div className="bg-slate-900 border border-slate-950 rounded-2xl p-5 text-white flex flex-col space-y-4 shadow-xl">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-poppins">Special Instructions Checklist</span>
+                
+                <div className="space-y-3.5 text-xs text-gray-200">
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input type="checkbox" defaultChecked className="h-4 w-4 accent-[#B45A0A] rounded cursor-pointer" />
+                    <span>Please check oil levels.</span>
+                  </label>
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input type="checkbox" defaultChecked className="h-4 w-4 accent-[#B45A0A] rounded cursor-pointer" />
+                    <span>Brake pedal feels spongy on highways.</span>
+                  </label>
+                </div>
+
+                {order.status !== "Completed" && (
+                  <button
+                    onClick={handleCompleteOrder}
+                    className="w-full py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer"
+                  >
+                    Complete Service
+                  </button>
+                )}
+              </div>
+
+              {/* Gauges */}
+              <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4 select-none">
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Telematics Diagnostics</span>
+                
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-bold text-[#1E293B]">
+                    <span>Engine Temperature</span>
+                    <span className="text-emerald-600">90 °C</span>
+                  </div>
+                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: "65%" }} />
+                  </div>
+                  <span className="text-[9px] text-gray-400 font-medium">Optimal Running Threshold</span>
+                </div>
+
+                <div className="space-y-1.5 pt-2 border-t border-gray-50">
+                  <div className="flex justify-between text-xs font-bold text-[#1E293B]">
+                    <span>Battery voltage</span>
+                    <span className="text-emerald-600">12.6V</span>
+                  </div>
+                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: "90%" }} />
+                  </div>
+                  <span className="text-[9px] text-gray-400 font-medium">Full charge battery integrity</span>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </main>
+      </div>
+    </div>
+  );
+}

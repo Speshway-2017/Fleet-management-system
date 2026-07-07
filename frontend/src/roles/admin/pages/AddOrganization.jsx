@@ -35,6 +35,8 @@ export default function AddOrganization() {
             <button className="px-5 py-2 bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm">Add Organization</button>
             <Link to="/admin/organizations/details" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Organization Details</Link>
             <Link to="/admin/organizations/edit" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Edit Organization</Link>
+            <Link to="/admin/organizations/details/1" className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Organization Details</Link>
+            <button className="text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors px-5 py-2 hover:bg-slate-100/50 rounded-lg">Edit Organization</button>
           </div>
 
           <form onSubmit={handleSubmit}>

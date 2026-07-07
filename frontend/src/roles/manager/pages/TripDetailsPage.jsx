@@ -6,31 +6,24 @@ import {
   ArrowLeft,
   Route,
   ChevronDown,
-  Calendar,
   Clock,
-  Trash2,
-  AlertTriangle,
-  X,
-  MapPin,
-  TrendingUp,
-  Percent,
-  Phone,
-  Mail,
+  Calendar,
   Truck,
-  Shield,
+  User,
+  MapPin,
   Compass,
   AlertCircle,
-  FileText
+  CheckCircle2,
+  Phone,
+  Mail,
+  X,
+  AlertTriangle
 } from "lucide-react";
 import toast from "react-hot-toast";
-import Sidebar from "../dashboard/Sidebar";
-import Header from "../dashboard/Header";
-import "../dashboard/manager.css";
 
 export default function TripDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [trip, setTrip] = useState(null);
   const [tripsList, setTripsList] = useState([]);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -150,10 +143,10 @@ export default function TripDetailsPage() {
 
   if (!trip) {
     return (
-      <div className="min-h-screen bg-[#F5F7FB] flex items-center justify-center font-poppins">
+      <div className="min-h-screen bg-[#F5F7FB] flex items-center justify-center p-6 lg:p-8 font-poppins">
         <div className="flex flex-col items-center gap-3">
           <AlertCircle className="w-9 h-9 text-red-500 animate-bounce" />
-          <p className="text-sm font-semibold text-gray-500">Trip record not found</p>
+          <p className="text-gray-500 font-semibold">Trip record not found</p>
           <button onClick={() => navigate("/manager/trips")} className="text-xs text-[#B45A0A] hover:underline font-bold font-poppins mt-2">
             Back to Trips
           </button>
@@ -231,240 +224,230 @@ export default function TripDetailsPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
-      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
+    <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
+      {/* Back Navigation Bar */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => navigate("/manager/trips")}
+          className="p-2.5 bg-white border border-[#E7EAF0] hover:bg-[#F5F7FB] rounded-xl text-[#64748B] hover:text-[#1E293B] transition-all cursor-pointer shadow-sm"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <span className="text-xs font-bold text-[#64748B] font-poppins">Back to Trips</span>
+      </div>
 
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-6 animate-fade-in">
-          
-          {/* Back Navigation Bar */}
+      {/* Heading summary header card */}
+      <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-6">
+        <div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("/manager/trips")}
-              className="p-2.5 bg-white border border-[#E7EAF0] hover:bg-[#F5F7FB] rounded-xl text-[#64748B] hover:text-[#1E293B] transition-all cursor-pointer shadow-sm"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <span className="text-xs font-bold text-[#64748B] font-poppins">Back to Trips</span>
+            <h1 className="text-3xl font-black font-poppins text-[#1E293B]">
+              {trip.id}
+            </h1>
+            <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(trip.status)}`}>
+              {trip.status}
+            </span>
           </div>
+          <p className="text-sm text-[#64748B] mt-2 font-medium">
+            {trip.vehicleName} dispatch, route from <strong>{trip.startLocation}</strong> to <strong>{trip.endLocation}</strong>.
+          </p>
+        </div>
 
-          {/* Heading summary header card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-black font-poppins text-[#1E293B]">
-                  {trip.id}
-                </h1>
-                <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(trip.status)}`}>
-                  {trip.status}
-                </span>
-              </div>
-              <p className="text-sm text-[#64748B] mt-2 font-medium">
-                {trip.vehicleName} dispatch, route from <strong>{trip.startLocation}</strong> to <strong>{trip.endLocation}</strong>.
-              </p>
+        <div className="flex items-center gap-2.5 w-full md:w-auto">
+          {!isCompleted && (
+            <button
+              onClick={() => handleUpdateStatus("Completed")}
+              className="flex-1 md:flex-none px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer text-center"
+            >
+              Complete Trip
+            </button>
+          )}
+          <button
+            onClick={() => setShowCancelConfirm(true)}
+            className="flex-1 md:flex-none px-5 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-xs font-bold transition-all border border-red-100 cursor-pointer text-center"
+          >
+            Cancel Dispatch
+          </button>
+        </div>
+      </div>
+
+      {/* KPI statistics cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+        
+        {/* Distance Travelled */}
+        <div className="bg-white rounded-xl border border-[#E7EAF0] p-5 shadow-sm space-y-3">
+          <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Distance Travelled</p>
+          <div className="flex items-baseline gap-1.5 mt-2">
+            <span className="text-3xl font-black text-[#1E293B] font-poppins">{isCompleted ? "320" : "180"}</span>
+            <span className="text-xs text-[#64748B] font-bold">/ 320 km</span>
+          </div>
+          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+            <div className="bg-[#B45A0A] h-full rounded-full transition-all" style={{ width: isCompleted ? "100%" : "56%" }}></div>
+          </div>
+        </div>
+
+        {/* Estimated Arrival */}
+        <div className="bg-white rounded-xl border border-[#E7EAF0] p-5 shadow-sm space-y-3">
+          <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Estimated Arrival</p>
+          <p className="text-base font-bold text-[#1E293B] mt-2 font-poppins">
+            {formatDateTime(trip.eta)}
+          </p>
+          <span className={`inline-flex items-center gap-1 text-[10px] font-bold ${isDelayed ? "text-red-500" : "text-emerald-500"}`}>
+            <Clock className="w-3.5 h-3.5" />
+            {isDelayed ? "Delayed" : "On Schedule"}
+          </span>
+        </div>
+
+        {/* Time Taken to Destination */}
+        <div className="bg-white rounded-xl border border-[#E7EAF0] p-5 shadow-sm space-y-3">
+          <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Time Taken to Destination</p>
+          <div className="flex items-baseline gap-1.5 mt-2">
+            <span className="text-2xl font-black text-[#1E293B] font-poppins">
+              {calculateDuration(trip.departureTime, trip.eta)}
+            </span>
+          </div>
+          <span className="text-[10px] text-indigo-500 font-bold block">Total Dispatch Duration</span>
+        </div>
+
+      </div>
+
+      {/* Form details / Map grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+        
+        {/* Left Column: Live Map */}
+        <div className="lg:col-span-8 space-y-6">
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-poppins font-bold text-[#1E293B] text-[14px]">Live Transit Tracking</h3>
+              <span className="px-2.5 py-1 bg-emerald-50 text-[#22C55E] border border-emerald-100 rounded-lg text-[9px] font-bold flex items-center gap-1 select-none">
+                <Compass className="w-3 h-3 animate-spin" />
+                GPS Connection Active
+              </span>
             </div>
 
-            <div className="flex items-center gap-2.5 w-full md:w-auto">
-              {!isCompleted && (
-                <button
-                  onClick={() => handleUpdateStatus("Completed")}
-                  className="flex-1 md:flex-none px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer text-center"
-                >
-                  Complete Trip
-                </button>
-              )}
-              <button
-                onClick={() => setShowCancelConfirm(true)}
-                className="flex-1 md:flex-none px-5 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-xs font-bold transition-all border border-red-100 cursor-pointer text-center"
+            {/* Leaflet map node container */}
+            <div className="relative h-[360px] border border-[#DCE2E6] rounded-xl overflow-hidden shadow-inner">
+              <div ref={mapRef} className="w-full h-full z-0" />
+              
+              {/* Floating Route indicators */}
+              <div className="absolute bottom-3 left-3 z-[1000] flex flex-col gap-2 max-w-[220px] bg-white/95 backdrop-blur-sm border border-[#E7EAF0] p-3.5 rounded-xl shadow-lg font-poppins text-[10px] text-[#1E293B]">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#B45A0A]"></div>
+                  <span><strong>Start:</strong> {trip.startLocation}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-indigo-600"></div>
+                  <span><strong>Target:</strong> {trip.endLocation}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Checkpoints Route Timeline */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
+            <h3 className="font-poppins font-bold text-[#1E293B] text-[14px]">Route Timeline & Checkpoints</h3>
+            
+            <div className="relative pl-6 border-l-2 border-dashed border-gray-200 ml-3 space-y-6 pt-2">
+              <div className="relative">
+                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-[#B45A0A] rounded-full border-4 border-orange-100 z-10"></div>
+                <div>
+                  <p className="text-xs font-bold text-[#1E293B] font-poppins">{trip.startLocation}</p>
+                  <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">Departed: {formatDateTime(trip.departureTime)}</span>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-emerald-500 rounded-full border-4 border-emerald-100 z-10"></div>
+                <div>
+                  <p className="text-xs font-bold text-[#1E293B] font-poppins">Transit Diagnostic Checkpoint</p>
+                  <span className="text-[10px] text-emerald-500 font-bold block mt-0.5">Passed: 2 Hours Ago</span>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-gray-300 rounded-full border-4 border-gray-100 z-10"></div>
+                <div>
+                  <p className="text-xs font-bold text-[#1E293B] font-poppins">{trip.endLocation}</p>
+                  <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">Estimated Arrival: {formatDateTime(trip.eta)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Right Column: Driver and Vehicle Details */}
+        <div className="lg:col-span-4 space-y-6">
+          
+          {/* Assigned Driver Profile Card */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
+            <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Assigned Driver</h4>
+            
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-orange-100 text-[#B45A0A] rounded-xl flex items-center justify-center shrink-0 font-poppins font-black text-base border border-orange-200">
+                {trip.driverName.split(" ").map(n => n[0]).join("").toUpperCase()}
+              </div>
+              <div>
+                <h5 className="font-poppins font-bold text-[#1E293B] text-sm">{trip.driverName}</h5>
+                <div className="flex items-center gap-1 text-[11px] text-[#64748B] font-semibold mt-0.5">
+                  <span>Rating: 4.8 ★</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <a
+                href={`tel:${trip.driverPhone}`}
+                className="px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
-                Cancel Dispatch
+                <Phone className="w-3.5 h-3.5" />
+                Call Driver
+              </a>
+              <button
+                onClick={() => toast.success("Chat service loading...")}
+                className="px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                Message
               </button>
             </div>
           </div>
 
-          {/* KPI statistics cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Vehicle Details Card */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
+            <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Vehicle Details</h4>
             
-            {/* Distance Travelled */}
-            <div className="bg-white rounded-xl border border-[#E7EAF0] p-5 shadow-sm space-y-3">
-              <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Distance Travelled</p>
-              <div className="flex items-baseline gap-1.5 mt-2">
-                <span className="text-3xl font-black text-[#1E293B] font-poppins">{isCompleted ? "320" : "180"}</span>
-                <span className="text-xs text-[#64748B] font-bold">/ 320 km</span>
+            <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[#64748B] font-medium font-poppins">Model</span>
+                <span className="font-bold text-[#1E293B]">{trip.vehicleName}</span>
               </div>
-              <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-[#B45A0A] h-full rounded-full transition-all" style={{ width: isCompleted ? "100%" : "56%" }}></div>
-              </div>
-            </div>
-
-            {/* Estimated Arrival */}
-            <div className="bg-white rounded-xl border border-[#E7EAF0] p-5 shadow-sm space-y-3">
-              <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Estimated Arrival</p>
-              <p className="text-base font-bold text-[#1E293B] mt-2 font-poppins">
-                {formatDateTime(trip.eta)}
-              </p>
-              <span className={`inline-flex items-center gap-1 text-[10px] font-bold ${isDelayed ? "text-red-500" : "text-emerald-500"}`}>
-                <Clock className="w-3.5 h-3.5" />
-                {isDelayed ? "Delayed" : "On Schedule"}
-              </span>
-            </div>
-
-            {/* Time Taken to Destination */}
-            <div className="bg-white rounded-xl border border-[#E7EAF0] p-5 shadow-sm space-y-3">
-              <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Time Taken to Destination</p>
-              <div className="flex items-baseline gap-1.5 mt-2">
-                <span className="text-2xl font-black text-[#1E293B] font-poppins">
-                  {calculateDuration(trip.departureTime, trip.eta)}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[#64748B] font-medium font-poppins">Plate Number</span>
+                <span className="font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded font-poppins uppercase text-[10px] tracking-wide border border-indigo-100">
+                  {trip.vehiclePlate}
                 </span>
               </div>
-              <span className="text-[10px] text-indigo-500 font-bold block">Total Dispatch Duration</span>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[#64748B] font-medium font-poppins">Current Speed</span>
+                <span className="font-bold text-[#1E293B]">{isTransit ? "62 km/h" : "0 km/h"}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[#64748B] font-medium font-poppins">Fuel Level</span>
+                <span className="font-bold text-[#1E293B]">84%</span>
+              </div>
             </div>
 
+            <button
+              onClick={() => navigate("/manager/vehicles-list")}
+              className="w-full py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Truck className="w-3.5 h-3.5" />
+              View Fleet Diagnostics
+            </button>
           </div>
 
-          {/* Form details / Map grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {/* Left Card: Live Map */}
-            <div className="lg:col-span-8 space-y-6">
-              <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-poppins font-bold text-[#1E293B] text-[14px]">Live Transit Tracking</h3>
-                  <span className="px-2.5 py-1 bg-emerald-50 text-[#22C55E] border border-emerald-100 rounded-lg text-[9px] font-bold flex items-center gap-1 select-none">
-                    <Compass className="w-3 h-3 animate-spin" />
-                    GPS Connection Active
-                  </span>
-                </div>
+        </div>
 
-                {/* Leaflet map node container */}
-                <div className="relative h-[360px] border border-[#DCE2E6] rounded-xl overflow-hidden shadow-inner">
-                  <div ref={mapRef} className="w-full h-full z-0" />
-                  
-                  {/* Floating Route indicators */}
-                  <div className="absolute bottom-3 left-3 z-[1000] flex flex-col gap-2 max-w-[220px] bg-white/95 backdrop-blur-sm border border-[#E7EAF0] p-3.5 rounded-xl shadow-lg font-poppins text-[10px] text-[#1E293B]">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#B45A0A]"></div>
-                      <span><strong>Start:</strong> {trip.startLocation}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-indigo-600"></div>
-                      <span><strong>Target:</strong> {trip.endLocation}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Checkpoints Route Timeline */}
-              <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
-                <h3 className="font-poppins font-bold text-[#1E293B] text-[14px]">Route Timeline & Checkpoints</h3>
-                
-                <div className="relative pl-6 border-l-2 border-dashed border-gray-200 ml-3 space-y-6 pt-2">
-                  <div className="relative">
-                    <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-[#B45A0A] rounded-full border-4 border-orange-100 z-10"></div>
-                    <div>
-                      <p className="text-xs font-bold text-[#1E293B] font-poppins">{trip.startLocation}</p>
-                      <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">Departed: {formatDateTime(trip.departureTime)}</span>
-                    </div>
-                  </div>
-
-                  <div className="relative">
-                    <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-emerald-500 rounded-full border-4 border-emerald-100 z-10"></div>
-                    <div>
-                      <p className="text-xs font-bold text-[#1E293B] font-poppins">Transit Diagnostic Checkpoint</p>
-                      <span className="text-[10px] text-emerald-500 font-bold block mt-0.5">Passed: 2 Hours Ago</span>
-                    </div>
-                  </div>
-
-                  <div className="relative">
-                    <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-gray-300 rounded-full border-4 border-gray-100 z-10"></div>
-                    <div>
-                      <p className="text-xs font-bold text-[#1E293B] font-poppins">{trip.endLocation}</p>
-                      <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">Estimated Arrival: {formatDateTime(trip.eta)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Right Card: Driver and Vehicle Details */}
-            <div className="lg:col-span-4 space-y-6">
-              
-              {/* Assigned Driver Profile Card */}
-              <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
-                <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Assigned Driver</h4>
-                
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-orange-100 text-[#B45A0A] rounded-xl flex items-center justify-center shrink-0 font-poppins font-black text-base border border-orange-200">
-                    {trip.driverName.split(" ").map(n => n[0]).join("").toUpperCase()}
-                  </div>
-                  <div>
-                    <h5 className="font-poppins font-bold text-[#1E293B] text-sm">{trip.driverName}</h5>
-                    <div className="flex items-center gap-1 text-[11px] text-[#64748B] font-semibold mt-0.5">
-                      <span>Rating: 4.8 ★</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2">
-                  <a
-                    href={`tel:${trip.driverPhone}`}
-                    className="px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                    Call Driver
-                  </a>
-                  <button
-                    onClick={() => toast.success("Chat service loading...")}
-                    className="px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Mail className="w-3.5 h-3.5" />
-                    Message
-                  </button>
-                </div>
-              </div>
-
-              {/* Vehicle Details Card */}
-              <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
-                <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Vehicle Details</h4>
-                
-                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#64748B] font-medium font-poppins">Model</span>
-                    <span className="font-bold text-[#1E293B]">{trip.vehicleName}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#64748B] font-medium font-poppins">Plate Number</span>
-                    <span className="font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded font-poppins uppercase text-[10px] tracking-wide border border-indigo-100">
-                      {trip.vehiclePlate}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#64748B] font-medium font-poppins">Current Speed</span>
-                    <span className="font-bold text-[#1E293B]">{isTransit ? "62 km/h" : "0 km/h"}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#64748B] font-medium font-poppins">Fuel Level</span>
-                    <span className="font-bold text-[#1E293B]">84%</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => navigate("/manager/vehicles-list")}
-                  className="w-full py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Truck className="w-3.5 h-3.5" />
-                  View Fleet Diagnostics
-                </button>
-              </div>
-
-            </div>
-
-          </div>
-
-        </main>
       </div>
 
       {/* --- CANCEL DISPATCH CONFIRMATION MODAL --- */}
@@ -507,7 +490,6 @@ export default function TripDetailsPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
