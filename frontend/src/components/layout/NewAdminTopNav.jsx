@@ -1,4 +1,5 @@
 import { Bell } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function NewAdminTopNav({ title = "Dashboard" }) {
   return (
@@ -11,7 +12,7 @@ export default function NewAdminTopNav({ title = "Dashboard" }) {
           <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white"></span>
         </button>
         
-        <div className="flex items-center gap-3 pl-6 border-l border-slate-200 cursor-pointer">
+        <Link to="/admin/settings/profile" className="flex items-center gap-3 pl-6 border-l border-slate-200 cursor-pointer hover:opacity-80 transition-opacity">
           <div className="w-9 h-9 rounded-full bg-[#1a2332] text-white flex items-center justify-center font-bold text-xs">
             SA
           </div>
@@ -19,7 +20,7 @@ export default function NewAdminTopNav({ title = "Dashboard" }) {
             <span className="text-xs font-bold text-slate-800">Super Admin</span>
             <span className="text-[9px] font-bold text-green-500 uppercase tracking-widest mt-0.5">Online</span>
           </div>
-        </div>
+        </Link>
       </div>
     </header>
   );
