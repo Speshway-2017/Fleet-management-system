@@ -14,7 +14,7 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
     { id: "organizations", label: "Organizations", to: "/admin/organizations", icon: Building2 },
     { id: "fleet-managers", label: "Fleet Managers", to: "/admin/fleet-managers", icon: Users },
     { id: "analytics", label: "Analytics", to: "/admin/analytics", icon: BarChart3 },
-    { id: "settings", label: "Settings", to: "#", icon: Settings },
+    { id: "settings", label: "Settings", to: "/admin/settings", icon: Settings },
   ];
 
   return (
