@@ -28,6 +28,8 @@ import Settings from "@/roles/admin/pages/Settings";
 import SecuritySettings from "@/roles/admin/pages/SecuritySettings";
 import NotificationSettings from "@/roles/admin/pages/NotificationSettings";
 import ProfileSettings from "@/roles/admin/pages/ProfileSettings";
+import NotificationList from "@/roles/admin/pages/NotificationList";
+import NotificationDetails from "@/roles/admin/pages/NotificationDetails";
 import UserManagement from "@/roles/admin/pages/UserManagement";
 import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
 import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
@@ -117,6 +119,8 @@ export default function App() {
             <Route path="/admin/settings/security" element={<SecuritySettings />} />
             <Route path="/admin/settings/notifications" element={<NotificationSettings />} />
             <Route path="/admin/settings/profile" element={<ProfileSettings />} />
+            <Route path="/admin/notifications" element={<NotificationList />} />
+            <Route path="/admin/notifications/:id" element={<NotificationDetails />} />
             <Route element={<AppLayout />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UserManagement />} />
