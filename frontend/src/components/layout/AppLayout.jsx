@@ -116,9 +116,6 @@ export default function AppLayout() {
         {/* Header */}
         <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm shrink-0">
           <div className="flex items-center gap-4">
-            <h2 className="text-lg font-semibold text-gray-800">
-              {role === "admin" ? "Admin Workspace" : "Manager Workspace"}
-            </h2>
           </div>
           <div className="flex items-center gap-4">
             <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-md">
