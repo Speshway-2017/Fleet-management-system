@@ -67,6 +67,7 @@ const recentActivities = [
 
 function Dashboard() {
   const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
       <NewAdminSidebar activeItem="dashboard" />
@@ -266,7 +267,7 @@ function Dashboard() {
                   </div>
                 </Link>
                 
-                <button className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
+                <Link to="/admin/fleet-managers" className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
                   <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
                     <Users className="w-4 h-4" />
                   </div>
@@ -274,9 +275,9 @@ function Dashboard() {
                     <div className="font-bold text-slate-200 text-[13px]">Invite Fleet Manager</div>
                     <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">Assign a new manager to an org</div>
                   </div>
-                </button>
+                </Link>
                 
-                <button className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
+                <Link to="/admin/analytics" className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
                   <div className="w-10 h-10 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
                     <BarChart3 className="w-4 h-4" />
                   </div>
@@ -284,7 +285,7 @@ function Dashboard() {
                     <div className="font-bold text-slate-200 text-[13px]">View Analytics</div>
                     <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">Global performance overview</div>
                   </div>
-                </button>
+                </Link>
               </div>
             </div>
 
