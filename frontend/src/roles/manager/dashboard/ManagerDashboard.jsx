@@ -74,7 +74,7 @@ export default function ManagerDashboard() {
       <div className="min-h-screen bg-[#F5F7FA] flex items-center justify-center font-poppins">
         <div className="flex flex-col items-center gap-3">
           <RefreshCw className="w-9 h-9 text-[#C65D0E] animate-spin" />
-          <p className="text-sm font-semibold text-gray-500">Loading Manager Workspace...</p>
+          <p className="text-sm font-semibold text-gray-500">Loading...</p>
         </div>
       </div>
     );
