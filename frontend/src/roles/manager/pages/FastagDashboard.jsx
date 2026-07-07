@@ -141,7 +141,7 @@ export default function FastagDashboard() {
                         <Truck width="32" height="32" className="text-blue-600" />
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-800 text-lg">{txn.vehicleId}</p>
+                        <p className="font-semibold text-gray-800 text-lg whitespace-nowrap">{txn.vehicleId}</p>
                         <p className="text-gray-500 text-sm">{txn.vehicleModel}</p>
                       </div>
                     </div>

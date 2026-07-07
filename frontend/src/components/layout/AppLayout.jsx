@@ -35,7 +35,7 @@ const MENU_ITEMS = [
   { label: "Route Optimization", to: "/manager/route", icon: Compass },
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel },
   { label: "Maintenance", to: "/manager/maintenance", icon: Wrench },
-  { label: "E-Way Bills", to: "/manager/ewaybills", icon: FileText },
+  { label: "E-Way Bills", to: "/manager/eway", icon: FileText },
   { label: "FASTag & Toll", to: "/manager/fastag", icon: CreditCard },
   { label: "Documents", to: "/manager/documents", icon: FolderOpen },
   { label: "Analytics", to: "/manager/analytics", icon: BarChart3 },
