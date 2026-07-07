@@ -1,0 +1,195 @@
+import { useState } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Check, X, AlertTriangle, Building2, Clock, CheckCircle2, AlertCircle, Info, ShieldAlert, Zap } from "lucide-react";
+import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
+import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
+
+export default function NotificationDetails() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [isRead, setIsRead] = useState(false);
+
+  // Mock data based on ID for demonstration
+  const notification = {
+    id: id || 1,
+    title: "New Organization Registered",
+    description: "Peak Freight Co. has completed their initial registration process on the platform. Their KYC documents have been submitted and are currently pending your manual review and approval before they can activate their fleet operations.",
+    timestamp: "2 min ago",
+    fullDate: "Oct 24, 2026, 14:32 PM",
+    priority: "High",
+    status: isRead ? "Read" : "Unread",
+    type: "Alert",
+    organization: {
+      name: "Peak Freight Co.",
+      id: "ORG-78291",
+      contact: "john.doe@peakfreight.com",
+      phone: "+1 (555) 123-4567"
+    },
+    timeline: [
+      { id: 1, action: "Registration Submitted", time: "Oct 24, 2026, 14:30 PM", user: "System", active: false },
+      { id: 2, action: "KYC Documents Uploaded", time: "Oct 24, 2026, 14:31 PM", user: "Peak Freight Admin", active: false },
+      { id: 3, action: "Pending Manual Approval", time: "Oct 24, 2026, 14:32 PM", user: "System", active: true }
+    ]
+  };
+
+  return (
+    <div className="h-screen bg-[#f4f7f6] flex font-sans">
+      <NewAdminSidebar />
+      
+      <div className="flex-1 flex flex-col min-w-0">
+        <NewAdminTopNav title="Notification Details" />
+        
+        <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
+          
+          <div className="max-w-6xl mx-auto space-y-6">
+            
+            {/* Header & Actions */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => navigate('/admin/notifications')}
+                  className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors shadow-sm"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-xl font-black text-slate-800">{notification.title}</h2>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-orange-100 text-orange-700">
+                      {notification.priority} Priority
+                    </span>
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${isRead ? 'bg-slate-100 text-slate-600' : 'bg-blue-100 text-blue-700'}`}>
+                      {notification.status}
+                    </span>
+                  </div>
+                  <p className="text-sm font-bold text-slate-500 mt-1">{notification.fullDate}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => navigate('/admin/notifications')}
+                  className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-[13px] font-bold rounded-lg shadow-sm transition-colors flex items-center gap-2"
+                >
+                  <X className="w-4 h-4" />
+                  Dismiss
+                </button>
+                {!isRead && (
+                  <button 
+                    onClick={() => setIsRead(true)}
+                    className="px-4 py-2 bg-[#0f172a] hover:bg-slate-800 text-white text-[13px] font-bold rounded-lg shadow-sm transition-colors flex items-center gap-2"
+                  >
+                    <Check className="w-4 h-4" />
+                    Mark as Read
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Main Content Left */}
+              <div className="lg:col-span-2 space-y-6">
+                
+                {/* Description Box */}
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Info className="w-5 h-5 text-blue-500" />
+                    <h3 className="text-[15px] font-extrabold text-slate-800">Description</h3>
+                  </div>
+                  <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                    {notification.description}
+                  </p>
+                </div>
+
+                {/* Organization Details */}
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                  <div className="flex items-center gap-2 mb-6">
+                    <Building2 className="w-5 h-5 text-purple-500" />
+                    <h3 className="text-[15px] font-extrabold text-slate-800">Organization Details</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Organization Name</p>
+                      <p className="text-sm font-bold text-slate-800">{notification.organization.name}</p>
+                    </div>
+                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Organization ID</p>
+                      <p className="text-sm font-bold text-slate-800">{notification.organization.id}</p>
+                    </div>
+                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Primary Contact</p>
+                      <p className="text-sm font-bold text-slate-800">{notification.organization.contact}</p>
+                    </div>
+                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Phone Number</p>
+                      <p className="text-sm font-bold text-slate-800">{notification.organization.phone}</p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Sidebar Right */}
+              <div className="space-y-6">
+                
+                {/* Information Metadata */}
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                  <h3 className="text-[15px] font-extrabold text-slate-800 mb-5">Information</h3>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                      <span className="text-[13px] font-bold text-slate-500">Notification ID</span>
+                      <span className="text-[13px] font-black text-slate-800">#{notification.id}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                      <span className="text-[13px] font-bold text-slate-500">Category</span>
+                      <span className="text-[13px] font-black text-slate-800">{notification.type}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                      <span className="text-[13px] font-bold text-slate-500">Priority</span>
+                      <span className="text-[13px] font-black text-slate-800">{notification.priority}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[13px] font-bold text-slate-500">System Time</span>
+                      <span className="text-[13px] font-black text-slate-800">{notification.timestamp}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Timeline / Activity */}
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                  <div className="flex items-center gap-2 mb-6">
+                    <Clock className="w-5 h-5 text-orange-500" />
+                    <h3 className="text-[15px] font-extrabold text-slate-800">Activity History</h3>
+                  </div>
+
+                  <div className="relative pl-3">
+                    <div className="absolute left-[15px] top-2 bottom-2 w-[2px] bg-slate-100"></div>
+                    <div className="space-y-6">
+                      {notification.timeline.map((event, index) => (
+                        <div key={event.id} className="relative pl-6">
+                          <div className={`absolute left-[-5px] top-1 w-[10px] h-[10px] rounded-full border-2 border-white ${event.active ? 'bg-orange-500 ring-4 ring-orange-50' : 'bg-slate-300'}`}></div>
+                          <div>
+                            <h4 className={`text-[13px] font-bold mb-0.5 ${event.active ? 'text-slate-800' : 'text-slate-500'}`}>{event.action}</h4>
+                            <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400">
+                              <span>{event.time}</span>
+                              <span>•</span>
+                              <span>{event.user}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}

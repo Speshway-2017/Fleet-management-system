@@ -35,7 +35,7 @@ const MENU_ITEMS = [
   { label: "Route Optimization", to: "/manager/route", icon: Compass },
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel },
   { label: "Maintenance", to: "/manager/maintenance", icon: Wrench },
-  { label: "E-Way Bills", to: "/manager/ewaybills", icon: FileText },
+  { label: "E-Way Bills", to: "/manager/eway", icon: FileText },
   { label: "FASTag & Toll", to: "/manager/fastag", icon: CreditCard },
   { label: "Documents", to: "/manager/documents", icon: FolderOpen },
   { label: "Analytics", to: "/manager/analytics", icon: BarChart3 },
@@ -58,7 +58,7 @@ export default function AppLayout() {
   const links = role === "admin" ? ADMIN_ITEMS : MENU_ITEMS;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Sidebar */}
       <aside className="w-64 flex flex-col bg-[#0F0F10] text-gray-400 border-r border-[#1B1B1D]/50 shrink-0 sticky top-0 h-fit max-h-screen">
         {/* Brand Header */}
@@ -112,9 +112,9 @@ export default function AppLayout() {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
+        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm shrink-0">
           <div className="flex items-center gap-4">
             <h2 className="text-lg font-semibold text-gray-800">
               {role === "admin" ? "Admin Workspace" : "Manager Workspace"}

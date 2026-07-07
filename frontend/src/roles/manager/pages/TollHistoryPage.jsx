@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { Calendar, Filter, AlertTriangle, TrendingDown, ArrowRight } from "lucide-react";
+import { Calendar, Filter, AlertTriangle, TrendingDown, ArrowRight, ArrowLeft } from "lucide-react";
 import { mockTollTransactions } from "@/data/mockFastag";
 
 export default function TollHistoryPage() {
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -16,11 +18,19 @@ export default function TollHistoryPage() {
     <div className="p-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Toll Transaction History</h1>
-          <p className="text-gray-600 mt-2 text-sm">
-            Real-time overview of all FASTag debits across the fleet.
-          </p>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 transition-colors"
+          >
+            <ArrowLeft width="24" height="24" className="text-gray-700" />
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Toll Transaction History</h1>
+            <p className="text-gray-600 mt-2 text-sm">
+              Real-time overview of all FASTag debits across the fleet.
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-2 bg-white">

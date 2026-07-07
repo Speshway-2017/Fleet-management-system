@@ -12,9 +12,9 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
   const navItems = [
     { id: "dashboard", label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
     { id: "organizations", label: "Organizations", to: "/admin/organizations", icon: Building2 },
-    { id: "fleet-managers", label: "Fleet Managers", to: "#", icon: Users },
-    { id: "analytics", label: "Analytics", to: "#", icon: BarChart3 },
-    { id: "settings", label: "Settings", to: "#", icon: Settings },
+    { id: "fleet-managers", label: "Fleet Managers", to: "/admin/fleet-managers", icon: Users },
+    { id: "analytics", label: "Analytics", to: "/admin/analytics", icon: BarChart3 },
+    { id: "settings", label: "Settings", to: "/admin/settings", icon: Settings },
   ];
 
   return (
