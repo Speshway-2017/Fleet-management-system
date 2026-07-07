@@ -14,6 +14,8 @@ import UnauthorizedPage from "@/components/common/UnauthorizedPage";
 import AdminDashboard from "@/roles/admin/pages/AdminDashboard";
 import Dashboard from "@/roles/admin/pages/Dashboard";
 import OrganizationList from "@/roles/admin/pages/OrganizationList";
+import AddOrganization from "@/roles/admin/pages/AddOrganization";
+import OrganizationDetails from "@/roles/admin/pages/OrganizationDetails";
 import UserManagement from "@/roles/admin/pages/UserManagement";
 import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
 import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
@@ -34,6 +36,10 @@ import TripsListPage from "@/roles/manager/pages/TripsListPage";
 import RouteOptimizationPage from "@/roles/manager/pages/RouteOptimizationPage";
 import CreateTripPage from "@/roles/manager/pages/CreateTripPage";
 import FuelManagementPage from "@/roles/manager/pages/FuelManagementPage";
+import MaintenanceManagementPage from "@/roles/manager/pages/MaintenanceManagementPage";
+import UpcomingServicesPage from "@/roles/manager/pages/UpcomingServicesPage";
+import ScheduleServicePage from "@/roles/manager/pages/ScheduleServicePage";
+import ServiceDetailsPage from "@/roles/manager/pages/ServiceDetailsPage";
 import TripDetailsPage from "@/roles/manager/pages/TripDetailsPage";
 // import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
 // import TripsListPage from "@/roles/manager/pages/TripsListPage";
@@ -65,6 +71,8 @@ export default function App() {
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
             <Route path="/admin/dashboard" element={<Dashboard />} />
             <Route path="/admin/organizations" element={<OrganizationList />} />
+            <Route path="/admin/organizations/add" element={<AddOrganization />} />
+            <Route path="/admin/organizations/details/:id" element={<OrganizationDetails />} />
             <Route element={<AppLayout />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UserManagement />} />
@@ -109,6 +117,10 @@ export default function App() {
               <Route path="/manager/add-driver" element={<AddDriverPage />} />
               <Route path="/manager/route" element={<RouteOptimizationPage />} />
               <Route path="/manager/fuel" element={<FuelManagementPage />} />
+              <Route path="/manager/maintenance" element={<MaintenanceManagementPage />} />
+              <Route path="/manager/maintenance/upcoming" element={<UpcomingServicesPage />} />
+              <Route path="/manager/maintenance/schedule" element={<ScheduleServicePage />} />
+              <Route path="/manager/maintenance/details/:id" element={<ServiceDetailsPage />} />
             </Route>
           </Route>
 

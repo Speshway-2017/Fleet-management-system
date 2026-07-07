@@ -104,12 +104,12 @@ export default function FuelManagementPage() {
       prev.map(l =>
         l.id === selectedLog.id
           ? {
-              ...l,
-              status: "resolved",
-              fuelStation: `Resolved: ${selectedLog.fuelStation}`,
-              total: "Resolved",
-              qty: "0.0 L"
-            }
+            ...l,
+            status: "resolved",
+            fuelStation: `Resolved: ${selectedLog.fuelStation}`,
+            total: "Resolved",
+            qty: "0.0 L"
+          }
           : l
       )
     );
@@ -161,8 +161,14 @@ Status:          PAID & VERIFIED
   };
 
   return (
-    <div className="p-6 lg:p-8 space-y-5 animate-fade-in">
-          
+    <div className="min-h-screen flex bg-[#F5F7FB] font-nunito text-[#1E293B]">
+      <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
+
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        <Header onMenuToggle={() => setMobileSidebarOpen(true)} showMenuButton={true} />
+
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar space-y-5 animate-fade-in">
+
           {/* Page Header */}
           <div>
             <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
@@ -175,7 +181,7 @@ Status:          PAID & VERIFIED
 
           {/* --- KPI SECTION --- */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            
+
             {/* KPI 1: Fuel Spend */}
             <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
               <div className="flex items-center justify-between">
@@ -200,7 +206,7 @@ Status:          PAID & VERIFIED
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Avg Fleet Mileage</span>
-                  <h3 className="text-2xl font-extrabold text-[#1E293B] mt-2 font-poppins">16.2 km/l</h3>
+                  <h3 className="text-2xl font-extrabold text-[#1E293B] mt-2 font-poppins">4.2 km/l</h3>
                 </div>
                 <div className="bg-emerald-50 text-[#22C55E] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
                   <Gauge className="w-6 h-6" />
@@ -234,11 +240,11 @@ Status:          PAID & VERIFIED
 
           {/* Table Container */}
           <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm overflow-hidden flex flex-col">
-            
+
             {/* Table Header Filter controls */}
             <div className="px-6 py-5 border-b border-[#E7EAF0] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 bg-white">
               <h3 className="font-poppins font-black text-lg text-[#1E293B]">Recent Fuel Entries</h3>
-              
+
               <div className="flex items-center gap-3">
                 {/* Search field */}
                 <div className="relative">
@@ -285,21 +291,19 @@ Status:          PAID & VERIFIED
                     filteredLogs.map(l => (
                       <tr
                         key={l.id}
-                        className={`hover:bg-[#F5F7FB]/50 transition-colors ${
-                          l.status === "anomaly" ? "bg-red-50/30" : ""
-                        }`}
+                        className={`hover:bg-[#F5F7FB]/50 transition-colors ${l.status === "anomaly" ? "bg-red-50/30" : ""
+                          }`}
                       >
                         {/* Vehicle ID cell */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex items-center gap-2.5">
                             {/* Accent indicator line */}
-                            <div className={`w-1 h-8 rounded-full ${
-                              l.status === "anomaly"
+                            <div className={`w-1 h-8 rounded-full ${l.status === "anomaly"
                                 ? "bg-red-500"
                                 : l.status === "resolved"
-                                ? "bg-emerald-500"
-                                : "bg-[#B45A0A]"
-                            }`} />
+                                  ? "bg-emerald-500"
+                                  : "bg-[#B45A0A]"
+                              }`} />
                             <div>
                               <p className="font-bold text-[#1E293B] font-poppins text-xs">{l.vehicleId}</p>
                               <span className="text-[10px] text-[#64748B] block mt-0.5">{l.vehicleName}</span>
@@ -380,7 +384,7 @@ Status:          PAID & VERIFIED
       {resolutionModalOpen && selectedLog && (
         <div className="fixed inset-0 bg-[#0F0F10]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] select-none animate-fade-in">
           <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-2xl p-6 w-full max-w-md flex flex-col space-y-4">
-            
+
             <div className="flex items-center justify-between border-b border-[#E7EAF0] pb-3">
               <h4 className="font-poppins font-black text-sm text-[#1E293B] flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-red-500" />

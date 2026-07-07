@@ -28,7 +28,7 @@ const MENU_ITEMS = [
   { label: "Live Tracking", to: "/manager/map", icon: MapPin, isRealRoute: true },
   { label: "Route Optimization", to: "/manager/route", icon: Compass, isRealRoute: true },
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel, isRealRoute: true },
-  { label: "Maintenance", to: "/manager/maintenance", icon: Wrench, isRealRoute: false },
+  { label: "Maintenance", to: "/manager/maintenance", icon: Wrench, isRealRoute: true },
   { label: "E-Way Bills", to: "/manager/eway", icon: FileText, isRealRoute: false },
   { label: "FASTag & Toll", to: "/manager/fastag", icon: CreditCard, isRealRoute: false },
   { label: "Documents", to: "/manager/documents", icon: FolderOpen, isRealRoute: false },
@@ -53,14 +53,12 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
   const navContent = (
     <div className="flex flex-col h-full bg-[#0F0F10] text-gray-400 border-r border-[#1B1B1D]/50 select-none">
       {/* Brand Header */}
-      <div className="flex items-center justify-between px-6 py-5 border-b border-[#1B1B1D]/50 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="bg-[#B45A0A] text-white p-2 rounded-xl">
-            <Truck className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="font-poppins font-bold text-white text-lg tracking-wide leading-none">FleetManagement</h1>
-            <span className="text-xs text-[#64748B] font-medium font-nunito mt-1 block">Manager</span>
+      <div className="flex items-center justify-between px-4 py-6 border-b border-[#1B1B1D]/50 shrink-0">
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" className="w-10 h-10 object-contain rounded-lg shrink-0" alt="Logo" />
+          <div className="border-l border-[#1B1B1D]/80 pl-[14px] py-1">
+            <h1 className="font-poppins font-black text-white text-base tracking-wide leading-none whitespace-nowrap">Fleet Management</h1>
+            <span className="text-[10px] text-[#64748B] font-bold font-poppins uppercase tracking-wider mt-1.5 block">Manager</span>
           </div>
         </div>
         {mobileOpen && (
@@ -84,8 +82,8 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
               to={item.to}
               onClick={(e) => handleMenuClick(e, item)}
               className={`flex items-center gap-3.5 px-6 py-3 font-poppins text-sm border-l-4 sidebar-link-transition ${isActive
-                  ? "border-[#B45A0A] bg-[#1B1B1D] text-[#B45A0A] font-semibold"
-                  : "border-transparent hover:text-white hover:bg-[#1B1B1D]/30"
+                ? "border-[#B45A0A] bg-[#1B1B1D] text-[#B45A0A] font-semibold"
+                : "border-transparent hover:text-white hover:bg-[#1B1B1D]/30"
                 }`}
             >
               <Icon className="w-5 h-5 shrink-0" />
