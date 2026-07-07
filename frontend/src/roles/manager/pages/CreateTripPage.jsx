@@ -439,7 +439,7 @@ export default function CreateTripPage() {
                   >
                     <div>
                       <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
-                      <span className="text-[10px] text-[#64748B] block mt-0.5">Rating: {d.rating} ★ | Exp: {d.experience}</span>
+                      <span className="text-[10px] text-[#64748B] block mt-0.5">Exp: {d.experience}</span>
                       <span className={`inline-block mt-1.5 px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
                         d.status === "Available"
                           ? "bg-emerald-50 text-emerald-600 border border-emerald-100"

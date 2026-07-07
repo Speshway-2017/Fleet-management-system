@@ -171,7 +171,7 @@ export default function AssignVehiclePage() {
           </div>
           <div>
             <p className="font-bold text-[#1E293B] text-sm">{driver.name}</p>
-            <span className="text-[11px] text-[#64748B] font-semibold mt-0.5 block">DL No: {driver.licenseNumber} • Rating: {driver.rating} ★</span>
+            <span className="text-[11px] text-[#64748B] font-semibold mt-0.5 block">DL No: {driver.licenseNumber}</span>
           </div>
         </div>
         <div className="text-right">

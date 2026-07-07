@@ -183,10 +183,7 @@ export default function DriverProfilePage() {
             <div className="bg-amber-50 text-amber-500 p-2.5 rounded-xl">
               <Star className="w-5 h-5 fill-amber-500 text-amber-500" />
             </div>
-            <div>
-              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Driver Rating</span>
-              <p className="text-xl font-extrabold text-[#1E293B] mt-0.5 font-poppins">{driver.rating} / 5.0</p>
-            </div>
+
           </div>
         </div>
 

@@ -142,7 +142,7 @@ export default function VehicleDetailsPage() {
           <ArrowLeft className="w-5 h-5 text-[#64748B]" />
         </button>
         <h1 className="text-2xl lg:text-3xl font-black font-poppins text-[#1E293B]">
-          View vehicle details
+          Vehicle Details
         </h1>
       </div>
 

@@ -11,6 +11,8 @@ import {
   ArrowLeft
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
+import "../dashboard/manager.css";
 
 const INITIAL_WORK_ORDERS = [
   {
@@ -96,41 +98,42 @@ export default function UpcomingServicesPage() {
   };
 
   return (
-    <div className="p-6 lg:p-8 space-y-4 font-nunito text-[#1E293B] bg-[#F5F7FB] min-h-full">
+    <div className="w-full px-6 md:px-8 py-8">
+      <Breadcrumb />
 
-          {/* Header section */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4">
-            <div>
-              <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
-                Upcoming Services
-              </h1>
-              <p className="text-sm text-[#64748B] mt-1 font-medium font-nunito">
-                Visual pipeline showing vehicle queue lists due for servicing or compliance audits.
-              </p>
-            </div>
+      {/* Header section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4 mb-6">
+        <div>
+          <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
+            Upcoming Services
+          </h1>
+          <p className="text-sm text-[#64748B] mt-1 font-medium font-nunito">
+            Visual pipeline showing vehicle queue lists due for servicing or compliance audits.
+          </p>
+        </div>
 
-            <div className="flex items-center gap-3 shrink-0 select-none">
-              <button
-                onClick={() => navigate("/manager/maintenance")}
-                className="px-4 py-2 bg-white text-[#64748B] hover:text-[#1E293B] border border-[#E7EAF0] rounded-xl text-xs font-bold transition-all cursor-pointer"
-              >
-                Overview
-              </button>
-              <button
-                onClick={() => navigate("/manager/maintenance/upcoming")}
-                className="px-4 py-2 bg-[#B45A0A] text-white border border-[#B45A0A] rounded-xl text-xs font-bold transition-all cursor-pointer"
-              >
-                Upcoming Services
-              </button>
-              <button
-                onClick={() => navigate("/manager/maintenance/schedule")}
-                className="px-4 py-2 bg-white text-[#64748B] border border-[#E7EAF0] hover:text-[#1E293B] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Schedule Service</span>
-              </button>
-            </div>
-          </div>
+        <div className="flex items-center gap-3 shrink-0 select-none">
+          <button
+            onClick={() => navigate("/manager/maintenance")}
+            className="px-4 py-2 bg-white text-[#64748B] hover:text-[#1E293B] border border-[#E7EAF0] rounded-xl text-xs font-bold transition-all cursor-pointer"
+          >
+            Overview
+          </button>
+          <button
+            onClick={() => navigate("/manager/maintenance/upcoming")}
+            className="px-4 py-2 bg-[#B45A0A] text-white border border-[#B45A0A] rounded-xl text-xs font-bold transition-all cursor-pointer"
+          >
+            Upcoming Services
+          </button>
+          <button
+            onClick={() => navigate("/manager/maintenance/schedule")}
+            className="px-4 py-2 bg-white text-[#64748B] border border-[#E7EAF0] hover:text-[#1E293B] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Schedule Service</span>
+          </button>
+        </div>
+      </div>
 
           {/* Metrics summary cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -293,6 +296,6 @@ export default function UpcomingServicesPage() {
 
           </div>
 
-    </div>
-  );
+        </div>
+    );
 }

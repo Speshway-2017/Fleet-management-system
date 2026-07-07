@@ -6,6 +6,8 @@ import {
   ChevronDown
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
+import "../dashboard/manager.css";
 
 const INITIAL_WORK_ORDERS = [
   {
@@ -113,9 +115,10 @@ export default function ScheduleServicePage() {
   const costEst = getEstimatedCost();
 
   return (
-    <div className="p-6 lg:p-8 space-y-4 font-nunito text-[#1E293B] bg-[#F5F7FB] min-h-full">
-          
-          {/* Header block */}
+    <div className="w-full px-6 md:px-8 py-8">
+      <Breadcrumb />
+
+      {/* Header block */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4">
             <div>
               <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
@@ -332,6 +335,6 @@ export default function ScheduleServicePage() {
 
           </div>
 
-    </div>
-  );
+        </div>
+    );
 }
