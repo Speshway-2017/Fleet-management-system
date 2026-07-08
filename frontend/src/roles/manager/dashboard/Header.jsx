@@ -9,14 +9,7 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
   const navigate = useNavigate();
   
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [notiMenuOpen, setNotiMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-
-  const mockNotis = [
-    { id: 1, text: "Vehicle UP-14-BT-9002 Insurance has EXPIRED!", type: "danger", time: "2 hrs ago" },
-    { id: 2, text: "Driver Sai Kiran is available for assignment", type: "success", time: "4 hrs ago" },
-    { id: 3, text: "Trip to Noida (ID #2094) completed successfully", type: "info", time: "1 day ago" }
-  ];
 
   const handleLogout = () => {
     logout();
@@ -61,43 +54,13 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
         {/* Bell Button */}
         <div className="relative">
           <button
-            onClick={() => {
-              setNotiMenuOpen(!notiMenuOpen);
-              setUserMenuOpen(false);
-            }}
+            onClick={() => navigate("/manager/notifications")}
             className="relative p-2.5 text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none transition-colors duration-150"
+            title="View all notifications"
           >
             <Bell className="w-5.5 h-5.5" />
             <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#B45A0A] border-2 border-white rounded-full pulsing-dot" />
           </button>
-
-          {notiMenuOpen && (
-            <>
-              <div className="fixed inset-0 z-30" onClick={() => setNotiMenuOpen(false)} />
-              <div className="absolute right-0 mt-3.5 w-80 bg-white rounded-2xl shadow-xl border border-[#E5E7EB] py-3.5 z-40 animate-fade-in font-nunito">
-                <div className="px-4 pb-2.5 border-b border-gray-100 flex items-center justify-between">
-                  <span className="font-poppins font-bold text-sm text-[#1B2430]">Notifications</span>
-                  <button 
-                    onClick={() => {
-                      setNotiMenuOpen(false);
-                      toast.success("Notifications dismissed.");
-                    }} 
-                    className="text-xs text-[#B45A0A] hover:underline font-semibold"
-                  >
-                    Dismiss All
-                  </button>
-                </div>
-                <div className="max-h-64 overflow-y-auto mt-1 custom-scrollbar">
-                  {mockNotis.map((noti) => (
-                    <div key={noti.id} className="px-4 py-3 hover:bg-gray-50/50 border-b border-gray-50 last:border-b-0 cursor-pointer">
-                      <p className="text-xs font-semibold text-[#1B2430] leading-snug">{noti.text}</p>
-                      <span className="text-[10px] text-gray-400 mt-1 block">{noti.time}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
         </div>
 
         {/* User Card */}
@@ -105,7 +68,6 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
           <button
             onClick={() => {
               setUserMenuOpen(!userMenuOpen);
-              setNotiMenuOpen(false);
             }}
             className="flex items-center gap-3 p-1 hover:bg-gray-100 rounded-2xl focus:outline-none transition-colors"
           >
