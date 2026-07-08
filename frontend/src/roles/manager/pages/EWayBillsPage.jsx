@@ -63,11 +63,7 @@ export default function EWayBillsPage() {
   const handleExtend = (id) => toast.success(`Extended validity for ${id}`);
 
   return (
-    <div className="p-6 lg:p-8">
-      <Breadcrumb />
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">E-Way Bills</h1>
+
         </div>
         <button
           onClick={handleGenerate}

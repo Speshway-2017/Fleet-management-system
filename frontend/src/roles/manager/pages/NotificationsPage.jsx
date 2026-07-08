@@ -5,6 +5,14 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import DispatchWarningModal from "@/components/common/DispatchWarningModal";
 import ContactDriverModal from "@/components/common/ContactDriverModal";
+import { notifications } from "@/roles/manager/data/notificationsData";
+
+const mapTypeToTab = (type) => {
+  if (type === "alert")  return "Critical";
+  if (type === "info")   return "Maintenance";
+  if (type === "system") return "System";
+  return "All";
+};
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
@@ -13,69 +21,6 @@ export default function NotificationsPage() {
   const [showContactDriverModal, setShowContactDriverModal] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [unreadNotifs, setUnreadNotifs] = useState(new Set([1, 2, 3]));
-
-  const notifications = [
-    {
-      id: 1,
-      type: "alert",
-      title: "Critical Overspeeding Alert",
-      description: "Vehicle #TRK-8821 detected traveling at 95 mph in a 65 mph zone on I-90 Expressway. Immediate intervention recommended.",
-      time: "2 mins ago",
-      priority: "high",
-      meta: { vehicleId: "#TRK-8821", driver: "Marcus Read", phone: "+919876543210" },
-      actions: [
-        { label: "Dispatch Warning", bg: "bg-red-600", hover: "hover:bg-red-700", actionType: "modal", modalType: "dispatch" },
-        { label: "View Analytics", bg: "bg-white", text: "text-gray-700", border: "border-gray-300", actionType: "navigate", route: "/manager/analytics" }
-      ]
-    },
-    {
-      id: 2,
-      type: "warning",
-      title: "Geofence Violation",
-      description: "Driver Marcus Read has exited the designated delivery zone for the Northeast region. Route optimization required.",
-      time: "15 mins ago",
-      priority: "medium",
-      meta: { vehicleId: "v2", driver: "Marcus Read", phone: "+919876543210" },
-      actions: [
-        { label: "Call Driver", bg: "bg-amber-700", hover: "hover:bg-amber-800", actionType: "modal", modalType: "contact" },
-        { label: "Track Live", bg: "bg-white", text: "text-gray-700", border: "border-gray-300", actionType: "navigate", route: "/manager/map", state: { vehicleId: "v2" } }
-      ]
-    },
-    {
-      id: 3,
-      type: "info",
-      title: "Maintenance Required",
-      description: "Vehicle #VAN-402 scheduled for brake pad replacement in 150 miles. Currently active on trip #4492.",
-      time: "1 hour ago",
-      priority: "medium",
-      meta: { vehicleId: "#VAN-402", vehicleNumber: "VAN-402", maintenanceType: "Brake Pad Replacement", dueMileage: "150 miles" },
-      actions: [
-        { label: "Schedule Now", bg: "bg-amber-700", hover: "hover:bg-amber-800", actionType: "navigate", route: "/manager/maintenance", state: { openSchedule: true, vehicleNumber: "VAN-402", maintenanceType: "Brake Pad Replacement", dueMileage: "150" } }
-      ]
-    },
-    {
-      id: 4,
-      type: "success",
-      title: "Fuel Report Ready",
-      description: "Weekly fuel efficiency report for the Southern Fleet has been generated and is ready for review.",
-      time: "3 hours ago",
-      priority: "low",
-      meta: {},
-      actions: [
-        { label: "View Report", bg: "bg-black", hover: "hover:bg-gray-800", actionType: "navigate", route: "/manager/reports", state: { openFuelTab: true } }
-      ]
-    },
-    {
-      id: 5,
-      type: "system",
-      title: "System Update Complete",
-      description: "ELD compliance patches have been successfully pushed to all active vehicles in the fleet.",
-      time: "6 hours ago",
-      priority: "low",
-      meta: {},
-      actions: []
-    }
-  ];
 
   const getIconColor = (type) => {
     switch (type) {
@@ -141,7 +86,10 @@ export default function NotificationsPage() {
       newSet.delete(notification.id);
       return newSet;
     });
-    
+
+    // Update active tab to match the notification's category
+    setActiveTab(mapTypeToTab(notification.type));
+
     navigate(`/manager/notifications/${notification.id}`);
   };
 
@@ -247,45 +195,12 @@ export default function NotificationsPage() {
           </div>
 
           {/* Notifications */}
-          {notifications.map((notif, index) => {
-            const isUnread = unreadNotifs.has(notif.id);
-            return (
-              <div
-                key={notif.id}
-                onClick={() => handleNotificationClick(notif)}
-                className={`bg-white rounded-xl sm:rounded-2xl border p-4 sm:p-6 shadow-sm hover:shadow-md transition-all cursor-pointer animate-fade-in relative ${
-                  isUnread ? "border-l-4 border-l-blue-500 border-gray-200" : "border-gray-200"
-                }`}
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                {isUnread && (
-                  <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                  </div>
-                )}
-                <div className="flex gap-3 sm:gap-4">
-                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full ${getIconColor(notif.type)} flex items-center justify-center shrink-0`}>
-                    <Icon icon={getIcon(notif.type)} className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </div>
-                  <p className="text-gray-600 text-sm mb-4">{notif.description}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {notif.actions.map((action, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleNotificationClick(notif.id)}
-                        className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${action.bg === 'bg-white'
-                            ? `${action.bg} ${action.text} border ${action.border} hover:bg-gray-50`
-                            : `${action.bg} text-white ${action.hover}`
-                          }`}
-                      >
-                        {action.label}
-                      </button>
-                    ))}
+
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       </div>
 
