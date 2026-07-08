@@ -148,19 +148,12 @@ export default function App() {
               <Route path="/manager/routes" element={<div className="p-8"><h1 className="text-2xl font-bold">Route Optimization Page</h1></div>} />
 
               <Route path="/manager/ewaybills" element={<div className="p-8"><h1 className="text-2xl font-bold">E-Way Bills Page</h1></div>} />
-              <Route path="/manager/maintenance" element={<div className="p-8"><h1 className="text-2xl font-bold">Maintenance Page</h1></div>} />
-              <Route path="/manager/eway" element={<EWayBillsPage />} />
-              <Route path="/manager/settings" element={<SettingsPage />} />
               <Route path="/manager/documents" element={<DocumentManagement />} />
               <Route path="/manager/documents/list" element={<DocumentsListPage />} />
               <Route path="/manager/documents/compliance-audit" element={<ComplianceAuditPage />} />
               <Route path="/manager/documents/upload" element={<UploadDocument />} />
               <Route path="/manager/documents/view/:id" element={<ViewDocument />} />
               <Route path="/manager/documents/edit/:id" element={<EditDocument />} />
-              <Route path="/manager/analytics" element={<div className="p-8"><h1 className="text-2xl font-bold">Analytics Page</h1></div>} />
-              <Route path="/manager/reports" element={<div className="p-8"><h1 className="text-2xl font-bold">Reports Page</h1></div>} />
-              <Route path="/manager/notifications" element={<div className="p-8"><h1 className="text-2xl font-bold">Notifications Page</h1></div>} />
-              <Route path="/manager/settings" element={<div className="p-8"><h1 className="text-2xl font-bold">Settings Page</h1></div>} />
               <Route path="/manager/drivers" element={<DriversManagementPage />} />
               <Route path="/manager/drivers-list" element={<DriversListPage />} />
               <Route path="/manager/trips" element={<TripsManagementPage />} />

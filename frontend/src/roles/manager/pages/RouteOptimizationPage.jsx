@@ -14,6 +14,7 @@ import {
   Clock
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 const MOCK_ROUTES = [
   {
@@ -233,11 +234,12 @@ export default function RouteOptimizationPage() {
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
+      <Breadcrumb />
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="font-poppins font-black text-2xl text-[#1E293B]">Route Optimization</h2>
-          <p className="text-sm text-[#64748B] font-medium mt-1">Pune-Mumbai-Nashik-Kolhapur Logistics</p>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Route Optimization</h1>
+          <p className="text-[18px] text-[#64748B] mt-[12px]">Pune-Mumbai-Nashik-Kolhapur Logistics</p>
         </div>
         <span className="text-[10px] font-bold px-3 py-1.5 bg-orange-50 border border-orange-100 text-[#B45A0A] rounded-lg font-poppins">
           {routes.length} Active

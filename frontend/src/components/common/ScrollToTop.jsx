@@ -6,6 +6,10 @@ export default function ScrollToTop() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    const mainContainer = document.querySelector("main");
+    if (mainContainer) {
+      mainContainer.scrollTo(0, 0);
+    }
   }, [pathname]);
 
   return null;

@@ -11,6 +11,7 @@ import {
   X
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 const INITIAL_FUEL_LOGS = [
   {
@@ -101,12 +102,12 @@ export default function FuelManagementPage() {
       prev.map(l =>
         l.id === selectedLog.id
           ? {
-              ...l,
-              status: "resolved",
-              fuelStation: `Resolved: ${selectedLog.fuelStation}`,
-              total: "Resolved",
-              qty: "0.0 L"
-            }
+            ...l,
+            status: "resolved",
+            fuelStation: `Resolved: ${selectedLog.fuelStation}`,
+            total: "Resolved",
+            qty: "0.0 L"
+          }
           : l
       )
     );
@@ -158,18 +159,19 @@ Status:          PAID & VERIFIED
 
   return (
     <div className="p-8">
+      <Breadcrumb />
       {/* Page Header */}
       <div>
-        <h1 className="font-bold text-xl text-gray-800">
+        <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
           Fuel Management
         </h1>
-        <p className="text-gray-500 mt-2">
+        <p className="text-[18px] text-[#64748B] mt-[12px]">
           Monitor diesel logs, average fleet efficiency, and resolve fuel siphoning alerts.
         </p>
       </div>
 
       {/* --- KPI SECTION --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
         {/* KPI 1: Fuel Spend */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center justify-between">
@@ -194,7 +196,7 @@ Status:          PAID & VERIFIED
           <div className="flex items-center justify-between">
             <div>
               <span className="text-xs font-bold text-gray-500 tracking-wider uppercase">Avg Fleet Mileage</span>
-              <h3 className="text-2xl font-extrabold text-gray-800 mt-2">16.2 km/l</h3>
+              <h3 className="text-2xl font-extrabold text-gray-800 mt-2">4.5 km/l</h3>
             </div>
             <div className="bg-green-50 text-green-600 p-3 rounded-xl">
               <Gauge className="w-6 h-6" />
@@ -277,20 +279,18 @@ Status:          PAID & VERIFIED
                 filteredLogs.map(l => (
                   <tr
                     key={l.id}
-                    className={`hover:bg-gray-50 transition-colors ${
-                      l.status === "anomaly" ? "bg-red-50/30" : ""
-                    }`}
+                    className={`hover:bg-gray-50 transition-colors ${l.status === "anomaly" ? "bg-red-50/30" : ""
+                      }`}
                   >
                     {/* Vehicle ID cell */}
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex items-center gap-2.5">
-                        <div className={`w-1 h-8 rounded-full ${
-                          l.status === "anomaly"
-                            ? "bg-red-500"
-                            : l.status === "resolved"
+                        <div className={`w-1 h-8 rounded-full ${l.status === "anomaly"
+                          ? "bg-red-500"
+                          : l.status === "resolved"
                             ? "bg-green-500"
                             : "bg-amber-700"
-                        }`} />
+                          }`} />
                         <div>
                           <p className="font-bold text-gray-800 text-xs">{l.vehicleId}</p>
                           <span className="text-[10px] text-gray-500 block mt-0.5">{l.vehicleName}</span>

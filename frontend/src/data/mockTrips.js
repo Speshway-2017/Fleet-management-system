@@ -2,8 +2,8 @@
 export const mockTrips = [
   {
     id: 1,
-    origin: "New York, NY",
-    destination: "Boston, MA",
+    origin: "Mumbai, MH",
+    destination: "Pune, MH",
     vehicleId: 1,
     driverId: 1,
     status: "in_progress",
@@ -11,8 +11,8 @@ export const mockTrips = [
   },
   {
     id: 2,
-    origin: "Philadelphia, PA",
-    destination: "Washington, DC",
+    origin: "Delhi, DL",
+    destination: "Gurugram, HR",
     vehicleId: 3,
     driverId: 2,
     status: "completed",
@@ -20,8 +20,8 @@ export const mockTrips = [
   },
   {
     id: 3,
-    origin: "Brooklyn, NY",
-    destination: "Queens, NY",
+    origin: "Bengaluru, KA",
+    destination: "Chennai, TN",
     vehicleId: null,
     driverId: null,
     status: "pending",

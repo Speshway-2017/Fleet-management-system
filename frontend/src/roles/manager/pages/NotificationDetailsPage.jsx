@@ -1,10 +1,58 @@
+import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
+import L from "leaflet";
 
 export default function NotificationDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+    }
+
+    const coords = [41.8781, -87.6298];
+
+    const map = L.map(mapRef.current, {
+      zoomControl: false
+    }).setView(coords, 12);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    const pinIcon = L.divIcon({
+      html: `<div class="bg-red-600 rounded-full w-8 h-8 flex items-center justify-center text-white shadow-lg border-2 border-white animate-pulse">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </div>`,
+      className: "",
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    });
+
+    L.marker(coords, { icon: pinIcon }).bindPopup("<strong>Violation Location</strong><br/>I-90 Expressway, Mile Marker 42.5").addTo(map);
+
+    mapInstanceRef.current = map;
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
 
   const handleBack = () => {
     navigate("/manager/notifications");
@@ -15,16 +63,12 @@ export default function NotificationDetailsPage() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <button onClick={handleBack} className="p-2 hover:bg-gray-100 rounded-lg">
-              <Icon icon="mdi:arrow-left" className="w-6 h-6 text-gray-600" />
-            </button>
-            <h1 className="text-2xl font-bold text-gray-800">Notification Details</h1>
-          </div>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Notification Details</h1>
         </div>
       </div>
 
@@ -114,18 +158,25 @@ export default function NotificationDetailsPage() {
               </h3>
               <span className="text-sm text-gray-500">I-90 Expressway, Mile Marker 42.5</span>
             </div>
-            <div className="relative h-80 bg-gray-200">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Icon icon="mdi:google-maps" className="w-40 h-40 text-blue-400 opacity-30" />
-              </div>
-              <div className="absolute right-4 top-4 flex flex-col gap-2">
-                <button className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50">
+            <div className="relative h-80 bg-gray-100">
+              <div ref={mapRef} className="absolute inset-0 z-0 w-full h-full" />
+              <div className="absolute right-4 top-4 flex flex-col gap-2 z-[400]">
+                <button
+                  onClick={() => mapInstanceRef.current?.zoomIn()}
+                  className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-pointer"
+                >
                   <Icon icon="mdi:plus" className="w-5 h-5 text-gray-700" />
                 </button>
-                <button className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50">
+                <button
+                  onClick={() => mapInstanceRef.current?.zoomOut()}
+                  className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-pointer"
+                >
                   <Icon icon="mdi:minus" className="w-5 h-5 text-gray-700" />
                 </button>
-                <button className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50">
+                <button
+                  onClick={() => mapInstanceRef.current?.setView([41.8781, -87.6298], 12)}
+                  className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-pointer"
+                >
                   <Icon icon="mdi:target-variant" className="w-5 h-5 text-gray-700" />
                 </button>
               </div>

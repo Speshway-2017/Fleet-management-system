@@ -5,16 +5,16 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem("user");
+    const stored = sessionStorage.getItem("user");
     return stored ? JSON.parse(stored) : null;
   });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
-      localStorage.setItem("user", JSON.stringify(user));
+      sessionStorage.setItem("user", JSON.stringify(user));
     } else {
-      localStorage.removeItem("user");
+      sessionStorage.removeItem("user");
     }
   }, [user]);
 
@@ -22,7 +22,7 @@ export function AuthProvider({ children }) {
     setLoading(true);
     try {
       const { data } = await authApi.login(credentials);
-      localStorage.setItem("token", data.token);
+      sessionStorage.setItem("token", data.token);
       setUser(data.user);
       return data.user;
     } catch (err) {
@@ -37,8 +37,8 @@ export function AuthProvider({ children }) {
             role: "manager",
             email: "manager@fleet.com"
           };
-          localStorage.setItem("token", "mock_dev_session_token_3b0569d8");
-          localStorage.setItem("user", JSON.stringify(mockUser));
+          sessionStorage.setItem("token", "mock_dev_session_token_3b0569d8");
+          sessionStorage.setItem("user", JSON.stringify(mockUser));
           setUser(mockUser);
           return mockUser;
         } else if (email === "admin@fleet.com" && password === "admin123") {
@@ -47,8 +47,8 @@ export function AuthProvider({ children }) {
             role: "admin",
             email: "admin@fleet.com"
           };
-          localStorage.setItem("token", "mock_dev_session_token_3b0569d8");
-          localStorage.setItem("user", JSON.stringify(mockUser));
+          sessionStorage.setItem("token", "mock_dev_session_token_3b0569d8");
+          sessionStorage.setItem("user", JSON.stringify(mockUser));
           setUser(mockUser);
           return mockUser;
         }
@@ -57,8 +57,8 @@ export function AuthProvider({ children }) {
       if (import.meta.env.DEV) {
         try {
           const { data } = await authApi.login(credentials);
-          localStorage.setItem("token", data.token);
-          localStorage.setItem("user", JSON.stringify(data.user));
+          sessionStorage.setItem("token", data.token);
+          sessionStorage.setItem("user", JSON.stringify(data.user));
           setUser(data.user);
           return data.user;
         } catch (apiError) {
@@ -66,14 +66,14 @@ export function AuthProvider({ children }) {
           const { email, password } = credentials;
           if (email === "admin@fleet.com" && password === "password") {
             const mockUser = { name: "Admin User", email: "admin@fleet.com", role: "admin" };
-            localStorage.setItem("token", "dev-mock-token");
-            localStorage.setItem("user", JSON.stringify(mockUser));
+            sessionStorage.setItem("token", "dev-mock-token");
+            sessionStorage.setItem("user", JSON.stringify(mockUser));
             setUser(mockUser);
             return mockUser;
           } else if (email === "manager@fleet.com" && password === "password") {
             const mockUser = { name: "Manager User", email: "manager@fleet.com", role: "manager" };
-            localStorage.setItem("token", "dev-mock-token");
-            localStorage.setItem("user", JSON.stringify(mockUser));
+            sessionStorage.setItem("token", "dev-mock-token");
+            sessionStorage.setItem("user", JSON.stringify(mockUser));
             setUser(mockUser);
             return mockUser;
           } else {
@@ -82,8 +82,8 @@ export function AuthProvider({ children }) {
         }
       } else {
         const { data } = await authApi.login(credentials);
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("token", data.token);
+        sessionStorage.setItem("user", JSON.stringify(data.user));
         setUser(data.user);
         return data.user;
       }
@@ -93,14 +93,14 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
     setUser(null);
   };
 
   const storedUser = (() => {
     try {
-      const stored = localStorage.getItem("user");
+      const stored = sessionStorage.getItem("user");
       return stored ? JSON.parse(stored) : null;
     } catch {
       return null;

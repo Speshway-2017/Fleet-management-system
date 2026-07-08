@@ -12,11 +12,11 @@ export default function About({ setActiveTab }) {
   };
 
   const timelineItems = [
-    { year: "2018", text: "FleetCommand founded in Austin, TX. Seed funding of $4.2M." },
+    { year: "2018", text: "FleetCommand founded in Bengaluru, India. Seed funding of ₹30 Cr." },
     { year: "2019", text: "First 50 enterprise customers. Launched real-time GPS tracking." },
-    { year: "2021", text: "Series A — $25M. Expanded to fuel analytics and driver scoring." },
+    { year: "2021", text: "Series A — ₹200 Cr. Expanded to fuel analytics and driver scoring." },
     { year: "2023", text: "Surpassed 1M vehicles tracked. Launched predictive maintenance AI." },
-    { year: "2026", text: "340+ enterprise clients. $180M+ in documented customer savings." },
+    { year: "2026", text: "340+ enterprise clients. ₹1,500 Cr+ in documented customer savings." },
   ];
 
   return (
@@ -182,7 +182,7 @@ export default function About({ setActiveTab }) {
             </div>
             {/* Card 4 */}
             <div className="bg-[#FFDBCC] rounded-3xl p-6 text-center space-y-1 shadow-sm">
-              <span className="text-3xl font-extrabold text-heading font-display block tracking-tight">$180M+</span>
+              <span className="text-3xl font-extrabold text-heading font-display block tracking-tight">₹1,500 Cr+</span>
               <span className="text-[10px] font-bold text-secondary uppercase tracking-wider block font-display">Customer Savings</span>
             </div>
           </div>
@@ -354,7 +354,7 @@ export default function About({ setActiveTab }) {
                 <svg className="h-4 w-4 text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
-                <span>+1 (800) FLEET-01</span>
+                <span>+91 1800 123 4567</span>
               </li>
               <li className="flex items-center gap-2">
                 <svg className="h-4 w-4 text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">

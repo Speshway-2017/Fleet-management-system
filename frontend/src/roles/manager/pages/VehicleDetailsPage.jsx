@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Edit2, Trash2, MapPin, AlertTriangle, Download, Eye, FileText, Phone, Mail, Eye as EyeIcon, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -133,17 +134,14 @@ export default function VehicleDetailsPage() {
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
+      <Breadcrumb />
       {/* Page Header */}
       <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => navigate("/manager/vehicles-list")}
-          className="p-2 hover:bg-white rounded-lg transition-colors cursor-pointer"
-        >
-          <ArrowLeft className="w-5 h-5 text-[#64748B]" />
-        </button>
-        <h1 className="text-2xl lg:text-3xl font-black font-poppins text-[#1E293B]">
-          Vehicle Details
-        </h1>
+        <div>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
+            Vehicle Details
+          </h1>
+        </div>
       </div>
 
       {/* Top Vehicle Info Card */}

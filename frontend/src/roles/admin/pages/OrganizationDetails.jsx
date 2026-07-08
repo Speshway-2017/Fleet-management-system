@@ -64,11 +64,11 @@ export default function OrganizationDetails() {
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-b border-slate-50 last:border-0">
                   <span className="text-sm font-semibold text-slate-500">Phone</span>
-                  <span className="text-sm font-semibold text-slate-800 sm:text-right mt-1 sm:mt-0">+1 555-0100</span>
+                  <span className="text-sm font-semibold text-slate-800 sm:text-right mt-1 sm:mt-0">+91 98765 43210</span>
                 </div>
                 <div className="flex flex-col sm:flex-row justify-between py-1 border-b border-slate-50 last:border-0">
                   <span className="text-sm font-semibold text-slate-500">Address</span>
-                  <span className="text-sm font-semibold text-slate-800 sm:text-right mt-1 sm:mt-0 max-w-[200px]">123 Main St, New York, NY</span>
+                  <span className="text-sm font-semibold text-slate-800 sm:text-right mt-1 sm:mt-0 max-w-[200px]">123 Connaught Place, New Delhi, DL</span>
                 </div>
               </div>
             </div>

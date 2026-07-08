@@ -14,6 +14,7 @@ import {
   MessageSquare
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
@@ -31,12 +32,18 @@ export default function ProfilePage() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6 animate-fade-in font-nunito text-gray-800">
-      
+      <Breadcrumb />
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Profile</h1>
+        <p className="text-[18px] text-[#64748B] mt-[12px]">Manage your account details and profile information.</p>
+      </div>
+
       {/* ── PROFILE HEADER CARD ── */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col md:flex-row items-center md:items-start gap-6 shadow-sm relative overflow-hidden">
         {/* Background accent curve graphic (subtle design polish) */}
         <div className="absolute right-0 top-0 bottom-0 w-48 bg-orange-50/20 rounded-l-full pointer-events-none hidden lg:block" style={{ transform: "translateX(50px)" }} />
-        
+
         {/* Profile Image */}
         <img
           src="https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=250&auto=format&fit=crop"
@@ -85,14 +92,14 @@ export default function ProfilePage() {
 
       {/* ── ROW 2: PERSONAL INFO, PERFORMANCE, DISPATCHES ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
+
         {/* Card A: Personal Info */}
         <div className="lg:col-span-7 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
           <div className="flex items-center gap-2.5 mb-6 border-b border-gray-100 pb-3">
             <User className="w-4 h-4 text-[#B45A0A]" />
             <h3 className="font-poppins font-black text-sm text-gray-900">Personal Info</h3>
           </div>
-          
+
           <div className="space-y-4">
             <div>
               <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">Email Address</span>
@@ -100,14 +107,14 @@ export default function ProfilePage() {
                 {user?.email || "a.thompson@primefleetlogistics.com"}
               </p>
             </div>
-            
+
             <div>
               <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">Phone Number</span>
               <p className="text-xs font-bold text-gray-700 mt-1 font-poppins">
                 +91 98765 43210
               </p>
             </div>
-            
+
             <div>
               <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">Location Base</span>
               <p className="text-xs font-bold text-gray-700 mt-1 font-poppins">
@@ -143,7 +150,7 @@ export default function ProfilePage() {
 
       {/* ── ROW 3: OPERATIONAL OVERVIEW, MAP ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
+
         {/* Operational Overview Column */}
         <div className="lg:col-span-7 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between mb-6 border-b border-gray-100 pb-3">
@@ -210,8 +217,8 @@ export default function ProfilePage() {
               <span className="text-[9px] font-bold text-blue-200 uppercase tracking-wider block">Primary Sector</span>
               <h4 className="text-lg font-black font-poppins mt-1">Mumbai Sector Hub</h4>
             </div>
-            
-            <button 
+
+            <button
               onClick={() => handleAction("Open Sector Chat")}
               className="p-3 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-full shadow-lg shadow-[#B45A0A]/30 transition-all cursor-pointer border-none flex items-center justify-center"
             >

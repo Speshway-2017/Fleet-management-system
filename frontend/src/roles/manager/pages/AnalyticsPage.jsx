@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function AnalyticsPage() {
   const navigate = useNavigate();
@@ -12,19 +13,20 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Analytics</h1>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Analytics</h1>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
+          <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm w-full sm:w-auto">
             {["Last 7 Days", "30 Days", "Year to Date"].map((range) => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium transition-colors ${
                   timeRange === range
                     ? "bg-amber-700 text-white"
                     : "text-gray-600 hover:bg-gray-50"
@@ -34,13 +36,13 @@ export default function AnalyticsPage() {
               </button>
             ))}
           </div>
-          <div className="flex items-center bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm">
+          <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm w-full sm:w-auto">
             <span className="text-sm font-medium text-gray-700">All Branches</span>
             <Icon icon="mdi:chevron-down" className="w-5 h-5 ml-2 text-gray-500" />
           </div>
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-lg"
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-lg w-full sm:w-auto cursor-pointer"
           >
             <Icon icon="mdi:download" className="w-5 h-5" />
             Export Report

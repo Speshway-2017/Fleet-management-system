@@ -12,10 +12,10 @@ export default function ProtectedRoute({ allowedRoles }) {
     );
   }
 
-  // Fallback check from localStorage in case state hasn't flushed yet during synchronous navigation
+  // Fallback check from sessionStorage in case state hasn't flushed yet during synchronous navigation
   const storedUser = (() => {
     try {
-      const stored = localStorage.getItem("user");
+      const stored = sessionStorage.getItem("user");
       return stored ? JSON.parse(stored) : null;
     } catch {
       return null;

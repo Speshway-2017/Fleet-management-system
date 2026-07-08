@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
@@ -66,7 +67,7 @@ export default function NotificationsPage() {
   ];
 
   const getIconColor = (type) => {
-    switch(type) {
+    switch (type) {
       case 'alert': return 'bg-red-100 text-red-600';
       case 'warning': return 'bg-amber-100 text-amber-700';
       case 'info': return 'bg-blue-100 text-blue-700';
@@ -77,7 +78,7 @@ export default function NotificationsPage() {
   };
 
   const getIcon = (type) => {
-    switch(type) {
+    switch (type) {
       case 'alert': return 'mdi:alert-octagon';
       case 'warning': return 'mdi:alert-circle';
       case 'info': return 'mdi:information';
@@ -96,21 +97,22 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Notifications Center</h1>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Notifications Center</h1>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
           <button
             onClick={handleMarkAllAsRead}
-            className="flex items-center gap-2 px-5 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors"
+            className="flex items-center justify-center gap-2 px-5 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors w-full sm:w-auto cursor-pointer"
           >
             <Icon icon="mdi:check-all" className="w-5 h-5" />
             Mark all as read
           </button>
-          <button className="flex items-center gap-2 px-5 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors">
+          <button className="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors w-full sm:w-auto cursor-pointer">
             <Icon icon="mdi:cog-outline" className="w-5 h-5" />
             Notification Settings
           </button>
@@ -185,11 +187,10 @@ export default function NotificationsPage() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeTab === tab
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab
                     ? "bg-blue-100 text-blue-700"
                     : "text-gray-500 hover:text-gray-700"
-                }`}
+                  }`}
               >
                 {tab}
               </button>
@@ -214,11 +215,10 @@ export default function NotificationsPage() {
                       <button
                         key={i}
                         onClick={() => handleNotificationClick(notif.id)}
-                        className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                          action.bg === 'bg-white' 
-                            ? `${action.bg} ${action.text} border ${action.border} hover:bg-gray-50` 
+                        className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${action.bg === 'bg-white'
+                            ? `${action.bg} ${action.text} border ${action.border} hover:bg-gray-50`
                             : `${action.bg} text-white ${action.hover}`
-                        }`}
+                          }`}
                       >
                         {action.label}
                       </button>

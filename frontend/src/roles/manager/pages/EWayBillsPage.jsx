@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function EWayBillsPage() {
   const [activeTab, setActiveTab] = useState("All");
@@ -16,12 +17,15 @@ export default function EWayBillsPage() {
   };
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">E-Way Bills</h1>
+    <div className="p-6 lg:p-8">
+      <Breadcrumb />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">E-Way Bills</h1>
+        </div>
         <button
           onClick={handleGenerate}
-          className="flex items-center gap-2 px-6 py-3 bg-amber-700 text-white rounded-xl font-medium hover:bg-amber-800 transition-colors"
+          className="flex items-center gap-2 px-6 py-3 bg-amber-700 text-white rounded-xl font-medium hover:bg-amber-800 transition-colors w-full sm:w-auto justify-center cursor-pointer"
         >
           <Icon icon="mdi:plus" className="w-5 h-5" />
           Generate New
@@ -34,9 +38,8 @@ export default function EWayBillsPage() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === tab ? "bg-amber-100 text-amber-700" : "text-gray-600 hover:bg-gray-50"
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab ? "bg-amber-100 text-amber-700" : "text-gray-600 hover:bg-gray-50"
+                }`}
             >
               {tab}
             </button>
@@ -60,9 +63,8 @@ export default function EWayBillsPage() {
                   <td className="px-6 py-4 font-medium text-gray-800">{bill.id}</td>
                   <td className="px-6 py-4 text-gray-600">{bill.vehicle}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      bill.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
-                    }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${bill.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                      }`}>
                       {bill.status}
                     </span>
                   </td>

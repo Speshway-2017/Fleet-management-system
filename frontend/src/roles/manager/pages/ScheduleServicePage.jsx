@@ -115,21 +115,20 @@ export default function ScheduleServicePage() {
   const costEst = getEstimatedCost();
 
   return (
-    <div className="w-full px-6 md:px-8 py-8">
+    <div className="p-6 lg:p-8">
       <Breadcrumb />
-
       {/* Header block */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4">
             <div>
-              <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
+              <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
                 Schedule Service
               </h1>
-              <p className="text-sm text-[#64748B] mt-1 font-medium font-nunito">
+              <p className="text-[18px] text-[#64748B] mt-[12px] font-medium">
                 Select a fleet vehicle and book mechanic workshop slots.
               </p>
             </div>
             
-            <div className="flex items-center gap-3 shrink-0 select-none">
+            <div className="flex flex-wrap items-center gap-3 select-none">
               <button
                 onClick={() => navigate("/manager/maintenance")}
                 className="px-4 py-2 bg-white text-[#64748B] hover:text-[#1E293B] border border-[#E7EAF0] rounded-xl text-xs font-bold transition-all cursor-pointer"

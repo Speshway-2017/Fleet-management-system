@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   FolderOpen,
   FileText,
@@ -22,6 +22,7 @@ import {
   Edit
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 // Mock data for documents
 const MOCK_DOCUMENTS = [
@@ -104,11 +105,40 @@ const CATEGORY_OPTIONS = ["All Categories", "Vehicle Docs", "Driver Docs", "Trip
 
 export default function DocumentManagement() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState(null);
+
+  const complianceSectionRef = useRef(null);
+  const [highlightCompliance, setHighlightCompliance] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const section = location.state?.section || params.get("section");
+
+    if (section === "compliance") {
+      setCategoryFilter("Compliance");
+      setHighlightCompliance(true);
+
+      const scrollTimer = setTimeout(() => {
+        if (complianceSectionRef.current) {
+          complianceSectionRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 300);
+
+      const highlightTimer = setTimeout(() => {
+        setHighlightCompliance(false);
+      }, 3000);
+
+      return () => {
+        clearTimeout(scrollTimer);
+        clearTimeout(highlightTimer);
+      };
+    }
+  }, [location]);
 
   // Filter documents
   const filteredDocs = MOCK_DOCUMENTS.filter(doc => {
@@ -158,14 +188,15 @@ export default function DocumentManagement() {
   };
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 animate-fade-in w-full overflow-hidden">
+    <div className="p-6 lg:p-8 space-y-6 animate-fade-in w-full overflow-hidden">
+      <Breadcrumb />
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
             Document Management
           </h1>
-          <p className="text-sm text-[#64748B] mt-1 font-medium">
+          <p className="text-[18px] text-[#64748B] mt-[12px]">
             Organize, monitor, and audit your fleet's critical filing systems.
           </p>
         </div>
@@ -185,8 +216,20 @@ export default function DocumentManagement() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {DOC_CATEGORIES.map((category, idx) => {
           const Icon = category.icon;
+          const isCompliance = category.name === "Compliance";
           return (
-            <div key={idx} className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group cursor-pointer hover:shadow-md transition-shadow">
+            <div 
+              key={idx} 
+              onClick={() => {
+                setCategoryFilter(categoryFilter === category.name ? "All Categories" : category.name);
+                toast.success(`Filtered by: ${category.name}`);
+              }}
+              className={`bg-white rounded-2xl border p-6 shadow-sm hover-card-trigger relative overflow-hidden group cursor-pointer hover:shadow-md transition-all duration-500 ${
+                isCompliance && highlightCompliance
+                  ? "ring-4 ring-amber-500/80 scale-[1.02] shadow-2xl border-amber-300 bg-amber-50/10"
+                  : "border-[#E7EAF0]"
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div className="bg-[#FDF3EC] text-[#B45A0A] p-3 rounded-xl">
                   <Icon className="w-6 h-6" />
@@ -358,7 +401,14 @@ export default function DocumentManagement() {
 
       {/* Compliance Health Index & Notifications */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm">
+        <div 
+          ref={complianceSectionRef}
+          className={`lg:col-span-2 bg-white rounded-2xl border p-6 shadow-sm transition-all duration-500 ${
+            highlightCompliance 
+              ? "ring-4 ring-[#B45A0A]/80 scale-[1.02] shadow-2xl border-[#B45A0A]/40 bg-amber-50/10" 
+              : "border-[#E7EAF0]"
+          }`}
+        >
           <h3 className="font-poppins font-black text-xl text-[#1E293B] mb-4">Compliance Health Index</h3>
           <div className="flex items-center gap-8">
             <div className="relative w-36 h-36">

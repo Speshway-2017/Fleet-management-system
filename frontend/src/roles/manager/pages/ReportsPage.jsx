@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function ReportsPage() {
   const navigate = useNavigate();
@@ -27,8 +28,9 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-8">Reports Center</h1>
+    <div className="p-6 lg:p-8">
+      <Breadcrumb />
+      <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none mb-8">Reports Center</h1>
 
       {/* Top Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

@@ -1,4 +1,3 @@
-import { ChevronRight, Home } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 
 export default function Breadcrumb() {
@@ -6,35 +5,49 @@ export default function Breadcrumb() {
 
   // Breadcrumb configuration mapping paths to labels
   const breadcrumbConfig = {
-    "/manager": { label: "Dashboard", icon: Home },
     "/manager/vehicle-management": { label: "Vehicle Management" },
-    "/manager/vehicles-list": { label: "Vehicles List" },
+    "/manager/vehicles-list": { label: "Vehicles List", parent: "/manager/vehicle-management" },
     "/manager/vehicle-details": { label: "Vehicle Details", parent: "/manager/vehicle-management" },
     "/manager/vehicle-edit": { label: "Edit Vehicle", parent: "/manager/vehicle-management" },
     "/manager/add-vehicle": { label: "Add Vehicle", parent: "/manager/vehicle-management" },
     "/manager/map": { label: "Live Tracking" },
-    "/manager/drivers": { label: "Drivers Management" },
-    "/manager/drivers-list": { label: "Drivers List" },
+    "/manager/drivers": { label: "Drivers" },
+    "/manager/drivers-list": { label: "Drivers List", parent: "/manager/drivers" },
     "/manager/driver-profile": { label: "Driver Profile", parent: "/manager/drivers" },
     "/manager/driver-assign-vehicle": { label: "Assign Vehicle", parent: "/manager/drivers" },
     "/manager/add-driver": { label: "Add Driver", parent: "/manager/drivers" },
-    "/manager/trips": { label: "Trips Management" },
-    "/manager/trips-list": { label: "Trips List" },
-    "/manager/create-trip": { label: "Create Trip", parent: "/manager/trips" },
+    "/manager/trips": { label: "Trips" },
+    "/manager/trips-list": { label: "Trips List", parent: "/manager/trips" },
+    "/manager/create-trip": { label: "Dispatch New Trip", parent: "/manager/trips" },
     "/manager/trip-details": { label: "Trip Details", parent: "/manager/trips" },
     "/manager/route": { label: "Route Optimization" },
     "/manager/fuel": { label: "Fuel Management" },
     "/manager/fastag": { label: "FASTag & Toll" },
     "/manager/fastag/history": { label: "Toll History", parent: "/manager/fastag" },
-    "/manager/maintenance": { label: "Maintenance Management" },
+    "/manager/fastag/receipt": { label: "Receipt Details", parent: "/manager/fastag" },
+    "/manager/fastag/recharge": { label: "FASTag Recharge", parent: "/manager/fastag" },
+    "/manager/documents": { label: "Documents" },
+    "/manager/documents/list": { label: "All Documents", parent: "/manager/documents" },
+    "/manager/documents/compliance-audit": { label: "Compliance Audit", parent: "/manager/documents" },
+    "/manager/documents/upload": { label: "Upload Document", parent: "/manager/documents" },
+    "/manager/documents/view": { label: "View Document", parent: "/manager/documents" },
+    "/manager/documents/edit": { label: "Edit Document", parent: "/manager/documents" },
+    "/manager/analytics": { label: "Analytics" },
+    "/manager/reports": { label: "Reports" },
+    "/manager/notifications": { label: "Notifications" },
+    "/manager/notifications/": { label: "Notification Details", parent: "/manager/notifications" },
+    "/manager/settings": { label: "Settings" },
+    "/manager/change-password": { label: "Change Password", parent: "/manager/settings" },
+    "/manager/eway": { label: "E-Way Bills" },
+    "/manager/ewaybills": { label: "E-Way Bills" },
+    "/manager/maintenance": { label: "Maintenance" },
     "/manager/maintenance/upcoming": { label: "Upcoming Services", parent: "/manager/maintenance" },
     "/manager/maintenance/schedule": { label: "Schedule Service", parent: "/manager/maintenance" },
     "/manager/maintenance/details": { label: "Service Details", parent: "/manager/maintenance" },
-    "/manager/profile": { label: "My Profile" },
+    "/manager/profile": { label: "Profile" },
     "/manager/profile/edit": { label: "Edit Profile", parent: "/manager/profile" },
     "/manager/profile/reset-password": { label: "Reset Password", parent: "/manager/profile" },
     "/manager/profile/2fa": { label: "Two-Factor Authentication", parent: "/manager/profile" },
-    "/manager/documents": { label: "Documents" },
   };
 
   const generateBreadcrumbs = () => {
@@ -48,12 +61,16 @@ export default function Breadcrumb() {
       isActive: pathname === "/manager",
     });
 
+    if (pathname === "/manager") {
+      return breadcrumbs;
+    }
+
     // Find matching breadcrumb configuration
     let matchedConfig = null;
     let matchedPath = null;
 
     for (const [path, config] of Object.entries(breadcrumbConfig)) {
-      if (pathname.startsWith(path) && path !== "/manager") {
+      if (pathname.startsWith(path)) {
         if (!matchedPath || path.length > matchedPath.length) {
           matchedPath = path;
           matchedConfig = config;
@@ -88,26 +105,26 @@ export default function Breadcrumb() {
   const breadcrumbs = generateBreadcrumbs();
 
   return (
-    <div className="flex items-center gap-2 mb-6 text-sm">
+    <nav aria-label="Breadcrumb" className="flex items-center flex-wrap font-poppins text-[14px] font-medium leading-[20px] mb-[16px] text-left select-none gap-x-2">
       {breadcrumbs.map((breadcrumb, index) => (
-        <div key={breadcrumb.path} className="flex items-center gap-2">
+        <div key={breadcrumb.path} className="flex items-center gap-x-2">
           {index > 0 && (
-            <ChevronRight className="w-4 h-4 text-[#94A3B8]" />
+            <span className="text-[#CBD5E1] font-poppins text-[14px] font-medium leading-[20px]">&gt;</span>
           )}
           {breadcrumb.isActive ? (
-            <span className="text-[#64748B] font-medium">
+            <span className="text-[#475569] font-medium">
               {breadcrumb.label}
             </span>
           ) : (
             <Link
               to={breadcrumb.path}
-              className="text-[#B45A0A] hover:text-[#9A4D08] font-medium transition-colors"
+              className="text-[#C46A1A] hover:text-[#A15412] transition-colors"
             >
               {breadcrumb.label}
             </Link>
           )}
         </div>
       ))}
-    </div>
+    </nav>
   );
 }
