@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Wrench,
   Plus,
@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import ScheduleFromNotificationModal from "@/components/common/ScheduleFromNotificationModal";
 import "../dashboard/manager.css";
 
 const INITIAL_WORK_ORDERS = [
@@ -50,8 +51,26 @@ const INITIAL_WORK_ORDERS = [
 
 export default function MaintenanceManagementPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [workOrders, setWorkOrders] = useState([]);
   const [search, setSearch] = useState("");
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [prefilledData, setPrefilledData] = useState(null);
+
+  // Check if navigated from notification with schedule intent
+  useEffect(() => {
+    if (location.state?.openSchedule) {
+      setPrefilledData({
+        vehicleNumber: location.state.vehicleNumber || "",
+        maintenanceType: location.state.maintenanceType || "General Service",
+        dueMileage: location.state.dueMileage || ""
+      });
+      setShowScheduleModal(true);
+      
+      // Clear navigation state
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
 
   // Load from local storage
   useEffect(() => {
@@ -319,6 +338,21 @@ export default function MaintenanceManagementPage() {
               </div>
             </div>
           </div>
+
+      {/* Schedule Maintenance Modal — triggered from Notifications */}
+      {showScheduleModal && prefilledData && (
+        <ScheduleFromNotificationModal
+          prefilled={prefilledData}
+          onClose={() => { setShowScheduleModal(false); setPrefilledData(null); }}
+          onScheduled={(newOrder) => {
+            const saved = localStorage.getItem("fleet_work_orders");
+            const existing = saved ? JSON.parse(saved) : INITIAL_WORK_ORDERS;
+            const updated = [newOrder, ...existing];
+            localStorage.setItem("fleet_work_orders", JSON.stringify(updated));
+            setWorkOrders(updated);
+          }}
+        />
+      )}
         </div>
     );
 }
