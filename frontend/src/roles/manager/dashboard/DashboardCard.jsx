@@ -22,7 +22,7 @@ export default function DashboardCard({ title, value, icon: Icon, color = "orang
 
   if (darkTheme) {
     return (
-      <div className="bg-[#0D0D0D] text-white px-3 py-4 xl:px-4 xl:py-4.5 2xl:px-5 2xl:py-5 rounded-2xl flex flex-col justify-between hover-card-trigger shadow-sm select-none border border-gray-900">
+      <div className="bg-[#0D0D0D] text-white px-3 py-4 xl:px-4 xl:py-4.5 2xl:px-5 2xl:py-5 rounded-2xl flex flex-col justify-between hover-card-trigger shadow-sm select-none border border-gray-900 cursor-pointer group transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lg hover:shadow-orange-500/10 hover:border-orange-500/40">
         <span className="text-[10px] uppercase tracking-wider text-gray-400 font-poppins font-semibold">
           {title}
         </span>
@@ -31,7 +31,7 @@ export default function DashboardCard({ title, value, icon: Icon, color = "orang
             {value}
           </span>
           {Icon && (
-            <div className={`${iconColorClass} shrink-0 pb-0.5`}>
+            <div className={`${iconColorClass} shrink-0 pb-0.5 transition-transform duration-350 group-hover:scale-110 group-hover:rotate-3`}>
               <Icon className="w-5.5 h-5.5 xl:w-6.5 xl:h-6.5 2xl:w-8 2xl:h-8 shrink-0" strokeWidth={1.8} />
             </div>
           )}
@@ -41,7 +41,7 @@ export default function DashboardCard({ title, value, icon: Icon, color = "orang
   }
 
   return (
-    <div className={`bg-white border-l-[5px] ${borderClass} px-3 py-4 xl:px-4 xl:py-4.5 2xl:px-5 2xl:py-5 rounded-2xl flex flex-col justify-between hover-card-trigger shadow-sm select-none`}>
+    <div className={`bg-white border-l-[5px] ${borderClass} px-3 py-4 xl:px-4 xl:py-4.5 2xl:px-5 2xl:py-5 rounded-2xl flex flex-col justify-between hover-card-trigger shadow-sm select-none cursor-pointer group transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lg hover:shadow-gray-200/80`}>
       <span className="text-[10px] uppercase tracking-wider text-[#6B7280] font-poppins font-semibold">
         {title}
       </span>
@@ -50,7 +50,7 @@ export default function DashboardCard({ title, value, icon: Icon, color = "orang
           {value}
         </span>
         {Icon && (
-          <div className={`${iconColorClass} shrink-0 pb-0.5`}>
+          <div className={`${iconColorClass} shrink-0 pb-0.5 transition-transform duration-350 group-hover:scale-110 group-hover:rotate-3`}>
             <Icon className="w-5.5 h-5.5 xl:w-6.5 xl:h-6.5 2xl:w-8 2xl:h-8 shrink-0" strokeWidth={1.8} />
           </div>
         )}

@@ -15,6 +15,7 @@ import {
   Building
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function EditProfilePage() {
   const { user, logout } = useAuth();
@@ -50,21 +51,14 @@ export default function EditProfilePage() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6 animate-fade-in font-nunito text-gray-800">
-      
+      <Breadcrumb />
       {/* ── HEADER BACK NAVIGATION ── */}
-      <div className="space-y-1.5">
-        <button
-          onClick={() => navigate("/manager/profile")}
-          className="flex items-center gap-1.5 text-xs font-bold text-[#B45A0A] hover:text-[#9A4D08] transition-colors border-none bg-transparent cursor-pointer p-0"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Profile</span>
-        </button>
+      <div className="flex items-center gap-4 border-b border-[#E7EAF0] pb-6">
         <div>
-          <h1 className="font-poppins font-black text-2xl text-gray-900 tracking-tight leading-none mt-1">
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
             Edit Profile
           </h1>
-          <p className="text-xs font-semibold text-gray-505 mt-1 font-nunito">
+          <p className="text-[18px] text-[#64748B] mt-[12px]">
             Manage your account settings and executive preferences.
           </p>
         </div>
@@ -112,35 +106,6 @@ export default function EditProfilePage() {
               </button>
             </div>
           </div>
-
-          {/* Security Card */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider border-b border-gray-100 pb-2">
-              Security
-            </h4>
-            
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => navigate("/manager/profile/reset-password")}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs font-bold text-gray-700 hover:bg-gray-50 rounded-xl transition-all cursor-pointer border-none bg-transparent"
-              >
-                <Key className="w-4 h-4 text-gray-400" />
-                <span>Reset Password</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigate("/manager/profile/2fa")}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs font-bold text-gray-700 hover:bg-gray-50 rounded-xl transition-all cursor-pointer border-none bg-transparent"
-              >
-                <Shield className="w-4 h-4 text-gray-400" />
-                <span>2FA Settings</span>
-              </button>
-            </div>
-          </div>
-
-
         </div>
 
         {/* ── RIGHT COLUMN: INPUTS & SETTINGS ── */}

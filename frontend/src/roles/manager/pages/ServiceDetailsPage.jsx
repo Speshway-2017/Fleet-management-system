@@ -116,42 +116,34 @@ export default function ServiceDetailsPage() {
   }
 
   return (
-    <div className="w-full px-6 md:px-8 py-8">
+    <div className="p-6 lg:p-8">
       <Breadcrumb />
-
       {/* Header block */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4 mb-6">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
+            <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
               Vehicle {order.vehicleId}
             </h1>
             <span className={`inline-block px-2.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider font-poppins mt-1 ${
               order.status === "Completed"
-                ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                : "bg-amber-50 text-[#B45A0A] border border-amber-100"
+                ? "bg-emerald-50 text-[#059669] border border-emerald-100"
+                : "bg-amber-50 text-[#D97706] border border-amber-100"
             }`}>
               {order.status === "Completed" ? "AVAILABLE" : "IN GARAGE"}
             </span>
           </div>
-          <p className="text-sm text-[#64748B] mt-1 font-medium font-nunito">
+          <p className="text-[18px] text-[#64748B] mt-[12px] font-medium">
             Comprehensive parts checklists and mechanic specialists diagnostics for {order.vehicleName}.
           </p>
         </div>
         
         <div className="flex items-center gap-3 shrink-0 select-none">
-          <button
-            onClick={() => navigate("/manager/maintenance")}
-            className="px-4 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] hover:text-[#1E293B] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Overview</span>
-          </button>
         </div>
       </div>
 
       {/* Metadata Cards row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 select-none mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 select-none mb-6">
             
             {/* Meta 1: Progress */}
             <div className="bg-white rounded-2xl border border-[#E7EAF0] p-4 shadow-sm">

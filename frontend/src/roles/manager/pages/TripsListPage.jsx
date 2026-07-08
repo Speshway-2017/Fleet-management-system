@@ -14,6 +14,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function TripsListPage() {
   const navigate = useNavigate();
@@ -108,21 +109,15 @@ export default function TripsListPage() {
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
+      <Breadcrumb />
       {/* Page Header */}
       <div className="flex items-center justify-between gap-4 border-b border-[#E7EAF0] pb-6">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/manager/trips")}
-            className="p-2.5 bg-white border border-[#E7EAF0] hover:bg-[#F5F7FB] rounded-xl text-[#64748B] hover:text-[#1E293B] transition-all cursor-pointer"
-            title="Back to Trips Overview"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
           <div>
-            <h1 className="text-3xl font-black font-poppins text-[#1E293B]">
+            <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
               Trips List
             </h1>
-            <p className="text-sm text-[#64748B] mt-1 font-medium">
+            <p className="text-[18px] text-[#64748B] mt-[12px] font-medium">
               Complete listing of all registered trip dispatches
             </p>
           </div>

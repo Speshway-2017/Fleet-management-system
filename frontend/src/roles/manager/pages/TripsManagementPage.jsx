@@ -23,6 +23,7 @@ import {
   Truck
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 const INITIAL_TRIPS = [
   {
@@ -300,14 +301,15 @@ export default function TripsManagementPage() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6 animate-fade-in">
+          <Breadcrumb />
           
           {/* Header Area */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#E7EAF0] pb-6">
             <div>
-              <h1 className="text-3xl font-black font-poppins text-[#1E293B]">
-                Trips Overview
+              <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
+                Trips Management
               </h1>
-              <p className="text-sm text-[#64748B] mt-1 font-medium">
+              <p className="text-[18px] text-[#64748B] mt-[12px]">
                 Monitor logistics routing, ETAs, active drivers and trip statuses
               </p>
             </div>
@@ -324,7 +326,7 @@ export default function TripsManagementPage() {
           </div>
 
           {/* KPI Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
             {/* Card 1: Total Trips */}
             <div className="bg-white rounded-xl border-l-4 border-l-blue-600 border border-[#E7EAF0] p-5 flex items-center justify-between shadow-sm">

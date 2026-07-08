@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -18,6 +18,7 @@ import {
   ChevronDown
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 const TRACKING_VEHICLES = [
   {
@@ -107,10 +108,19 @@ const TRACKING_VEHICLES = [
 ];
 
 export default function FleetMapPage() {
+  const location = useLocation();
   const [search, setSearch] = useState("");
   const [selectedVehicleId, setSelectedVehicleId] = useState("v1");
   const [isSatellite, setIsSatellite] = useState(false);
   const [isTrafficOn, setIsTrafficOn] = useState(true);
+
+  // Check if navigated from notification with specific vehicle
+  useEffect(() => {
+    if (location.state?.vehicleId) {
+      setSelectedVehicleId(location.state.vehicleId);
+      toast.success("Vehicle Located on Map");
+    }
+  }, [location]);
 
   // Map DOM references
   const mapRef = useRef(null);
@@ -272,17 +282,18 @@ export default function FleetMapPage() {
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
+      <Breadcrumb />
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="font-poppins font-black text-2xl text-[#1E293B]">Fleet Live Map</h2>
-          <p className="text-sm text-[#64748B] font-medium mt-1">Track all active vehicles and routes in real-time</p>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Live Tracking</h1>
+          <p className="text-[18px] text-[#64748B] mt-[12px]">Track all active vehicles and routes in real-time</p>
         </div>
         <span className="text-[10px] font-bold px-3 py-1.5 bg-orange-50 border border-orange-100 text-[#B45A0A] rounded-lg font-poppins tracking-wide">
           {TRACKING_VEHICLES.length} LIVE
         </span>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Vehicles List */}
         <div className="lg:col-span-3 bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-5 flex flex-col space-y-4 max-h-[600px] overflow-hidden">
@@ -309,11 +320,10 @@ export default function FleetMapPage() {
                 <div
                   key={v.id}
                   onClick={() => setSelectedVehicleId(v.id)}
-                  className={`p-3 border.5 rounded-xl cursor-pointer transition-all flex items-start justify-between select-none ${
-                    selectedVehicleId === v.id
+                  className={`p-3 border.5 rounded-xl cursor-pointer transition-all flex items-start justify-between select-none ${selectedVehicleId === v.id
                       ? "border-[#B45A0A] bg-orange-50/20 shadow-sm"
                       : "border-[#E7EAF0] bg-white hover:bg-gray-50/60"
-                  }`}
+                    }`}
                 >
                   <div>
                     <p className="font-bold text-xs text-[#1E293B] font-poppins">{v.plateNumber}</p>
@@ -333,16 +343,15 @@ export default function FleetMapPage() {
         {/* Middle Column: Map */}
         <div className="lg:col-span-6 relative rounded-2xl border border-[#E7EAF0] shadow-sm overflow-hidden">
           <div ref={mapRef} className="w-full h-[600px]" />
-          
+
           {/* Map Controls */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-4 py-2 border border-[#E7EAF0] rounded-2xl shadow-xl z-[1000] flex items-center gap-3 select-none font-poppins text-xs font-bold text-[#1E293B]">
             <button
               onClick={() => setIsTrafficOn(!isTrafficOn)}
-              className={`px-3 py-1.5 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all ${
-                isTrafficOn
+              className={`px-3 py-1.5 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all ${isTrafficOn
                   ? "bg-[#B45A0A] text-white"
                   : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B]"
-              }`}
+                }`}
             >
               <Compass className="w-3.5 h-3.5" />
               <span>Traffic {isTrafficOn ? "ON" : "OFF"}</span>
@@ -350,11 +359,10 @@ export default function FleetMapPage() {
             <span className="text-gray-300">|</span>
             <button
               onClick={() => setIsSatellite(!isSatellite)}
-              className={`px-3 py-1.5 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all ${
-                isSatellite
+              className={`px-3 py-1.5 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all ${isSatellite
                   ? "bg-[#B45A0A] text-white"
                   : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B]"
-              }`}
+                }`}
             >
               {isSatellite ? <MapIcon className="w-3.5 h-3.5" /> : <Layers className="w-3.5 h-3.5" />}
               <span>{isSatellite ? "Default Map" : "Satellite View"}</span>
@@ -366,7 +374,7 @@ export default function FleetMapPage() {
         <div className="lg:col-span-3">
           {selectedVehicle && (
             <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-5 flex flex-col space-y-4 h-full max-h-[600px] overflow-y-auto custom-scrollbar select-none">
-              
+
               {/* Header card info */}
               <div className="flex items-center justify-between border-b border-[#E7EAF0]/60 pb-3 shrink-0">
                 <div className="flex items-center gap-1.5">
@@ -403,7 +411,7 @@ export default function FleetMapPage() {
 
               {/* State Diagnostics Row */}
               <div className="grid grid-cols-2 gap-3 shrink-0">
-                
+
                 {/* Engine status */}
                 <div className="bg-white border border-[#E7EAF0] rounded-xl p-3 flex flex-col space-y-1">
                   <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Engine</span>

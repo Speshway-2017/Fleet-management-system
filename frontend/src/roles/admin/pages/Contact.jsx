@@ -194,7 +194,7 @@ export default function Contact({ setActiveTab }) {
                   </div>
                   <div>
                     <span className="text-[10px] font-semibold text-muted block leading-none">Sales & General</span>
-                    <span className="text-xs font-bold text-heading font-display mt-0.5 block">+1 800 FLEET-01</span>
+                    <span className="text-xs font-bold text-heading font-display mt-0.5 block">+91 1800 123 4567</span>
                   </div>
                 </div>
 
@@ -207,7 +207,7 @@ export default function Contact({ setActiveTab }) {
                   </div>
                   <div>
                     <span className="text-[10px] font-semibold text-muted block leading-none">Support Hotline</span>
-                    <span className="text-xs font-bold text-heading font-display mt-0.5 block">+1 800 FLEET-02</span>
+                    <span className="text-xs font-bold text-heading font-display mt-0.5 block">+91 1800 123 4568</span>
                   </div>
                 </div>
 
@@ -247,7 +247,7 @@ export default function Contact({ setActiveTab }) {
                   </div>
                   <div>
                     <span className="text-[10px] font-semibold text-muted block leading-none">Headquarters</span>
-                    <span className="text-xs font-bold text-heading font-display mt-0.5 block">Austin, TX 78701</span>
+                    <span className="text-xs font-bold text-heading font-display mt-0.5 block">Bengaluru, KA 560001</span>
                   </div>
                 </div>
               </div>
@@ -406,7 +406,7 @@ export default function Contact({ setActiveTab }) {
                 <svg className="h-4 w-4 text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
-                <span>+1 (800) FLEET-01</span>
+                <span>+91 1800 123 4567</span>
               </li>
               <li className="flex items-center gap-2">
                 <svg className="h-4 w-4 text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">

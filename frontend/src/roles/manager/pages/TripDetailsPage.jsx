@@ -20,6 +20,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function TripDetailsPage() {
   const { id } = useParams();
@@ -225,29 +226,21 @@ export default function TripDetailsPage() {
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
-      {/* Back Navigation Bar */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate("/manager/trips")}
-          className="p-2.5 bg-white border border-[#E7EAF0] hover:bg-[#F5F7FB] rounded-xl text-[#64748B] hover:text-[#1E293B] transition-all cursor-pointer shadow-sm"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <span className="text-xs font-bold text-[#64748B] font-poppins">Back to Trips</span>
-      </div>
+      <Breadcrumb />
+
 
       {/* Heading summary header card */}
       <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-6">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-black font-poppins text-[#1E293B]">
+            <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
               {trip.id}
             </h1>
             <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(trip.status)}`}>
               {trip.status}
             </span>
           </div>
-          <p className="text-sm text-[#64748B] mt-2 font-medium">
+          <p className="text-[18px] text-[#64748B] mt-[12px] font-medium">
             {trip.vehicleName} dispatch, route from <strong>{trip.startLocation}</strong> to <strong>{trip.endLocation}</strong>.
           </p>
         </div>

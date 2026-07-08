@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Plus, Search, ChevronDown, Eye, Edit2, Trash2, FileText, MapPin, X, AlertTriangle, SlidersHorizontal, Users } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import L from "leaflet";
 
 
@@ -179,41 +180,34 @@ export default function VehiclesListPage() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
-          {/* Page Header */}
-          <div className="flex items-center justify-between gap-4 border-b border-[#E7EAF0] pb-6">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate("/manager")}
-                className="p-2 hover:bg-white rounded-lg transition-colors cursor-pointer"
-              >
-                <ArrowLeft className="w-5 h-5 text-[#64748B]" />
-              </button>
-              <div>
-                <h1 className="text-3xl font-black font-poppins text-[#1E293B]">
-                  Vehicles List
-                </h1>
-                <p className="text-sm text-[#64748B] mt-1">
-                  Complete list of all registered vehicles
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate("/manager/drivers")}
-                className="px-4 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all flex items-center gap-2 shadow-sm font-poppins cursor-pointer"
-              >
-                <Users className="w-4 h-4" />
-                <span>View All Drivers</span>
-              </button>
-              <button
-                onClick={() => navigate("/manager/add-vehicle")}
-                className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 cursor-pointer"
-              >
-                <Plus className="w-4.5 h-4.5" />
-                <span>Add Vehicle</span>
-              </button>
-            </div>
-          </div>
+      <Breadcrumb />
+      {/* Page Header */}
+      <div className="flex items-center justify-between gap-4 border-b border-[#E7EAF0] pb-6">
+        <div>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
+            Vehicles List
+          </h1>
+          <p className="text-[18px] text-[#64748B] mt-[12px]">
+            Complete list of all registered vehicles
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/manager/drivers")}
+            className="px-4 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all flex items-center gap-2 shadow-sm font-poppins cursor-pointer"
+          >
+            <Users className="w-4 h-4" />
+            <span>View All Drivers</span>
+          </button>
+          <button
+            onClick={() => navigate("/manager/add-vehicle")}
+            className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 cursor-pointer"
+          >
+            <Plus className="w-4.5 h-4.5" />
+            <span>Add Vehicle</span>
+          </button>
+        </div>
+      </div>
 
           {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

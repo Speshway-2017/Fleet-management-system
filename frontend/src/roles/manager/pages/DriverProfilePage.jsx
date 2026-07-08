@@ -18,6 +18,7 @@ import {
   Plus
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 const MOCK_TRIPS_ROSTER = [
   { id: "T-9081", route: "Pune Depot to Mumbai Depot", date: "2026-07-04", status: "Completed", fuelUsed: "45L" },
@@ -120,16 +121,10 @@ export default function DriverProfilePage() {
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
+      <Breadcrumb />
       {/* --- TOP PROFILE HEADER WITH BACK BUTTON --- */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-6">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate("/manager/drivers")}
-            className="p-2.5 bg-white border border-[#E7EAF0] hover:bg-[#F5F7FB] rounded-xl text-[#64748B] hover:text-[#1E293B] transition-all cursor-pointer"
-            title="Back to Roster"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
           
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 bg-[#FDF3EC] text-[#B45A0A] rounded-2xl flex items-center justify-center border border-[#FDF3EC] font-poppins font-black text-xl select-none">
@@ -137,7 +132,7 @@ export default function DriverProfilePage() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-poppins font-black text-2xl text-[#1E293B] tracking-tight">{driver.name}</h1>
+                <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">{driver.name}</h1>
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                   driver.status === "Available" ? "bg-emerald-50 text-[#22C55E]" :
                   driver.status === "On Trip" ? "bg-amber-50 text-[#B45A0A]" :
@@ -165,7 +160,7 @@ export default function DriverProfilePage() {
       </div>
 
       {/* --- DRIVER QUICK STATS OVERVIEW --- */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
         <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
@@ -175,15 +170,6 @@ export default function DriverProfilePage() {
               <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Total Trips</span>
               <p className="text-xl font-extrabold text-[#1E293B] mt-0.5 font-poppins">{driver.tripsCompleted}</p>
             </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="bg-amber-50 text-amber-500 p-2.5 rounded-xl">
-              <Star className="w-5 h-5 fill-amber-500 text-amber-500" />
-            </div>
-
           </div>
         </div>
 
@@ -237,9 +223,13 @@ export default function DriverProfilePage() {
                 </span>
               </div>
 
-              <div>
-                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Expiry Date</span>
-                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">
+              <div 
+                onClick={() => navigate("/manager/documents", { state: { section: "compliance" } })}
+                className="cursor-pointer group hover:bg-amber-50/40 p-2 -m-2 rounded-xl transition-all border border-transparent hover:border-amber-200/50"
+                title="Click to view compliance documents"
+              >
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block group-hover:text-[#B45A0A]">Expiry Date</span>
+                <span className="text-sm font-semibold text-[#1E293B] mt-1 block group-hover:underline">
                   {new Date(driver.licenseExpiry).toLocaleDateString("en-IN", {
                     day: '2-digit',
                     month: 'short',
@@ -248,9 +238,13 @@ export default function DriverProfilePage() {
                 </span>
               </div>
 
-              <div>
-                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">License Compliance</span>
-                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mt-1.5 ${complianceColor}`}>
+              <div 
+                onClick={() => navigate("/manager/documents", { state: { section: "compliance" } })}
+                className="cursor-pointer group hover:bg-amber-50/40 p-2 -m-2 rounded-xl transition-all border border-transparent hover:border-amber-200/50"
+                title="Click to view compliance documents"
+              >
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block group-hover:text-[#B45A0A]">License Compliance</span>
+                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mt-1.5 transition-transform group-hover:scale-105 ${complianceColor}`}>
                   {complianceStatus}
                 </span>
               </div>

@@ -12,6 +12,7 @@ import {
   CheckCircle2
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function AssignVehiclePage() {
   const { id } = useParams();
@@ -144,19 +145,13 @@ export default function AssignVehiclePage() {
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
+      <Breadcrumb />
       {/* --- HEADER --- */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-6">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate(`/manager/driver-profile/${driver.id}`)}
-            className="p-2.5 bg-white border border-[#E7EAF0] hover:bg-[#F5F7FB] rounded-xl text-[#64748B] hover:text-[#1E293B] transition-all cursor-pointer"
-            title="Back to profile"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
           <div>
-            <h1 className="font-poppins font-black text-2xl text-[#1E293B] tracking-tight">Assign Vehicle</h1>
-            <p className="text-sm text-[#64748B] mt-0.5 font-medium">
+            <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Assign Vehicle</h1>
+            <p className="text-[18px] text-[#64748B] mt-[12px] font-medium">
               Select a fleet vehicle to assign to <strong className="text-[#1E293B]">{driver.name}</strong>.
             </p>
           </div>
@@ -182,7 +177,7 @@ export default function AssignVehiclePage() {
 
       {/* --- VEHICLES SEARCH AND FILTERS --- */}
       <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4 mt-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           
           {/* Search Vehicles */}
           <div className="md:col-span-2 relative">

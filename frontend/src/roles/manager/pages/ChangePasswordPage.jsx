@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
@@ -32,15 +33,10 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <div className="flex items-center gap-3 mb-8">
-        <button
-          onClick={() => navigate("/manager/settings")}
-          className="p-2 hover:bg-gray-100 rounded-lg"
-        >
-          <Icon icon="mdi:arrow-left" className="w-6 h-6 text-gray-600" />
-        </button>
-        <h1 className="text-3xl font-bold text-gray-800">Change Password</h1>
+    <div className="p-6 lg:p-8 max-w-2xl mx-auto">
+      <Breadcrumb />
+      <div className="mb-8">
+        <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none mb-2">Change Password</h1>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-300 p-8 shadow-sm">

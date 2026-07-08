@@ -1,4 +1,5 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import {
   ArrowLeft,
   Edit,
@@ -43,18 +44,13 @@ export default function ViewDocument() {
   const doc = MOCK_DOCUMENTS.find(d => d.id === parseInt(id || 1));
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 animate-fade-in w-full overflow-hidden">
+    <div className="p-6 lg:p-8 space-y-6 animate-fade-in w-full overflow-hidden">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate("/manager/documents")}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
           <div>
-            <h1 className="font-poppins font-black text-2xl text-[#1E293B] tracking-tight">
+            <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
               View Document
             </h1>
             <div className="flex items-center gap-2 text-xs text-[#64748B]">
@@ -125,8 +121,8 @@ export default function ViewDocument() {
                     <div>
                       <h3 className="text-xs uppercase tracking-wider text-gray-500">Insured Party</h3>
                       <p className="font-bold text-[#1E293B]">Voluux FM-30 Logistics Corp.</p>
-                      <p className="text-sm text-gray-600">422 Industrial Way</p>
-                      <p className="text-sm text-gray-600">Chicago, IL 60601</p>
+                      <p className="text-sm text-gray-600">422 Industrial Road</p>
+                      <p className="text-sm text-gray-600">Mumbai, MH 400001</p>
                     </div>
                     <div>
                       <h3 className="text-xs uppercase tracking-wider text-gray-500">Vehicle Description</h3>
@@ -139,7 +135,7 @@ export default function ViewDocument() {
                     <div>
                       <h3 className="text-xs uppercase tracking-wider text-gray-500">Coverage Type</h3>
                       <p className="font-bold text-[#1E293B]">Commercial General Liability</p>
-                      <p className="text-sm text-gray-600">Limit: $2,000,000.00</p>
+                      <p className="text-sm text-gray-600">Limit: ₹1,50,00,000.00</p>
                       <p className="text-sm text-gray-600">Combined Single Limit</p>
                     </div>
                     <div>

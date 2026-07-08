@@ -17,6 +17,7 @@ import {
   Search
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function CreateTripPage() {
   const navigate = useNavigate();
@@ -128,20 +129,14 @@ export default function CreateTripPage() {
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
+      <Breadcrumb />
       {/* Breadcrumbs & Title header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#E7EAF0] pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#64748B] mb-2 font-poppins">
-            <span className="hover:text-[#B45A0A] cursor-pointer" onClick={() => navigate("/manager")}>Home</span>
-            <span>/</span>
-            <span className="hover:text-[#B45A0A] cursor-pointer" onClick={() => navigate("/manager/trips")}>Trips</span>
-            <span>/</span>
-            <span className="text-[#1E293B]">Dispatch New Trip</span>
-          </div>
-          <h1 className="text-3xl font-black font-poppins text-[#1E293B]">
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
             Dispatch New Trip
           </h1>
-          <p className="text-sm text-[#64748B] mt-1 font-medium">
+          <p className="text-[18px] text-[#64748B] mt-[12px] font-medium">
             Configure vehicle, route details, and driver assignment.
           </p>
         </div>

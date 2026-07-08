@@ -24,6 +24,7 @@ import {
   Building2,
   ShieldCheck,
   X,
+  Menu,
 } from "lucide-react";
 
 const MENU_ITEMS = [
@@ -55,21 +56,83 @@ export default function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const links = role === "admin" ? ADMIN_ITEMS : MENU_ITEMS;
 
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden">
+    <div className="h-screen bg-gray-50 flex overflow-hidden relative">
+      {/* Mobile Sidebar Drawer */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden animate-fade-in">
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" 
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+          <aside className="relative flex w-64 max-w-xs flex-col bg-[#0F0F10] text-gray-400 border-r border-[#1B1B1D]/50 h-full shadow-2xl z-10">
+            <div className="absolute top-4 right-4 z-50">
+              <button 
+                onClick={() => setMobileSidebarOpen(false)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#1B1B1D]/30 focus:outline-none cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex items-center px-4 py-6 border-b border-[#1B1B1D]/50 shrink-0">
+              <div className="flex items-center gap-2">
+                <img
+                  src="/logo.png"
+                  className="w-10 h-10 object-contain rounded-lg shrink-0"
+                  alt="Fleet Management Logo"
+                />
+                <div className="border-l border-[#1B1B1D]/80 pl-[14px] py-1">
+                  <h1 className="font-black text-white text-base tracking-wide leading-none whitespace-nowrap">
+                    Fleet Management
+                  </h1>
+                  <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider mt-1.5 block">
+                    {role === "admin" ? "Admin" : "Manager"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <nav className="flex-1 overflow-y-auto py-4" style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}>
+              {links.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.to;
+                return (
+                  <NavLink
+                    key={item.label}
+                    to={item.to}
+                    onClick={() => setMobileSidebarOpen(false)}
+                    className={`flex items-center gap-3.5 px-6 py-3 text-sm border-l-4 transition-all ${
+                      isActive
+                        ? "border-[#B45A0A] bg-[#1B1B1D] text-[#B45A0A] font-semibold"
+                        : "border-transparent hover:text-white hover:bg-[#1B1B1D]/30"
+                    }`}
+                  >
+                    <Icon className="w-5 h-5 shrink-0" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </nav>
+          </aside>
+        </div>
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 flex flex-col bg-[#0F0F10] text-gray-400 border-r border-[#1B1B1D]/50 shrink-0 sticky top-0 h-fit max-h-screen">
+      <aside className="hidden md:flex w-20 lg:w-64 flex-col bg-[#0F0F10] text-gray-400 border-r border-[#1B1B1D]/50 shrink-0 sticky top-0 h-screen max-h-screen">
         {/* Brand Header */}
-        <div className="flex items-center px-4 py-6 border-b border-[#1B1B1D]/50 shrink-0">
+        <div className="flex items-center justify-center lg:justify-start lg:px-4 py-6 border-b border-[#1B1B1D]/50 shrink-0">
           <div className="flex items-center gap-2">
             <img
               src="/logo.png"
               className="w-10 h-10 object-contain rounded-lg shrink-0"
               alt="Fleet Management Logo"
             />
-            <div className="border-l border-[#1B1B1D]/80 pl-[14px] py-1">
+            <div className="border-l border-[#1B1B1D]/80 pl-[14px] py-1 hidden lg:block">
               <h1 className="font-black text-white text-base tracking-wide leading-none whitespace-nowrap">
                 Fleet Management
               </h1>
@@ -97,14 +160,14 @@ export default function AppLayout() {
               <NavLink
                 key={item.label}
                 to={item.to}
-                className={`flex items-center gap-3.5 px-6 py-3 text-sm border-l-4 transition-all ${
+                className={`flex items-center justify-center lg:justify-start gap-3.5 px-6 py-3 text-sm border-l-4 transition-all ${
                   isActive
                     ? "border-[#B45A0A] bg-[#1B1B1D] text-[#B45A0A] font-semibold"
                     : "border-transparent hover:text-white hover:bg-[#1B1B1D]/30"
                 }`}
               >
                 <Icon className="w-5 h-5 shrink-0" />
-                <span>{item.label}</span>
+                <span className="hidden lg:block">{item.label}</span>
               </NavLink>
             );
           })}
@@ -116,13 +179,22 @@ export default function AppLayout() {
         {/* Header */}
         <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm shrink-0">
           <div className="flex items-center gap-4">
-            <h2 className="text-lg font-semibold text-gray-800">
-              {role === "admin" ? "Admin Workspace" : "Manager Workspace"}
-            </h2>
+            <button
+              onClick={() => setMobileSidebarOpen(true)}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-md md:hidden focus:outline-none cursor-pointer"
+              title="Open Menu"
+            >
+              <Menu className="w-5.5 h-5.5" />
+            </button>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-md">
+            <button 
+              onClick={() => navigate("/manager/notifications")}
+              className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+              title="View notifications"
+            >
               <Bell className="w-5 h-5" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#B45A0A] border border-white rounded-full animate-pulse" />
             </button>
             <div className="relative">
               {/* Profile Trigger */}

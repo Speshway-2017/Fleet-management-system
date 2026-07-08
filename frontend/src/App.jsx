@@ -58,6 +58,8 @@ import AnalyticsPage from "@/roles/manager/pages/AnalyticsPage";
 import NotificationsPage from "@/roles/manager/pages/NotificationsPage";
 import NotificationDetailsPage from "@/roles/manager/pages/NotificationDetailsPage";
 import ReportsPage from "@/roles/manager/pages/ReportsPage";
+import ArchivedReportsPage from "@/roles/manager/pages/ArchivedReportsPage";
+import ManageSchedulesPage from "@/roles/manager/pages/ManageSchedulesPage";
 import SettingsPage from "@/roles/manager/pages/SettingsPage";
 import ChangePasswordPage from "@/roles/manager/pages/ChangePasswordPage";
 import EWayBillsPage from "@/roles/manager/pages/EWayBillsPage";
@@ -153,7 +155,6 @@ export default function App() {
               <Route path="/manager/routes" element={<div className="p-8"><h1 className="text-2xl font-bold">Route Optimization Page</h1></div>} />
 
               <Route path="/manager/ewaybills" element={<div className="p-8"><h1 className="text-2xl font-bold">E-Way Bills Page</h1></div>} />
-              <Route path="/manager/maintenance" element={<div className="p-8"><h1 className="text-2xl font-bold">Maintenance Page</h1></div>} />
               <Route path="/manager/eway" element={<EWayBillsPage />} />
               <Route path="/manager/settings" element={<SettingsPage />} />
               <Route path="/manager/documents" element={<DocumentManagement />} />
@@ -162,10 +163,6 @@ export default function App() {
               <Route path="/manager/documents/upload" element={<UploadDocument />} />
               <Route path="/manager/documents/view/:id" element={<ViewDocument />} />
               <Route path="/manager/documents/edit/:id" element={<EditDocument />} />
-              <Route path="/manager/analytics" element={<div className="p-8"><h1 className="text-2xl font-bold">Analytics Page</h1></div>} />
-              <Route path="/manager/reports" element={<div className="p-8"><h1 className="text-2xl font-bold">Reports Page</h1></div>} />
-              <Route path="/manager/notifications" element={<div className="p-8"><h1 className="text-2xl font-bold">Notifications Page</h1></div>} />
-              <Route path="/manager/settings" element={<div className="p-8"><h1 className="text-2xl font-bold">Settings Page</h1></div>} />
               <Route path="/manager/drivers" element={<DriversManagementPage />} />
               <Route path="/manager/drivers-list" element={<DriversListPage />} />
               <Route path="/manager/trips" element={<TripsManagementPage />} />
@@ -181,11 +178,11 @@ export default function App() {
               <Route path="/manager/fuel" element={<FuelManagementPage />} />
               <Route path="/manager/analytics" element={<AnalyticsPage />} />
               <Route path="/manager/reports" element={<ReportsPage />} />
+              <Route path="/manager/reports/archived" element={<ArchivedReportsPage />} />
+              <Route path="/manager/reports/schedules" element={<ManageSchedulesPage />} />
               <Route path="/manager/notifications" element={<NotificationsPage />} />
               <Route path="/manager/notifications/:id" element={<NotificationDetailsPage />} />
-              <Route path="/manager/settings" element={<SettingsPage />} />
               <Route path="/manager/change-password" element={<ChangePasswordPage />} />
-              <Route path="/manager/eway" element={<EWayBillsPage />} />
               <Route path="/manager/maintenance" element={<MaintenanceManagementPage />} />
               <Route path="/manager/maintenance/upcoming" element={<UpcomingServicesPage />} />
               <Route path="/manager/maintenance/schedule" element={<ScheduleServicePage />} />
