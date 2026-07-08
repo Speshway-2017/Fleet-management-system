@@ -1,23 +1,41 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
+import { Link, useNavigate } from "react-router-dom";
+import { useAdmin } from "@/roles/admin/context/AdminContext";
 import { Upload } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 
 export default function AddOrganization() {
+  const navigate = useNavigate();
+  const { addOrganization } = useAdmin();
   const [form, setForm] = useState({
     name: "", industry: "", email: "", phone: "", address: "",
     city: "", state: "", country: "", plan: "", status: ""
   });
+  const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
+    setErrors(prev => ({ ...prev, [name]: "" }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Submitting:", form);
+    const newErrors = {};
+    if (!form.name) newErrors.name = "Organization Name is required";
+    if (!form.industry) newErrors.industry = "Industry is required";
+    if (!form.email) newErrors.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = "Invalid email format";
+    if (form.phone && !/^\+?[0-9\s-]{7,15}$/.test(form.phone)) newErrors.phone = "Invalid phone format";
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
+    addOrganization(form);
+    toast.success("Organization created successfully!");
+    navigate("/admin/organizations");
   };
 
   return (
@@ -60,22 +78,26 @@ export default function AddOrganization() {
                   {/* Org Name */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">Organization Name</label>
-                    <input type="text" name="name" placeholder="Organization Name" value={form.name} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
+                    <input type="text" name="name" placeholder="Organization Name" value={form.name} onChange={handleChange} className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.name ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`} />
+                    {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
                   </div>
                   {/* Industry */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">Industry</label>
-                    <input type="text" name="industry" placeholder="Industry" value={form.industry} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
+                    <input type="text" name="industry" placeholder="Industry" value={form.industry} onChange={handleChange} className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.industry ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`} />
+                    {errors.industry && <p className="text-xs text-red-500 mt-1">{errors.industry}</p>}
                   </div>
                   {/* Email */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">Email Address</label>
-                    <input type="email" name="email" placeholder="Email Address" value={form.email} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
+                    <input type="email" name="email" placeholder="Email Address" value={form.email} onChange={handleChange} className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.email ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`} />
+                    {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
                   </div>
                   {/* Phone */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">Phone Number</label>
-                    <input type="tel" name="phone" placeholder="Phone Number" value={form.phone} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
+                    <input type="tel" name="phone" placeholder="Phone Number" value={form.phone} onChange={handleChange} className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.phone ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`} />
+                    {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
                   </div>
                   {/* Address */}
                   <div className="space-y-1.5 md:col-span-2">

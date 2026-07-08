@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -108,10 +108,19 @@ const TRACKING_VEHICLES = [
 ];
 
 export default function FleetMapPage() {
+  const location = useLocation();
   const [search, setSearch] = useState("");
   const [selectedVehicleId, setSelectedVehicleId] = useState("v1");
   const [isSatellite, setIsSatellite] = useState(false);
   const [isTrafficOn, setIsTrafficOn] = useState(true);
+
+  // Check if navigated from notification with specific vehicle
+  useEffect(() => {
+    if (location.state?.vehicleId) {
+      setSelectedVehicleId(location.state.vehicleId);
+      toast.success("Vehicle Located on Map");
+    }
+  }, [location]);
 
   // Map DOM references
   const mapRef = useRef(null);

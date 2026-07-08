@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useAdmin } from "@/roles/admin/context/AdminContext";
 import { Building2, Users, Activity, TrendingUp } from "lucide-react";
 import { 
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -65,6 +66,11 @@ function KPICard({ title, value, increase, icon: Icon }) {
 }
 
 export default function Analytics() {
+  const { organizations, fleetManagers } = useAdmin();
+  
+  const orgCount = organizations.length;
+  const managerCount = fleetManagers.length;
+
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
       <NewAdminSidebar activeItem="analytics" />
@@ -83,8 +89,8 @@ export default function Analytics() {
 
           {/* KPI Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <KPICard title="Organizations" value="128" increase="+12%" icon={Building2} />
-            <KPICard title="Fleet Managers" value="48" increase="+8%" icon={Users} />
+            <KPICard title="Organizations" value={orgCount} increase="+12%" icon={Building2} />
+            <KPICard title="Fleet Managers" value={managerCount} increase="+8%" icon={Users} />
             <KPICard title="Daily Active Users" value="312" increase="+5%" icon={Activity} />
             <KPICard title="Monthly Growth" value="6.2%" increase="+1.4%" icon={TrendingUp} />
           </div>

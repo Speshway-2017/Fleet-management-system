@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAdmin } from "@/roles/admin/context/AdminContext";
 import {
   Building2,
   ArrowUpRight,
@@ -67,6 +68,9 @@ const recentActivities = [
 
 function Dashboard() {
   const navigate = useNavigate();
+  const { organizations, fleetManagers } = useAdmin();
+  const orgCount = organizations.length;
+  const managerCount = fleetManagers.length;
 
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
@@ -81,7 +85,7 @@ function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mb-6">
             <KPICard 
               title="Total Organizations" 
-              value="128" 
+              value={orgCount.toString()} 
               subtitle="vs last month"
               trendText="+12%"
               trendColor="text-green-500"
@@ -91,14 +95,14 @@ function Dashboard() {
             />
             <KPICard 
               title="Active Organizations" 
-              value="94" 
-              subtitle="73% of total"
+              value={organizations.filter(o => o.status === 'Active').length.toString()} 
+              subtitle={`${Math.round((organizations.filter(o => o.status === 'Active').length / (orgCount || 1)) * 100)}% of total`}
               icon={<CheckCircle2 className="w-4 h-4 text-green-500" />}
               iconBg="bg-green-50 border border-green-100"
             />
             <KPICard 
               title="Total Fleet Managers" 
-              value="48" 
+              value={managerCount.toString()} 
               subtitle="vs last month"
               trendText="+8%"
               trendColor="text-green-500"
@@ -108,8 +112,8 @@ function Dashboard() {
             />
             <KPICard 
               title="Active Fleet Managers" 
-              value="36" 
-              subtitle="75% of total"
+              value={fleetManagers.filter(m => m.status === 'Active').length.toString()} 
+              subtitle={`${Math.round((fleetManagers.filter(m => m.status === 'Active').length / (managerCount || 1)) * 100)}% of total`}
               icon={<UserCheck className="w-4 h-4 text-blue-500" />}
               iconBg="bg-blue-50 border border-blue-100"
             />

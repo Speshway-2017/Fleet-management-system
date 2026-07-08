@@ -9,10 +9,23 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ email: "", password: "" });
+  const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+
+  const validate = () => {
+    const newErrors = {};
+    if (!form.email) newErrors.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = "Invalid email format";
+    
+    if (!form.password) newErrors.password = "Password is required";
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validate()) return;
     try {
       const user = await login(form);
       toast.success(`Welcome back, ${user.name || "User"}!`);
@@ -52,10 +65,10 @@ export default function LoginPage() {
               id="email" type="email" placeholder="name@organization.com"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-              required
+              className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${errors.email ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-[#A14000] focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
             />
           </div>
+          {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
         </div>
 
         {/* Password */}
@@ -77,8 +90,7 @@ export default function LoginPage() {
               placeholder="••••••••"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-              required
+              className={`w-full pl-10 pr-10 py-2.5 rounded-lg border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${errors.password ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-[#A14000] focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
             />
             <button
               type="button"
@@ -97,6 +109,7 @@ export default function LoginPage() {
               )}
             </button>
           </div>
+          {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
         </div>
 
         {/* Remember me & Forgot Password */}

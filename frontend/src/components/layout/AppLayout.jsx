@@ -188,8 +188,13 @@ export default function AppLayout() {
             </button>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-md">
+            <button 
+              onClick={() => navigate("/manager/notifications")}
+              className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+              title="View notifications"
+            >
               <Bell className="w-5 h-5" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#B45A0A] border border-white rounded-full animate-pulse" />
             </button>
             <div className="relative">
               {/* Profile Trigger */}

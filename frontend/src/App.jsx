@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { AdminProvider } from "@/roles/admin/context/AdminContext";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
@@ -57,6 +58,8 @@ import AnalyticsPage from "@/roles/manager/pages/AnalyticsPage";
 import NotificationsPage from "@/roles/manager/pages/NotificationsPage";
 import NotificationDetailsPage from "@/roles/manager/pages/NotificationDetailsPage";
 import ReportsPage from "@/roles/manager/pages/ReportsPage";
+import ArchivedReportsPage from "@/roles/manager/pages/ArchivedReportsPage";
+import ManageSchedulesPage from "@/roles/manager/pages/ManageSchedulesPage";
 import SettingsPage from "@/roles/manager/pages/SettingsPage";
 import ChangePasswordPage from "@/roles/manager/pages/ChangePasswordPage";
 import EWayBillsPage from "@/roles/manager/pages/EWayBillsPage";
@@ -102,16 +105,17 @@ export default function App() {
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
-            <Route path="/admin/dashboard" element={<Dashboard />} />
+            <Route element={<AdminProvider><Outlet /></AdminProvider>}>
+              <Route path="/admin/dashboard" element={<Dashboard />} />
             <Route path="/admin/organizations" element={<OrganizationList />} />
             <Route path="/admin/organizations/add" element={<AddOrganization />} />
             <Route path="/admin/organizations/details" element={<OrganizationDetails />} />
-            <Route path="/admin/organizations/edit" element={<EditOrganization />} />
+            <Route path="/admin/organizations/edit/:id" element={<EditOrganization />} />
             <Route path="/admin/organizations/details/:id" element={<OrganizationDetails />} />
             <Route path="/admin/fleet-managers" element={<FleetManagerList />} />
             <Route path="/admin/fleet-managers/add" element={<AddFleetManager />} />
-            <Route path="/admin/fleet-managers/details" element={<ManagerDetails />} />
-            <Route path="/admin/fleet-managers/edit" element={<EditFleetManager />} />
+            <Route path="/admin/fleet-managers/details/:id" element={<ManagerDetails />} />
+            <Route path="/admin/fleet-managers/edit/:id" element={<EditFleetManager />} />
             <Route path="/admin/analytics" element={<Analytics />} />
             <Route path="/admin/system-health" element={<SystemHealth />} />
             <Route path="/admin/audit-logs" element={<AuditLogs />} />
@@ -124,6 +128,7 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UserManagement />} />
+            </Route>
             </Route>
           </Route>
 
@@ -148,6 +153,8 @@ export default function App() {
               <Route path="/manager/routes" element={<div className="p-8"><h1 className="text-2xl font-bold">Route Optimization Page</h1></div>} />
 
               <Route path="/manager/ewaybills" element={<div className="p-8"><h1 className="text-2xl font-bold">E-Way Bills Page</h1></div>} />
+              <Route path="/manager/eway" element={<EWayBillsPage />} />
+              <Route path="/manager/settings" element={<SettingsPage />} />
               <Route path="/manager/documents" element={<DocumentManagement />} />
               <Route path="/manager/documents/list" element={<DocumentsListPage />} />
               <Route path="/manager/documents/compliance-audit" element={<ComplianceAuditPage />} />
@@ -169,11 +176,11 @@ export default function App() {
               <Route path="/manager/fuel" element={<FuelManagementPage />} />
               <Route path="/manager/analytics" element={<AnalyticsPage />} />
               <Route path="/manager/reports" element={<ReportsPage />} />
+              <Route path="/manager/reports/archived" element={<ArchivedReportsPage />} />
+              <Route path="/manager/reports/schedules" element={<ManageSchedulesPage />} />
               <Route path="/manager/notifications" element={<NotificationsPage />} />
               <Route path="/manager/notifications/:id" element={<NotificationDetailsPage />} />
-              <Route path="/manager/settings" element={<SettingsPage />} />
               <Route path="/manager/change-password" element={<ChangePasswordPage />} />
-              <Route path="/manager/eway" element={<EWayBillsPage />} />
               <Route path="/manager/maintenance" element={<MaintenanceManagementPage />} />
               <Route path="/manager/maintenance/upcoming" element={<UpcomingServicesPage />} />
               <Route path="/manager/maintenance/schedule" element={<ScheduleServicePage />} />

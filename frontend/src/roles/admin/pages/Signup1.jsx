@@ -41,6 +41,7 @@ export default function Signup1() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [form, setForm] = useState({ password: "", confirmPassword: "" });
+  const [errors, setErrors] = useState({});
 
   const passwordRules = {
     length:    form.password.length >= 8,
@@ -51,15 +52,14 @@ export default function Signup1() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.password || !form.confirmPassword) {
-      toast.error("Please fill in all fields."); return;
-    }
-    if (!Object.values(passwordRules).every(Boolean)) {
-      toast.error("Password does not meet all requirements."); return;
-    }
-    if (form.password !== form.confirmPassword) {
-      toast.error("Passwords do not match."); return;
-    }
+    const newErrors = {};
+    if (!form.password) newErrors.password = "Password is required";
+    else if (!Object.values(passwordRules).every(Boolean)) newErrors.password = "Password does not meet requirements";
+    if (form.password !== form.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
+    
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
     if (!agreeToTerms) {
       toast.error("Please agree to the Terms of Service and Privacy Policy."); return;
     }
@@ -116,14 +116,15 @@ export default function Signup1() {
             </span>
             <input
               id="s1-password" type={showPassword ? "text" : "password"} placeholder="••••••••"
-              value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-              required />
+              value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value, errors: {...errors, password: ''} })}
+              className={`w-full pl-10 pr-10 py-2.5 rounded-lg border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${errors.password ? 'border-red-500 focus:ring-red-500/20' : 'border-[#A14000] focus:ring-[#A14000]/20'}`}
+               />
             <button type="button" onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
               <EyeIcon visible={showPassword} />
             </button>
           </div>
+          {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
         </div>
 
         {/* Confirm Password */}
@@ -137,14 +138,15 @@ export default function Signup1() {
             </span>
             <input
               id="s1-confirm" type={showConfirmPassword ? "text" : "password"} placeholder="••••••••"
-              value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-              className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-              required />
+              value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value, errors: {...errors, confirmPassword: ''} })}
+              className={`w-full pl-10 pr-10 py-2.5 rounded-lg border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-[#A14000] focus:ring-[#A14000]/20'}`}
+               />
             <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
               <EyeIcon visible={showConfirmPassword} />
             </button>
           </div>
+          {errors.confirmPassword && <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>}
         </div>
 
         {/* Password Requirements */}
