@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import {
   ArrowLeft,
   ShieldCheck,
@@ -37,15 +38,13 @@ export default function ComplianceAuditPage() {
   };
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 animate-fade-in w-full overflow-hidden">
+    <div className="p-6 lg:p-8 space-y-6 animate-fade-in w-full overflow-hidden">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex items-center gap-4">
-        <button onClick={() => navigate("/manager/documents")} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer">
-          <ArrowLeft className="w-6 h-6" />
-        </button>
         <div>
-          <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">Compliance Audit</h1>
-          <p className="text-sm text-[#64748B] mt-1 font-medium">Check document compliance and audit status</p>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Compliance Audit</h1>
+          <p className="text-[18px] text-[#64748B] mt-[12px]">Check document compliance and audit status</p>
         </div>
       </div>
 

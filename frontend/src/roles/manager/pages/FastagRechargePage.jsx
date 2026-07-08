@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import { Icon } from "@iconify/react";
 import { ArrowLeft, CreditCard, CheckCircle, IndianRupee } from "lucide-react";
 
@@ -23,15 +24,8 @@ export default function FastagRechargePage() {
 
   if (success) {
     return (
-      <div className="p-8">
-        <div className="flex items-center gap-4 mb-8">
-          <button 
-            onClick={() => navigate(-1)} 
-            className="p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 transition-colors"
-          >
-            <ArrowLeft width="24" height="24" className="text-gray-700" />
-          </button>
-        </div>
+      <div className="p-6 lg:p-8">
+        <Breadcrumb />
 
         <div className="max-w-2xl mx-auto text-center py-20">
           <div className="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -53,18 +47,13 @@ export default function FastagRechargePage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <button 
-          onClick={() => navigate(-1)} 
-          className="p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 transition-colors"
-        >
-          <ArrowLeft width="24" height="24" className="text-gray-700" />
-        </button>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">Quick Recharge</h1>
-          <p className="text-gray-500 mt-2">Recharge your FASTag wallet</p>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Quick Recharge</h1>
+          <p className="text-[18px] text-[#64748B] mt-[12px]">Recharge your FASTag wallet</p>
         </div>
       </div>
 

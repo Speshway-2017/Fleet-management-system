@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import { Icon } from "@iconify/react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -37,14 +38,14 @@ export default function ManagerDashboard() {
   // Filter vehicles by zone
   const getZoneVehicles = () => {
     if (zone === "All Zones") return vehicles;
-    
+
     const zoneMap = {
       "North": ["Delhi", "Punjab"],
       "South": ["Chennai", "Hyderabad", "Bengaluru"],
       "East": ["Kolkata"],
       "West": ["Mumbai", "Pune", "Ahmedabad", "Gujarat"]
     };
-    
+
     const branches = zoneMap[zone] || [];
     return vehicles.filter(v => branches.includes(v.branch));
   };
@@ -83,7 +84,7 @@ export default function ManagerDashboard() {
     };
 
     const baseCoord = locations[branch] || [20.5937, 78.9629];
-    
+
     // Add slight variation to coordinates for visualization
     const offset = (index % 5) * 0.05;
     return [baseCoord[0] + offset, baseCoord[1] + offset];
@@ -135,8 +136,17 @@ export default function ManagerDashboard() {
 
   return (
     <div className="w-full px-6 md:px-8 py-8 overflow-x-hidden">
+      <Breadcrumb />
+      {/* Page Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Dashboard</h1>
+          <p className="text-[18px] text-[#64748B] mt-[12px]">Overview of your fleet operations, active status, compliance and costs.</p>
+        </div>
+      </div>
+
       {/* Stats Grid Container - Single Row Without Scroll */}
-      <div 
+      <div
         className="mb-8"
         style={{
           width: '100%',
@@ -144,71 +154,66 @@ export default function ManagerDashboard() {
           overflow: 'visible'
         }}
       >
-        {/* Stats Grid - Single Row with Equal Width & Height */}
-        <div 
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(7, 1fr)',
-            gap: '12px',
-            boxSizing: 'border-box',
-            width: '100%'
-          }}
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-7 gap-[12px] w-full box-border"
         >
-        {mockDashboardStats.map((stat, index) => (
-          <div
-            key={index}
-            className={`rounded-2xl shadow-sm transition-all hover:shadow-md flex flex-col justify-between ${stat.color}`}
-            style={{
-              padding: '16px',
-              height: '120px',
-              boxSizing: 'border-box',
-              width: '100%'
-            }}
-          >
-            {/* Card Title at Top-Left */}
-            <p 
-              className={`text-xs font-bold uppercase tracking-wider whitespace-nowrap overflow-hidden text-ellipsis font-poppins ${
-                stat.color === "bg-black" 
-                  ? "text-white" 
-                  : "text-gray-600"
+          {mockDashboardStats.map((stat, index) => (
+            <div
+              key={index}
+              className={`rounded-2xl shadow-sm flex flex-col justify-between cursor-pointer group transition-all duration-300 hover:-translate-y-1.5 ${
+                stat.color === "bg-black"
+                  ? "bg-[#0D0D0D] border border-gray-900 hover:border-[#C65D0E]/50 hover:shadow-lg hover:shadow-[#C65D0E]/10 text-white"
+                  : "bg-white border border-gray-200 hover:border-gray-300 hover:shadow-lg hover:shadow-gray-200/80"
               }`}
-              style={{ marginBottom: '10px' }}
+              style={{
+                padding: '16px',
+                height: '120px',
+                boxSizing: 'border-box',
+                width: '100%'
+              }}
             >
-              {stat.label}
-            </p>
-            
-            {/* Value with Icon at Bottom */}
-            <div 
-              className="flex items-end justify-between"
-              style={{ marginTop: 'auto', gap: '8px' }}
-            >
-              <span 
-                className={`font-black font-poppins flex-1 ${
-                  stat.color === "bg-black" 
-                    ? "text-white" 
-                    : "text-gray-900"
-                }`}
-                style={{ fontSize: '22px', lineHeight: '1', minWidth: '0' }}
+              {/* Card Title at Top-Left */}
+              <p
+                className={`text-xs font-bold uppercase tracking-wider whitespace-nowrap overflow-hidden text-ellipsis font-poppins ${stat.color === "bg-black"
+                    ? "text-gray-400"
+                    : "text-gray-600"
+                  }`}
+                style={{ marginBottom: '10px' }}
               >
-                {stat.value}
-              </span>
-              <div 
-                className={`flex items-center justify-center flex-shrink-0 ${
-                  stat.color === "bg-black"
-                    ? "text-gray-600"
-                    : "text-gray-400"
-                }`}
-                style={{ width: '20px', height: '20px' }}
+                {stat.label}
+              </p>
+
+              {/* Value with Icon at Bottom */}
+              <div
+                className="flex items-end justify-between"
+                style={{ marginTop: 'auto', gap: '8px' }}
               >
-                <Icon 
-                  icon={stat.icon} 
-                  width="20" 
-                  height="20" 
-                />
+                <span
+                  className={`font-black font-poppins flex-1 ${stat.color === "bg-black"
+                      ? "text-white"
+                      : "text-gray-900"
+                    }`}
+                  style={{ fontSize: '22px', lineHeight: '1', minWidth: '0' }}
+                >
+                  {stat.value}
+                </span>
+                <div
+                  className={`flex items-center justify-center flex-shrink-0 transition-transform duration-350 group-hover:scale-110 group-hover:rotate-3 ${
+                    stat.color === "bg-black"
+                      ? "text-gray-600 group-hover:text-[#C65D0E]"
+                      : "text-gray-400 group-hover:text-[#C65D0E]"
+                  }`}
+                  style={{ width: '20px', height: '20px' }}
+                >
+                  <Icon
+                    icon={stat.icon}
+                    width="20"
+                    height="20"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
         </div>
       </div>
 
@@ -231,14 +236,14 @@ export default function ManagerDashboard() {
             <option>West</option>
           </select>
         </div>
-        <div 
+        <div
           ref={mapRef}
           className="h-96 bg-gray-100 relative z-10"
           style={{ width: "100%" }}
         >
           {/* Map will be rendered here by Leaflet */}
         </div>
-        
+
         {/* Map Legend */}
         <div className="p-4 bg-gray-50 border-t border-gray-200 flex items-center justify-center gap-6 text-xs font-medium flex-wrap">
           <div className="flex items-center gap-2">
@@ -266,12 +271,12 @@ export default function ManagerDashboard() {
         <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm p-6 flex flex-col">
           <div className="flex items-center gap-2 mb-6 shrink-0">
             <svg className="w-5 h-5 text-[#C65D0E]" fill="currentColor" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/>
-              <circle cx="12" cy="12" r="4" fill="currentColor"/>
+              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
+              <circle cx="12" cy="12" r="4" fill="currentColor" />
             </svg>
             <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Vehicle Status</h3>
           </div>
-          
+
           <div className="flex-1 flex items-center justify-center py-6">
             <div className="relative w-56 h-56">
               <svg viewBox="0 0 120 120" className="w-full h-full transform -rotate-90">
@@ -308,14 +313,14 @@ export default function ManagerDashboard() {
                   strokeDashoffset={`${((380 + 55) / 450) * 282.7}`}
                 />
               </svg>
-              
+
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-4xl font-black text-[#1B2430] font-poppins">450</span>
                 <span className="text-[11px] text-[#6B7280] font-bold uppercase tracking-widest mt-2">Total</span>
               </div>
             </div>
           </div>
-          
+
           {/* Legend */}
           <div className="mt-4 flex items-center justify-center gap-6 text-xs font-medium">
             <div className="flex items-center gap-2">
@@ -337,14 +342,14 @@ export default function ManagerDashboard() {
         <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm overflow-hidden flex flex-col">
           <div className="p-6 flex items-center justify-between border-b border-[#E5E7EB] shrink-0">
             <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Compliance Expiry</h3>
-            <button 
+            <button
               onClick={() => navigate("/manager/documents")}
               className="text-[#C65D0E] text-xs font-bold hover:underline font-poppins cursor-pointer"
             >
               View All
             </button>
           </div>
-          
+
           <div className="flex-1 overflow-x-auto custom-scrollbar">
             <table className="w-full text-left text-xs font-nunito whitespace-nowrap">
               <thead className="bg-[#F5F7FA]">
@@ -360,11 +365,10 @@ export default function ManagerDashboard() {
                     <td className="px-4 py-4 font-poppins font-bold text-[#1B2430] text-[13px]">{row.vehicle.replace(/-/g, ' ')}</td>
                     <td className="px-4 py-4 text-[#6B7280] font-medium text-[13px]">{row.document}</td>
                     <td className="px-4 py-4">
-                      <span className={`inline-block px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider font-poppins whitespace-nowrap ${
-                        row.status === "Expired" 
-                          ? "bg-red-600 text-white shadow-md shadow-red-200" 
+                      <span className={`inline-block px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider font-poppins whitespace-nowrap ${row.status === "Expired"
+                          ? "bg-red-600 text-white shadow-md shadow-red-200"
                           : "bg-amber-500 text-white shadow-md shadow-amber-200"
-                      }`}>
+                        }`}>
                         {row.status}
                       </span>
                     </td>
@@ -379,11 +383,11 @@ export default function ManagerDashboard() {
         <div className="bg-[#0D0D0D] rounded-2xl border border-[#1F1F1F] shadow-sm p-6 flex flex-col">
           <div className="flex items-center gap-2 mb-6 shrink-0">
             <svg className="w-5 h-5 text-[#C65D0E]" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/>
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z" />
             </svg>
             <h3 className="font-poppins font-bold text-white text-[16px]">Cost Breakdown</h3>
           </div>
-          
+
           <div className="flex-1 space-y-4">
             {mockCostBreakdown.map((cost, index) => (
               <div key={index}>

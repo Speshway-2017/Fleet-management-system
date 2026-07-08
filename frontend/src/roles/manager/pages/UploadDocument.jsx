@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import {
   UploadCloud,
   Save,
@@ -31,18 +32,19 @@ export default function UploadDocument() {
   };
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 animate-fade-in w-full overflow-hidden">
+    <div className="p-6 lg:p-8 space-y-6 animate-fade-in w-full overflow-hidden">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
             Upload New Document
           </h1>
-          <p className="text-sm text-[#64748B] mt-1 font-medium">
+          <p className="text-[18px] text-[#64748B] mt-[12px] font-medium">
             Add legal, maintenance, or operational documents to your digital fleet library.
           </p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 rounded-xl">
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 rounded-xl w-fit">
           <Clock className="w-4 h-4 text-blue-700" />
           <span className="text-xs font-semibold text-blue-700">
             Draft Auto-saved

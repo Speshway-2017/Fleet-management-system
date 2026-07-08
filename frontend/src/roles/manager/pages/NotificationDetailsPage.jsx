@@ -1,46 +1,8 @@
+import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
-import { notifications } from "@/roles/manager/data/notificationsData";
-
-const getIconName = (type) => {
-  switch (type) {
-    case "alert":   return "mdi:alert-octagon";
-    case "warning": return "mdi:alert-circle";
-    case "info":    return "mdi:information";
-    case "success": return "mdi:check-circle";
-    case "system":  return "mdi:cloud-sync";
-    default:        return "mdi:bell";
-  }
-};
-
-const getIconColors = (type) => {
-  switch (type) {
-    case "alert":   return "bg-red-100 text-red-600";
-    case "warning": return "bg-amber-100 text-amber-700";
-    case "info":    return "bg-blue-100 text-blue-700";
-    case "success": return "bg-green-100 text-green-600";
-    case "system":  return "bg-gray-100 text-gray-600";
-    default:        return "bg-gray-100 text-gray-600";
-  }
-};
-
-const getLocationLabel = (type) => {
-  switch (type) {
-    case "alert":   return "Violation Location";
-    case "warning": return "Incident Location";
-    case "info":    return "Vehicle Location";
-    case "success": return "Report Location";
-    case "system":  return "System Location";
-    default:        return "Location";
-  }
-};
-
-export default function NotificationDetailsPage() {
-  const navigate = useNavigate();
-  const { id } = useParams();
-
-  const notification = notifications.find((n) => String(n.id) === id);
 
   const handleBack = () => {
     navigate("/manager/notifications");
@@ -83,16 +45,12 @@ export default function NotificationDetailsPage() {
   const locationLabel = getLocationLabel(notification.type);
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <button onClick={handleBack} className="p-2 hover:bg-gray-100 rounded-lg">
-              <Icon icon="mdi:arrow-left" className="w-6 h-6 text-gray-600" />
-            </button>
-            <h1 className="text-2xl font-bold text-gray-800">Notification Details</h1>
-          </div>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Notification Details</h1>
         </div>
       </div>
 
@@ -184,18 +142,25 @@ export default function NotificationDetailsPage() {
               </h3>
               <span className="text-sm text-gray-500">{notification.location}</span>
             </div>
-            <div className="relative h-80 bg-gray-200">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Icon icon="mdi:google-maps" className="w-40 h-40 text-blue-400 opacity-30" />
-              </div>
-              <div className="absolute right-4 top-4 flex flex-col gap-2">
-                <button className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50">
+            <div className="relative h-80 bg-gray-100">
+              <div ref={mapRef} className="absolute inset-0 z-0 w-full h-full" />
+              <div className="absolute right-4 top-4 flex flex-col gap-2 z-[400]">
+                <button
+                  onClick={() => mapInstanceRef.current?.zoomIn()}
+                  className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-pointer"
+                >
                   <Icon icon="mdi:plus" className="w-5 h-5 text-gray-700" />
                 </button>
-                <button className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50">
+                <button
+                  onClick={() => mapInstanceRef.current?.zoomOut()}
+                  className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-pointer"
+                >
                   <Icon icon="mdi:minus" className="w-5 h-5 text-gray-700" />
                 </button>
-                <button className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50">
+                <button
+                  onClick={() => mapInstanceRef.current?.setView([41.8781, -87.6298], 12)}
+                  className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-pointer"
+                >
                   <Icon icon="mdi:target-variant" className="w-5 h-5 text-gray-700" />
                 </button>
               </div>

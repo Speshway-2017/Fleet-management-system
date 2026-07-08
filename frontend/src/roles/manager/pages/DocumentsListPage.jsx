@@ -11,6 +11,7 @@ import {
   Trash2
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 // Mock data for documents
 const MOCK_DOCUMENTS = [
@@ -73,16 +74,14 @@ export default function DocumentsListPage() {
   };
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 animate-fade-in w-full overflow-hidden">
+    <div className="p-6 lg:p-8 space-y-6 animate-fade-in w-full overflow-hidden">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate("/manager/documents")} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer">
-            <ArrowLeft className="w-6 h-6" />
-          </button>
           <div>
-            <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">All Documents</h1>
-            <p className="text-sm text-[#64748B] mt-1 font-medium">Manage all your fleet documents in one place</p>
+            <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">All Documents</h1>
+            <p className="text-[18px] text-[#64748B] mt-[12px]">Manage all your fleet documents in one place</p>
           </div>
         </div>
       </div>

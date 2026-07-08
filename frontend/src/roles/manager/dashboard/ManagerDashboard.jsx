@@ -37,9 +37,9 @@ export default function ManagerDashboard() {
   // Inject session credentials in Dev Mode if missing
   useEffect(() => {
     if (import.meta.env.DEV) {
-      if (!localStorage.getItem("token") || !localStorage.getItem("user")) {
-        localStorage.setItem("token", "mock_dev_session_token_3b0569d8");
-        localStorage.setItem("user", JSON.stringify({ name: "Alex Thompson", role: "manager" }));
+      if (!sessionStorage.getItem("token") || !sessionStorage.getItem("user")) {
+        sessionStorage.setItem("token", "mock_dev_session_token_3b0569d8");
+        sessionStorage.setItem("user", JSON.stringify({ name: "Alex Thompson", role: "manager" }));
         console.warn("Dev Mode session token initialized locally.");
       }
     }
