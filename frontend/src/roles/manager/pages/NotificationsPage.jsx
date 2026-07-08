@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import DispatchWarningModal from "@/components/common/DispatchWarningModal";
 import ContactDriverModal from "@/components/common/ContactDriverModal";
 
@@ -77,7 +78,7 @@ export default function NotificationsPage() {
   ];
 
   const getIconColor = (type) => {
-    switch(type) {
+    switch (type) {
       case 'alert': return 'bg-red-100 text-red-600';
       case 'warning': return 'bg-amber-100 text-amber-700';
       case 'info': return 'bg-blue-100 text-blue-700';
@@ -88,7 +89,7 @@ export default function NotificationsPage() {
   };
 
   const getIcon = (type) => {
-    switch(type) {
+    switch (type) {
       case 'alert': return 'mdi:alert-octagon';
       case 'warning': return 'mdi:alert-circle';
       case 'info': return 'mdi:information';
@@ -145,23 +146,24 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="p-6 lg:p-8">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 lg:mb-8 gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Notifications Center</h1>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Notifications Center</h1>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
           <button
             onClick={handleMarkAllAsRead}
-            className="flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors text-sm"
+            className="flex items-center justify-center gap-2 px-5 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors w-full sm:w-auto cursor-pointer"
           >
             <Icon icon="mdi:check-all" className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="whitespace-nowrap">Mark all as read</span>
           </button>
-          <button className="flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-white border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors text-sm">
-            <Icon icon="mdi:cog-outline" className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="whitespace-nowrap">Notification Settings</span>
+          <button className="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors w-full sm:w-auto cursor-pointer">
+            <Icon icon="mdi:cog-outline" className="w-5 h-5" />
+            Notification Settings
           </button>
         </div>
       </div>
@@ -234,11 +236,10 @@ export default function NotificationsPage() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                  activeTab === tab
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab
                     ? "bg-blue-100 text-blue-700"
                     : "text-gray-500 hover:text-gray-700"
-                }`}
+                  }`}
               >
                 {tab}
               </button>
@@ -266,29 +267,20 @@ export default function NotificationsPage() {
                   <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full ${getIconColor(notif.type)} flex items-center justify-center shrink-0`}>
                     <Icon icon={getIcon(notif.type)} className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2 gap-2">
-                      <h4 className={`font-semibold text-gray-800 text-sm sm:text-base ${isUnread ? "font-bold" : ""}`}>
-                        {notif.title}
-                      </h4>
-                      <span className="text-xs text-gray-400 font-medium shrink-0">{notif.time}</span>
-                    </div>
-                    <p className="text-gray-600 text-xs sm:text-sm mb-3 sm:mb-4">{notif.description}</p>
-                    <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-                      {notif.actions.map((action, i) => (
-                        <button
-                          key={i}
-                          onClick={(e) => handleActionClick(action, notif, e)}
-                          className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-medium transition-all transform hover:scale-105 ${
-                            action.bg === 'bg-white' 
-                              ? `${action.bg} ${action.text} border ${action.border} hover:bg-gray-50` 
-                              : `${action.bg} text-white ${action.hover}`
+                  <p className="text-gray-600 text-sm mb-4">{notif.description}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {notif.actions.map((action, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleNotificationClick(notif.id)}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${action.bg === 'bg-white'
+                            ? `${action.bg} ${action.text} border ${action.border} hover:bg-gray-50`
+                            : `${action.bg} text-white ${action.hover}`
                           }`}
-                        >
-                          {action.label}
-                        </button>
-                      ))}
-                    </div>
+                      >
+                        {action.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>

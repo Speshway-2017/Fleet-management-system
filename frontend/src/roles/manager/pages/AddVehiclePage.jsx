@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowLeft, Upload, Check, X, FileText, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import { extractDataFromAllDocuments, identifyDocumentType } from "../utils/documentParser";
 
 export default function AddVehiclePage() {
@@ -209,24 +210,18 @@ export default function AddVehiclePage() {
 
   return (
     <div className="p-6 lg:p-8">
-          {/* Page Header */}
-          <div className="flex items-center gap-4 mb-8">
-            <button
-              onClick={() => navigate("/manager/vehicle-management")}
-              className="p-2 hover:bg-white rounded-lg transition-colors cursor-pointer"
-              title="Go back"
-            >
-              <ArrowLeft className="w-5 h-5 text-[#64748B]" />
-            </button>
-            <div>
-              <h1 className="text-3xl font-black font-poppins text-[#1E293B]">
-                Add Vehicle
-              </h1>
-              <p className="text-sm text-[#64748B] mt-1">
-                Register a new vehicle to your fleet management system
-              </p>
-            </div>
-          </div>
+      <Breadcrumb />
+      {/* Page Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <div>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
+            Add Vehicle
+          </h1>
+          <p className="text-[18px] text-[#64748B] mt-[12px]">
+            Register a new vehicle to your fleet management system
+          </p>
+        </div>
+      </div>
 
           {/* Main Form Container */}
           <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-8 max-w-4xl">

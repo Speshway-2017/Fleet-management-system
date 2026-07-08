@@ -19,6 +19,7 @@ import {
   X
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 const INITIAL_DRIVERS = [
   {
@@ -258,6 +259,27 @@ export default function DriversManagementPage() {
 
   return (
     <div className="p-6 lg:p-8 space-y-4 animate-fade-in">
+          <Breadcrumb />
+
+          {/* --- PAGE HEADER --- */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4">
+            <div>
+              <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
+                Driver Management
+              </h1>
+              <p className="text-[18px] text-[#64748B] mt-[12px]">
+                Track compliance certificates, service history, and assign vehicles to active roster.
+              </p>
+            </div>
+
+            <button
+              onClick={() => navigate("/manager/add-driver")}
+              className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 font-poppins cursor-pointer"
+            >
+              <Plus className="w-4.5 h-4.5" />
+              <span>Add Driver</span>
+            </button>
+          </div>
           
           {/* --- KPI CARDS --- */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -329,29 +351,9 @@ export default function DriversManagementPage() {
 
           </div>
 
-          {/* --- PAGE HEADER --- */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4">
-            <div>
-              <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
-                Driver Management
-              </h1>
-              <p className="text-sm text-[#64748B] mt-1 font-medium">
-                Track compliance certificates, service history, and assign vehicles to active roster.
-              </p>
-            </div>
-
-            <button
-              onClick={() => navigate("/manager/add-driver")}
-              className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 font-poppins cursor-pointer"
-            >
-              <Plus className="w-4.5 h-4.5" />
-              <span>Add Driver</span>
-            </button>
-          </div>
-
           {/* --- ADVANCED FILTER SECTION --- */}
           <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Search Bar */}
               <div className="md:col-span-2 relative">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#94A3B8]">

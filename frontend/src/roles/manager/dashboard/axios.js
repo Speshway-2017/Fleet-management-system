@@ -12,7 +12,7 @@ const axiosInstance = axios.create({
 // Request Interceptor: Inject Token
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -30,8 +30,8 @@ axiosInstance.interceptors.response.use(
     const { config, response } = error;
 
     if (response?.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("user");
       if (!window.location.pathname.includes("/login")) {
         window.location.href = "/login";
       }

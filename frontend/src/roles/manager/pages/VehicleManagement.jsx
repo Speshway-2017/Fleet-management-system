@@ -31,6 +31,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 const INITIAL_VEHICLES = [
   {
@@ -521,117 +522,118 @@ export default function VehicleManagement() {
   };
 
   return (
-    <div className="p-4 lg:p-6 space-y-4 animate-fade-in w-full overflow-hidden">
+    <div className="p-6 lg:p-8 space-y-4 animate-fade-in w-full overflow-hidden">
+      <Breadcrumb />
 
-          {/* --- KPI SECTION --- */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+      {/* --- PAGE HEADER --- */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4">
+        <div>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
+            Vehicle Management
+          </h1>
+          <p className="text-[18px] text-[#64748B] mt-[12px]">
+            Manage, assign and monitor all fleet vehicles across your organization.
+          </p>
+        </div>
 
-            {/* KPI Card 1: Total */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Total Vehicles</span>
-                  <h3 className="text-3xl font-extrabold text-[#1E293B] mt-2 font-poppins">{totalVehicles}</h3>
-                </div>
-                <div className="bg-[#FDF3EC] text-[#B45A0A] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
-                  <Truck className="w-6 h-6" />
-                </div>
-              </div>
-              <div className="mt-4 flex items-center text-xs text-[#22C55E] gap-1 font-semibold">
-                <TrendingUp className="w-3.5 h-3.5" />
-                <span>+4 Added this month</span>
-              </div>
+        {/* Header buttons */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportCSV}
+            className="px-4 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all flex items-center gap-2 shadow-sm font-poppins cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export Vehicles</span>
+          </button>
+
+          <button
+            onClick={openAddModal}
+            className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 font-poppins cursor-pointer"
+          >
+            <Plus className="w-4.5 h-4.5" />
+            <span>Add Vehicle</span>
+          </button>
+        </div>
+      </div>
+
+      {/* --- KPI SECTION --- */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+
+        {/* KPI Card 1: Total */}
+        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Total Vehicles</span>
+              <h3 className="text-3xl font-extrabold text-[#1E293B] mt-2 font-poppins">{totalVehicles}</h3>
             </div>
-
-            {/* KPI Card 2: Active */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Active Vehicles</span>
-                  <h3 className="text-3xl font-extrabold text-[#1E293B] mt-2 font-poppins">{activeVehicles}</h3>
-                </div>
-                <div className="bg-emerald-50 text-[#22C55E] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
-                  <Zap className="w-6 h-6" />
-                </div>
-              </div>
-              <div className="mt-4 text-xs text-[#64748B] font-medium">
-                Running utility rate: <span className="text-emerald-600 font-bold">{Math.round((activeVehicles / totalVehicles) * 100) || 0}%</span>
-              </div>
+            <div className="bg-[#FDF3EC] text-[#B45A0A] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
+              <Truck className="w-6 h-6" />
             </div>
-
-            {/* KPI Card 3: Idle */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Idle Vehicles</span>
-                  <h3 className="text-3xl font-extrabold text-[#1E293B] mt-2 font-poppins">{idleVehicles}</h3>
-                </div>
-                <div className="bg-blue-50 text-[#3B82F6] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
-                  <Clock className="w-6 h-6" />
-                </div>
-              </div>
-              <div className="mt-4 text-xs text-[#64748B] font-medium">
-                Parked in depot: <span className="text-[#3B82F6] font-bold">{idleVehicles} units</span>
-              </div>
-            </div>
-
-            {/* KPI Card 4: Maintenance */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">In Maintenance</span>
-                  <h3 className="text-3xl font-extrabold text-[#1E293B] mt-2 font-poppins">{maintVehicles}</h3>
-                </div>
-                <div className="bg-red-50 text-[#EF4444] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
-                  <AlertTriangle className="w-6 h-6" />
-                </div>
-              </div>
-              <div className="mt-4 text-xs text-[#EF4444] font-semibold flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5" />
-                <span>2 Overdue repairs</span>
-              </div>
-            </div>
-
           </div>
-          {/* Group Header and Filters inside a wrapper to reduce empty gap */}
-          <div className="space-y-3">
-            
-            {/* --- PAGE HEADER --- */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4">
-              <div>
-                <h1 className="font-poppins font-black text-3xl text-[#1E293B] tracking-tight">
-                  Vehicle Management
-                </h1>
-                <p className="text-sm text-[#64748B] mt-1 font-medium">
-                  Manage, assign and monitor all fleet vehicles across your organization.
-                </p>
-              </div>
+          <div className="mt-4 flex items-center text-xs text-[#22C55E] gap-1 font-semibold">
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span>+4 Added this month</span>
+          </div>
+        </div>
 
-              {/* Header buttons */}
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleExportCSV}
-                  className="px-4 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all flex items-center gap-2 shadow-sm font-poppins cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Export Vehicles</span>
-                </button>
-
-                <button
-                  onClick={openAddModal}
-                  className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 font-poppins cursor-pointer"
-                >
-                  <Plus className="w-4.5 h-4.5" />
-                  <span>Add Vehicle</span>
-                </button>
-              </div>
+        {/* KPI Card 2: Active */}
+        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Active Vehicles</span>
+              <h3 className="text-3xl font-extrabold text-[#1E293B] mt-2 font-poppins">{activeVehicles}</h3>
             </div>
+            <div className="bg-emerald-50 text-[#22C55E] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
+              <Zap className="w-6 h-6" />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-[#64748B] font-medium">
+            Running utility rate: <span className="text-emerald-600 font-bold">{Math.round((activeVehicles / totalVehicles) * 100) || 0}%</span>
+          </div>
+        </div>
+
+        {/* KPI Card 3: Idle */}
+        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Idle Vehicles</span>
+              <h3 className="text-3xl font-extrabold text-[#1E293B] mt-2 font-poppins">{idleVehicles}</h3>
+            </div>
+            <div className="bg-blue-50 text-[#3B82F6] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
+              <Clock className="w-6 h-6" />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-[#64748B] font-medium">
+            Parked in depot: <span className="text-[#3B82F6] font-bold">{idleVehicles} units</span>
+          </div>
+        </div>
+
+        {/* KPI Card 4: Maintenance */}
+        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">In Maintenance</span>
+              <h3 className="text-3xl font-extrabold text-[#1E293B] mt-2 font-poppins">{maintVehicles}</h3>
+            </div>
+            <div className="bg-red-50 text-[#EF4444] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-[#EF4444] font-semibold flex items-center gap-1">
+            <AlertCircle className="w-3.5 h-3.5" />
+            <span>2 Overdue repairs</span>
+          </div>
+        </div>
+
+      </div>
+      {/* Group Header and Filters inside a wrapper to reduce empty gap */}
+      <div className="space-y-3">
 
             {/* --- ADVANCED FILTER SECTION --- */}
             <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4">
 
               {/* Primary search & quick filters */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Search Vehicles */}
                 <div className="md:col-span-2 relative">
                   <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#94A3B8]">

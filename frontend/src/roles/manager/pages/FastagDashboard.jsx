@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { CreditCard, Truck } from "lucide-react";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import { mockWalletBalance, mockTollTransactions, mockMonthlySpending } from "@/data/mockFastag";
 
 export default function FastagDashboard() {
@@ -9,18 +10,18 @@ export default function FastagDashboard() {
   const [period] = useState("Last 6 Months");
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-6 lg:p-8">
+      <Breadcrumb />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-xl font-bold text-gray-800">FASTag & Toll Dashboard</h1>
-          <p className="text-gray-500 mt-2">
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">FASTag & Toll</h1>
+          <p className="text-[18px] text-[#64748B] mt-[12px]">
             Real-time monitoring of toll expenditure and wallet liquidity across 142 vehicles.
           </p>
         </div>
         <button 
           onClick={() => navigate('/manager/fastag/recharge')}
-          className="bg-gradient-to-r from-amber-700 to-amber-800 text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-amber-500/30 hover:from-amber-800 hover:to-amber-900 transition-all"
+          className="bg-gradient-to-r from-amber-700 to-amber-800 text-white px-6 py-3 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-amber-500/30 hover:from-amber-800 hover:to-amber-900 transition-all w-full sm:w-auto cursor-pointer"
         >
           <CreditCard width="24" height="24" />
           Quick Recharge

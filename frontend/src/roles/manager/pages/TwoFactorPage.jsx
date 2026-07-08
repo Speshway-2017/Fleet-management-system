@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import { ArrowLeft, Shield, Smartphone, QrCode } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -30,21 +31,14 @@ export default function TwoFactorPage() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6 animate-fade-in font-nunito text-gray-800 max-w-2xl">
-      
-      {/* ── HEADER BACK LINK ── */}
-      <div className="space-y-1.5">
-        <button
-          onClick={() => navigate("/manager/profile/edit")}
-          className="flex items-center gap-1.5 text-xs font-bold text-[#B45A0A] hover:text-[#9A4D08] transition-colors border-none bg-transparent cursor-pointer p-0"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Edit Profile</span>
-        </button>
+      <Breadcrumb />
+      {/* ── HEADER ── */}
+      <div className="flex items-center gap-4 border-b border-[#E7EAF0] pb-6">
         <div>
-          <h1 className="font-poppins font-black text-2xl text-gray-900 tracking-tight leading-none mt-1">
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
             Two-Factor Authentication
           </h1>
-          <p className="text-xs font-semibold text-gray-500 mt-1">
+          <p className="text-[18px] text-[#64748B] mt-[12px]">
             Protect your fleet manager account with an extra verification layer.
           </p>
         </div>

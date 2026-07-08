@@ -18,6 +18,11 @@ export default function PublicHome() {
     }
   }, [isAuthenticated, role, navigate]);
 
+  // Scroll to the top of the page when activeTab changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
   if (activeTab === "performance") {
     return <Performance setActiveTab={setActiveTab} />;
   }
