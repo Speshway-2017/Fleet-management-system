@@ -7,6 +7,33 @@ import L from "leaflet";
 import DriverChatDrawer from "@/components/common/DriverChatDrawer";
 import { mockNotifications } from "@/data/mockNotifications";
 
+const getIconColors = (type) => {
+  switch (type) {
+    case 'alert': return 'bg-red-100 text-red-600';
+    case 'warning': return 'bg-amber-100 text-amber-700';
+    case 'info': return 'bg-blue-100 text-blue-700';
+    case 'success': return 'bg-green-100 text-green-600';
+    case 'system': return 'bg-gray-100 text-gray-600';
+    default: return 'bg-gray-100 text-gray-600';
+  }
+};
+
+const getIconName = (type) => {
+  switch (type) {
+    case 'alert': return 'mdi:alert-octagon';
+    case 'warning': return 'mdi:alert-circle';
+    case 'info': return 'mdi:information';
+    case 'success': return 'mdi:check-circle';
+    case 'system': return 'mdi:cloud-sync';
+    default: return 'mdi:bell';
+  }
+};
+
+const getLocationLabel = (type) => {
+  if (type === 'alert' || type === 'warning') return 'Violation Location';
+  return 'Event Location';
+};
+
 export default function NotificationDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -255,58 +282,42 @@ export default function NotificationDetailsPage() {
           </div>
 
           {/* Driver Details */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-800">Driver Details</h3>
-              <button className="text-xs font-medium text-amber-700 hover:underline">View History</button>
-            </div>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-green-500 rounded-full flex items-center justify-center text-white font-bold">
-                  {notification.driver.avatar}
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-800">{notification.driver.name}</p>
-                  <p className="text-xs text-gray-500">Emp ID: {notification.driver.empId}</p>
-                </div>
+          {notification.driver && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-800">Driver Details</h3>
+                <button className="text-xs font-medium text-amber-700 hover:underline">View History</button>
               </div>
-              <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-200">
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <p className="text-xs text-gray-500 mb-1">Daily Drive Time</p>
-                  <p className="text-lg font-bold text-gray-800">{notification.driver.driveTime}</p>
-                </div>
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <p className="text-xs text-gray-500 mb-1">Safety Score</p>
-                  <p className="text-lg font-bold text-amber-700">{notification.driver.safetyScore}</p>
-                </div>
-                {(notification.meta.dailyDriveTime || notification.meta.safetyScore) && (
-                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-200">
-                    {notification.meta.dailyDriveTime && (
-                      <div className="p-3 bg-blue-50 rounded-lg">
-                        <p className="text-xs text-gray-500 mb-1">Daily Drive Time</p>
-                        <p className="text-lg font-bold text-gray-800">{notification.meta.dailyDriveTime}</p>
-                      </div>
-                    )}
-                    {notification.meta.safetyScore && (
-                      <div className="p-3 bg-blue-50 rounded-lg">
-                        <p className="text-xs text-gray-500 mb-1">Safety Score</p>
-                        <p className="text-lg font-bold text-amber-700">{notification.meta.safetyScore}</p>
-                      </div>
-                    )}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-green-500 rounded-full flex items-center justify-center text-white font-bold">
+                    {notification.driver.avatar || notification.driver.name.split(" ").map(w => w[0]).join("")}
                   </div>
-                )}
-                <button className="w-full py-2 border border-amber-700 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-50 transition-colors">
+                  <div>
+                    <p className="font-semibold text-gray-800">{notification.driver.name}</p>
+                    <p className="text-xs text-gray-500">Emp ID: {notification.driver.empId}</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-200">
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1">Daily Drive Time</p>
+                    <p className="text-lg font-bold text-gray-800">{notification.driver.driveTime || "—"}</p>
+                  </div>
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1">Safety Score</p>
+                    <p className="text-lg font-bold text-amber-700">{notification.driver.safetyScore || "—"}</p>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setIsChatOpen(true)}
+                  className="w-full py-2 border border-amber-700 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-50 transition-colors cursor-pointer"
+                >
                   <Icon icon="mdi:message-text-outline" className="w-4 h-4 inline mr-1" />
                   Message Driver
                 </button>
               </div>
-              <button 
-                onClick={() => setIsChatOpen(true)}
-                className="w-full py-2 border border-amber-700 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-50 transition-colors cursor-pointer"
-              >
-                <Icon icon="mdi:message-text-outline" className="w-4 h-4 inline mr-1" />
-                Message Driver
-              </button>
             </div>
           )}
 

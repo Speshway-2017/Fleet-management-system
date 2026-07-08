@@ -260,7 +260,7 @@ export default function NotificationsPage() {
           {filteredNotifications.map((notif) => (
             <div 
               key={notif.id} 
-              onClick={() => handleNotificationClick(notif.id)}
+              onClick={() => handleNotificationClick(notif)}
               className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
             >
               <div className="flex gap-4">
@@ -277,10 +277,7 @@ export default function NotificationsPage() {
                     {notif.actions.map((action, i) => (
                       <button
                         key={i}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleNotificationClick(notif.id);
-                        }}
+                        onClick={(e) => handleActionClick(action, notif, e)}
                         className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${action.bg === 'bg-white'
                             ? `${action.bg} ${action.text} border ${action.border} hover:bg-gray-50`
                             : `${action.bg} text-white ${action.hover}`
@@ -291,9 +288,9 @@ export default function NotificationsPage() {
                     ))}
                   </div>
                 </div>
-              );
-            });
-          })()}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
