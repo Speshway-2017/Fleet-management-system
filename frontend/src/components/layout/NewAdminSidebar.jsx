@@ -1,4 +1,6 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import toast from "react-hot-toast";
 import {
   LayoutDashboard,
   Building2,
@@ -9,6 +11,9 @@ import {
 } from "lucide-react";
 
 export default function NewAdminSidebar({ activeItem = "dashboard" }) {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  
   const navItems = [
     { id: "dashboard", label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
     { id: "organizations", label: "Organizations", to: "/admin/organizations", icon: Building2 },
@@ -55,10 +60,10 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
 
       {/* Logout */}
       <div className="p-4 mb-4">
-        <Link to="/login" className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-[#252f3f] hover:text-white transition-colors">
+        <button onClick={() => { logout(); toast.success("Logged out successfully"); navigate('/login'); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-[#252f3f] hover:text-white transition-colors">
           <LogOut className="w-[18px] h-[18px]" />
           Logout
-        </Link>
+        </button>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAdmin } from "@/roles/admin/context/AdminContext";
 import { Link } from "react-router-dom";
 import {
   Building2,
@@ -15,19 +16,7 @@ import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import KPICard from "@/components/common/KPICard";
 import OrganizationTabs from "@/components/admin/OrganizationTabs";
 
-// --- Mock Data ---
-
-const organizations = [
-  { id: 1, name: "ABC Logistics", industry: "Freight", managers: 4, plan: "Enterprise", status: "Active", date: "Jan 15, 2024" },
-  { id: 2, name: "XYZ Transport", industry: "Transportation", managers: 2, plan: "Professional", status: "Active", date: "Feb 3, 2024" },
-  { id: 3, name: "VRL Freight", industry: "Logistics", managers: 6, plan: "Enterprise", status: "Pending", date: "Mar 22, 2024" },
-  { id: 4, name: "Swift Cargo", industry: "Courier", managers: 3, plan: "Standard", status: "Active", date: "Jun 10, 2024" },
-  { id: 5, name: "Peak Logistics", industry: "Freight", managers: 5, plan: "Professional", status: "Suspended", date: "May 1, 2024" },
-  { id: 6, name: "Rapid Transport", industry: "Transportation", managers: 2, plan: "Standard", status: "Active", date: "May 18, 2024" },
-  { id: 7, name: "Global Express", industry: "Courier", managers: 3, plan: "Enterprise", status: "Active", date: "Jun 2, 2024" },
-  { id: 8, name: "Global Express", industry: "Courier", managers: 3, plan: "Enterprise", status: "Active", date: "Jun 2, 2024" },
-  { id: 9, name: "Global Express", industry: "Courier", managers: 3, plan: "Enterprise", status: "Active", date: "Jun 2, 2024" },
-];
+// --- Mock Data Removed ---
 
 function StatusBadge({ status }) {
   if (status === "Active") {
@@ -44,6 +33,7 @@ function StatusBadge({ status }) {
 
 export default function OrganizationList() {
   const [searchTerm, setSearchTerm] = useState("");
+  const { organizations } = useAdmin();
 
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
@@ -66,25 +56,25 @@ export default function OrganizationList() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
             <KPICard 
               title="Total Organizations" 
-              value="128" 
+              value={organizations.length} 
               icon={<Building2 className="w-5 h-5 text-slate-600" />}
               iconBg="bg-slate-100"
             />
             <KPICard 
               title="Active" 
-              value="94" 
+              value={organizations.filter(o => o.status === "Active").length} 
               icon={<CheckCircle2 className="w-5 h-5 text-green-600" />}
               iconBg="bg-green-50"
             />
             <KPICard 
               title="Pending Approval" 
-              value="23" 
+              value={organizations.filter(o => o.status === "Pending").length} 
               icon={<Clock className="w-5 h-5 text-orange-500" />}
               iconBg="bg-orange-50"
             />
             <KPICard 
               title="Suspended" 
-              value="11" 
+              value={organizations.filter(o => o.status === "Suspended").length} 
               icon={<XCircle className="w-5 h-5 text-red-500" />}
               iconBg="bg-red-50"
             />
@@ -146,13 +136,13 @@ export default function OrganizationList() {
                       <td className="py-4 px-6 whitespace-nowrap text-center">
                         <StatusBadge status={org.status} />
                       </td>
-                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.date}</td>
+                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.joined || org.date}</td>
                       <td className="py-4 px-6 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-3 flex-nowrap w-max mx-auto">
-                          <Link to="/admin/organizations/details" className="text-slate-400 hover:text-slate-600 transition-colors" title="View Details">
+                          <Link to={`/admin/organizations/details/${org.id}`} className="text-slate-400 hover:text-slate-600 transition-colors" title="View Details">
                             <Eye className="w-4 h-4" />
                           </Link>
-                          <Link to="/admin/organizations/edit" className="text-slate-400 hover:text-[#A14000] transition-colors" title="Edit">
+                          <Link to={`/admin/organizations/edit/${org.id}`} className="text-slate-400 hover:text-[#A14000] transition-colors" title="Edit">
                             <Pencil className="w-4 h-4" />
                           </Link>
                         </div>

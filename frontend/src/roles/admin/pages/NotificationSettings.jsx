@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { ChevronDown } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
+import toast from "react-hot-toast";
 
 export default function NotificationSettings() {
   const [isSaving, setIsSaving] = useState(false);
@@ -11,10 +13,18 @@ export default function NotificationSettings() {
   const [inviteNotifications, setInviteNotifications] = useState(false);
   const [weeklyReports, setWeeklyReports] = useState(false);
   const [newOrganizationAlerts, setNewOrganizationAlerts] = useState(false);
+  const [activeCard, setActiveCard] = useState(null);
+
+  const toggleCard = (cardId) => {
+    setActiveCard(activeCard === cardId ? null : cardId);
+  };
 
   const handleSave = () => {
     setIsSaving(true);
-    setTimeout(() => setIsSaving(false), 1000);
+    setTimeout(() => {
+      setIsSaving(false);
+      toast.success("Notification preferences saved successfully!");
+    }, 1000);
   };
 
   return (
@@ -62,87 +72,192 @@ export default function NotificationSettings() {
             <div className="flex flex-col divide-y divide-slate-100 border-t border-slate-100">
               
               {/* Email Notifications */}
-              <div className="py-5 flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800">Email Notifications</h4>
-                  <p className="text-[13px] text-slate-500 font-medium">Receive email for important events</p>
-                </div>
-                <button 
-                  onClick={() => setEmailNotifications(!emailNotifications)}
-                  className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${emailNotifications ? 'bg-green-500' : 'bg-slate-200'}`}
+              <div className="flex flex-col border-b border-slate-100 last:border-b-0">
+                <div 
+                  className="py-5 flex items-center justify-between cursor-pointer group"
+                  onClick={() => toggleCard('email')}
                 >
-                  <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${emailNotifications ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </button>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 group-hover:text-[#b45309] transition-colors">Email Notifications</h4>
+                    <p className="text-[13px] text-slate-500 font-medium">Receive email for important events</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setEmailNotifications(!emailNotifications); }}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${emailNotifications ? 'bg-green-500' : 'bg-slate-200'}`}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${emailNotifications ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === 'email' ? 'rotate-180' : ''}`} />
+                  </div>
+                </div>
+                <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'email' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <div className="pb-5 pt-2 pl-4 border-l-2 border-[#b45309] ml-2">
+                    <label className="block text-[12px] font-bold text-slate-600 mb-1">Primary Email Address</label>
+                    <input type="email" defaultValue="admin@fleetcommand.io" className="w-full max-w-xs px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all" />
+                  </div>
+                </div>
               </div>
 
               {/* System Alerts */}
-              <div className="py-5 flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800">System Alerts</h4>
-                  <p className="text-[13px] text-slate-500 font-medium">Critical system health notifications</p>
-                </div>
-                <button 
-                  onClick={() => setSystemAlerts(!systemAlerts)}
-                  className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${systemAlerts ? 'bg-green-500' : 'bg-slate-200'}`}
+              <div className="flex flex-col border-b border-slate-100 last:border-b-0">
+                <div 
+                  className="py-5 flex items-center justify-between cursor-pointer group"
+                  onClick={() => toggleCard('system')}
                 >
-                  <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${systemAlerts ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </button>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 group-hover:text-[#b45309] transition-colors">System Alerts</h4>
+                    <p className="text-[13px] text-slate-500 font-medium">Critical system health notifications</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setSystemAlerts(!systemAlerts); }}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${systemAlerts ? 'bg-green-500' : 'bg-slate-200'}`}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${systemAlerts ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === 'system' ? 'rotate-180' : ''}`} />
+                  </div>
+                </div>
+                <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'system' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <div className="pb-5 pt-2 pl-4 border-l-2 border-[#b45309] ml-2">
+                    <label className="block text-[12px] font-bold text-slate-600 mb-1">Minimum Severity Level</label>
+                    <select className="w-full max-w-xs px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all">
+                      <option value="all">All Events</option>
+                      <option value="warning">Warnings & Critical</option>
+                      <option value="critical">Critical Only</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
               {/* Maintenance Alerts */}
-              <div className="py-5 flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800">Maintenance Alerts</h4>
-                  <p className="text-[13px] text-slate-500 font-medium">Scheduled maintenance notifications</p>
-                </div>
-                <button 
-                  onClick={() => setMaintenanceAlerts(!maintenanceAlerts)}
-                  className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${maintenanceAlerts ? 'bg-green-500' : 'bg-slate-200'}`}
+              <div className="flex flex-col border-b border-slate-100 last:border-b-0">
+                <div 
+                  className="py-5 flex items-center justify-between cursor-pointer group"
+                  onClick={() => toggleCard('maintenance')}
                 >
-                  <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${maintenanceAlerts ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </button>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 group-hover:text-[#b45309] transition-colors">Maintenance Alerts</h4>
+                    <p className="text-[13px] text-slate-500 font-medium">Scheduled maintenance notifications</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setMaintenanceAlerts(!maintenanceAlerts); }}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${maintenanceAlerts ? 'bg-green-500' : 'bg-slate-200'}`}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${maintenanceAlerts ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === 'maintenance' ? 'rotate-180' : ''}`} />
+                  </div>
+                </div>
+                <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'maintenance' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <div className="pb-5 pt-2 pl-4 border-l-2 border-[#b45309] ml-2 space-y-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" className="w-4 h-4 text-[#b45309] rounded border-slate-300 focus:ring-[#b45309]" defaultChecked />
+                      <span className="text-[13px] text-slate-600 font-medium">Notify 48 hours in advance</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" className="w-4 h-4 text-[#b45309] rounded border-slate-300 focus:ring-[#b45309]" defaultChecked />
+                      <span className="text-[13px] text-slate-600 font-medium">Notify 1 hour in advance</span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
               {/* Invite Notifications */}
-              <div className="py-5 flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800">Invite Notifications</h4>
-                  <p className="text-[13px] text-slate-500 font-medium">When fleet managers accept invites</p>
-                </div>
-                <button 
-                  onClick={() => setInviteNotifications(!inviteNotifications)}
-                  className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${inviteNotifications ? 'bg-green-500' : 'bg-slate-200'}`}
+              <div className="flex flex-col border-b border-slate-100 last:border-b-0">
+                <div 
+                  className="py-5 flex items-center justify-between cursor-pointer group"
+                  onClick={() => toggleCard('invite')}
                 >
-                  <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${inviteNotifications ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </button>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 group-hover:text-[#b45309] transition-colors">Invite Notifications</h4>
+                    <p className="text-[13px] text-slate-500 font-medium">When fleet managers accept invites</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setInviteNotifications(!inviteNotifications); }}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${inviteNotifications ? 'bg-green-500' : 'bg-slate-200'}`}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${inviteNotifications ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === 'invite' ? 'rotate-180' : ''}`} />
+                  </div>
+                </div>
+                <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'invite' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <div className="pb-5 pt-2 pl-4 border-l-2 border-[#b45309] ml-2 space-y-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" className="w-4 h-4 text-[#b45309] rounded border-slate-300 focus:ring-[#b45309]" defaultChecked />
+                      <span className="text-[13px] text-slate-600 font-medium">Notify when invitation is sent</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" className="w-4 h-4 text-[#b45309] rounded border-slate-300 focus:ring-[#b45309]" defaultChecked />
+                      <span className="text-[13px] text-slate-600 font-medium">Notify when invitation is accepted</span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
               {/* Weekly Reports */}
-              <div className="py-5 flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800">Weekly Reports</h4>
-                  <p className="text-[13px] text-slate-500 font-medium">Summary report every Monday morning</p>
-                </div>
-                <button 
-                  onClick={() => setWeeklyReports(!weeklyReports)}
-                  className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${weeklyReports ? 'bg-green-500' : 'bg-slate-200'}`}
+              <div className="flex flex-col border-b border-slate-100 last:border-b-0">
+                <div 
+                  className="py-5 flex items-center justify-between cursor-pointer group"
+                  onClick={() => toggleCard('weekly')}
                 >
-                  <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${weeklyReports ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </button>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 group-hover:text-[#b45309] transition-colors">Weekly Reports</h4>
+                    <p className="text-[13px] text-slate-500 font-medium">Summary report every Monday morning</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setWeeklyReports(!weeklyReports); }}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${weeklyReports ? 'bg-green-500' : 'bg-slate-200'}`}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${weeklyReports ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === 'weekly' ? 'rotate-180' : ''}`} />
+                  </div>
+                </div>
+                <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'weekly' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <div className="pb-5 pt-2 pl-4 border-l-2 border-[#b45309] ml-2">
+                    <label className="block text-[12px] font-bold text-slate-600 mb-1">Delivery Day</label>
+                    <select className="w-full max-w-xs px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all">
+                      <option value="monday">Monday Morning</option>
+                      <option value="friday">Friday Evening</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
               {/* New Organization Alerts */}
-              <div className="py-5 flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800">New Organization Alerts</h4>
-                  <p className="text-[13px] text-slate-500 font-medium">When a new organization registers</p>
-                </div>
-                <button 
-                  onClick={() => setNewOrganizationAlerts(!newOrganizationAlerts)}
-                  className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${newOrganizationAlerts ? 'bg-green-500' : 'bg-slate-200'}`}
+              <div className="flex flex-col border-b border-slate-100 last:border-b-0">
+                <div 
+                  className="py-5 flex items-center justify-between cursor-pointer group"
+                  onClick={() => toggleCard('new_org')}
                 >
-                  <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${newOrganizationAlerts ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </button>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 group-hover:text-[#b45309] transition-colors">New Organization Alerts</h4>
+                    <p className="text-[13px] text-slate-500 font-medium">When a new organization registers</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setNewOrganizationAlerts(!newOrganizationAlerts); }}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${newOrganizationAlerts ? 'bg-green-500' : 'bg-slate-200'}`}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${newOrganizationAlerts ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === 'new_org' ? 'rotate-180' : ''}`} />
+                  </div>
+                </div>
+                <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'new_org' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <div className="pb-5 pt-2 pl-4 border-l-2 border-[#b45309] ml-2 space-y-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" className="w-4 h-4 text-[#b45309] rounded border-slate-300 focus:ring-[#b45309]" defaultChecked />
+                      <span className="text-[13px] text-slate-600 font-medium">Require admin review for new organizations</span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
             </div>

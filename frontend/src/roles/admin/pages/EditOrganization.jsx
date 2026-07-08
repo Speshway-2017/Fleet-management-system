@@ -1,9 +1,65 @@
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import toast from "react-hot-toast";
+import { useAdmin } from "@/roles/admin/context/AdminContext";
 import { ChevronLeft, Upload } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 
 export default function EditOrganization() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { getOrganization, updateOrganization } = useAdmin();
+  const org = getOrganization(id);
+
+  const [form, setForm] = useState({
+    name: "", industry: "", email: "", phone: "", address: "",
+    city: "", state: "", country: "", plan: "", status: ""
+  });
+  const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (org) {
+      setForm({
+        name: org.name || "",
+        industry: org.industry || "",
+        email: org.email || "",
+        phone: org.phone || "",
+        address: org.address || "",
+        city: org.city || "",
+        state: org.state || "",
+        country: org.country || "",
+        plan: org.plan || "",
+        status: org.status || ""
+      });
+    }
+  }, [org]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+    setErrors(prev => ({ ...prev, [name]: "" }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const newErrors = {};
+    if (!form.name) newErrors.name = "Organization Name is required";
+    if (!form.industry) newErrors.industry = "Industry is required";
+    if (!form.email) newErrors.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = "Invalid email format";
+    if (form.phone && !/^\+?[0-9\s-]{7,15}$/.test(form.phone)) newErrors.phone = "Invalid phone format";
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
+    updateOrganization(id, form);
+    toast.success("Organization updated successfully!");
+    navigate("/admin/organizations");
+  };
+
+  if (!org) return <div className="p-8">Organization not found.</div>;
+
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
       <NewAdminSidebar activeItem="organizations" />
@@ -29,13 +85,13 @@ export default function EditOrganization() {
                 Organizations
               </Link>
               <span className="text-slate-300 mx-2">/</span>
-              <span className="text-slate-800 font-bold">Edit ABC Logistics</span>
+              <span className="text-slate-800 font-bold">Edit {org.name}</span>
             </div>
             <div className="flex items-center gap-3">
               <Link to="/admin/organizations" className="px-5 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm">
                 Cancel
               </Link>
-              <button type="button" className="px-5 py-2 bg-[#A14000] text-white rounded-lg text-sm font-bold hover:bg-[#8a3700] transition-colors shadow-sm">
+              <button type="button" onClick={handleSubmit} className="px-5 py-2 bg-[#A14000] text-white rounded-lg text-sm font-bold hover:bg-[#8a3700] transition-colors shadow-sm">
                 Save Changes
               </button>
             </div>
@@ -45,7 +101,7 @@ export default function EditOrganization() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
             <h2 className="text-lg font-bold text-slate-800 mb-6">Organization Information</h2>
             
-            <form className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               
               {/* Logo Upload Section */}
               <div className="flex flex-col gap-2">
@@ -66,10 +122,13 @@ export default function EditOrganization() {
                 <label className="block text-sm font-bold text-slate-700 mb-2">Organization Name</label>
                 <input 
                   type="text" 
-                  defaultValue="ABC Logistics"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.name ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                   placeholder="e.g. ABC Logistics"
                 />
+                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -77,18 +136,24 @@ export default function EditOrganization() {
                   <label className="block text-sm font-bold text-slate-700 mb-2">Industry</label>
                   <input 
                     type="text" 
-                    defaultValue="Freight"
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+                    name="industry"
+                    value={form.industry}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.industry ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                   />
+                  {errors.industry && <p className="text-xs text-red-500 mt-1">{errors.industry}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
                   <input 
                     type="email" 
-                    defaultValue="contact@abclogistics.com"
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.email ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                     placeholder="contact@organization.com"
                   />
+                  {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
                 </div>
               </div>
 
@@ -97,10 +162,13 @@ export default function EditOrganization() {
                   <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
                   <input 
                     type="tel" 
-                    defaultValue="+1 (555) 123-4567"
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
+                    name="phone"
+                    value={form.phone}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.phone ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                     placeholder="+1 (555) 000-0000"
                   />
+                  {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
                 </div>
                 <div></div>
               </div>
@@ -109,7 +177,9 @@ export default function EditOrganization() {
                 <label className="block text-sm font-bold text-slate-700 mb-2">Address</label>
                 <input 
                   type="text" 
-                  defaultValue="123 Freight Lane, Suite 100"
+                  name="address"
+                  value={form.address}
+                  onChange={handleChange}
                   className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
                   placeholder="Street address"
                 />
@@ -120,7 +190,9 @@ export default function EditOrganization() {
                   <label className="block text-sm font-bold text-slate-700 mb-2">City</label>
                   <input 
                     type="text" 
-                    defaultValue="Chicago"
+                    name="city"
+                    value={form.city}
+                    onChange={handleChange}
                     className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
                     placeholder="City"
                   />
@@ -129,7 +201,9 @@ export default function EditOrganization() {
                   <label className="block text-sm font-bold text-slate-700 mb-2">State</label>
                   <input 
                     type="text" 
-                    defaultValue="IL"
+                    name="state"
+                    value={form.state}
+                    onChange={handleChange}
                     className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
                     placeholder="State"
                   />
@@ -141,24 +215,27 @@ export default function EditOrganization() {
                   <label className="block text-sm font-bold text-slate-700 mb-2">Country</label>
                   <input 
                     type="text" 
-                    defaultValue="United States"
+                    name="country"
+                    value={form.country}
+                    onChange={handleChange}
                     className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Subscription Plan</label>
-                  <input 
-                    type="text" 
-                    defaultValue="Enterprise"
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-                  />
+                  <select name="plan" value={form.plan} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50 appearance-none">
+                    <option value="" disabled className="text-slate-400">Select plan</option>
+                    <option value="Enterprise">Enterprise</option>
+                    <option value="Professional">Professional</option>
+                    <option value="Standard">Standard</option>
+                  </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Status</label>
-                  <select className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all text-slate-700" defaultValue="Active">
+                  <select name="status" value={form.status} onChange={handleChange} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all text-slate-700">
                     <option value="Active">Active</option>
                     <option value="Pending">Pending</option>
                     <option value="Suspended">Suspended</option>
