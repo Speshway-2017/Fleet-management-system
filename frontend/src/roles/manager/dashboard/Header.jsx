@@ -54,9 +54,11 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
         {/* Bell Button */}
         <div className="relative">
           <button
-            onClick={() => navigate("/manager/notifications")}
-            className="relative p-2.5 text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none transition-colors duration-150"
-            title="View all notifications"
+            onClick={() => {
+              navigate("/manager/notifications");
+              setUserMenuOpen(false);
+            }}
+            className="relative p-2.5 text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none transition-colors duration-150 cursor-pointer"
           >
             <Bell className="w-5.5 h-5.5" />
             <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#B45A0A] border-2 border-white rounded-full pulsing-dot" />

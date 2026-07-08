@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
@@ -15,6 +15,18 @@ export default function SettingsPage() {
     maintenance: { push: true, email: false, sms: false },
     operational: { push: false, email: true, sms: false },
   });
+
+  useEffect(() => {
+    if (window.location.hash) {
+      const hashId = window.location.hash.substring(1);
+      setTimeout(() => {
+        const element = document.getElementById(hashId);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 100);
+    }
+  }, []);
 
   const handleNotificationChange = (type, channel) => {
     setNotifications((prev) => ({
@@ -151,7 +163,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Notification Preferences Card */}
-      <div className="bg-white rounded-2xl border border-gray-300 p-6 shadow-sm">
+      <div id="notifications" className="bg-white rounded-2xl border border-gray-300 p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-300">
           <Icon icon="mdi:bell-outline" className="w-7 h-7 text-amber-700" />
           <h2 className="text-xl font-bold text-gray-800">Notification Preferences</h2>

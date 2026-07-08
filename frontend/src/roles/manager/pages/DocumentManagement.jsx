@@ -351,30 +351,23 @@ export default function DocumentManagement() {
                         <button
                           onClick={() => handleView(doc)}
                           title="View details"
-                          className="p-2 text-gray-600 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                          className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleEdit(doc)}
                           title="Edit"
-                          className="p-2 text-gray-600 hover:text-orange-600 bg-gray-50 hover:bg-orange-50 rounded-lg transition-colors cursor-pointer"
+                          className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDownload(doc)}
-                          title="Download"
-                          className="p-2 text-gray-600 hover:text-green-600 bg-gray-50 hover:bg-green-50 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                        <button
                           onClick={() => handleDelete(doc)}
                           title="Delete"
-                          className="p-2 text-gray-600 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                         >
-                          <Trash2 className="w-4.5 h-4.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -438,7 +431,10 @@ export default function DocumentManagement() {
                 <span className="font-bold text-[#EF4444]">5</span>
               </div>
               <div className="mt-4 pt-4 border-t border-[#E7EAF0]/60">
-                <button className="px-4 py-2 bg-[#FDF3EC] text-[#B45A0A] text-sm font-bold rounded-xl hover:bg-[#F5E8D8] transition-colors cursor-pointer">
+                <button 
+                  onClick={() => navigate("/manager/documents/compliance-audit")}
+                  className="px-4 py-2 bg-[#FDF3EC] text-[#B45A0A] text-sm font-bold rounded-xl hover:bg-[#F5E8D8] transition-colors cursor-pointer"
+                >
                   View Compliance Report
                 </button>
               </div>

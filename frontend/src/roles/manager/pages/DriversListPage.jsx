@@ -289,7 +289,7 @@ export default function DriversListPage() {
                         <button
                           onClick={() => navigate(`/manager/driver-profile/${d.id}`)}
                           title="View profile"
-                          className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                          className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
@@ -300,9 +300,9 @@ export default function DriversListPage() {
                             setDeleteModalOpen(true);
                           }}
                           title="Delete driver"
-                          className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                          className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                         >
-                          <Trash2 className="w-4.5 h-4.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>

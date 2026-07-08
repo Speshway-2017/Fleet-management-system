@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { mockNotifications } from "@/data/mockNotifications";
 import DispatchWarningModal from "@/components/common/DispatchWarningModal";
 import ContactDriverModal from "@/components/common/ContactDriverModal";
 import { notifications } from "@/roles/manager/data/notificationsData";
@@ -17,6 +20,62 @@ const mapTypeToTab = (type) => {
 export default function NotificationsPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("All");
+
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+
+  // Find last critical notification
+  const lastCriticalNotif = mockNotifications.find(n => n.type === "alert" || n.type === "warning") || mockNotifications[0];
+  const coords = lastCriticalNotif?.coords || [19.0760, 72.8777];
+  const locationName = lastCriticalNotif?.locationName || "Mumbai Bypass Road";
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+    }
+
+    const map = L.map(mapRef.current, {
+      zoomControl: false,
+      attributionControl: false
+    }).setView(coords, 12);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const pinIcon = L.divIcon({
+      html: `<div class="bg-red-600 rounded-full w-7 h-7 flex items-center justify-center text-white shadow-lg border-2 border-white animate-pulse">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </div>`,
+      className: "",
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    });
+
+    L.marker(coords, { icon: pinIcon }).bindPopup(`<strong>${lastCriticalNotif?.text}</strong><br/>${locationName}`).addTo(map);
+
+    mapInstanceRef.current = map;
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [coords]);
+
+  const filteredNotifications = mockNotifications.filter((notif) => {
+    if (activeTab === "Critical") return notif.type === "alert" || notif.type === "warning";
+    if (activeTab === "Maintenance") return notif.type === "info";
+    if (activeTab === "System") return notif.type === "success" || notif.type === "system";
+    return true;
+  });
   const [showDispatchWarningModal, setShowDispatchWarningModal] = useState(false);
   const [showContactDriverModal, setShowContactDriverModal] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
@@ -109,7 +168,10 @@ export default function NotificationsPage() {
             <Icon icon="mdi:check-all" className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="whitespace-nowrap">Mark all as read</span>
           </button>
-          <button className="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors w-full sm:w-auto cursor-pointer">
+          <button 
+            onClick={() => navigate("/manager/settings#notifications")}
+            className="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors w-full sm:w-auto cursor-pointer"
+          >
             <Icon icon="mdi:cog-outline" className="w-5 h-5" />
             Notification Settings
           </button>
@@ -159,18 +221,18 @@ export default function NotificationsPage() {
             </div>
           </div>
 
-          {/* Last Critical Location - Hidden on mobile */}
-          <div className="hidden lg:block bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-            <div className="relative h-48 bg-gray-200">
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+          {/* Last Critical Location */}
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="relative h-48 bg-gray-100">
+              {/* Leaflet map node container */}
+              <div ref={mapRef} className="absolute inset-0 z-0 h-full w-full" />
+              
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex items-end p-4 z-10 pointer-events-none">
                 <div>
                   <p className="text-white font-semibold text-sm">Last Critical Location</p>
-                  <p className="text-white/70 text-xs">41.8781° N, 87.6298° W</p>
+                  <p className="text-white/80 text-xs font-mono font-medium">{coords[0].toFixed(4)}° N, {coords[1].toFixed(4)}° E</p>
+                  <p className="text-amber-400 text-[10px] font-bold uppercase tracking-wider mt-0.5">{locationName}</p>
                 </div>
-              </div>
-              {/* Placeholder for map */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Icon icon="mdi:map-marker-radius" className="w-24 h-24 text-amber-600 opacity-30" />
               </div>
             </div>
           </div>
@@ -195,7 +257,38 @@ export default function NotificationsPage() {
           </div>
 
           {/* Notifications */}
-
+          {filteredNotifications.map((notif) => (
+            <div 
+              key={notif.id} 
+              onClick={() => handleNotificationClick(notif.id)}
+              className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+            >
+              <div className="flex gap-4">
+                <div className={`w-12 h-12 rounded-full ${getIconColor(notif.type)} flex items-center justify-center shrink-0`}>
+                  <Icon icon={getIcon(notif.type)} className="w-6 h-6" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="font-semibold text-gray-800">{notif.title}</h4>
+                    <span className="text-xs text-gray-400 font-medium">{notif.time}</span>
+                  </div>
+                  <p className="text-gray-600 text-sm mb-4">{notif.description}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {notif.actions.map((action, i) => (
+                      <button
+                        key={i}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNotificationClick(notif.id);
+                        }}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${action.bg === 'bg-white'
+                            ? `${action.bg} ${action.text} border ${action.border} hover:bg-gray-50`
+                            : `${action.bg} text-white ${action.hover}`
+                          }`}
+                      >
+                        {action.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
               );

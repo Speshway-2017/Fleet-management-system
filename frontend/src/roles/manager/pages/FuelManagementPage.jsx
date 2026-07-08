@@ -255,20 +255,20 @@ Status:          PAID & VERIFIED
         </div>
 
         {/* Responsive Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
+        <div className="overflow-x-auto no-scrollbar">
+          <table className="w-full text-left border-collapse text-sm font-nunito">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-semibold uppercase text-xs tracking-wider select-none whitespace-nowrap">
+              <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
                 <th className="py-4 px-6">Vehicle ID</th>
                 <th className="py-4 px-6">Driver</th>
                 <th className="py-4 px-6">Timestamp</th>
                 <th className="py-4 px-6">Fuel Station</th>
                 <th className="py-4 px-6">Qty (Liters)</th>
                 <th className="py-4 px-6">Total Amount</th>
-                <th className="py-4 px-6 text-right">Receipt / Action</th>
+                <th className="py-4 px-6 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-[#E7EAF0]/60">
               {filteredLogs.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-gray-400 font-medium">
@@ -279,7 +279,7 @@ Status:          PAID & VERIFIED
                 filteredLogs.map(l => (
                   <tr
                     key={l.id}
-                    className={`hover:bg-gray-50 transition-colors ${l.status === "anomaly" ? "bg-red-50/30" : ""
+                    className={`hover:bg-[#F5F7FB]/50 transition-colors ${l.status === "anomaly" ? "bg-red-50/30" : ""
                       }`}
                   >
                     {/* Vehicle ID cell */}
@@ -328,7 +328,7 @@ Status:          PAID & VERIFIED
                       {l.status === "anomaly" ? (
                         <button
                           onClick={() => handleResolveAnomaly(l)}
-                          className="px-3.5 py-1.5 bg-red-500 hover:bg-red-700 text-white rounded-lg text-[10px] font-black shadow-sm transition-colors cursor-pointer"
+                          className="px-3.5 py-1.5 bg-red-500 hover:bg-red-700 text-white rounded-xl text-[10px] font-black shadow-sm transition-all active:scale-95 cursor-pointer"
                         >
                           Resolve
                         </button>
@@ -341,7 +341,7 @@ Status:          PAID & VERIFIED
                         <button
                           onClick={() => handleDownloadReceipt(l)}
                           title="Download slip receipt"
-                          className="p-2 text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors cursor-pointer inline-flex"
+                          className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer inline-flex"
                         >
                           <FileText className="w-4 h-4" />
                         </button>

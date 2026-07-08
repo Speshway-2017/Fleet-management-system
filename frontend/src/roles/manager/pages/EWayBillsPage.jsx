@@ -89,35 +89,42 @@ export default function EWayBillsPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Bill ID</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Vehicle</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Status</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Date</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Actions</th>
+          <table className="w-full text-left border-collapse text-sm font-nunito">
+            <thead>
+              <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
+                <th className="py-4 px-6 text-left whitespace-nowrap">Bill ID</th>
+                <th className="py-4 px-6 text-left whitespace-nowrap">Vehicle</th>
+                <th className="py-4 px-6 text-left whitespace-nowrap">Status</th>
+                <th className="py-4 px-6 text-left whitespace-nowrap">Date</th>
+                <th className="py-4 px-6 text-left whitespace-nowrap">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-[#E7EAF0]/60">
               {bills.map((bill) => (
-                <tr key={bill.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium text-gray-800">{bill.id}</td>
-                  <td className="px-6 py-4 text-gray-600">{bill.vehicle}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${bill.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
-                      }`}>
+                <tr key={bill.id} className="hover:bg-[#F5F7FB]/50 transition-colors">
+                  <td className="py-4 px-6 whitespace-nowrap">
+                    <p className="font-bold text-[#1E293B] text-sm">{bill.id}</p>
+                  </td>
+                  <td className="py-4 px-6 whitespace-nowrap">
+                    <p className="font-bold text-[#1E293B] text-sm">{bill.vehicle}</p>
+                  </td>
+                  <td className="py-4 px-6 whitespace-nowrap">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold inline-block ${
+                      bill.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                    }`}>
                       {bill.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-gray-600">{bill.date}</td>
-                  <td className="px-6 py-4">
+                  <td className="py-4 px-6 whitespace-nowrap">
+                    <p className="text-[#64748B] text-sm">{bill.date}</p>
+                  </td>
+                  <td className="py-4 px-6 whitespace-nowrap">
                     <div className="flex items-center gap-2">
-                      <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
-                        <Icon icon="mdi:eye" className="w-5 h-5" />
+                      <button className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer">
+                        <Icon icon="mdi:eye" className="w-4 h-4" />
                       </button>
-                      <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
-                        <Icon icon="mdi:download" className="w-5 h-5" />
+                      <button className="p-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl active:scale-95 transition-all cursor-pointer">
+                        <Icon icon="mdi:download" className="w-4 h-4" />
                       </button>
                     </div>
                   )}

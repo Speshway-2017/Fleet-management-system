@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import DriverChatDrawer from "@/components/common/DriverChatDrawer";
 
 export default function TripDetailsPage() {
   const { id } = useParams();
@@ -28,6 +29,7 @@ export default function TripDetailsPage() {
   const [trip, setTrip] = useState(null);
   const [tripsList, setTripsList] = useState([]);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -395,7 +397,7 @@ export default function TripDetailsPage() {
                 Call Driver
               </a>
               <button
-                onClick={() => toast.success("Chat service loading...")}
+                onClick={() => setIsChatOpen(true)}
                 className="px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Mail className="w-3.5 h-3.5" />
@@ -481,6 +483,29 @@ export default function TripDetailsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {trip && (
+        <DriverChatDrawer 
+          isOpen={isChatOpen} 
+          onClose={() => setIsChatOpen(false)} 
+          driverName={trip.driverName}
+          driverPhone={trip.driverPhone}
+          initialMessages={[
+            {
+              id: 1,
+              sender: "driver",
+              text: `Hi, started transit from ${trip.startLocation}.`,
+              time: "10:15 AM",
+            },
+            {
+              id: 2,
+              sender: "manager",
+              text: `Hi ${trip.driverName.split(" ")[0]}, please drive safe. Destination is ${trip.endLocation}.`,
+              time: "10:17 AM",
+            }
+          ]}
+        />
       )}
     </div>
   );

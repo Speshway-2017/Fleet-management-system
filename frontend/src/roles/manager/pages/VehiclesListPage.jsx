@@ -384,28 +384,28 @@ export default function VehiclesListPage() {
           {/* Vehicles Table */}
           <div className="bg-white rounded-xl border border-[#E7EAF0] overflow-hidden w-full min-w-0">
             <div className="w-full overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-left border-collapse text-sm font-nunito">
                 <thead>
-                  <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0]">
-                    <th className="px-6 py-3 text-left text-xs font-bold text-[#64748B] uppercase tracking-wider">
+                  <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
+                    <th className="py-4 px-6 text-left whitespace-nowrap">
                       VEHICLE
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-[#64748B] uppercase tracking-wider">
+                    <th className="py-4 px-6 text-left whitespace-nowrap">
                       PLATE NO.
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-[#64748B] uppercase tracking-wider">
+                    <th className="py-4 px-6 text-left whitespace-nowrap">
                       TYPE
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-[#64748B] uppercase tracking-wider">
+                    <th className="py-4 px-6 text-left whitespace-nowrap">
                       STATUS
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-[#64748B] uppercase tracking-wider">
+                    <th className="py-4 px-6 text-left whitespace-nowrap">
                       DRIVER
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-[#64748B] uppercase tracking-wider">
+                    <th className="py-4 px-6 text-left whitespace-nowrap">
                       INSURANCE
                     </th>
-                    <th className="px-6 py-3 text-center text-xs font-bold text-[#64748B] uppercase tracking-wider">
+                    <th className="py-4 px-6 text-center whitespace-nowrap">
                       ACTIONS
                     </th>
                   </tr>
@@ -413,57 +413,57 @@ export default function VehiclesListPage() {
                 <tbody>
                   {filteredVehicles.length > 0 ? (
                     filteredVehicles.map((vehicle, idx) => (
-                      <tr key={vehicle.id} className="border-b border-[#E7EAF0] hover:bg-[#F5F7FB] transition-colors">
-                        <td className="px-6 py-3 whitespace-nowrap">
+                      <tr key={vehicle.id} className="border-b border-[#E7EAF0]/60 hover:bg-[#F5F7FB]/50 transition-colors">
+                        <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex flex-col">
                             <p className="font-bold text-[#1E293B] text-sm">{vehicle.name}</p>
                             <p className="text-xs text-[#64748B]">{vehicle.manufacturer}</p>
                           </div>
                         </td>
-                        <td className="px-6 py-3 whitespace-nowrap">
+                        <td className="py-4 px-6 whitespace-nowrap">
                           <p className="font-bold text-[#1E293B] uppercase text-sm">{vehicle.plateNumber}</p>
                         </td>
-                        <td className="px-6 py-3 whitespace-nowrap">
+                        <td className="py-4 px-6 whitespace-nowrap">
                           <p className="text-[#64748B] text-sm">{vehicle.type}</p>
                         </td>
-                        <td className="px-6 py-3 whitespace-nowrap">
+                        <td className="py-4 px-6 whitespace-nowrap">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold inline-block ${getStatusColor(vehicle.status)}`}>
                             {vehicle.status}
                           </span>
                         </td>
-                        <td className="px-6 py-3 whitespace-nowrap">
+                        <td className="py-4 px-6 whitespace-nowrap">
                           <p className="text-[#64748B] text-sm">{vehicle.driver}</p>
                         </td>
-                        <td className="px-6 py-3 whitespace-nowrap">
+                        <td className="py-4 px-6 whitespace-nowrap">
                           <p className={`text-xs font-bold ${getInsuranceStyle(vehicle.insuranceExpiry)}`}>
                             {new Date(vehicle.insuranceExpiry).toLocaleDateString("en-IN")}
                           </p>
                         </td>
-                        <td className="px-6 py-3 whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-3">
+                        <td className="py-4 px-6 whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
                             <button
                               onClick={() => navigate(`/manager/vehicle-details/${vehicle.id}`)}
-                              className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                              className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                               title="View"
                             >
-                              <Eye className="w-4 h-4 text-blue-600" />
+                              <Eye className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => navigate(`/manager/vehicle-edit/${vehicle.id}`)}
-                              className="p-1.5 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer"
+                              className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                               title="Edit"
                             >
-                              <Edit2 className="w-4 h-4 text-orange-600" />
+                              <Edit2 className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => {
                                 setSelectedVehicle(vehicle);
                                 setDeleteModalOpen(true);
                               }}
-                              className="p-1.5 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                              className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                               title="Delete"
                             >
-                              <Trash2 className="w-4 h-4 text-red-600" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         </td>

@@ -90,11 +90,18 @@ export default function FastagDashboard() {
           </div>
           <div className="h-48 flex items-end justify-around gap-4 px-4">
             {mockMonthlySpending.map((item) => (
-              <div key={item.month} className="flex flex-col items-center gap-3 flex-1">
-                <div className="w-full bg-gray-100 rounded-t-xl relative overflow-hidden" style={{ height: `${(item.amount / 16500) * 100}%` }}>
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-xl" style={{ height: '100%' }}></div>
+              <div key={item.month} className="flex flex-col items-center gap-3 flex-1 h-full justify-end">
+                <div className="w-full h-36 bg-gray-100 rounded-xl relative overflow-hidden group/bar">
+                  <div 
+                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-amber-700 to-amber-500 rounded-t-xl transition-all duration-500" 
+                    style={{ height: `${(item.amount / 16500) * 100}%` }}
+                  />
+                  {/* Tooltip on hover */}
+                  <div className="opacity-0 group-hover/bar:opacity-100 transition-opacity duration-200 absolute inset-0 bg-black/60 flex items-center justify-center text-[10px] text-white font-bold font-poppins pointer-events-none">
+                    ₹{item.amount.toLocaleString("en-IN")}
+                  </div>
                 </div>
-                <span className="text-xs text-gray-500 font-medium">{item.month}</span>
+                <span className="text-xs text-gray-500 font-bold font-poppins">{item.month}</span>
               </div>
             ))}
           </div>
@@ -110,69 +117,71 @@ export default function FastagDashboard() {
           </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-left border-collapse text-sm font-nunito">
             <thead>
-              <tr className="bg-blue-50">
-                <th className="px-8 py-5 text-left text-gray-500 font-semibold text-base">
+              <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
+                <th className="py-4 px-6 text-left whitespace-nowrap">
                   VEHICLE ID
                 </th>
-                <th className="px-8 py-5 text-left text-gray-500 font-semibold text-base">
+                <th className="py-4 px-6 text-left whitespace-nowrap">
                   LOCATION / PLAZA
                 </th>
-                <th className="px-8 py-5 text-left text-gray-500 font-semibold text-base">
+                <th className="py-4 px-6 text-left whitespace-nowrap">
                   TIME
                 </th>
-                <th className="px-8 py-5 text-left text-gray-500 font-semibold text-base">
+                <th className="py-4 px-6 text-left whitespace-nowrap">
                   AMOUNT
                 </th>
-                <th className="px-8 py-5 text-left text-gray-500 font-semibold text-base">
+                <th className="py-4 px-6 text-left whitespace-nowrap">
                   STATUS
                 </th>
-                <th className="px-8 py-5 text-left text-gray-500 font-semibold text-base">
+                <th className="py-4 px-6 text-left whitespace-nowrap">
                   ACTIONS
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-[#E7EAF0]/60">
               {mockTollTransactions.map((txn) => (
-                <tr key={txn.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                  <td className="px-8 py-6">
+                <tr key={txn.id} className="hover:bg-[#F5F7FB]/50 transition-colors">
+                  <td className="py-4 px-6 whitespace-nowrap">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <Truck width="32" height="32" className="text-blue-600" />
+                      <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+                        <Truck width="20" height="20" className="text-blue-600" />
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-800 text-lg whitespace-nowrap">{txn.vehicleId}</p>
-                        <p className="text-gray-500 text-sm">{txn.vehicleModel}</p>
+                        <p className="font-bold text-[#1E293B] text-sm whitespace-nowrap">{txn.vehicleId}</p>
+                        <p className="text-xs text-[#64748B]">{txn.vehicleModel}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-8 py-6">
-                    <p className="text-gray-800">{txn.location}</p>
-                    <p className="text-gray-500 text-sm">Plaza ID: {txn.plazaId}</p>
+                  <td className="py-4 px-6 whitespace-nowrap">
+                    <p className="font-bold text-[#1E293B] text-sm">{txn.location}</p>
+                    <p className="text-xs text-[#64748B]">Plaza ID: {txn.plazaId}</p>
                   </td>
-                  <td className="px-8 py-6">
-                    <p className="text-gray-800">{new Date(txn.time).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</p>
-                    <p className="text-gray-500 text-sm">
+                  <td className="py-4 px-6 whitespace-nowrap">
+                    <p className="font-bold text-[#1E293B] text-sm">{new Date(txn.time).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</p>
+                    <p className="text-xs text-[#64748B]">
                       Today, {new Date(txn.time).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                     </p>
                   </td>
-                  <td className="px-8 py-6">
-                    <span className="font-semibold text-gray-800 text-lg">
+                  <td className="py-4 px-6 whitespace-nowrap">
+                    <span className="font-bold text-[#1E293B] text-sm">
                       ₹{txn.amount.toFixed(2)}
                     </span>
                   </td>
-                  <td className="px-8 py-6">
-                    <span className="bg-green-100 text-green-700 px-4 py-1 rounded-full text-xs font-semibold uppercase">
+                  <td className="py-4 px-6 whitespace-nowrap">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold inline-block ${
+                      txn.status.toLowerCase() === "settled" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                    }`}>
                       {txn.status}
                     </span>
                   </td>
-                  <td className="px-8 py-6">
+                  <td className="py-4 px-6 whitespace-nowrap">
                     <button 
                       onClick={() => navigate(`/manager/fastag/receipt/${txn.id}`)}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
+                      className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                     >
-                      <Icon icon="mdi:receipt-text-outline" width="24" height="24" />
+                      <Icon icon="mdi:receipt-text-outline" width="20" height="20" />
                     </button>
                   </td>
                 </tr>
