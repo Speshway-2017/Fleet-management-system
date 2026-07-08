@@ -44,63 +44,61 @@ export default function TollHistoryPage() {
       {/* Transactions Table */}
       <div className="bg-white rounded-xl border border-gray-300 shadow-sm mb-10">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-left border-collapse text-sm font-nunito">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-300">
-                <th className="px-6 py-4 text-left text-gray-600 font-semibold text-xs uppercase tracking-wider">
+              <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
+                <th className="py-4 px-6 text-left whitespace-nowrap">
                   VEHICLE ID
                 </th>
-                <th className="px-6 py-4 text-left text-gray-600 font-semibold text-xs uppercase tracking-wider">
+                <th className="py-4 px-6 text-left whitespace-nowrap">
                   LOCATION / PLAZA
                 </th>
-                <th className="px-6 py-4 text-left text-gray-600 font-semibold text-xs uppercase tracking-wider">
+                <th className="py-4 px-6 text-left whitespace-nowrap">
                   DATE & TIME
                 </th>
-                <th className="px-6 py-4 text-left text-gray-600 font-semibold text-xs uppercase tracking-wider">
+                <th className="py-4 px-6 text-left whitespace-nowrap">
                   AMOUNT
                 </th>
-                <th className="px-6 py-4 text-left text-gray-600 font-semibold text-xs uppercase tracking-wider">
+                <th className="py-4 px-6 text-left whitespace-nowrap">
                   STATUS
                 </th>
               </tr>
             </thead>
             <tbody>
               {currentItems.map((txn) => (
-                <tr key={txn.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-5">
-                    <div className="flex items-center justify-center w-24 h-12 bg-blue-50 rounded text-center">
-                      <span className="text-sm font-semibold text-gray-800 leading-snug">{txn.vehicleId}</span>
+                <tr key={txn.id} className="border-b border-[#E7EAF0]/60 hover:bg-[#F5F7FB]/50 transition-colors">
+                  <td className="py-4 px-6 whitespace-nowrap">
+                    <div className="flex items-center justify-center w-fit px-3.5 h-10 bg-blue-50 rounded text-center">
+                      <span className="text-sm font-semibold text-gray-800 leading-none whitespace-nowrap">{txn.vehicleId}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-5">
-                    <p className="text-sm text-gray-800">{txn.location}</p>
+                  <td className="py-4 px-6 whitespace-nowrap">
+                    <p className="text-sm text-gray-800 font-medium whitespace-nowrap">{txn.location}</p>
                   </td>
-                  <td className="px-6 py-5">
-                    <p className="text-sm text-gray-800">
+                  <td className="py-4 px-6 whitespace-nowrap">
+                    <span className="text-sm text-gray-800 font-medium">
                       {new Date(txn.time).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                    </p>
-                    <p className="text-sm text-gray-600">
+                    </span>
+                    <span className="text-sm text-gray-400 mx-1.5 font-bold">•</span>
+                    <span className="text-sm text-gray-600 font-medium">
                       {new Date(txn.time).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-                    </p>
+                    </span>
                   </td>
-                  <td className="px-6 py-5">
-                    <span className="text-sm font-semibold text-orange-700">
+                  <td className="py-4 px-6 whitespace-nowrap">
+                    <span className="text-sm font-semibold text-orange-700 whitespace-nowrap">
                       ₹{txn.amount.toFixed(2)}
                     </span>
                   </td>
-                  <td className="px-6 py-5">
+                  <td className="py-4 px-6 whitespace-nowrap">
                     {txn.status === "settled" ? (
-                      <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
+                      <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap">
                         <span className="w-2 h-2 bg-green-400 rounded-full"></span>
                         Settled
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-2 bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-semibold">
-                        <AlertTriangle width="16" height="16" />
-                        <div className="flex flex-col">
-                          <span>Low Balance</span>
-                          <span>Alert</span>
-                        </div>
+                      <span className="inline-flex items-center gap-1.5 bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap">
+                        <AlertTriangle width="14" height="14" />
+                        <span>Low Balance Alert</span>
                       </span>
                     )}
                   </td>

@@ -188,7 +188,11 @@ export default function AppLayout() {
             </button>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-md">
+            <button 
+              onClick={() => navigate(role === "admin" ? "/admin/notifications" : "/manager/notifications")}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-md cursor-pointer transition-colors"
+              title="Notifications"
+            >
               <Bell className="w-5 h-5" />
             </button>
             <div className="relative">

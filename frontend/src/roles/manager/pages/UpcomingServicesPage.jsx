@@ -259,7 +259,10 @@ export default function UpcomingServicesPage() {
                   Vehicle <strong>MH-12-AB-5678</strong> has expired safety certification since Jul 01. Schedule general overhaul immediately.
                 </p>
                 <button
-                  onClick={() => toast.success("Redirecting to compliance documents...")}
+                  onClick={() => {
+                    toast.success("Redirecting to compliance documents...");
+                    navigate("/manager/documents/compliance-audit");
+                  }}
                   className="w-full py-2 bg-white/10 hover:bg-white/20 text-white border border-white/10 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
                 >
                   View Compliance

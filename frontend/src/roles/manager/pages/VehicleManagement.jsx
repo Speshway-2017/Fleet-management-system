@@ -949,7 +949,7 @@ export default function VehicleManagement() {
                             <button
                               onClick={() => navigate(`/manager/vehicle-details/${v.id}`)}
                               title="View details"
-                              className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                              className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
@@ -958,7 +958,7 @@ export default function VehicleManagement() {
                             <button
                               onClick={() => navigate(`/manager/vehicle-edit/${v.id}`)}
                               title="Edit vehicle"
-                              className="p-2 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer"
+                              className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
@@ -967,9 +967,9 @@ export default function VehicleManagement() {
                             <button
                               onClick={() => openDeleteModal(v)}
                               title="Delete vehicle"
-                              className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                              className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                             >
-                              <Trash2 className="w-4.5 h-4.5" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
@@ -1083,29 +1083,31 @@ export default function VehicleManagement() {
               {/* Flex Grid Bar chart with tooltips */}
               <div className="flex items-end justify-between h-52 pt-6 border-b border-[#E7EAF0]/60 relative select-none gap-2">
                 {monthlyUsage.map((m) => (
-                  <div key={m.label} className="flex flex-col items-center flex-1 group">
-                    <div
-                      style={{ 
-                        height: `${Math.max((m.value / maxUsage) * 100, 10)}%`,
-                        minHeight: '30px'
-                      }}
-                      className="w-full bg-gradient-to-t from-[#B45A0A] via-[#C65D0E] to-[#D97706] hover:from-[#9A4D08] hover:via-[#B45A0A] hover:to-[#C65D0E] rounded-t-lg relative transition-all duration-300 group-hover:shadow-lg origin-bottom cursor-pointer shadow-md"
-                    >
-                      {/* Tooltip on hover */}
-                      <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-[#1E293B] text-white text-xs py-2 px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20 font-poppins font-semibold shadow-lg border border-[#475569]">
-                        <div className="font-bold">{m.value.toLocaleString("en-IN")} km</div>
-                        <div className="text-[10px] text-[#CBD5E1]">{m.label} 2026</div>
-                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-2 h-2 bg-[#1E293B] rotate-45" style={{borderBottomColor: '#1E293B'}}></div>
-                      </div>
-                      
-                      {/* Value label inside bar if large enough */}
-                      {(m.value / maxUsage) * 100 > 30 && (
-                        <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                          {(m.value / 1000).toFixed(1)}k
+                  <div key={m.label} className="flex flex-col items-center flex-1 group h-full">
+                    {/* Bar Container with concrete height context */}
+                    <div className="w-full flex-1 flex items-end relative mb-2">
+                      <div
+                        style={{ 
+                          height: `${Math.max((m.value / maxUsage) * 100, 10)}%`
+                        }}
+                        className="w-full bg-gradient-to-t from-[#B45A0A] via-[#C65D0E] to-[#D97706] hover:from-[#9A4D08] hover:via-[#B45A0A] hover:to-[#C65D0E] rounded-t-lg relative transition-all duration-300 group-hover:shadow-lg origin-bottom cursor-pointer shadow-md"
+                      >
+                        {/* Tooltip on hover */}
+                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-[#1E293B] text-white text-xs py-2 px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20 font-poppins font-semibold shadow-lg border border-[#475569]">
+                          <div className="font-bold">{m.value.toLocaleString("en-IN")} km</div>
+                          <div className="text-[10px] text-[#CBD5E1]">{m.label} 2026</div>
+                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-2 h-2 bg-[#1E293B] rotate-45" style={{borderBottomColor: '#1E293B'}}></div>
                         </div>
-                      )}
+                        
+                        {/* Value label inside bar if large enough */}
+                        {(m.value / maxUsage) * 100 > 30 && (
+                          <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                            {(m.value / 1000).toFixed(1)}k
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-xs text-[#64748B] font-semibold font-poppins mt-4 font-medium">{m.label}</span>
+                    <span className="text-xs text-[#64748B] font-semibold font-poppins shrink-0">{m.label}</span>
                   </div>
                 ))}
               </div>

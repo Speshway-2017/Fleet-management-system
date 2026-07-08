@@ -177,14 +177,14 @@ export default function DocumentsListPage() {
                     </td>
                     <td className="py-4 px-6 text-right select-none whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => handleView(doc)} className="p-2 text-gray-600 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer">
+                        <button onClick={() => handleView(doc)} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer">
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleEdit(doc)} className="p-2 text-gray-600 hover:text-orange-600 bg-gray-50 hover:bg-orange-50 rounded-lg transition-colors cursor-pointer">
+                        <button onClick={() => handleEdit(doc)} className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer">
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(doc)} className="p-2 text-gray-600 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded-lg transition-colors cursor-pointer">
-                          <Trash2 className="w-4.5 h-4.5" />
+                        <button onClick={() => handleDelete(doc)} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer">
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>

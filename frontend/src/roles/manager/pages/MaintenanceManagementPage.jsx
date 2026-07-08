@@ -282,14 +282,14 @@ export default function MaintenanceManagementPage() {
                       {w.status === "Scheduled" ? (
                         <button
                           onClick={(e) => handleStartService(w.id, e)}
-                          className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-950 text-white rounded-lg text-[10px] font-black shadow-sm transition-colors cursor-pointer"
+                          className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-950 text-white rounded-xl text-[10px] font-black shadow-sm transition-all active:scale-95 cursor-pointer"
                         >
                           Start Service
                         </button>
                       ) : w.status === "In Progress" ? (
                         <button
                           onClick={(e) => handleCompleteOrder(w.id, e)}
-                          className="px-3.5 py-1.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-lg text-[10px] font-black shadow-sm transition-colors cursor-pointer"
+                          className="px-3.5 py-1.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-[10px] font-black shadow-sm transition-all active:scale-95 cursor-pointer"
                         >
                           Complete
                         </button>
