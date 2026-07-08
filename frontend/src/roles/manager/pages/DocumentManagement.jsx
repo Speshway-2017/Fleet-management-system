@@ -268,7 +268,7 @@ export default function DocumentManagement() {
                 <th className="py-4 px-6">Owner / Identity</th>
                 <th className="py-4 px-6">Expiry Date</th>
                 <th className="py-4 px-6">Status</th>
-                <th className="py-4 px-6">Actions</th>
+                <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7EAF0]/60">
@@ -303,8 +303,8 @@ export default function DocumentManagement() {
                         {doc.status}
                       </span>
                     </td>
-                    <td className="py-4 px-6 select-none whitespace-nowrap">
-                      <div className="flex items-center gap-1">
+                    <td className="py-4 px-6 text-right select-none whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => handleView(doc)}
                           title="View details"

@@ -142,7 +142,7 @@ export default function DocumentsListPage() {
                 <th className="py-4 px-6">Owner</th>
                 <th className="py-4 px-6">Expiry Date</th>
                 <th className="py-4 px-6">Status</th>
-                <th className="py-4 px-6">Actions</th>
+                <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7EAF0]/60">
@@ -176,8 +176,8 @@ export default function DocumentsListPage() {
                         {doc.status}
                       </span>
                     </td>
-                    <td className="py-4 px-6 select-none whitespace-nowrap">
-                      <div className="flex items-center gap-1">
+                    <td className="py-4 px-6 text-right select-none whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1">
                         <button onClick={() => handleView(doc)} className="p-2 text-gray-600 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer">
                           <Eye className="w-4 h-4" />
                         </button>
