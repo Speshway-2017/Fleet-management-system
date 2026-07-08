@@ -50,6 +50,9 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
             <Menu className="w-6 h-6" />
           </button>
         )}
+        <h2 className="font-poppins font-semibold text-lg text-[#1B2430]">
+          Manager Workspace
+        </h2>
       </div>
 
       {/* Notifications & Profile Area */}
