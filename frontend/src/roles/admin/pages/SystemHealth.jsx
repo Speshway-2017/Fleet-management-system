@@ -6,18 +6,18 @@ import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 // Helper Component for Status Cards
 function StatusCard({ title, value, status, statusColor, icon: Icon, iconColor, iconBg }) {
   return (
-    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-      <div className="flex items-center gap-5">
-        <div className={`w-12 h-12 rounded-full ${iconBg} flex items-center justify-center`}>
-          <Icon className={`w-6 h-6 ${iconColor}`} />
+    <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 h-full">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
+        <div className={`w-8 h-8 sm:w-12 sm:h-12 rounded-full ${iconBg} flex items-center justify-center shrink-0`}>
+          <Icon className={`w-4 h-4 sm:w-6 sm:h-6 ${iconColor}`} />
         </div>
         <div>
-          <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">{title}</h3>
-          <div className="text-2xl font-extrabold text-slate-800">{value}</div>
+          <h3 className="text-[9px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-0.5 sm:mb-1 truncate">{title}</h3>
+          <div className="text-base sm:text-2xl font-extrabold text-slate-800 truncate">{value}</div>
         </div>
       </div>
-      <div>
-        <span className={`text-[11px] font-bold px-3 py-1.5 rounded-full tracking-wide ${statusColor}`}>
+      <div className="mt-1 sm:mt-0">
+        <span className={`text-[9px] sm:text-[11px] font-bold px-2 py-1 sm:px-3 sm:py-1.5 rounded-full tracking-wide ${statusColor} inline-block`}>
           {status}
         </span>
       </div>
@@ -36,10 +36,19 @@ export default function SystemHealth() {
         <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
           
           {/* Tabs */}
-          <div className="inline-flex items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
-            <Link to="/admin/analytics" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Platform Analytics</Link>
-            <button className="px-6 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-full shadow-sm">System Health</button>
-            <Link to="/admin/audit-logs" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Audit Logs</Link>
+          <div className="flex sm:inline-flex w-full sm:w-auto items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
+            <Link to="/admin/analytics" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Analytics</span>
+              <span className="hidden sm:inline">Platform Analytics</span>
+            </Link>
+            <button className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 bg-[#0f172a] text-white text-[10px] sm:text-sm font-bold rounded-full shadow-sm whitespace-nowrap">
+              <span className="sm:hidden">Health</span>
+              <span className="hidden sm:inline">System Health</span>
+            </button>
+            <Link to="/admin/audit-logs" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Logs</span>
+              <span className="hidden sm:inline">Audit Logs</span>
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-10">
@@ -47,7 +56,7 @@ export default function SystemHealth() {
             {/* SERVICES Section */}
             <div>
               <h2 className="text-sm font-extrabold text-slate-500 mb-5 tracking-widest uppercase">Services</h2>
-              <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-1 gap-3 sm:gap-4">
                 <StatusCard 
                   title="API Status" 
                   value="99.9%" 
@@ -90,7 +99,7 @@ export default function SystemHealth() {
             {/* RESOURCES Section */}
             <div>
               <h2 className="text-sm font-extrabold text-slate-500 mb-5 tracking-widest uppercase">Resources</h2>
-              <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-1 gap-3 sm:gap-4">
                 <StatusCard 
                   title="Storage Usage" 
                   value="62%" 

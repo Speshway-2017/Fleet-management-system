@@ -7,6 +7,7 @@ export function useAdmin() {
 }
 
 export function AdminProvider({ children }) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -194,6 +195,8 @@ export function AdminProvider({ children }) {
 
   return (
     <AdminContext.Provider value={{
+      isSidebarOpen,
+      setIsSidebarOpen,
       organizations,
       getOrganization,
       addOrganization,

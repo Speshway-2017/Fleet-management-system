@@ -55,7 +55,7 @@ export default function NotificationOverlay({ isOpen, onClose }) {
   return (
     <div 
       ref={overlayRef} 
-      className="absolute top-14 right-8 w-[380px] bg-white border border-slate-200 rounded-xl shadow-xl flex flex-col overflow-hidden z-50 transform origin-top-right transition-all"
+      className="absolute top-14 -right-1 sm:right-0 w-[320px] sm:w-[380px] max-w-[90vw] bg-white border border-slate-200 rounded-xl shadow-xl flex flex-col overflow-hidden z-50 transform origin-top-right transition-all"
     >
       {/* Header */}
       <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -96,7 +96,7 @@ export default function NotificationOverlay({ isOpen, onClose }) {
       </div>
 
       {/* List */}
-      <div className="flex-1 max-h-[300px] sm:max-h-[350px] overflow-y-auto custom-scrollbar flex flex-col divide-y divide-slate-100">
+      <div className="flex-1 max-h-[200px] sm:max-h-[320px] overflow-y-auto custom-scrollbar flex flex-col divide-y divide-slate-100">
         {filteredNotifications.length === 0 ? (
           <div className="p-8 text-center flex flex-col items-center justify-center">
             <Bell className="w-8 h-8 text-slate-300 mb-3" />

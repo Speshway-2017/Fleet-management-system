@@ -114,7 +114,9 @@ export default function App() {
             <Route path="/admin/organizations/details/:id" element={<OrganizationDetails />} />
             <Route path="/admin/fleet-managers" element={<FleetManagerList />} />
             <Route path="/admin/fleet-managers/add" element={<AddFleetManager />} />
+            <Route path="/admin/fleet-managers/details" element={<ManagerDetails />} />
             <Route path="/admin/fleet-managers/details/:id" element={<ManagerDetails />} />
+            <Route path="/admin/fleet-managers/edit" element={<EditFleetManager />} />
             <Route path="/admin/fleet-managers/edit/:id" element={<EditFleetManager />} />
             <Route path="/admin/analytics" element={<Analytics />} />
             <Route path="/admin/system-health" element={<SystemHealth />} />

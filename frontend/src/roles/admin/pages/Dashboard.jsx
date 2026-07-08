@@ -79,10 +79,10 @@ function Dashboard() {
       <div className="flex-1 flex flex-col min-w-0">
         <NewAdminTopNav title="Dashboard" />
         
-        <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
+        <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
           
           {/* KPI Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5 mb-6">
             <KPICard 
               title="Total Organizations" 
               value={orgCount.toString()} 
@@ -229,8 +229,8 @@ function Dashboard() {
                 <h3 className="font-bold text-slate-800 text-sm">Recent Activities</h3>
                 <Link to="/admin/organizations" className="text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors">View All</Link>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
+              <div className="overflow-x-auto no-scrollbar">
+                <table className="w-full text-left text-sm min-w-[500px]">
                   <thead className="bg-slate-50/50 border-b border-slate-100">
                     <tr>
                       <th className="py-3 px-5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Time</th>

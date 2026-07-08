@@ -9,7 +9,17 @@ export default function OrganizationDetails() {
   const { getOrganization } = useAdmin();
   const org = getOrganization(id);
 
-  if (!org) return <div className="p-8">Organization not found.</div>;
+  if (!org) return (
+    <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
+      <NewAdminSidebar activeItem="organizations" />
+      <div className="flex-1 flex flex-col min-w-0">
+        <NewAdminTopNav title="Organization Details" />
+        <main className="flex-1 p-8 overflow-y-auto custom-scrollbar flex items-center justify-center">
+           <div className="text-slate-500 font-bold text-lg">Organization not found.</div>
+        </main>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
@@ -21,11 +31,23 @@ export default function OrganizationDetails() {
         <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
           
           {/* Tabs */}
-          <div className="inline-flex items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
-            <Link to="/admin/organizations" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Organization List</Link>
-            <Link to="/admin/organizations/add" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Add Organization</Link>
-            <button className="px-6 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-full shadow-sm">Organization Details</button>
-            <Link to={`/admin/organizations/edit/${id}`} className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Edit Organization</Link>
+          <div className="flex sm:inline-flex w-full sm:w-auto items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
+            <Link to="/admin/organizations" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">List</span>
+              <span className="hidden sm:inline">Organization List</span>
+            </Link>
+            <Link to="/admin/organizations/add" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Add Org</span>
+              <span className="hidden sm:inline">Add Organization</span>
+            </Link>
+            <button className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 bg-[#0f172a] text-white text-[10px] sm:text-sm font-bold rounded-full shadow-sm whitespace-nowrap">
+              <span className="sm:hidden">Details</span>
+              <span className="hidden sm:inline">Organization Details</span>
+            </button>
+            <Link to={`/admin/organizations/edit/${id}`} className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Edit Org</span>
+              <span className="hidden sm:inline">Edit Organization</span>
+            </Link>
           </div>
 
           {/* Breadcrumb & Actions */}
@@ -38,12 +60,11 @@ export default function OrganizationDetails() {
               <span className="text-slate-300">/</span>
               <span className="text-slate-800">{org.name}</span>
             </div>
-            
-            <div className="flex items-center gap-3">
-              <Link to="/admin/organizations" className="px-5 py-2.5 text-sm font-bold text-slate-500 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 hover:text-slate-700 transition-colors">
+            <div className="flex flex-row items-stretch sm:items-center gap-3 shrink-0 w-full sm:w-auto">
+              <Link to="/admin/organizations" className="flex-1 sm:flex-none flex items-center justify-center px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-[#A14000] border border-[#A14000] bg-transparent hover:bg-[#A14000]/10 rounded-lg transition-colors text-center truncate">
                 Back to List
               </Link>
-              <Link to={`/admin/organizations/edit/${id}`} className="px-5 py-2.5 text-sm font-bold text-white bg-[#A14000] border border-[#A14000] rounded-lg shadow-sm hover:bg-[#8a3700] transition-colors">
+              <Link to={`/admin/organizations/edit/${id}`} className="flex-[2] sm:flex-none flex items-center justify-center px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-[#A14000] border border-[#A14000] rounded-lg shadow-sm hover:bg-[#8a3700] transition-colors text-center truncate">
                 Edit Organization
               </Link>
             </div>

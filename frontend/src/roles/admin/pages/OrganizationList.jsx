@@ -42,18 +42,30 @@ export default function OrganizationList() {
       <div className="flex-1 flex flex-col min-w-0">
         <NewAdminTopNav title="Organizations" />
         
-        <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
+        <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
           
           {/* Tabs */}
-          <div className="inline-flex items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
-            <button className="px-6 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-full shadow-sm">Organization List</button>
-            <Link to="/admin/organizations/add" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Add Organization</Link>
-            <Link to="/admin/organizations/details" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Organization Details</Link>
-            <Link to="/admin/organizations/edit" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Edit Organization</Link>
+          <div className="flex sm:inline-flex w-full sm:w-auto items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
+            <button className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 bg-[#0f172a] text-white text-[10px] sm:text-sm font-bold rounded-full shadow-sm whitespace-nowrap">
+              <span className="sm:hidden">List</span>
+              <span className="hidden sm:inline">Organization List</span>
+            </button>
+            <Link to="/admin/organizations/add" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Add Org</span>
+              <span className="hidden sm:inline">Add Organization</span>
+            </Link>
+            <Link to="/admin/organizations/details" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Details</span>
+              <span className="hidden sm:inline">Organization Details</span>
+            </Link>
+            <Link to="/admin/organizations/edit" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Edit Org</span>
+              <span className="hidden sm:inline">Edit Organization</span>
+            </Link>
           </div>
 
           {/* KPI Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-8">
             <KPICard 
               title="Total Organizations" 
               value={organizations.length} 
@@ -94,14 +106,14 @@ export default function OrganizationList() {
                   className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
                 />
               </div>
-              <Link to="/admin/organizations/add" className="flex items-center justify-center gap-2 bg-[#A14000] hover:bg-[#8a3700] text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm whitespace-nowrap">
+              <Link to="/admin/organizations/add" className="flex items-center w-full sm:w-auto justify-center gap-2 bg-[#A14000] hover:bg-[#8a3700] text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm whitespace-nowrap">
                 <Plus className="w-4 h-4" />
                 Add Organization
               </Link>
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-center border-collapse min-w-[800px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
@@ -131,12 +143,12 @@ export default function OrganizationList() {
                         </div>
                       </td>
                       <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.industry}</td>
-                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.managers}</td>
-                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.plan}</td>
+                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.activeManagers}</td>
+                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.subscription}</td>
                       <td className="py-4 px-6 whitespace-nowrap text-center">
                         <StatusBadge status={org.status} />
                       </td>
-                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.joined || org.date}</td>
+                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.createdAt}</td>
                       <td className="py-4 px-6 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-3 flex-nowrap w-max mx-auto">
                           <Link to={`/admin/organizations/details/${org.id}`} className="text-slate-400 hover:text-slate-600 transition-colors" title="View Details">
