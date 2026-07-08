@@ -103,6 +103,7 @@ export default function SignupPage() {
   const [form, setForm] = useState({
     email: "", fullName: "", companyName: "", password: "", confirmPassword: "",
   });
+  const [errors, setErrors] = useState({});
 
   const passwordRules = {
     length:    form.password.length >= 8,
@@ -113,26 +114,27 @@ export default function SignupPage() {
 
   const handleNextStep = (e) => {
     e.preventDefault();
-    if (!form.email || !form.fullName || !form.companyName) {
-      toast.error("Please fill in all fields."); return;
-    }
-    if (!form.email.includes("@")) {
-      toast.error("Please enter a valid email address."); return;
-    }
+    const newErrors = {};
+    if (!form.email) newErrors.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = "Invalid email format";
+    if (!form.fullName) newErrors.fullName = "Full Name is required";
+    if (!form.companyName) newErrors.companyName = "Company Name is required";
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
     setStep(2);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.password || !form.confirmPassword) {
-      toast.error("Please fill in all fields."); return;
-    }
-    if (!Object.values(passwordRules).every(Boolean)) {
-      toast.error("Password does not meet all requirements."); return;
-    }
-    if (form.password !== form.confirmPassword) {
-      toast.error("Passwords do not match."); return;
-    }
+    const newErrors = {};
+    if (!form.password) newErrors.password = "Password is required";
+    else if (!Object.values(passwordRules).every(Boolean)) newErrors.password = "Password does not meet requirements";
+    if (form.password !== form.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
+    
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
     if (!agreeToTerms) {
       toast.error("Please agree to the Terms of Service and Privacy Policy."); return;
     }
@@ -166,10 +168,11 @@ export default function SignupPage() {
                   </svg>
                 </span>
                 <input id="email" type="email" placeholder="name@organization.com"
-                  value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-                  required />
+                  value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value, errors: {...errors, email: ''} })}
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${errors.email ? 'border-red-500 focus:ring-red-500/20' : 'border-[#A14000] focus:ring-[#A14000]/20'}`}
+                   />
               </div>
+              {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
             </div>
 
             {/* Full Name */}
@@ -182,10 +185,11 @@ export default function SignupPage() {
                   </svg>
                 </span>
                 <input id="fullName" type="text" placeholder="John Doe"
-                  value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-                  required />
+                  value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value, errors: {...errors, fullName: ''} })}
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${errors.fullName ? 'border-red-500 focus:ring-red-500/20' : 'border-[#A14000] focus:ring-[#A14000]/20'}`}
+                   />
               </div>
+              {errors.fullName && <p className="text-xs text-red-500 mt-1">{errors.fullName}</p>}
             </div>
 
             {/* Company Name */}
@@ -198,10 +202,11 @@ export default function SignupPage() {
                   </svg>
                 </span>
                 <input id="companyName" type="text" placeholder="FleetCorp Enterprises"
-                  value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-                  required />
+                  value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value, errors: {...errors, companyName: ''} })}
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${errors.companyName ? 'border-red-500 focus:ring-red-500/20' : 'border-[#A14000] focus:ring-[#A14000]/20'}`}
+                   />
               </div>
+              {errors.companyName && <p className="text-xs text-red-500 mt-1">{errors.companyName}</p>}
             </div>
 
             <button type="submit"
@@ -236,14 +241,15 @@ export default function SignupPage() {
                   </svg>
                 </span>
                 <input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••"
-                  value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-                  required />
+                  value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value, errors: {...errors, password: ''} })}
+                  className={`w-full pl-10 pr-10 py-2.5 rounded-lg border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${errors.password ? 'border-red-500 focus:ring-red-500/20' : 'border-[#A14000] focus:ring-[#A14000]/20'}`}
+                   />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
                   <EyeIcon visible={showPassword} />
                 </button>
               </div>
+              {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
             </div>
 
             {/* Confirm Password */}
@@ -256,14 +262,15 @@ export default function SignupPage() {
                   </svg>
                 </span>
                 <input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} placeholder="••••••••"
-                  value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                  className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-                  required />
+                  value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value, errors: {...errors, confirmPassword: ''} })}
+                  className={`w-full pl-10 pr-10 py-2.5 rounded-lg border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-[#A14000] focus:ring-[#A14000]/20'}`}
+                   />
                 <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
                   <EyeIcon visible={showConfirmPassword} />
                 </button>
               </div>
+              {errors.confirmPassword && <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>}
             </div>
 
             {/* Password Requirements */}

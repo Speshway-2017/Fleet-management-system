@@ -64,8 +64,40 @@ export default function NotificationDetailsPage() {
   };
 
   const handleAction = (action) => {
-    toast.success(`${action} action triggered!`);
+    if (action.actionType === "navigate" && action.route) {
+      navigate(action.route);
+    } else {
+      toast.success(`${action.label} action triggered!`);
+    }
   };
+
+  // Not found guard
+  if (!notification) {
+    return (
+      <div className="p-8">
+        <div className="flex items-center gap-2 mb-8">
+          <button onClick={handleBack} className="p-2 hover:bg-gray-100 rounded-lg">
+            <Icon icon="mdi:arrow-left" className="w-6 h-6 text-gray-600" />
+          </button>
+          <h1 className="text-2xl font-bold text-gray-800">Notification Details</h1>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-200 p-12 shadow-sm text-center">
+          <Icon icon="mdi:bell-off" className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500 text-lg font-medium">Notification not found.</p>
+          <button
+            onClick={handleBack}
+            className="mt-6 px-6 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors"
+          >
+            Back to Notifications
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const iconColors = getIconColors(notification.type);
+  const iconName = getIconName(notification.type);
+  const locationLabel = getLocationLabel(notification.type);
 
   return (
     <div className="p-6 lg:p-8">
@@ -110,6 +142,7 @@ export default function NotificationDetailsPage() {
               </div>
             </div>
 
+            {/* Description */}
             <div className="mb-6 pb-6 border-b border-gray-200">
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Event Description</h3>
               <p className="text-gray-700 leading-relaxed">
@@ -151,12 +184,12 @@ export default function NotificationDetailsPage() {
             </div>
           </div>
 
-          {/* Violation Location */}
+          {/* Location */}
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className="font-semibold text-gray-800 flex items-center gap-2">
                 <Icon icon="mdi:map-marker-radius" className="w-5 h-5 text-amber-700" />
-                Violation Location
+                {locationLabel}
               </h3>
               <span className="text-sm text-gray-500">{notification.locationName}</span>
             </div>
@@ -207,15 +240,15 @@ export default function NotificationDetailsPage() {
               <div className="pt-3 border-t border-gray-200">
                 <div className="flex items-center justify-between py-2">
                   <span className="text-xs text-gray-500">Total Mileage</span>
-                  <span className="text-xs font-medium text-gray-800">42,850 mi</span>
+                  <span className="text-xs font-medium text-gray-800">{notification.meta.totalMileage || "—"}</span>
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-xs text-gray-500">Last Service</span>
-                  <span className="text-xs font-medium text-gray-800">12 Oct 2025</span>
+                  <span className="text-xs font-medium text-gray-800">{notification.meta.lastService || "—"}</span>
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-xs text-gray-500">Maintenance Health</span>
-                  <span className="text-xs font-medium text-amber-700">Good</span>
+                  <span className="text-xs font-medium text-amber-700">{notification.meta.maintenanceHealth || "—"}</span>
                 </div>
               </div>
             </div>
@@ -246,6 +279,26 @@ export default function NotificationDetailsPage() {
                   <p className="text-xs text-gray-500 mb-1">Safety Score</p>
                   <p className="text-lg font-bold text-amber-700">{notification.driver.safetyScore}</p>
                 </div>
+                {(notification.meta.dailyDriveTime || notification.meta.safetyScore) && (
+                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-200">
+                    {notification.meta.dailyDriveTime && (
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                        <p className="text-xs text-gray-500 mb-1">Daily Drive Time</p>
+                        <p className="text-lg font-bold text-gray-800">{notification.meta.dailyDriveTime}</p>
+                      </div>
+                    )}
+                    {notification.meta.safetyScore && (
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                        <p className="text-xs text-gray-500 mb-1">Safety Score</p>
+                        <p className="text-lg font-bold text-amber-700">{notification.meta.safetyScore}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <button className="w-full py-2 border border-amber-700 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-50 transition-colors">
+                  <Icon icon="mdi:message-text-outline" className="w-4 h-4 inline mr-1" />
+                  Message Driver
+                </button>
               </div>
               <button 
                 onClick={() => setIsChatOpen(true)}
@@ -255,7 +308,7 @@ export default function NotificationDetailsPage() {
                 Message Driver
               </button>
             </div>
-          </div>
+          )}
 
           {/* Recent Alerts */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useAdmin } from "@/roles/admin/context/AdminContext";
 import { Building2, Users, Activity, TrendingUp } from "lucide-react";
 import { 
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -65,6 +66,11 @@ function KPICard({ title, value, increase, icon: Icon }) {
 }
 
 export default function Analytics() {
+  const { organizations, fleetManagers } = useAdmin();
+  
+  const orgCount = organizations.length;
+  const managerCount = fleetManagers.length;
+
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
       <NewAdminSidebar activeItem="analytics" />
@@ -72,19 +78,28 @@ export default function Analytics() {
       <div className="flex-1 flex flex-col min-w-0">
         <NewAdminTopNav title="Platform Analytics" />
         
-        <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
+        <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
           
           {/* Tabs */}
-          <div className="inline-flex items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
-            <button className="px-6 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-full shadow-sm">Platform Analytics</button>
-            <Link to="/admin/system-health" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">System Health</Link>
-            <Link to="/admin/audit-logs" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Audit Logs</Link>
+          <div className="flex sm:inline-flex w-full sm:w-auto items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
+            <button className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 bg-[#0f172a] text-white text-[10px] sm:text-sm font-bold rounded-full shadow-sm whitespace-nowrap">
+              <span className="sm:hidden">Analytics</span>
+              <span className="hidden sm:inline">Platform Analytics</span>
+            </button>
+            <Link to="/admin/system-health" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Health</span>
+              <span className="hidden sm:inline">System Health</span>
+            </Link>
+            <Link to="/admin/audit-logs" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Logs</span>
+              <span className="hidden sm:inline">Audit Logs</span>
+            </Link>
           </div>
 
           {/* KPI Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <KPICard title="Organizations" value="128" increase="+12%" icon={Building2} />
-            <KPICard title="Fleet Managers" value="48" increase="+8%" icon={Users} />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8">
+            <KPICard title="Organizations" value={orgCount} increase="+12%" icon={Building2} />
+            <KPICard title="Fleet Managers" value={managerCount} increase="+8%" icon={Users} />
             <KPICard title="Daily Active Users" value="312" increase="+5%" icon={Activity} />
             <KPICard title="Monthly Growth" value="6.2%" increase="+1.4%" icon={TrendingUp} />
           </div>
@@ -145,8 +160,8 @@ export default function Analytics() {
             {/* Subscription Distribution */}
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
               <h3 className="text-sm font-extrabold text-slate-800 mb-6 tracking-wide">Subscription Distribution</h3>
-              <div className="h-64 flex items-center justify-between gap-4 pr-8">
-                <div className="w-[45%] h-full">
+              <div className="h-auto sm:h-64 flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-4 pr-0 sm:pr-8">
+                <div className="w-full sm:w-[45%] h-48 sm:h-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -169,7 +184,7 @@ export default function Analytics() {
                 </div>
                 
                 {/* Custom Legend */}
-                <div className="w-[55%] space-y-5">
+                <div className="w-full sm:w-[55%] space-y-5">
                   {subscriptionData.map((item, index) => {
                     const total = subscriptionData.reduce((sum, curr) => sum + curr.value, 0);
                     const percentage = (item.value / total) * 100;

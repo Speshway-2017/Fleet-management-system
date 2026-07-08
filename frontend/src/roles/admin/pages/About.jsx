@@ -164,26 +164,26 @@ export default function About({ setActiveTab }) {
           </div>
 
           {/* Right Column: 2x2 Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-6 pt-4">
             {/* Card 1 */}
-            <div className="bg-[#FFDBCC] rounded-3xl p-6 text-center space-y-1 shadow-sm">
-              <span className="text-3xl font-extrabold text-heading font-display block tracking-tight">2018</span>
-              <span className="text-[10px] font-bold text-secondary uppercase tracking-wider block font-display">Founded</span>
+            <div className="bg-[#FFDBCC] rounded-3xl p-4 sm:p-6 text-center space-y-1 shadow-sm">
+              <span className="text-2xl sm:text-3xl font-extrabold text-heading font-display block tracking-tight">2018</span>
+              <span className="text-[9px] sm:text-[10px] font-bold text-secondary uppercase tracking-wider block font-display">Founded</span>
             </div>
             {/* Card 2 */}
-            <div className="bg-[#FFDBCC] rounded-3xl p-6 text-center space-y-1 shadow-sm">
-              <span className="text-3xl font-extrabold text-heading font-display block tracking-tight">340+</span>
-              <span className="text-[10px] font-bold text-secondary uppercase tracking-wider block font-display">Enterprises</span>
+            <div className="bg-[#FFDBCC] rounded-3xl p-4 sm:p-6 text-center space-y-1 shadow-sm">
+              <span className="text-2xl sm:text-3xl font-extrabold text-heading font-display block tracking-tight">340+</span>
+              <span className="text-[9px] sm:text-[10px] font-bold text-secondary uppercase tracking-wider block font-display">Enterprises</span>
             </div>
             {/* Card 3 */}
-            <div className="bg-[#FFDBCC] rounded-3xl p-6 text-center space-y-1 shadow-sm">
-              <span className="text-3xl font-extrabold text-heading font-display block tracking-tight">1.2M+</span>
-              <span className="text-[10px] font-bold text-secondary uppercase tracking-wider block font-display">Vehicles Tracked</span>
+            <div className="bg-[#FFDBCC] rounded-3xl p-4 sm:p-6 text-center space-y-1 shadow-sm">
+              <span className="text-2xl sm:text-3xl font-extrabold text-heading font-display block tracking-tight">1.2M+</span>
+              <span className="text-[8.5px] sm:text-[10px] font-bold text-secondary uppercase tracking-wider block font-display leading-tight">Vehicles Tracked</span>
             </div>
             {/* Card 4 */}
-            <div className="bg-[#FFDBCC] rounded-3xl p-6 text-center space-y-1 shadow-sm">
-              <span className="text-3xl font-extrabold text-heading font-display block tracking-tight">₹1,500 Cr+</span>
-              <span className="text-[10px] font-bold text-secondary uppercase tracking-wider block font-display">Customer Savings</span>
+            <div className="bg-[#FFDBCC] rounded-3xl p-4 sm:p-6 text-center space-y-1 shadow-sm flex flex-col justify-center">
+              <span className="text-xl sm:text-3xl font-extrabold text-heading font-display block tracking-tight">$180M+</span>
+              <span className="text-[8.5px] sm:text-[10px] font-bold text-secondary uppercase tracking-wider block font-display leading-tight">Customer Savings</span>
             </div>
           </div>
         </div>

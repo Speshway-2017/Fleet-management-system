@@ -7,13 +7,24 @@ export default function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [contact, setContact] = useState("");
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!contact) {
-      toast.error("Please enter your email or phone number.");
+      setError("Please enter your email or phone number.");
       return;
     }
+    const isEmail = contact.includes("@");
+    if (isEmail && !/\S+@\S+\.\S+/.test(contact)) {
+      setError("Invalid email format");
+      return;
+    }
+    if (!isEmail && !/^\+?[0-9\s-]{7,15}$/.test(contact)) {
+      setError("Invalid phone number format");
+      return;
+    }
+    setError("");
     setLoading(true);
     try {
       // Simulate API call
@@ -57,11 +68,11 @@ export default function ForgotPasswordPage() {
               type="text"
               placeholder="name@organization.com"
               value={contact}
-              onChange={(e) => setContact(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-              required
+              onChange={(e) => { setContact(e.target.value); setError(""); }}
+              className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${error ? 'border-red-500 focus:ring-red-500/20' : 'border-[#A14000] focus:ring-[#A14000]/20'}`}
             />
           </div>
+          {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
         </div>
 
         {/* Submit */}

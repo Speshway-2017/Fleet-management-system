@@ -68,10 +68,19 @@ export default function AuditLogs() {
         <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
           
           {/* Tabs */}
-          <div className="inline-flex items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
-            <Link to="/admin/analytics" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Platform Analytics</Link>
-            <Link to="/admin/system-health" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">System Health</Link>
-            <button className="px-6 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-full shadow-sm">Audit Logs</button>
+          <div className="flex sm:inline-flex w-full sm:w-auto items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
+            <Link to="/admin/analytics" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Analytics</span>
+              <span className="hidden sm:inline">Platform Analytics</span>
+            </Link>
+            <Link to="/admin/system-health" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Health</span>
+              <span className="hidden sm:inline">System Health</span>
+            </Link>
+            <button className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 bg-[#0f172a] text-white text-[10px] sm:text-sm font-bold rounded-full shadow-sm whitespace-nowrap">
+              <span className="sm:hidden">Logs</span>
+              <span className="hidden sm:inline">Audit Logs</span>
+            </button>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">

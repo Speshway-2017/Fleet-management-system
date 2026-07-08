@@ -4,13 +4,18 @@ import { Upload } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 
+import toast from "react-hot-toast";
+
 export default function Settings() {
   const [logoUrl, setLogoUrl] = useState("/logo.png");
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = () => {
     setIsSaving(true);
-    setTimeout(() => setIsSaving(false), 1000);
+    setTimeout(() => {
+      setIsSaving(false);
+      toast.success("Settings saved successfully!");
+    }, 1000);
   };
 
   return (
@@ -25,28 +30,30 @@ export default function Settings() {
           {/* Header Area with Tabs and Button */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             {/* Tabs */}
-            <div className="inline-flex items-center p-1 bg-white border border-slate-200 rounded-full shadow-sm">
-              <Link to="/admin/settings" className="px-6 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-full shadow-sm transition-colors">
+            <div className="flex sm:inline-flex w-full sm:w-auto items-center p-1 bg-white border border-slate-200 rounded-full shadow-sm">
+              <Link to="/admin/settings" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 bg-[#0f172a] text-white text-[10px] sm:text-sm font-bold rounded-full shadow-sm transition-colors truncate">
                 General
               </Link>
-              <Link to="/admin/settings/security" className="px-6 py-2.5 text-slate-600 hover:text-slate-900 text-sm font-bold rounded-full transition-colors">
+              <Link to="/admin/settings/security" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
                 Security
               </Link>
-              <Link to="/admin/settings/notifications" className="px-6 py-2.5 text-slate-600 hover:text-slate-900 text-sm font-bold rounded-full transition-colors">
+              <Link to="/admin/settings/notifications" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
                 Notifications
               </Link>
-              <Link to="/admin/settings/profile" className="px-6 py-2.5 text-slate-600 hover:text-slate-900 text-sm font-bold rounded-full transition-colors">
+              <Link to="/admin/settings/profile" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
                 Profile
               </Link>
             </div>
 
-            <button 
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-6 py-2.5 bg-[#b45309] hover:bg-[#92400e] text-white text-sm font-bold rounded-lg shadow-sm transition-colors disabled:opacity-70 disabled:cursor-wait"
-            >
-              {isSaving ? "Saving..." : "Save Settings"}
-            </button>
+            <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
+              <button 
+                onClick={handleSave}
+                disabled={isSaving}
+                className="w-full sm:w-auto px-6 py-2.5 bg-[#b45309] hover:bg-[#92400e] text-white text-sm font-bold rounded-lg shadow-sm transition-colors disabled:opacity-70 disabled:cursor-wait text-center"
+              >
+                {isSaving ? "Saving..." : "Save Settings"}
+              </button>
+            </div>
           </div>
 
           {/* Settings Content */}

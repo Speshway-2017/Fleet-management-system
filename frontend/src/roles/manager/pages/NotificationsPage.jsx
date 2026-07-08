@@ -6,6 +6,16 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { mockNotifications } from "@/data/mockNotifications";
+import DispatchWarningModal from "@/components/common/DispatchWarningModal";
+import ContactDriverModal from "@/components/common/ContactDriverModal";
+import { notifications } from "@/roles/manager/data/notificationsData";
+
+const mapTypeToTab = (type) => {
+  if (type === "alert")  return "Critical";
+  if (type === "info")   return "Maintenance";
+  if (type === "system") return "System";
+  return "All";
+};
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
@@ -66,6 +76,10 @@ export default function NotificationsPage() {
     if (activeTab === "System") return notif.type === "success" || notif.type === "system";
     return true;
   });
+  const [showDispatchWarningModal, setShowDispatchWarningModal] = useState(false);
+  const [showContactDriverModal, setShowContactDriverModal] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [unreadNotifs, setUnreadNotifs] = useState(new Set([1, 2, 3]));
 
   const getIconColor = (type) => {
     switch (type) {
@@ -90,18 +104,59 @@ export default function NotificationsPage() {
   };
 
   const handleMarkAllAsRead = () => {
+    setUnreadNotifs(new Set());
     toast.success("All notifications marked as read!");
   };
 
-  const handleNotificationClick = (id) => {
-    navigate(`/manager/notifications/${id}`);
+  const handleActionClick = (action, notification, e) => {
+    e.stopPropagation();
+    
+    // Mark as read
+    setUnreadNotifs(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(notification.id);
+      return newSet;
+    });
+
+    if (action.actionType === "modal") {
+      if (action.modalType === "dispatch") {
+        setSelectedNotification(notification);
+        setShowDispatchWarningModal(true);
+      } else if (action.modalType === "contact") {
+        setSelectedNotification(notification);
+        setShowContactDriverModal(true);
+      }
+    } else if (action.actionType === "navigate") {
+      // Show loading feedback
+      if (action.route === "/manager/reports") {
+        toast.success("Fuel Report Opened");
+      } else if (action.route === "/manager/maintenance") {
+        toast.success("Maintenance Scheduled");
+      }
+      
+      navigate(action.route, action.state ? { state: action.state } : undefined);
+    }
+  };
+
+  const handleNotificationClick = (notification) => {
+    // Mark as read
+    setUnreadNotifs(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(notification.id);
+      return newSet;
+    });
+
+    // Update active tab to match the notification's category
+    setActiveTab(mapTypeToTab(notification.type));
+
+    navigate(`/manager/notifications/${notification.id}`);
   };
 
   return (
     <div className="p-6 lg:p-8">
       <Breadcrumb />
       {/* Header */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8 gap-4">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 lg:mb-8 gap-4">
         <div>
           <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Notifications Center</h1>
         </div>
@@ -110,8 +165,8 @@ export default function NotificationsPage() {
             onClick={handleMarkAllAsRead}
             className="flex items-center justify-center gap-2 px-5 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors w-full sm:w-auto cursor-pointer"
           >
-            <Icon icon="mdi:check-all" className="w-5 h-5" />
-            Mark all as read
+            <Icon icon="mdi:check-all" className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="whitespace-nowrap">Mark all as read</span>
           </button>
           <button 
             onClick={() => navigate("/manager/settings#notifications")}
@@ -123,43 +178,43 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
         {/* Left Column */}
-        <div className="lg:w-80 space-y-6">
+        <div className="lg:w-80 space-y-4 lg:space-y-6">
           {/* Alert Overview */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-            <h3 className="text-gray-500 font-medium mb-4">Alert Overview</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-red-50 rounded-xl">
-                <div className="flex items-center gap-3">
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6 shadow-sm">
+            <h3 className="text-gray-500 font-medium mb-3 sm:mb-4 text-sm sm:text-base">Alert Overview</h3>
+            <div className="space-y-2 sm:space-y-3">
+              <div className="flex items-center justify-between p-2.5 sm:p-3 bg-red-50 rounded-xl">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <div className="w-2 h-2 rounded-full bg-red-500" />
-                  <span className="text-gray-700 font-medium">High Priority</span>
+                  <span className="text-gray-700 font-medium text-sm sm:text-base">High Priority</span>
                 </div>
-                <span className="text-2xl font-bold text-red-600">12</span>
+                <span className="text-xl sm:text-2xl font-bold text-red-600">12</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-orange-50 rounded-xl">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between p-2.5 sm:p-3 bg-orange-50 rounded-xl">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <div className="w-2 h-2 rounded-full bg-orange-500" />
-                  <span className="text-gray-700 font-medium">Medium Priority</span>
+                  <span className="text-gray-700 font-medium text-sm sm:text-base">Medium Priority</span>
                 </div>
-                <span className="text-2xl font-bold text-orange-700">24</span>
+                <span className="text-xl sm:text-2xl font-bold text-orange-700">24</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between p-2.5 sm:p-3 bg-blue-50 rounded-xl">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <div className="w-2 h-2 rounded-full bg-blue-500" />
-                  <span className="text-gray-700 font-medium">Low Priority</span>
+                  <span className="text-gray-700 font-medium text-sm sm:text-base">Low Priority</span>
                 </div>
-                <span className="text-2xl font-bold text-blue-700">48</span>
+                <span className="text-xl sm:text-2xl font-bold text-blue-700">48</span>
               </div>
             </div>
           </div>
 
           {/* Quick Filters */}
-          <div className="bg-black rounded-2xl p-6 shadow-sm">
-            <h3 className="text-gray-300 font-medium mb-4">Quick Filters</h3>
+          <div className="bg-black rounded-2xl p-4 sm:p-6 shadow-sm">
+            <h3 className="text-gray-300 font-medium mb-3 sm:mb-4 text-sm sm:text-base">Quick Filters</h3>
             <div className="flex flex-wrap gap-2">
               {['Last 24h', 'Fleet A-J', 'Fuel Usage', 'Night Shift', 'Geofence'].map((tag, i) => (
-                <button key={i} className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg text-xs font-medium hover:bg-gray-700 transition-colors">
+                <button key={i} className="px-2.5 sm:px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg text-xs font-medium hover:bg-gray-700 transition-colors">
                   {tag}
                 </button>
               ))}
@@ -186,7 +241,7 @@ export default function NotificationsPage() {
         {/* Right Column - Notifications List */}
         <div className="flex-1 space-y-4">
           {/* Tabs */}
-          <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-gray-200 shadow-sm w-fit">
+          <div className="flex items-center gap-1 sm:gap-2 bg-white p-1 rounded-xl border border-gray-200 shadow-sm w-full overflow-x-auto">
             {['All', 'Critical', 'Maintenance', 'System'].map((tab) => (
               <button
                 key={tab}
@@ -236,11 +291,23 @@ export default function NotificationsPage() {
                     ))}
                   </div>
                 </div>
-              </div>
-            </div>
-          ))}
+              );
+            });
+          })()}
         </div>
       </div>
+
+      {/* Modals */}
+      <DispatchWarningModal
+        isOpen={showDispatchWarningModal}
+        onClose={() => setShowDispatchWarningModal(false)}
+        notification={selectedNotification?.meta}
+      />
+      <ContactDriverModal
+        isOpen={showContactDriverModal}
+        onClose={() => setShowContactDriverModal(false)}
+        notification={selectedNotification?.meta}
+      />
     </div>
   );
 }

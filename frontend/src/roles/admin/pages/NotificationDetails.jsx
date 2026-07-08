@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import { ArrowLeft, Check, X, AlertTriangle, Building2, Clock, CheckCircle2, AlertCircle, Info, ShieldAlert, Zap } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
@@ -76,7 +77,7 @@ export default function NotificationDetails() {
                 </button>
                 {!isRead && (
                   <button 
-                    onClick={() => setIsRead(true)}
+                    onClick={() => { setIsRead(true); toast.success("Marked as read"); }}
                     className="px-4 py-2 bg-[#0f172a] hover:bg-slate-800 text-white text-[13px] font-bold rounded-lg shadow-sm transition-colors flex items-center gap-2"
                   >
                     <Check className="w-4 h-4" />

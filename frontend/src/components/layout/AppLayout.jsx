@@ -194,6 +194,7 @@ export default function AppLayout() {
               title="Notifications"
             >
               <Bell className="w-5 h-5" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#B45A0A] border border-white rounded-full animate-pulse" />
             </button>
             <div className="relative">
               {/* Profile Trigger */}

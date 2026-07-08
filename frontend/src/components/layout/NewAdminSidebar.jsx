@@ -1,4 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { useAdmin } from "@/roles/admin/context/AdminContext";
+import toast from "react-hot-toast";
 import {
   LayoutDashboard,
   Building2,
@@ -9,6 +12,10 @@ import {
 } from "lucide-react";
 
 export default function NewAdminSidebar({ activeItem = "dashboard" }) {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  const { isSidebarOpen, setIsSidebarOpen } = useAdmin();
+  
   const navItems = [
     { id: "dashboard", label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
     { id: "organizations", label: "Organizations", to: "/admin/organizations", icon: Building2 },
@@ -18,7 +25,19 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
   ];
 
   return (
-    <div className="w-[260px] bg-[#1a2332] text-slate-300 flex flex-col h-screen sticky top-0 flex-shrink-0">
+    <>
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden" 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`w-[260px] bg-[#1a2332] text-slate-300 flex flex-col h-screen fixed lg:sticky top-0 z-50 flex-shrink-0 transition-transform duration-300 ease-in-out ${
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      }`}>
       {/* Logo Area */}
       <div className="p-6 pb-4 border-b border-[#2a3241]/50">
         <div className="flex items-center gap-3 mb-1">
@@ -55,11 +74,12 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
 
       {/* Logout */}
       <div className="p-4 mb-4">
-        <Link to="/login" className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-[#252f3f] hover:text-white transition-colors">
+        <button onClick={() => { logout(); toast.success("Logged out successfully"); navigate('/login'); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-[#A14000] hover:bg-[#A14000]/10 transition-colors">
           <LogOut className="w-[18px] h-[18px]" />
           Logout
-        </Link>
+        </button>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

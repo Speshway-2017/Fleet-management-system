@@ -1,27 +1,69 @@
 import { useState } from "react";
-import { Icon } from "@iconify/react";
+import { Download, Printer, Filter, Truck, AlertCircle, FileCheck2, ArrowRight } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 
+const BILLS = [
+  {
+    id: "EWB-2024-8832",
+    invoice: "#INV-00421",
+    vehicleNo: "MH 12 QX 4582",
+    transporter: "Gatl KWE Logistics",
+    from: "Mumbai",
+    to: "Delhi",
+    status: "GENERATED",
+    validity: "24 Oct, 23:59",
+    validityProgress: 72,
+    progressColor: "bg-[#B45A0A]",
+  },
+  {
+    id: "EWB-2024-7710",
+    invoice: "#INV-00418",
+    vehicleNo: "KA 01 HY 9912",
+    transporter: "VRL Logistics",
+    from: "Bangalore",
+    to: "Chennai",
+    status: "EXPIRING",
+    validity: "Today, 14:30",
+    validityProgress: 18,
+    progressColor: "bg-red-500",
+    canExtend: true,
+  },
+  {
+    id: "EWB-2024-9102",
+    invoice: "#INV-00430",
+    vehicleNo: "GJ 05 TR 3302",
+    transporter: "Safe Express",
+    from: "Surat",
+    to: "Ahmedabad",
+    status: "PENDING",
+    validity: "Awaiting Sync",
+    validityProgress: null,
+  },
+];
+
+const STATUS_STYLES = {
+  GENERATED: "bg-[#1E293B] text-white",
+  EXPIRING: "bg-[#B45A0A] text-white",
+  PENDING: "bg-gray-200 text-gray-600",
+};
+
+const TABS = ["All Bills", "Generated", "Expired", "Pending"];
+
 export default function EWayBillsPage() {
-  const [activeTab, setActiveTab] = useState("All");
+  const [activeTab, setActiveTab] = useState("All Bills");
 
-  const bills = [
-    { id: "EWB-12345", vehicle: "#TRK-8821", status: "Active", date: "Oct 24, 2023" },
-    { id: "EWB-12344", vehicle: "#VAN-402", status: "Expired", date: "Oct 20, 2023" },
-    { id: "EWB-12343", vehicle: "#TRK-7710", status: "Active", date: "Oct 23, 2023" },
-  ];
+  const filteredBills = BILLS.filter((b) => {
+    if (activeTab === "All Bills") return true;
+    return b.status.toLowerCase() === activeTab.toLowerCase();
+  });
 
-  const handleGenerate = () => {
-    toast.success("Generating new E-Way Bill...");
-  };
+  const handleDownload = () => toast.success("Downloading E-Way Bills...");
+  const handlePrint = () => toast.success("Sending to printer...");
+  const handleExtend = (id) => toast.success(`Extended validity for ${id}`);
 
   return (
-    <div className="p-6 lg:p-8">
-      <Breadcrumb />
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">E-Way Bills</h1>
+
         </div>
         <button
           onClick={handleGenerate}
@@ -85,11 +127,38 @@ export default function EWayBillsPage() {
                         <Icon icon="mdi:download" className="w-4 h-4" />
                       </button>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                  {bill.canExtend && (
+                    <button
+                      onClick={() => handleExtend(bill.id)}
+                      className="px-3 py-1.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-lg text-[10px] font-black transition-colors cursor-pointer"
+                    >
+                      Extend
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-[#E7EAF0] flex items-center justify-between bg-white">
+          <span className="text-xs text-[#64748B] font-medium font-poppins">
+            Showing 1–10 of 1,284 results
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button className="w-7 h-7 flex items-center justify-center border border-[#E7EAF0] rounded bg-white text-[#64748B] hover:bg-gray-50 text-xs font-bold">
+              ‹
+            </button>
+            <button className="w-7 h-7 flex items-center justify-center border border-[#E7EAF0] rounded bg-white text-[#64748B] hover:bg-gray-50 text-xs font-bold">
+              ›
+            </button>
+          </div>
         </div>
       </div>
     </div>
