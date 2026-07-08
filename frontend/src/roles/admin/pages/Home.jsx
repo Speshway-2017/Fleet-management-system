@@ -139,9 +139,12 @@ export default function Home({ setActiveTab }) {
       <section className="relative w-full overflow-hidden border-b border-border-custom bg-white">
         {/* Background Sunset Highway Truck Image */}
         <div
-          className="absolute inset-0 bg-cover bg-center"
+          className="absolute inset-0 bg-cover"
           style={{
             backgroundImage: "url('https://images.unsplash.com/photo-1592838064575-70ed626d3a0e?q=80&w=2018&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
+            backgroundPosition: "center bottom",
+            transform: "scale(1.15)",
+            transformOrigin: "bottom center"
           }}
         />
         {/* Translucent overlay for text legibility */}
@@ -149,7 +152,7 @@ export default function Home({ setActiveTab }) {
 
         {/* Content Container */}
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-16 sm:py-28 md:py-44 lg:py-52 min-h-[450px] sm:min-h-[500px] md:min-h-[650px] lg:min-h-[750px] grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
-          <div className="space-y-6 max-w-lg">
+          <div className="space-y-6 max-w-lg -translate-y-6 md:-translate-y-12">
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black text-heading leading-tight tracking-tight">
               Smarter Fleet Control. <br />
               Better <span className="text-secondary">Business</span> Performance.
@@ -223,93 +226,93 @@ export default function Home({ setActiveTab }) {
           </div>
 
           {/* 3x2 Grid Cards layout */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-x-[129px] gap-y-8 lg:gap-y-[54px]">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8 lg:gap-x-[129px] gap-y-6 sm:gap-y-8 lg:gap-y-[54px]">
             {/* Card 1: GPS Tracking */}
-            <div className="rounded-3xl bg-[#FFDBCC] border border-[#FFDBCC] p-8 space-y-6 hover:shadow-lg hover:shadow-secondary/5 transition-all duration-300">
-              <div className="h-12 w-12 rounded-2xl bg-primary text-secondary flex items-center justify-center shadow-md">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <div className="rounded-3xl bg-[#FFDBCC] border border-[#FFDBCC] p-5 sm:p-8 space-y-3 sm:space-y-6 hover:shadow-lg hover:shadow-secondary/5 transition-all duration-300">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-primary text-secondary flex items-center justify-center shadow-md">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
-              <div className="space-y-2">
-                <h4 className="font-display text-lg font-bold text-heading">Real-Time GPS Tracking</h4>
-                <p className="text-xs text-body leading-relaxed">
+              <div className="space-y-1.5 sm:space-y-2">
+                <h4 className="font-display text-sm sm:text-lg font-bold text-heading">Real-Time GPS Tracking</h4>
+                <p className="text-[10px] sm:text-xs text-body leading-relaxed hidden sm:block">
                   Monitor every vehicle's exact location with sub-second refresh rate and geofencing alerts.
                 </p>
               </div>
             </div>
 
             {/* Card 2: Performance Analytics */}
-            <div className="rounded-3xl bg-[#FFDBCC] border border-[#FFDBCC] p-8 space-y-6 hover:shadow-lg hover:shadow-secondary/5 transition-all duration-300">
-              <div className="h-12 w-12 rounded-2xl bg-primary text-secondary flex items-center justify-center shadow-md">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <div className="rounded-3xl bg-[#FFDBCC] border border-[#FFDBCC] p-5 sm:p-8 space-y-3 sm:space-y-6 hover:shadow-lg hover:shadow-secondary/5 transition-all duration-300">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-primary text-secondary flex items-center justify-center shadow-md">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
                 </svg>
               </div>
-              <div className="space-y-2">
-                <h4 className="font-display text-lg font-bold text-heading">Performance Analytics</h4>
-                <p className="text-xs text-body leading-relaxed">
+              <div className="space-y-1.5 sm:space-y-2">
+                <h4 className="font-display text-sm sm:text-lg font-bold text-heading">Performance Analytics</h4>
+                <p className="text-[10px] sm:text-xs text-body leading-relaxed hidden sm:block">
                   Comprehensive dashboards with driver behavior scores, fuel efficiency trends, and route optimization.
                 </p>
               </div>
             </div>
 
             {/* Card 3: Maintenance Alerts */}
-            <div className="rounded-3xl bg-[#FFDBCC] border border-[#FFDBCC] p-8 space-y-6 hover:shadow-lg hover:shadow-secondary/5 transition-all duration-300">
-              <div className="h-12 w-12 rounded-2xl bg-primary text-secondary flex items-center justify-center shadow-md">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <div className="rounded-3xl bg-[#FFDBCC] border border-[#FFDBCC] p-5 sm:p-8 space-y-3 sm:space-y-6 hover:shadow-lg hover:shadow-secondary/5 transition-all duration-300">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-primary text-secondary flex items-center justify-center shadow-md">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>
-              <div className="space-y-2">
-                <h4 className="font-display text-lg font-bold text-heading">Maintenance Alerts</h4>
-                <p className="text-xs text-body leading-relaxed">
+              <div className="space-y-1.5 sm:space-y-2">
+                <h4 className="font-display text-sm sm:text-lg font-bold text-heading">Maintenance Alerts</h4>
+                <p className="text-[10px] sm:text-xs text-body leading-relaxed hidden sm:block">
                   Predictive maintenance scheduling prevents breakdowns before they happen, reducing downtime by 35%.
                 </p>
               </div>
             </div>
 
             {/* Card 4: Fuel Management */}
-            <div className="rounded-3xl bg-[#FFDBCC] border border-[#FFDBCC] p-8 space-y-6 hover:shadow-lg hover:shadow-secondary/5 transition-all duration-300">
-              <div className="h-12 w-12 rounded-2xl bg-primary text-secondary flex items-center justify-center shadow-md">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <div className="rounded-3xl bg-[#FFDBCC] border border-[#FFDBCC] p-5 sm:p-8 space-y-3 sm:space-y-6 hover:shadow-lg hover:shadow-secondary/5 transition-all duration-300">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-primary text-secondary flex items-center justify-center shadow-md">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
               </div>
-              <div className="space-y-2">
-                <h4 className="font-display text-lg font-bold text-heading">Fuel Management</h4>
-                <p className="text-xs text-body leading-relaxed">
+              <div className="space-y-1.5 sm:space-y-2">
+                <h4 className="font-display text-sm sm:text-lg font-bold text-heading">Fuel Management</h4>
+                <p className="text-[10px] sm:text-xs text-body leading-relaxed hidden sm:block">
                   Track fuel consumption per vehicle, identify wastes, and cut costs with intelligent routing.
                 </p>
               </div>
             </div>
 
             {/* Card 5: Driver Management */}
-            <div className="rounded-3xl bg-[#FFDBCC] border border-[#FFDBCC] p-8 space-y-6 hover:shadow-lg hover:shadow-secondary/5 transition-all duration-300">
-              <div className="h-12 w-12 rounded-2xl bg-primary text-secondary flex items-center justify-center shadow-md">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <div className="rounded-3xl bg-[#FFDBCC] border border-[#FFDBCC] p-5 sm:p-8 space-y-3 sm:space-y-6 hover:shadow-lg hover:shadow-secondary/5 transition-all duration-300">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-primary text-secondary flex items-center justify-center shadow-md">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
-              <div className="space-y-2">
-                <h4 className="font-display text-lg font-bold text-heading">Driver Management</h4>
-                <p className="text-xs text-body leading-relaxed">
+              <div className="space-y-1.5 sm:space-y-2">
+                <h4 className="font-display text-sm sm:text-lg font-bold text-heading">Driver Management</h4>
+                <p className="text-[10px] sm:text-xs text-body leading-relaxed hidden sm:block">
                   Full driver profiles, HOS compliance, performance scoring, and incident reporting in one place.
                 </p>
               </div>
             </div>
 
             {/* Card 6: Instant Notifications */}
-            <div className="rounded-3xl bg-[#FFDBCC] border border-[#FFDBCC] p-8 space-y-6 hover:shadow-lg hover:shadow-secondary/5 transition-all duration-300">
-              <div className="h-12 w-12 rounded-2xl bg-primary text-secondary flex items-center justify-center shadow-md">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <div className="rounded-3xl bg-[#FFDBCC] border border-[#FFDBCC] p-5 sm:p-8 space-y-3 sm:space-y-6 hover:shadow-lg hover:shadow-secondary/5 transition-all duration-300">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-primary text-secondary flex items-center justify-center shadow-md">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
               </div>
-              <div className="space-y-2">
-                <h4 className="font-display text-lg font-bold text-heading">Instant Notifications</h4>
-                <p className="text-xs text-body leading-relaxed">
+              <div className="space-y-1.5 sm:space-y-2">
+                <h4 className="font-display text-sm sm:text-lg font-bold text-heading">Instant Notifications</h4>
+                <p className="text-[10px] sm:text-xs text-body leading-relaxed hidden sm:block">
                   Real-time alerts for speeding, idle time, unsafe driving, and critical maintenance issues.
                 </p>
               </div>

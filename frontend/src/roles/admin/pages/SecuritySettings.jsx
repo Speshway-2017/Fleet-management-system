@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ChevronDown, LogOut } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import toast from "react-hot-toast";
 
 export default function SecuritySettings() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [twoFactor, setTwoFactor] = useState(false);
   const [sessionTimeout, setSessionTimeout] = useState(false);
@@ -31,33 +34,39 @@ export default function SecuritySettings() {
       <div className="flex-1 flex flex-col min-w-0">
         <NewAdminTopNav title="Security" />
         
-        <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
+        <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
           
-          {/* Header Area with Tabs and Button */}
+          {/* Header Area with Tabs and Buttons */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             {/* Tabs */}
-            <div className="inline-flex items-center p-1 bg-white border border-slate-200 rounded-full shadow-sm">
-              <Link to="/admin/settings" className="px-6 py-2.5 text-slate-600 hover:text-slate-900 text-sm font-bold rounded-full transition-colors">
+            <div className="flex sm:inline-flex w-full sm:w-auto items-center p-1 bg-white border border-slate-200 rounded-full shadow-sm">
+              <Link to="/admin/settings" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
                 General
               </Link>
-              <Link to="/admin/settings/security" className="px-6 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-full shadow-sm transition-colors">
+              <Link to="/admin/settings/security" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 bg-[#0f172a] text-white text-[10px] sm:text-sm font-bold rounded-full shadow-sm transition-colors truncate">
                 Security
               </Link>
-              <Link to="/admin/settings/notifications" className="px-6 py-2.5 text-slate-600 hover:text-slate-900 text-sm font-bold rounded-full transition-colors">
+              <Link to="/admin/settings/notifications" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
                 Notifications
               </Link>
-              <Link to="/admin/settings/profile" className="px-6 py-2.5 text-slate-600 hover:text-slate-900 text-sm font-bold rounded-full transition-colors">
+              <Link to="/admin/settings/profile" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
                 Profile
               </Link>
             </div>
 
-            <button 
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-6 py-2.5 bg-[#b45309] hover:bg-[#92400e] text-white text-sm font-bold rounded-lg shadow-sm transition-colors disabled:opacity-70 disabled:cursor-wait"
-            >
-              {isSaving ? "Saving..." : "Save Security Settings"}
-            </button>
+            <div className="flex flex-row items-stretch sm:items-center gap-3 shrink-0 w-full sm:w-auto">
+              <button onClick={() => { logout(); toast.success("Logged out successfully"); navigate('/login'); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-2 sm:px-4 py-2.5 bg-white hover:bg-[#b45309]/10 border border-[#b45309]/30 text-[#b45309] text-xs sm:text-sm font-bold rounded-lg shadow-sm transition-colors text-center w-full sm:w-auto truncate">
+                <LogOut className="w-4 h-4 shrink-0" />
+                <span className="hidden min-[360px]:inline">Logout</span>
+              </button>
+              <button 
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex-[2] sm:flex-none px-2 sm:px-6 py-2.5 bg-[#b45309] hover:bg-[#92400e] text-white text-xs sm:text-sm font-bold rounded-lg shadow-sm transition-colors disabled:opacity-70 disabled:cursor-wait text-center w-full sm:w-auto truncate"
+              >
+                {isSaving ? "Saving..." : "Save Settings"}
+              </button>
+            </div>
           </div>
 
           {/* Settings Content */}

@@ -46,7 +46,7 @@ export default function NotificationList() {
       <div className="flex-1 flex flex-col min-w-0">
         <NewAdminTopNav title="Notifications" />
         
-        <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
+        <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
           
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -98,8 +98,8 @@ export default function NotificationList() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             
             {/* Header / Tabs */}
-            <div className="px-6 py-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white">
-              <div className="inline-flex items-center p-1 bg-white border border-slate-200 rounded-full shadow-sm">
+            <div className="px-4 sm:px-6 py-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white">
+              <div className="inline-flex overflow-x-auto no-scrollbar max-w-full items-center p-1 bg-white border border-slate-200 rounded-full shadow-sm">
                 <button 
                   onClick={() => setActiveTab("All")}
                   className={`px-5 py-2 text-[13px] font-bold rounded-full transition-colors ${activeTab === "All" ? "bg-[#0f172a] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
@@ -122,7 +122,7 @@ export default function NotificationList() {
 
               <button 
                 onClick={markAllAsRead}
-                className="flex items-center gap-2 px-4 py-2 text-[13px] font-bold text-[#b45309] hover:bg-orange-50 rounded-lg transition-colors"
+                className="flex items-center justify-center w-full sm:w-auto gap-2 px-4 py-2 text-[13px] font-bold text-[#b45309] hover:bg-orange-50 rounded-lg transition-colors whitespace-nowrap"
               >
                 <Check className="w-4 h-4" />
                 Mark all as read

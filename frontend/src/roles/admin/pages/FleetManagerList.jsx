@@ -46,18 +46,30 @@ export default function FleetManagerList() {
       <div className="flex-1 flex flex-col min-w-0">
         <NewAdminTopNav title="Fleet Managers" />
         
-        <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
+        <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
           
           {/* Tabs */}
-          <div className="inline-flex items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
-            <button className="px-6 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-full shadow-sm">Fleet Manager List</button>
-            <Link to="/admin/fleet-managers/add" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Add Fleet Manager</Link>
-            <Link to="/admin/fleet-managers/details" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Manager Details</Link>
-            <Link to="/admin/fleet-managers/edit" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Edit Manager</Link>
+          <div className="flex sm:inline-flex w-full sm:w-auto items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
+            <button className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 bg-[#0f172a] text-white text-[10px] sm:text-sm font-bold rounded-full shadow-sm whitespace-nowrap">
+              <span className="sm:hidden">List</span>
+              <span className="hidden sm:inline">Fleet Manager List</span>
+            </button>
+            <Link to="/admin/fleet-managers/add" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Add Mgr</span>
+              <span className="hidden sm:inline">Add Fleet Manager</span>
+            </Link>
+            <Link to="/admin/fleet-managers/details" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Details</span>
+              <span className="hidden sm:inline">Manager Details</span>
+            </Link>
+            <Link to="/admin/fleet-managers/edit" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Edit Mgr</span>
+              <span className="hidden sm:inline">Edit Manager</span>
+            </Link>
           </div>
 
           {/* KPI Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-8">
             <KPICard 
               title="TOTAL MANAGERS" 
               value={fleetManagers.length} 
@@ -98,14 +110,14 @@ export default function FleetManagerList() {
                   className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
                 />
               </div>
-              <Link to="/admin/fleet-managers/add" className="flex items-center justify-center gap-2 bg-[#A14000] hover:bg-[#8a3700] text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm whitespace-nowrap">
+              <Link to="/admin/fleet-managers/add" className="flex items-center w-full sm:w-auto justify-center gap-2 bg-[#A14000] hover:bg-[#8a3700] text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm whitespace-nowrap">
                 <UserPlus className="w-4 h-4" />
                 Add Fleet Manager
               </Link>
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-center border-collapse min-w-[800px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">

@@ -45,25 +45,37 @@ export default function AddOrganization() {
       <div className="flex-1 flex flex-col min-w-0">
         <NewAdminTopNav title="Organizations" />
         
-        <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
+        <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
           
           {/* Tabs */}
-          <div className="inline-flex items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
-            <Link to="/admin/organizations" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Organization List</Link>
-            <button className="px-6 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-full shadow-sm">Add Organization</button>
-            <Link to="/admin/organizations/details" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Organization Details</Link>
-            <Link to="/admin/organizations/edit" className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors">Edit Organization</Link>
+          <div className="flex sm:inline-flex w-full sm:w-auto items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
+            <Link to="/admin/organizations" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">List</span>
+              <span className="hidden sm:inline">Organization List</span>
+            </Link>
+            <button className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 bg-[#0f172a] text-white text-[10px] sm:text-sm font-bold rounded-full shadow-sm whitespace-nowrap">
+              <span className="sm:hidden">Add Org</span>
+              <span className="hidden sm:inline">Add Organization</span>
+            </button>
+            <Link to="/admin/organizations/details" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Details</span>
+              <span className="hidden sm:inline">Organization Details</span>
+            </Link>
+            <Link to="/admin/organizations/edit" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Edit Org</span>
+              <span className="hidden sm:inline">Edit Organization</span>
+            </Link>
           </div>
 
           <form onSubmit={handleSubmit}>
             {/* Header Actions */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <h2 className="text-lg font-bold text-slate-800">Add New Organization</h2>
-              <div className="flex items-center gap-3">
-                <Link to="/admin/organizations" className="px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 transition-colors">
+              <div className="flex flex-row items-stretch sm:items-center gap-3 shrink-0 w-full sm:w-auto">
+                <Link to="/admin/organizations" className="flex-1 sm:flex-none flex items-center justify-center px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-[#A14000] border border-[#A14000] bg-transparent hover:bg-[#A14000]/10 rounded-lg transition-colors text-center truncate">
                   Cancel
                 </Link>
-                <button type="submit" className="px-5 py-2.5 text-sm font-bold text-white bg-[#A14000] border border-[#A14000] rounded-lg shadow-sm hover:bg-[#8a3700] transition-colors">
+                <button type="submit" className="flex-[2] sm:flex-none px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-[#A14000] border border-[#A14000] rounded-lg shadow-sm hover:bg-[#8a3700] transition-colors text-center truncate">
                   Create Organization
                 </button>
               </div>
