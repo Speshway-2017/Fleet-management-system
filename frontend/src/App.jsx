@@ -157,7 +157,10 @@ export default function App() {
               <Route path="/manager/documents/upload" element={<UploadDocument />} />
               <Route path="/manager/documents/view/:id" element={<ViewDocument />} />
               <Route path="/manager/documents/edit/:id" element={<EditDocument />} />
-
+              <Route path="/manager/analytics" element={<div className="p-8"><h1 className="text-2xl font-bold">Analytics Page</h1></div>} />
+              <Route path="/manager/reports" element={<div className="p-8"><h1 className="text-2xl font-bold">Reports Page</h1></div>} />
+              <Route path="/manager/notifications" element={<div className="p-8"><h1 className="text-2xl font-bold">Notifications Page</h1></div>} />
+              <Route path="/manager/settings" element={<div className="p-8"><h1 className="text-2xl font-bold">Settings Page</h1></div>} />
               <Route path="/manager/drivers" element={<DriversManagementPage />} />
               <Route path="/manager/drivers-list" element={<DriversListPage />} />
               <Route path="/manager/trips" element={<TripsManagementPage />} />
