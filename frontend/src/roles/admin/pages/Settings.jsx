@@ -4,13 +4,18 @@ import { Upload } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 
+import toast from "react-hot-toast";
+
 export default function Settings() {
   const [logoUrl, setLogoUrl] = useState("/logo.png");
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = () => {
     setIsSaving(true);
-    setTimeout(() => setIsSaving(false), 1000);
+    setTimeout(() => {
+      setIsSaving(false);
+      toast.success("Settings saved successfully!");
+    }, 1000);
   };
 
   return (

@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { AdminProvider } from "@/roles/admin/context/AdminContext";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
@@ -102,16 +103,17 @@ export default function App() {
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
-            <Route path="/admin/dashboard" element={<Dashboard />} />
+            <Route element={<AdminProvider><Outlet /></AdminProvider>}>
+              <Route path="/admin/dashboard" element={<Dashboard />} />
             <Route path="/admin/organizations" element={<OrganizationList />} />
             <Route path="/admin/organizations/add" element={<AddOrganization />} />
             <Route path="/admin/organizations/details" element={<OrganizationDetails />} />
-            <Route path="/admin/organizations/edit" element={<EditOrganization />} />
+            <Route path="/admin/organizations/edit/:id" element={<EditOrganization />} />
             <Route path="/admin/organizations/details/:id" element={<OrganizationDetails />} />
             <Route path="/admin/fleet-managers" element={<FleetManagerList />} />
             <Route path="/admin/fleet-managers/add" element={<AddFleetManager />} />
-            <Route path="/admin/fleet-managers/details" element={<ManagerDetails />} />
-            <Route path="/admin/fleet-managers/edit" element={<EditFleetManager />} />
+            <Route path="/admin/fleet-managers/details/:id" element={<ManagerDetails />} />
+            <Route path="/admin/fleet-managers/edit/:id" element={<EditFleetManager />} />
             <Route path="/admin/analytics" element={<Analytics />} />
             <Route path="/admin/system-health" element={<SystemHealth />} />
             <Route path="/admin/audit-logs" element={<AuditLogs />} />
@@ -124,6 +126,7 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UserManagement />} />
+            </Route>
             </Route>
           </Route>
 

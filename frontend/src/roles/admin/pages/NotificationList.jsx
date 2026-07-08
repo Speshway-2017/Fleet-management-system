@@ -3,76 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { Bell, AlertTriangle, Activity, Check, CheckCircle2, AlertCircle } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
-
-const NOTIFICATIONS = [
-  {
-    id: 1,
-    title: "New Organization Registered",
-    description: "Peak Freight Co. completed registration and is pending approval.",
-    time: "2 min ago",
-    type: "bell",
-    unread: true,
-    group: "TODAY"
-  },
-  {
-    id: 2,
-    title: "Fleet Manager Activated",
-    description: "Emma Wilson from Global Express accepted the invite and is now active.",
-    time: "15 min ago",
-    type: "success",
-    unread: true,
-    group: "TODAY"
-  },
-  {
-    id: 3,
-    title: "Subscription Expiring Soon",
-    description: "ABC Logistics Enterprise plan expires in 7 days. Renewal required.",
-    time: "1 hour ago",
-    type: "warning",
-    unread: true,
-    group: "TODAY"
-  },
-  {
-    id: 4,
-    title: "Failed Login Attempt",
-    description: "5 consecutive failed logins detected from IP 203.0.113.0. Account temporarily locked.",
-    time: "2 hours ago",
-    type: "danger",
-    unread: true,
-    group: "TODAY"
-  },
-  {
-    id: 5,
-    title: "System Maintenance Scheduled",
-    description: "Planned maintenance window: Sunday 02:00-04:00 AM. Expect brief downtime.",
-    time: "5 hours ago",
-    type: "system",
-    unread: false,
-    group: "TODAY"
-  },
-  {
-    id: 6,
-    title: "Organization Activated",
-    description: "VRL Freight has been successfully activated after KYC verification.",
-    time: "Yesterday",
-    type: "success",
-    unread: false,
-    group: "YESTERDAY"
-  },
-  {
-    id: 7,
-    title: "Monthly Report Ready",
-    description: "Your fleet performance summary for June is now available to download.",
-    time: "Yesterday",
-    type: "bell",
-    unread: false,
-    group: "YESTERDAY"
-  }
-];
+import { useAdmin } from "@/roles/admin/context/AdminContext";
 
 export default function NotificationList() {
   const [activeTab, setActiveTab] = useState("All");
-  const [notifications, setNotifications] = useState(NOTIFICATIONS);
+  const { notifications, markAllAsRead } = useAdmin();
   const navigate = useNavigate();
 
   const getIcon = (type) => {
@@ -90,10 +25,6 @@ export default function NotificationList() {
       default:
         return { icon: Bell, bg: "bg-slate-50", text: "text-slate-500" };
     }
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, unread: false })));
   };
 
   const filteredNotifications = notifications.filter(n => {

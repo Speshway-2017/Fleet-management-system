@@ -7,6 +7,7 @@ export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ password: "", confirmPassword: "" });
+  const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -17,14 +18,15 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const newErrors = {};
     if (!reqLength || !reqNumber || !reqSpecial) {
-      toast.error("Please meet all password requirements.");
-      return;
+      newErrors.password = "Please meet all password requirements.";
     }
     if (form.password !== form.confirmPassword) {
-      toast.error("Passwords do not match.");
-      return;
+      newErrors.confirmPassword = "Passwords do not match.";
     }
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
 
     setLoading(true);
     try {
@@ -81,9 +83,8 @@ export default function ResetPasswordPage() {
               type={showPassword ? "text" : "password"}
               placeholder="Enter new password"
               value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-              required
+              onChange={(e) => setForm({ ...form, password: e.target.value, errors: {...errors, password: ''} })}
+              className={`w-full pl-10 pr-10 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${errors.password ? 'border-red-500 focus:ring-red-500/20' : 'border-[#A14000] focus:ring-[#A14000]/20'}`}
             />
             <button
               type="button"
@@ -102,6 +103,7 @@ export default function ResetPasswordPage() {
               )}
             </button>
           </div>
+          {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
         </div>
 
         {/* Confirm Password Field */}
@@ -119,9 +121,8 @@ export default function ResetPasswordPage() {
               type={showConfirmPassword ? "text" : "password"}
               placeholder="Re-enter new password"
               value={form.confirmPassword}
-              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-              className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-[#A14000] text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-              required
+              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value, errors: {...errors, confirmPassword: ''} })}
+              className={`w-full pl-10 pr-10 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-[#A14000] focus:ring-[#A14000]/20'}`}
             />
             <button
               type="button"
@@ -140,6 +141,7 @@ export default function ResetPasswordPage() {
               )}
             </button>
           </div>
+          {errors.confirmPassword && <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>}
         </div>
 
         {/* Requirements Box */}
