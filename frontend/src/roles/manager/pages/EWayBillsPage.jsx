@@ -64,6 +64,11 @@ export default function EWayBillsPage() {
   return (
     <div className="w-full px-6 md:px-8 py-8 min-h-full bg-gray-50">
 
+      {/* Page Header */}
+      <div className="mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">E-Way Bills</h1>
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {/* Active Bills */}

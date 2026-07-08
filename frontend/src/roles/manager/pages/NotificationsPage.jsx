@@ -4,6 +4,14 @@ import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
 import DispatchWarningModal from "@/components/common/DispatchWarningModal";
 import ContactDriverModal from "@/components/common/ContactDriverModal";
+import { notifications } from "@/roles/manager/data/notificationsData";
+
+const mapTypeToTab = (type) => {
+  if (type === "alert")  return "Critical";
+  if (type === "info")   return "Maintenance";
+  if (type === "system") return "System";
+  return "All";
+};
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
@@ -12,69 +20,6 @@ export default function NotificationsPage() {
   const [showContactDriverModal, setShowContactDriverModal] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [unreadNotifs, setUnreadNotifs] = useState(new Set([1, 2, 3]));
-
-  const notifications = [
-    {
-      id: 1,
-      type: "alert",
-      title: "Critical Overspeeding Alert",
-      description: "Vehicle #TRK-8821 detected traveling at 95 mph in a 65 mph zone on I-90 Expressway. Immediate intervention recommended.",
-      time: "2 mins ago",
-      priority: "high",
-      meta: { vehicleId: "#TRK-8821", driver: "Marcus Read", phone: "+919876543210" },
-      actions: [
-        { label: "Dispatch Warning", bg: "bg-red-600", hover: "hover:bg-red-700", actionType: "modal", modalType: "dispatch" },
-        { label: "View Analytics", bg: "bg-white", text: "text-gray-700", border: "border-gray-300", actionType: "navigate", route: "/manager/analytics" }
-      ]
-    },
-    {
-      id: 2,
-      type: "warning",
-      title: "Geofence Violation",
-      description: "Driver Marcus Read has exited the designated delivery zone for the Northeast region. Route optimization required.",
-      time: "15 mins ago",
-      priority: "medium",
-      meta: { vehicleId: "v2", driver: "Marcus Read", phone: "+919876543210" },
-      actions: [
-        { label: "Call Driver", bg: "bg-amber-700", hover: "hover:bg-amber-800", actionType: "modal", modalType: "contact" },
-        { label: "Track Live", bg: "bg-white", text: "text-gray-700", border: "border-gray-300", actionType: "navigate", route: "/manager/map", state: { vehicleId: "v2" } }
-      ]
-    },
-    {
-      id: 3,
-      type: "info",
-      title: "Maintenance Required",
-      description: "Vehicle #VAN-402 scheduled for brake pad replacement in 150 miles. Currently active on trip #4492.",
-      time: "1 hour ago",
-      priority: "medium",
-      meta: { vehicleId: "#VAN-402", vehicleNumber: "VAN-402", maintenanceType: "Brake Pad Replacement", dueMileage: "150 miles" },
-      actions: [
-        { label: "Schedule Now", bg: "bg-amber-700", hover: "hover:bg-amber-800", actionType: "navigate", route: "/manager/maintenance", state: { openSchedule: true, vehicleNumber: "VAN-402", maintenanceType: "Brake Pad Replacement", dueMileage: "150" } }
-      ]
-    },
-    {
-      id: 4,
-      type: "success",
-      title: "Fuel Report Ready",
-      description: "Weekly fuel efficiency report for the Southern Fleet has been generated and is ready for review.",
-      time: "3 hours ago",
-      priority: "low",
-      meta: {},
-      actions: [
-        { label: "View Report", bg: "bg-black", hover: "hover:bg-gray-800", actionType: "navigate", route: "/manager/reports", state: { openFuelTab: true } }
-      ]
-    },
-    {
-      id: 5,
-      type: "system",
-      title: "System Update Complete",
-      description: "ELD compliance patches have been successfully pushed to all active vehicles in the fleet.",
-      time: "6 hours ago",
-      priority: "low",
-      meta: {},
-      actions: []
-    }
-  ];
 
   const getIconColor = (type) => {
     switch(type) {
@@ -140,7 +85,10 @@ export default function NotificationsPage() {
       newSet.delete(notification.id);
       return newSet;
     });
-    
+
+    // Update active tab to match the notification's category
+    setActiveTab(mapTypeToTab(notification.type));
+
     navigate(`/manager/notifications/${notification.id}`);
   };
 
@@ -246,54 +194,69 @@ export default function NotificationsPage() {
           </div>
 
           {/* Notifications */}
-          {notifications.map((notif, index) => {
-            const isUnread = unreadNotifs.has(notif.id);
-            return (
-              <div
-                key={notif.id}
-                onClick={() => handleNotificationClick(notif)}
-                className={`bg-white rounded-xl sm:rounded-2xl border p-4 sm:p-6 shadow-sm hover:shadow-md transition-all cursor-pointer animate-fade-in relative ${
-                  isUnread ? "border-l-4 border-l-blue-500 border-gray-200" : "border-gray-200"
-                }`}
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                {isUnread && (
-                  <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                  </div>
-                )}
-                <div className="flex gap-3 sm:gap-4">
-                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full ${getIconColor(notif.type)} flex items-center justify-center shrink-0`}>
-                    <Icon icon={getIcon(notif.type)} className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2 gap-2">
-                      <h4 className={`font-semibold text-gray-800 text-sm sm:text-base ${isUnread ? "font-bold" : ""}`}>
-                        {notif.title}
-                      </h4>
-                      <span className="text-xs text-gray-400 font-medium shrink-0">{notif.time}</span>
+          {(() => {
+            const filtered = notifications.filter(
+              (notif) => activeTab === "All" || mapTypeToTab(notif.type) === activeTab
+            );
+
+            if (filtered.length === 0) {
+              return (
+                <div className="bg-white rounded-2xl border border-gray-200 p-12 shadow-sm text-center">
+                  <Icon icon="mdi:bell-off-outline" className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">No {activeTab === "All" ? "" : activeTab + " "}notifications</p>
+                </div>
+              );
+            }
+
+            return filtered.map((notif, index) => {
+              const isUnread = unreadNotifs.has(notif.id);
+              return (
+                <div
+                  key={notif.id}
+                  onClick={() => handleNotificationClick(notif)}
+                  className={`bg-white rounded-xl sm:rounded-2xl border p-4 sm:p-6 shadow-sm hover:shadow-md transition-all cursor-pointer animate-fade-in relative ${
+                    isUnread ? "border-l-4 border-l-blue-500 border-gray-200" : "border-gray-200"
+                  }`}
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  {isUnread && (
+                    <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
                     </div>
-                    <p className="text-gray-600 text-xs sm:text-sm mb-3 sm:mb-4">{notif.description}</p>
-                    <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-                      {notif.actions.map((action, i) => (
-                        <button
-                          key={i}
-                          onClick={(e) => handleActionClick(action, notif, e)}
-                          className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-medium transition-all transform hover:scale-105 ${
-                            action.bg === 'bg-white' 
-                              ? `${action.bg} ${action.text} border ${action.border} hover:bg-gray-50` 
-                              : `${action.bg} text-white ${action.hover}`
-                          }`}
-                        >
-                          {action.label}
-                        </button>
-                      ))}
+                  )}
+                  <div className="flex gap-3 sm:gap-4">
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full ${getIconColor(notif.type)} flex items-center justify-center shrink-0`}>
+                      <Icon icon={getIcon(notif.type)} className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-2 gap-2">
+                        <h4 className={`font-semibold text-gray-800 text-sm sm:text-base ${isUnread ? "font-bold" : ""}`}>
+                          {notif.title}
+                        </h4>
+                        <span className="text-xs text-gray-400 font-medium shrink-0">{notif.time}</span>
+                      </div>
+                      <p className="text-gray-600 text-xs sm:text-sm mb-3 sm:mb-4">{notif.description}</p>
+                      <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+                        {notif.actions.map((action, i) => (
+                          <button
+                            key={i}
+                            onClick={(e) => handleActionClick(action, notif, e)}
+                            className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-medium transition-all transform hover:scale-105 ${
+                              action.bg === 'bg-white'
+                                ? `${action.bg} ${action.text} border ${action.border} hover:bg-gray-50`
+                                : `${action.bg} text-white ${action.hover}`
+                            }`}
+                          >
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       </div>
 
