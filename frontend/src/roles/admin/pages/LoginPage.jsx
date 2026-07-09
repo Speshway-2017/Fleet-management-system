@@ -18,13 +18,20 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
 
+  // Redirect already-authenticated users away from the login page
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(role === "admin" ? "/admin/dashboard" : "/manager", { replace: true });
+    }
+  }, [isAuthenticated, role, navigate]);
+
   const validate = () => {
     const newErrors = {};
     if (!form.email) newErrors.email = "Email is required";
     else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = "Invalid email format";
-    
+
     if (!form.password) newErrors.password = "Password is required";
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -32,6 +39,7 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
+
     try {
       const user = await login(form);
       toast.success(`Welcome back, ${user.name || "User"}!`);

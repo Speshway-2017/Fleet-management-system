@@ -1,8 +1,22 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { authApi } from "@/api/authApi";
 import toast from "react-hot-toast";
 
 const AuthContext = createContext(null);
+
+/**
+ * Normalise backend role values to the short form used by frontend route guards.
+ *   SUPER_ADMIN   → "admin"
+ *   FLEET_MANAGER → "manager"
+ * Any other value is returned as-is so future roles don't hard-crash.
+ */
+function normaliseRole(backendRole) {
+  const map = {
+    SUPER_ADMIN: "admin",
+    FLEET_MANAGER: "manager",
+  };
+  return map[backendRole] ?? backendRole?.toLowerCase() ?? null;
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -66,9 +80,9 @@ export function AuthProvider({ children }) {
   const currentUser = user || storedUser;
 
   const value = {
-    user: currentUser,
-    role: currentUser?.role ?? null,
-    isAuthenticated: !!currentUser,
+    user,
+    role: user?.role ?? null,
+    isAuthenticated: !!user,
     loading,
     login,
     logout,
