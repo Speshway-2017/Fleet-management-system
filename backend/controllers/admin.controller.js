@@ -1,7 +1,11 @@
-import { getAdminDashboardData } from '../services/admin.service.js';
+import { getAdminDashboardData, getAdminAnalyticsData } from '../services/admin.service.js';
 import { createManager as createManagerInRepo, getAllManagers, getManagerById, createOrganization as createOrgInRepo, getAllOrganizations } from '../repositories/admin.repository.js';
 import { hashPassword } from '../utils/hashPassword.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { logAction } from '../services/audit.service.js';
+import AuditLog from '../models/AuditLog.js';
+import mongoose from 'mongoose';
+import os from 'os';
 
 export const getDashboard = async (_req, res, next) => {
   try {
@@ -44,6 +48,13 @@ export const createOrganization = async (req, res, next) => {
     }
 
     const org = await createOrgInRepo({ name, industry, email, phone, address, city, state, country, plan, status });
+    await logAction({
+      user: req.user ? req.user.email : 'Admin',
+      action: 'Organization Created',
+      organization: name,
+      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      status: 'Success'
+    });
     return sendSuccess(res, 201, org, 'Organization created');
   } catch (error) {
     if (error.code === 11000) {
@@ -102,6 +113,14 @@ export const createManager = async (req, res, next) => {
       role: role === 'Admin' ? 'ADMIN' : (role === 'Dispatcher' ? 'DISPATCHER' : 'FLEET_MANAGER')
     });
 
+    await logAction({
+      user: req.user ? req.user.email : 'Admin',
+      action: 'Fleet Manager Added',
+      organization: organization || '—',
+      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      status: 'Success'
+    });
+
     return sendSuccess(res, 201, { id: manager._id, name: manager.name, email: manager.email, role: manager.role }, 'Fleet manager created');
   } catch (error) {
     if (error.code === 11000) {
@@ -116,6 +135,120 @@ export const getManagerDetails = async (req, res, next) => {
     const manager = await getManagerById(req.params.id);
     if (!manager) return sendError(res, 404, 'Fleet manager not found');
     return sendSuccess(res, 200, manager, 'Fleet manager details fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAnalytics = async (req, res, next) => {
+  try {
+    const { filter } = req.query; // 'today', 'week', 'month', 'year', or undefined
+    const data = await getAdminAnalyticsData(filter);
+    return sendSuccess(res, 200, data, 'Analytics data loaded');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSystemHealth = async (_req, res, next) => {
+  try {
+    // 1. API Status (Self-reporting, if it answers it's online)
+    const apiStatus = { status: 'Operational', value: '99.9%' };
+
+    // 2. Database Status
+    const dbState = mongoose.connection.readyState;
+    let dbStatus = 'Down';
+    if (dbState === 1) dbStatus = 'Healthy';
+    else if (dbState === 2) dbStatus = 'Connecting';
+    else if (dbState === 3) dbStatus = 'Disconnecting';
+
+    // 3. Server Status & Uptime
+    const uptime = os.uptime();
+    const days = Math.floor(uptime / 86400);
+    const hours = Math.floor(uptime / 3600) % 24;
+    const uptimeStr = days > 0 ? `${days}d ${hours}h` : `${hours}h`;
+
+    // 4. Response Time (Mocked logic for simplicity, could measure request start to now)
+    const responseTime = `${Math.floor(Math.random() * 50) + 10}ms`;
+
+    // 5. CPU Usage (Load avg over 1 min / num CPUs)
+    const cpus = os.cpus().length;
+    const loadAvg = os.loadavg()[0];
+    const cpuUsagePct = Math.min(Math.round((loadAvg / cpus) * 100), 100);
+
+    // 6. Memory Usage
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+    const memUsagePct = Math.round((usedMem / totalMem) * 100);
+
+    // 7. Storage Usage (Mocked to 62% for now since Node cross-platform disk usage is complex)
+    const storageUsagePct = 62;
+
+    const healthData = {
+      api: apiStatus,
+      database: { status: 'Operational', value: dbStatus },
+      server: { status: 'Operational', value: 'Online' },
+      responseTime: { status: 'Normal', value: responseTime },
+      storage: { status: 'Normal', value: `${storageUsagePct}%` },
+      cpu: { status: cpuUsagePct < 80 ? 'Normal' : 'High', value: `${cpuUsagePct}%` },
+      memory: { status: memUsagePct < 85 ? 'Normal' : 'High', value: `${memUsagePct}%` },
+      uptime: { status: 'Operational', value: uptimeStr }
+    };
+
+    return sendSuccess(res, 200, healthData, 'System health retrieved');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAuditLogs = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 15, search = '' } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+
+    // Build filter query
+    const filter = {};
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      filter.$or = [
+        { user: searchRegex },
+        { action: searchRegex },
+        { organization: searchRegex },
+        { status: searchRegex }
+      ];
+    }
+
+    const totalLogs = await AuditLog.countDocuments(filter);
+    const logs = await AuditLog.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .lean();
+
+    const formattedLogs = logs.map(log => ({
+      id: log._id.toString(),
+      timestamp: new Date(log.createdAt).toLocaleString('en-US', { 
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      }),
+      user: log.user,
+      action: log.action,
+      organization: log.organization,
+      ip: log.ipAddress,
+      status: log.status
+    }));
+
+    return sendSuccess(res, 200, {
+      logs: formattedLogs,
+      pagination: {
+        total: totalLogs,
+        page: pageNum,
+        totalPages: Math.ceil(totalLogs / limitNum),
+        limit: limitNum
+      }
+    }, 'Audit logs retrieved');
   } catch (error) {
     next(error);
   }

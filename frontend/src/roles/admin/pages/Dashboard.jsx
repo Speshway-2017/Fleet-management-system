@@ -104,9 +104,10 @@ function Dashboard() {
 
   const getStatusColor = (status) => {
     switch(status) {
-      case 'PENDING': return 'bg-orange-500';
-      case 'COMPLETED': return 'bg-green-500';
-      case 'IN_PROGRESS': return 'bg-blue-500';
+      case 'orange': return 'bg-orange-500';
+      case 'green': return 'bg-green-500';
+      case 'blue': return 'bg-blue-500';
+      case 'purple': return 'bg-purple-500';
       default: return 'bg-slate-500';
     }
   };
@@ -263,7 +264,10 @@ function Dashboard() {
             {/* Recent Activities */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col">
               <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
-                <h3 className="font-bold text-slate-800 text-sm">Recent Activities (Trips)</h3>
+                <h3 className="font-bold text-slate-800 text-sm">Recent Activities</h3>
+                <Link to="/admin/analytics" className="text-[11px] font-bold text-[#A14000] hover:text-[#8a3700] hover:underline transition-all flex items-center gap-1">
+                  View All <ArrowUpRight className="w-3 h-3" />
+                </Link>
               </div>
               <div className="overflow-x-auto no-scrollbar">
                 <table className="w-full text-left text-sm min-w-[500px]">
@@ -271,7 +275,7 @@ function Dashboard() {
                     <tr>
                       <th className="py-3 px-5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Time</th>
                       <th className="py-3 px-5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Activity</th>
-                      <th className="py-3 px-5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Details</th>
+                      <th className="py-3 px-5 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Organization</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
@@ -281,11 +285,11 @@ function Dashboard() {
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-2.5">
                             <span className={`w-1.5 h-1.5 rounded-full ${getStatusColor(act.status)}`}></span>
-                            <span className="font-medium text-slate-700 text-[13px]">Trip {act.status}</span>
+                            <span className="font-medium text-slate-700 text-[13px]">{act.type}</span>
                           </div>
                         </td>
-                        <td className="py-3.5 px-5 text-slate-500 text-[13px]">
-                          Trip #{act.tripNumber} - Vehicle: {act.vehicle?.vehicleNumber || 'N/A'} - Driver: {act.driver?.name || 'N/A'}
+                        <td className="py-3.5 px-5 text-slate-500 text-[13px] text-center">
+                          {act.organization}
                         </td>
                       </tr>
                     ))}

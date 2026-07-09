@@ -3,11 +3,39 @@ import {
   getUsersCount,
   getVehiclesCount,
   getRevenueAggregate,
-  getRecentTrips,
+  getRealRecentActivities,
   getRecentNotifications,
-  getAnalyticsSummary,
-  getRevenueChartData
+  getRevenueChartData,
+  getFilteredCount,
+  getFuelUsageAggregate,
+  getOrgGrowthData,
+  getManagerGrowthData,
+  getSubscriptionDistribution,
+  getLoginActivityData
 } from '../repositories/admin.repository.js';
+
+// Helper to convert filter string to date filter
+const getDateFilter = (filterStr) => {
+  const now = new Date();
+  const filter = {};
+  
+  if (filterStr === 'today') {
+    const start = new Date(now.setHours(0,0,0,0));
+    filter.createdAt = { $gte: start };
+  } else if (filterStr === 'week') {
+    const start = new Date(now.setDate(now.getDate() - now.getDay()));
+    start.setHours(0,0,0,0);
+    filter.createdAt = { $gte: start };
+  } else if (filterStr === 'month') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    filter.createdAt = { $gte: start };
+  } else if (filterStr === 'year') {
+    const start = new Date(now.getFullYear(), 0, 1);
+    filter.createdAt = { $gte: start };
+  }
+  
+  return filter;
+};
 
 export const getAdminDashboardData = async () => {
   const [
@@ -28,7 +56,7 @@ export const getAdminDashboardData = async () => {
     getVehiclesCount({ status: 'ACTIVE' }), // active vehicles count
     getRevenueAggregate(), // total revenue
     getUsersCount({ isActive: false }), // pending requests count
-    getRecentTrips(5), // recent activities (trips)
+    getRealRecentActivities(5), // real recent activities
     getRecentNotifications(5), // recent notifications
     getAnalyticsSummary(), // analytics summary
     getRevenueChartData() // chart data
@@ -66,5 +94,64 @@ export const getAdminDashboardData = async () => {
     recentNotifications,
     analyticsSummary,
     chartData: formattedChartData
+  };
+};
+
+export const getAdminAnalyticsData = async (filterStr) => {
+  const dateFilter = getDateFilter(filterStr);
+
+  const [
+    totalOrganizations,
+    fleetManagers,
+    vehicles,
+    drivers,
+    activeTrips,
+    completedTrips,
+    maintenanceCount,
+    fuelUsage,
+    orgGrowthData,
+    managerGrowthData,
+    subscriptionData,
+    loginActivityData
+  ] = await Promise.all([
+    getFilteredCount('Organization', dateFilter),
+    getFilteredCount('User', { role: 'FLEET_MANAGER', ...dateFilter }),
+    getFilteredCount('Vehicle', dateFilter),
+    getFilteredCount('Driver', dateFilter),
+    getFilteredCount('Trip', { status: 'IN_PROGRESS', ...dateFilter }), // assuming active trip is IN_PROGRESS
+    getFilteredCount('Trip', { status: 'COMPLETED', ...dateFilter }),
+    getFilteredCount('Maintenance', dateFilter),
+    getFuelUsageAggregate(dateFilter),
+    getOrgGrowthData(dateFilter),
+    getManagerGrowthData(dateFilter),
+    getSubscriptionDistribution(),
+    getLoginActivityData(dateFilter)
+  ]);
+
+  // Format subscription data color
+  const colors = { 'Enterprise': '#0f172a', 'Professional': '#b45309', 'Standard': '#cbd5e1' };
+  const formattedSubscriptionData = subscriptionData.map(item => ({
+    name: item.name,
+    value: item.value,
+    color: colors[item.name] || '#cbd5e1'
+  }));
+
+  return {
+    kpis: {
+      totalOrganizations,
+      fleetManagers,
+      vehicles,
+      drivers,
+      activeTrips,
+      completedTrips,
+      maintenanceCount,
+      fuelUsage
+    },
+    charts: {
+      orgGrowthData: orgGrowthData.length ? orgGrowthData : [{ name: 'N/A', value: 0 }],
+      managerGrowthData: managerGrowthData.length ? managerGrowthData : [{ name: 'N/A', value: 0 }],
+      subscriptionData: formattedSubscriptionData.length ? formattedSubscriptionData : [{ name: 'Standard', value: 0, color: '#cbd5e1' }],
+      loginActivityData
+    }
   };
 };

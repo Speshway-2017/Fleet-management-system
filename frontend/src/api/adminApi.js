@@ -16,4 +16,13 @@ export const adminApi = {
   createFleetManager: async (data) => {
     return axiosClient.post('/admin/fleet-managers', data);
   },
+  getAnalytics: async (filter) => {
+    return axiosClient.get('/admin/analytics', { params: { filter } });
+  },
+  getSystemHealth: async () => {
+    return axiosClient.get('/admin/health');
+  },
+  getAuditLogs: async (params) => {
+    return axiosClient.get('/admin/audit-logs', { params });
+  }
 };
