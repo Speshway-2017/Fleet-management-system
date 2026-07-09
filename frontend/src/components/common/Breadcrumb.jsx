@@ -105,7 +105,7 @@ export default function Breadcrumb() {
   const breadcrumbs = generateBreadcrumbs();
 
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center flex-wrap font-poppins text-[14px] font-medium leading-[20px] mb-[16px] text-left select-none gap-x-2">
+    <nav aria-label="Breadcrumb" className="hidden md:flex items-center flex-wrap font-poppins text-[14px] font-medium leading-[20px] mb-[16px] text-left select-none gap-x-2">
       {breadcrumbs.map((breadcrumb, index) => (
         <div key={breadcrumb.path} className="flex items-center gap-x-2">
           {index > 0 && (

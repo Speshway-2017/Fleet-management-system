@@ -8,7 +8,8 @@ import {
   Users,
   BarChart3,
   Settings,
-  LogOut
+  LogOut,
+  MoreHorizontal
 } from "lucide-react";
 
 export default function NewAdminSidebar({ activeItem = "dashboard" }) {
@@ -22,6 +23,14 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
     { id: "fleet-managers", label: "Fleet Managers", to: "/admin/fleet-managers", icon: Users },
     { id: "analytics", label: "Analytics", to: "/admin/analytics", icon: BarChart3 },
     { id: "settings", label: "Settings", to: "/admin/settings", icon: Settings },
+  ];
+
+  const bottomNavItems = [
+    { id: "dashboard", label: "Home", to: "/admin/dashboard", icon: LayoutDashboard },
+    { id: "organizations", label: "Orgs", to: "/admin/organizations", icon: Building2 },
+    { id: "fleet-managers", label: "Managers", to: "/admin/fleet-managers", icon: Users },
+    { id: "analytics", label: "Insights", to: "/admin/analytics", icon: BarChart3 },
+    { id: "settings", label: "More", to: "/admin/settings", icon: MoreHorizontal },
   ];
 
   return (
@@ -74,12 +83,39 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
 
       {/* Logout */}
       <div className="p-4 mb-4">
-        <button onClick={() => { logout(); toast.success("Logged out successfully"); navigate('/login'); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-[#A14000] hover:bg-[#A14000]/10 transition-colors">
+        <button
+          onClick={() => { logout(); toast.success("Logged out successfully"); navigate('/login'); }}
+          className="w-full flex items-center justify-center gap-3 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 font-semibold text-red-500 transition-all hover:bg-red-500/20 hover:text-red-400"
+        >
           <LogOut className="w-[18px] h-[18px]" />
           Logout
         </button>
       </div>
       </div>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(1rem,calc(env(safe-area-inset-bottom)+0.95rem))] pt-3 shadow-[0_-10px_25px_rgba(15,23,42,0.08)] backdrop-blur-md lg:hidden">
+        <div className="mx-auto flex max-w-md items-center justify-between gap-1">
+          {bottomNavItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeItem === item.id;
+
+            return (
+              <Link
+                key={item.id}
+                to={item.to}
+                className={`flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition-all ${
+                  isActive
+                    ? "bg-[#FFF3E8] text-[#b45309]"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                }`}
+              >
+                <Icon className="h-4.5 w-4.5" />
+                <span className="leading-none">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </>
   );
 }
