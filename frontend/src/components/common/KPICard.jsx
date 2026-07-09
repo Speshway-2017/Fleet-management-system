@@ -2,7 +2,7 @@ import { ArrowUpRight } from "lucide-react";
 
 export default function KPICard({ title, value, subtitle, icon, iconBg, trendText, trendColor, isTrendUp }) {
   return (
-    <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between h-36 hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-[20px] shadow-[0_8px_24px_rgba(0,0,0,0.08)] p-5 border border-slate-200 flex flex-col justify-between h-36 hover:shadow-md transition-shadow md:rounded-xl md:shadow-sm">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{title}</p>

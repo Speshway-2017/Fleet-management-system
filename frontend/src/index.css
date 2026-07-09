@@ -24,11 +24,97 @@
   --font-poppins: "Poppins", sans-serif;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
   background-color: var(--color-bg-page);
   color: var(--color-body);
+  overflow-x: hidden;
+}
+
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .bg-white.rounded-2xl,
+  .bg-white.rounded-xl,
+  .bg-white.rounded-lg {
+    border-radius: 20px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  button,
+  a[role="button"],
+  .touch-target {
+    min-height: 48px;
+  }
+
+  .animate-fade-up {
+    animation: fade-up 0.25s ease-out both;
+  }
+
+  .animate-slide-left {
+    animation: slide-left 0.25s ease-out both;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.25s ease-out both;
+  }
+
+  .animate-fade {
+    animation: fade 0.2s ease-out both;
+  }
+  table {
+    display: block;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 0.75rem;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tbody,
+  tr,
+  td,
+  th {
+    display: block;
+    width: 100%;
+  }
+
+  tr {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 1rem;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+    padding: 0.85rem 0.95rem;
+    margin-bottom: 0.8rem;
+  }
+
+  td {
+    border: 0;
+    padding: 0.35rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: #334155;
+  }
+
+  td:last-child {
+    padding-bottom: 0;
+  }
 }
 
 /* Hide scrollbars for certain elements, but keep functionality */

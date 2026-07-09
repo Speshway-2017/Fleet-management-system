@@ -65,8 +65,8 @@ export default function ReportsPage() {
       <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none mb-8">Reports Center</h1>
 
       {/* Top Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-2xl border-l-4 border-gray-900 shadow-lg p-8">
+      <div className="grid grid-cols-2 gap-3 mb-8 md:grid-cols-2 lg:grid-cols-2">
+        <div className="bg-white rounded-[20px] border-l-4 border-gray-900 shadow-[0_8px_24px_rgba(0,0,0,0.08)] p-4 md:p-8 animate-fade-up">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-gray-600 uppercase tracking-wide text-sm mb-2">Total Reports Generated</p>
@@ -81,7 +81,7 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border-l-4 border-amber-700 shadow-lg p-8">
+        <div className="bg-white rounded-[20px] border-l-4 border-amber-700 shadow-[0_8px_24px_rgba(0,0,0,0.08)] p-4 md:p-8 animate-fade-up">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-gray-600 uppercase tracking-wide text-sm mb-2">Pending Schedules</p>
