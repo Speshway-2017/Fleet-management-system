@@ -1,27 +1,25 @@
-import { useEffect, useState } from "react";
-import { adminApi } from "@/roles/admin/api/adminApi";
+import { useState } from "react";
+import Home from "@/roles/admin/pages/Home";
+import Performance from "@/roles/admin/pages/Performance";
+import About from "@/roles/admin/pages/About";
+import Contact from "@/roles/admin/pages/Contact";
 
 export default function AdminDashboard() {
-  const [overview, setOverview] = useState(null);
-  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState("home");
 
-  useEffect(() => {
-    adminApi
-      .getFleetOverview()
-      .then(({ data }) => setOverview(data))
-      .catch((err) => setError(err.message));
-  }, []);
+  if (activeTab === "performance") {
+    return <Performance setActiveTab={setActiveTab} />;
+  }
 
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold text-gray-900">Admin Dashboard</h1>
-      <p className="mt-2 text-gray-500">Fleet-wide overview and user management.</p>
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-      {overview && (
-        <pre className="mt-4 rounded-lg bg-gray-50 p-4 text-sm">
-          {JSON.stringify(overview, null, 2)}
-        </pre>
-      )}
-    </div>
-  );
+  if (activeTab === "about") {
+    return <About setActiveTab={setActiveTab} />;
+  }
+
+  if (activeTab === "contact") {
+    return <Contact setActiveTab={setActiveTab} />;
+  }
+
+  return <Home setActiveTab={setActiveTab} />;
 }
+
+
