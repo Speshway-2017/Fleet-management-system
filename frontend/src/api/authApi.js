@@ -1,23 +1,22 @@
-import { mockUsers } from "@/data/mockUsers";
+import axiosClient from './axiosClient';
 
 export const authApi = {
   login: async (credentials) => {
-    const user = mockUsers.find(
-      (u) => u.email === credentials.email && u.password === credentials.password
-    );
-
-    if (!user) {
-      throw new Error("Invalid email or password");
-    }
-
-    const { password, ...userWithoutPassword } = user;
-    return {
-      data: {
-        token: "fake-jwt-token-" + user.id,
-        user: userWithoutPassword,
-      },
-    };
+    return axiosClient.post('/auth/login', credentials);
   },
-  logout: async () => {},
-  getProfile: async () => {},
+  logout: async () => {
+    return axiosClient.post('/auth/logout');
+  },
+  getProfile: async () => {
+    return axiosClient.get('/auth/profile');
+  },
+  forgotPassword: async (email) => {
+    return axiosClient.post('/auth/forgot-password', { email });
+  },
+  verifyOtp: async (data) => {
+    return axiosClient.post('/auth/verify-otp', data);
+  },
+  resetPassword: async (data) => {
+    return axiosClient.post('/auth/reset-password', data);
+  }
 };

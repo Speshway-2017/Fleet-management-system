@@ -1,106 +1,63 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { authApi } from "@/api/authApi";
+import toast from "react-hot-toast";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const stored = sessionStorage.getItem("user");
+    const stored = localStorage.getItem("user");
     return stored ? JSON.parse(stored) : null;
   });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
-      sessionStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("user", JSON.stringify(user));
     } else {
-      sessionStorage.removeItem("user");
+      localStorage.removeItem("user");
     }
   }, [user]);
 
   const login = async (credentials) => {
     setLoading(true);
     try {
-      const { data } = await authApi.login(credentials);
-      sessionStorage.setItem("token", data.token);
-      setUser(data.user);
-      return data.user;
+      const response = await authApi.login(credentials);
+      // The backend returns the user in data.data or data depending on response formatting
+      // Our backend uses `sendSuccess` which wraps in { success: true, data: { token, user }, message }
+      // Axios puts this in response.data. So it should be response.data.data.token
+      const responseData = response.data.data || response.data;
+      
+      localStorage.setItem("token", responseData.token);
+      localStorage.setItem("user", JSON.stringify(responseData.user));
+      setUser(responseData.user);
+      return responseData.user;
     } catch (err) {
-      if (import.meta.env.DEV) {
-        console.warn("API login failed, checking local seed credentials:", err.message);
-        const email = credentials.email?.toLowerCase();
-        const password = credentials.password;
-
-        if (email === "manager@fleet.com" && password === "manager123") {
-          const mockUser = {
-            name: "Alex Thompson",
-            role: "manager",
-            email: "manager@fleet.com"
-          };
-          sessionStorage.setItem("token", "mock_dev_session_token_3b0569d8");
-          sessionStorage.setItem("user", JSON.stringify(mockUser));
-          setUser(mockUser);
-          return mockUser;
-        } else if (email === "admin@fleet.com" && password === "admin123") {
-          const mockUser = {
-            name: "Super Admin",
-            role: "admin",
-            email: "admin@fleet.com"
-          };
-          sessionStorage.setItem("token", "mock_dev_session_token_3b0569d8");
-          sessionStorage.setItem("user", JSON.stringify(mockUser));
-          setUser(mockUser);
-          return mockUser;
-        }
-      }
-      throw err;
-      if (import.meta.env.DEV) {
-        try {
-          const { data } = await authApi.login(credentials);
-          sessionStorage.setItem("token", data.token);
-          sessionStorage.setItem("user", JSON.stringify(data.user));
-          setUser(data.user);
-          return data.user;
-        } catch (apiError) {
-          console.warn("API login failed, falling back to mock login in development mode:", apiError);
-          const { email, password } = credentials;
-          if (email === "admin@fleet.com" && password === "password") {
-            const mockUser = { name: "Admin User", email: "admin@fleet.com", role: "admin" };
-            sessionStorage.setItem("token", "dev-mock-token");
-            sessionStorage.setItem("user", JSON.stringify(mockUser));
-            setUser(mockUser);
-            return mockUser;
-          } else if (email === "manager@fleet.com" && password === "password") {
-            const mockUser = { name: "Manager User", email: "manager@fleet.com", role: "manager" };
-            sessionStorage.setItem("token", "dev-mock-token");
-            sessionStorage.setItem("user", JSON.stringify(mockUser));
-            setUser(mockUser);
-            return mockUser;
-          } else {
-            throw new Error("Invalid credentials");
-          }
-        }
-      } else {
-        const { data } = await authApi.login(credentials);
-        sessionStorage.setItem("token", data.token);
-        sessionStorage.setItem("user", JSON.stringify(data.user));
-        setUser(data.user);
-        return data.user;
-      }
+      // Pass the error message from the backend, if available
+      const message = err.response?.data?.message || err.message || "Login failed";
+      throw new Error(message);
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = () => {
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
+  const logout = async () => {
+    // Clear local storage and state immediately to ensure instant UI update
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
+    toast.success("Logged out successfully");
+
+    try {
+      await authApi.logout();
+    } catch (err) {
+      console.error("Logout API failed", err);
+    }
   };
 
   const storedUser = (() => {
     try {
-      const stored = sessionStorage.getItem("user");
+      const stored = localStorage.getItem("user");
       return stored ? JSON.parse(stored) : null;
     } catch {
       return null;
