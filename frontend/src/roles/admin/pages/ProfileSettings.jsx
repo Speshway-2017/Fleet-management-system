@@ -87,7 +87,7 @@ export default function ProfileSettings() {
             </div>
 
             <div className="flex flex-row items-stretch sm:items-center gap-3 shrink-0 w-full sm:w-auto">
-              <button onClick={() => { logout(); toast.success("Logged out successfully"); navigate('/login'); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-2 sm:px-4 py-2.5 bg-white hover:bg-[#b45309]/10 border border-[#b45309]/30 text-[#b45309] text-xs sm:text-sm font-bold rounded-lg shadow-sm transition-colors text-center w-full sm:w-auto truncate">
+              <button onClick={() => { logout(); navigate('/login'); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-2 sm:px-4 py-2.5 bg-white hover:bg-[#b45309]/10 border border-[#b45309]/30 text-[#b45309] text-xs sm:text-sm font-bold rounded-lg shadow-sm transition-colors text-center w-full sm:w-auto truncate">
                 <LogOut className="w-4 h-4 shrink-0" />
                 <span className="hidden min-[360px]:inline">Logout</span>
               </button>

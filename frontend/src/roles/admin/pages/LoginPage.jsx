@@ -8,6 +8,12 @@ export default function LoginPage() {
   const { login, loading, isAuthenticated, role } = useAuth();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(role === "SUPER_ADMIN" || role === "admin" ? "/admin/dashboard" : "/manager", { replace: true });
+    }
+  }, [isAuthenticated, role, navigate]);
+
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
@@ -37,27 +43,9 @@ export default function LoginPage() {
     try {
       const user = await login(form);
       toast.success(`Welcome back, ${user.name || "User"}!`);
-      navigate(user.role === "admin" ? "/admin/dashboard" : "/manager", { replace: true });
+      navigate(user.role === "SUPER_ADMIN" || user.role === "admin" ? "/admin/dashboard" : "/manager");
     } catch (err) {
-      // Network failure — backend unreachable
-      if (!err.response) {
-        toast.error("Unable to connect to the server. Please check your connection.");
-        return;
-      }
-
-      // Extract the backend's error message when available
-      const serverMessage = err.response?.data?.message;
-      const status = err.response?.status;
-
-      const errorMessages = {
-        400: serverMessage || "Invalid request. Please check your input.",
-        401: "Invalid email or password.",
-        403: "You are not authorised to access this account.",
-        404: "Authentication service not found. Please contact support.",
-        500: "A server error occurred. Please try again later.",
-      };
-
-      toast.error(errorMessages[status] || serverMessage || "Login failed. Please try again.");
+      toast.error(err.message || "Invalid email or password");
     }
   };
 
@@ -176,14 +164,8 @@ export default function LoginPage() {
       </form>
 
       {/* Footer */}
-      <div className="mt-6 border-t border-gray-100 pt-6 text-center text-xs text-gray-500">
-        Don't have an account?{" "}
-        <button
-          onClick={() => navigate("/signup")}
-          className="font-bold text-[#A14000] hover:text-[#7d3200] transition-colors"
-        >
-          Sign Up
-        </button>
+      <div className="mt-6 pt-6 text-center text-xs text-gray-500">
+        {/* Placeholder for future links */}
       </div>
     </AuthLayout>
   );

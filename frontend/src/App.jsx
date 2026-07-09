@@ -6,8 +6,6 @@ import ScrollToTop from "@/components/common/ScrollToTop";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import LoginPage from "@/roles/admin/pages/LoginPage";
-import SignupPage from "@/roles/admin/pages/SignupPage";
-import Signup1 from "@/roles/admin/pages/Signup1";
 import ForgotPasswordPage from "@/roles/admin/pages/ForgotPasswordPage";
 import OtpVerificationPage from "@/roles/admin/pages/OtpVerificationPage";
 import ResetPasswordPage from "@/roles/admin/pages/ResetPasswordPage";
@@ -85,7 +83,7 @@ import PublicHome from "@/pages/PublicHome";
 function HomeRedirect() {
   const { isAuthenticated, role } = useAuth();
   if (!isAuthenticated) return <PublicHome />;
-  return <Navigate to={role === "admin" ? "/admin/dashboard" : "/manager"} replace />;
+  return <Navigate to={role === "SUPER_ADMIN" || role === "admin" ? "/admin/dashboard" : "/manager"} replace />;
 }
 
 export default function App() {
@@ -97,14 +95,12 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/signup1" element={<Signup1 />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/otp-verification" element={<OtpVerificationPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-          <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+          <Route element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "admin"]} />}>
             <Route element={<AdminProvider><Outlet /></AdminProvider>}>
               <Route path="/admin/dashboard" element={<Dashboard />} />
             <Route path="/admin/organizations" element={<OrganizationList />} />
@@ -134,7 +130,7 @@ export default function App() {
             </Route>
           </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={["manager"]} />}>
+          <Route element={<ProtectedRoute allowedRoles={["FLEET_MANAGER", "manager"]} />}>
             <Route element={<AppLayout />}>
               <Route path="/manager" element={<ManagerDashboard />} />
               <Route path="/manager/vehicle-management" element={<VehicleManagement />} />

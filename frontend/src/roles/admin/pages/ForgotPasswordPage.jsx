@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import AuthLayout from "@/components/layout/AuthLayout";
 import toast from "react-hot-toast";
 
+import { authApi } from "@/api/authApi";
+
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -12,27 +14,22 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!contact) {
-      setError("Please enter your email or phone number.");
+      setError("Please enter your email.");
       return;
     }
     const isEmail = contact.includes("@");
-    if (isEmail && !/\S+@\S+\.\S+/.test(contact)) {
+    if (!isEmail || !/^\S+@\S+\.\S+$/.test(contact)) {
       setError("Invalid email format");
-      return;
-    }
-    if (!isEmail && !/^\+?[0-9\s-]{7,15}$/.test(contact)) {
-      setError("Invalid phone number format");
       return;
     }
     setError("");
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success("OTP sent successfully!");
-      navigate("/otp-verification");
-    } catch {
-      toast.error("Failed to send OTP. Please try again.");
+      await authApi.forgotPassword(contact);
+      toast.success("OTP generated! Check the backend console.");
+      navigate("/otp-verification", { state: { email: contact } });
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || "Failed to process request. Please try again.");
     } finally {
       setLoading(false);
     }

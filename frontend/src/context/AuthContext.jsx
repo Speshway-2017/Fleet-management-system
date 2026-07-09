@@ -1,5 +1,6 @@
 import { createContext, useContext, useState } from "react";
 import { authApi } from "@/api/authApi";
+import toast from "react-hot-toast";
 
 const AuthContext = createContext(null);
 
@@ -19,52 +20,64 @@ function normaliseRole(backendRole) {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    try {
-      const stored = sessionStorage.getItem("user");
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
+    const stored = localStorage.getItem("user");
+    return stored ? JSON.parse(stored) : null;
   });
   const [loading, setLoading] = useState(false);
 
-  /**
-   * Login — calls POST /api/auth/login, stores token + normalised user.
-   * Returns the normalised user object so callers can redirect by role.
-   * Throws on failure so the login page can display the error.
-   */
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("user");
+    }
+  }, [user]);
+
   const login = async (credentials) => {
     setLoading(true);
     try {
       const response = await authApi.login(credentials);
-      // Backend wraps data: { success, data: { token, user } }
-      const { token, user: backendUser } = response.data.data;
-
-      // Normalise the role so route guards work without changes
-      const normalisedUser = {
-        ...backendUser,
-        role: normaliseRole(backendUser.role),
-      };
-
-      sessionStorage.setItem("token", token);
-      sessionStorage.setItem("user", JSON.stringify(normalisedUser));
-      setUser(normalisedUser);
-      return normalisedUser;
+      // The backend returns the user in data.data or data depending on response formatting
+      // Our backend uses `sendSuccess` which wraps in { success: true, data: { token, user }, message }
+      // Axios puts this in response.data. So it should be response.data.data.token
+      const responseData = response.data.data || response.data;
+      
+      localStorage.setItem("token", responseData.token);
+      localStorage.setItem("user", JSON.stringify(responseData.user));
+      setUser(responseData.user);
+      return responseData.user;
+    } catch (err) {
+      // Pass the error message from the backend, if available
+      const message = err.response?.data?.message || err.message || "Login failed";
+      throw new Error(message);
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Logout — clears session storage and resets state.
-   * Also notifies the backend (fire-and-forget, no await needed).
-   */
-  const logout = () => {
-    authApi.logout().catch(() => {}); // fire-and-forget
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
+  const logout = async () => {
+    // Clear local storage and state immediately to ensure instant UI update
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
+    toast.success("Logged out successfully");
+
+    try {
+      await authApi.logout();
+    } catch (err) {
+      console.error("Logout API failed", err);
+    }
   };
+
+  const storedUser = (() => {
+    try {
+      const stored = localStorage.getItem("user");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const currentUser = user || storedUser;
 
   const value = {
     user,
