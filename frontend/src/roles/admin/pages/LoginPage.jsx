@@ -1,24 +1,31 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import AuthLayout from "@/components/layout/AuthLayout";
 
 export default function LoginPage() {
-  const { login, loading } = useAuth();
+  const { login, loading, isAuthenticated, role } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
 
+  // Redirect already-authenticated users away from the login page
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(role === "admin" ? "/admin/dashboard" : "/manager", { replace: true });
+    }
+  }, [isAuthenticated, role, navigate]);
+
   const validate = () => {
     const newErrors = {};
     if (!form.email) newErrors.email = "Email is required";
     else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = "Invalid email format";
-    
+
     if (!form.password) newErrors.password = "Password is required";
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -26,12 +33,31 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
+
     try {
       const user = await login(form);
       toast.success(`Welcome back, ${user.name || "User"}!`);
-      navigate(user.role === "admin" ? "/admin/dashboard" : "/manager");
-    } catch {
-      toast.error("Invalid email or password");
+      navigate(user.role === "admin" ? "/admin/dashboard" : "/manager", { replace: true });
+    } catch (err) {
+      // Network failure — backend unreachable
+      if (!err.response) {
+        toast.error("Unable to connect to the server. Please check your connection.");
+        return;
+      }
+
+      // Extract the backend's error message when available
+      const serverMessage = err.response?.data?.message;
+      const status = err.response?.status;
+
+      const errorMessages = {
+        400: serverMessage || "Invalid request. Please check your input.",
+        401: "Invalid email or password.",
+        403: "You are not authorised to access this account.",
+        404: "Authentication service not found. Please contact support.",
+        500: "A server error occurred. Please try again later.",
+      };
+
+      toast.error(errorMessages[status] || serverMessage || "Login failed. Please try again.");
     }
   };
 

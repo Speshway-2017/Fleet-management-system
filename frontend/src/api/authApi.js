@@ -1,23 +1,20 @@
-import { mockUsers } from "@/data/mockUsers";
+import axiosClient from "./axiosClient";
 
 export const authApi = {
-  login: async (credentials) => {
-    const user = mockUsers.find(
-      (u) => u.email === credentials.email && u.password === credentials.password
-    );
+  /**
+   * Authenticate a user with email + password.
+   * Returns the raw axios response so AuthContext can destructure data.
+   */
+  login: (credentials) => axiosClient.post("/auth/login", credentials),
 
-    if (!user) {
-      throw new Error("Invalid email or password");
-    }
+  /**
+   * Notify the backend of logout (stateless JWT — mainly for audit purposes).
+   */
+  logout: () => axiosClient.post("/auth/logout"),
 
-    const { password, ...userWithoutPassword } = user;
-    return {
-      data: {
-        token: "fake-jwt-token-" + user.id,
-        user: userWithoutPassword,
-      },
-    };
-  },
-  logout: async () => {},
-  getProfile: async () => {},
+  /**
+   * Fetch the currently authenticated user's profile.
+   * Requires a valid Bearer token (injected automatically by axiosClient).
+   */
+  getProfile: () => axiosClient.get("/auth/profile"),
 };
