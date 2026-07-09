@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Plus, Search, ChevronDown, Eye, Edit2, Trash2, FileText, MapPin, X, AlertTriangle, SlidersHorizontal, Users } from "lucide-react";
+import { ArrowLeft, Plus, Search, ChevronDown, Eye, Edit2, Trash2, FileText, MapPin, X, AlertTriangle, SlidersHorizontal, Users, Loader } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { vehicleApi } from "@/api/vehicleApi";
 import L from "leaflet";
 
 
@@ -24,6 +25,7 @@ export default function VehiclesListPage() {
   const [vehicles, setVehicles] = useState([]);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [isDeletingVehicle, setIsDeletingVehicle] = useState(false);
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [typeFilter, setTypeFilter] = useState("All Types");
   const [branchFilter, setBranchFilter] = useState("All Branches");
@@ -169,13 +171,54 @@ export default function VehiclesListPage() {
   };
 
   // Delete vehicle
-  const handleDeleteVehicle = () => {
-    const updated = vehicles.filter((v) => v.id !== selectedVehicle.id);
-    setVehicles(updated);
-    localStorage.setItem("fleet_vehicles", JSON.stringify(updated));
-    toast.success("Vehicle deleted successfully!");
-    setDeleteModalOpen(false);
-    setSelectedVehicle(null);
+  const handleDeleteVehicle = async () => {
+    if (!selectedVehicle) return;
+
+    const vehicleId = selectedVehicle._id || selectedVehicle.id;
+
+    try {
+      setIsDeletingVehicle(true);
+      
+      // Call API to delete the vehicle
+      await vehicleApi.remove(vehicleId);
+      
+      // Remove from local state immediately
+      setVehicles(prev => prev.filter(v => v.id !== vehicleId));
+      toast.success("Vehicle deleted successfully!");
+    } catch (err) {
+      // Handle different HTTP error responses
+      if (!err.response) {
+        toast.error("Unable to connect to the server. Please try again.");
+      } else {
+        const statusCode = err.response.status;
+        const message = err.response?.data?.message;
+
+        switch (statusCode) {
+          case 400:
+            toast.error(message || "Invalid request.");
+            break;
+          case 401:
+            toast.error("You are not authenticated. Please log in again.");
+            break;
+          case 403:
+            toast.error("You do not have permission to delete this vehicle.");
+            break;
+          case 404:
+            toast.error("Vehicle not found.");
+            setVehicles(prev => prev.filter(v => v.id !== vehicleId));
+            break;
+          case 500:
+            toast.error("Server error. Please try again later.");
+            break;
+          default:
+            toast.error(message || "Failed to delete vehicle.");
+        }
+      }
+    } finally {
+      setIsDeletingVehicle(false);
+      setDeleteModalOpen(false);
+      setSelectedVehicle(null);
+    }
   };
 
   return (
@@ -558,10 +601,20 @@ export default function VehiclesListPage() {
               </button>
               <button
                 onClick={handleDeleteVehicle}
-                className="px-4 py-2.5 bg-red-600 hover:bg-red-700 rounded-xl text-sm font-semibold text-white transition-all cursor-pointer flex items-center gap-2"
+                disabled={isDeletingVehicle}
+                className="px-4 py-2.5 bg-red-600 hover:bg-red-700 rounded-xl text-sm font-semibold text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                <Trash2 className="w-4 h-4" />
-                Delete Vehicle
+                {isDeletingVehicle ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete Vehicle
+                  </>
+                )}
               </button>
             </div>
           </div>
