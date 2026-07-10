@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { vehicleApi } from "@/api/vehicleApi";
 import { managerApi } from "../api/managerApi";
 
 const INITIAL_VEHICLES = [
@@ -211,30 +212,39 @@ const MOCK_ACTIVITIES = [
 
 export default function VehicleManagement() {
   const navigate = useNavigate();
+
+  /**
+   * Normalise a backend vehicle document to the shape this component expects.
+   * Backend uses: _id, brand, vehicleNumber, status (ACTIVE/IDLE/etc.)
+   * Frontend uses: id, manufacturer, plateNumber, name, status (Available/Idle/etc.)
+   */
+  const normaliseVehicle = (v) => ({
+    ...v,
+    id:           v._id,
+    name:         `${v.brand} ${v.model}`,
+    manufacturer: v.brand,
+    plateNumber:  v.vehicleNumber,
+    type:         v.type         || 'Truck',
+    driver:       v.driver       || 'Unassigned',
+    fuelLevel:    v.fuelLevel    ?? 50,
+    fastagBalance:v.fastagBalance ?? 0,
+    branch:       v.branch       || '',
+    dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
+    insuranceExpiry: v.insuranceExpiry ? v.insuranceExpiry.split('T')[0] : '',
+    lastService:     v.lastService    ? v.lastService.split('T')[0]    : '',
+    nextService:     v.nextService    ? v.nextService.split('T')[0]    : '',
+    // Map backend status enum → display labels
+    status: {
+      ACTIVE:          'Available',
+      IDLE:            'Idle',
+      MAINTENANCE:     'Maintenance',
+      ON_TRIP:         'On Trip',
+      OUT_OF_SERVICE:  'Out of Service',
+    }[v.status] ?? v.status,
+  });
+
   const [vehicles, setVehicles] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchVehicles = async () => {
-    try {
-      setLoading(true);
-      const response = await managerApi.getVehicles();
-      const result = response.data?.data || response.data;
-      if (Array.isArray(result)) {
-        setVehicles(result);
-      } else {
-        setVehicles([]);
-      }
-    } catch (error) {
-      toast.error("Failed to load vehicles from database");
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchVehicles();
-  }, []);
+  const [vehiclesLoading, setVehiclesLoading] = useState(true);
 
   // Filter States
   const [search, setSearch] = useState("");
@@ -246,6 +256,24 @@ export default function VehicleManagement() {
   const [availFilter, setAvailFilter] = useState("All Availabilities");
   const [dateAddedFilter, setDateAddedFilter] = useState("");
   const [showMoreFilters, setShowMoreFilters] = useState(false);
+
+  // Fetch vehicles from backend on mount
+  useEffect(() => {
+    const fetchVehicles = async () => {
+      try {
+        setVehiclesLoading(true);
+        const res = await vehicleApi.list();
+        const raw = res.data?.data ?? [];
+        setVehicles(raw.map(normaliseVehicle));
+      } catch (err) {
+        console.error('Failed to fetch vehicles:', err);
+        toast.error('Failed to load vehicles from server.');
+      } finally {
+        setVehiclesLoading(false);
+      }
+    };
+    fetchVehicles();
+  }, []);
 
   // Sorting
   const [sortField, setSortField] = useState("id");
@@ -275,7 +303,6 @@ export default function VehicleManagement() {
     dateAdded: new Date().toISOString().split('T')[0]
   });
 
-  // Local storage persistence removed in favor of backend API
 
   // Handle Sort
   const handleSort = (field) => {
@@ -457,12 +484,47 @@ export default function VehicleManagement() {
   };
 
   const handleDeleteVehicle = async () => {
+    if (!selectedVehicle) return;
+
+    const vehicleId = selectedVehicle._id || selectedVehicle.id;
+    
     try {
-      await managerApi.deleteVehicle(selectedVehicle._id);
+      // Send delete request with proper error handling
+      await vehicleApi.remove(vehicleId);
+      
+      // Remove from local state immediately after successful deletion
+      setVehicles(prev => prev.filter(v => v.id !== vehicleId));
       toast.success("Vehicle deleted successfully");
-      fetchVehicles();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to delete vehicle");
+    } catch (err) {
+      // Handle different HTTP error responses
+      if (!err.response) {
+        toast.error("Unable to connect to the server. Please try again.");
+      } else {
+        const statusCode = err.response.status;
+        const message = err.response?.data?.message;
+
+        switch (statusCode) {
+          case 400:
+            toast.error(message || "Invalid request. Please check the vehicle details.");
+            break;
+          case 401:
+            toast.error("You are not authenticated. Please log in again.");
+            break;
+          case 403:
+            toast.error("You do not have permission to delete this vehicle.");
+            break;
+          case 404:
+            toast.error("Vehicle not found. It may have been already deleted.");
+            // Remove from UI anyway if it doesn't exist on server
+            setVehicles(prev => prev.filter(v => v.id !== vehicleId));
+            break;
+          case 500:
+            toast.error("Server error. Please try again later.");
+            break;
+          default:
+            toast.error(message || "Failed to delete vehicle.");
+        }
+      }
     } finally {
       setModalType(null);
       setSelectedVehicle(null);
@@ -476,30 +538,37 @@ export default function VehicleManagement() {
       return;
     }
 
+    const vehicleId = selectedVehicle?._id || selectedVehicle?.id;
+
     try {
-      if (modalType === "add") {
-        await managerApi.createVehicle({
-          ...formData,
-          fuelLevel: Number(formData.fuelLevel),
-          fastagBalance: Number(formData.fastagBalance)
-        });
-        toast.success("New vehicle added successfully!");
-      } else if (modalType === "edit") {
-        await managerApi.updateVehicle(selectedVehicle._id, {
-          ...formData,
-          fuelLevel: Number(formData.fuelLevel),
-          fastagBalance: Number(formData.fastagBalance)
-        });
+      if (modalType === "edit") {
+        const payload = {
+          brand:        formData.manufacturer || formData.brand,
+          model:        formData.model,
+          vehicleNumber:formData.plateNumber?.toUpperCase(),
+          type:         formData.type,
+          branch:       formData.branch,
+          fuelType:     formData.fuelType,
+          ownership:    formData.ownership,
+          availability: formData.availability,
+          insuranceExpiry: formData.insuranceExpiry || undefined,
+          lastService:     formData.lastService || undefined,
+          nextService:     formData.nextService || undefined,
+          fuelLevel:    Number(formData.fuelLevel),
+          fastagBalance:Number(formData.fastagBalance),
+        };
+        const res = await vehicleApi.update(vehicleId, payload);
+        const updated = normaliseVehicle(res.data.data);
+        setVehicles(prev => prev.map(v => v.id === selectedVehicle.id ? updated : v));
         toast.success("Vehicle updated successfully!");
       } else if (modalType === "assign") {
-        await managerApi.updateVehicle(selectedVehicle._id, {
-          driver: formData.driver
-        });
-        toast.success(`Assigned driver ${formData.driver} successfully!`);
+        const res = await vehicleApi.update(vehicleId, { driver: formData.driver });
+        const updated = normaliseVehicle(res.data.data);
+        setVehicles(prev => prev.map(v => v.id === selectedVehicle.id ? updated : v));
+        toast.success(`Driver ${formData.driver} assigned successfully!`);
       }
-      fetchVehicles();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to save vehicle");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to save changes.");
     } finally {
       setModalType(null);
       setSelectedVehicle(null);

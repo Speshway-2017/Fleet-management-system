@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { extractDataFromAllDocuments, identifyDocumentType } from "../utils/documentParser";
+import { vehicleApi } from "@/api/vehicleApi";
 import { managerApi } from "../api/managerApi";
 
 export default function AddVehiclePage() {
@@ -15,6 +16,8 @@ export default function AddVehiclePage() {
     model: "",
     year: new Date().getFullYear(),
     plateNumber: "",
+    vehicleType: "Truck",
+    branch: "",
     
     // Registration Details
     registrationNumber: "",
@@ -165,38 +168,46 @@ export default function AddVehiclePage() {
     }
 
     setIsProcessing(true);
-    
     try {
+      // Map frontend field names to backend field names
       const payload = {
-        name: `${formData.manufacturer} ${formData.model}`,
-        manufacturer: formData.manufacturer,
-        brand: formData.manufacturer,
-        model: formData.model,
-        year: Number(formData.year),
-        plateNumber: formData.plateNumber.toUpperCase(),
-        vehicleNumber: formData.plateNumber.toUpperCase(),
+        vehicleNumber:      formData.plateNumber.toUpperCase(),
+        brand:              formData.manufacturer,
+        model:              formData.model,
+        type:               formData.vehicleType,
+        branch:             formData.branch,
+        year:               formData.year ? Number(formData.year) : undefined,
         registrationNumber: formData.registrationNumber,
-        registrationState: formData.registrationState,
-        fuelType: formData.fuelType,
-        type: "Truck",
-        driver: "Unassigned",
-        status: "Available",
-        fastagBalance: 5000,
-        insuranceExpiry: formData.insuranceExpiry || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        lastService: formData.lastService || new Date().toISOString().split('T')[0],
-        nextService: formData.nextService || new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        branch: "Pune",
-        ownership: formData.ownership,
-        availability: formData.availability,
-        dateAdded: new Date().toISOString().split('T')[0]
+        registrationState:  formData.registrationState,
+        registrationType:   formData.registrationType,
+        fuelType:           formData.fuelType,
+        transmissionType:   formData.transmissionType,
+        seatingCapacity:    formData.seatingCapacity,
+        engineCC:           formData.engineCC,
+        insuranceExpiry:    formData.insuranceExpiry || undefined,
+        lastService:        formData.lastService || undefined,
+        nextService:        formData.nextService || undefined,
+        ownership:          formData.ownership,
+        availability:       formData.availability,
       };
 
-      await managerApi.createVehicle(payload);
+      await vehicleApi.create(payload);
       toast.success("Vehicle added successfully!");
       navigate("/manager/vehicle-management");
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to add vehicle to database");
-      console.error(error);
+    } catch (err) {
+      if (!err.response) {
+        toast.error("Unable to connect to the server. Please try again.");
+      } else {
+        const msg = err.response?.data?.message;
+        const status = err.response?.status;
+        if (status === 409) {
+          toast.error(msg || "A vehicle with this plate number already exists.");
+        } else if (status === 400) {
+          toast.error(msg || "Please fill in all required fields.");
+        } else {
+          toast.error(msg || "Failed to save vehicle. Please try again.");
+        }
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -275,6 +286,35 @@ export default function AddVehiclePage() {
                       onChange={handleInputChange}
                       required
                       className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 uppercase bg-white text-[#1E293B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Vehicle Type</label>
+                    <select
+                      name="vehicleType"
+                      value={formData.vehicleType}
+                      onChange={handleInputChange}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                    >
+                      <option value="Truck">Truck</option>
+                      <option value="Van">Van</option>
+                      <option value="Bus">Bus</option>
+                      <option value="Trailer">Trailer</option>
+                      <option value="Tipper">Tipper</option>
+                      <option value="Tanker">Tanker</option>
+                      <option value="Car">Car</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Branch / Location</label>
+                    <input
+                      type="text"
+                      name="branch"
+                      placeholder="e.g. Pune"
+                      value={formData.branch}
+                      onChange={handleInputChange}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
                     />
                   </div>
                 </div>

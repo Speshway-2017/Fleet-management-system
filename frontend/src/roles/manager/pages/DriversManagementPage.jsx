@@ -16,22 +16,24 @@ import {
   Mail,
   Award,
   Calendar,
-  X
+  X,
+  Loader
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
 
+// Mock data - for initial reference only, will be replaced by API
 const INITIAL_DRIVERS = [
   {
-    id: 1,
+    _id: "1",
     name: "Rajesh Kumar",
     phone: "+91 98765 43210",
     email: "rajesh.kumar@fleet.com",
     licenseNumber: "DL-1420180098765",
     licenseType: "HMV",
     licenseExpiry: "2028-12-15",
-    status: "On Trip",
+    status: "ACTIVE",
     assignedVehicle: "MH 12 AB 5678",
     rating: 4.8,
     experience: "8 Years",
@@ -40,192 +42,108 @@ const INITIAL_DRIVERS = [
     medicalFitnessStatus: "Fit",
     joiningDate: "2024-03-10"
   },
-  {
-    id: 2,
-    name: "Ram Kumar",
-    phone: "+91 87654 32109",
-    email: "ram.kumar@fleet.com",
-    licenseNumber: "DL-1520190012345",
-    licenseType: "LMV",
-    licenseExpiry: "2029-06-20",
-    status: "Available",
-    assignedVehicle: "KA 02 AB 1456",
-    rating: 4.5,
-    experience: "4 Years",
-    tripsCompleted: 88,
-    incidentCount: 1,
-    medicalFitnessStatus: "Fit",
-    joiningDate: "2025-01-15"
-  },
-  {
-    id: 3,
-    name: "Eshwar Singh",
-    phone: "+91 76543 21098",
-    email: "eshwar.singh@fleet.com",
-    licenseNumber: "DL-1220160087654",
-    licenseType: "HMV",
-    licenseExpiry: "2026-10-05",
-    status: "Available",
-    assignedVehicle: "AP 39 EP 9465",
-    rating: 4.9,
-    experience: "12 Years",
-    tripsCompleted: 230,
-    incidentCount: 0,
-    medicalFitnessStatus: "Fit",
-    joiningDate: "2023-05-20"
-  },
-  {
-    id: 4,
-    name: "Manish Patel",
-    phone: "+91 65432 10987",
-    email: "manish.patel@fleet.com",
-    licenseNumber: "DL-1320170023456",
-    licenseType: "HMV",
-    licenseExpiry: "2026-09-15",
-    status: "On Trip",
-    assignedVehicle: "TN 07 EQ 2312",
-    rating: 4.2,
-    experience: "6 Years",
-    tripsCompleted: 104,
-    incidentCount: 2,
-    medicalFitnessStatus: "Fit",
-    joiningDate: "2024-08-01"
-  },
-  {
-    id: 5,
-    name: "Ramana",
-    phone: "+91 54321 09876",
-    email: "ramana.k@fleet.com",
-    licenseNumber: "DL-1120150034567",
-    licenseType: "HMV",
-    licenseExpiry: "2026-08-25",
-    status: "Suspended",
-    assignedVehicle: "MH 12 AB 5679",
-    rating: 3.9,
-    experience: "10 Years",
-    tripsCompleted: 180,
-    incidentCount: 4,
-    medicalFitnessStatus: "Pending",
-    joiningDate: "2023-11-12"
-  },
-  {
-    id: 6,
-    name: "Vijay Kumar",
-    phone: "+91 99887 76655",
-    email: "vijay.kumar@fleet.com",
-    licenseNumber: "DL-1620200045678",
-    licenseType: "LMV",
-    licenseExpiry: "2027-11-15",
-    status: "Available",
-    assignedVehicle: "DL 03 EC 9876",
-    rating: 4.7,
-    experience: "5 Years",
-    tripsCompleted: 95,
-    incidentCount: 0,
-    medicalFitnessStatus: "Fit",
-    joiningDate: "2024-11-10"
-  },
-  {
-    id: 7,
-    name: "Sanjay Singh",
-    phone: "+91 88776 65544",
-    email: "sanjay.singh@fleet.com",
-    licenseNumber: "DL-1020140056789",
-    licenseType: "LMV",
-    licenseExpiry: "2026-07-20",
-    status: "Inactive",
-    assignedVehicle: "MH 14 EU 1122",
-    rating: 4.4,
-    experience: "7 Years",
-    tripsCompleted: 120,
-    incidentCount: 1,
-    medicalFitnessStatus: "Fit",
-    joiningDate: "2024-02-12"
-  },
-  {
-    id: 8,
-    name: "Amit Sharma",
-    phone: "+91 77665 54433",
-    email: "amit.sharma@fleet.com",
-    licenseNumber: "DL-1720210067890",
-    licenseType: "LMV",
-    licenseExpiry: "2030-04-18",
-    status: "Available",
-    assignedVehicle: "Unassigned",
-    rating: 4.6,
-    experience: "3 Years",
-    tripsCompleted: 45,
-    incidentCount: 0,
-    medicalFitnessStatus: "Fit",
-    joiningDate: "2025-04-10"
-  }
 ];
+
+// Mock API service - will be replaced with real API
+const driverApi = {
+  list: async () => {
+    // Placeholder - real implementation would call backend
+    return { data: { data: INITIAL_DRIVERS } };
+  },
+  remove: async (id) => {
+    // Placeholder - real implementation would call backend
+    throw new Error("Driver API not yet implemented. Please implement backend endpoints.");
+  }
+};
 
 export default function DriversManagementPage() {
   const navigate = useNavigate();
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const fetchDrivers = async () => {
-    try {
-      setLoading(true);
-      const response = await managerApi.getDrivers();
-      const result = response.data?.data || response.data;
-      if (Array.isArray(result)) {
-        setDrivers(result);
-      } else {
-        setDrivers([]);
-      }
-    } catch (error) {
-      toast.error("Failed to load drivers from database");
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDrivers();
-  }, []);
-
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [licenseFilter, setLicenseFilter] = useState("All Types");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Sync to local storage removed in favor of backend API
+  // Fetch drivers from backend on component mount
+  useEffect(() => {
+    const fetchDrivers = async () => {
+      try {
+        setLoading(true);
+        const res = await driverApi.list();
+        setDrivers(res.data?.data || []);
+      } catch (err) {
+        console.error('Failed to fetch drivers:', err);
+        toast.error('Failed to load drivers from server.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDrivers();
+  }, []);
 
   // KPIs calculations
   const totalDrivers = drivers.length;
-  const activeDrivers = drivers.filter(d => d.status === "On Trip" || d.status === "Available").length;
-  const onTripDrivers = drivers.filter(d => d.status === "On Trip").length;
-  const suspendedDrivers = drivers.filter(d => d.status === "Suspended").length;
+  const activeDrivers = drivers.filter(d => d.status === "ACTIVE" || d.status === "ON_TRIP").length;
+  const onTripDrivers = drivers.filter(d => d.status === "ON_TRIP").length;
+  const suspendedDrivers = drivers.filter(d => d.status === "INACTIVE" || d.status === "SUSPENDED").length;
 
   const handleResetFilters = () => {
     setSearch("");
     setStatusFilter("All Statuses");
     setLicenseFilter("All Types");
-    const saved = localStorage.getItem("fleet_drivers");
-    if (saved) {
-      setDrivers(JSON.parse(saved));
-    } else {
-      setDrivers(INITIAL_DRIVERS);
-    }
-    toast.success("Showing top drivers");
+    toast.success("Filters reset");
   };
 
   const handleDeleteDriver = async () => {
     if (!selectedDriver) return;
+
+    const driverId = selectedDriver._id || selectedDriver.id;
     
     try {
-      await managerApi.deleteDriver(selectedDriver._id);
-      toast.success("Driver profile deleted successfully");
-      fetchDrivers();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to delete driver");
-      console.error(error);
+      setIsDeleting(true);
+      
+      // Send delete request to backend
+      await driverApi.remove(driverId);
+      
+      // Remove from local state immediately after successful deletion
+      setDrivers(prev => prev.filter(d => d._id !== driverId));
+      toast.success("Driver deleted successfully");
+    } catch (err) {
+      // Handle different HTTP error responses
+      if (!err.response) {
+        toast.error("Unable to connect to the server. Please try again.");
+      } else {
+        const statusCode = err.response.status;
+        const message = err.response?.data?.message;
+
+        switch (statusCode) {
+          case 400:
+            toast.error(message || "Invalid request. Please check the driver details.");
+            break;
+          case 401:
+            toast.error("You are not authenticated. Please log in again.");
+            break;
+          case 403:
+            toast.error("You do not have permission to delete this driver.");
+            break;
+          case 404:
+            toast.error("Driver not found. It may have been already deleted.");
+            // Remove from UI anyway if it doesn't exist on server
+            setDrivers(prev => prev.filter(d => d._id !== driverId));
+            break;
+          case 500:
+            toast.error("Server error. Please try again later.");
+            break;
+          default:
+            toast.error(message || "Failed to delete driver.");
+        }
+      }
     } finally {
+      setIsDeleting(false);
       setDeleteModalOpen(false);
       setSelectedDriver(null);
     }
@@ -249,12 +167,16 @@ export default function DriversManagementPage() {
 
   const getStatusBadge = (status) => {
     switch (status) {
+      case "ACTIVE":
       case "Available":
         return "bg-emerald-50 text-[#22C55E] border border-emerald-100";
+      case "ON_TRIP":
       case "On Trip":
         return "bg-amber-50 text-[#B45A0A] border border-amber-100";
+      case "INACTIVE":
       case "Inactive":
         return "bg-slate-50 text-[#64748B] border border-slate-100";
+      case "SUSPENDED":
       case "Suspended":
         return "bg-red-50 text-[#EF4444] border border-red-100";
       default:
@@ -610,15 +532,24 @@ export default function DriversManagementPage() {
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E7EAF0]">
                 <button
                   onClick={() => { setDeleteModalOpen(false); setSelectedDriver(null); }}
-                  className="px-4.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-semibold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer"
+                  disabled={isDeleting}
+                  className="px-4.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-semibold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteDriver}
-                  className="px-5 py-2.5 bg-[#EF4444] hover:bg-red-700 rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+                  disabled={isDeleting}
+                  className="px-5 py-2.5 bg-[#EF4444] hover:bg-red-700 rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  Delete Driver
+                  {isDeleting ? (
+                    <>
+                      <Loader className="w-3.5 h-3.5 animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    "Delete Driver"
+                  )}
                 </button>
               </div>
             </div>

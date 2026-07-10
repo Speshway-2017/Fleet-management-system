@@ -6,7 +6,8 @@ import {
   Search,
   Filter,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Loader
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -58,7 +59,21 @@ export default function MaintenanceManagementPage() {
   const [search, setSearch] = useState("");
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [prefilledData, setPrefilledData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [isDeletingId, setIsDeletingId] = useState(null);
+  const [isUpdatingId, setIsUpdatingId] = useState(null);
+
+  // Mock API service - will be replaced with real API
+  const maintenanceApi = {
+    list: async () => {
+      return { data: { data: INITIAL_WORK_ORDERS } };
+    },
+    update: async (id, data) => {
+      return { data: { data: { id, ...data } } };
+    },
+    remove: async (id) => {
+      throw new Error("Maintenance API not yet implemented. Please implement backend endpoints.");
+    }
+  };
 
   // Check if navigated from notification with schedule intent
   useEffect(() => {
@@ -75,21 +90,14 @@ export default function MaintenanceManagementPage() {
     }
   }, [location, navigate]);
 
-  const fetchWorkOrders = async () => {
-    try {
-      setLoading(true);
-      const response = await managerApi.getMaintenance();
-      const result = response.data?.data || response.data;
-      if (Array.isArray(result)) {
-        setWorkOrders(result.map(w => ({ ...w, id: w._id })));
-      } else {
-        setWorkOrders([]);
-      }
-    } catch (error) {
-      toast.error("Failed to load work orders from database");
-      console.error(error);
-    } finally {
-      setLoading(false);
+  // Load from local storage (temporary - will be replaced with API call)
+  useEffect(() => {
+    const saved = localStorage.getItem("fleet_work_orders");
+    if (saved) {
+      setWorkOrders(JSON.parse(saved));
+    } else {
+      localStorage.setItem("fleet_work_orders", JSON.stringify(INITIAL_WORK_ORDERS));
+      setWorkOrders(INITIAL_WORK_ORDERS);
     }
   };
 
@@ -100,25 +108,96 @@ export default function MaintenanceManagementPage() {
 
   const handleStartService = async (orderId, e) => {
     e.stopPropagation();
+    
+    setIsUpdatingId(orderId);
     try {
-      await managerApi.updateMaintenance(orderId, { status: "In Progress" });
+      // Call API to update status
+      await maintenanceApi.update(orderId, { status: "In Progress" });
+      
+      const updated = workOrders.map(w =>
+        w.id === orderId ? { ...w, status: "In Progress" } : w
+      );
+      setWorkOrders(updated);
+      localStorage.setItem("fleet_work_orders", JSON.stringify(updated));
       toast.success("Service started at garage!");
-      fetchWorkOrders();
-    } catch (error) {
-      toast.error("Failed to start service");
-      console.error(error);
+    } catch (err) {
+      if (!err.response) {
+        toast.error("Unable to connect to the server. Please try again.");
+      } else {
+        toast.error(err.response?.data?.message || "Failed to start service.");
+      }
+    } finally {
+      setIsUpdatingId(null);
     }
   };
 
   const handleCompleteOrder = async (orderId, e) => {
     e.stopPropagation();
+    
+    setIsUpdatingId(orderId);
     try {
-      await managerApi.updateMaintenance(orderId, { status: "Completed" });
+      // Call API to update status
+      await maintenanceApi.update(orderId, { status: "Completed" });
+      
+      const updated = workOrders.map(w =>
+        w.id === orderId ? { ...w, status: "Completed" } : w
+      );
+      setWorkOrders(updated);
+      localStorage.setItem("fleet_work_orders", JSON.stringify(updated));
       toast.success("Maintenance work order completed successfully!");
-      fetchWorkOrders();
-    } catch (error) {
-      toast.error("Failed to complete service");
-      console.error(error);
+    } catch (err) {
+      if (!err.response) {
+        toast.error("Unable to connect to the server. Please try again.");
+      } else {
+        toast.error(err.response?.data?.message || "Failed to complete order.");
+      }
+    } finally {
+      setIsUpdatingId(null);
+    }
+  };
+
+  const handleDeleteOrder = async (orderId) => {
+    setIsDeletingId(orderId);
+    try {
+      // Call API to delete order
+      await maintenanceApi.remove(orderId);
+      
+      // Remove from state after successful deletion
+      const updated = workOrders.filter(w => w.id !== orderId);
+      setWorkOrders(updated);
+      localStorage.setItem("fleet_work_orders", JSON.stringify(updated));
+      toast.success("Work order deleted successfully");
+    } catch (err) {
+      if (!err.response) {
+        toast.error("Unable to connect to the server. Please try again.");
+      } else {
+        const statusCode = err.response.status;
+        const message = err.response?.data?.message;
+
+        switch (statusCode) {
+          case 400:
+            toast.error(message || "Invalid request.");
+            break;
+          case 401:
+            toast.error("You are not authenticated. Please log in again.");
+            break;
+          case 403:
+            toast.error("You do not have permission to delete this order.");
+            break;
+          case 404:
+            toast.error("Work order not found.");
+            // Remove from UI anyway
+            setWorkOrders(prev => prev.filter(w => w.id !== orderId));
+            break;
+          case 500:
+            toast.error("Server error. Please try again later.");
+            break;
+          default:
+            toast.error(message || "Failed to delete work order.");
+        }
+      }
+    } finally {
+      setIsDeletingId(null);
     }
   };
 
@@ -331,16 +410,32 @@ export default function MaintenanceManagementPage() {
                       {w.status === "Scheduled" ? (
                         <button
                           onClick={(e) => handleStartService(w.id, e)}
-                          className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-950 text-white rounded-xl text-[10px] font-black shadow-sm transition-all active:scale-95 cursor-pointer"
+                          disabled={isUpdatingId === w.id}
+                          className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-950 text-white rounded-xl text-[10px] font-black shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center min-w-fit"
                         >
-                          Start Service
+                          {isUpdatingId === w.id ? (
+                            <>
+                              <Loader className="w-3 h-3 animate-spin" />
+                              Starting...
+                            </>
+                          ) : (
+                            "Start Service"
+                          )}
                         </button>
                       ) : w.status === "In Progress" ? (
                         <button
                           onClick={(e) => handleCompleteOrder(w.id, e)}
-                          className="px-3.5 py-1.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-[10px] font-black shadow-sm transition-all active:scale-95 cursor-pointer"
+                          disabled={isUpdatingId === w.id}
+                          className="px-3.5 py-1.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-[10px] font-black shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center min-w-fit"
                         >
-                          Complete
+                          {isUpdatingId === w.id ? (
+                            <>
+                              <Loader className="w-3 h-3 animate-spin" />
+                              Completing...
+                            </>
+                          ) : (
+                            "Complete"
+                          )}
                         </button>
                       ) : (
                         <span className="text-emerald-600 font-bold text-xs flex items-center justify-end gap-1 select-none">

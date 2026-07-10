@@ -3,6 +3,7 @@ import { ArrowLeft, Edit2, Trash2, MapPin, AlertTriangle, Download, Eye, FileTex
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { vehicleApi } from "@/api/vehicleApi";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { managerApi } from "../api/managerApi";
@@ -14,6 +15,7 @@ export default function VehicleDetailsPage() {
   const mapInstanceRef = useRef(null);
   const [vehicle, setVehicle] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeletingVehicle, setIsDeletingVehicle] = useState(false);
   const [loading, setLoading] = useState(true);
   const [previewDocument, setPreviewDocument] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -114,12 +116,46 @@ export default function VehicleDetailsPage() {
 
   const handleDelete = async () => {
     try {
-      await managerApi.deleteVehicle(vehicle._id);
+      setIsDeletingVehicle(true);
+      const vehicleId = vehicle._id || vehicle.id;
+      
+      // Call API to delete the vehicle
+      await vehicleApi.remove(vehicleId);
+      
       toast.success("Vehicle deleted successfully!");
-      navigate("/manager/vehicles-list");
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to delete vehicle");
-      console.error(error);
+      navigate("/manager/vehicle-management");
+    } catch (err) {
+      // Handle different HTTP error responses
+      if (!err.response) {
+        toast.error("Unable to connect to the server. Please try again.");
+      } else {
+        const statusCode = err.response.status;
+        const message = err.response?.data?.message;
+
+        switch (statusCode) {
+          case 400:
+            toast.error(message || "Invalid request. Please check the vehicle details.");
+            break;
+          case 401:
+            toast.error("You are not authenticated. Please log in again.");
+            break;
+          case 403:
+            toast.error("You do not have permission to delete this vehicle.");
+            break;
+          case 404:
+            toast.error("Vehicle not found. It may have been already deleted.");
+            navigate("/manager/vehicle-management");
+            break;
+          case 500:
+            toast.error("Server error. Please try again later.");
+            break;
+          default:
+            toast.error(message || "Failed to delete vehicle.");
+        }
+      }
+    } finally {
+      setIsDeletingVehicle(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -534,16 +570,27 @@ export default function VehicleDetailsPage() {
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2.5 border border-[#E7EAF0] rounded-xl text-sm font-semibold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer"
+                disabled={isDeletingVehicle}
+                className="px-4 py-2.5 border border-[#E7EAF0] rounded-xl text-sm font-semibold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                className="px-4 py-2.5 bg-red-600 hover:bg-red-700 rounded-xl text-sm font-semibold text-white transition-all cursor-pointer flex items-center gap-2"
+                disabled={isDeletingVehicle}
+                className="px-4 py-2.5 bg-red-600 hover:bg-red-700 rounded-xl text-sm font-semibold text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                <Trash2 className="w-4 h-4" />
-                Delete Vehicle
+                {isDeletingVehicle ? (
+                  <>
+                    <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete Vehicle
+                  </>
+                )}
               </button>
             </div>
           </div>
