@@ -1,26 +1,47 @@
 import multer from 'multer';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
-import cloudinary from '../config/cloudinary.config.js';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-// ── Cloudinary storage — uploads go to the fleet_management folder ─────────
-const cloudinaryStorage = new CloudinaryStorage({
-  cloudinary,
-  params: async (_req, file) => {
-    const isImage = file.mimetype.startsWith('image/');
-    return {
-      folder:        'fleet_management',
-      resource_type: isImage ? 'image' : 'raw',
-      public_id:     `${Date.now()}-${file.originalname.replace(/\.[^/.]+$/, '')}`,
-      allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'doc', 'docx'],
-    };
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure uploads directory exists at runtime
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `driver-doc-${uniqueSuffix}${ext}`);
   },
 });
 
-// Memory storage — for in-memory processing (OCR etc.)
-const memoryStorage = multer.memoryStorage();
+const fileFilter = (_req, file, cb) => {
+  const allowed = ['.pdf', '.jpg', '.jpeg', '.png'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowed.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only PDF, JPG, and PNG files are allowed'), false);
+  }
+};
 
-const upload         = multer({ storage: cloudinaryStorage }); // default
-const uploadInMemory = multer({ storage: memoryStorage });     // in-memory variant
+/**
+ * Named export: single-file upload for driver documents.
+ * Field name expected: "document"
+ */
+export const uploadDocument = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+}).single('document');
 
-export default upload;
-export { uploadInMemory };
+/** Default export for backward compatibility */
+export default multer({ storage });

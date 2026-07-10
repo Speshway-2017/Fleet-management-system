@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Edit2, Trash2, MapPin, AlertTriangle, Download, Eye, FileText, Phone, Mail, Eye as EyeIcon, X } from "lucide-react";
+import { ArrowLeft, Edit2, Trash2, MapPin, AlertTriangle, Download, Eye, FileText, Phone, Mail, Eye as EyeIcon, X, Loader } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { vehicleApi } from "@/api/vehicleApi";
+import { driverApi } from "@/api/driverApi";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { managerApi } from "../api/managerApi";
@@ -33,44 +34,61 @@ export default function VehicleDetailsPage() {
     "Ahmedabad": [23.0225, 72.5714]
   };
 
+  const normaliseVehicle = (v) => {
+    if (!v) return null;
+    return {
+      ...v,
+      id:           v._id,
+      name:         v.vehicleName || `${v.brand} ${v.model}`,
+      manufacturer: v.brand || "",
+      plateNumber:  v.vehicleNumber || "",
+      type:         v.vehicleType || "Truck",
+      driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
+        ? v.assignedDriver.fullName
+        : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
+      fuelLevel:    v.fuelCapacity ? Math.round((v.odometer % v.fuelCapacity) || 50) : 50,
+      fastagBalance: v.fastagBalance ?? 0,
+      branch:       v.branch || "Pune",
+      dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
+      status:       v.currentStatus || 'Available',
+    };
+  };
+
   useEffect(() => {
-    const fetchVehicle = async () => {
+    const fetchVehicleDetails = async () => {
       try {
         setLoading(true);
-        const response = await managerApi.getVehicleById(id);
-        const found = response.data?.data || response.data;
+        const res = await vehicleApi.getById(id);
+        const found = res.data?.data;
         if (found) {
-          setVehicle(found);
+          setVehicle(normaliseVehicle(found));
         } else {
           toast.error("Vehicle not found");
           navigate("/manager/vehicles-list");
         }
-      } catch (error) {
-        toast.error("Failed to load vehicle details");
-        console.error(error);
+      } catch (err) {
+        console.error("Failed to load vehicle:", err);
+        toast.error("Failed to load vehicle details from server.");
         navigate("/manager/vehicles-list");
       } finally {
         setLoading(false);
       }
     };
-    fetchVehicle();
+    fetchVehicleDetails();
   }, [id, navigate]);
 
   // Load drivers when assign modal opens
   useEffect(() => {
     if (showAssignModal) {
-      const fetchDrivers = async () => {
+      const fetchDriversList = async () => {
         try {
-          const response = await managerApi.getDrivers();
-          const result = response.data?.data || response.data;
-          if (Array.isArray(result)) {
-            setDriversList(result);
-          }
+          const res = await driverApi.list();
+          setDriversList(res.data?.data ?? []);
         } catch (err) {
-          console.error("Failed to fetch drivers for modal", err);
+          console.error("Failed to load drivers:", err);
         }
       };
-      fetchDrivers();
+      fetchDriversList();
     }
   }, [showAssignModal]);
 
@@ -159,17 +177,21 @@ export default function VehicleDetailsPage() {
     }
   };
 
-  const handleAssignDriver = async (driverName) => {
+  const handleAssignDriver = async (driverId) => {
     try {
-      // 1. Update vehicle's driver name in backend
-      await managerApi.updateVehicle(vehicle._id, { driver: driverName });
+      const vehicleId = vehicle._id || vehicle.id;
+      const payload = {
+        assignedDriver: driverId === "Unassigned" ? "Unassigned" : driverId
+      };
+      await vehicleApi.update(vehicleId, payload);
+      toast.success("Driver assigned successfully!");
 
-      setVehicle({ ...vehicle, driver: driverName });
-      toast.success(`Assigned driver ${driverName} successfully!`);
+      // Refresh vehicle details
+      const res = await vehicleApi.getById(id);
+      setVehicle(normaliseVehicle(res.data?.data));
       setShowAssignModal(false);
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to assign driver");
-      console.error(error);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to assign driver.");
     }
   };
 
@@ -628,10 +650,10 @@ export default function VehicleDetailsPage() {
                   </div>
                 </div>
 
-                {driversList.map(d => (
+                 {driversList.map(d => (
                   <div 
-                    key={d.id}
-                    onClick={() => handleAssignDriver(d.name)}
+                    key={d._id}
+                    onClick={() => handleAssignDriver(d._id)}
                     className={`p-3 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
                       d.assignedVehicle === vehicle.plateNumber
                         ? "bg-indigo-50/50 border-indigo-200"
@@ -639,10 +661,10 @@ export default function VehicleDetailsPage() {
                     }`}
                   >
                     <div>
-                      <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
+                      <p className="font-bold text-xs text-[#1E293B]">{d.fullName}</p>
                       <span className="text-[10px] text-[#64748B] block mt-0.5">DL: {d.licenseNumber} ({d.licenseType})</span>
                     </div>
-                    {d.assignedVehicle !== "Unassigned" && d.assignedVehicle !== vehicle.plateNumber ? (
+                    {d.assignedVehicle && d.assignedVehicle !== "Unassigned" && d.assignedVehicle !== vehicle.plateNumber ? (
                       <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
                         {d.assignedVehicle}
                       </span>
