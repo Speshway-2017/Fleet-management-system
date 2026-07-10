@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getDashboard,
+  getLiveTracking,
   // Vehicles
   listVehicles,
   createVehicle,
@@ -53,6 +54,7 @@ const auth = [protect, authorizeRoles('FLEET_MANAGER')];
 
 // Dashboard
 router.get('/dashboard',       ...auth, getDashboard);
+router.get('/live-tracking',   ...auth, getLiveTracking);
 
 // Vehicles
 router.get('/vehicles',        ...auth, listVehicles);
