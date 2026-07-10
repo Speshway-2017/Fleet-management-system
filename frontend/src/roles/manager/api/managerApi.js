@@ -11,6 +11,10 @@ export const managerApi = {
     return await axiosClient.get("/manager/vehicles");
   },
 
+  getLiveTracking: async () => {
+    return await axiosClient.get("/manager/live-tracking");
+  },
+
   getAvailableVehicles: async () => {
     return await axiosClient.get("/vehicles/available");
   },

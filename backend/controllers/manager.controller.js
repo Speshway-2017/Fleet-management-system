@@ -759,3 +759,71 @@ export const deleteReport = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getLiveTracking = async (req, res, next) => {
+  try {
+    const vehicles = await Vehicle.find().populate('assignedDriver').sort({ createdAt: -1 });
+    const trips = await Trip.find({
+      status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip', 'Ready to Dispatch'] }
+    }).populate('vehicle').populate('driver');
+
+    const trackingData = vehicles.map(v => {
+      const activeTrip = trips.find(t => t.vehicle && String(t.vehicle._id || t.vehicle) === String(v._id));
+
+      let assignmentStatus = "Available";
+      if (activeTrip) {
+        if (['Scheduled', 'Assigned', 'Ready to Dispatch'].includes(activeTrip.status)) {
+          assignmentStatus = "Assigned";
+        } else if (['In Progress', 'On Trip', 'On Transit', 'Delayed'].includes(activeTrip.status)) {
+          assignmentStatus = "On Trip";
+        }
+      } else if (v.currentStatus === "Maintenance") {
+        assignmentStatus = "Maintenance";
+      } else if (v.currentStatus === "Inactive") {
+        assignmentStatus = "Inactive";
+      } else if (v.currentStatus === "Assigned") {
+        assignmentStatus = "Assigned";
+      } else if (v.currentStatus === "On Trip") {
+        assignmentStatus = "On Trip";
+      }
+
+      const driverName = v.assignedDriver?.fullName || (activeTrip ? (activeTrip.driver?.fullName || activeTrip.driverName) : "Unassigned");
+      const driverPhone = v.assignedDriver?.phoneNumber || (activeTrip ? (activeTrip.driver?.phoneNumber || activeTrip.driverPhone) : "");
+
+      return {
+        _id: v._id,
+        vehicleName: v.vehicleName,
+        vehicleNumber: v.vehicleNumber,
+        vehicleType: v.vehicleType,
+        brand: v.brand,
+        model: v.model,
+        currentStatus: v.currentStatus,
+        fuelCapacity: v.fuelCapacity,
+        updatedAt: v.updatedAt,
+        assignedDriver: v.assignedDriver ? {
+          _id: v.assignedDriver._id,
+          fullName: driverName,
+          phoneNumber: driverPhone
+        } : (activeTrip ? {
+          fullName: driverName,
+          phoneNumber: driverPhone
+        } : null),
+        activeTrip: activeTrip ? {
+          _id: activeTrip._id,
+          tripNumber: activeTrip.tripNumber,
+          startLocation: activeTrip.startLocation,
+          endLocation: activeTrip.endLocation,
+          status: activeTrip.status,
+          eta: activeTrip.eta,
+          driverName: driverName,
+          driverPhone: driverPhone
+        } : null,
+        assignmentStatus
+      };
+    });
+
+    return sendSuccess(res, 200, trackingData, 'Live tracking data fetched');
+  } catch (error) {
+    next(error);
+  }
+};
