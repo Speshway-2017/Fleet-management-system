@@ -75,9 +75,16 @@ export default function FuelManagementPage() {
   const fetchVehicles = async () => {
     try {
       const response = await managerApi.getVehicles();
-      setVehicles(response.data?.data || response.data || []);
+      const rawVehicles = response.data?.data || response.data || [];
+      const mappedVehicles = rawVehicles.map(v => ({
+        ...v,
+        name: v.vehicleName,
+        plateNumber: v.vehicleNumber,
+        driver: v.assignedDriver ? v.assignedDriver.fullName : "Unassigned"
+      }));
+      setVehicles(mappedVehicles);
     } catch (error) {
-      console.error("Failed to fetch vehicles list", error);
+      console.error("Failed to fetch vehicles:", error);
     }
   };
 
