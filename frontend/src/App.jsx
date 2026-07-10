@@ -61,6 +61,7 @@ import ManageSchedulesPage from "@/roles/manager/pages/ManageSchedulesPage";
 import SettingsPage from "@/roles/manager/pages/SettingsPage";
 import ChangePasswordPage from "@/roles/manager/pages/ChangePasswordPage";
 import EWayBillsPage from "@/roles/manager/pages/EWayBillsPage";
+import GenerateEWayBillPage from "@/roles/manager/pages/GenerateEWayBillPage";
 import UpcomingServicesPage from "@/roles/manager/pages/UpcomingServicesPage";
 import ScheduleServicePage from "@/roles/manager/pages/ScheduleServicePage";
 import ServiceDetailsPage from "@/roles/manager/pages/ServiceDetailsPage";
@@ -152,6 +153,7 @@ export default function App() {
 
               <Route path="/manager/ewaybills" element={<div className="p-8"><h1 className="text-2xl font-bold">E-Way Bills Page</h1></div>} />
               <Route path="/manager/eway" element={<EWayBillsPage />} />
+              <Route path="/manager/eway/generate" element={<GenerateEWayBillPage />} />
               <Route path="/manager/settings" element={<SettingsPage />} />
               <Route path="/manager/documents" element={<DocumentManagement />} />
               <Route path="/manager/documents/list" element={<DocumentsListPage />} />

@@ -6,7 +6,10 @@ const driverSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
     phone: { type: String, required: true },
     licenseNumber: { type: String, required: true, unique: true },
-    status: { type: String, enum: ['ACTIVE', 'INACTIVE', 'ON_TRIP'], default: 'ACTIVE' },
+    licenseType: { type: String },
+    licenseExpiry: { type: String },
+    assignedVehicle: { type: String, default: 'Unassigned' },
+    status: { type: String, default: 'Available' },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }

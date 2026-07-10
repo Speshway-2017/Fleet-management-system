@@ -1,10 +1,26 @@
 import multer from 'multer';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import cloudinary from '../config/cloudinary.config.js';
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, 'uploads/'),
-  filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
+// ── Cloudinary storage — uploads go to the fleet_management folder ─────────
+const cloudinaryStorage = new CloudinaryStorage({
+  cloudinary,
+  params: async (_req, file) => {
+    const isImage = file.mimetype.startsWith('image/');
+    return {
+      folder:        'fleet_management',
+      resource_type: isImage ? 'image' : 'raw',
+      public_id:     `${Date.now()}-${file.originalname.replace(/\.[^/.]+$/, '')}`,
+      allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'doc', 'docx'],
+    };
+  },
 });
 
-const upload = multer({ storage });
+// Memory storage — for in-memory processing (OCR etc.)
+const memoryStorage = multer.memoryStorage();
+
+const upload         = multer({ storage: cloudinaryStorage }); // default
+const uploadInMemory = multer({ storage: memoryStorage });     // in-memory variant
 
 export default upload;
+export { uploadInMemory };

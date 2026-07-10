@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
 import "../dashboard/manager.css";
 
 const INITIAL_WORK_ORDERS = [
@@ -53,12 +54,19 @@ export default function ScheduleServicePage() {
   const [selectedDate, setSelectedDate] = useState("2026-07-12");
   const [comments, setComments] = useState("");
 
-  // Load from local storage
+  // Load from database
   useEffect(() => {
-    const saved = localStorage.getItem("fleet_vehicles");
-    if (saved) {
-      setVehicles(JSON.parse(saved));
-    }
+    const fetchVehicles = async () => {
+      try {
+        const response = await managerApi.getVehicles();
+        const list = (response.data?.data || response.data || []).map(v => ({ ...v, id: v._id }));
+        setVehicles(list);
+      } catch (error) {
+        toast.error("Failed to load vehicles from database");
+        console.error(error);
+      }
+    };
+    fetchVehicles();
   }, []);
 
   // Sync first vehicle to state
@@ -68,7 +76,7 @@ export default function ScheduleServicePage() {
     }
   }, [vehicles]);
 
-  const handleScheduleService = (e) => {
+  const handleScheduleService = async (e) => {
     e.preventDefault();
     if (!selectedVehicleId) {
       toast.error("Please select a vehicle.");
@@ -76,33 +84,33 @@ export default function ScheduleServicePage() {
     }
 
     const vehicleObj = vehicles.find(v => String(v.id) === String(selectedVehicleId));
-    
-    // Get existing work orders
-    let workOrders = [];
-    const savedOrders = localStorage.getItem("fleet_work_orders");
-    if (savedOrders) {
-      workOrders = JSON.parse(savedOrders);
-    } else {
-      workOrders = INITIAL_WORK_ORDERS;
+    if (!vehicleObj) {
+      toast.error("Selected vehicle not found.");
+      return;
     }
 
-    const newOrder = {
-      id: `wo${Date.now()}`,
-      vehicleId: vehicleObj ? vehicleObj.plateNumber : "MH-12-XX-0000",
-      vehicleName: vehicleObj ? vehicleObj.name : "Custom Fleet Vehicle",
-      serviceType: selectedServiceType,
-      scheduledDate: selectedDate,
-      status: "Scheduled",
-      cost: selectedServiceType === "General Service" ? "₹6,500.00" : selectedServiceType === "Engine Tune-up" ? "₹8,200.00" : selectedServiceType === "Brake Check" ? "₹2,500.00" : "₹4,800.00",
-      specialist: "Dayanand M",
-      garage: "G-Tech Car Care, Pune Bypass"
-    };
+    const costStr = selectedServiceType === "General Service" ? "₹6,500.00" : selectedServiceType === "Engine Tune-up" ? "₹8,200.00" : selectedServiceType === "Brake Check" ? "₹2,500.00" : "₹4,800.00";
 
-    const updatedOrders = [newOrder, ...workOrders];
-    localStorage.setItem("fleet_work_orders", JSON.stringify(updatedOrders));
-    
-    toast.success("New maintenance service scheduled successfully!");
-    navigate("/manager/maintenance");
+    try {
+      await managerApi.createMaintenance({
+        vehicle: vehicleObj._id,
+        vehicleId: vehicleObj.plateNumber,
+        vehicleName: vehicleObj.name,
+        serviceType: selectedServiceType,
+        scheduledDate: selectedDate,
+        status: "Scheduled",
+        cost: costStr,
+        specialist: "Dayanand M",
+        garage: "G-Tech Car Care, Pune Bypass",
+        comments: comments
+      });
+
+      toast.success("Maintenance service scheduled successfully!");
+      navigate("/manager/maintenance");
+    } catch (error) {
+      toast.error("Failed to schedule service");
+      console.error(error);
+    }
   };
 
   const getEstimatedCost = () => {

@@ -12,6 +12,7 @@ import {
   CheckCircle2
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { managerApi } from "../api/managerApi";
 
 const VEHICLES = ["Volvo FM 12 [KA-01-FE-9912]", "Ashok Leyland 3118", "Tata Ace Gold", "Komila FM-30"];
 const DOC_TYPES = ["Insurance", "Vehicle Docs", "Driver Docs", "Trip Invoices", "Compliance"];
@@ -25,10 +26,30 @@ export default function UploadDocument() {
     expiry: ""
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    toast.success("Document uploaded successfully!");
-    navigate("/manager/documents");
+    if (!formData.title || !formData.type) {
+      toast.error("Please enter a document title and type");
+      return;
+    }
+    try {
+      await managerApi.createDocument({
+        title: formData.title,
+        type: formData.type,
+        category: formData.type, // Map type to category
+        vehicle: formData.vehicle || "All Vehicles",
+        expiry: formData.expiry || "",
+        fileUrl: "https://res.cloudinary.com/dummy-document-file.pdf", // Dummy URL
+        fileSize: "1.2 MB",
+        fileType: "PDF",
+        status: "Active"
+      });
+      toast.success("Document uploaded successfully!");
+      navigate("/manager/documents");
+    } catch (error) {
+      toast.error("Failed to upload document");
+      console.error(error);
+    }
   };
 
   return (

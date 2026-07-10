@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
 import "../dashboard/manager.css";
 
 const INITIAL_WORK_ORDERS = [
@@ -54,26 +55,51 @@ export default function UpcomingServicesPage() {
   const navigate = useNavigate();
   const [workOrders, setWorkOrders] = useState([]);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  // Load from local storage
-  useEffect(() => {
-    const saved = localStorage.getItem("fleet_work_orders");
-    if (saved) {
-      setWorkOrders(JSON.parse(saved));
-    } else {
-      localStorage.setItem("fleet_work_orders", JSON.stringify(INITIAL_WORK_ORDERS));
-      setWorkOrders(INITIAL_WORK_ORDERS);
+  const fetchWorkOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await managerApi.getMaintenance();
+      const result = response.data?.data || response.data;
+      if (Array.isArray(result)) {
+        setWorkOrders(result.map(w => ({ ...w, id: w._id })));
+      } else {
+        setWorkOrders([]);
+      }
+    } catch (error) {
+      toast.error("Failed to load work orders from database");
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // Load from database
+  useEffect(() => {
+    fetchWorkOrders();
   }, []);
 
-  const handleStartService = (orderId, e) => {
-    e.stopPropagation();
-    const updated = workOrders.map(w =>
-      w.id === orderId ? { ...w, status: "In Progress" } : w
-    );
-    setWorkOrders(updated);
-    localStorage.setItem("fleet_work_orders", JSON.stringify(updated));
-    toast.success("Service started at garage!");
+  const handleStartService = async (orderId) => {
+    try {
+      await managerApi.updateMaintenance(orderId, { status: "In Progress" });
+      toast.success("Service started at garage!");
+      fetchWorkOrders();
+    } catch (error) {
+      toast.error("Failed to start service");
+      console.error(error);
+    }
+  };
+
+  const handleCompleteOrder = async (orderId) => {
+    try {
+      await managerApi.updateMaintenance(orderId, { status: "Completed" });
+      toast.success("Maintenance work order completed successfully!");
+      fetchWorkOrders();
+    } catch (error) {
+      toast.error("Failed to complete service");
+      console.error(error);
+    }
   };
 
   const filteredOrders = workOrders.filter(w => {

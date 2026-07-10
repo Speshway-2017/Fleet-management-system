@@ -49,6 +49,8 @@ const INITIAL_WORK_ORDERS = [
   }
 ];
 
+import { managerApi } from "../api/managerApi";
+
 export default function MaintenanceManagementPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,6 +58,7 @@ export default function MaintenanceManagementPage() {
   const [search, setSearch] = useState("");
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [prefilledData, setPrefilledData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   // Check if navigated from notification with schedule intent
   useEffect(() => {
@@ -72,35 +75,51 @@ export default function MaintenanceManagementPage() {
     }
   }, [location, navigate]);
 
-  // Load from local storage
-  useEffect(() => {
-    const saved = localStorage.getItem("fleet_work_orders");
-    if (saved) {
-      setWorkOrders(JSON.parse(saved));
-    } else {
-      localStorage.setItem("fleet_work_orders", JSON.stringify(INITIAL_WORK_ORDERS));
-      setWorkOrders(INITIAL_WORK_ORDERS);
+  const fetchWorkOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await managerApi.getMaintenance();
+      const result = response.data?.data || response.data;
+      if (Array.isArray(result)) {
+        setWorkOrders(result.map(w => ({ ...w, id: w._id })));
+      } else {
+        setWorkOrders([]);
+      }
+    } catch (error) {
+      toast.error("Failed to load work orders from database");
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-  }, []);
-
-  const handleStartService = (orderId, e) => {
-    e.stopPropagation();
-    const updated = workOrders.map(w =>
-      w.id === orderId ? { ...w, status: "In Progress" } : w
-    );
-    setWorkOrders(updated);
-    localStorage.setItem("fleet_work_orders", JSON.stringify(updated));
-    toast.success("Service started at garage!");
   };
 
-  const handleCompleteOrder = (orderId, e) => {
+  // Load from database
+  useEffect(() => {
+    fetchWorkOrders();
+  }, []);
+
+  const handleStartService = async (orderId, e) => {
     e.stopPropagation();
-    const updated = workOrders.map(w =>
-      w.id === orderId ? { ...w, status: "Completed" } : w
-    );
-    setWorkOrders(updated);
-    localStorage.setItem("fleet_work_orders", JSON.stringify(updated));
-    toast.success("Maintenance work order completed successfully!");
+    try {
+      await managerApi.updateMaintenance(orderId, { status: "In Progress" });
+      toast.success("Service started at garage!");
+      fetchWorkOrders();
+    } catch (error) {
+      toast.error("Failed to start service");
+      console.error(error);
+    }
+  };
+
+  const handleCompleteOrder = async (orderId, e) => {
+    e.stopPropagation();
+    try {
+      await managerApi.updateMaintenance(orderId, { status: "Completed" });
+      toast.success("Maintenance work order completed successfully!");
+      fetchWorkOrders();
+    } catch (error) {
+      toast.error("Failed to complete service");
+      console.error(error);
+    }
   };
 
   const filteredOrders = workOrders.filter(w => {
@@ -224,12 +243,8 @@ export default function MaintenanceManagementPage() {
         <ScheduleFromNotificationModal
           prefilled={prefilledData}
           onClose={() => { setShowScheduleModal(false); setPrefilledData(null); }}
-          onScheduled={(newOrder) => {
-            const saved = localStorage.getItem("fleet_work_orders");
-            const existing = saved ? JSON.parse(saved) : INITIAL_WORK_ORDERS;
-            const updated = [newOrder, ...existing];
-            localStorage.setItem("fleet_work_orders", JSON.stringify(updated));
-            setWorkOrders(updated);
+          onScheduled={() => {
+            fetchWorkOrders();
           }}
         />
       )}

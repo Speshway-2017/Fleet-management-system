@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import VehicleDocuments from "../vehicle-management/components/VehicleDocuments";
+import { managerApi } from "../api/managerApi";
 
 export default function VehicleEditPage() {
   const navigate = useNavigate();
@@ -14,16 +15,27 @@ export default function VehicleEditPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const vehicles = JSON.parse(localStorage.getItem("fleet_vehicles") || "[]");
-    const found = vehicles.find((v) => v.id === parseInt(id));
-    if (found) {
-      setVehicle(found);
-      setFormData({ ...found });
-    } else {
-      toast.error("Vehicle not found");
-      navigate("/manager/vehicles-list");
-    }
-    setLoading(false);
+    const fetchVehicle = async () => {
+      try {
+        setLoading(true);
+        const response = await managerApi.getVehicleById(id);
+        const found = response.data?.data || response.data;
+        if (found) {
+          setVehicle(found);
+          setFormData({ ...found });
+        } else {
+          toast.error("Vehicle not found");
+          navigate("/manager/vehicles-list");
+        }
+      } catch (error) {
+        toast.error("Failed to load vehicle details");
+        console.error(error);
+        navigate("/manager/vehicles-list");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchVehicle();
   }, [id, navigate]);
 
   const handleChange = (e) => {
@@ -34,21 +46,23 @@ export default function VehicleEditPage() {
     }));
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.plateNumber) {
       toast.error("Please fill in all required fields");
       return;
     }
     setSaving(true);
-    setTimeout(() => {
-      const vehicles = JSON.parse(localStorage.getItem("fleet_vehicles") || "[]");
-      const updated = vehicles.map((v) => (v.id === vehicle.id ? formData : v));
-      localStorage.setItem("fleet_vehicles", JSON.stringify(updated));
+    try {
+      await managerApi.updateVehicle(id, formData);
       toast.success("Vehicle updated successfully!");
+      navigate(`/manager/vehicle-details/${id}`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to save vehicle details");
+      console.error(error);
+    } finally {
       setSaving(false);
-      navigate(`/manager/vehicle-details/${vehicle.id}`);
-    }, 500);
+    }
   };
 
   if (loading || !vehicle) {
@@ -82,7 +96,7 @@ export default function VehicleEditPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-[#1E293B]">{formData.name}</p>
-              <p className="text-xs text-[#64748B] mt-1 uppercase truncate">{formData.plateNumber}</p>
+              <p className="text-xs text-[#64748B] mt-1 uppercase truncate">{formData.plateNumber || formData.vehicleNumber}</p>
             </div>
           </div>
         </div>

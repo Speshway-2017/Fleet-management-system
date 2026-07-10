@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { extractDataFromAllDocuments, identifyDocumentType } from "../utils/documentParser";
+import { managerApi } from "../api/managerApi";
 
 export default function AddVehiclePage() {
   const navigate = useNavigate();
@@ -155,7 +156,7 @@ export default function AddVehiclePage() {
     setUploadedFiles((prev) => prev.filter((file) => file.id !== fileId));
   };
 
-  const handleSaveVehicle = (e) => {
+  const handleSaveVehicle = async (e) => {
     e.preventDefault();
 
     if (!formData.manufacturer || !formData.model || !formData.plateNumber) {
@@ -165,19 +166,19 @@ export default function AddVehiclePage() {
 
     setIsProcessing(true);
     
-    // Simulate saving
-    setTimeout(() => {
-      const newVehicle = {
-        id: Math.random(),
+    try {
+      const payload = {
         name: `${formData.manufacturer} ${formData.model}`,
         manufacturer: formData.manufacturer,
+        brand: formData.manufacturer,
         model: formData.model,
-        year: formData.year,
+        year: Number(formData.year),
         plateNumber: formData.plateNumber.toUpperCase(),
+        vehicleNumber: formData.plateNumber.toUpperCase(),
         registrationNumber: formData.registrationNumber,
         registrationState: formData.registrationState,
         fuelType: formData.fuelType,
-        type: "Truck", // Default, can be mapped from vehicle type
+        type: "Truck",
         driver: "Unassigned",
         status: "Available",
         fastagBalance: 5000,
@@ -187,25 +188,18 @@ export default function AddVehiclePage() {
         branch: "Pune",
         ownership: formData.ownership,
         availability: formData.availability,
-        dateAdded: new Date().toISOString().split('T')[0],
-        documents: uploadedFiles.map(f => ({
-          id: f.id,
-          name: f.name,
-          type: f.type,
-          size: f.size,
-          data: f.data,
-          uploadDate: new Date().toISOString().split('T')[0]
-        }))
+        dateAdded: new Date().toISOString().split('T')[0]
       };
 
-      // Save to localStorage
-      const existingVehicles = JSON.parse(localStorage.getItem("fleet_vehicles") || "[]");
-      localStorage.setItem("fleet_vehicles", JSON.stringify([...existingVehicles, newVehicle]));
-
-      setIsProcessing(false);
+      await managerApi.createVehicle(payload);
       toast.success("Vehicle added successfully!");
       navigate("/manager/vehicle-management");
-    }, 1500);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to add vehicle to database");
+      console.error(error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (

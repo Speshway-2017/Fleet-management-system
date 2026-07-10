@@ -2,6 +2,7 @@ import { getAdminDashboardData } from '../services/admin.service.js';
 import { createManager as createManagerInRepo, getAllManagers, getManagerById, createOrganization as createOrgInRepo, getAllOrganizations } from '../repositories/admin.repository.js';
 import { hashPassword } from '../utils/hashPassword.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import sendEmail from '../utils/email.js';
 
 export const getDashboard = async (_req, res, next) => {
   try {
@@ -86,26 +87,55 @@ export const listManagers = async (_req, res, next) => {
 
 export const createManager = async (req, res, next) => {
   try {
-    const { name, email, password, phone, organization, role } = req.body;
+    const { name, email, password, phone, organization } = req.body;
 
     if (!name || !email || !password) {
-      return sendError(res, 400, 'Name, email, and password are required');
+      return sendError(res, 400, "Name, email, and password are required");
     }
 
     const hashedPassword = await hashPassword(password);
-    const manager = await createManagerInRepo({ 
-      name, 
-      email, 
-      password: hashedPassword, 
-      phone, 
+
+    const manager = await createManagerInRepo({
+      name,
+      email,
+      password: hashedPassword,
+      phone,
       organization,
-      role: role === 'Admin' ? 'ADMIN' : (role === 'Dispatcher' ? 'DISPATCHER' : 'FLEET_MANAGER')
+      role: "FLEET_MANAGER",
     });
 
-    return sendSuccess(res, 201, { id: manager._id, name: manager.name, email: manager.email, role: manager.role }, 'Fleet manager created');
+    // Send account email
+    await sendEmail({
+      email: manager.email,
+      subject: "Fleet Management - Account Created",
+      message: `Hello ${manager.name},
+
+Your Fleet Management account has been created successfully.
+
+Login Credentials:
+Email: ${manager.email}
+Password: ${password}
+
+Please login and change your password after your first login.
+
+Regards,
+Fleet Management Team`,
+    });
+
+    return sendSuccess(
+      res,
+      201,
+      {
+        id: manager._id,
+        name: manager.name,
+        email: manager.email,
+        role: manager.role,
+      },
+      "Fleet manager created successfully"
+    );
   } catch (error) {
     if (error.code === 11000) {
-      return sendError(res, 400, 'A user with this email already exists');
+      return sendError(res, 400, "A user with this email already exists");
     }
     next(error);
   }

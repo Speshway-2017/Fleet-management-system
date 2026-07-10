@@ -118,23 +118,29 @@ export default function NotificationsPage() {
       return newSet;
     });
 
-    if (action.actionType === "modal") {
-      if (action.modalType === "dispatch") {
-        setSelectedNotification(notification);
-        setShowDispatchWarningModal(true);
-      } else if (action.modalType === "contact") {
-        setSelectedNotification(notification);
-        setShowContactDriverModal(true);
-      }
-    } else if (action.actionType === "navigate") {
-      // Show loading feedback
-      if (action.route === "/manager/reports") {
-        toast.success("Fuel Report Opened");
-      } else if (action.route === "/manager/maintenance") {
-        toast.success("Maintenance Scheduled");
-      }
-      
-      navigate(action.route, action.state ? { state: action.state } : undefined);
+    const actType = action.actionType;
+    if (actType === "Dispatch Warning") {
+      setSelectedNotification(notification);
+      setShowDispatchWarningModal(true);
+    } else if (actType === "Call Driver") {
+      setSelectedNotification(notification);
+      setShowContactDriverModal(true);
+    } else if (actType === "Track Live") {
+      navigate("/manager/map");
+    } else if (actType === "View Analytics") {
+      navigate("/manager/analytics");
+    } else if (actType === "Schedule Now") {
+      navigate("/manager/maintenance/schedule", {
+        state: {
+          vehicleNumber: notification.vehicle,
+          maintenanceType: "Brake Check",
+          dueMileage: "150 miles"
+        }
+      });
+    } else if (actType === "Download PDF") {
+      toast.success(`Downloading PDF for ${notification.title}...`);
+    } else {
+      toast.success(`${actType} action triggered!`);
     }
   };
 
