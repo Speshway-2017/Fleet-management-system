@@ -12,7 +12,7 @@ const vehicleSchema = new mongoose.Schema(
     assignedDriver:     { type: mongoose.Schema.Types.ObjectId, ref: 'Driver' },
     currentStatus: {
       type: String,
-      enum: ['Available', 'Active', 'On Trip', 'Maintenance', 'Inactive'],
+      enum: ['Available', 'Active', 'On Trip', 'Assigned', 'Maintenance', 'Inactive'],
       default: 'Available',
     },
     fuelType:           { type: String, default: 'Diesel' },

@@ -58,11 +58,12 @@ export default function DriversManagementPage() {
     }
   };
 
-  const getStatusLabel = (s) => ({ AVAILABLE: "Available", ON_TRIP: "On Trip", SUSPENDED: "Suspended" }[s] || s);
+  const getStatusLabel = (s) => ({ AVAILABLE: "Available", ON_TRIP: "On Trip", ASSIGNED: "Assigned", SUSPENDED: "Suspended" }[s] || s);
   const getStatusBadge = (s) => ({
-    AVAILABLE: "bg-emerald-50 text-[#22C55E] border border-emerald-100",
-    ON_TRIP:   "bg-amber-50 text-[#B45A0A] border border-amber-100",
-    SUSPENDED: "bg-red-50 text-[#EF4444] border border-red-100",
+    AVAILABLE: "bg-emerald-50 text-emerald-600 border border-emerald-100",
+    ON_TRIP: "bg-amber-50 text-amber-600 border border-amber-100",
+    ASSIGNED: "bg-blue-50 text-blue-600 border border-blue-100",
+    SUSPENDED: "bg-rose-50 text-rose-600 border border-rose-100"
   }[s] || "bg-gray-100 text-gray-500");
   const getInitials = (name = "") => name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 

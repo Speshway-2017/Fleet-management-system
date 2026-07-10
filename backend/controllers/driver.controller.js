@@ -7,6 +7,8 @@ import {
 } from '../repositories/driver.repository.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import fs from 'fs';
+import Trip from '../models/Trip.js';
+import Driver from '../models/Driver.js';
 
 /**
  * List all drivers
@@ -16,6 +18,29 @@ export const listDrivers = async (_req, res, next) => {
   try {
     const drivers = await getDrivers();
     return sendSuccess(res, 200, drivers, 'Drivers fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * List all available (unallocated) drivers
+ * GET /api/drivers/available
+ */
+export const getAvailableDrivers = async (req, res, next) => {
+  try {
+    const activeTrips = await Trip.find({
+      status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip'] }
+    });
+
+    const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
+
+    const availableDrivers = await Driver.find({
+      _id: { $nin: allocatedDriverIds },
+      driverStatus: 'AVAILABLE'
+    }).sort({ createdAt: -1 });
+
+    return sendSuccess(res, 200, availableDrivers, 'Available drivers fetched successfully');
   } catch (error) {
     next(error);
   }

@@ -15,42 +15,6 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
 import "../dashboard/manager.css";
 
-const INITIAL_WORK_ORDERS = [
-  {
-    id: "wo1",
-    vehicleId: "MH-12-AB-5678",
-    vehicleName: "Ashok Leyland 3118",
-    serviceType: "Tire Rotation",
-    scheduledDate: "2026-07-10",
-    status: "Scheduled",
-    cost: "₹4,500.00",
-    specialist: "Dayanand M",
-    garage: "G-Tech Car Care, Pune Bypass"
-  },
-  {
-    id: "wo2",
-    vehicleId: "KA-02-AB-1456",
-    vehicleName: "Tata Ace Gold",
-    serviceType: "Engine Oil Change",
-    scheduledDate: "2026-07-12",
-    status: "In Progress",
-    cost: "₹3,200.00",
-    specialist: "Karan Singh",
-    garage: "HP garage hub, Mumbai Corridor"
-  },
-  {
-    id: "wo3",
-    vehicleId: "AP-39-EP-9465",
-    vehicleName: "Bharat Benz 211",
-    serviceType: "Brake Inspection",
-    scheduledDate: "2026-07-15",
-    status: "Scheduled",
-    cost: "₹2,800.00",
-    specialist: "Ramesh P",
-    garage: "Speedway Center, Bangalore road"
-  }
-];
-
 export default function UpcomingServicesPage() {
   const navigate = useNavigate();
   const [workOrders, setWorkOrders] = useState([]);

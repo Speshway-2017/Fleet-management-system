@@ -47,7 +47,14 @@ export default function TripDetailsPage() {
     kolhapur: [16.7050, 74.2433],
     satara: [17.6805, 73.9918],
     anantapur: [14.6819, 77.6006],
-    goa: [15.2993, 74.1240]
+    goa: [15.2993, 74.1240],
+    visakhapatnam: [17.6868, 83.2185],
+    vizag: [17.6868, 83.2185],
+    kolkata: [22.5726, 88.3639],
+    ahmedabad: [23.0225, 72.5714],
+    surat: [21.1702, 72.8311],
+    jaipur: [26.9124, 75.7873],
+    lucknow: [26.8467, 80.9462]
   };
 
   const getCoordinates = (cityName) => {
@@ -57,6 +64,28 @@ export default function TripDetailsPage() {
       if (norm.includes(key)) return coords;
     }
     return [18.5204, 73.8567]; // default Pune
+  };
+
+  const calculateDistance = (startCity, endCity) => {
+    const startCoords = getCoordinates(startCity);
+    const endCoords = getCoordinates(endCity);
+
+    // If both resolve to default Pune, fallback to 350
+    if (startCoords[0] === 18.5204 && startCoords[1] === 73.8567 && 
+        endCoords[0] === 18.5204 && endCoords[1] === 73.8567) {
+      return 350;
+    }
+
+    const R = 6371; // Radius of the earth in km
+    const dLat = (endCoords[0] - startCoords[0]) * Math.PI / 180;
+    const dLon = (endCoords[1] - startCoords[1]) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(startCoords[0] * Math.PI / 180) * Math.cos(endCoords[0] * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c; // Distance in km
+    return Math.round(d);
   };
 
   // Initialize Leaflet map
@@ -170,6 +199,10 @@ export default function TripDetailsPage() {
   const isCompleted = trip.status === "Completed";
   const isDelayed = trip.status === "Delayed";
 
+  const totalDistance = calculateDistance(trip.startLocation, trip.endLocation);
+  const distanceTravelled = trip.status === "Scheduled" ? 0 : isCompleted ? totalDistance : Math.round(totalDistance * 0.56);
+  const distancePercent = trip.status === "Scheduled" ? "0%" : isCompleted ? "100%" : "56%";
+
   const handleUpdateStatus = async (newStatus) => {
     try {
       const response = await managerApi.updateTrip(trip._id, { status: newStatus });
@@ -282,11 +315,11 @@ export default function TripDetailsPage() {
         <div className="bg-white rounded-xl border border-[#E7EAF0] p-5 shadow-sm space-y-3">
           <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Distance Travelled</p>
           <div className="flex items-baseline gap-1.5 mt-2">
-            <span className="text-3xl font-black text-[#1E293B] font-poppins">{isCompleted ? "320" : "180"}</span>
-            <span className="text-xs text-[#64748B] font-bold">/ 320 km</span>
+            <span className="text-3xl font-black text-[#1E293B] font-poppins">{distanceTravelled}</span>
+            <span className="text-xs text-[#64748B] font-bold">/ {totalDistance} km</span>
           </div>
           <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-            <div className="bg-[#B45A0A] h-full rounded-full transition-all" style={{ width: isCompleted ? "100%" : "56%" }}></div>
+            <div className="bg-[#B45A0A] h-full rounded-full transition-all" style={{ width: distancePercent }}></div>
           </div>
         </div>
 
@@ -434,10 +467,6 @@ export default function TripDetailsPage() {
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[#64748B] font-medium font-poppins">Current Speed</span>
                 <span className="font-bold text-[#1E293B]">{isTransit ? "62 km/h" : "0 km/h"}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[#64748B] font-medium font-poppins">Fuel Level</span>
-                <span className="font-bold text-[#1E293B]">84%</span>
               </div>
             </div>
 
