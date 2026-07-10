@@ -36,6 +36,9 @@ import {
   deleteReport as deleteReportInRepo
 } from '../repositories/manager.repository.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import Trip from '../models/Trip.js';
+import Driver from '../models/Driver.js';
+import Vehicle from '../models/Vehicle.js';
 
 export const getDashboard = async (_req, res) => {
   return sendSuccess(res, 200, { message: 'Manager dashboard ready' }, 'Dashboard loaded');
@@ -151,30 +154,6 @@ export const deleteVehicle = async (req, res, next) => {
     if (error.code === 11000) {
       return sendError(res, 400, 'A vehicle with this vehicle number already exists');
     }
-    next(error);
-  }
-};
-
-export const updateVehicle = async (req, res, next) => {
-  try {
-    const vehicle = await updateVehicleInRepo(req.params.id, req.body);
-    if (!vehicle) {
-      return sendError(res, 404, 'Vehicle not found');
-    }
-    return sendSuccess(res, 200, vehicle, 'Vehicle updated');
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const deleteVehicle = async (req, res, next) => {
-  try {
-    const vehicle = await deleteVehicleInRepo(req.params.id);
-    if (!vehicle) {
-      return sendError(res, 404, 'Vehicle not found');
-    }
-    return sendSuccess(res, 200, null, 'Vehicle deleted');
-  } catch (error) {
     next(error);
   }
 };
@@ -307,6 +286,25 @@ export const createTrip = async (req, res, next) => {
       return sendError(res, 400, 'Trip number, vehicle, driver, route, and timing details are required');
     }
 
+    // A. Verify vehicle availability in database
+    const activeTripsWithVehicle = await Trip.findOne({
+      vehicle,
+      status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip'] }
+    });
+    if (activeTripsWithVehicle) {
+      return sendError(res, 400, 'This vehicle is already allocated to another active trip');
+    }
+
+    // B. Verify driver availability in database
+    const activeTripsWithDriver = await Trip.findOne({
+      driver,
+      status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip'] }
+    });
+    if (activeTripsWithDriver) {
+      return sendError(res, 400, 'This driver is already allocated to another active trip');
+    }
+
+    // C. Create the trip
     const trip = await createTripInRepo({
       tripNumber,
       vehicle,
@@ -324,6 +322,19 @@ export const createTrip = async (req, res, next) => {
       assignedManager: req.user._id
     });
 
+    // D. Update vehicle status in MongoDB to Assigned
+    await Vehicle.findByIdAndUpdate(vehicle, {
+      currentStatus: 'Assigned',
+      assignedDriver: driver
+    });
+
+    // E. Update driver status in MongoDB to ASSIGNED
+    const selectedVeh = await Vehicle.findById(vehicle);
+    await Driver.findByIdAndUpdate(driver, {
+      driverStatus: 'ASSIGNED',
+      assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned'
+    });
+
     return sendSuccess(res, 201, trip, 'Trip created');
   } catch (error) {
     if (error.code === 11000) {
@@ -335,11 +346,47 @@ export const createTrip = async (req, res, next) => {
 
 export const updateTrip = async (req, res, next) => {
   try {
-    const trip = await updateTripInRepo(req.params.id, req.body);
-    if (!trip) {
+    const tripId = req.params.id;
+    const existingTrip = await Trip.findById(tripId);
+    if (!existingTrip) {
       return sendError(res, 404, 'Trip not found');
     }
-    return sendSuccess(res, 200, trip, 'Trip updated');
+
+    const updatedTrip = await updateTripInRepo(tripId, req.body);
+
+    const newStatus = req.body.status;
+    if (newStatus && (newStatus === 'Completed' || newStatus === 'Cancelled' || newStatus === 'Canceled')) {
+      // Release vehicle
+      if (updatedTrip.vehicle) {
+        await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, {
+          currentStatus: 'Available',
+          assignedDriver: null
+        });
+      }
+      // Release driver
+      if (updatedTrip.driver) {
+        await Driver.findByIdAndUpdate(updatedTrip.driver, {
+          driverStatus: 'AVAILABLE',
+          assignedVehicle: 'Unassigned'
+        });
+      }
+    } else if (newStatus && (newStatus === 'On Transit' || newStatus === 'On Trip' || newStatus === 'Scheduled' || newStatus === 'Assigned' || newStatus === 'In Progress' || newStatus === 'Delayed')) {
+      if (updatedTrip.vehicle) {
+        await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, {
+          currentStatus: 'Assigned',
+          assignedDriver: updatedTrip.driver
+        });
+      }
+      if (updatedTrip.driver && updatedTrip.vehicle) {
+        const selectedVeh = await Vehicle.findById(updatedTrip.vehicle);
+        await Driver.findByIdAndUpdate(updatedTrip.driver, {
+          driverStatus: 'ASSIGNED',
+          assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned'
+        });
+      }
+    }
+
+    return sendSuccess(res, 200, updatedTrip, 'Trip updated');
   } catch (error) {
     next(error);
   }
@@ -347,11 +394,29 @@ export const updateTrip = async (req, res, next) => {
 
 export const deleteTrip = async (req, res, next) => {
   try {
-    const trip = await deleteTripInRepo(req.params.id);
+    const tripId = req.params.id;
+    const trip = await Trip.findById(tripId);
     if (!trip) {
       return sendError(res, 404, 'Trip not found');
     }
-    return sendSuccess(res, 200, null, 'Trip deleted');
+
+    // Release vehicle
+    if (trip.vehicle) {
+      await Vehicle.findByIdAndUpdate(trip.vehicle, {
+        currentStatus: 'Available',
+        assignedDriver: null
+      });
+    }
+    // Release driver
+    if (trip.driver) {
+      await Driver.findByIdAndUpdate(trip.driver, {
+        driverStatus: 'AVAILABLE',
+        assignedVehicle: 'Unassigned'
+      });
+    }
+
+    await deleteTripInRepo(tripId);
+    return sendSuccess(res, 200, null, 'Trip deleted successfully');
   } catch (error) {
     next(error);
   }

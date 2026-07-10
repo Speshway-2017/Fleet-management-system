@@ -99,6 +99,7 @@ export default function AssignVehiclePage() {
       } catch (err) {
         console.error("Failed to unassign previous driver:", err);
       }
+    }
 
     // B. If this driver had a vehicle previously, clear that vehicle's driver field
     if (driver.assignedVehicle && driver.assignedVehicle !== "Unassigned") {
@@ -110,6 +111,7 @@ export default function AssignVehiclePage() {
           console.error("Failed to clear previous vehicle driver:", err);
         }
       }
+    }
 
     setAssigningVehicleId(vehicle.id);
     try {

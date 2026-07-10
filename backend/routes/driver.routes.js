@@ -6,6 +6,7 @@ import {
   updateDriver,
   deleteDriver,
   uploadDriverDocument,
+  getAvailableDrivers,
 } from '../controllers/driver.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
@@ -15,6 +16,7 @@ const router = express.Router();
 
 const auth = [protect, authorizeRoles('FLEET_MANAGER')];
 
+router.get('/available', ...auth, getAvailableDrivers);
 router.get('/',    ...auth, listDrivers);
 router.post('/',   ...auth, createDriver);
 

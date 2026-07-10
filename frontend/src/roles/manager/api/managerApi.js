@@ -11,6 +11,14 @@ export const managerApi = {
     return await axiosClient.get("/manager/vehicles");
   },
 
+  getAvailableVehicles: async () => {
+    return await axiosClient.get("/vehicles/available");
+  },
+
+  getAvailableDrivers: async () => {
+    return await axiosClient.get("/drivers/available");
+  },
+
   getVehicleById: async (id) => {
     return await axiosClient.get(`/manager/vehicles/${id}`);
   },

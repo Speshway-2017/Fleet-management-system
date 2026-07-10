@@ -179,6 +179,8 @@ export default function VehiclesListPage() {
     switch (status) {
       case "Available":
         return "bg-green-100 text-green-700";
+      case "Assigned":
+        return "bg-blue-100 text-blue-700";
       case "On Trip":
         return "bg-orange-100 text-orange-700";
       case "Maintenance":

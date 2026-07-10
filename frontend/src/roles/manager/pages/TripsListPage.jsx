@@ -35,7 +35,7 @@ export default function TripsListPage() {
       const response = await managerApi.getTrips();
       const result = response.data?.data || response.data;
       if (Array.isArray(result)) {
-        setTrips(result.map(t => ({ ...t, id: t.tripNumber })));
+        setTrips(result.map(t => ({ ...t, id: t._id })));
       } else {
         setTrips([]);
       }
@@ -81,12 +81,12 @@ export default function TripsListPage() {
   const filteredTrips = trips.filter(t => {
     const query = search.toLowerCase();
     const matchesSearch =
-      t.id.toLowerCase().includes(query) ||
-      t.driverName.toLowerCase().includes(query) ||
-      t.vehicleName.toLowerCase().includes(query) ||
-      t.startLocation.toLowerCase().includes(query) ||
-      t.endLocation.toLowerCase().includes(query) ||
-      t.description.toLowerCase().includes(query);
+      (t.tripNumber || "").toLowerCase().includes(query) ||
+      (t.driverName || "").toLowerCase().includes(query) ||
+      (t.vehicleName || "").toLowerCase().includes(query) ||
+      (t.startLocation || "").toLowerCase().includes(query) ||
+      (t.endLocation || "").toLowerCase().includes(query) ||
+      (t.description || "").toLowerCase().includes(query);
 
     const matchesStatus = statusFilter === "All Statuses" || t.status === statusFilter;
 
@@ -224,7 +224,7 @@ export default function TripsListPage() {
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="font-bold text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg w-max font-poppins">
-                          {t.id}
+                          {t.tripNumber}
                         </span>
                         <span className="text-[10px] text-[#64748B] mt-1 block font-semibold max-w-[150px] truncate">
                           {t.description}

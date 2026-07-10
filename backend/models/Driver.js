@@ -11,7 +11,7 @@ const driverSchema = new mongoose.Schema(
     assignedVehicle: { type: String, default: 'Unassigned' },
     driverStatus: {
       type: String,
-      enum: ['AVAILABLE', 'ON_TRIP', 'SUSPENDED'],
+      enum: ['AVAILABLE', 'ON_TRIP', 'ASSIGNED', 'SUSPENDED'],
       default: 'AVAILABLE',
     },
     profileImage: { type: String, default: '' },

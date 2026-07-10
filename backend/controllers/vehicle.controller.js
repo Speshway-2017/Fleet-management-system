@@ -6,6 +6,8 @@ import {
   deleteVehicle as deleteVehicleInRepo,
 } from '../repositories/vehicle.repository.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import Trip from '../models/Trip.js';
+import Vehicle from '../models/Vehicle.js';
 
 /**
  * List all vehicles
@@ -15,6 +17,29 @@ export const listVehicles = async (_req, res, next) => {
   try {
     const vehicles = await getVehicles();
     return sendSuccess(res, 200, vehicles, 'Vehicles fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * List all available (unallocated) vehicles
+ * GET /api/vehicles/available
+ */
+export const getAvailableVehicles = async (req, res, next) => {
+  try {
+    const activeTrips = await Trip.find({
+      status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip'] }
+    });
+
+    const allocatedVehicleIds = activeTrips.map(t => t.vehicle).filter(Boolean);
+
+    const availableVehicles = await Vehicle.find({
+      _id: { $nin: allocatedVehicleIds },
+      currentStatus: { $in: ['Available', 'Active'] }
+    }).populate('assignedDriver').sort({ createdAt: -1 });
+
+    return sendSuccess(res, 200, availableVehicles, 'Available vehicles fetched successfully');
   } catch (error) {
     next(error);
   }

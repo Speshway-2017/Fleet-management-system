@@ -49,11 +49,23 @@ export default function CreateTripPage() {
     const fetchResources = async () => {
       try {
         const [dRes, vRes] = await Promise.all([
-          managerApi.getDrivers(),
-          managerApi.getVehicles()
+          managerApi.getAvailableDrivers(),
+          managerApi.getAvailableVehicles()
         ]);
-        const driversData = (dRes.data?.data || dRes.data || []).map(d => ({ ...d, id: d._id }));
-        const vehiclesData = (vRes.data?.data || vRes.data || []).map(v => ({ ...v, id: v._id }));
+        const driversData = (dRes.data?.data || dRes.data || []).map(d => ({
+          ...d,
+          id: d._id,
+          name: d.fullName,
+          phone: d.phoneNumber,
+          status: d.driverStatus === "AVAILABLE" ? "Available" : d.driverStatus === "ON_TRIP" ? "On Trip" : d.driverStatus
+        }));
+        const vehiclesData = (vRes.data?.data || vRes.data || []).map(v => ({
+          ...v,
+          id: v._id,
+          name: v.vehicleName,
+          plateNumber: v.vehicleNumber,
+          status: v.currentStatus
+        }));
         setDrivers(driversData);
         setVehicles(vehiclesData);
       } catch (error) {
@@ -347,7 +359,7 @@ export default function CreateTripPage() {
                 ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
                 : vehicles
               ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center">No vehicles matching selection</p>
+                <p className="text-xs text-gray-400 py-4 text-center font-semibold">No available vehicles found.</p>
               ) : (
                 (filterAvailableVehicles 
                   ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
@@ -415,7 +427,7 @@ export default function CreateTripPage() {
                 ? drivers.filter(d => d.status === "Available")
                 : drivers
               ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center">No drivers matching selection</p>
+                <p className="text-xs text-gray-400 py-4 text-center font-semibold">No available drivers found.</p>
               ) : (
                 (filterAvailableDrivers 
                   ? drivers.filter(d => d.status === "Available")
