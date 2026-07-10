@@ -1,29 +1,52 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
 
 export default function ReportsPage() {
   const navigate = useNavigate();
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSchedulesModal, setShowSchedulesModal] = useState(false);
-  const [schedules, setSchedules] = useState([
-    { id: 1, name: "Weekly Fuel Spending Report", freq: "Weekly (Mon 8:00 AM)", email: "manager@fleet.com", active: true },
-    { id: 2, name: "Monthly Fleet Performance Summary", freq: "Monthly (1st, 9:00 AM)", email: "directors@fleet.com", active: true },
-    { id: 3, name: "Daily Driver Compliance Report", freq: "Daily (6:00 PM)", email: "operations@fleet.com", active: false }
-  ]);
+  const [schedules, setSchedules] = useState([]);
 
-  const toggleSchedule = (id) => {
-    setSchedules(prev => prev.map(s => {
-      if (s.id === id) {
-        const nextState = !s.active;
-        toast.success(`${s.name} delivery has been ${nextState ? 'activated' : 'paused'}!`);
-        return { ...s, active: nextState };
+  const fetchSchedules = async () => {
+    try {
+      const response = await managerApi.getReports();
+      const result = response.data?.data || response.data;
+      if (Array.isArray(result)) {
+        setSchedules(result.map(s => ({
+          id: s._id,
+          name: s.name,
+          freq: `${s.frequency} (${s.day} ${s.time})`,
+          email: s.recipients,
+          active: s.status === "Active"
+        })));
       }
-      return s;
-    }));
+    } catch (error) {
+      console.error("Failed to load schedules from database", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchSchedules();
+  }, []);
+
+  const toggleSchedule = async (id) => {
+    const matched = schedules.find(s => s.id === id);
+    if (!matched) return;
+    const nextActive = !matched.active;
+    const nextStatus = nextActive ? "Active" : "Paused";
+    try {
+      await managerApi.updateReport(id, { status: nextStatus });
+      toast.success(`${matched.name} delivery has been ${nextActive ? 'activated' : 'paused'}!`);
+      fetchSchedules();
+    } catch (error) {
+      toast.error("Failed to update status");
+      console.error(error);
+    }
   };
 
   const archivedReports = [

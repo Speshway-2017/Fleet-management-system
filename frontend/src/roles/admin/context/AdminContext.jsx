@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { adminApi } from "@/api/adminApi";
 
 const AdminContext = createContext();
 
@@ -82,92 +83,34 @@ export function AdminProvider({ children }) {
     setNotifications(notifications.map(n => n.id === id ? { ...n, unread: false } : n));
   };
 
-  const [organizations, setOrganizations] = useState([
-    {
-      id: "1",
-      name: "ABC Logistics",
-      email: "contact@abclogistics.com",
-      phone: "+1 555-0101",
-      industry: "Freight",
-      size: "100-500",
-      subscription: "Premium",
-      status: "Active",
-      fleetSize: 145,
-      activeManagers: 12,
-      createdAt: "Jan 15, 2024",
-      lastBilling: "Jun 01, 2024",
-      initials: "AB",
-    },
-    {
-      id: "2",
-      name: "XYZ Transport",
-      email: "info@xyztransport.com",
-      phone: "+1 555-0102",
-      industry: "Delivery",
-      size: "50-100",
-      subscription: "Basic",
-      status: "Active",
-      fleetSize: 68,
-      activeManagers: 4,
-      createdAt: "Feb 22, 2024",
-      lastBilling: "May 22, 2024",
-      initials: "XY",
-    },
-    {
-      id: "3",
-      name: "VRL Freight",
-      email: "support@vrlfreight.com",
-      phone: "+1 555-0103",
-      industry: "Long Haul",
-      size: "500+",
-      subscription: "Enterprise",
-      status: "Active",
-      fleetSize: 320,
-      activeManagers: 24,
-      createdAt: "Mar 10, 2024",
-      lastBilling: "Jun 10, 2024",
-      initials: "VR",
+  const [organizations, setOrganizations] = useState([]);
+  
+  const fetchOrganizations = async () => {
+    try {
+      const response = await adminApi.getOrganizations();
+      const result = response.data?.data || response.data || [];
+      setOrganizations(result);
+    } catch (error) {
+      console.error("Failed to fetch organizations:", error);
     }
-  ]);
+  };
 
-  const [fleetManagers, setFleetManagers] = useState([
-    {
-      id: "1",
-      name: "James Carter",
-      email: "j.carter@abclogistics.com",
-      phone: "+1 555-0101",
-      org: "ABC Logistics",
-      role: "Fleet Manager",
-      status: "Active",
-      lastLogin: "2 hours ago",
-      created: "Jan 15, 2024",
-      initials: "JC"
-    },
-    {
-      id: "2",
-      name: "Sarah Miller",
-      email: "s.miller@xyztransport.com",
-      phone: "+1 555-0102",
-      org: "XYZ Transport",
-      role: "Dispatcher",
-      status: "Active",
-      lastLogin: "1 day ago",
-      created: "Feb 22, 2024",
-      initials: "SM"
-    },
-    {
-      id: "3",
-      name: "David Chen",
-      email: "d.chen@vrlfreight.com",
-      phone: "+1 555-0103",
-      org: "VRL Freight",
-      role: "Admin",
-      status: "Invited",
-      lastLogin: "Never",
-      created: "May 10, 2024",
-      initials: "DC"
+  const [fleetManagers, setFleetManagers] = useState([]);
+
+  const fetchFleetManagers = async () => {
+    try {
+      const response = await adminApi.getFleetManagers();
+      const result = response.data?.data || response.data || [];
+      setFleetManagers(result);
+    } catch (error) {
+      console.error("Failed to fetch fleet managers:", error);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchOrganizations();
+    fetchFleetManagers();
+  }, []);
 
   // Organization CRUD
   const getOrganization = (id) => organizations.find(o => o.id === id);
@@ -198,12 +141,14 @@ export function AdminProvider({ children }) {
       isSidebarOpen,
       setIsSidebarOpen,
       organizations,
+      fetchOrganizations,
       getOrganization,
       addOrganization,
       updateOrganization,
       deleteOrganization,
       
       fleetManagers,
+      fetchFleetManagers,
       getFleetManager,
       addFleetManager,
       updateFleetManager,

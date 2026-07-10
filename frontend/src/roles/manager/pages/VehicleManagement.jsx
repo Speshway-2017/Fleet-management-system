@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
 
 const INITIAL_VEHICLES = [
   {
@@ -210,10 +211,30 @@ const MOCK_ACTIVITIES = [
 
 export default function VehicleManagement() {
   const navigate = useNavigate();
-  const [vehicles, setVehicles] = useState(() => {
-    const saved = localStorage.getItem("fleet_vehicles");
-    return saved ? JSON.parse(saved) : INITIAL_VEHICLES;
-  });
+  const [vehicles, setVehicles] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchVehicles = async () => {
+    try {
+      setLoading(true);
+      const response = await managerApi.getVehicles();
+      const result = response.data?.data || response.data;
+      if (Array.isArray(result)) {
+        setVehicles(result);
+      } else {
+        setVehicles([]);
+      }
+    } catch (error) {
+      toast.error("Failed to load vehicles from database");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVehicles();
+  }, []);
 
   // Filter States
   const [search, setSearch] = useState("");
@@ -254,10 +275,7 @@ export default function VehicleManagement() {
     dateAdded: new Date().toISOString().split('T')[0]
   });
 
-  // Persist to local storage
-  useEffect(() => {
-    localStorage.setItem("fleet_vehicles", JSON.stringify(vehicles));
-  }, [vehicles]);
+  // Local storage persistence removed in favor of backend API
 
   // Handle Sort
   const handleSort = (field) => {
@@ -438,46 +456,54 @@ export default function VehicleManagement() {
     setModalType("delete");
   };
 
-  const handleDeleteVehicle = () => {
-    const updated = vehicles.filter(v => v.id !== selectedVehicle.id);
-    setVehicles(updated);
-    setModalType(null);
-    setSelectedVehicle(null);
-    toast.success("Vehicle deleted successfully");
+  const handleDeleteVehicle = async () => {
+    try {
+      await managerApi.deleteVehicle(selectedVehicle._id);
+      toast.success("Vehicle deleted successfully");
+      fetchVehicles();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete vehicle");
+    } finally {
+      setModalType(null);
+      setSelectedVehicle(null);
+    }
   };
 
-  const handleSaveVehicle = (e) => {
+  const handleSaveVehicle = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.plateNumber) {
       toast.error("Please fill in all required fields.");
       return;
     }
 
-    if (modalType === "add") {
-      const newVehicle = {
-        ...formData,
-        id: vehicles.length > 0 ? Math.max(...vehicles.map(v => v.id)) + 1 : 1,
-        fuelLevel: Number(formData.fuelLevel),
-        fastagBalance: Number(formData.fastagBalance)
-      };
-      setVehicles([...vehicles, newVehicle]);
-      toast.success("New vehicle added successfully!");
-    } else if (modalType === "edit") {
-      const updated = vehicles.map(v => v.id === selectedVehicle.id ? {
-        ...formData,
-        fuelLevel: Number(formData.fuelLevel),
-        fastagBalance: Number(formData.fastagBalance)
-      } : v);
-      setVehicles(updated);
-      toast.success("Vehicle updated successfully!");
-    } else if (modalType === "assign") {
-      const updated = vehicles.map(v => v.id === selectedVehicle.id ? { ...v, driver: formData.driver } : v);
-      setVehicles(updated);
-      toast.success(`Assigned driver ${formData.driver} successfully!`);
+    try {
+      if (modalType === "add") {
+        await managerApi.createVehicle({
+          ...formData,
+          fuelLevel: Number(formData.fuelLevel),
+          fastagBalance: Number(formData.fastagBalance)
+        });
+        toast.success("New vehicle added successfully!");
+      } else if (modalType === "edit") {
+        await managerApi.updateVehicle(selectedVehicle._id, {
+          ...formData,
+          fuelLevel: Number(formData.fuelLevel),
+          fastagBalance: Number(formData.fastagBalance)
+        });
+        toast.success("Vehicle updated successfully!");
+      } else if (modalType === "assign") {
+        await managerApi.updateVehicle(selectedVehicle._id, {
+          driver: formData.driver
+        });
+        toast.success(`Assigned driver ${formData.driver} successfully!`);
+      }
+      fetchVehicles();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to save vehicle");
+    } finally {
+      setModalType(null);
+      setSelectedVehicle(null);
     }
-
-    setModalType(null);
-    setSelectedVehicle(null);
   };
 
   // Helpers for formatting
@@ -863,7 +889,7 @@ export default function VehicleManagement() {
                     </tr>
                   ) : (
                     filteredVehicles.map((v) => (
-                      <tr key={v.id} className="hover:bg-[#F5F7FB]/50 transition-colors group">
+                      <tr key={v._id} className="hover:bg-[#F5F7FB]/50 transition-colors group">
                         {/* Vehicle Card Cell */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex items-center gap-3">
@@ -879,7 +905,7 @@ export default function VehicleManagement() {
 
                         {/* Registration Number */}
                         <td className="py-4 px-6 font-poppins font-semibold text-xs tracking-wider text-[#1E293B] whitespace-nowrap">
-                          {v.plateNumber}
+                          {v.plateNumber || v.vehicleNumber}
                         </td>
 
                         {/* Type */}
@@ -947,7 +973,7 @@ export default function VehicleManagement() {
                           <div className="flex items-center justify-end gap-1">
                             {/* View Details */}
                             <button
-                              onClick={() => navigate(`/manager/vehicle-details/${v.id}`)}
+                              onClick={() => navigate(`/manager/vehicle-details/${v._id}`)}
                               title="View details"
                               className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                             >
@@ -956,7 +982,7 @@ export default function VehicleManagement() {
 
                             {/* Edit */}
                             <button
-                              onClick={() => navigate(`/manager/vehicle-edit/${v.id}`)}
+                              onClick={() => navigate(`/manager/vehicle-edit/${v._id}`)}
                               title="Edit vehicle"
                               className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                             >

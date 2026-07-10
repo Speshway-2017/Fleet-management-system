@@ -1,13 +1,24 @@
-import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import AuthLayout from "@/components/layout/AuthLayout";
 import toast from "react-hot-toast";
+import { authApi } from "@/api/authApi";
 
 export default function OtpVerificationPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const email = location.state?.email;
+  
   const [loading, setLoading] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef([]);
+
+  useEffect(() => {
+    if (!email) {
+      toast.error("Email not found. Please start the process again.");
+      navigate("/forgot-password");
+    }
+  }, [email, navigate]);
 
   const handleChange = (e, index) => {
     const value = e.target.value;
@@ -57,13 +68,12 @@ export default function OtpVerificationPage() {
     
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await authApi.verifyOtp({ email, otp: otpValue });
       toast.success("OTP verified successfully!");
-      // Navigate to reset password page or dashboard
-      // navigate("/reset-password");
+      // Navigate to reset password page and pass email and OTP
+      navigate("/reset-password", { state: { email, otp: otpValue } });
     } catch (err) {
-      toast.error("Invalid OTP. Please try again.");
+      toast.error(err.response?.data?.message || err.message || "Invalid OTP. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -1,26 +1,155 @@
-import { mockVehicles } from "@/data/mockVehicles";
-import { mockDrivers } from "@/data/mockDrivers";
-import { mockTrips } from "@/data/mockTrips";
-
-let trips = [...mockTrips];
+import axiosClient from "@/api/axiosClient";
 
 export const managerApi = {
+  // Dashboard
+  getDashboard: async () => {
+    return await axiosClient.get("/manager/dashboard");
+  },
+
+  // Vehicles
   getVehicles: async () => {
-    return { data: mockVehicles };
+    return await axiosClient.get("/manager/vehicles");
   },
+
+  getVehicleById: async (id) => {
+    return await axiosClient.get(`/manager/vehicles/${id}`);
+  },
+
+  createVehicle: async (vehicleData) => {
+    return await axiosClient.post("/manager/vehicles", vehicleData);
+  },
+
+  updateVehicle: async (id, vehicleData) => {
+    return await axiosClient.put(`/manager/vehicles/${id}`, vehicleData);
+  },
+
+  deleteVehicle: async (id) => {
+    return await axiosClient.delete(`/manager/vehicles/${id}`);
+  },
+
+  // Drivers
   getDrivers: async () => {
-    return { data: mockDrivers };
+    return await axiosClient.get("/manager/drivers");
   },
+
+  getDriverById: async (id) => {
+    return await axiosClient.get(`/manager/drivers/${id}`);
+  },
+
+  createDriver: async (driverData) => {
+    return await axiosClient.post("/manager/drivers", driverData);
+  },
+
+  updateDriver: async (id, driverData) => {
+    return await axiosClient.put(`/manager/drivers/${id}`, driverData);
+  },
+
+  deleteDriver: async (id) => {
+    return await axiosClient.delete(`/manager/drivers/${id}`);
+  },
+
+  // Trips
   getTrips: async () => {
-    return { data: trips };
+    return await axiosClient.get("/manager/trips");
   },
-  assignTrip: async (payload) => {
-    const newTrip = {
-      id: trips.length + 1,
-      ...payload,
-      status: "pending",
-    };
-    trips.push(newTrip);
-    return { data: newTrip };
+
+  getTripById: async (id) => {
+    return await axiosClient.get(`/manager/trips/${id}`);
+  },
+
+  createTrip: async (tripData) => {
+    return await axiosClient.post("/manager/trips", tripData);
+  },
+
+  updateTrip: async (id, tripData) => {
+    return await axiosClient.put(`/manager/trips/${id}`, tripData);
+  },
+
+  deleteTrip: async (id) => {
+    return await axiosClient.delete(`/manager/trips/${id}`);
+  },
+
+  // Fuel Management
+  getFuelRecords: async () => {
+    return await axiosClient.get("/manager/fuel");
+  },
+
+  getFuelRecordById: async (id) => {
+    return await axiosClient.get(`/manager/fuel/${id}`);
+  },
+
+  createFuelRecord: async (fuelData) => {
+    return await axiosClient.post("/manager/fuel", fuelData);
+  },
+
+  updateFuelRecord: async (id, fuelData) => {
+    return await axiosClient.put(`/manager/fuel/${id}`, fuelData);
+  },
+
+  deleteFuelRecord: async (id) => {
+    return await axiosClient.delete(`/manager/fuel/${id}`);
+  },
+
+  // Maintenance
+  getMaintenance: async () => {
+    return await axiosClient.get("/manager/maintenance");
+  },
+
+  getMaintenanceById: async (id) => {
+    return await axiosClient.get(`/manager/maintenance/${id}`);
+  },
+
+  createMaintenance: async (maintenanceData) => {
+    return await axiosClient.post("/manager/maintenance", maintenanceData);
+  },
+
+  updateMaintenance: async (id, maintenanceData) => {
+    return await axiosClient.put(`/manager/maintenance/${id}`, maintenanceData);
+  },
+
+  deleteMaintenance: async (id) => {
+    return await axiosClient.delete(`/manager/maintenance/${id}`);
+  },
+
+  // Documents
+  getDocuments: async () => {
+    return await axiosClient.get("/manager/documents");
+  },
+
+  getDocumentById: async (id) => {
+    return await axiosClient.get(`/manager/documents/${id}`);
+  },
+
+  createDocument: async (documentData) => {
+    return await axiosClient.post("/manager/documents", documentData);
+  },
+
+  updateDocument: async (id, documentData) => {
+    return await axiosClient.put(`/manager/documents/${id}`, documentData);
+  },
+
+  deleteDocument: async (id) => {
+    return await axiosClient.delete(`/manager/documents/${id}`);
+  },
+
+  // Reports
+  getReports: async () => {
+    return await axiosClient.get("/manager/reports");
+  },
+
+  getReportById: async (id) => {
+    return await axiosClient.get(`/manager/reports/${id}`);
+  },
+
+  createReport: async (reportData) => {
+    return await axiosClient.post("/manager/reports", reportData);
+  },
+
+  updateReport: async (id, reportData) => {
+    return await axiosClient.put(`/manager/reports/${id}`, reportData);
+  },
+
+  deleteReport: async (id) => {
+    return await axiosClient.delete(`/manager/reports/${id}`);
   },
 };

@@ -1,24 +1,37 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import AuthLayout from "@/components/layout/AuthLayout";
 
 export default function LoginPage() {
-  const { login, loading } = useAuth();
+  const { login, loading, isAuthenticated, role } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(role === "SUPER_ADMIN" || role === "admin" ? "/admin/dashboard" : "/manager", { replace: true });
+    }
+  }, [isAuthenticated, role, navigate]);
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
 
+  // Redirect already-authenticated users away from the login page
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(role === "admin" ? "/admin/dashboard" : "/manager", { replace: true });
+    }
+  }, [isAuthenticated, role, navigate]);
+
   const validate = () => {
     const newErrors = {};
     if (!form.email) newErrors.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = "Invalid email format";
-    
+    else if (!/\S+@\S+\.\S+/.test(form.email) && form.email !== "admin@123") newErrors.email = "Invalid email format";
+
     if (!form.password) newErrors.password = "Password is required";
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -26,12 +39,13 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
+
     try {
       const user = await login(form);
       toast.success(`Welcome back, ${user.name || "User"}!`);
-      navigate(user.role === "admin" ? "/admin/dashboard" : "/manager");
-    } catch {
-      toast.error("Invalid email or password");
+      navigate(user.role === "SUPER_ADMIN" || user.role === "admin" ? "/admin/dashboard" : "/manager");
+    } catch (err) {
+      toast.error(err.message || "Invalid email or password");
     }
   };
 
@@ -150,14 +164,8 @@ export default function LoginPage() {
       </form>
 
       {/* Footer */}
-      <div className="mt-6 border-t border-gray-100 pt-6 text-center text-xs text-gray-500">
-        Don't have an account?{" "}
-        <button
-          onClick={() => navigate("/signup")}
-          className="font-bold text-[#A14000] hover:text-[#7d3200] transition-colors"
-        >
-          Sign Up
-        </button>
+      <div className="mt-6 pt-6 text-center text-xs text-gray-500">
+        {/* Placeholder for future links */}
       </div>
     </AuthLayout>
   );

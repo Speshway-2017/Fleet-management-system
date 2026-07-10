@@ -1,15 +1,27 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import AuthLayout from "@/components/layout/AuthLayout";
 import toast from "react-hot-toast";
+import { authApi } from "@/api/authApi";
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const email = location.state?.email;
+  const otp = location.state?.otp;
+
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ password: "", confirmPassword: "" });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  useEffect(() => {
+    if (!email || !otp) {
+      toast.error("Invalid session. Please restart the password reset process.");
+      navigate("/forgot-password");
+    }
+  }, [email, otp, navigate]);
 
   // Requirements logic
   const reqLength = form.password.length >= 8;
@@ -30,12 +42,11 @@ export default function ResetPasswordPage() {
 
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await authApi.resetPassword({ email, otp, newPassword: form.password });
       toast.success("Password reset successfully!");
       navigate("/login");
-    } catch {
-      toast.error("Failed to reset password. Please try again.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || "Failed to reset password. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAdmin } from "@/roles/admin/context/AdminContext";
+import { adminApi } from "@/api/adminApi";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 
 export default function AddFleetManager() {
   const navigate = useNavigate();
-  const { addFleetManager, organizations } = useAdmin();
+  const { fetchFleetManagers } = useAdmin();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -18,13 +19,35 @@ export default function AddFleetManager() {
     confirmPassword: ""
   });
   const [errors, setErrors] = useState({});
+  const [activeOrgs, setActiveOrgs] = useState([]);
+  const [orgsLoading, setOrgsLoading] = useState(true);
+  const [orgsError, setOrgsError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchOrgs = async () => {
+      try {
+        setOrgsLoading(true);
+        const response = await adminApi.getOrganizations();
+        const data = response.data?.data || response.data || [];
+        const active = data.filter(org => org.status === "Active");
+        setActiveOrgs(active);
+      } catch (err) {
+        console.error("Failed to fetch organizations:", err);
+        setOrgsError(true);
+      } finally {
+        setOrgsLoading(false);
+      }
+    };
+    fetchOrgs();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setErrors({ ...errors, [e.target.name]: "" });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
     if (!formData.fullName) newErrors.fullName = "Full Name is required";
@@ -41,22 +64,32 @@ export default function AddFleetManager() {
       else if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) newErrors.password = "Password must contain special character";
       
       if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
+    } else {
+      newErrors.password = "Password is required";
     }
 
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    addFleetManager({
-      name: formData.fullName,
-      email: formData.email,
-      phone: formData.phone,
-      org: formData.organization,
-      status: "Invited",
-      lastLogin: "Never",
-      initials: formData.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
-    });
-    toast.success("Fleet manager added successfully!");
-    navigate("/admin/fleet-managers");
+    setIsSubmitting(true);
+    try {
+      await adminApi.createFleetManager({
+        name: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        organization: formData.organization,
+        role: formData.role,
+        password: formData.password
+      });
+      
+      toast.success("Fleet manager added successfully!");
+      if (fetchFleetManagers) await fetchFleetManagers();
+      navigate("/admin/fleet-managers");
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || "Failed to create fleet manager");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -95,11 +128,27 @@ export default function AddFleetManager() {
                 <Link to="/admin/fleet-managers" className="flex-1 sm:flex-none flex items-center justify-center px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-[#A14000] border border-[#A14000] bg-transparent hover:bg-[#A14000]/10 rounded-lg transition-colors text-center truncate">
                   Cancel
                 </Link>
-                <button type="submit" className="flex-[2] sm:flex-none px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-[#A14000] border border-[#A14000] rounded-lg shadow-sm hover:bg-[#8a3700] transition-colors text-center truncate">
-                  Create Fleet Manager
+                <button 
+                  type="submit" 
+                  disabled={orgsLoading || orgsError || activeOrgs.length === 0 || isSubmitting}
+                  className="flex-[2] sm:flex-none px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-[#A14000] border border-[#A14000] rounded-lg shadow-sm hover:bg-[#8a3700] transition-colors text-center truncate disabled:opacity-50"
+                >
+                  {isSubmitting ? "Creating..." : "Create Fleet Manager"}
                 </button>
               </div>
             </div>
+
+            {/* Empty State Warning */}
+            {(!orgsLoading && !orgsError && activeOrgs.length === 0) && (
+              <div className="mb-6 bg-orange-50 border border-orange-200 text-orange-800 rounded-xl p-4 text-sm font-medium">
+                No active organizations available. Please ask a Super Admin to create an organization first.
+              </div>
+            )}
+            {orgsError && (
+              <div className="mb-6 bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm font-medium">
+                Failed to load organizations. Please try refreshing the page.
+              </div>
+            )}
 
             {/* Form Card */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
@@ -154,10 +203,13 @@ export default function AddFleetManager() {
                       value={formData.organization}
                       onChange={handleChange}
                       className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all text-slate-700 ${errors.organization ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                      disabled={orgsLoading || orgsError || activeOrgs.length === 0}
                     >
-                      <option value="" disabled>Select Organization</option>
-                      {organizations.map(org => (
-                        <option key={org.id} value={org.name}>{org.name}</option>
+                      <option value="" disabled>
+                        {orgsLoading ? "Loading organizations..." : activeOrgs.length === 0 ? "No organizations available" : "Select Organization"}
+                      </option>
+                      {activeOrgs.map(org => (
+                        <option key={org.id} value={org.id}>{org.name}</option>
                       ))}
                     </select>
                     {errors.organization && <p className="text-xs text-red-500 mt-1">{errors.organization}</p>}

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
 
 const INITIAL_DRIVERS = [
   {
@@ -162,10 +163,30 @@ const INITIAL_DRIVERS = [
 
 export default function DriversManagementPage() {
   const navigate = useNavigate();
-  const [drivers, setDrivers] = useState(() => {
-    const saved = localStorage.getItem("fleet_drivers");
-    return saved ? JSON.parse(saved) : INITIAL_DRIVERS;
-  });
+  const [drivers, setDrivers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDrivers = async () => {
+    try {
+      setLoading(true);
+      const response = await managerApi.getDrivers();
+      const result = response.data?.data || response.data;
+      if (Array.isArray(result)) {
+        setDrivers(result);
+      } else {
+        setDrivers([]);
+      }
+    } catch (error) {
+      toast.error("Failed to load drivers from database");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDrivers();
+  }, []);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
@@ -173,10 +194,7 @@ export default function DriversManagementPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState(null);
 
-  // Sync to local storage
-  useEffect(() => {
-    localStorage.setItem("fleet_drivers", JSON.stringify(drivers));
-  }, [drivers]);
+  // Sync to local storage removed in favor of backend API
 
   // KPIs calculations
   const totalDrivers = drivers.length;
@@ -197,24 +215,20 @@ export default function DriversManagementPage() {
     toast.success("Showing top drivers");
   };
 
-  const handleDeleteDriver = () => {
+  const handleDeleteDriver = async () => {
     if (!selectedDriver) return;
     
-    // Update local vehicle state to unassign this driver if assigned
-    const savedVehicles = localStorage.getItem("fleet_vehicles");
-    if (savedVehicles) {
-      const vehicles = JSON.parse(savedVehicles);
-      const updatedVehicles = vehicles.map(v => 
-        v.driver === selectedDriver.name ? { ...v, driver: "Unassigned" } : v
-      );
-      localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
+    try {
+      await managerApi.deleteDriver(selectedDriver._id);
+      toast.success("Driver profile deleted successfully");
+      fetchDrivers();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete driver");
+      console.error(error);
+    } finally {
+      setDeleteModalOpen(false);
+      setSelectedDriver(null);
     }
-
-    const updated = drivers.filter(d => d.id !== selectedDriver.id);
-    setDrivers(updated);
-    setDeleteModalOpen(false);
-    setSelectedDriver(null);
-    toast.success("Driver profile deleted successfully");
   };
 
   const filteredDrivers = drivers.filter(d => {
@@ -455,7 +469,7 @@ export default function DriversManagementPage() {
                     </tr>
                   ) : (
                     displayedDrivers.map((d) => (
-                      <tr key={d.id} className="hover:bg-[#F5F7FB]/50 transition-colors group">
+                      <tr key={d._id} className="hover:bg-[#F5F7FB]/50 transition-colors group">
                         {/* Driver Info Cell */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex items-center gap-3">
@@ -524,7 +538,7 @@ export default function DriversManagementPage() {
                           <div className="flex items-center justify-end gap-2">
                             {/* View Driver Profile */}
                             <button
-                              onClick={() => navigate(`/manager/driver-profile/${d.id}`)}
+                              onClick={() => navigate(`/manager/driver-profile/${d._id}`)}
                               title="View profile"
                               className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                             >

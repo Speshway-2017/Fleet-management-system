@@ -6,6 +6,8 @@ import toast from "react-hot-toast";
 import L from "leaflet";
 import DriverChatDrawer from "@/components/common/DriverChatDrawer";
 import { mockNotifications } from "@/data/mockNotifications";
+import DispatchWarningModal from "@/components/common/DispatchWarningModal";
+import ContactDriverModal from "@/components/common/ContactDriverModal";
 
 const getIconColors = (type) => {
   switch (type) {
@@ -38,6 +40,8 @@ export default function NotificationDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [showDispatchWarningModal, setShowDispatchWarningModal] = useState(false);
+  const [showContactDriverModal, setShowContactDriverModal] = useState(false);
   
   const notification = mockNotifications.find(n => n.id === parseInt(id)) || mockNotifications[0];
 
@@ -91,10 +95,27 @@ export default function NotificationDetailsPage() {
   };
 
   const handleAction = (action) => {
-    if (action.actionType === "navigate" && action.route) {
-      navigate(action.route);
+    const actType = typeof action === 'string' ? action : action?.actionType;
+    if (actType === "Dispatch Warning") {
+      setShowDispatchWarningModal(true);
+    } else if (actType === "Call Driver") {
+      setShowContactDriverModal(true);
+    } else if (actType === "Track Live") {
+      navigate("/manager/map");
+    } else if (actType === "View Analytics") {
+      navigate("/manager/analytics");
+    } else if (actType === "Schedule Now") {
+      navigate("/manager/maintenance/schedule", {
+        state: {
+          vehicleNumber: notification.vehicle,
+          maintenanceType: "Brake Check",
+          dueMileage: "150 miles"
+        }
+      });
+    } else if (actType === "Download PDF") {
+      toast.success(`Downloading PDF for ${notification.title}...`);
     } else {
-      toast.success(`${action.label} action triggered!`);
+      toast.success(`${actType || 'Action'} triggered!`);
     }
   };
 
@@ -267,15 +288,15 @@ export default function NotificationDetailsPage() {
               <div className="pt-3 border-t border-gray-200">
                 <div className="flex items-center justify-between py-2">
                   <span className="text-xs text-gray-500">Total Mileage</span>
-                  <span className="text-xs font-medium text-gray-800">{notification.meta.totalMileage || "—"}</span>
+                  <span className="text-xs font-medium text-gray-800">{notification.meta?.totalMileage || "—"}</span>
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-xs text-gray-500">Last Service</span>
-                  <span className="text-xs font-medium text-gray-800">{notification.meta.lastService || "—"}</span>
+                  <span className="text-xs font-medium text-gray-800">{notification.meta?.lastService || "—"}</span>
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-xs text-gray-500">Maintenance Health</span>
-                  <span className="text-xs font-medium text-amber-700">{notification.meta.maintenanceHealth || "—"}</span>
+                  <span className="text-xs font-medium text-amber-700">{notification.meta?.maintenanceHealth || "—"}</span>
                 </div>
               </div>
             </div>
@@ -355,6 +376,16 @@ export default function NotificationDetailsPage() {
             time: "02:17 PM",
           }
         ]}
+      />
+      <DispatchWarningModal
+        isOpen={showDispatchWarningModal}
+        onClose={() => setShowDispatchWarningModal(false)}
+        notification={notification.meta}
+      />
+      <ContactDriverModal
+        isOpen={showContactDriverModal}
+        onClose={() => setShowContactDriverModal(false)}
+        notification={notification.meta}
       />
     </div>
   );

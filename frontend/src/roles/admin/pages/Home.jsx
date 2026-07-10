@@ -189,6 +189,8 @@ export default function Home({ setActiveTab }) {
                 onClick={() => {
                   sessionStorage.removeItem("user");
                   sessionStorage.removeItem("token");
+                  localStorage.removeItem("user");
+                  localStorage.removeItem("token");
                   navigate("/signup");
                 }}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-secondary px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-accent shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
@@ -335,6 +337,8 @@ export default function Home({ setActiveTab }) {
               onClick={() => {
                 sessionStorage.removeItem("user");
                 sessionStorage.removeItem("token");
+                localStorage.removeItem("user");
+                localStorage.removeItem("token");
                 navigate("/signup");
               }}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-primary-dark shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"

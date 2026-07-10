@@ -93,12 +93,12 @@ const INITIAL_TRIPS = [
   }
 ];
 
+import { managerApi } from "../api/managerApi";
+
 export default function TripsManagementPage() {
   const navigate = useNavigate();
-  const [trips, setTrips] = useState(() => {
-    const saved = localStorage.getItem("fleet_trips");
-    return saved ? JSON.parse(saved) : INITIAL_TRIPS;
-  });
+  const [trips, setTrips] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Resources list for assignment dropdowns
   const [driversList, setDriversList] = useState([]);
@@ -123,20 +123,46 @@ export default function TripsManagementPage() {
     description: ""
   });
 
-  // Sync to local storage
-  useEffect(() => {
-    localStorage.setItem("fleet_trips", JSON.stringify(trips));
-  }, [trips]);
-
-  // Load driver and vehicle lists for modal selectors
-  useEffect(() => {
-    const savedDrivers = localStorage.getItem("fleet_drivers");
-    if (savedDrivers) {
-      setDriversList(JSON.parse(savedDrivers));
+  const fetchTrips = async () => {
+    try {
+      setLoading(true);
+      const response = await managerApi.getTrips();
+      const result = response.data?.data || response.data;
+      if (Array.isArray(result)) {
+        setTrips(result.map(t => ({ ...t, id: t.tripNumber })));
+      } else {
+        setTrips([]);
+      }
+    } catch (error) {
+      toast.error("Failed to load trips from database");
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-    const savedVehicles = localStorage.getItem("fleet_vehicles");
-    if (savedVehicles) {
-      setVehiclesList(JSON.parse(savedVehicles));
+  };
+
+  useEffect(() => {
+    fetchTrips();
+  }, []);
+
+  const fetchResources = async () => {
+    try {
+      const [dRes, vRes] = await Promise.all([
+        managerApi.getDrivers(),
+        managerApi.getVehicles()
+      ]);
+      const drivers = dRes.data?.data || dRes.data || [];
+      const vehicles = vRes.data?.data || vRes.data || [];
+      setDriversList(drivers);
+      setVehiclesList(vehicles);
+    } catch (err) {
+      console.error("Failed to fetch drivers or vehicles", err);
+    }
+  };
+
+  useEffect(() => {
+    if (showCreateModal) {
+      fetchResources();
     }
   }, [showCreateModal]);
 
@@ -146,85 +172,82 @@ export default function TripsManagementPage() {
     toast.success("Filters reset successfully");
   };
 
-  const handleCreateTrip = (e) => {
+  const handleCreateTrip = async (e) => {
     e.preventDefault();
     if (!formData.driverId || !formData.vehicleId || !formData.startLocation || !formData.endLocation || !formData.departureTime || !formData.eta) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    const selectedDriver = driversList.find(d => d.id === Number(formData.driverId));
-    const selectedVehicle = vehiclesList.find(v => v.id === Number(formData.vehicleId));
+    const selectedDriver = driversList.find(d => String(d._id) === String(formData.driverId));
+    const selectedVehicle = vehiclesList.find(v => String(v._id) === String(formData.vehicleId));
 
     if (!selectedDriver || !selectedVehicle) {
       toast.error("Invalid driver or vehicle selected");
       return;
     }
 
-    const newTrip = {
-      id: `TRP-${Math.floor(1000 + Math.random() * 9000)}`,
-      driverName: selectedDriver.name,
-      driverPhone: selectedDriver.phone,
-      vehicleName: selectedVehicle.name,
-      vehiclePlate: selectedVehicle.plateNumber,
-      startLocation: formData.startLocation,
-      endLocation: formData.endLocation,
-      departureTime: formData.departureTime,
-      eta: formData.eta,
-      status: formData.status,
-      description: formData.description || "General Transport"
-    };
+    try {
+      const tripNum = `TRP-${Math.floor(1000 + Math.random() * 9000)}`;
+      await managerApi.createTrip({
+        tripNumber: tripNum,
+        vehicle: selectedVehicle._id,
+        driver: selectedDriver._id,
+        driverName: selectedDriver.name,
+        driverPhone: selectedDriver.phone,
+        vehicleName: selectedVehicle.name,
+        vehiclePlate: selectedVehicle.plateNumber,
+        startLocation: formData.startLocation,
+        endLocation: formData.endLocation,
+        departureTime: formData.departureTime,
+        eta: formData.eta,
+        status: formData.status,
+        description: formData.description || "General Transport"
+      });
 
-    // Update vehicle's driver assignment and status in localStorage
-    const updatedVehicles = vehiclesList.map(v => {
-      if (v.id === selectedVehicle.id) {
-        return {
-          ...v,
-          driver: selectedDriver.name,
-          status: formData.status === "On Transit" ? "On Trip" : "Active"
-        };
-      }
-      return v;
-    });
-    setVehiclesList(updatedVehicles);
-    localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
+      // Update vehicle status
+      await managerApi.updateVehicle(selectedVehicle._id, {
+        driver: selectedDriver.name,
+        status: formData.status === "On Transit" ? "On Trip" : "Active"
+      });
 
-    // Update driver's assigned vehicle and status
-    const updatedDrivers = driversList.map(d => {
-      if (d.id === selectedDriver.id) {
-        return {
-          ...d,
-          assignedVehicle: selectedVehicle.plateNumber,
-          status: formData.status === "On Transit" ? "On Trip" : "Available"
-        };
-      }
-      return d;
-    });
-    setDriversList(updatedDrivers);
-    localStorage.setItem("fleet_drivers", JSON.stringify(updatedDrivers));
+      // Update driver status
+      await managerApi.updateDriver(selectedDriver._id, {
+        assignedVehicle: selectedVehicle.plateNumber,
+        status: formData.status === "On Transit" ? "On Trip" : "Available"
+      });
 
-    setTrips([newTrip, ...trips]);
-    setShowCreateModal(false);
-    setFormData({
-      driverId: "",
-      vehicleId: "",
-      startLocation: "",
-      endLocation: "",
-      departureTime: "",
-      eta: "",
-      status: "Scheduled",
-      description: ""
-    });
-    toast.success("New trip created successfully!");
+      setShowCreateModal(false);
+      setFormData({
+        driverId: "",
+        vehicleId: "",
+        startLocation: "",
+        endLocation: "",
+        departureTime: "",
+        eta: "",
+        status: "Scheduled",
+        description: ""
+      });
+      toast.success("New trip created successfully!");
+      fetchTrips();
+    } catch (error) {
+      toast.error("Failed to create trip");
+      console.error(error);
+    }
   };
 
-  const handleDeleteTrip = () => {
+  const handleDeleteTrip = async () => {
     if (!selectedTrip) return;
-    const updated = trips.filter(t => t.id !== selectedTrip.id);
-    setTrips(updated);
-    setShowDeleteConfirm(false);
-    setSelectedTrip(null);
-    toast.success("Trip record deleted successfully");
+    try {
+      await managerApi.deleteTrip(selectedTrip._id);
+      setShowDeleteConfirm(false);
+      setSelectedTrip(null);
+      toast.success("Trip record deleted successfully");
+      fetchTrips();
+    } catch (error) {
+      toast.error("Failed to delete trip");
+      console.error(error);
+    }
   };
 
   // KPIs Calculations

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
 import "../dashboard/manager.css";
 
 const INITIAL_WORK_ORDERS = [
@@ -54,54 +55,66 @@ const INITIAL_WORK_ORDERS = [
 export default function ServiceDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [workOrders, setWorkOrders] = useState([]);
   const [order, setOrder] = useState(null);
-
-  // Load from local storage
-  useEffect(() => {
-    const saved = localStorage.getItem("fleet_work_orders");
-    let currentOrders = [];
-    if (saved) {
-      currentOrders = JSON.parse(saved);
-      setWorkOrders(currentOrders);
-    } else {
-      localStorage.setItem("fleet_work_orders", JSON.stringify(INITIAL_WORK_ORDERS));
-      currentOrders = INITIAL_WORK_ORDERS;
-      setWorkOrders(INITIAL_WORK_ORDERS);
-    }
-
-    const matched = currentOrders.find(w => String(w.id) === String(id));
-    if (matched) {
-      setOrder(matched);
-    } else if (currentOrders.length > 0) {
-      setOrder(currentOrders[0]);
-    }
-  }, [id]);
-
   const [vehicleDetails, setVehicleDetails] = useState(null);
 
+  // Load from database
+  useEffect(() => {
+    const fetchService = async () => {
+      try {
+        const response = await managerApi.getMaintenanceById(id);
+        const data = response.data?.data || response.data;
+        if (data) {
+          setOrder({ ...data, id: data._id });
+        }
+      } catch (error) {
+        toast.error("Failed to load service details");
+        console.error(error);
+      }
+    };
+    fetchService();
+  }, [id]);
+
   useEffect(() => {
     if (!order) return;
-    const savedVehicles = localStorage.getItem("fleet_vehicles");
-    if (savedVehicles) {
-      const list = JSON.parse(savedVehicles);
-      const match = list.find(v => v.plateNumber.replace(/\s+/g, "").toLowerCase() === order.vehicleId.replace(/\s+/g, "").toLowerCase());
-      if (match) {
-        setVehicleDetails(match);
+    const fetchVehicle = async () => {
+      try {
+        const response = await managerApi.getVehicles();
+        const list = response.data?.data || response.data || [];
+        const match = list.find(v => v.plateNumber.replace(/\s+/g, "").toLowerCase() === order.vehicleId.replace(/\s+/g, "").toLowerCase());
+        if (match) {
+          setVehicleDetails(match);
+        }
+      } catch (error) {
+        console.error("Failed to fetch vehicle details", error);
       }
-    }
+    };
+    fetchVehicle();
   }, [order]);
 
-  const handleCompleteOrder = () => {
+  const handleCompleteOrder = async () => {
     if (!order) return;
+    try {
+      const response = await managerApi.updateMaintenance(order._id, { status: "Completed" });
+      const data = response.data?.data || response.data;
+      setOrder({ ...data, id: data._id });
+      toast.success("Maintenance work order completed successfully!");
+    } catch (error) {
+      toast.error("Failed to complete work order");
+      console.error(error);
+    }
+  };
 
-    const updated = workOrders.map(w =>
-      w.id === order.id ? { ...w, status: "Completed" } : w
-    );
-    setWorkOrders(updated);
-    localStorage.setItem("fleet_work_orders", JSON.stringify(updated));
-    setOrder({ ...order, status: "Completed" });
-    toast.success("Maintenance work order completed successfully!");
+  const handleCancelOrder = async () => {
+    if (!order) return;
+    try {
+      await managerApi.deleteMaintenance(order._id);
+      toast.success("Maintenance work order cancelled and deleted");
+      navigate("/manager/maintenance");
+    } catch (error) {
+      toast.error("Failed to cancel maintenance order");
+      console.error(error);
+    }
   };
 
   if (!order) {
@@ -139,6 +152,20 @@ export default function ServiceDetailsPage() {
         </div>
         
         <div className="flex items-center gap-3 shrink-0 select-none">
+          {order.status !== "Completed" && (
+            <button
+              onClick={handleCompleteOrder}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+            >
+              Complete Order
+            </button>
+          )}
+          <button
+            onClick={handleCancelOrder}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+          >
+            Cancel / Delete Order
+          </button>
         </div>
       </div>
 
