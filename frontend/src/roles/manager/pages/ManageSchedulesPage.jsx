@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Clock, Trash2, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
+import { managerApi } from "../api/managerApi";
 
 const INITIAL_SCHEDULES = [
   { id: 1, name: "Weekly Driver Log Sheets", type: "Operational", frequency: "Weekly", day: "Monday", time: "09:00", format: "CSV", recipients: "ops-team@fleet.com", status: "Active" },
@@ -29,12 +30,35 @@ const BLANK = { name: "", type: "Operational", frequency: "Weekly", day: "Monday
 
 export default function ManageSchedulesPage() {
   const navigate = useNavigate();
-  const [schedules, setSchedules] = useState(INITIAL_SCHEDULES);
+  const [schedules, setSchedules] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null); // null = new, id = edit
   const [form, setForm] = useState(BLANK);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
+
+  const fetchSchedules = async () => {
+    try {
+      setLoading(true);
+      const response = await managerApi.getReports();
+      const result = response.data?.data || response.data;
+      if (Array.isArray(result)) {
+        setSchedules(result.map(s => ({ ...s, id: s._id })));
+      } else {
+        setSchedules([]);
+      }
+    } catch (error) {
+      toast.error("Failed to load schedules from database");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSchedules();
+  }, []);
 
   const totalPages = Math.ceil(schedules.length / PAGE_SIZE);
   const paginated = schedules.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -51,31 +75,67 @@ export default function ManageSchedulesPage() {
     setShowModal(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim()) { toast.error("Schedule name is required"); return; }
     if (!form.recipients.trim()) { toast.error("Recipients field is required"); return; }
 
-    if (editing) {
-      setSchedules((prev) => prev.map((s) => s.id === editing ? { ...form, id: editing } : s));
-      toast.success("Schedule updated!");
-    } else {
-      setSchedules((prev) => [...prev, { ...form, id: Date.now() }]);
-      toast.success("Schedule created!");
+    try {
+      if (editing) {
+        await managerApi.updateReport(editing, {
+          name: form.name,
+          type: form.type,
+          frequency: form.frequency,
+          day: form.day,
+          time: form.time,
+          format: form.format,
+          recipients: form.recipients,
+          status: form.status
+        });
+        toast.success("Schedule updated!");
+      } else {
+        await managerApi.createReport({
+          name: form.name,
+          type: form.type,
+          frequency: form.frequency,
+          day: form.day,
+          time: form.time,
+          format: form.format,
+          recipients: form.recipients,
+          status: form.status
+        });
+        toast.success("Schedule created!");
+      }
+      setShowModal(false);
+      fetchSchedules();
+    } catch (error) {
+      toast.error("Failed to save schedule");
+      console.error(error);
     }
-    setShowModal(false);
   };
 
-  const handleDelete = (id, name) => {
-    setSchedules((prev) => prev.filter((s) => s.id !== id));
-    toast.success(`"${name}" schedule deleted`);
+  const handleDelete = async (id, name) => {
+    try {
+      await managerApi.deleteReport(id);
+      toast.success(`"${name}" schedule deleted`);
+      fetchSchedules();
+    } catch (error) {
+      toast.error("Failed to delete schedule");
+      console.error(error);
+    }
   };
 
-  const toggleStatus = (id) => {
-    setSchedules((prev) =>
-      prev.map((s) =>
-        s.id === id ? { ...s, status: s.status === "Active" ? "Paused" : "Active" } : s
-      )
-    );
+  const toggleStatus = async (id) => {
+    const matched = schedules.find(s => s.id === id);
+    if (!matched) return;
+    const nextStatus = matched.status === "Active" ? "Paused" : "Active";
+    try {
+      await managerApi.updateReport(id, { status: nextStatus });
+      toast.success(`Schedule delivery ${nextStatus === 'Active' ? 'activated' : 'paused'}!`);
+      fetchSchedules();
+    } catch (error) {
+      toast.error("Failed to toggle status");
+      console.error(error);
+    }
   };
 
   return (

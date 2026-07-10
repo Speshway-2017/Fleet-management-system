@@ -23,11 +23,12 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import DriverChatDrawer from "@/components/common/DriverChatDrawer";
 
+import { managerApi } from "../api/managerApi";
+
 export default function TripDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [trip, setTrip] = useState(null);
-  const [tripsList, setTripsList] = useState([]);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
@@ -135,13 +136,19 @@ export default function TripDetailsPage() {
 
   // Load trip record
   useEffect(() => {
-    const saved = localStorage.getItem("fleet_trips");
-    if (saved) {
-      const list = JSON.parse(saved);
-      setTripsList(list);
-      const matched = list.find(t => t.id === id);
-      setTrip(matched);
-    }
+    const fetchTrip = async () => {
+      try {
+        const response = await managerApi.getTripById(id);
+        const data = response.data?.data || response.data;
+        if (data) {
+          setTrip({ ...data, id: data.tripNumber });
+        }
+      } catch (error) {
+        toast.error("Failed to load trip details");
+        console.error(error);
+      }
+    };
+    fetchTrip();
   }, [id]);
 
   if (!trip) {
@@ -163,25 +170,28 @@ export default function TripDetailsPage() {
   const isCompleted = trip.status === "Completed";
   const isDelayed = trip.status === "Delayed";
 
-  const handleUpdateStatus = (newStatus) => {
-    const updatedList = tripsList.map(t => {
-      if (t.id === trip.id) {
-        return { ...t, status: newStatus };
-      }
-      return t;
-    });
-    setTripsList(updatedList);
-    localStorage.setItem("fleet_trips", JSON.stringify(updatedList));
-    setTrip({ ...trip, status: newStatus });
-    toast.success(`Trip status updated to ${newStatus}`);
+  const handleUpdateStatus = async (newStatus) => {
+    try {
+      const response = await managerApi.updateTrip(trip._id, { status: newStatus });
+      const data = response.data?.data || response.data;
+      setTrip({ ...data, id: data.tripNumber });
+      toast.success(`Trip status updated to ${newStatus}`);
+    } catch (error) {
+      toast.error("Failed to update status");
+      console.error(error);
+    }
   };
 
-  const handleCancelTrip = () => {
-    const updatedList = tripsList.filter(t => t.id !== trip.id);
-    localStorage.setItem("fleet_trips", JSON.stringify(updatedList));
-    setShowCancelConfirm(false);
-    toast.success("Trip record cancelled and deleted");
-    navigate("/manager/trips");
+  const handleCancelTrip = async () => {
+    try {
+      await managerApi.deleteTrip(trip._id);
+      setShowCancelConfirm(false);
+      toast.success("Trip record cancelled and deleted");
+      navigate("/manager/trips");
+    } catch (error) {
+      toast.error("Failed to cancel trip");
+      console.error(error);
+    }
   };
 
   const getStatusBadge = (status) => {

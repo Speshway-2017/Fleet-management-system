@@ -8,3 +8,7 @@ export const createUser = async (userData) => {
 };
 
 export const findUserById = async (id) => User.findById(id).select('-password');
+
+export const updateUser = async (userId, updateData) => {
+  return User.findByIdAndUpdate(userId, updateData, { new: true });
+};

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
 
 export default function DriversListPage() {
   const navigate = useNavigate();
@@ -30,12 +31,28 @@ export default function DriversListPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  // Load from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("fleet_drivers");
-    if (saved) {
-      setDrivers(JSON.parse(saved));
+  const [loading, setLoading] = useState(true);
+
+  const fetchDrivers = async () => {
+    try {
+      setLoading(true);
+      const response = await managerApi.getDrivers();
+      const result = response.data?.data || response.data;
+      if (Array.isArray(result)) {
+        setDrivers(result);
+      } else {
+        setDrivers([]);
+      }
+    } catch (error) {
+      toast.error("Failed to load drivers from database");
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchDrivers();
   }, []);
 
   // Reset to first page when search/filters change
@@ -52,25 +69,20 @@ export default function DriversListPage() {
     toast.success("Filters reset successfully!");
   };
 
-  const handleDeleteDriver = () => {
+  const handleDeleteDriver = async () => {
     if (!selectedDriver) return;
 
-    // Unassign driver from vehicle if assigned
-    const savedVehicles = localStorage.getItem("fleet_vehicles");
-    if (savedVehicles) {
-      const vehiclesList = JSON.parse(savedVehicles);
-      const updatedVehicles = vehiclesList.map(v => 
-        v.driver === selectedDriver.name ? { ...v, driver: "Unassigned" } : v
-      );
-      localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
+    try {
+      await managerApi.deleteDriver(selectedDriver._id);
+      toast.success("Driver profile deleted successfully!");
+      fetchDrivers();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete driver");
+      console.error(error);
+    } finally {
+      setDeleteModalOpen(false);
+      setSelectedDriver(null);
     }
-
-    const updated = drivers.filter(d => d.id !== selectedDriver.id);
-    setDrivers(updated);
-    localStorage.setItem("fleet_drivers", JSON.stringify(updated));
-    setDeleteModalOpen(false);
-    setSelectedDriver(null);
-    toast.success("Driver profile deleted successfully!");
   };
 
   // Compute filtered drivers list
@@ -225,7 +237,7 @@ export default function DriversListPage() {
                 </tr>
               ) : (
                 currentRows.map((d) => (
-                  <tr key={d.id} className="hover:bg-[#F5F7FB]/50 transition-colors group">
+                  <tr key={d._id} className="hover:bg-[#F5F7FB]/50 transition-colors group">
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-[#FDF3EC] text-[#B45A0A] rounded-xl flex items-center justify-center shrink-0 border border-[#FDF3EC]/50 font-poppins font-bold text-sm">
@@ -287,7 +299,7 @@ export default function DriversListPage() {
                     <td className="py-4 px-6 text-right select-none whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => navigate(`/manager/driver-profile/${d.id}`)}
+                          onClick={() => navigate(`/manager/driver-profile/${d._id}`)}
                           title="View profile"
                           className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                         >

@@ -6,6 +6,7 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import { vehicleApi } from "@/api/vehicleApi";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { managerApi } from "../api/managerApi";
 
 export default function VehicleDetailsPage() {
   const navigate = useNavigate();
@@ -33,22 +34,43 @@ export default function VehicleDetailsPage() {
   };
 
   useEffect(() => {
-    const vehicles = JSON.parse(localStorage.getItem("fleet_vehicles") || "[]");
-    const found = vehicles.find((v) => v.id === parseInt(id));
-    if (found) {
-      setVehicle(found);
-    } else {
-      toast.error("Vehicle not found");
-      navigate("/manager/vehicles-list");
-    }
-    setLoading(false);
+    const fetchVehicle = async () => {
+      try {
+        setLoading(true);
+        const response = await managerApi.getVehicleById(id);
+        const found = response.data?.data || response.data;
+        if (found) {
+          setVehicle(found);
+        } else {
+          toast.error("Vehicle not found");
+          navigate("/manager/vehicles-list");
+        }
+      } catch (error) {
+        toast.error("Failed to load vehicle details");
+        console.error(error);
+        navigate("/manager/vehicles-list");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchVehicle();
   }, [id, navigate]);
 
   // Load drivers when assign modal opens
   useEffect(() => {
     if (showAssignModal) {
-      const list = JSON.parse(localStorage.getItem("fleet_drivers") || "[]");
-      setDriversList(list);
+      const fetchDrivers = async () => {
+        try {
+          const response = await managerApi.getDrivers();
+          const result = response.data?.data || response.data;
+          if (Array.isArray(result)) {
+            setDriversList(result);
+          }
+        } catch (err) {
+          console.error("Failed to fetch drivers for modal", err);
+        }
+      };
+      fetchDrivers();
     }
   }, [showAssignModal]);
 
@@ -137,30 +159,18 @@ export default function VehicleDetailsPage() {
     }
   };
 
-  const handleAssignDriver = (driverName) => {
-    // 1. Update vehicle's driver name
-    const vehiclesList = JSON.parse(localStorage.getItem("fleet_vehicles") || "[]");
-    const updatedVehicles = vehiclesList.map(v => 
-      v.id === vehicle.id ? { ...v, driver: driverName } : v
-    );
-    localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
+  const handleAssignDriver = async (driverName) => {
+    try {
+      // 1. Update vehicle's driver name in backend
+      await managerApi.updateVehicle(vehicle._id, { driver: driverName });
 
-    // 2. Update driver assignments
-    const dList = JSON.parse(localStorage.getItem("fleet_drivers") || "[]");
-    const updatedDrivers = dList.map(d => {
-      if (d.assignedVehicle === vehicle.plateNumber) {
-        return { ...d, assignedVehicle: "Unassigned", status: "Available" };
-      }
-      if (d.name === driverName && driverName !== "Unassigned") {
-        return { ...d, assignedVehicle: vehicle.plateNumber, status: "Available" };
-      }
-      return d;
-    });
-    localStorage.setItem("fleet_drivers", JSON.stringify(updatedDrivers));
-
-    setVehicle({ ...vehicle, driver: driverName });
-    toast.success(`Assigned driver ${driverName} successfully!`);
-    setShowAssignModal(false);
+      setVehicle({ ...vehicle, driver: driverName });
+      toast.success(`Assigned driver ${driverName} successfully!`);
+      setShowAssignModal(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to assign driver");
+      console.error(error);
+    }
   };
 
   if (loading || !vehicle) {
@@ -200,7 +210,7 @@ export default function VehicleDetailsPage() {
                   </span>
                 </div>
                 <p className="text-sm text-[#64748B]">{vehicle.manufacturer}</p>
-                <p className="text-lg font-bold text-[#1E293B] mt-2 uppercase">{vehicle.plateNumber}</p>
+                <p className="text-lg font-bold text-[#1E293B] mt-2 uppercase">{vehicle.plateNumber || vehicle.vehicleNumber}</p>
               </div>
             </div>
 
@@ -232,7 +242,7 @@ export default function VehicleDetailsPage() {
           {/* Right side - Actions */}
           <div className="flex items-center gap-2 md:ml-auto">
             <button
-              onClick={() => navigate(`/manager/vehicle-edit/${vehicle.id}`)}
+              onClick={() => navigate(`/manager/vehicle-edit/${vehicle._id}`)}
               className="px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer"
             >
               <Edit2 className="w-4 h-4" />

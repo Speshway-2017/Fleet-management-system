@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
 
 export default function AssignVehiclePage() {
   const { id } = useParams();
@@ -24,80 +25,89 @@ export default function AssignVehiclePage() {
   const [typeFilter, setTypeFilter] = useState("All Types");
 
   useEffect(() => {
-    // 1. Fetch driver
-    const savedDrivers = localStorage.getItem("fleet_drivers");
-    if (savedDrivers) {
-      const driversList = JSON.parse(savedDrivers);
-      const found = driversList.find(d => d.id === Number(id));
-      if (found) {
-        setDriver(found);
-      } else {
-        toast.error("Driver not found");
+    const fetchData = async () => {
+      try {
+        // 1. Fetch driver
+        const resDriver = await managerApi.getDriverById(id);
+        const found = resDriver.data?.data || resDriver.data;
+        if (found) {
+          setDriver(found);
+        } else {
+          toast.error("Driver not found");
+          navigate("/manager/drivers");
+          return;
+        }
+
+        // 2. Fetch vehicles
+        const resVehicles = await managerApi.getVehicles();
+        const resultVehicles = resVehicles.data?.data || resVehicles.data;
+        if (Array.isArray(resultVehicles)) {
+          setVehicles(resultVehicles);
+        }
+      } catch (err) {
+        toast.error("Failed to load details");
+        console.error(err);
         navigate("/manager/drivers");
       }
-    }
-
-    // 2. Fetch vehicles
-    const savedVehicles = localStorage.getItem("fleet_vehicles");
-    if (savedVehicles) {
-      setVehicles(JSON.parse(savedVehicles));
-    }
+    };
+    fetchData();
   }, [id, navigate]);
 
-  const handleAssign = (vehicle) => {
+  const handleAssign = async (vehicle) => {
     if (!driver || !vehicle) return;
 
-    // A. Verify if the vehicle is already assigned to someone else
-    if (vehicle.driver && vehicle.driver !== "Unassigned") {
-      const confirmOverride = window.confirm(
-        `This vehicle is already assigned to ${vehicle.driver}. Do you want to reassign it to ${driver.name}?`
-      );
-      if (!confirmOverride) return;
+    const vPlate = vehicle.plateNumber || vehicle.vehicleNumber;
 
-      // Unassign the previous driver
-      const savedDrivers = localStorage.getItem("fleet_drivers");
-      if (savedDrivers) {
-        const driversList = JSON.parse(savedDrivers);
-        const updatedDrivers = driversList.map(d => 
-          d.assignedVehicle === vehicle.plateNumber ? { ...d, assignedVehicle: "Unassigned", status: "Available" } : d
+    try {
+      // A. If vehicle already has a driver, unassign that driver on the backend if they exist
+      if (vehicle.driver && vehicle.driver !== "Unassigned") {
+        const confirmOverride = window.confirm(
+          `This vehicle is already assigned to ${vehicle.driver}. Do you want to reassign it to ${driver.name}?`
         );
-        localStorage.setItem("fleet_drivers", JSON.stringify(updatedDrivers));
+        if (!confirmOverride) return;
+
+        try {
+          const resDrivers = await managerApi.getDrivers();
+          const driversList = resDrivers.data?.data || resDrivers.data;
+          if (Array.isArray(driversList)) {
+            const prevDriver = driversList.find(d => d.assignedVehicle === vPlate);
+            if (prevDriver) {
+              await managerApi.updateDriver(prevDriver._id, { assignedVehicle: "Unassigned", status: "Available" });
+            }
+          }
+        } catch (e) {
+          console.error("Failed to clear previous driver's assignment", e);
+        }
       }
-    }
 
-    // B. If this driver had a vehicle previously, clear that vehicle's driver field
-    if (driver.assignedVehicle && driver.assignedVehicle !== "Unassigned") {
-      const savedVehicles = localStorage.getItem("fleet_vehicles");
-      if (savedVehicles) {
-        const vehiclesList = JSON.parse(savedVehicles);
-        const updatedVehicles = vehiclesList.map(v => 
-          v.plateNumber === driver.assignedVehicle ? { ...v, driver: "Unassigned" } : v
-        );
-        localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
+      // B. If this driver had a vehicle previously, clear that vehicle's driver field in the backend
+      if (driver.assignedVehicle && driver.assignedVehicle !== "Unassigned") {
+        try {
+          const resVehicles = await managerApi.getVehicles();
+          const vehiclesList = resVehicles.data?.data || resVehicles.data;
+          if (Array.isArray(vehiclesList)) {
+            const prevVehicle = vehiclesList.find(v => (v.plateNumber || v.vehicleNumber) === driver.assignedVehicle);
+            if (prevVehicle) {
+              await managerApi.updateVehicle(prevVehicle._id, { driver: "Unassigned" });
+            }
+          }
+        } catch (e) {
+          console.error("Failed to clear driver's previous vehicle assignment", e);
+        }
       }
-    }
 
-    // C. Update driver's assignedVehicle and status
-    const savedDrivers = localStorage.getItem("fleet_drivers");
-    let updatedDriver = { ...driver, assignedVehicle: vehicle.plateNumber, status: "Available" };
-    if (savedDrivers) {
-      const driversList = JSON.parse(savedDrivers);
-      const updatedDrivers = driversList.map(d => d.id === driver.id ? updatedDriver : d);
-      localStorage.setItem("fleet_drivers", JSON.stringify(updatedDrivers));
-    }
+      // C. Update driver's assignedVehicle and status in backend
+      await managerApi.updateDriver(driver._id, { assignedVehicle: vPlate, status: "Available" });
 
-    // D. Update vehicle's assigned driver
-    const savedVehicles = localStorage.getItem("fleet_vehicles");
-    if (savedVehicles) {
-      const vehiclesList = JSON.parse(savedVehicles);
-      const updatedVehicles = vehiclesList.map(v => 
-        v.plateNumber === vehicle.plateNumber ? { ...v, driver: driver.name } : v
-      );
-      localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
-    }
+      // D. Update vehicle's assigned driver in backend
+      await managerApi.updateVehicle(vehicle._id, { driver: driver.name });
 
-    toast.success(`Vehicle ${vehicle.name} successfully assigned to ${driver.name}!`);
-    navigate(`/manager/driver-profile/${driver.id}`);
+      toast.success(`Vehicle ${vehicle.name} successfully assigned to ${driver.name}!`);
+      navigate(`/manager/driver-profile/${driver._id}`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to assign vehicle");
+      console.error(error);
+    }
   };
 
   const handleResetFilters = () => {
@@ -258,7 +268,7 @@ export default function AssignVehiclePage() {
           </div>
         ) : (
           filteredVehicles.map((v) => (
-            <div key={v.id} className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div key={v._id} className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
               <div className="space-y-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -288,7 +298,7 @@ export default function AssignVehiclePage() {
 
                 <div className="flex items-center justify-between text-xs pt-1">
                   <span className="text-gray-500 font-medium">Plate Number:</span>
-                  <span className="font-bold text-[#1E293B] uppercase tracking-wider">{v.plateNumber}</span>
+                  <span className="font-bold text-[#1E293B] uppercase tracking-wider">{v.plateNumber || v.vehicleNumber}</span>
                 </div>
 
                 <div className="flex items-center justify-between text-xs border-t border-[#E7EAF0]/60 pt-3">

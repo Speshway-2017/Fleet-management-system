@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
 
 const MOCK_TRIPS_ROSTER = [
   { id: "T-9081", route: "Pune Depot to Mumbai Depot", date: "2026-07-04", status: "Completed", fuelUsed: "45L" },
@@ -34,57 +35,58 @@ export default function DriverProfilePage() {
   const [vehicle, setVehicle] = useState(null);
 
   useEffect(() => {
-    // Load drivers
-    const savedDrivers = localStorage.getItem("fleet_drivers");
-    if (savedDrivers) {
-      const driversList = JSON.parse(savedDrivers);
-      const foundDriver = driversList.find(d => d.id === Number(id));
-      if (foundDriver) {
-        setDriver(foundDriver);
-
-        // Load corresponding vehicle details if assigned
-        if (foundDriver.assignedVehicle && foundDriver.assignedVehicle !== "Unassigned") {
-          const savedVehicles = localStorage.getItem("fleet_vehicles");
-          if (savedVehicles) {
-            const vehiclesList = JSON.parse(savedVehicles);
-            const foundVehicle = vehiclesList.find(v => v.plateNumber === foundDriver.assignedVehicle);
-            if (foundVehicle) {
-              setVehicle(foundVehicle);
+    const fetchDriverAndVehicle = async () => {
+      try {
+        const response = await managerApi.getDriverById(id);
+        const foundDriver = response.data?.data || response.data;
+        if (foundDriver) {
+          setDriver(foundDriver);
+  
+          // Load corresponding vehicle details if assigned
+          if (foundDriver.assignedVehicle && foundDriver.assignedVehicle !== "Unassigned") {
+            try {
+              const responseVehicles = await managerApi.getVehicles();
+              const vehiclesList = responseVehicles.data?.data || responseVehicles.data;
+              if (Array.isArray(vehiclesList)) {
+                const foundVehicle = vehiclesList.find(v => v.plateNumber === foundDriver.assignedVehicle);
+                if (foundVehicle) {
+                  setVehicle(foundVehicle);
+                }
+              }
+            } catch (err) {
+              console.error("Failed to load assigned vehicle details", err);
             }
           }
+        } else {
+          toast.error("Driver not found");
+          navigate("/manager/drivers");
         }
-      } else {
-        toast.error("Driver not found");
+      } catch (error) {
+        toast.error("Failed to load driver details");
+        console.error(error);
         navigate("/manager/drivers");
       }
-    }
+    };
+    fetchDriverAndVehicle();
   }, [id, navigate]);
 
-  const handleUnassignVehicle = () => {
+  const handleUnassignVehicle = async () => {
     if (!driver || !vehicle) return;
 
-    // 1. Update driver's assignedVehicle to "Unassigned"
-    const savedDrivers = localStorage.getItem("fleet_drivers");
-    let updatedDriver = { ...driver, assignedVehicle: "Unassigned", status: "Available" };
-    if (savedDrivers) {
-      const driversList = JSON.parse(savedDrivers);
-      const updatedDrivers = driversList.map(d => d.id === driver.id ? updatedDriver : d);
-      localStorage.setItem("fleet_drivers", JSON.stringify(updatedDrivers));
-    }
+    try {
+      // 1. Update driver in backend
+      await managerApi.updateDriver(driver._id, { assignedVehicle: "Unassigned", status: "Available" });
+      
+      // 2. Update vehicle in backend
+      await managerApi.updateVehicle(vehicle._id, { driver: "Unassigned" });
 
-    // 2. Update vehicle's assigned driver to "Unassigned"
-    const savedVehicles = localStorage.getItem("fleet_vehicles");
-    if (savedVehicles) {
-      const vehiclesList = JSON.parse(savedVehicles);
-      const updatedVehicles = vehiclesList.map(v => 
-        v.plateNumber === vehicle.plateNumber ? { ...v, driver: "Unassigned" } : v
-      );
-      localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
+      setDriver({ ...driver, assignedVehicle: "Unassigned", status: "Available" });
+      setVehicle(null);
+      toast.success("Vehicle unassigned successfully from driver!");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to unassign vehicle");
+      console.error(error);
     }
-
-    setDriver(updatedDriver);
-    setVehicle(null);
-    toast.success("Vehicle unassigned successfully from driver!");
   };
 
   if (!driver) {
@@ -149,7 +151,7 @@ export default function DriverProfilePage() {
         <div className="flex items-center gap-3">
           {driver.assignedVehicle === "Unassigned" && (
             <button
-              onClick={() => navigate(`/manager/driver-assign-vehicle/${driver.id}`)}
+              onClick={() => navigate(`/manager/driver-assign-vehicle/${driver._id}`)}
               className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 font-poppins cursor-pointer"
             >
               <Plus className="w-4.5 h-4.5" />
@@ -346,7 +348,7 @@ export default function DriverProfilePage() {
                     Unassign Vehicle
                   </button>
                   <button
-                    onClick={() => navigate(`/manager/driver-assign-vehicle/${driver.id}`)}
+                    onClick={() => navigate(`/manager/driver-assign-vehicle/${driver._id}`)}
                     className="w-full py-2 bg-white hover:bg-gray-50 text-[#64748B] hover:text-[#1E293B] rounded-xl text-xs font-bold transition-all border border-[#E7EAF0] cursor-pointer"
                   >
                     Change Vehicle
@@ -357,7 +359,7 @@ export default function DriverProfilePage() {
               <div className="py-8 text-center space-y-3">
                 <p className="text-gray-400 text-xs font-medium">No vehicle assigned to this driver currently.</p>
                 <button
-                  onClick={() => navigate(`/manager/driver-assign-vehicle/${driver.id}`)}
+                  onClick={() => navigate(`/manager/driver-assign-vehicle/${driver._id}`)}
                   className="px-4 py-2 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer"
                 >
                   Assign Vehicle Now

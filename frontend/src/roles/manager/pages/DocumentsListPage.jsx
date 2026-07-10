@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FileText,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
 
 // Mock data for documents
 const MOCK_DOCUMENTS = [
@@ -30,12 +31,45 @@ export default function DocumentsListPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDocuments = async () => {
+    try {
+      setLoading(true);
+      const response = await managerApi.getDocuments();
+      const result = response.data?.data || response.data;
+      if (Array.isArray(result)) {
+        setDocuments(result.map(d => ({
+          ...d,
+          id: d._id,
+          name: d.title
+        })));
+      } else {
+        setDocuments([]);
+      }
+    } catch (error) {
+      toast.error("Failed to load documents from database");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
 
   // Filter documents
-  const filteredDocs = MOCK_DOCUMENTS.filter(doc => {
-    const matchesSearch = doc.name.toLowerCase().includes(search.toLowerCase()) ||
-                          (doc.vehicle?.toLowerCase().includes(search.toLowerCase())) ||
-                          (doc.driver?.toLowerCase().includes(search.toLowerCase()));
+  const filteredDocs = documents.filter(doc => {
+    const nameStr = doc.name ? doc.name.toLowerCase() : "";
+    const vehicleStr = doc.vehicle ? doc.vehicle.toLowerCase() : "";
+    const driverStr = doc.driver ? doc.driver.toLowerCase() : "";
+    const query = search.toLowerCase();
+
+    const matchesSearch = nameStr.includes(query) ||
+                          vehicleStr.includes(query) ||
+                          driverStr.includes(query);
     const matchesStatus = statusFilter === "All Statuses" || doc.status === statusFilter;
     const matchesCategory = categoryFilter === "All Categories" || doc.category === categoryFilter;
     return matchesSearch && matchesStatus && matchesCategory;
@@ -69,8 +103,15 @@ export default function DocumentsListPage() {
     navigate(`/manager/documents/edit/${doc.id}`);
   };
 
-  const handleDelete = (doc) => {
-    toast.success(`Deleted document: ${doc.name}`);
+  const handleDelete = async (doc) => {
+    try {
+      await managerApi.deleteDocument(doc._id);
+      toast.success(`Deleted document: ${doc.name}`);
+      fetchDocuments();
+    } catch (error) {
+      toast.error("Failed to delete document");
+      console.error(error);
+    }
   };
 
   return (

@@ -50,6 +50,8 @@ const INITIAL_WORK_ORDERS = [
   }
 ];
 
+import { managerApi } from "../api/managerApi";
+
 export default function MaintenanceManagementPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -97,6 +99,11 @@ export default function MaintenanceManagementPage() {
       localStorage.setItem("fleet_work_orders", JSON.stringify(INITIAL_WORK_ORDERS));
       setWorkOrders(INITIAL_WORK_ORDERS);
     }
+  };
+
+  // Load from database
+  useEffect(() => {
+    fetchWorkOrders();
   }, []);
 
   const handleStartService = async (orderId, e) => {
@@ -315,12 +322,8 @@ export default function MaintenanceManagementPage() {
         <ScheduleFromNotificationModal
           prefilled={prefilledData}
           onClose={() => { setShowScheduleModal(false); setPrefilledData(null); }}
-          onScheduled={(newOrder) => {
-            const saved = localStorage.getItem("fleet_work_orders");
-            const existing = saved ? JSON.parse(saved) : INITIAL_WORK_ORDERS;
-            const updated = [newOrder, ...existing];
-            localStorage.setItem("fleet_work_orders", JSON.stringify(updated));
-            setWorkOrders(updated);
+          onScheduled={() => {
+            fetchWorkOrders();
           }}
         />
       )}

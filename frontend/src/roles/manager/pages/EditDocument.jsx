@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import Breadcrumb from "@/components/common/Breadcrumb";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Save,
@@ -9,20 +9,7 @@ import {
   CheckCircle2
 } from "lucide-react";
 import toast from "react-hot-toast";
-
-const MOCK_DOCUMENTS = [
-  {
-    id: 1,
-    name: "Commercial Insurance - Truck #42",
-    type: "Insurance",
-    category: "Vehicle Docs",
-    vehicle: "Volvo FM 12 [KA-01-FE-9912]",
-    expiry: "2025-10-24",
-    uploadedBy: "Alex Thompson",
-    fileSize: "2.4 MB",
-    fileName: "insurance_policy_42.pdf"
-  }
-];
+import { managerApi } from "../api/managerApi";
 
 const CATEGORIES = ["Insurance", "Vehicle Docs", "Driver Docs", "Trip Invoices", "Compliance"];
 const VEHICLES = ["Volvo FM 12 [KA-01-FE-9912]", "Ashok Leyland 3118", "Tata Ace Gold", "Komila FM-30"];
@@ -30,18 +17,52 @@ const VEHICLES = ["Volvo FM 12 [KA-01-FE-9912]", "Ashok Leyland 3118", "Tata Ace
 export default function EditDocument() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const doc = MOCK_DOCUMENTS.find(d => d.id === parseInt(id || 1));
   const [formData, setFormData] = useState({
-    name: doc?.name,
-    vehicle: doc?.vehicle,
-    expiry: doc?.expiry,
-    category: doc?.category,
+    name: "",
+    vehicle: "",
+    expiry: "",
+    category: "Insurance",
   });
+  const [doc, setDoc] = useState(null);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    const fetchDoc = async () => {
+      try {
+        const response = await managerApi.getDocumentById(id);
+        const data = response.data?.data || response.data;
+        if (data) {
+          setDoc(data);
+          setFormData({
+            name: data.title || "",
+            vehicle: data.vehicle || "",
+            expiry: data.expiry || "",
+            category: data.type || data.category || "Insurance",
+          });
+        }
+      } catch (error) {
+        toast.error("Failed to load document details");
+        console.error(error);
+      }
+    };
+    fetchDoc();
+  }, [id]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    toast.success("Document updated successfully!");
-    navigate(`/manager/documents/view/${doc?.id}`);
+    try {
+      await managerApi.updateDocument(id, {
+        title: formData.name,
+        vehicle: formData.vehicle,
+        expiry: formData.expiry,
+        type: formData.category,
+        category: formData.category
+      });
+      toast.success("Document updated successfully!");
+      navigate(`/manager/documents/view/${id}`);
+    } catch (error) {
+      toast.error("Failed to update document");
+      console.error(error);
+    }
   };
 
   return (

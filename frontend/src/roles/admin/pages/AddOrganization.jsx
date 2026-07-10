@@ -1,5 +1,6 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { adminApi } from "@/api/adminApi";
 import { Link, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/roles/admin/context/AdminContext";
 import { Upload } from "lucide-react";
@@ -8,12 +9,13 @@ import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 
 export default function AddOrganization() {
   const navigate = useNavigate();
-  const { addOrganization } = useAdmin();
+  const { fetchOrganizations } = useAdmin();
   const [form, setForm] = useState({
     name: "", industry: "", email: "", phone: "", address: "",
     city: "", state: "", country: "", plan: "", status: ""
   });
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -21,7 +23,7 @@ export default function AddOrganization() {
     setErrors(prev => ({ ...prev, [name]: "" }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
     if (!form.name) newErrors.name = "Organization Name is required";
@@ -33,9 +35,17 @@ export default function AddOrganization() {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    addOrganization(form);
-    toast.success("Organization created successfully!");
-    navigate("/admin/organizations");
+    setIsSubmitting(true);
+    try {
+      await adminApi.createOrganization(form);
+      toast.success("Organization created successfully!");
+      if (fetchOrganizations) await fetchOrganizations(); // Refresh the list
+      navigate("/admin/organizations");
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || "Failed to create organization");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -75,8 +85,8 @@ export default function AddOrganization() {
                 <Link to="/admin/organizations" className="flex-1 sm:flex-none flex items-center justify-center px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-[#A14000] border border-[#A14000] bg-transparent hover:bg-[#A14000]/10 rounded-lg transition-colors text-center truncate">
                   Cancel
                 </Link>
-                <button type="submit" className="flex-[2] sm:flex-none px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-[#A14000] border border-[#A14000] rounded-lg shadow-sm hover:bg-[#8a3700] transition-colors text-center truncate">
-                  Create Organization
+                <button type="submit" disabled={isSubmitting} className="flex-[2] sm:flex-none px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-[#A14000] border border-[#A14000] rounded-lg shadow-sm hover:bg-[#8a3700] transition-colors text-center truncate disabled:opacity-50">
+                  {isSubmitting ? "Creating..." : "Create Organization"}
                 </button>
               </div>
             </div>

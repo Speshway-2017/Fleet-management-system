@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
 export default function AddDriverPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -36,17 +37,23 @@ export default function AddDriverPage() {
 
   useEffect(() => {
     if (isEditMode) {
-      const savedDrivers = localStorage.getItem("fleet_drivers");
-      if (savedDrivers) {
-        const list = JSON.parse(savedDrivers);
-        const found = list.find(d => d.id === Number(id));
-        if (found) {
-          setFormData(found);
-        } else {
-          toast.error("Driver profile not found");
+      const fetchDriver = async () => {
+        try {
+          const response = await managerApi.getDriverById(id);
+          const found = response.data?.data || response.data;
+          if (found) {
+            setFormData(found);
+          } else {
+            toast.error("Driver profile not found");
+            navigate("/manager/drivers");
+          }
+        } catch (error) {
+          toast.error("Failed to load driver details");
+          console.error(error);
           navigate("/manager/drivers");
         }
-      }
+      };
+      fetchDriver();
     }
   }, [id, isEditMode, navigate]);
 
@@ -58,44 +65,28 @@ export default function AddDriverPage() {
       return;
     }
 
-    const savedDrivers = localStorage.getItem("fleet_drivers");
-    let list = savedDrivers ? JSON.parse(savedDrivers) : [];
-
-    if (isEditMode) {
-      // 1. Update driver's name in vehicle assignment if name changed
-      const oldDriverName = list.find(d => d.id === Number(id))?.name;
-      if (oldDriverName && oldDriverName !== formData.name) {
-        const savedVehicles = localStorage.getItem("fleet_vehicles");
-        if (savedVehicles) {
-          const vehicles = JSON.parse(savedVehicles);
-          const updatedVehicles = vehicles.map(v => 
-            v.driver === oldDriverName ? { ...v, driver: formData.name } : v
-          );
-          localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
+    const saveDriver = async () => {
+      try {
+        if (isEditMode) {
+          await managerApi.updateDriver(id, formData);
+          toast.success("Driver profile updated successfully!");
+        } else {
+          await managerApi.createDriver({
+            ...formData,
+            rating: Number(formData.rating) || 5.0,
+            tripsCompleted: 0,
+            incidentCount: 0,
+            assignedVehicle: "Unassigned"
+          });
+          toast.success("New driver profile registered successfully!");
         }
+        navigate("/manager/drivers");
+      } catch (error) {
+        toast.error(error.response?.data?.message || "Failed to save driver profile");
+        console.error(error);
       }
-
-      // 2. Update driver object
-      const updatedList = list.map(d => d.id === Number(id) ? formData : d);
-      localStorage.setItem("fleet_drivers", JSON.stringify(updatedList));
-      toast.success("Driver profile updated successfully!");
-    } else {
-      // Create new driver object
-      const newDriver = {
-        ...formData,
-        id: list.length > 0 ? Math.max(...list.map(d => d.id)) + 1 : 1,
-        rating: Number(formData.rating) || 5.0,
-        tripsCompleted: 0,
-        incidentCount: 0,
-        assignedVehicle: "Unassigned"
-      };
-
-      list.push(newDriver);
-      localStorage.setItem("fleet_drivers", JSON.stringify(list));
-      toast.success("New driver profile registered successfully!");
-    }
-
-    navigate("/manager/drivers");
+    };
+    saveDriver();
   };
 
   return (

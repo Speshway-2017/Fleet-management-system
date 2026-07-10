@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/roles/admin/context/AdminContext";
+import { adminApi } from "@/api/adminApi";
 import {
   Building2,
   ArrowUpRight,
@@ -29,48 +30,94 @@ import {
   BarChart,
   Bar
 } from "recharts";
-
-// --- Mock Data ---
-
-const orgGrowthData = [
-  { name: "Jan", value: 85 },
-  { name: "Feb", value: 95 },
-  { name: "Mar", value: 105 },
-  { name: "Apr", value: 110 },
-  { name: "May", value: 120 },
-  { name: "Jun", value: 130 },
-];
-
-const orgStatusData = [
-  { name: "Active", value: 94, color: "#22c55e" }, // green-500
-  { name: "Pending", value: 23, color: "#f97316" }, // orange-500
-  { name: "Suspended", value: 11, color: "#ef4444" }, // red-500
-];
-
-const fleetManagerData = [
-  { name: "Active", value: 36, fill: "#22c55e" },
-  { name: "Inactive", value: 12, fill: "#475569" },
-  { name: "Invited", value: 6, fill: "#3b82f6" },
-];
-
-const recentActivities = [
-  { time: "10:30 AM", activity: "Organization Created", org: "ABC Logistics", color: "bg-green-500" },
-  { time: "11:20 AM", activity: "Fleet Manager Added", org: "XYZ Transport", color: "bg-blue-500" },
-  { time: "12:45 PM", activity: "Organization Activated", org: "VRL Freight", color: "bg-green-500" },
-  { time: "01:15 PM", activity: "Organization Updated", org: "Swift Cargo", color: "bg-orange-500" },
-  { time: "02:30 PM", activity: "Fleet Manager Invited", org: "Peak Logistics", color: "bg-purple-500" },
-  { time: "03:10 PM", activity: "Subscription Changed", org: "Rapid Transport", color: "bg-orange-500" },
-];
-
-// --- Components ---
-
-// --- Main Page ---
+import toast from "react-hot-toast";
+import { format } from "date-fns";
 
 function Dashboard() {
   const navigate = useNavigate();
-  const { organizations, fleetManagers } = useAdmin();
-  const orgCount = organizations.length;
-  const managerCount = fleetManagers.length;
+  
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState({
+    statistics: {
+      totalOrganizations: 0,
+      activeOrganizations: 0,
+      fleetManagers: 0,
+      activeVehicles: 0,
+      revenue: 0,
+      pendingRequests: 0,
+    },
+    recentActivities: [],
+    chartData: [],
+  });
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await adminApi.getDashboard();
+        // Extract data assuming standard { data: { data: ... } } from axios and sendSuccess
+        const result = response.data?.data || response.data;
+        if (result) {
+          setData(result);
+        }
+      } catch (error) {
+        toast.error("Failed to fetch dashboard data");
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+    
+    // Auto-refresh the dashboard every 30 seconds
+    const intervalId = setInterval(fetchDashboardData, 30000);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const { statistics, recentActivities, chartData } = data;
+
+  // Transform data for pie chart
+  const pendingOrgs = statistics.pendingRequests || 0; // fallback if needed
+  const activeOrgs = statistics.activeOrganizations;
+  const suspendedOrgs = statistics.totalOrganizations - activeOrgs - pendingOrgs;
+  
+  const orgStatusData = [
+    { name: "Active", value: activeOrgs, color: "#22c55e" }, // green-500
+    { name: "Pending", value: pendingOrgs, color: "#f97316" }, // orange-500
+    { name: "Suspended", value: Math.max(0, suspendedOrgs), color: "#ef4444" }, // red-500
+  ];
+
+  // Transform data for bar chart
+  const fleetManagerData = [
+    { name: "Total", value: statistics.fleetManagers, fill: "#3b82f6" },
+  ];
+
+  // Helper to format time for recent activities
+  const formatTime = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      return format(new Date(dateStr), 'hh:mm a');
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'PENDING': return 'bg-orange-500';
+      case 'COMPLETED': return 'bg-green-500';
+      case 'IN_PROGRESS': return 'bg-blue-500';
+      default: return 'bg-slate-500';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f4f7f6] flex items-center justify-center font-sans">
+        <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
@@ -85,45 +132,36 @@ function Dashboard() {
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5 mb-6">
             <KPICard 
               title="Total Organizations" 
-              value={orgCount.toString()} 
-              subtitle="vs last month"
-              trendText="+12%"
-              trendColor="text-green-500"
-              isTrendUp={true}
+              value={statistics.totalOrganizations.toString()} 
+              subtitle="All registered orgs"
               icon={<Building2 className="w-4 h-4 text-slate-600" />}
               iconBg="bg-slate-100"
             />
             <KPICard 
               title="Active Organizations" 
-              value={organizations.filter(o => o.status === 'Active').length.toString()} 
-              subtitle={`${Math.round((organizations.filter(o => o.status === 'Active').length / (orgCount || 1)) * 100)}% of total`}
+              value={statistics.activeOrganizations.toString()} 
+              subtitle={`${statistics.totalOrganizations > 0 ? Math.round((statistics.activeOrganizations / statistics.totalOrganizations) * 100) : 0}% of total`}
               icon={<CheckCircle2 className="w-4 h-4 text-green-500" />}
               iconBg="bg-green-50 border border-green-100"
             />
             <KPICard 
               title="Total Fleet Managers" 
-              value={managerCount.toString()} 
-              subtitle="vs last month"
-              trendText="+8%"
-              trendColor="text-green-500"
-              isTrendUp={true}
+              value={statistics.fleetManagers.toString()} 
+              subtitle="All managers"
               icon={<Users className="w-4 h-4 text-slate-600" />}
               iconBg="bg-slate-100"
             />
             <KPICard 
-              title="Active Fleet Managers" 
-              value={fleetManagers.filter(m => m.status === 'Active').length.toString()} 
-              subtitle={`${Math.round((fleetManagers.filter(m => m.status === 'Active').length / (managerCount || 1)) * 100)}% of total`}
+              title="Active Vehicles" 
+              value={statistics.activeVehicles.toString()} 
+              subtitle="Currently operating"
               icon={<UserCheck className="w-4 h-4 text-blue-500" />}
               iconBg="bg-blue-50 border border-blue-100"
             />
             <KPICard 
-              title="New Organizations" 
-              value="12" 
-              subtitle="This month"
-              trendText="+3 orgs"
-              trendColor="text-green-500"
-              isTrendUp={true}
+              title="Total Revenue" 
+              value={`$${statistics.revenue.toLocaleString()}`} 
+              subtitle="All time"
               icon={<TrendingUp className="w-4 h-4 text-orange-500" />}
               iconBg="bg-orange-50 border border-orange-100"
             />
@@ -139,20 +177,19 @@ function Dashboard() {
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
             
-            {/* Org Growth */}
+            {/* Revenue Trend */}
             <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="font-bold text-slate-800 text-sm">Organization Growth</h3>
-                <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-full">+12% YTD</span>
+                <h3 className="font-bold text-slate-800 text-sm">Revenue Trend</h3>
               </div>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={orgGrowthData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+                  <LineChart data={chartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} />
                     <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
-                    <Line type="monotone" dataKey="value" stroke="#d97706" strokeWidth={3} dot={{ r: 4, fill: '#d97706', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="revenue" stroke="#d97706" strokeWidth={3} dot={{ r: 4, fill: '#d97706', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -226,8 +263,7 @@ function Dashboard() {
             {/* Recent Activities */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col">
               <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
-                <h3 className="font-bold text-slate-800 text-sm">Recent Activities</h3>
-                <Link to="/admin/organizations" className="text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors">View All</Link>
+                <h3 className="font-bold text-slate-800 text-sm">Recent Activities (Trips)</h3>
               </div>
               <div className="overflow-x-auto no-scrollbar">
                 <table className="w-full text-left text-sm min-w-[500px]">
@@ -235,22 +271,29 @@ function Dashboard() {
                     <tr>
                       <th className="py-3 px-5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Time</th>
                       <th className="py-3 px-5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Activity</th>
-                      <th className="py-3 px-5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Organization</th>
+                      <th className="py-3 px-5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Details</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {recentActivities.map((act, i) => (
-                      <tr key={i} onClick={() => navigate('/admin/organizations/details/1')} className="hover:bg-slate-50/50 transition-colors cursor-pointer">
-                        <td className="py-3.5 px-5 text-slate-400 font-mono text-[11px] whitespace-nowrap">{act.time}</td>
+                      <tr key={i} className="hover:bg-slate-50/50 transition-colors cursor-pointer">
+                        <td className="py-3.5 px-5 text-slate-400 font-mono text-[11px] whitespace-nowrap">{formatTime(act.createdAt)}</td>
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-2.5">
-                            <span className={`w-1.5 h-1.5 rounded-full ${act.color}`}></span>
-                            <span className="font-medium text-slate-700 text-[13px]">{act.activity}</span>
+                            <span className={`w-1.5 h-1.5 rounded-full ${getStatusColor(act.status)}`}></span>
+                            <span className="font-medium text-slate-700 text-[13px]">Trip {act.status}</span>
                           </div>
                         </td>
-                        <td className="py-3.5 px-5 text-slate-500 text-[13px]">{act.org}</td>
+                        <td className="py-3.5 px-5 text-slate-500 text-[13px]">
+                          Trip #{act.tripNumber} - Vehicle: {act.vehicle?.vehicleNumber || 'N/A'} - Driver: {act.driver?.name || 'N/A'}
+                        </td>
                       </tr>
                     ))}
+                    {recentActivities.length === 0 && (
+                      <tr>
+                        <td colSpan="3" className="py-6 px-5 text-center text-slate-400 text-xs">No recent activities found</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -271,7 +314,7 @@ function Dashboard() {
                   </div>
                 </Link>
                 
-                <Link to="/admin/fleet-managers" className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
+                <Link to="/admin/fleet-managers/add" className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
                   <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
                     <Users className="w-4 h-4" />
                   </div>

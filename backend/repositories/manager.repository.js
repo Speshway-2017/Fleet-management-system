@@ -1,4 +1,10 @@
 import Vehicle from '../models/Vehicle.js';
+import Driver from '../models/Driver.js';
+import Trip from '../models/Trip.js';
+import Fuel from '../models/Fuel.js';
+import Maintenance from '../models/Maintenance.js';
+import Document from '../models/Document.js';
+import Report from '../models/Report.js';
 
 export const getVehicles = async () =>
   Vehicle.find().sort({ createdAt: -1 });

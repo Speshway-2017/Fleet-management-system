@@ -33,6 +33,7 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { vehicleApi } from "@/api/vehicleApi";
+import { managerApi } from "../api/managerApi";
 
 const INITIAL_VEHICLES = [
   {
@@ -957,7 +958,7 @@ export default function VehicleManagement() {
                     </tr>
                   ) : (
                     filteredVehicles.map((v) => (
-                      <tr key={v.id} className="hover:bg-[#F5F7FB]/50 transition-colors group">
+                      <tr key={v._id} className="hover:bg-[#F5F7FB]/50 transition-colors group">
                         {/* Vehicle Card Cell */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex items-center gap-3">
@@ -973,7 +974,7 @@ export default function VehicleManagement() {
 
                         {/* Registration Number */}
                         <td className="py-4 px-6 font-poppins font-semibold text-xs tracking-wider text-[#1E293B] whitespace-nowrap">
-                          {v.plateNumber}
+                          {v.plateNumber || v.vehicleNumber}
                         </td>
 
                         {/* Type */}
@@ -1041,7 +1042,7 @@ export default function VehicleManagement() {
                           <div className="flex items-center justify-end gap-1">
                             {/* View Details */}
                             <button
-                              onClick={() => navigate(`/manager/vehicle-details/${v.id}`)}
+                              onClick={() => navigate(`/manager/vehicle-details/${v._id}`)}
                               title="View details"
                               className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                             >
@@ -1050,7 +1051,7 @@ export default function VehicleManagement() {
 
                             {/* Edit */}
                             <button
-                              onClick={() => navigate(`/manager/vehicle-edit/${v.id}`)}
+                              onClick={() => navigate(`/manager/vehicle-edit/${v._id}`)}
                               title="Edit vehicle"
                               className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                             >
