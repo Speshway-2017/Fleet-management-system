@@ -33,6 +33,8 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { vehicleApi } from "@/api/vehicleApi";
+import { driverApi } from "@/api/driverApi";
+
 
 const INITIAL_VEHICLES = [
   {
@@ -214,36 +216,29 @@ export default function VehicleManagement() {
 
   /**
    * Normalise a backend vehicle document to the shape this component expects.
-   * Backend uses: _id, brand, vehicleNumber, status (ACTIVE/IDLE/etc.)
-   * Frontend uses: id, manufacturer, plateNumber, name, status (Available/Idle/etc.)
+   * Backend uses: _id, brand, vehicleNumber, currentStatus (Available/Active/etc.)
    */
   const normaliseVehicle = (v) => ({
     ...v,
     id:           v._id,
-    name:         `${v.brand} ${v.model}`,
-    manufacturer: v.brand,
-    plateNumber:  v.vehicleNumber,
-    type:         v.type         || 'Truck',
-    driver:       v.driver       || 'Unassigned',
-    fuelLevel:    v.fuelLevel    ?? 50,
+    name:         v.vehicleName || `${v.brand} ${v.model}`,
+    manufacturer: v.brand || "",
+    plateNumber:  v.vehicleNumber || "",
+    type:         v.vehicleType || 'Truck',
+    driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
+      ? v.assignedDriver.fullName
+      : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
+    fuelLevel:    v.fuelCapacity ? Math.round((v.odometer % v.fuelCapacity) || 50) : 50,
     fastagBalance:v.fastagBalance ?? 0,
-    branch:       v.branch       || '',
+    branch:       v.branch       || 'Pune',
     dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
-    insuranceExpiry: v.insuranceExpiry ? v.insuranceExpiry.split('T')[0] : '',
-    lastService:     v.lastService    ? v.lastService.split('T')[0]    : '',
-    nextService:     v.nextService    ? v.nextService.split('T')[0]    : '',
-    // Map backend status enum → display labels
-    status: {
-      ACTIVE:          'Available',
-      IDLE:            'Idle',
-      MAINTENANCE:     'Maintenance',
-      ON_TRIP:         'On Trip',
-      OUT_OF_SERVICE:  'Out of Service',
-    }[v.status] ?? v.status,
+    // Map backend currentStatus to status
+    status:       v.currentStatus || 'Available',
   });
 
   const [vehicles, setVehicles] = useState([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
+  const [drivers, setDrivers] = useState([]);
 
   // Filter States
   const [search, setSearch] = useState("");
@@ -256,22 +251,28 @@ export default function VehicleManagement() {
   const [dateAddedFilter, setDateAddedFilter] = useState("");
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 
-  // Fetch vehicles from backend on mount
+
+  // Fetch vehicles and drivers from backend on mount
   useEffect(() => {
-    const fetchVehicles = async () => {
+    const fetchVehiclesAndDrivers = async () => {
       try {
         setVehiclesLoading(true);
-        const res = await vehicleApi.list();
-        const raw = res.data?.data ?? [];
-        setVehicles(raw.map(normaliseVehicle));
+        const [vehRes, drvRes] = await Promise.all([
+          vehicleApi.list(),
+          driverApi.list()
+        ]);
+        const rawVeh = vehRes.data?.data ?? [];
+        const rawDrv = drvRes.data?.data ?? [];
+        setDrivers(rawDrv);
+        setVehicles(rawVeh.map(normaliseVehicle));
       } catch (err) {
-        console.error('Failed to fetch vehicles:', err);
+        console.error('Failed to fetch data:', err);
         toast.error('Failed to load vehicles from server.');
       } finally {
         setVehiclesLoading(false);
       }
     };
-    fetchVehicles();
+    fetchVehiclesAndDrivers();
   }, []);
 
   // Sorting
@@ -462,13 +463,19 @@ export default function VehicleManagement() {
 
   const openEditModal = (vehicle) => {
     setSelectedVehicle(vehicle);
-    setFormData({ ...vehicle });
+    setFormData({
+      ...vehicle,
+      assignedDriver: vehicle.assignedDriver?._id || vehicle.assignedDriver || "Unassigned"
+    });
     setModalType("edit");
   };
 
   const openAssignModal = (vehicle) => {
     setSelectedVehicle(vehicle);
-    setFormData({ ...vehicle });
+    setFormData({
+      ...vehicle,
+      assignedDriver: vehicle.assignedDriver?._id || vehicle.assignedDriver || "Unassigned"
+    });
     setModalType("assign");
   };
 
@@ -542,29 +549,43 @@ export default function VehicleManagement() {
     try {
       if (modalType === "edit") {
         const payload = {
-          brand:        formData.manufacturer || formData.brand,
-          model:        formData.model,
-          vehicleNumber:formData.plateNumber?.toUpperCase(),
-          type:         formData.type,
-          branch:       formData.branch,
-          fuelType:     formData.fuelType,
-          ownership:    formData.ownership,
-          availability: formData.availability,
-          insuranceExpiry: formData.insuranceExpiry || undefined,
-          lastService:     formData.lastService || undefined,
-          nextService:     formData.nextService || undefined,
-          fuelLevel:    Number(formData.fuelLevel),
-          fastagBalance:Number(formData.fastagBalance),
+          vehicleName:        `${formData.manufacturer || formData.brand} ${formData.model}`,
+          brand:              formData.manufacturer || formData.brand,
+          model:              formData.model,
+          vehicleNumber:      formData.plateNumber?.toUpperCase(),
+          vehicleType:        formData.type,
+          branch:             formData.branch,
+          fuelType:           formData.fuelType,
+          ownership:          formData.ownership,
+          availability:       formData.availability,
+          insuranceExpiry:    formData.insuranceExpiry || undefined,
+          lastService:        formData.lastService || undefined,
+          nextService:        formData.nextService || undefined,
+          fuelCapacity:       Number(formData.fuelCapacity) || 0,
+          fastagBalance:      Number(formData.fastagBalance) || 0,
+          currentStatus:      formData.status || "Available",
+          assignedDriver:     formData.assignedDriver === "Unassigned" ? "Unassigned" : formData.assignedDriver,
         };
         const res = await vehicleApi.update(vehicleId, payload);
-        const updated = normaliseVehicle(res.data.data);
-        setVehicles(prev => prev.map(v => v.id === selectedVehicle.id ? updated : v));
+        
+        // Fetch fresh vehicles list to make sure we get populated driver details
+        const listRes = await vehicleApi.list();
+        const rawVeh = listRes.data?.data ?? [];
+        setVehicles(rawVeh.map(normaliseVehicle));
+        
         toast.success("Vehicle updated successfully!");
       } else if (modalType === "assign") {
-        const res = await vehicleApi.update(vehicleId, { driver: formData.driver });
-        const updated = normaliseVehicle(res.data.data);
-        setVehicles(prev => prev.map(v => v.id === selectedVehicle.id ? updated : v));
-        toast.success(`Driver ${formData.driver} assigned successfully!`);
+        const payload = {
+          assignedDriver: formData.assignedDriver === "Unassigned" ? "Unassigned" : formData.assignedDriver
+        };
+        await vehicleApi.update(vehicleId, payload);
+
+        // Fetch fresh vehicles list to make sure we get populated driver details
+        const listRes = await vehicleApi.list();
+        const rawVeh = listRes.data?.data ?? [];
+        setVehicles(rawVeh.map(normaliseVehicle));
+
+        toast.success("Driver assigned successfully!");
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to save changes.");
@@ -1475,12 +1496,13 @@ export default function VehicleManagement() {
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Assigned Driver</label>
                     <select
-                      value={formData.driver}
-                      onChange={(e) => setFormData({ ...formData, driver: e.target.value })}
+                      value={formData.assignedDriver || "Unassigned"}
+                      onChange={(e) => setFormData({ ...formData, assignedDriver: e.target.value })}
                       className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
                     >
-                      {MOCK_DRIVERS.map((d) => (
-                        <option key={d} value={d}>{d}</option>
+                      <option value="Unassigned">Unassigned</option>
+                      {drivers.map((d) => (
+                        <option key={d._id} value={d._id}>{d.fullName}</option>
                       ))}
                     </select>
                   </div>
@@ -1650,12 +1672,13 @@ export default function VehicleManagement() {
                 <div>
                   <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Select Driver</label>
                   <select
-                    value={formData.driver}
-                    onChange={(e) => setFormData({ ...formData, driver: e.target.value })}
+                    value={formData.assignedDriver || "Unassigned"}
+                    onChange={(e) => setFormData({ ...formData, assignedDriver: e.target.value })}
                     className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
                   >
-                    {MOCK_DRIVERS.map((d) => (
-                      <option key={d} value={d}>{d}</option>
+                    <option value="Unassigned">Unassigned</option>
+                    {drivers.map((d) => (
+                      <option key={d._id} value={d._id}>{d.fullName}</option>
                     ))}
                   </select>
                 </div>

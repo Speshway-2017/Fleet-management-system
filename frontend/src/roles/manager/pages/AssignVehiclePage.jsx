@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -9,95 +9,125 @@ import {
   AlertCircle,
   MapPin,
   Fuel,
-  CheckCircle2
+  CheckCircle2,
+  Loader
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { driverApi } from "@/api/driverApi";
+import { vehicleApi } from "@/api/vehicleApi";
 
 export default function AssignVehiclePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [driver, setDriver] = useState(null);
   const [vehicles, setVehicles] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [typeFilter, setTypeFilter] = useState("All Types");
+  const [assigningVehicleId, setAssigningVehicleId] = useState(null);
 
-  useEffect(() => {
-    // 1. Fetch driver
-    const savedDrivers = localStorage.getItem("fleet_drivers");
-    if (savedDrivers) {
-      const driversList = JSON.parse(savedDrivers);
-      const found = driversList.find(d => d.id === Number(id));
-      if (found) {
-        setDriver(found);
-      } else {
+  const normaliseVehicle = (v) => ({
+    ...v,
+    id:           v._id,
+    name:         `${v.brand} ${v.model}`,
+    manufacturer: v.brand,
+    plateNumber:  v.vehicleNumber,
+    type:         v.type         || 'Truck',
+    driver:       v.driver       || 'Unassigned',
+    fuelLevel:    v.fuelLevel    ?? 50,
+    fastagBalance:v.fastagBalance ?? 0,
+    branch:       v.branch       || '',
+    dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
+    status: {
+      ACTIVE:          'Available',
+      IDLE:            'Idle',
+      MAINTENANCE:     'Maintenance',
+      ON_TRIP:         'On Trip',
+      OUT_OF_SERVICE:  'Out of Service',
+    }[v.status] ?? v.status,
+  });
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      // 1. Fetch driver
+      const drvRes = await driverApi.getById(id);
+      const foundDriver = drvRes.data?.data;
+      if (!foundDriver) {
         toast.error("Driver not found");
         navigate("/manager/drivers");
+        return;
       }
-    }
+      setDriver(foundDriver);
 
-    // 2. Fetch vehicles
-    const savedVehicles = localStorage.getItem("fleet_vehicles");
-    if (savedVehicles) {
-      setVehicles(JSON.parse(savedVehicles));
+      // 2. Fetch vehicles
+      const vehRes = await vehicleApi.list();
+      const rawVehicles = vehRes.data?.data ?? [];
+      setVehicles(rawVehicles.map(normaliseVehicle));
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to load page context.");
+      navigate("/manager/drivers");
+    } finally {
+      setLoading(false);
     }
   }, [id, navigate]);
 
-  const handleAssign = (vehicle) => {
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleAssign = async (vehicle) => {
     if (!driver || !vehicle) return;
 
     // A. Verify if the vehicle is already assigned to someone else
     if (vehicle.driver && vehicle.driver !== "Unassigned") {
       const confirmOverride = window.confirm(
-        `This vehicle is already assigned to ${vehicle.driver}. Do you want to reassign it to ${driver.name}?`
+        `This vehicle is already assigned to ${vehicle.driver}. Do you want to reassign it to ${driver.fullName}?`
       );
       if (!confirmOverride) return;
 
-      // Unassign the previous driver
-      const savedDrivers = localStorage.getItem("fleet_drivers");
-      if (savedDrivers) {
-        const driversList = JSON.parse(savedDrivers);
-        const updatedDrivers = driversList.map(d => 
-          d.assignedVehicle === vehicle.plateNumber ? { ...d, assignedVehicle: "Unassigned", status: "Available" } : d
-        );
-        localStorage.setItem("fleet_drivers", JSON.stringify(updatedDrivers));
+      // Find the driver currently assigned to this vehicle (if any) and clear their assignedVehicle.
+      try {
+        const driversListRes = await driverApi.list();
+        const allDrivers = driversListRes.data?.data ?? [];
+        const prevDriver = allDrivers.find(d => d.assignedVehicle === vehicle.plateNumber);
+        if (prevDriver) {
+          await driverApi.update(prevDriver._id, { assignedVehicle: "Unassigned", driverStatus: "AVAILABLE" });
+        }
+      } catch (err) {
+        console.error("Failed to unassign previous driver:", err);
       }
     }
 
     // B. If this driver had a vehicle previously, clear that vehicle's driver field
     if (driver.assignedVehicle && driver.assignedVehicle !== "Unassigned") {
-      const savedVehicles = localStorage.getItem("fleet_vehicles");
-      if (savedVehicles) {
-        const vehiclesList = JSON.parse(savedVehicles);
-        const updatedVehicles = vehiclesList.map(v => 
-          v.plateNumber === driver.assignedVehicle ? { ...v, driver: "Unassigned" } : v
-        );
-        localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
+      const prevVeh = vehicles.find(v => v.plateNumber === driver.assignedVehicle);
+      if (prevVeh) {
+        try {
+          await vehicleApi.update(prevVeh.id, { driver: "Unassigned" });
+        } catch (err) {
+          console.error("Failed to clear previous vehicle driver:", err);
+        }
       }
     }
 
-    // C. Update driver's assignedVehicle and status
-    const savedDrivers = localStorage.getItem("fleet_drivers");
-    let updatedDriver = { ...driver, assignedVehicle: vehicle.plateNumber, status: "Available" };
-    if (savedDrivers) {
-      const driversList = JSON.parse(savedDrivers);
-      const updatedDrivers = driversList.map(d => d.id === driver.id ? updatedDriver : d);
-      localStorage.setItem("fleet_drivers", JSON.stringify(updatedDrivers));
-    }
+    setAssigningVehicleId(vehicle.id);
+    try {
+      // C. Update driver's assignedVehicle in DB
+      await driverApi.update(driver._id, { assignedVehicle: vehicle.plateNumber });
 
-    // D. Update vehicle's assigned driver
-    const savedVehicles = localStorage.getItem("fleet_vehicles");
-    if (savedVehicles) {
-      const vehiclesList = JSON.parse(savedVehicles);
-      const updatedVehicles = vehiclesList.map(v => 
-        v.plateNumber === vehicle.plateNumber ? { ...v, driver: driver.name } : v
-      );
-      localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
-    }
+      // D. Update vehicle's assigned driver in DB
+      await vehicleApi.update(vehicle.id, { driver: driver.fullName });
 
-    toast.success(`Vehicle ${vehicle.name} successfully assigned to ${driver.name}!`);
-    navigate(`/manager/driver-profile/${driver.id}`);
+      toast.success(`Vehicle ${vehicle.name} successfully assigned to ${driver.fullName}!`);
+      navigate(`/manager/driver-profile/${driver._id}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to assign vehicle.");
+    } finally {
+      setAssigningVehicleId(null);
+    }
   };
 
   const handleResetFilters = () => {
@@ -135,13 +165,18 @@ export default function AssignVehiclePage() {
     }
   };
 
-  if (!driver) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#F5F7FB] flex items-center justify-center font-poppins p-6 lg:p-8">
-        <p className="text-gray-500 font-semibold">Loading Assignment Context...</p>
+        <div className="flex flex-col items-center gap-3 text-[#64748B]">
+          <Loader className="w-8 h-8 animate-spin text-[#B45A0A]" />
+          <p className="font-semibold">Loading Assignment Context...</p>
+        </div>
       </div>
     );
   }
+
+  if (!driver) return null;
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
@@ -152,7 +187,7 @@ export default function AssignVehiclePage() {
           <div>
             <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Assign Vehicle</h1>
             <p className="text-[18px] text-[#64748B] mt-[12px] font-medium">
-              Select a fleet vehicle to assign to <strong className="text-[#1E293B]">{driver.name}</strong>.
+              Select a fleet vehicle to assign to <strong className="text-[#1E293B]">{driver.fullName}</strong>.
             </p>
           </div>
         </div>
@@ -162,16 +197,18 @@ export default function AssignVehiclePage() {
       <div className="p-5 bg-white border border-[#E7EAF0] rounded-2xl flex items-center justify-between shadow-sm select-none mt-6">
         <div className="flex items-center gap-3.5">
           <div className="w-11 h-11 bg-[#FDF3EC] text-[#B45A0A] rounded-xl flex items-center justify-center font-bold text-sm font-poppins">
-            {driver.name.split(" ").map(n => n[0]).join("").toUpperCase()}
+            {driver.fullName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
           </div>
           <div>
-            <p className="font-bold text-[#1E293B] text-sm">{driver.name}</p>
+            <p className="font-bold text-[#1E293B] text-sm">{driver.fullName}</p>
             <span className="text-[11px] text-[#64748B] font-semibold mt-0.5 block">DL No: {driver.licenseNumber}</span>
           </div>
         </div>
         <div className="text-right">
           <span className="text-[10px] font-bold text-gray-400 block uppercase">Current Assignment</span>
-          <span className="text-sm font-extrabold text-[#EF4444] mt-0.5 block">{driver.assignedVehicle}</span>
+          <span className={`text-sm font-extrabold mt-0.5 block ${driver.assignedVehicle === "Unassigned" ? "text-[#EF4444]" : "text-indigo-600"}`}>
+            {driver.assignedVehicle}
+          </span>
         </div>
       </div>
 
@@ -200,11 +237,11 @@ export default function AssignVehiclePage() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
             >
-              <option>All Statuses</option>
-              <option>Available</option>
-              <option>On Trip</option>
-              <option>Idle</option>
-              <option>Maintenance</option>
+              <option value="All Statuses">All Statuses</option>
+              <option value="Available">Available</option>
+              <option value="On Trip">On Trip</option>
+              <option value="Idle">Idle</option>
+              <option value="Maintenance">Maintenance</option>
             </select>
             <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
               <ChevronDown className="w-4 h-4" />
@@ -218,12 +255,12 @@ export default function AssignVehiclePage() {
               onChange={(e) => setTypeFilter(e.target.value)}
               className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
             >
-              <option>All Types</option>
-              <option>Truck</option>
-              <option>Van</option>
-              <option>Tipper</option>
-              <option>Trailer</option>
-              <option>Bus</option>
+              <option value="All Types">All Types</option>
+              <option value="Truck">Truck</option>
+              <option value="Van">Van</option>
+              <option value="Tipper">Tipper</option>
+              <option value="Trailer">Trailer</option>
+              <option value="Bus">Bus</option>
             </select>
             <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
               <ChevronDown className="w-4 h-4" />
@@ -305,14 +342,18 @@ export default function AssignVehiclePage() {
                 <button
                   onClick={() => handleAssign(v)}
                   className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    v.status === "Maintenance" || v.status === "Out of Service"
+                    v.status === "Maintenance" || v.status === "Out of Service" || assigningVehicleId === v.id
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                       : "bg-white hover:bg-[#B45A0A] hover:text-white text-[#B45A0A] border border-[#B45A0A] shadow-sm hover:shadow-md"
                   }`}
-                  disabled={v.status === "Maintenance" || v.status === "Out of Service"}
+                  disabled={v.status === "Maintenance" || v.status === "Out of Service" || assigningVehicleId !== null}
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Select and Assign Vehicle</span>
+                  {assigningVehicleId === v.id ? (
+                    <Loader className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  <span>{assigningVehicleId === v.id ? "Assigning..." : "Select and Assign Vehicle"}</span>
                 </button>
               </div>
             </div>

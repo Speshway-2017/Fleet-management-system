@@ -2,11 +2,25 @@ import mongoose from 'mongoose';
 
 const driverSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
+    fullName: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
-    phone: { type: String, required: true },
-    licenseNumber: { type: String, required: true, unique: true },
-    status: { type: String, enum: ['ACTIVE', 'INACTIVE', 'ON_TRIP'], default: 'ACTIVE' },
+    phoneNumber: { type: String, required: true, trim: true },
+    licenseNumber: { type: String, required: true, unique: true, trim: true },
+    licenseType: { type: String, enum: ['HMV', 'LMV', 'MCWG'], default: 'HMV' },
+    licenseExpiry: { type: Date },
+    assignedVehicle: { type: String, default: 'Unassigned' },
+    driverStatus: {
+      type: String,
+      enum: ['AVAILABLE', 'ON_TRIP', 'SUSPENDED'],
+      default: 'AVAILABLE',
+    },
+    profileImage: { type: String, default: '' },
+    licenseDocument: { type: String, default: '' },
+    experience: { type: String, default: '' },
+    joiningDate: { type: Date },
+    medicalFitnessStatus: { type: String, default: 'Fit' },
+    tripsCompleted: { type: Number, default: 0 },
+    incidentCount: { type: Number, default: 0 },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }

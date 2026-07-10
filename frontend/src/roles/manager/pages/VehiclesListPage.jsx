@@ -34,12 +34,41 @@ export default function VehiclesListPage() {
   const [availabilityFilter, setAvailabilityFilter] = useState("All Availabilities");
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 
-  // Load vehicles from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("fleet_vehicles");
-    if (saved) {
-      setVehicles(JSON.parse(saved));
+  const [loading, setLoading] = useState(true);
+
+  const normaliseVehicle = (v) => ({
+    ...v,
+    id:           v._id,
+    name:         v.vehicleName || `${v.brand} ${v.model}`,
+    manufacturer: v.brand || "",
+    plateNumber:  v.vehicleNumber || "",
+    type:         v.vehicleType || "Truck",
+    driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
+      ? v.assignedDriver.fullName
+      : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
+    fuelLevel:    v.fuelCapacity ? Math.round((v.odometer % v.fuelCapacity) || 50) : 50,
+    fastagBalance: v.fastagBalance ?? 0,
+    branch:       v.branch || "Pune",
+    dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
+    status:       v.currentStatus || 'Available',
+  });
+
+  const fetchVehicles = async () => {
+    try {
+      setLoading(true);
+      const res = await vehicleApi.list();
+      const raw = res.data?.data ?? [];
+      setVehicles(raw.map(normaliseVehicle));
+    } catch (err) {
+      console.error("Failed to fetch vehicles:", err);
+      toast.error("Failed to load vehicles from server.");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchVehicles();
   }, []);
 
   // Calculate filtered vehicles
@@ -454,7 +483,16 @@ export default function VehiclesListPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredVehicles.length > 0 ? (
+                   {loading ? (
+                    <tr>
+                      <td colSpan={7} className="py-16 text-center">
+                        <div className="flex flex-col items-center gap-3 text-[#64748B]">
+                          <Loader className="w-7 h-7 animate-spin text-[#B45A0A]" />
+                          <span className="text-sm font-semibold">Loading vehicles...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filteredVehicles.length > 0 ? (
                     filteredVehicles.map((vehicle, idx) => (
                       <tr key={vehicle.id} className="border-b border-[#E7EAF0]/60 hover:bg-[#F5F7FB]/50 transition-colors">
                         <td className="py-4 px-6 whitespace-nowrap">
