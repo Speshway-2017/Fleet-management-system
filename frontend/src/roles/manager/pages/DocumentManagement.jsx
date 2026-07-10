@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
 
 // Mock data for documents
 const MOCK_DOCUMENTS = [
@@ -111,9 +112,38 @@ export default function DocumentManagement() {
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState(null);
+  
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const complianceSectionRef = useRef(null);
   const [highlightCompliance, setHighlightCompliance] = useState(false);
+
+  const fetchDocuments = async () => {
+    try {
+      setLoading(true);
+      const response = await managerApi.getDocuments();
+      const result = response.data?.data || response.data;
+      if (Array.isArray(result)) {
+        setDocuments(result.map(d => ({
+          ...d,
+          id: d._id,
+          name: d.title
+        })));
+      } else {
+        setDocuments([]);
+      }
+    } catch (error) {
+      toast.error("Failed to load documents from database");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -141,10 +171,15 @@ export default function DocumentManagement() {
   }, [location]);
 
   // Filter documents
-  const filteredDocs = MOCK_DOCUMENTS.filter(doc => {
-    const matchesSearch = doc.name.toLowerCase().includes(search.toLowerCase()) ||
-                          (doc.vehicle?.toLowerCase().includes(search.toLowerCase())) ||
-                          (doc.driver?.toLowerCase().includes(search.toLowerCase()));
+  const filteredDocs = documents.filter(doc => {
+    const nameStr = doc.name ? doc.name.toLowerCase() : "";
+    const vehicleStr = doc.vehicle ? doc.vehicle.toLowerCase() : "";
+    const driverStr = doc.driver ? doc.driver.toLowerCase() : "";
+    const query = search.toLowerCase();
+
+    const matchesSearch = nameStr.includes(query) ||
+                          vehicleStr.includes(query) ||
+                          driverStr.includes(query);
     const matchesStatus = statusFilter === "All Statuses" || doc.status === statusFilter;
     const matchesCategory = categoryFilter === "All Categories" || doc.category === categoryFilter;
     return matchesSearch && matchesStatus && matchesCategory;
@@ -180,11 +215,23 @@ export default function DocumentManagement() {
   };
 
   const handleDownload = (doc) => {
-    toast.success(`Downloading document: ${doc.name}`);
+    if (doc.fileUrl) {
+      window.open(doc.fileUrl, '_blank');
+      toast.success(`Downloading document: ${doc.name}`);
+    } else {
+      toast.error("File download URL not found");
+    }
   };
 
-  const handleDelete = (doc) => {
-    toast.success(`Deleted document: ${doc.name}`);
+  const handleDelete = async (doc) => {
+    try {
+      await managerApi.deleteDocument(doc._id);
+      toast.success(`Deleted document: ${doc.name}`);
+      fetchDocuments();
+    } catch (error) {
+      toast.error("Failed to delete document");
+      console.error(error);
+    }
   };
 
   return (

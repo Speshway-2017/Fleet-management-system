@@ -136,7 +136,7 @@ export default function VehicleEditPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-[#1E293B]">{formData.name}</p>
-              <p className="text-xs text-[#64748B] mt-1 uppercase truncate">{formData.plateNumber}</p>
+              <p className="text-xs text-[#64748B] mt-1 uppercase truncate">{formData.plateNumber || formData.vehicleNumber}</p>
             </div>
           </div>
         </div>

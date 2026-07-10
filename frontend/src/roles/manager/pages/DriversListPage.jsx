@@ -44,6 +44,10 @@ export default function DriversListPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchDrivers();
   }, []);
 
   useEffect(() => {

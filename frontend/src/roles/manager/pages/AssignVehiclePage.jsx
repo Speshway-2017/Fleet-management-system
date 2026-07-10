@@ -99,7 +99,6 @@ export default function AssignVehiclePage() {
       } catch (err) {
         console.error("Failed to unassign previous driver:", err);
       }
-    }
 
     // B. If this driver had a vehicle previously, clear that vehicle's driver field
     if (driver.assignedVehicle && driver.assignedVehicle !== "Unassigned") {
@@ -111,7 +110,6 @@ export default function AssignVehiclePage() {
           console.error("Failed to clear previous vehicle driver:", err);
         }
       }
-    }
 
     setAssigningVehicleId(vehicle.id);
     try {
@@ -295,7 +293,7 @@ export default function AssignVehiclePage() {
           </div>
         ) : (
           filteredVehicles.map((v) => (
-            <div key={v.id} className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div key={v._id} className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
               <div className="space-y-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -325,7 +323,7 @@ export default function AssignVehiclePage() {
 
                 <div className="flex items-center justify-between text-xs pt-1">
                   <span className="text-gray-500 font-medium">Plate Number:</span>
-                  <span className="font-bold text-[#1E293B] uppercase tracking-wider">{v.plateNumber}</span>
+                  <span className="font-bold text-[#1E293B] uppercase tracking-wider">{v.plateNumber || v.vehicleNumber}</span>
                 </div>
 
                 <div className="flex items-center justify-between text-xs border-t border-[#E7EAF0]/60 pt-3">

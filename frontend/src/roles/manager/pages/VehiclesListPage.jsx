@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { vehicleApi } from "@/api/vehicleApi";
 import L from "leaflet";
+import { managerApi } from "../api/managerApi";
 
 
 // Fix Leaflet marker icons
@@ -494,7 +495,7 @@ export default function VehiclesListPage() {
                     </tr>
                   ) : filteredVehicles.length > 0 ? (
                     filteredVehicles.map((vehicle, idx) => (
-                      <tr key={vehicle.id} className="border-b border-[#E7EAF0]/60 hover:bg-[#F5F7FB]/50 transition-colors">
+                      <tr key={vehicle._id} className="border-b border-[#E7EAF0]/60 hover:bg-[#F5F7FB]/50 transition-colors">
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex flex-col">
                             <p className="font-bold text-[#1E293B] text-sm">{vehicle.name}</p>
@@ -502,7 +503,7 @@ export default function VehiclesListPage() {
                           </div>
                         </td>
                         <td className="py-4 px-6 whitespace-nowrap">
-                          <p className="font-bold text-[#1E293B] uppercase text-sm">{vehicle.plateNumber}</p>
+                          <p className="font-bold text-[#1E293B] uppercase text-sm">{vehicle.plateNumber || vehicle.vehicleNumber}</p>
                         </td>
                         <td className="py-4 px-6 whitespace-nowrap">
                           <p className="text-[#64748B] text-sm">{vehicle.type}</p>
@@ -523,14 +524,14 @@ export default function VehiclesListPage() {
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
                             <button
-                              onClick={() => navigate(`/manager/vehicle-details/${vehicle.id}`)}
+                              onClick={() => navigate(`/manager/vehicle-details/${vehicle._id}`)}
                               className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                               title="View"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => navigate(`/manager/vehicle-edit/${vehicle.id}`)}
+                              onClick={() => navigate(`/manager/vehicle-edit/${vehicle._id}`)}
                               className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                               title="Edit"
                             >
