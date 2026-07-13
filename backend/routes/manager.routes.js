@@ -43,7 +43,12 @@ import {
   createReport,
   getReportDetails,
   updateReport,
-  deleteReport
+  deleteReport,
+  // Notifications
+  listNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification
 } from '../controllers/manager.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
@@ -104,5 +109,12 @@ router.post('/reports',       ...auth, createReport);
 router.get('/reports/:id',    ...auth, getReportDetails);
 router.put('/reports/:id',    ...auth, updateReport);
 router.delete('/reports/:id', ...auth, deleteReport);
+
+// Notifications
+router.get('/notifications',         ...auth, listNotifications);
+router.patch('/notifications/read-all', ...auth, markAllNotificationsRead);
+router.patch('/notifications/:id/read', ...auth, markNotificationRead);
+router.put('/notifications/:id/read', ...auth, markNotificationRead);
+router.delete('/notifications/:id', ...auth, deleteNotification);
 
 export default router;

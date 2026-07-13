@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { adminApi } from "@/api/adminApi";
+import { getSocket, disconnectSocket } from "@/api/socket";
+import { useAuth } from "@/context/AuthContext";
 
 const AdminContext = createContext();
 
@@ -8,6 +10,7 @@ export function useAdmin() {
 }
 
 export function AdminProvider({ children }) {
+  const { user, isAuthenticated } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // ── Notifications ────────────────────────────────────────────────────────
@@ -43,7 +46,8 @@ export function AdminProvider({ children }) {
   const markAllAsRead = async () => {
     try {
       await adminApi.markAllNotificationsRead();
-      fetchNotifications();
+      // No need to fetch, socket will handle update, but just in case
+      setNotifications(prev => prev.map(n => ({ ...n, unread: false, isRead: true })));
     } catch (error) {
       console.error("Failed to mark all as read:", error);
     }
@@ -52,9 +56,20 @@ export function AdminProvider({ children }) {
   const markAsRead = async (id) => {
     try {
       await adminApi.markNotificationRead(id);
-      fetchNotifications();
+      setNotifications(prev => prev.map(n => 
+        n.id === id ? { ...n, unread: false, isRead: true } : n
+      ));
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
+    }
+  };
+
+  const deleteNotification = async (id) => {
+    try {
+      await adminApi.deleteNotification(id);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    } catch (error) {
+      console.error("Failed to delete notification:", error);
     }
   };
 
@@ -97,6 +112,50 @@ export function AdminProvider({ children }) {
       console.warn("Failed to fetch admin profile:", error?.response?.status);
     }
   };
+
+  // ── Socket.IO ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (isAuthenticated && user?.role === "admin") {
+      const socket = getSocket();
+
+      // Join rooms
+      socket.emit("joinRoleRoom", "SUPER_ADMIN");
+      if (user?._id || user?.id) {
+        socket.emit("joinAdminRoom", user._id || user.id);
+      }
+
+      // Listen for events
+      socket.on("notification:new", (notification) => {
+        setNotifications(prev => [mapNotification(notification), ...prev]);
+      });
+
+      socket.on("notification:read", (notification) => {
+        setNotifications(prev => prev.map(n => 
+          n.id === (notification._id || notification.id) ? mapNotification(notification) : n
+        ));
+      });
+
+      socket.on("notification:update", (data) => {
+        if (data.allRead) {
+          setNotifications(prev => prev.map(n => ({ ...n, unread: false, isRead: true })));
+        }
+      });
+
+      socket.on("notification:delete", (data) => {
+        setNotifications(prev => prev.filter(n => n.id !== data.id));
+      });
+
+      return () => {
+        socket.off("notification:new");
+        socket.off("notification:read");
+        socket.off("notification:update");
+        socket.off("notification:delete");
+      };
+    } else {
+      // Disconnect if not authenticated
+      disconnectSocket();
+    }
+  }, [isAuthenticated, user]);
 
   // ── Bootstrap ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -143,6 +202,7 @@ export function AdminProvider({ children }) {
       fetchNotifications,
       markAllAsRead,
       markAsRead,
+      deleteNotification,
 
       adminProfile,
       setAdminProfile,

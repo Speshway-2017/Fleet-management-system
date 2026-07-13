@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 
-export default function About({ setActiveTab }) {
+export default function About() {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -11,8 +11,24 @@ export default function About({ setActiveTab }) {
     toast.success(`Action triggered: ${label}`);
   };
 
+  const navLinkClass = ({ isActive }) => {
+    return `text-sm font-semibold py-2 rounded-xl transition-all duration-200 px-3 ${
+      isActive 
+        ? "bg-secondary text-white" 
+        : "text-body hover:text-heading bg-transparent"
+    }`;
+  };
+
+  const mobileNavLinkClass = ({ isActive }) => {
+    return `block w-full text-left py-2 font-semibold text-sm transition-colors ${
+      isActive 
+        ? "text-secondary" 
+        : "text-body hover:text-secondary"
+    }`;
+  };
+
   const timelineItems = [
-    { year: "2018", text: "FleetCommand founded in Bengaluru, India. Seed funding of ₹30 Cr." },
+    { year: "2018", text: "FleetManagement founded in Bengaluru, India. Seed funding of ₹30 Cr." },
     { year: "2019", text: "First 50 enterprise customers. Launched real-time GPS tracking." },
     { year: "2021", text: "Series A — ₹200 Cr. Expanded to fuel analytics and driver scoring." },
     { year: "2023", text: "Surpassed 1M vehicles tracked. Launched predictive maintenance AI." },
@@ -25,38 +41,28 @@ export default function About({ setActiveTab }) {
       <header className="bg-white border-b border-border-custom px-4 sm:px-6 md:px-8 h-20 flex items-center justify-between sticky top-0 z-30">
         {/* Logo Section */}
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Fleet Management Logo" className="h-10 w-auto rounded-lg object-contain" />
+          <NavLink to="/">
+            <img src="/logo.png" alt="Fleet Management Logo" className="h-10 w-auto rounded-lg object-contain" />
+          </NavLink>
           <div>
             <h1 className="font-display font-bold text-secondary tracking-wide text-sm sm:text-base hidden xs:block sm:block">Fleet Management</h1>
           </div>
         </div>
 
         {/* Center Links */}
-        <nav className="hidden md:flex items-center gap-8">
-          <button
-            onClick={() => setActiveTab?.("home")}
-            className="text-sm font-semibold text-body hover:text-heading transition-colors py-2 bg-transparent border-none cursor-pointer text-left"
-          >
+        <nav className="hidden md:flex items-center gap-3">
+          <NavLink to="/" className={navLinkClass} end>
             Home
-          </button>
-          <button
-            onClick={() => setActiveTab?.("performance")}
-            className="text-sm font-semibold text-body hover:text-heading transition-colors py-2 bg-transparent border-none cursor-pointer text-left"
-          >
+          </NavLink>
+          <NavLink to="/performance" className={navLinkClass}>
             Performance
-          </button>
-          <button
-            onClick={() => setActiveTab?.("about")}
-            className="text-sm font-semibold text-heading relative py-2 border-b-2 border-secondary bg-transparent border-none cursor-pointer text-left"
-          >
+          </NavLink>
+          <NavLink to="/about" className={navLinkClass}>
             About
-          </button>
-          <button
-            onClick={() => setActiveTab?.("contact")}
-            className="text-sm font-semibold text-body hover:text-heading transition-colors py-2 bg-transparent border-none cursor-pointer text-left"
-          >
+          </NavLink>
+          <NavLink to="/contact" className={navLinkClass}>
             Contact Us
-          </button>
+          </NavLink>
         </nav>
 
         {/* Right CTA Actions */}
@@ -77,20 +83,12 @@ export default function About({ setActiveTab }) {
               </button>
             </div>
           ) : (
-            <>
-              <button
-                onClick={() => navigate("/login")}
-                className="px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl border border-secondary text-secondary font-semibold text-[11px] sm:text-xs transition-all hover:bg-secondary/5 active:scale-[0.98] cursor-pointer"
-              >
-                Login
-              </button>
-              <button
-                onClick={() => navigate("/signup")}
-                className="px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl bg-secondary text-white font-semibold text-[11px] sm:text-xs transition-all hover:bg-accent shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
-              >
-                Get Started
-              </button>
-            </>
+            <button
+              onClick={() => navigate("/login")}
+              className="px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl bg-secondary text-white font-semibold text-[11px] sm:text-xs transition-all hover:bg-accent shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
+            >
+              Get Started
+            </button>
           )}
 
           {/* Mobile Menu Toggle Button */}
@@ -115,30 +113,35 @@ export default function About({ setActiveTab }) {
       {/* Mobile Dropdown Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-b border-border-custom px-6 py-4 space-y-3 shadow-lg sticky top-20 z-20">
-          <button
-            onClick={() => { setActiveTab?.("home"); setMobileMenuOpen(false); }}
-            className="block w-full text-left py-2 font-semibold text-sm text-body hover:text-secondary transition-colors"
+          <NavLink 
+            to="/" 
+            className={mobileNavLinkClass} 
+            end
+            onClick={() => setMobileMenuOpen(false)}
           >
             Home
-          </button>
-          <button
-            onClick={() => { setActiveTab?.("performance"); setMobileMenuOpen(false); }}
-            className="block w-full text-left py-2 font-semibold text-sm text-body hover:text-secondary transition-colors"
+          </NavLink>
+          <NavLink 
+            to="/performance" 
+            className={mobileNavLinkClass} 
+            onClick={() => setMobileMenuOpen(false)}
           >
             Performance
-          </button>
-          <button
-            onClick={() => { setActiveTab?.("about"); setMobileMenuOpen(false); }}
-            className="block w-full text-left py-2 font-semibold text-sm text-heading hover:text-secondary transition-colors"
+          </NavLink>
+          <NavLink 
+            to="/about" 
+            className={mobileNavLinkClass} 
+            onClick={() => setMobileMenuOpen(false)}
           >
             About
-          </button>
-          <button
-            onClick={() => { setActiveTab?.("contact"); setMobileMenuOpen(false); }}
-            className="block w-full text-left py-2 font-semibold text-sm text-body hover:text-secondary transition-colors"
+          </NavLink>
+          <NavLink 
+            to="/contact" 
+            className={mobileNavLinkClass} 
+            onClick={() => setMobileMenuOpen(false)}
           >
             Contact Us
-          </button>
+          </NavLink>
         </div>
       )}
 
@@ -155,7 +158,7 @@ export default function About({ setActiveTab }) {
             </h2>
             <div className="space-y-4 text-sm md:text-base text-body font-medium leading-relaxed">
               <p>
-                Founded in 2021, FleetCommand began with a simple observation: most fleet management tools were either too complicated for daily operations or too basic for enterprise needs.
+                Founded in 2021, FleetManagement began with a simple observation: most fleet management tools were either too complicated for daily operations or too basic for enterprise needs.
               </p>
               <p>
                 Our team of logistics veterans and enterprise engineers came together to build a platform that bridges the gap — powerful analytics wrapped in an intuitive, driver-friendly interface.
@@ -205,7 +208,7 @@ export default function About({ setActiveTab }) {
                 Every year, inefficient fleet management costs businesses billions in wasted fuel, unexpected breakdowns, and compliance failures. Most operators don't know what they don't know.
               </p>
               <p>
-                FleetCommand gives operations teams complete, real-time intelligence across every asset in their fleet — so decisions are driven by data, not guesswork.
+                FleetManagement gives operations teams complete, real-time intelligence across every asset in their fleet — so decisions are driven by data, not guesswork.
               </p>
             </div>
             {/* Quote Block */}
@@ -360,13 +363,13 @@ export default function About({ setActiveTab }) {
                 <svg className="h-4 w-4 text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 00-2.22 0L21 8M5 19h14a2 2 0 00-2-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                <span>hello@fleetcommand.io</span>
+                <span>hello@fleetmanagement.io</span>
               </li>
               <li className="flex items-center gap-2">
                 <svg className="h-4 w-4 text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                 </svg>
-                <span>fleetcommand.io</span>
+                <span>fleetmanagement.io</span>
               </li>
             </ul>
           </div>
@@ -375,7 +378,7 @@ export default function About({ setActiveTab }) {
         {/* Copyright and Legal Links */}
         <div className="max-w-6xl mx-auto pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] text-muted font-medium">
           <div>
-            <span>© 2026 FleetCommand Inc. All rights reserved.</span>
+            <span>© 2026 FleetManagement Inc. All rights reserved.</span>
           </div>
           <div className="flex items-center gap-6">
             <a href="#privacy" onClick={(e) => { e.preventDefault(); handleAction("Privacy Policy"); }} className="hover:text-white transition-colors">Privacy Policy</a>

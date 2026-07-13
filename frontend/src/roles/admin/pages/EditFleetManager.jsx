@@ -35,23 +35,36 @@ export default function EditFleetManager() {
   const navigate = useNavigate();
   const { getFleetManager, fetchFleetManagers, organizations } = useAdmin();
 
+  // Deduplicate organizations by id/_id
+  const uniqueOrganizations = Array.from(
+    new Map(organizations.map(org => [org.id || org._id, org])).values()
+  );
+
   const [formData, setFormData] = useState({
     fullName: "", email: "", phone: "",
     organization: "", role: "Fleet Manager",
     password: "", confirmPassword: "",
   });
-  const [errors, setErrors]       = useState({});
+  const [errors, setErrors]           = useState({});
   const [saving, setSaving]       = useState(false);
 
   const manager = id ? getFleetManager(id) : null;
 
   useEffect(() => {
     if (manager) {
+      // Get organization id from any possible field
+      let orgId = "";
+      if (manager.organizationId) orgId = manager.organizationId;
+      else if (manager.organization) {
+        orgId = manager.organization.id || manager.organization._id;
+      }
+      else if (manager.orgId) orgId = manager.orgId;
+
       setFormData({
         fullName: manager.name || "",
         email: manager.email || "",
         phone: manager.phone || "",
-        organization: manager.organizationId || manager.orgId || "",
+        organization: orgId,
         role: "Fleet Manager",
         password:        "",
         confirmPassword: "",
@@ -124,13 +137,17 @@ export default function EditFleetManager() {
 
     setSaving(true);
     try {
-      await adminApi.updateFleetManager(id, {
+      const payload = {
         name:         formData.fullName,
         email:        formData.email,
         phone:        formData.phone,
-        organization: formData.organization,
         ...(formData.password ? { password: formData.password } : {}),
-      });
+      };
+      // Only add organization if it's not empty
+      if (formData.organization) {
+        payload.organization = formData.organization;
+      }
+      await adminApi.updateFleetManager(id, payload);
       toast.success("Manager updated successfully!");
       if (fetchFleetManagers) await fetchFleetManagers();
       navigate("/admin/fleet-managers");
@@ -215,15 +232,15 @@ export default function EditFleetManager() {
                 {/* Organization + Role */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-2">Organization</label>
-                    <select name="organization" value={formData.organization} onChange={handleChange}
-                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all">
-                      <option value="">Select Organization</option>
-                      {organizations.map(org => (
-                        <option key={org.id} value={org.id}>{org.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2">Organization</label>
+                  <select name="organization" value={formData.organization} onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all">
+                    <option value="">Select Organization</option>
+                    {uniqueOrganizations.map(org => (
+                      <option key={org.id || org._id} value={org.id || org._id}>{org.name}</option>
+                    ))}
+                  </select>
+                </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-2">Role</label>
                     <select name="role" value={formData.role} onChange={handleChange}

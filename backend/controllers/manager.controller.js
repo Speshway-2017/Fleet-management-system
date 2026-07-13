@@ -33,12 +33,18 @@ import {
   getReportById,
   createReport as createReportInRepo,
   updateReport as updateReportInRepo,
-  deleteReport as deleteReportInRepo
+  deleteReport as deleteReportInRepo,
+  getManagerNotifications,
+  markManagerNotificationRead,
+  markAllManagerNotificationsRead,
+  deleteManagerNotification
 } from '../repositories/manager.repository.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { createAndEmitNotification } from '../utils/notification.js';
 import Trip from '../models/Trip.js';
 import Driver from '../models/Driver.js';
 import Vehicle from '../models/Vehicle.js';
+import Notification from '../models/Notification.js';
 
 export const getDashboard = async (_req, res) => {
   return sendSuccess(res, 200, { message: 'Manager dashboard ready' }, 'Dashboard loaded');
@@ -823,6 +829,63 @@ export const getLiveTracking = async (req, res, next) => {
     });
 
     return sendSuccess(res, 200, trackingData, 'Live tracking data fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Notifications Controllers
+export const listNotifications = async (req, res, next) => {
+  try {
+    const notifications = await getManagerNotifications(req.user._id);
+    return sendSuccess(res, 200, notifications, 'Notifications fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markNotificationRead = async (req, res, next) => {
+  try {
+    const notification = await markManagerNotificationRead(req.params.id);
+    if (!notification) return sendError(res, 404, 'Notification not found');
+    
+    // Emit notification:read event
+    if (req.io) {
+      req.io.to(`manager:${req.user._id}`).emit('notification:read', notification);
+    }
+    
+    return sendSuccess(res, 200, notification, 'Notification marked as read');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markAllNotificationsRead = async (req, res, next) => {
+  try {
+    await markAllManagerNotificationsRead(req.user._id);
+    
+    // Emit notification:update event
+    if (req.io) {
+      req.io.to(`manager:${req.user._id}`).emit('notification:update', { allRead: true });
+    }
+    
+    return sendSuccess(res, 200, null, 'All notifications marked as read');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteNotification = async (req, res, next) => {
+  try {
+    const notification = await deleteManagerNotification(req.params.id);
+    if (!notification) return sendError(res, 404, 'Notification not found');
+    
+    // Emit notification:delete event
+    if (req.io) {
+      req.io.to(`manager:${req.user._id}`).emit('notification:delete', { id: req.params.id });
+    }
+    
+    return sendSuccess(res, 200, null, 'Notification deleted');
   } catch (error) {
     next(error);
   }

@@ -100,7 +100,7 @@ export const createOrganization = async (req, res, next) => {
       createdBy: req.user?._id
     });
     if (req.io) {
-      req.io.to(`role_${notification.recipientRole}`).emit('notification', notification);
+      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 201, org, 'Organization created');
@@ -152,7 +152,7 @@ export const updateOrganization = async (req, res, next) => {
       createdBy: req.user?._id
     });
     if (req.io) {
-      req.io.to(`role_${notification.recipientRole}`).emit('notification', notification);
+      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 200, updatedOrg, 'Organization updated successfully');
@@ -186,7 +186,7 @@ export const deleteOrganization = async (req, res, next) => {
       createdBy: req.user?._id
     });
     if (req.io) {
-      req.io.to(`role_${notification.recipientRole}`).emit('notification', notification);
+      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 200, null, 'Organization deleted successfully');
@@ -213,6 +213,12 @@ export const listManagers = async (_req, res, next) => {
         email: manager.email,
         phone: manager.phone || 'N/A',
         org: manager.organization ? manager.organization.name : 'N/A',
+        organization: manager.organization ? {
+          _id: manager.organization._id.toString(),
+          id: manager.organization._id.toString(),
+          name: manager.organization.name
+        } : null,
+        organizationId: manager.organization ? manager.organization._id.toString() : null,
         role: manager.role === 'FLEET_MANAGER' ? 'Fleet Manager' : manager.role,
         status: manager.status || (manager.isActive ? 'Active' : 'Inactive'),
         lastLogin: manager.lastLogin ? new Date(manager.lastLogin).toLocaleDateString() : 'Never',
@@ -264,7 +270,7 @@ export const createManager = async (req, res, next) => {
       createdBy: req.user?._id
     });
     if (req.io) {
-      req.io.to(`role_${notification.recipientRole}`).emit('notification', notification);
+      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     // Send account email
@@ -358,7 +364,7 @@ export const updateManager = async (req, res, next) => {
       createdBy: req.user?._id
     });
     if (req.io) {
-      req.io.to(`role_${notification.recipientRole}`).emit('notification', notification);
+      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 200, updatedManager, 'Fleet manager updated successfully');
@@ -392,7 +398,7 @@ export const deleteManager = async (req, res, next) => {
       createdBy: req.user?._id
     });
     if (req.io) {
-      req.io.to(`role_${notification.recipientRole}`).emit('notification', notification);
+      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 200, null, 'Fleet manager deleted successfully');
@@ -417,6 +423,12 @@ export const getManagerDetails = async (req, res, next) => {
       email: manager.email,
       phone: manager.phone || 'N/A',
       org: manager.organization ? manager.organization.name : 'N/A',
+      organization: manager.organization ? {
+        _id: manager.organization._id.toString(),
+        id: manager.organization._id.toString(),
+        name: manager.organization.name
+      } : null,
+      organizationId: manager.organization ? manager.organization._id.toString() : null,
       role: manager.role === 'FLEET_MANAGER' ? 'Fleet Manager' : manager.role,
       status: manager.status || (manager.isActive ? 'Active' : 'Inactive'),
       lastLogin: manager.lastLogin ? new Date(manager.lastLogin).toLocaleDateString() : 'Never',
@@ -482,7 +494,7 @@ export const createIssue = async (req, res, next) => {
       createdBy: req.user._id
     });
     if (req.io) {
-      req.io.to(`role_${notification.recipientRole}`).emit('notification', notification);
+      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 201, issue, 'Platform issue raised successfully');
@@ -534,7 +546,7 @@ export const updateIssue = async (req, res, next) => {
         createdBy: req.user?._id
       });
       if (req.io) {
-        req.io.to(`role_${notification.recipientRole}`).emit('notification', notification);
+        req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
       }
       
       // Notify reporting manager specifically
@@ -662,15 +674,28 @@ export const markNotificationRead = async (req, res, next) => {
   try {
     const notification = await markNotificationReadInRepo(req.params.id);
     if (!notification) return sendError(res, 404, 'Notification not found');
+    
+    // Emit notification:read event
+    if (req.io) {
+      // Emit to role room and admin room (if we know admin id, but for now role room)
+      req.io.to(`role:SUPER_ADMIN`).emit('notification:read', notification);
+    }
+    
     return sendSuccess(res, 200, notification, 'Notification marked as read');
   } catch (error) {
     next(error);
   }
 };
 
-export const markAllNotificationsRead = async (_req, res, next) => {
+export const markAllNotificationsRead = async (req, res, next) => {
   try {
     await markAllNotificationsReadInRepo();
+    
+    // Emit notification:update event for all read
+    if (req.io) {
+      req.io.to(`role:SUPER_ADMIN`).emit('notification:update', { allRead: true });
+    }
+    
     return sendSuccess(res, 200, null, 'All notifications marked as read');
   } catch (error) {
     next(error);
@@ -681,6 +706,12 @@ export const deleteNotification = async (req, res, next) => {
   try {
     const notification = await deleteNotificationInRepo(req.params.id);
     if (!notification) return sendError(res, 404, 'Notification not found');
+    
+    // Emit notification:delete event
+    if (req.io) {
+      req.io.to(`role:SUPER_ADMIN`).emit('notification:delete', { id: req.params.id });
+    }
+    
     return sendSuccess(res, 200, null, 'Notification deleted successfully');
   } catch (error) {
     next(error);

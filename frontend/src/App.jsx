@@ -79,12 +79,17 @@ import ComplianceAuditPage from "@/roles/manager/pages/ComplianceAuditPage";
 // import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
 // import TripsListPage from "@/roles/manager/pages/TripsListPage";
 
-import PublicHome from "@/pages/PublicHome";
+import Home from "@/roles/admin/pages/Home";
+import Performance from "@/roles/admin/pages/Performance";
+import About from "@/roles/admin/pages/About";
+import Contact from "@/roles/admin/pages/Contact";
 
-function HomeRedirect() {
+function PublicRoute({ children }) {
   const { isAuthenticated, role } = useAuth();
-  if (!isAuthenticated) return <PublicHome />;
-  return <Navigate to={role === "SUPER_ADMIN" || role === "admin" ? "/admin/dashboard" : "/manager"} replace />;
+  if (isAuthenticated) {
+    return <Navigate to={role === "SUPER_ADMIN" || role === "admin" ? "/admin/dashboard" : "/manager"} replace />;
+  }
+  return children;
 }
 
 export default function App() {
@@ -94,7 +99,10 @@ export default function App() {
         <ScrollToTop />
         <Toaster position="top-right" />
         <Routes>
-          <Route path="/" element={<HomeRedirect />} />
+          <Route path="/" element={<PublicRoute><Home /></PublicRoute>} />
+          <Route path="/performance" element={<PublicRoute><Performance /></PublicRoute>} />
+          <Route path="/about" element={<PublicRoute><About /></PublicRoute>} />
+          <Route path="/contact" element={<PublicRoute><Contact /></PublicRoute>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/otp-verification" element={<OtpVerificationPage />} />

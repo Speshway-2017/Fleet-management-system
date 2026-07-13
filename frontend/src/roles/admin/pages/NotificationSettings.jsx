@@ -96,7 +96,7 @@ export default function NotificationSettings() {
                 <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'email' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
                   <div className="pb-5 pt-2 pl-4 border-l-2 border-[#b45309] ml-2">
                     <label className="block text-[12px] font-bold text-slate-600 mb-1">Primary Email Address</label>
-                    <input type="email" defaultValue="admin@fleetcommand.io" className="w-full max-w-xs px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all" />
+                    <input type="email" defaultValue="admin@fleetmanagement.io" className="w-full max-w-xs px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all" />
                   </div>
                 </div>
               </div>

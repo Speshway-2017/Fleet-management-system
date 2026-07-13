@@ -15,7 +15,7 @@ export default function ProfileSettings() {
   const [form, setForm] = useState({
     firstName: "Super",
     lastName: "Admin",
-    email: "admin@fleetcommand.io",
+    email: "admin@fleetmanagement.io",
     phone: "+1 (555) 000-0000",
     currentPassword: "",
     newPassword: "",
@@ -138,7 +138,7 @@ export default function ProfileSettings() {
                 
                 <div>
                   <h4 className="text-lg font-bold text-slate-800">Super Admin</h4>
-                  <p className="text-sm text-slate-500 font-medium mb-1.5">admin@fleetcommand.io</p>
+                  <p className="text-sm text-slate-500 font-medium mb-1.5">admin@fleetmanagement.io</p>
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-orange-50 text-orange-600">
                     Super Admin
                   </span>
