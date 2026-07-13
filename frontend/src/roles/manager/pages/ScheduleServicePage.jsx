@@ -56,17 +56,40 @@ export default function ScheduleServicePage() {
 
   // Load from database
   useEffect(() => {
-    const fetchVehicles = async () => {
+    const fetchVehiclesAndMaintenance = async () => {
       try {
-        const response = await managerApi.getVehicles();
-        const list = (response.data?.data || response.data || []).map(v => ({ ...v, id: v._id }));
+        const [vehiclesRes, maintenanceRes] = await Promise.all([
+          managerApi.getVehicles(),
+          managerApi.getMaintenance()
+        ]);
+
+        const vehiclesRaw = vehiclesRes.data?.data || vehiclesRes.data || [];
+        const maintenanceRaw = maintenanceRes.data?.data || maintenanceRes.data || [];
+
+        // Find vehicle IDs that currently have a scheduled or in-progress service
+        const busyVehicleIds = new Set(
+          maintenanceRaw
+            .filter(m => m.status === 'Scheduled' || m.status === 'In Progress')
+            .map(m => String(m.vehicle?._id || m.vehicle))
+        );
+
+        // Filter out busy vehicles
+        const list = vehiclesRaw
+          .filter(v => !busyVehicleIds.has(String(v._id)))
+          .map(v => ({
+            ...v,
+            id: v._id,
+            name: v.vehicleName || `${v.brand || ''} ${v.model || ''}`.trim() || 'Unnamed Vehicle',
+            plateNumber: v.vehicleNumber || ''
+          }));
+
         setVehicles(list);
       } catch (error) {
-        toast.error("Failed to load vehicles from database");
+        toast.error("Failed to load data from database");
         console.error(error);
       }
     };
-    fetchVehicles();
+    fetchVehiclesAndMaintenance();
   }, []);
 
   // Sync first vehicle to state
@@ -183,7 +206,7 @@ export default function ScheduleServicePage() {
                       className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
                     >
                       {vehicles.length === 0 ? (
-                        <option value="">No vehicles found in fleet</option>
+                        <option value="">No vehicles available for service</option>
                       ) : (
                         vehicles.map(v => (
                           <option key={v.id} value={v.id}>
@@ -282,35 +305,27 @@ export default function ScheduleServicePage() {
                 </div>
                 <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium font-poppins">
                   {/* Dummy days placeholder */}
-                  {Array.from({ length: 4 }).map((_, i) => <span key={`empty-${i}`} className="text-gray-200">2{7+i}</span>)}
-                  <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
-                  <span>6</span><span>7</span><span>8</span><span>9</span>
-                  <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-800 font-bold">10</span>
-                  <span>11</span>
-                  <span
-                    onClick={() => setSelectedDate("2026-07-12")}
-                    className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto cursor-pointer font-bold transition-all ${
-                      selectedDate === "2026-07-12"
-                        ? "bg-[#B45A0A] text-white font-black shadow-md shadow-[#B45A0A]/20"
-                        : "hover:bg-gray-100"
-                    }`}
-                  >
-                    12
-                  </span>
-                  <span>13</span><span>14</span>
-                  <span
-                    onClick={() => setSelectedDate("2026-07-15")}
-                    className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto cursor-pointer font-bold transition-all ${
-                      selectedDate === "2026-07-15"
-                        ? "bg-[#B45A0A] text-white font-black shadow-md shadow-[#B45A0A]/20"
-                        : "hover:bg-gray-100"
-                    }`}
-                  >
-                    15
-                  </span>
-                  <span>16</span><span>17</span><span>18</span><span>19</span><span>20</span>
-                  <span>21</span><span>22</span><span>23</span><span>24</span><span>25</span>
-                  <span>26</span><span>27</span><span>28</span><span>29</span><span>30</span>
+                  <span className="text-gray-200 select-none">29</span>
+                  <span className="text-gray-200 select-none">30</span>
+                  
+                  {Array.from({ length: 31 }).map((_, i) => {
+                    const day = i + 1;
+                    const dateStr = `2026-07-${day < 10 ? `0${day}` : day}`;
+                    const isSelected = selectedDate === dateStr;
+                    return (
+                      <span
+                        key={day}
+                        onClick={() => setSelectedDate(dateStr)}
+                        className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto cursor-pointer font-bold transition-all text-[11px] ${
+                          isSelected
+                            ? "bg-[#B45A0A] text-white font-black shadow-md shadow-[#B45A0A]/20"
+                            : "hover:bg-gray-100 text-slate-800"
+                        }`}
+                      >
+                        {day}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 
