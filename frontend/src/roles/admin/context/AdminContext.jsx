@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { adminApi } from "@/api/adminApi";
+import { io } from "socket.io-client";
 
 const AdminContext = createContext();
 
@@ -9,78 +10,55 @@ export function useAdmin() {
 
 export function AdminProvider({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "New Organization Registered",
-      description: "Peak Freight Co. completed registration and is pending approval.",
-      time: "2 min ago",
-      type: "bell",
-      unread: true,
-      group: "TODAY"
-    },
-    {
-      id: 2,
-      title: "Fleet Manager Activated",
-      description: "Emma Wilson from Global Express accepted the invite and is now active.",
-      time: "15 min ago",
-      type: "success",
-      unread: true,
-      group: "TODAY"
-    },
-    {
-      id: 3,
-      title: "Subscription Expiring Soon",
-      description: "ABC Logistics Enterprise plan expires in 7 days. Renewal required.",
-      time: "1 hour ago",
-      type: "warning",
-      unread: true,
-      group: "TODAY"
-    },
-    {
-      id: 4,
-      title: "Failed Login Attempt",
-      description: "5 consecutive failed logins detected from IP 203.0.113.0. Account temporarily locked.",
-      time: "2 hours ago",
-      type: "danger",
-      unread: true,
-      group: "TODAY"
-    },
-    {
-      id: 5,
-      title: "System Maintenance Scheduled",
-      description: "Planned maintenance window: Sunday 02:00-04:00 AM. Expect brief downtime.",
-      time: "5 hours ago",
-      type: "system",
-      unread: false,
-      group: "TODAY"
-    },
-    {
-      id: 6,
-      title: "Organization Activated",
-      description: "VRL Freight has been successfully activated after KYC verification.",
-      time: "Yesterday",
-      type: "success",
-      unread: false,
-      group: "YESTERDAY"
-    },
-    {
-      id: 7,
-      title: "Monthly Report Ready",
-      description: "Your fleet performance summary for June is now available to download.",
-      time: "Yesterday",
-      type: "bell",
-      unread: false,
-      group: "YESTERDAY"
-    }
-  ]);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, unread: false })));
+  const socketRef = useRef();
+  const [adminProfile, setAdminProfile] = useState({ name: "", avatarUrl: "" });
+
+  const mapNotification = (n) => {
+    const createdDate = new Date(n.createdAt);
+    const isToday = createdDate.toDateString() === new Date().toDateString();
+    const group = isToday ? "TODAY" : "YESTERDAY";
+    const time = createdDate.toLocaleDateString() + ' ' + createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return {
+      ...n,
+      id: n._id,
+      unread: !n.isRead,
+      group,
+      time,
+      type: n.type || 'bell'
+    };
   };
 
-  const markAsRead = (id) => {
-    setNotifications(notifications.map(n => n.id === id ? { ...n, unread: false } : n));
+  const fetchNotifications = async () => {
+    try {
+      const response = await adminApi.getNotifications();
+      const raw = response.data?.data || response.data || [];
+      setNotifications(raw.map(mapNotification));
+    } catch (error) {
+      console.error("Failed to fetch admin notifications:", error);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await Promise.all(notifications.filter(n => n.unread).map(n => adminApi.markNotificationRead(n.id)));
+      fetchNotifications();
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
+  };
+
+  const markAsRead = async (id) => {
+    try {
+      await adminApi.markNotificationRead(id);
+      fetchNotifications();
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
   };
 
   const [organizations, setOrganizations] = useState([]);
@@ -110,6 +88,37 @@ export function AdminProvider({ children }) {
   useEffect(() => {
     fetchOrganizations();
     fetchFleetManagers();
+    fetchNotifications();
+    // Fetch admin profile for avatar
+    const fetchProfile = async () => {
+      try {
+        const response = await adminApi.getProfile();
+        const data = response.data?.data || response.data || {};
+        setAdminProfile({ name: data.name || "", avatarUrl: data.avatarUrl || "" });
+      } catch (error) {
+        console.warn("Failed to fetch admin profile:", error);
+      }
+    };
+    fetchProfile();
+    // Initialize Socket.io client with reconnection handling
+    socketRef.current = io(import.meta.env.VITE_API_BASE_URL || "http://localhost:5000", {
+      query: { token: localStorage.getItem("token") },
+      transports: ["websocket"],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
+    });
+    const socket = socketRef.current;
+    socket.on("connect", () => console.log("Socket connected"));
+    socket.on("disconnect", (reason) => console.warn("Socket disconnected:", reason));
+    socket.on("notification", (newNotif) => {
+      const mapped = mapNotification(newNotif);
+      setNotifications((prev) => [mapped, ...prev]);
+    });
+    socket.on("connect_error", (err) => console.error("Socket connection error:", err));
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   // Organization CRUD
@@ -146,7 +155,7 @@ export function AdminProvider({ children }) {
       addOrganization,
       updateOrganization,
       deleteOrganization,
-      
+
       fleetManagers,
       fetchFleetManagers,
       getFleetManager,
@@ -156,8 +165,11 @@ export function AdminProvider({ children }) {
 
       notifications,
       setNotifications,
+      fetchNotifications,
       markAllAsRead,
-      markAsRead
+      markAsRead,
+      adminProfile,
+      setAdminProfile
     }}>
       {children}
     </AdminContext.Provider>

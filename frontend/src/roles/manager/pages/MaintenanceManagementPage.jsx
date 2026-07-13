@@ -62,23 +62,25 @@ export default function MaintenanceManagementPage() {
   const [isDeletingId, setIsDeletingId] = useState(null);
   const [isUpdatingId, setIsUpdatingId] = useState(null);
 
-  const [loading, setLoading] = useState(false);
-
   const fetchWorkOrders = async () => {
     try {
-      setLoading(true);
       const response = await managerApi.getMaintenance();
-      const result = response.data?.data || response.data;
-      if (Array.isArray(result)) {
-        setWorkOrders(result.map(w => ({ ...w, id: w._id })));
-      } else {
-        setWorkOrders([]);
-      }
-    } catch (error) {
-      toast.error("Failed to load work orders from database");
-      console.error(error);
-    } finally {
-      setLoading(false);
+      const list = response.data?.data || response.data || [];
+      const mapped = list.map(item => ({
+        id: item._id || item.id,
+        vehicleId: item.vehiclePlate || item.vehicleNumber || item.vehicle || "—",
+        vehicleName: item.vehicleName || "Unknown Vehicle",
+        serviceType: item.serviceType || item.type || "General Service",
+        scheduledDate: item.scheduledDate || (item.date ? item.date.split("T")[0] : ""),
+        status: item.status || "Scheduled",
+        cost: item.cost ? `₹${Number(item.cost).toLocaleString()}` : "₹0",
+        specialist: item.specialist || "Not Assigned",
+        garage: item.garage || "Not Assigned"
+      }));
+      setWorkOrders(mapped);
+    } catch (err) {
+      console.error("Failed to load maintenance records", err);
+      toast.error("Failed to load maintenance records from database.");
     }
   };
 
@@ -104,19 +106,17 @@ export default function MaintenanceManagementPage() {
 
   const handleStartService = async (orderId, e) => {
     e.stopPropagation();
-    
     setIsUpdatingId(orderId);
     try {
-      // Call API to update status
       await managerApi.updateMaintenance(orderId, { status: "In Progress" });
+      const updated = workOrders.map(w =>
+        w.id === orderId ? { ...w, status: "In Progress" } : w
+      );
+      setWorkOrders(updated);
       toast.success("Service started at garage!");
       await fetchWorkOrders();
     } catch (err) {
-      if (!err.response) {
-        toast.error("Unable to connect to the server. Please try again.");
-      } else {
-        toast.error(err.response?.data?.message || "Failed to start service.");
-      }
+      toast.error(err.response?.data?.message || "Failed to start service.");
     } finally {
       setIsUpdatingId(null);
     }
@@ -124,19 +124,17 @@ export default function MaintenanceManagementPage() {
 
   const handleCompleteOrder = async (orderId, e) => {
     e.stopPropagation();
-    
     setIsUpdatingId(orderId);
     try {
-      // Call API to update status
       await managerApi.updateMaintenance(orderId, { status: "Completed" });
+      const updated = workOrders.map(w =>
+        w.id === orderId ? { ...w, status: "Completed" } : w
+      );
+      setWorkOrders(updated);
       toast.success("Maintenance work order completed successfully!");
       await fetchWorkOrders();
     } catch (err) {
-      if (!err.response) {
-        toast.error("Unable to connect to the server. Please try again.");
-      } else {
-        toast.error(err.response?.data?.message || "Failed to complete order.");
-      }
+      toast.error(err.response?.data?.message || "Failed to complete order.");
     } finally {
       setIsUpdatingId(null);
     }
@@ -145,38 +143,13 @@ export default function MaintenanceManagementPage() {
   const handleDeleteOrder = async (orderId) => {
     setIsDeletingId(orderId);
     try {
-      // Call API to delete order
       await managerApi.deleteMaintenance(orderId);
+      const updated = workOrders.filter(w => w.id !== orderId);
+      setWorkOrders(updated);
       toast.success("Work order deleted successfully");
       await fetchWorkOrders();
     } catch (err) {
-      if (!err.response) {
-        toast.error("Unable to connect to the server. Please try again.");
-      } else {
-        const statusCode = err.response.status;
-        const message = err.response?.data?.message;
-
-        switch (statusCode) {
-          case 400:
-            toast.error(message || "Invalid request.");
-            break;
-          case 401:
-            toast.error("You are not authenticated. Please log in again.");
-            break;
-          case 403:
-            toast.error("You do not have permission to delete this order.");
-            break;
-          case 404:
-            toast.error("Work order not found.");
-            setWorkOrders(prev => prev.filter(w => w.id !== orderId));
-            break;
-          case 500:
-            toast.error("Server error. Please try again later.");
-            break;
-          default:
-            toast.error(message || "Failed to delete work order.");
-        }
-      }
+      toast.error(err.response?.data?.message || "Failed to delete work order.");
     } finally {
       setIsDeletingId(null);
     }

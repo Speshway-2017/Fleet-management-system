@@ -263,7 +263,7 @@ function Dashboard() {
             {/* Recent Activities */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col">
               <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
-                <h3 className="font-bold text-slate-800 text-sm">Recent Activities (Trips)</h3>
+                <h3 className="font-bold text-slate-800 text-sm">Recent Activities</h3>
               </div>
               <div className="overflow-x-auto no-scrollbar">
                 <table className="w-full text-left text-sm min-w-[500px]">
@@ -280,12 +280,12 @@ function Dashboard() {
                         <td className="py-3.5 px-5 text-slate-400 font-mono text-[11px] whitespace-nowrap">{formatTime(act.createdAt)}</td>
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-2.5">
-                            <span className={`w-1.5 h-1.5 rounded-full ${getStatusColor(act.status)}`}></span>
-                            <span className="font-medium text-slate-700 text-[13px]">Trip {act.status}</span>
+                            <span className={`w-1.5 h-1.5 rounded-full ${act.type === 'success' ? 'bg-green-500' : act.type === 'alert' || act.type === 'critical' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                            <span className="font-medium text-slate-700 text-[13px]">{act.title || `Trip ${act.status}`}</span>
                           </div>
                         </td>
                         <td className="py-3.5 px-5 text-slate-500 text-[13px]">
-                          Trip #{act.tripNumber} - Vehicle: {act.vehicle?.vehicleNumber || 'N/A'} - Driver: {act.driver?.name || 'N/A'}
+                          {act.description || `Trip #${act.tripNumber} - Vehicle: ${act.vehicle?.vehicleNumber || 'N/A'} - Driver: ${act.driver?.name || 'N/A'}`}
                         </td>
                       </tr>
                     ))}
