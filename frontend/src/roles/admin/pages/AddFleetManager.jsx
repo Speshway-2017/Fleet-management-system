@@ -30,7 +30,7 @@ export default function AddFleetManager() {
         setOrgsLoading(true);
         const response = await adminApi.getOrganizations();
         const data = response.data?.data || response.data || [];
-        const active = data.filter(org => org.status === "Active");
+        const active = data.filter(org => org.status !== "Suspended");
         setActiveOrgs(active);
       } catch (err) {
         console.error("Failed to fetch organizations:", err);
