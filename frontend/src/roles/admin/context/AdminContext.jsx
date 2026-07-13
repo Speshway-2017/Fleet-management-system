@@ -9,82 +9,58 @@ export function useAdmin() {
 
 export function AdminProvider({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "New Organization Registered",
-      description: "Peak Freight Co. completed registration and is pending approval.",
-      time: "2 min ago",
-      type: "bell",
-      unread: true,
-      group: "TODAY"
-    },
-    {
-      id: 2,
-      title: "Fleet Manager Activated",
-      description: "Emma Wilson from Global Express accepted the invite and is now active.",
-      time: "15 min ago",
-      type: "success",
-      unread: true,
-      group: "TODAY"
-    },
-    {
-      id: 3,
-      title: "Subscription Expiring Soon",
-      description: "ABC Logistics Enterprise plan expires in 7 days. Renewal required.",
-      time: "1 hour ago",
-      type: "warning",
-      unread: true,
-      group: "TODAY"
-    },
-    {
-      id: 4,
-      title: "Failed Login Attempt",
-      description: "5 consecutive failed logins detected from IP 203.0.113.0. Account temporarily locked.",
-      time: "2 hours ago",
-      type: "danger",
-      unread: true,
-      group: "TODAY"
-    },
-    {
-      id: 5,
-      title: "System Maintenance Scheduled",
-      description: "Planned maintenance window: Sunday 02:00-04:00 AM. Expect brief downtime.",
-      time: "5 hours ago",
-      type: "system",
-      unread: false,
-      group: "TODAY"
-    },
-    {
-      id: 6,
-      title: "Organization Activated",
-      description: "VRL Freight has been successfully activated after KYC verification.",
-      time: "Yesterday",
-      type: "success",
-      unread: false,
-      group: "YESTERDAY"
-    },
-    {
-      id: 7,
-      title: "Monthly Report Ready",
-      description: "Your fleet performance summary for June is now available to download.",
-      time: "Yesterday",
-      type: "bell",
-      unread: false,
-      group: "YESTERDAY"
+
+  // ── Notifications ────────────────────────────────────────────────────────
+  const [notifications, setNotifications]           = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+
+  const mapNotification = (n) => {
+    const createdDate = new Date(n.createdAt);
+    const isToday = createdDate.toDateString() === new Date().toDateString();
+    return {
+      ...n,
+      id:     n._id,
+      unread: !n.isRead,
+      group:  isToday ? "TODAY" : "YESTERDAY",
+      time:   createdDate.toLocaleDateString() + " " +
+              createdDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      type:   n.type || "bell",
+    };
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await adminApi.getNotifications();
+      const raw = response.data?.data || response.data || [];
+      setNotifications(raw.map(mapNotification));
+    } catch (error) {
+      console.error("Failed to fetch admin notifications:", error);
+    } finally {
+      setNotificationsLoading(false);
     }
-  ]);
-
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, unread: false })));
   };
 
-  const markAsRead = (id) => {
-    setNotifications(notifications.map(n => n.id === id ? { ...n, unread: false } : n));
+  const markAllAsRead = async () => {
+    try {
+      await adminApi.markAllNotificationsRead();
+      fetchNotifications();
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
   };
 
+  const markAsRead = async (id) => {
+    try {
+      await adminApi.markNotificationRead(id);
+      fetchNotifications();
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
+  };
+
+  // ── Organizations ────────────────────────────────────────────────────────
   const [organizations, setOrganizations] = useState([]);
-  
+
   const fetchOrganizations = async () => {
     try {
       const response = await adminApi.getOrganizations();
@@ -95,6 +71,7 @@ export function AdminProvider({ children }) {
     }
   };
 
+  // ── Fleet Managers ────────────────────────────────────────────────────────
   const [fleetManagers, setFleetManagers] = useState([]);
 
   const fetchFleetManagers = async () => {
@@ -107,46 +84,52 @@ export function AdminProvider({ children }) {
     }
   };
 
+  // ── Admin profile (name / avatar for top-nav) ─────────────────────────────
+  const [adminProfile, setAdminProfile] = useState({ name: "", avatarUrl: "" });
+
+  const fetchAdminProfile = async () => {
+    try {
+      const response = await adminApi.getProfile();
+      const data = response.data?.data || response.data || {};
+      setAdminProfile({ name: data.name || "", avatarUrl: data.avatarUrl || "" });
+    } catch (error) {
+      // Non-critical — silently ignore if profile endpoint fails
+      console.warn("Failed to fetch admin profile:", error?.response?.status);
+    }
+  };
+
+  // ── Bootstrap ─────────────────────────────────────────────────────────────
   useEffect(() => {
     fetchOrganizations();
     fetchFleetManagers();
+    fetchNotifications();
+    fetchAdminProfile();
   }, []);
 
-  // Organization CRUD
-  const getOrganization = (id) => organizations.find(o => o.id === id);
-  const addOrganization = (org) => {
-    setOrganizations([...organizations, { ...org, id: Date.now().toString() }]);
-  };
-  const updateOrganization = (id, updatedOrg) => {
-    setOrganizations(organizations.map(o => o.id === id ? { ...o, ...updatedOrg } : o));
-  };
-  const deleteOrganization = (id) => {
-    setOrganizations(organizations.filter(o => o.id !== id));
-  };
+  // ── Organization helpers ──────────────────────────────────────────────────
+  const getOrganization    = (id) => organizations.find(o => o.id === id || o._id === id);
+  const addOrganization    = (org) => setOrganizations(prev => [...prev, { ...org, id: Date.now().toString() }]);
+  const updateOrganization = (id, updated) => setOrganizations(prev => prev.map(o => (o.id === id || o._id === id) ? { ...o, ...updated } : o));
+  const deleteOrganization = (id) => setOrganizations(prev => prev.filter(o => o.id !== id && o._id !== id));
 
-  // Fleet Manager CRUD
-  const getFleetManager = (id) => fleetManagers.find(m => m.id === id);
-  const addFleetManager = (manager) => {
-    setFleetManagers([...fleetManagers, { ...manager, id: Date.now().toString(), created: new Date().toLocaleDateString() }]);
-  };
-  const updateFleetManager = (id, updatedManager) => {
-    setFleetManagers(fleetManagers.map(m => m.id === id ? { ...m, ...updatedManager } : m));
-  };
-  const deleteFleetManager = (id) => {
-    setFleetManagers(fleetManagers.filter(m => m.id !== id));
-  };
+  // ── Fleet Manager helpers ─────────────────────────────────────────────────
+  const getFleetManager    = (id) => fleetManagers.find(m => m.id === id || m._id === id);
+  const addFleetManager    = (manager) => setFleetManagers(prev => [...prev, { ...manager, id: Date.now().toString(), created: new Date().toLocaleDateString() }]);
+  const updateFleetManager = (id, updated) => setFleetManagers(prev => prev.map(m => (m.id === id || m._id === id) ? { ...m, ...updated } : m));
+  const deleteFleetManager = (id) => setFleetManagers(prev => prev.filter(m => m.id !== id && m._id !== id));
 
   return (
     <AdminContext.Provider value={{
       isSidebarOpen,
       setIsSidebarOpen,
+
       organizations,
       fetchOrganizations,
       getOrganization,
       addOrganization,
       updateOrganization,
       deleteOrganization,
-      
+
       fleetManagers,
       fetchFleetManagers,
       getFleetManager,
@@ -156,8 +139,13 @@ export function AdminProvider({ children }) {
 
       notifications,
       setNotifications,
+      notificationsLoading,
+      fetchNotifications,
       markAllAsRead,
-      markAsRead
+      markAsRead,
+
+      adminProfile,
+      setAdminProfile,
     }}>
       {children}
     </AdminContext.Provider>
