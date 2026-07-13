@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, AlertTriangle, Activity, Check, CheckCircle2, AlertCircle, Trash2, Loader2 } from "lucide-react";
+import { Bell, AlertTriangle, Activity, Check, CheckCircle2, AlertCircle } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import { useAdmin } from "@/roles/admin/context/AdminContext";
 
 export default function NotificationList() {
   const [activeTab, setActiveTab] = useState("All");
-  const { notifications, notificationsLoading, notificationsError, markAllAsRead, deleteNotification } = useAdmin();
+  const { notifications, markAllAsRead } = useAdmin();
   const navigate = useNavigate();
 
   const getIcon = (type) => {
@@ -41,7 +41,7 @@ export default function NotificationList() {
 
   return (
     <div className="h-screen bg-[#f4f7f6] flex font-sans">
-      <NewAdminSidebar activeItem="" />
+      <NewAdminSidebar />
       
       <div className="flex-1 flex flex-col min-w-0">
         <NewAdminTopNav title="Notifications" />
@@ -68,7 +68,9 @@ export default function NotificationList() {
               <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-[#b45309]">
                 <div className="relative">
                   <Bell className="w-5 h-5" />
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#b45309] rounded-full border-2 border-orange-50"></span>
+                  {notifications.some(n => n.unread) && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#b45309] rounded-full border-2 border-orange-50"></span>
+                  )}
                 </div>
               </div>
             </div>
@@ -76,7 +78,9 @@ export default function NotificationList() {
             <div className="bg-white rounded-xl border border-slate-200 p-6 flex items-center justify-between shadow-sm">
               <div>
                 <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">Alerts</p>
-                <h4 className="text-2xl font-black text-slate-800">{notifications.filter(n => n.type === 'danger' || n.type === 'warning').length}</h4>
+                <h4 className="text-2xl font-black text-slate-800">
+                  {notifications.filter(n => n.type === 'alert' || n.type === 'danger' || n.type === 'warning').length}
+                </h4>
               </div>
               <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-500">
                 <AlertTriangle className="w-5 h-5" />
@@ -104,19 +108,19 @@ export default function NotificationList() {
                   onClick={() => setActiveTab("All")}
                   className={`px-5 py-2 text-[13px] font-bold rounded-full transition-colors ${activeTab === "All" ? "bg-[#0f172a] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
                 >
-                  All ({notifications.length})
+                  All (10)
                 </button>
                 <button 
                   onClick={() => setActiveTab("Unread")}
                   className={`px-5 py-2 text-[13px] font-bold rounded-full transition-colors ${activeTab === "Unread" ? "bg-[#0f172a] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
                 >
-                  Unread ({notifications.filter(n => n.unread).length})
+                  Unread (4)
                 </button>
                 <button 
                   onClick={() => setActiveTab("Read")}
                   className={`px-5 py-2 text-[13px] font-bold rounded-full transition-colors ${activeTab === "Read" ? "bg-[#0f172a] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
                 >
-                  Read ({notifications.filter(n => !n.unread).length})
+                  Read (6)
                 </button>
               </div>
 
@@ -131,17 +135,7 @@ export default function NotificationList() {
 
             {/* Notification Items */}
             <div className="flex flex-col divide-y divide-slate-100">
-              {notificationsLoading ? (
-                <div className="p-8 text-center text-slate-500 flex flex-col items-center justify-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-slate-400 mb-2" />
-                  <span className="text-sm font-medium">Loading notifications...</span>
-                </div>
-              ) : notificationsError ? (
-                <div className="p-8 text-center text-red-500 flex flex-col items-center justify-center">
-                  <AlertCircle className="w-8 h-8 mb-2" />
-                  <span className="text-sm font-medium">{notificationsError}</span>
-                </div>
-              ) : Object.keys(grouped).length === 0 ? (
+              {Object.keys(grouped).length === 0 ? (
                 <div className="p-8 text-center text-slate-500 text-sm font-medium">
                   No notifications found.
                 </div>
@@ -178,15 +172,8 @@ export default function NotificationList() {
                               <p className="text-[13px] text-slate-500 leading-relaxed">{notification.description}</p>
                             </div>
                             
-                            <div className="shrink-0 flex flex-col items-end justify-between ml-4">
-                              <span className="text-[11px] font-bold text-slate-400 mb-2">{notification.time}</span>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
-                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                                title="Delete Notification"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                            <div className="shrink-0 text-right">
+                              <span className="text-[11px] font-bold text-slate-400">{notification.time}</span>
                             </div>
                           </div>
                         );

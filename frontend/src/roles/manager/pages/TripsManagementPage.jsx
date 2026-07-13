@@ -25,80 +25,13 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 
-const INITIAL_TRIPS = [
-  {
-    id: "TRP-8841",
-    driverName: "Rajesh Kumar",
-    driverPhone: "+91 98765 43210",
-    vehicleName: "Ashok Leyland 3118",
-    vehiclePlate: "MH 12 AB 5678",
-    startLocation: "Mumbai, MH",
-    endLocation: "Pune, MH",
-    departureTime: "2026-07-06T08:15",
-    eta: "2026-07-06T20:30",
-    status: "On Transit",
-    description: "Express Cargo Delivery"
-  },
-  {
-    id: "TRP-8842",
-    driverName: "Ram Kumar",
-    driverPhone: "+91 87654 32109",
-    vehicleName: "Tata Signa 4825",
-    vehiclePlate: "KA 02 AB 1456",
-    startLocation: "Bengaluru, KA",
-    endLocation: "Chennai, TN",
-    departureTime: "2026-07-06T09:00",
-    eta: "2026-07-07T08:30",
-    status: "Delayed",
-    description: "Standard Freight Transit"
-  },
-  {
-    id: "TRP-8843",
-    driverName: "Vikram Singh",
-    driverPhone: "+91 76543 21098",
-    vehicleName: "Mahindra Blazo X",
-    vehiclePlate: "DL 01 CD 7890",
-    startLocation: "Delhi, DL",
-    endLocation: "Jaipur, RJ",
-    departureTime: "2026-07-07T06:00",
-    eta: "2026-07-07T12:30",
-    status: "Scheduled",
-    description: "Critical Supply Transport"
-  },
-  {
-    id: "TRP-8844",
-    driverName: "Vijay Kumar",
-    driverPhone: "+91 99887 76655",
-    vehicleName: "Eicher Pro 6055",
-    vehiclePlate: "DL 03 EC 9876",
-    startLocation: "Kolkata, WB",
-    endLocation: "Patna, BR",
-    departureTime: "2026-07-05T07:30",
-    eta: "2026-07-05T19:30",
-    status: "Completed",
-    description: "General Merchandise Delivery"
-  },
-  {
-    id: "TRP-8845",
-    driverName: "Sanjay Singh",
-    driverPhone: "+91 88776 65544",
-    vehicleName: "BharatBenz 3523",
-    vehiclePlate: "MH 14 EU 1122",
-    startLocation: "Nashik, MH",
-    endLocation: "Nagpur, MH",
-    departureTime: "2026-07-06T10:00",
-    eta: "2026-07-07T04:00",
-    status: "On Transit",
-    description: "Heavy Industrial Delivery"
-  }
-];
+
+import { managerApi } from "../api/managerApi";
 
 export default function TripsManagementPage() {
   const navigate = useNavigate();
-  const [trips, setTrips] = useState(() => {
-    const saved = localStorage.getItem("fleet_trips");
-    return saved ? JSON.parse(saved) : INITIAL_TRIPS;
-  });
+  const [trips, setTrips] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Resources list for assignment dropdowns
   const [driversList, setDriversList] = useState([]);
@@ -123,20 +56,46 @@ export default function TripsManagementPage() {
     description: ""
   });
 
-  // Sync to local storage
-  useEffect(() => {
-    localStorage.setItem("fleet_trips", JSON.stringify(trips));
-  }, [trips]);
-
-  // Load driver and vehicle lists for modal selectors
-  useEffect(() => {
-    const savedDrivers = localStorage.getItem("fleet_drivers");
-    if (savedDrivers) {
-      setDriversList(JSON.parse(savedDrivers));
+  const fetchTrips = async () => {
+    try {
+      setLoading(true);
+      const response = await managerApi.getTrips();
+      const result = response.data?.data || response.data;
+      if (Array.isArray(result)) {
+        setTrips(result.map(t => ({ ...t, id: t._id })));
+      } else {
+        setTrips([]);
+      }
+    } catch (error) {
+      toast.error("Failed to load trips from database");
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-    const savedVehicles = localStorage.getItem("fleet_vehicles");
-    if (savedVehicles) {
-      setVehiclesList(JSON.parse(savedVehicles));
+  };
+
+  useEffect(() => {
+    fetchTrips();
+  }, []);
+
+  const fetchResources = async () => {
+    try {
+      const [dRes, vRes] = await Promise.all([
+        managerApi.getDrivers(),
+        managerApi.getVehicles()
+      ]);
+      const drivers = dRes.data?.data || dRes.data || [];
+      const vehicles = vRes.data?.data || vRes.data || [];
+      setDriversList(drivers);
+      setVehiclesList(vehicles);
+    } catch (err) {
+      console.error("Failed to fetch drivers or vehicles", err);
+    }
+  };
+
+  useEffect(() => {
+    if (showCreateModal) {
+      fetchResources();
     }
   }, [showCreateModal]);
 
@@ -146,85 +105,82 @@ export default function TripsManagementPage() {
     toast.success("Filters reset successfully");
   };
 
-  const handleCreateTrip = (e) => {
+  const handleCreateTrip = async (e) => {
     e.preventDefault();
     if (!formData.driverId || !formData.vehicleId || !formData.startLocation || !formData.endLocation || !formData.departureTime || !formData.eta) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    const selectedDriver = driversList.find(d => d.id === Number(formData.driverId));
-    const selectedVehicle = vehiclesList.find(v => v.id === Number(formData.vehicleId));
+    const selectedDriver = driversList.find(d => String(d._id) === String(formData.driverId));
+    const selectedVehicle = vehiclesList.find(v => String(v._id) === String(formData.vehicleId));
 
     if (!selectedDriver || !selectedVehicle) {
       toast.error("Invalid driver or vehicle selected");
       return;
     }
 
-    const newTrip = {
-      id: `TRP-${Math.floor(1000 + Math.random() * 9000)}`,
-      driverName: selectedDriver.name,
-      driverPhone: selectedDriver.phone,
-      vehicleName: selectedVehicle.name,
-      vehiclePlate: selectedVehicle.plateNumber,
-      startLocation: formData.startLocation,
-      endLocation: formData.endLocation,
-      departureTime: formData.departureTime,
-      eta: formData.eta,
-      status: formData.status,
-      description: formData.description || "General Transport"
-    };
+    try {
+      const tripNum = `TRP-${Math.floor(1000 + Math.random() * 9000)}`;
+      await managerApi.createTrip({
+        tripNumber: tripNum,
+        vehicle: selectedVehicle._id,
+        driver: selectedDriver._id,
+        driverName: selectedDriver.name,
+        driverPhone: selectedDriver.phone,
+        vehicleName: selectedVehicle.name,
+        vehiclePlate: selectedVehicle.plateNumber,
+        startLocation: formData.startLocation,
+        endLocation: formData.endLocation,
+        departureTime: formData.departureTime,
+        eta: formData.eta,
+        status: formData.status,
+        description: formData.description || "General Transport"
+      });
 
-    // Update vehicle's driver assignment and status in localStorage
-    const updatedVehicles = vehiclesList.map(v => {
-      if (v.id === selectedVehicle.id) {
-        return {
-          ...v,
-          driver: selectedDriver.name,
-          status: formData.status === "On Transit" ? "On Trip" : "Active"
-        };
-      }
-      return v;
-    });
-    setVehiclesList(updatedVehicles);
-    localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
+      // Update vehicle status
+      await managerApi.updateVehicle(selectedVehicle._id, {
+        driver: selectedDriver.name,
+        status: formData.status === "On Transit" ? "On Trip" : "Active"
+      });
 
-    // Update driver's assigned vehicle and status
-    const updatedDrivers = driversList.map(d => {
-      if (d.id === selectedDriver.id) {
-        return {
-          ...d,
-          assignedVehicle: selectedVehicle.plateNumber,
-          status: formData.status === "On Transit" ? "On Trip" : "Available"
-        };
-      }
-      return d;
-    });
-    setDriversList(updatedDrivers);
-    localStorage.setItem("fleet_drivers", JSON.stringify(updatedDrivers));
+      // Update driver status
+      await managerApi.updateDriver(selectedDriver._id, {
+        assignedVehicle: selectedVehicle.plateNumber,
+        status: formData.status === "On Transit" ? "On Trip" : "Available"
+      });
 
-    setTrips([newTrip, ...trips]);
-    setShowCreateModal(false);
-    setFormData({
-      driverId: "",
-      vehicleId: "",
-      startLocation: "",
-      endLocation: "",
-      departureTime: "",
-      eta: "",
-      status: "Scheduled",
-      description: ""
-    });
-    toast.success("New trip created successfully!");
+      setShowCreateModal(false);
+      setFormData({
+        driverId: "",
+        vehicleId: "",
+        startLocation: "",
+        endLocation: "",
+        departureTime: "",
+        eta: "",
+        status: "Scheduled",
+        description: ""
+      });
+      toast.success("New trip created successfully!");
+      fetchTrips();
+    } catch (error) {
+      toast.error("Failed to create trip");
+      console.error(error);
+    }
   };
 
-  const handleDeleteTrip = () => {
+  const handleDeleteTrip = async () => {
     if (!selectedTrip) return;
-    const updated = trips.filter(t => t.id !== selectedTrip.id);
-    setTrips(updated);
-    setShowDeleteConfirm(false);
-    setSelectedTrip(null);
-    toast.success("Trip record deleted successfully");
+    try {
+      await managerApi.deleteTrip(selectedTrip._id);
+      setShowDeleteConfirm(false);
+      setSelectedTrip(null);
+      toast.success("Trip record deleted successfully");
+      fetchTrips();
+    } catch (error) {
+      toast.error("Failed to delete trip");
+      console.error(error);
+    }
   };
 
   // KPIs Calculations
@@ -259,12 +215,12 @@ export default function TripsManagementPage() {
     return tabFiltered.filter(t => {
       const q = search.toLowerCase();
       return (
-        t.id.toLowerCase().includes(q) ||
-        t.driverName.toLowerCase().includes(q) ||
-        t.vehicleName.toLowerCase().includes(q) ||
-        t.startLocation.toLowerCase().includes(q) ||
-        t.endLocation.toLowerCase().includes(q) ||
-        t.description.toLowerCase().includes(q)
+        (t.tripNumber || "").toLowerCase().includes(q) ||
+        (t.driverName || "").toLowerCase().includes(q) ||
+        (t.vehicleName || "").toLowerCase().includes(q) ||
+        (t.startLocation || "").toLowerCase().includes(q) ||
+        (t.endLocation || "").toLowerCase().includes(q) ||
+        (t.description || "").toLowerCase().includes(q)
       );
     });
   };
@@ -465,7 +421,7 @@ export default function TripsManagementPage() {
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex flex-col">
                             <span className="font-bold text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg w-max font-poppins">
-                              {t.id}
+                              {t.tripNumber}
                             </span>
                             <span className="text-[10px] text-[#64748B] mt-1 block font-semibold max-w-[150px] truncate">
                               {t.description}

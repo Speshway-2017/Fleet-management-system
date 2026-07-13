@@ -77,6 +77,12 @@ export default function Home({ setActiveTab }) {
               >
                 Login
               </button>
+              <button
+                onClick={() => navigate("/signup")}
+                className="px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl bg-secondary text-white font-semibold text-[11px] sm:text-xs transition-all hover:bg-accent shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
+              >
+                Get Started
+              </button>
             </>
           )}
 
@@ -179,6 +185,21 @@ export default function Home({ setActiveTab }) {
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
+              <button
+                onClick={() => {
+                  sessionStorage.removeItem("user");
+                  sessionStorage.removeItem("token");
+                  localStorage.removeItem("user");
+                  localStorage.removeItem("token");
+                  navigate("/signup");
+                }}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-secondary px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-accent shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
+              >
+                Get Started
+                <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </button>
               <button
                 onClick={() => handleAction("Hero Contact Us")}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-body/30 bg-transparent px-6 py-3.5 text-sm font-bold text-heading hover:bg-hover-custom hover:border-heading transition-all duration-200 active:scale-[0.98] cursor-pointer"
@@ -316,6 +337,8 @@ export default function Home({ setActiveTab }) {
               onClick={() => {
                 sessionStorage.removeItem("user");
                 sessionStorage.removeItem("token");
+                localStorage.removeItem("user");
+                localStorage.removeItem("token");
                 navigate("/signup");
               }}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-primary-dark shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"

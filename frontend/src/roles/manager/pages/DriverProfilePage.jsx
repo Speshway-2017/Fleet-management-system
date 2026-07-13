@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -7,18 +7,19 @@ import {
   Calendar,
   AlertTriangle,
   UserCheck,
-  Star,
-  MapPin,
   TrendingUp,
   Activity,
   History,
   FileCheck,
   Shield,
   Edit,
-  Plus
+  Plus,
+  Loader
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { driverApi } from "@/api/driverApi";
+import { vehicleApi } from "@/api/vehicleApi";
 
 const MOCK_TRIPS_ROSTER = [
   { id: "T-9081", route: "Pune Depot to Mumbai Depot", date: "2026-07-04", status: "Completed", fuelUsed: "45L" },
@@ -32,68 +33,100 @@ export default function DriverProfilePage() {
   const navigate = useNavigate();
   const [driver, setDriver] = useState(null);
   const [vehicle, setVehicle] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Load drivers
-    const savedDrivers = localStorage.getItem("fleet_drivers");
-    if (savedDrivers) {
-      const driversList = JSON.parse(savedDrivers);
-      const foundDriver = driversList.find(d => d.id === Number(id));
-      if (foundDriver) {
-        setDriver(foundDriver);
+  const normaliseVehicle = (v) => ({
+    ...v,
+    id:           v._id,
+    name:         `${v.brand} ${v.model}`,
+    manufacturer: v.brand,
+    plateNumber:  v.vehicleNumber,
+    type:         v.type         || 'Truck',
+    driver:       v.driver       || 'Unassigned',
+    fuelLevel:    v.fuelLevel    ?? 50,
+    fastagBalance:v.fastagBalance ?? 0,
+    branch:       v.branch       || '',
+    dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
+    status: {
+      ACTIVE:          'Available',
+      IDLE:            'Idle',
+      MAINTENANCE:     'Maintenance',
+      ON_TRIP:         'On Trip',
+      OUT_OF_SERVICE:  'Out of Service',
+    }[v.status] ?? v.status,
+  });
 
-        // Load corresponding vehicle details if assigned
-        if (foundDriver.assignedVehicle && foundDriver.assignedVehicle !== "Unassigned") {
-          const savedVehicles = localStorage.getItem("fleet_vehicles");
-          if (savedVehicles) {
-            const vehiclesList = JSON.parse(savedVehicles);
-            const foundVehicle = vehiclesList.find(v => v.plateNumber === foundDriver.assignedVehicle);
-            if (foundVehicle) {
-              setVehicle(foundVehicle);
-            }
-          }
-        }
-      } else {
+  const fetchDriverData = useCallback(async () => {
+    try {
+      setLoading(true);
+      // 1. Get driver
+      const res = await driverApi.getById(id);
+      const foundDriver = res.data?.data;
+      if (!foundDriver) {
         toast.error("Driver not found");
         navigate("/manager/drivers");
+        return;
       }
+      setDriver(foundDriver);
+
+      // 2. Fetch corresponding vehicle details if assigned
+      if (foundDriver.assignedVehicle && foundDriver.assignedVehicle !== "Unassigned") {
+        try {
+          const vehRes = await vehicleApi.list();
+          const rawVehicles = vehRes.data?.data ?? [];
+          const foundVehicle = rawVehicles.find(v => v.vehicleNumber === foundDriver.assignedVehicle);
+          if (foundVehicle) {
+            setVehicle(normaliseVehicle(foundVehicle));
+          } else {
+            setVehicle(null);
+          }
+        } catch (err) {
+          console.error("Failed to load vehicle details:", err);
+        }
+      } else {
+        setVehicle(null);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to load driver profile.");
+      navigate("/manager/drivers");
+    } finally {
+      setLoading(false);
     }
   }, [id, navigate]);
 
-  const handleUnassignVehicle = () => {
+  useEffect(() => {
+    fetchDriverData();
+  }, [fetchDriverData]);
+
+  const handleUnassignVehicle = async () => {
     if (!driver || !vehicle) return;
 
-    // 1. Update driver's assignedVehicle to "Unassigned"
-    const savedDrivers = localStorage.getItem("fleet_drivers");
-    let updatedDriver = { ...driver, assignedVehicle: "Unassigned", status: "Available" };
-    if (savedDrivers) {
-      const driversList = JSON.parse(savedDrivers);
-      const updatedDrivers = driversList.map(d => d.id === driver.id ? updatedDriver : d);
-      localStorage.setItem("fleet_drivers", JSON.stringify(updatedDrivers));
-    }
+    try {
+      // 1. Update driver's assignedVehicle to "Unassigned"
+      await driverApi.update(driver._id, { assignedVehicle: "Unassigned" });
 
-    // 2. Update vehicle's assigned driver to "Unassigned"
-    const savedVehicles = localStorage.getItem("fleet_vehicles");
-    if (savedVehicles) {
-      const vehiclesList = JSON.parse(savedVehicles);
-      const updatedVehicles = vehiclesList.map(v => 
-        v.plateNumber === vehicle.plateNumber ? { ...v, driver: "Unassigned" } : v
-      );
-      localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
-    }
+      // 2. Update vehicle's assigned driver to "Unassigned"
+      await vehicleApi.update(vehicle.id, { driver: "Unassigned" });
 
-    setDriver(updatedDriver);
-    setVehicle(null);
-    toast.success("Vehicle unassigned successfully from driver!");
+      toast.success("Vehicle unassigned successfully from driver!");
+      fetchDriverData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to unassign vehicle.");
+    }
   };
 
-  if (!driver) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#F5F7FB] flex items-center justify-center font-poppins p-6 lg:p-8">
-        <p className="text-gray-500 font-semibold">Loading Driver Details...</p>
+        <div className="flex flex-col items-center gap-3 text-[#64748B]">
+          <Loader className="w-8 h-8 animate-spin text-[#B45A0A]" />
+          <p className="font-semibold">Loading Driver Details...</p>
+        </div>
       </div>
     );
   }
+
+  if (!driver) return null;
 
   // Calculate compliance health
   const expiryDate = new Date(driver.licenseExpiry);
@@ -111,13 +144,16 @@ export default function DriverProfilePage() {
     complianceColor = "text-[#F59E0B] bg-amber-50 border-amber-100";
   }
 
-  const getInitials = (name) => {
+  const getInitials = (name = "") => {
     return name
       .split(" ")
       .map(n => n[0])
       .join("")
-      .toUpperCase();
+      .toUpperCase()
+      .slice(0, 2);
   };
+
+  const getStatusLabel = (s) => ({ AVAILABLE: "Available", ON_TRIP: "On Trip", SUSPENDED: "Suspended" }[s] || s);
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
@@ -128,28 +164,35 @@ export default function DriverProfilePage() {
           
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 bg-[#FDF3EC] text-[#B45A0A] rounded-2xl flex items-center justify-center border border-[#FDF3EC] font-poppins font-black text-xl select-none">
-              {getInitials(driver.name)}
+              {getInitials(driver.fullName)}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">{driver.name}</h1>
+                <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">{driver.fullName}</h1>
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  driver.status === "Available" ? "bg-emerald-50 text-[#22C55E]" :
-                  driver.status === "On Trip" ? "bg-amber-50 text-[#B45A0A]" :
+                  driver.driverStatus === "AVAILABLE" ? "bg-emerald-50 text-[#22C55E]" :
+                  driver.driverStatus === "ON_TRIP" ? "bg-amber-50 text-[#B45A0A]" :
                   "bg-red-50 text-[#EF4444]"
                 }`}>
-                  {driver.status}
+                  {getStatusLabel(driver.driverStatus)}
                 </span>
               </div>
-              <p className="text-sm text-[#64748B] mt-0.5 font-medium">{driver.email} • {driver.phone}</p>
+              <p className="text-sm text-[#64748B] mt-0.5 font-medium">{driver.email} • {driver.phoneNumber}</p>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {driver.assignedVehicle === "Unassigned" && (
+          <button
+            onClick={() => navigate(`/manager/edit-driver/${driver._id}`)}
+            className="px-4.5 py-2.5 border border-[#E7EAF0] bg-white hover:bg-gray-50 rounded-xl text-xs font-bold text-[#64748B] flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <Edit className="w-4 h-4" />
+            <span>Edit Profile</span>
+          </button>
+          {(!driver.assignedVehicle || driver.assignedVehicle === "Unassigned") && (
             <button
-              onClick={() => navigate(`/manager/driver-assign-vehicle/${driver.id}`)}
+              onClick={() => navigate(`/manager/driver-assign-vehicle/${driver._id}`)}
               className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 font-poppins cursor-pointer"
             >
               <Plus className="w-4.5 h-4.5" />
@@ -168,7 +211,7 @@ export default function DriverProfilePage() {
             </div>
             <div>
               <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Total Trips</span>
-              <p className="text-xl font-extrabold text-[#1E293B] mt-0.5 font-poppins">{driver.tripsCompleted}</p>
+              <p className="text-xl font-extrabold text-[#1E293B] mt-0.5 font-poppins">{driver.tripsCompleted ?? 0}</p>
             </div>
           </div>
         </div>
@@ -180,7 +223,7 @@ export default function DriverProfilePage() {
             </div>
             <div>
               <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Safety Incidents</span>
-              <p className="text-xl font-extrabold text-[#1E293B] mt-0.5 font-poppins">{driver.incidentCount}</p>
+              <p className="text-xl font-extrabold text-[#1E293B] mt-0.5 font-poppins">{driver.incidentCount ?? 0}</p>
             </div>
           </div>
         </div>
@@ -224,44 +267,46 @@ export default function DriverProfilePage() {
               </div>
 
               <div 
-                onClick={() => navigate("/manager/documents", { state: { section: "compliance" } })}
-                className="cursor-pointer group hover:bg-amber-50/40 p-2 -m-2 rounded-xl transition-all border border-transparent hover:border-amber-200/50"
-                title="Click to view compliance documents"
+                className="p-2 -m-2 rounded-xl border border-transparent"
               >
-                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block group-hover:text-[#B45A0A]">Expiry Date</span>
-                <span className="text-sm font-semibold text-[#1E293B] mt-1 block group-hover:underline">
-                  {new Date(driver.licenseExpiry).toLocaleDateString("en-IN", {
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Expiry Date</span>
+                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">
+                  {driver.licenseExpiry ? new Date(driver.licenseExpiry).toLocaleDateString("en-IN", {
                     day: '2-digit',
                     month: 'short',
                     year: 'numeric'
-                  })}
+                  }) : "—"}
                 </span>
               </div>
 
               <div 
-                onClick={() => navigate("/manager/documents", { state: { section: "compliance" } })}
-                className="cursor-pointer group hover:bg-amber-50/40 p-2 -m-2 rounded-xl transition-all border border-transparent hover:border-amber-200/50"
-                title="Click to view compliance documents"
+                className="p-2 -m-2 rounded-xl border border-transparent"
               >
-                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block group-hover:text-[#B45A0A]">License Compliance</span>
-                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mt-1.5 transition-transform group-hover:scale-105 ${complianceColor}`}>
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">License Compliance</span>
+                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mt-1.5 ${complianceColor}`}>
                   {complianceStatus}
                 </span>
               </div>
             </div>
 
-            <div className="p-4 bg-gray-50 border border-[#E7EAF0] rounded-xl flex items-center justify-between text-xs mt-2">
-              <div>
-                <p className="font-bold text-[#1E293B]">Driving License scan copy</p>
-                <span className="text-gray-400 block mt-0.5">Uploaded: DL_scan_pdf.pdf</span>
+            {driver.licenseDocument ? (
+              <div className="p-4 bg-gray-50 border border-[#E7EAF0] rounded-xl flex items-center justify-between text-xs mt-2">
+                <div>
+                  <p className="font-bold text-[#1E293B]">Driving License scan copy</p>
+                  <span className="text-gray-400 block mt-0.5 truncate max-w-[200px]">{driver.licenseDocument.split("/").pop()}</span>
+                </div>
+                <a 
+                  href={driver.licenseDocument}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#B45A0A] hover:underline font-bold"
+                >
+                  View Document
+                </a>
               </div>
-              <button 
-                onClick={() => toast.success("Opening driving license document preview...")}
-                className="text-[#B45A0A] hover:underline font-bold"
-              >
-                View Document
-              </button>
-            </div>
+            ) : (
+              <p className="text-xs text-gray-400 font-medium italic mt-2">No license document uploaded.</p>
+            )}
           </div>
 
           {/* Personal Details */}
@@ -274,17 +319,17 @@ export default function DriverProfilePage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Experience</span>
-                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{driver.experience}</span>
+                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{driver.experience || "—"}</span>
               </div>
 
               <div>
                 <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Joining Date</span>
                 <span className="text-sm font-semibold text-[#1E293B] mt-1 block">
-                  {new Date(driver.joiningDate).toLocaleDateString("en-IN", {
+                  {driver.joiningDate ? new Date(driver.joiningDate).toLocaleDateString("en-IN", {
                     day: '2-digit',
                     month: 'short',
                     year: 'numeric'
-                  })}
+                  }) : "—"}
                 </span>
               </div>
 
@@ -330,7 +375,7 @@ export default function DriverProfilePage() {
                 <div className="grid grid-cols-2 gap-4 text-xs font-semibold text-gray-500 p-1">
                   <div>
                     <span>Branch Depot:</span>
-                    <span className="text-[#1E293B] block font-bold text-sm mt-0.5">{vehicle.branch}</span>
+                    <span className="text-[#1E293B] block font-bold text-sm mt-0.5">{vehicle.branch || "—"}</span>
                   </div>
                   <div>
                     <span>Fuel Configuration:</span>
@@ -346,7 +391,7 @@ export default function DriverProfilePage() {
                     Unassign Vehicle
                   </button>
                   <button
-                    onClick={() => navigate(`/manager/driver-assign-vehicle/${driver.id}`)}
+                    onClick={() => navigate(`/manager/driver-assign-vehicle/${driver._id}`)}
                     className="w-full py-2 bg-white hover:bg-gray-50 text-[#64748B] hover:text-[#1E293B] rounded-xl text-xs font-bold transition-all border border-[#E7EAF0] cursor-pointer"
                   >
                     Change Vehicle
@@ -357,7 +402,7 @@ export default function DriverProfilePage() {
               <div className="py-8 text-center space-y-3">
                 <p className="text-gray-400 text-xs font-medium">No vehicle assigned to this driver currently.</p>
                 <button
-                  onClick={() => navigate(`/manager/driver-assign-vehicle/${driver.id}`)}
+                  onClick={() => navigate(`/manager/driver-assign-vehicle/${driver._id}`)}
                   className="px-4 py-2 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer"
                 >
                   Assign Vehicle Now

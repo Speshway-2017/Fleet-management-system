@@ -16,6 +16,8 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 
+import { managerApi } from "../api/managerApi";
+
 export default function TripsListPage() {
   const navigate = useNavigate();
   const [trips, setTrips] = useState([]);
@@ -28,12 +30,24 @@ export default function TripsListPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  // Load from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("fleet_trips");
-    if (saved) {
-      setTrips(JSON.parse(saved));
+  const fetchTrips = async () => {
+    try {
+      const response = await managerApi.getTrips();
+      const result = response.data?.data || response.data;
+      if (Array.isArray(result)) {
+        setTrips(result.map(t => ({ ...t, id: t._id })));
+      } else {
+        setTrips([]);
+      }
+    } catch (error) {
+      toast.error("Failed to load trips from database");
+      console.error(error);
     }
+  };
+
+  // Load from database
+  useEffect(() => {
+    fetchTrips();
   }, []);
 
   // Reset to first page when search/filters change
@@ -49,26 +63,30 @@ export default function TripsListPage() {
     toast.success("Filters reset successfully");
   };
 
-  const handleDeleteTrip = () => {
+  const handleDeleteTrip = async () => {
     if (!selectedTrip) return;
-    const updated = trips.filter(t => t.id !== selectedTrip.id);
-    setTrips(updated);
-    localStorage.setItem("fleet_trips", JSON.stringify(updated));
-    setDeleteModalOpen(false);
-    setSelectedTrip(null);
-    toast.success("Trip record deleted successfully");
+    try {
+      await managerApi.deleteTrip(selectedTrip._id);
+      setDeleteModalOpen(false);
+      setSelectedTrip(null);
+      toast.success("Trip record deleted successfully");
+      fetchTrips();
+    } catch (error) {
+      toast.error("Failed to delete trip");
+      console.error(error);
+    }
   };
 
   // Compute filtered trips list
   const filteredTrips = trips.filter(t => {
     const query = search.toLowerCase();
     const matchesSearch =
-      t.id.toLowerCase().includes(query) ||
-      t.driverName.toLowerCase().includes(query) ||
-      t.vehicleName.toLowerCase().includes(query) ||
-      t.startLocation.toLowerCase().includes(query) ||
-      t.endLocation.toLowerCase().includes(query) ||
-      t.description.toLowerCase().includes(query);
+      (t.tripNumber || "").toLowerCase().includes(query) ||
+      (t.driverName || "").toLowerCase().includes(query) ||
+      (t.vehicleName || "").toLowerCase().includes(query) ||
+      (t.startLocation || "").toLowerCase().includes(query) ||
+      (t.endLocation || "").toLowerCase().includes(query) ||
+      (t.description || "").toLowerCase().includes(query);
 
     const matchesStatus = statusFilter === "All Statuses" || t.status === statusFilter;
 
@@ -206,7 +224,7 @@ export default function TripsListPage() {
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="font-bold text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg w-max font-poppins">
-                          {t.id}
+                          {t.tripNumber}
                         </span>
                         <span className="text-[10px] text-[#64748B] mt-1 block font-semibold max-w-[150px] truncate">
                           {t.description}

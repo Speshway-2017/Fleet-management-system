@@ -4,9 +4,8 @@ import Trip from '../models/Trip.js';
 import Notification from '../models/Notification.js';
 import Analytics from '../models/Analytics.js';
 import Organization from '../models/Organization.js';
-import Driver from '../models/Driver.js';
-import Maintenance from '../models/Maintenance.js';
-import Fuel from '../models/Fuel.js';
+import PlatformIssue from '../models/PlatformIssue.js';
+import Settings from '../models/Settings.js';
 
 export const getAllManagers = async () => {
   return User.find({ role: 'FLEET_MANAGER' }).populate('organization', 'name').select('-password');
@@ -18,37 +17,20 @@ export const createManager = async (managerData) => {
 };
 
 export const getManagerById = async (id) => {
-  return User.findOne({ _id: id, role: 'FLEET_MANAGER' }).select('-password').populate('organization', 'name');
-};
-
-export const updateManager = async (id, data) => {
-  return User.findOneAndUpdate({ _id: id, role: 'FLEET_MANAGER' }, data, { new: true }).select('-password');
-};
-
-export const deleteManager = async (id) => {
-  return User.findOneAndDelete({ _id: id, role: 'FLEET_MANAGER' });
+  return User.findOne({ _id: id, role: 'FLEET_MANAGER' }).select('-password');
 };
 
 export const getDistinctOrganizations = async (filter = {}) => {
-  const orgs = await User.distinct('organization', filter);
-  return orgs.length;
+  const query = {};
+  if (filter.isActive !== undefined) {
+    query.status = filter.isActive ? 'Active' : 'Pending';
+  }
+  return Organization.countDocuments(query);
 };
 
 export const createOrganization = async (orgData) => {
   const org = new Organization(orgData);
   return org.save();
-};
-
-export const getOrganizationById = async (id) => {
-  return Organization.findById(id);
-};
-
-export const updateOrganization = async (id, data) => {
-  return Organization.findByIdAndUpdate(id, data, { new: true });
-};
-
-export const deleteOrganization = async (id) => {
-  return Organization.findByIdAndDelete(id);
 };
 
 export const getAllOrganizations = async () => {
@@ -63,6 +45,10 @@ export const getVehiclesCount = async (filter = {}) => {
   return Vehicle.countDocuments(filter);
 };
 
+export const getPendingRequestsCount = async () => {
+  return Organization.countDocuments({ status: 'Pending' });
+};
+
 export const getRevenueAggregate = async () => {
   const result = await Analytics.aggregate([
     { $match: { metric: 'Revenue' } },
@@ -73,36 +59,6 @@ export const getRevenueAggregate = async () => {
 
 export const getRecentTrips = async (limit = 5) => {
   return Trip.find().sort({ createdAt: -1 }).limit(limit).populate('vehicle', 'vehicleNumber model').populate('driver', 'name');
-};
-
-export const getRealRecentActivities = async (limit = 5) => {
-  const recentOrgs = await Organization.find().sort({ createdAt: -1 }).limit(limit);
-  const recentManagers = await User.find({ role: 'FLEET_MANAGER' }).populate('organization', 'name').sort({ createdAt: -1 }).limit(limit);
-
-  const activities = [];
-
-  recentOrgs.forEach(org => {
-    activities.push({
-      type: 'Organization Created',
-      organization: org.name,
-      createdAt: org.createdAt,
-      status: 'green'
-    });
-  });
-
-  recentManagers.forEach(manager => {
-    activities.push({
-      type: 'Fleet Manager Added',
-      organization: manager.organization ? manager.organization.name : 'N/A',
-      createdAt: manager.createdAt,
-      status: 'blue'
-    });
-  });
-
-  // Sort by createdAt descending and take top 'limit'
-  activities.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  
-  return activities.slice(0, limit);
 };
 
 export const getRecentNotifications = async (limit = 5) => {
@@ -128,79 +84,88 @@ export const getRevenueChartData = async () => {
   ]);
 };
 
-// Analytics Filter Functions
-
-export const getFilteredCount = async (modelName, filter = {}) => {
-  const models = { User, Vehicle, Trip, Organization, Driver, Maintenance, Fuel };
-  const Model = models[modelName];
-  if (!Model) throw new Error(`Model ${modelName} not found`);
-  return Model.countDocuments(filter);
+// Organization update / delete
+export const updateOrganizationById = async (id, data) => {
+  return Organization.findByIdAndUpdate(id, data, { new: true, runValidators: true });
 };
 
-export const getFuelUsageAggregate = async (filter = {}) => {
-  const result = await Fuel.aggregate([
-    { $match: filter },
-    { $group: { _id: null, total: { $sum: '$liters' } } }
-  ]);
-  return result.length > 0 ? result[0].total : 0;
+export const deleteOrganizationById = async (id) => {
+  return Organization.findByIdAndDelete(id);
 };
 
-export const getOrgGrowthData = async (filter = {}) => {
-  return Organization.aggregate([
-    { $match: filter },
-    {
-      $group: {
-        _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
-        value: { $sum: 1 }
-      }
-    },
-    { $sort: { _id: 1 } },
-    { $project: { _id: 0, name: "$_id", value: 1 } }
-  ]);
+export const getOrganizationById = async (id) => {
+  return Organization.findById(id);
 };
 
-export const getManagerGrowthData = async (filter = {}) => {
-  return User.aggregate([
-    { $match: { role: 'FLEET_MANAGER', ...filter } },
-    {
-      $group: {
-        _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
-        value: { $sum: 1 }
-      }
-    },
-    { $sort: { _id: 1 } },
-    { $project: { _id: 0, name: "$_id", value: 1 } }
-  ]);
+// Fleet Manager update / delete
+export const updateManagerById = async (id, data) => {
+  return User.findOneAndUpdate({ _id: id, role: 'FLEET_MANAGER' }, data, { new: true, runValidators: true }).select('-password');
 };
 
-export const getSubscriptionDistribution = async () => {
-  return Organization.aggregate([
-    {
-      $group: {
-        _id: "$plan",
-        value: { $sum: 1 }
-      }
-    },
-    {
-      $project: {
-        _id: 0,
-        name: { $ifNull: ["$_id", "Standard"] },
-        value: 1
-      }
-    }
-  ]);
+export const deleteManagerById = async (id) => {
+  return User.findOneAndDelete({ _id: id, role: 'FLEET_MANAGER' });
 };
 
-export const getLoginActivityData = async (filter = {}) => {
-  // In a real app, you'd use an Audit/Login log collection. 
-  // Since we don't have one, we'll return mock trends based on recent users.
-  return [
-    { name: 'Mon', value: 12 },
-    { name: 'Tue', value: 18 },
-    { name: 'Wed', value: 15 },
-    { name: 'Thu', value: 20 },
-    { name: 'Fri', value: 25 },
-    { name: 'Sat', value: 10 },
-    { name: 'Sun', value: 8 },
-  ];
+// Settings functions
+export const getSettingsData = async () => {
+  let settings = await Settings.findOne();
+  if (!settings) {
+    settings = new Settings({});
+    await settings.save();
+  }
+  return settings;
+};
+
+export const updateSettingsData = async (data) => {
+  let settings = await Settings.findOne();
+  if (!settings) {
+    settings = new Settings(data);
+  } else {
+    Object.assign(settings, data);
+  }
+  return settings.save();
+};
+
+// Platform Issue functions
+export const createPlatformIssueInRepo = async (issueData) => {
+  const issue = new PlatformIssue(issueData);
+  return issue.save();
+};
+
+export const getAllPlatformIssues = async () => {
+  return PlatformIssue.find().populate('reportedBy', 'name email').sort({ createdAt: -1 });
+};
+
+export const getPlatformIssueByIdInRepo = async (id) => {
+  return PlatformIssue.findById(id).populate('reportedBy', 'name email');
+};
+
+export const updatePlatformIssueInRepo = async (id, data) => {
+  return PlatformIssue.findByIdAndUpdate(id, data, { new: true, runValidators: true }).populate('reportedBy', 'name email');
+};
+
+export const deletePlatformIssueInRepo = async (id) => {
+  return PlatformIssue.findByIdAndDelete(id);
+};
+
+// Notifications functions
+export const createNotificationInRepo = async (data) => {
+  const notification = new Notification(data);
+  return notification.save();
+};
+
+export const getAdminNotificationsInRepo = async () => {
+  return Notification.find({ recipientRole: 'SUPER_ADMIN' }).sort({ createdAt: -1 });
+};
+
+export const markNotificationReadInRepo = async (id) => {
+  return Notification.findByIdAndUpdate(id, { isRead: true }, { new: true });
+};
+
+export const markAllNotificationsReadInRepo = async () => {
+  return Notification.updateMany({ recipientRole: 'SUPER_ADMIN', isRead: false }, { isRead: true });
+};
+
+export const deleteNotificationInRepo = async (id) => {
+  return Notification.findByIdAndDelete(id);
 };

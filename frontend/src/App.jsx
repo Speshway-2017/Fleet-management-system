@@ -61,6 +61,7 @@ import ManageSchedulesPage from "@/roles/manager/pages/ManageSchedulesPage";
 import SettingsPage from "@/roles/manager/pages/SettingsPage";
 import ChangePasswordPage from "@/roles/manager/pages/ChangePasswordPage";
 import EWayBillsPage from "@/roles/manager/pages/EWayBillsPage";
+import GenerateEWayBillPage from "@/roles/manager/pages/GenerateEWayBillPage";
 import UpcomingServicesPage from "@/roles/manager/pages/UpcomingServicesPage";
 import ScheduleServicePage from "@/roles/manager/pages/ScheduleServicePage";
 import ServiceDetailsPage from "@/roles/manager/pages/ServiceDetailsPage";
@@ -106,14 +107,15 @@ export default function App() {
             <Route path="/admin/organizations" element={<OrganizationList />} />
             <Route path="/admin/organizations/add" element={<AddOrganization />} />
             <Route path="/admin/organizations/details" element={<OrganizationDetails />} />
-            <Route path="/admin/organizations/edit/:id" element={<EditOrganization />} />
-            <Route path="/admin/organizations/details/:id" element={<OrganizationDetails />} />
+          <Route path="/admin/organizations/edit" element={<EditOrganization />} />
+          <Route path="/admin/organizations/edit/:id?" element={<EditOrganization />} />
+          <Route path="/admin/organizations/details/:id?" element={<OrganizationDetails />} />
             <Route path="/admin/fleet-managers" element={<FleetManagerList />} />
             <Route path="/admin/fleet-managers/add" element={<AddFleetManager />} />
             <Route path="/admin/fleet-managers/details" element={<ManagerDetails />} />
-            <Route path="/admin/fleet-managers/details/:id" element={<ManagerDetails />} />
+            <Route path="/admin/fleet-managers/details/:id?" element={<ManagerDetails />} />
             <Route path="/admin/fleet-managers/edit" element={<EditFleetManager />} />
-            <Route path="/admin/fleet-managers/edit/:id" element={<EditFleetManager />} />
+            <Route path="/admin/fleet-managers/edit/:id?" element={<EditFleetManager />} />
             <Route path="/admin/analytics" element={<Analytics />} />
             <Route path="/admin/system-health" element={<SystemHealth />} />
             <Route path="/admin/audit-logs" element={<AuditLogs />} />
@@ -152,6 +154,7 @@ export default function App() {
 
               <Route path="/manager/ewaybills" element={<div className="p-8"><h1 className="text-2xl font-bold">E-Way Bills Page</h1></div>} />
               <Route path="/manager/eway" element={<EWayBillsPage />} />
+              <Route path="/manager/eway/generate" element={<GenerateEWayBillPage />} />
               <Route path="/manager/settings" element={<SettingsPage />} />
               <Route path="/manager/documents" element={<DocumentManagement />} />
               <Route path="/manager/documents/list" element={<DocumentsListPage />} />
@@ -170,6 +173,7 @@ export default function App() {
               <Route path="/manager/driver-profile/:id" element={<DriverProfilePage />} />
               <Route path="/manager/driver-assign-vehicle/:id" element={<AssignVehiclePage />} />
               <Route path="/manager/add-driver" element={<AddDriverPage />} />
+              <Route path="/manager/edit-driver/:id" element={<AddDriverPage />} />
               <Route path="/manager/route" element={<RouteOptimizationPage />} />
               <Route path="/manager/fuel" element={<FuelManagementPage />} />
               <Route path="/manager/analytics" element={<AnalyticsPage />} />

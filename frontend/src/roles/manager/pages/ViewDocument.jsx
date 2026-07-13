@@ -1,5 +1,6 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Edit,
@@ -14,34 +15,50 @@ import {
   CheckCircle2,
   TrendingUp
 } from "lucide-react";
-
-// Mock data for the document
-const MOCK_DOCUMENTS = [
-  {
-    id: 1,
-    name: "Commercial Insurance - Truck #42",
-    type: "Insurance",
-    category: "Vehicle Docs",
-    vehicle: "Volvo FM 12 [KA-01-FE-9912",
-    expiry: "2025-10-24",
-    status: "Active",
-    uploadedBy: "Alex Thompson",
-    uploadDate: "2024-05-15",
-    fileSize: "2.4 MB",
-    fileType: "PDF",
-    complianceScore: 8.5,
-    activityLog: [
-      { action: "Document Verified", user: "Alex Thompson", date: "2024-05-15 10:30 AM" },
-      { action: "Uploaded", user: "Alex Thompson", date: "2024-05-15 10:25 AM" },
-      { action: "Requested", user: "Sarah Lee", date: "2024-05-14 03:45 PM" }
-    ]
-  }
-];
+import { managerApi } from "../api/managerApi";
+import toast from "react-hot-toast";
 
 export default function ViewDocument() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const doc = MOCK_DOCUMENTS.find(d => d.id === parseInt(id || 1));
+  const [doc, setDoc] = useState(null);
+
+  useEffect(() => {
+    const fetchDoc = async () => {
+      try {
+        const response = await managerApi.getDocumentById(id);
+        const data = response.data?.data || response.data;
+        if (data) {
+          setDoc({
+            ...data,
+            id: data._id,
+            name: data.title,
+            complianceScore: 8.5,
+            uploadedBy: "Alex Thompson",
+            activityLog: [
+              { action: "Document Verified", user: "Alex Thompson", date: new Date(data.updatedAt).toLocaleDateString("en-IN") },
+              { action: "Uploaded", user: "Alex Thompson", date: new Date(data.createdAt).toLocaleDateString("en-IN") }
+            ]
+          });
+        }
+      } catch (error) {
+        toast.error("Failed to load document details");
+        console.error(error);
+      }
+    };
+    fetchDoc();
+  }, [id]);
+
+  if (!doc) {
+    return (
+      <div className="min-h-screen bg-[#F5F7FB] flex items-center justify-center p-6 lg:p-8 font-poppins">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-t-[#B45A0A] border-r-transparent rounded-full animate-spin" />
+          <p className="text-gray-500 font-semibold">Loading document details...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8 space-y-6 animate-fade-in w-full overflow-hidden">

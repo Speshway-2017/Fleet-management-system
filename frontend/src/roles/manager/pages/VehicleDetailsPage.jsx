@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Edit2, Trash2, MapPin, AlertTriangle, Download, Eye, FileText, Phone, Mail, Eye as EyeIcon, X } from "lucide-react";
+import { ArrowLeft, Edit2, Trash2, MapPin, AlertTriangle, Download, Eye, FileText, Phone, Mail, Eye as EyeIcon, X, Loader } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { vehicleApi } from "@/api/vehicleApi";
+import { driverApi } from "@/api/driverApi";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { managerApi } from "../api/managerApi";
 
 export default function VehicleDetailsPage() {
   const navigate = useNavigate();
@@ -13,6 +16,7 @@ export default function VehicleDetailsPage() {
   const mapInstanceRef = useRef(null);
   const [vehicle, setVehicle] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeletingVehicle, setIsDeletingVehicle] = useState(false);
   const [loading, setLoading] = useState(true);
   const [previewDocument, setPreviewDocument] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -30,23 +34,61 @@ export default function VehicleDetailsPage() {
     "Ahmedabad": [23.0225, 72.5714]
   };
 
+  const normaliseVehicle = (v) => {
+    if (!v) return null;
+    return {
+      ...v,
+      id:           v._id,
+      name:         v.vehicleName || `${v.brand} ${v.model}`,
+      manufacturer: v.brand || "",
+      plateNumber:  v.vehicleNumber || "",
+      type:         v.vehicleType || "Truck",
+      driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
+        ? v.assignedDriver.fullName
+        : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
+      fuelLevel:    v.fuelCapacity ? Math.round((v.odometer % v.fuelCapacity) || 50) : 50,
+      fastagBalance: v.fastagBalance ?? 0,
+      branch:       v.branch || "Pune",
+      dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
+      status:       v.currentStatus || 'Available',
+    };
+  };
+
   useEffect(() => {
-    const vehicles = JSON.parse(localStorage.getItem("fleet_vehicles") || "[]");
-    const found = vehicles.find((v) => v.id === parseInt(id));
-    if (found) {
-      setVehicle(found);
-    } else {
-      toast.error("Vehicle not found");
-      navigate("/manager/vehicles-list");
-    }
-    setLoading(false);
+    const fetchVehicleDetails = async () => {
+      try {
+        setLoading(true);
+        const res = await vehicleApi.getById(id);
+        const found = res.data?.data;
+        if (found) {
+          setVehicle(normaliseVehicle(found));
+        } else {
+          toast.error("Vehicle not found");
+          navigate("/manager/vehicles-list");
+        }
+      } catch (err) {
+        console.error("Failed to load vehicle:", err);
+        toast.error("Failed to load vehicle details from server.");
+        navigate("/manager/vehicles-list");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchVehicleDetails();
   }, [id, navigate]);
 
   // Load drivers when assign modal opens
   useEffect(() => {
     if (showAssignModal) {
-      const list = JSON.parse(localStorage.getItem("fleet_drivers") || "[]");
-      setDriversList(list);
+      const fetchDriversList = async () => {
+        try {
+          const res = await driverApi.list();
+          setDriversList(res.data?.data ?? []);
+        } catch (err) {
+          console.error("Failed to load drivers:", err);
+        }
+      };
+      fetchDriversList();
     }
   }, [showAssignModal]);
 
@@ -90,38 +132,67 @@ export default function VehicleDetailsPage() {
     };
   }, [vehicle]);
 
-  const handleDelete = () => {
-    const vehicles = JSON.parse(localStorage.getItem("fleet_vehicles") || "[]");
-    const updated = vehicles.filter((v) => v.id !== vehicle.id);
-    localStorage.setItem("fleet_vehicles", JSON.stringify(updated));
-    toast.success("Vehicle deleted successfully!");
-    navigate("/manager/vehicles-list");
+  const handleDelete = async () => {
+    try {
+      setIsDeletingVehicle(true);
+      const vehicleId = vehicle._id || vehicle.id;
+      
+      // Call API to delete the vehicle
+      await vehicleApi.remove(vehicleId);
+      
+      toast.success("Vehicle deleted successfully!");
+      navigate("/manager/vehicle-management");
+    } catch (err) {
+      // Handle different HTTP error responses
+      if (!err.response) {
+        toast.error("Unable to connect to the server. Please try again.");
+      } else {
+        const statusCode = err.response.status;
+        const message = err.response?.data?.message;
+
+        switch (statusCode) {
+          case 400:
+            toast.error(message || "Invalid request. Please check the vehicle details.");
+            break;
+          case 401:
+            toast.error("You are not authenticated. Please log in again.");
+            break;
+          case 403:
+            toast.error("You do not have permission to delete this vehicle.");
+            break;
+          case 404:
+            toast.error("Vehicle not found. It may have been already deleted.");
+            navigate("/manager/vehicle-management");
+            break;
+          case 500:
+            toast.error("Server error. Please try again later.");
+            break;
+          default:
+            toast.error(message || "Failed to delete vehicle.");
+        }
+      }
+    } finally {
+      setIsDeletingVehicle(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
-  const handleAssignDriver = (driverName) => {
-    // 1. Update vehicle's driver name
-    const vehiclesList = JSON.parse(localStorage.getItem("fleet_vehicles") || "[]");
-    const updatedVehicles = vehiclesList.map(v => 
-      v.id === vehicle.id ? { ...v, driver: driverName } : v
-    );
-    localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
+  const handleAssignDriver = async (driverId) => {
+    try {
+      const vehicleId = vehicle._id || vehicle.id;
+      const payload = {
+        assignedDriver: driverId === "Unassigned" ? "Unassigned" : driverId
+      };
+      await vehicleApi.update(vehicleId, payload);
+      toast.success("Driver assigned successfully!");
 
-    // 2. Update driver assignments
-    const dList = JSON.parse(localStorage.getItem("fleet_drivers") || "[]");
-    const updatedDrivers = dList.map(d => {
-      if (d.assignedVehicle === vehicle.plateNumber) {
-        return { ...d, assignedVehicle: "Unassigned", status: "Available" };
-      }
-      if (d.name === driverName && driverName !== "Unassigned") {
-        return { ...d, assignedVehicle: vehicle.plateNumber, status: "Available" };
-      }
-      return d;
-    });
-    localStorage.setItem("fleet_drivers", JSON.stringify(updatedDrivers));
-
-    setVehicle({ ...vehicle, driver: driverName });
-    toast.success(`Assigned driver ${driverName} successfully!`);
-    setShowAssignModal(false);
+      // Refresh vehicle details
+      const res = await vehicleApi.getById(id);
+      setVehicle(normaliseVehicle(res.data?.data));
+      setShowAssignModal(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to assign driver.");
+    }
   };
 
   if (loading || !vehicle) {
@@ -161,7 +232,7 @@ export default function VehicleDetailsPage() {
                   </span>
                 </div>
                 <p className="text-sm text-[#64748B]">{vehicle.manufacturer}</p>
-                <p className="text-lg font-bold text-[#1E293B] mt-2 uppercase">{vehicle.plateNumber}</p>
+                <p className="text-lg font-bold text-[#1E293B] mt-2 uppercase">{vehicle.plateNumber || vehicle.vehicleNumber}</p>
               </div>
             </div>
 
@@ -193,7 +264,7 @@ export default function VehicleDetailsPage() {
           {/* Right side - Actions */}
           <div className="flex items-center gap-2 md:ml-auto">
             <button
-              onClick={() => navigate(`/manager/vehicle-edit/${vehicle.id}`)}
+              onClick={() => navigate(`/manager/vehicle-edit/${vehicle._id}`)}
               className="px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer"
             >
               <Edit2 className="w-4 h-4" />
@@ -521,16 +592,27 @@ export default function VehicleDetailsPage() {
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2.5 border border-[#E7EAF0] rounded-xl text-sm font-semibold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer"
+                disabled={isDeletingVehicle}
+                className="px-4 py-2.5 border border-[#E7EAF0] rounded-xl text-sm font-semibold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                className="px-4 py-2.5 bg-red-600 hover:bg-red-700 rounded-xl text-sm font-semibold text-white transition-all cursor-pointer flex items-center gap-2"
+                disabled={isDeletingVehicle}
+                className="px-4 py-2.5 bg-red-600 hover:bg-red-700 rounded-xl text-sm font-semibold text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                <Trash2 className="w-4 h-4" />
-                Delete Vehicle
+                {isDeletingVehicle ? (
+                  <>
+                    <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete Vehicle
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -568,10 +650,10 @@ export default function VehicleDetailsPage() {
                   </div>
                 </div>
 
-                {driversList.map(d => (
+                 {driversList.map(d => (
                   <div 
-                    key={d.id}
-                    onClick={() => handleAssignDriver(d.name)}
+                    key={d._id}
+                    onClick={() => handleAssignDriver(d._id)}
                     className={`p-3 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
                       d.assignedVehicle === vehicle.plateNumber
                         ? "bg-indigo-50/50 border-indigo-200"
@@ -579,10 +661,10 @@ export default function VehicleDetailsPage() {
                     }`}
                   >
                     <div>
-                      <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
+                      <p className="font-bold text-xs text-[#1E293B]">{d.fullName}</p>
                       <span className="text-[10px] text-[#64748B] block mt-0.5">DL: {d.licenseNumber} ({d.licenseType})</span>
                     </div>
-                    {d.assignedVehicle !== "Unassigned" && d.assignedVehicle !== vehicle.plateNumber ? (
+                    {d.assignedVehicle && d.assignedVehicle !== "Unassigned" && d.assignedVehicle !== vehicle.plateNumber ? (
                       <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
                         {d.assignedVehicle}
                       </span>

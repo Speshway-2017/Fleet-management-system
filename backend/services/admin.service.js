@@ -3,40 +3,13 @@ import {
   getUsersCount,
   getVehiclesCount,
   getRevenueAggregate,
-  getRealRecentActivities,
+  getRecentTrips,
   getRecentNotifications,
-  getRevenueChartData,
-  getFilteredCount,
-  getFuelUsageAggregate,
-  getOrgGrowthData,
-  getManagerGrowthData,
-  getSubscriptionDistribution,
-  getLoginActivityData,
-  getAnalyticsSummary
+  getAnalyticsSummary,
+  getRevenueChartData
 } from '../repositories/admin.repository.js';
-
-// Helper to convert filter string to date filter
-const getDateFilter = (filterStr) => {
-  const now = new Date();
-  const filter = {};
-  
-  if (filterStr === 'today') {
-    const start = new Date(now.setHours(0,0,0,0));
-    filter.createdAt = { $gte: start };
-  } else if (filterStr === 'week') {
-    const start = new Date(now.setDate(now.getDate() - now.getDay()));
-    start.setHours(0,0,0,0);
-    filter.createdAt = { $gte: start };
-  } else if (filterStr === 'month') {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    filter.createdAt = { $gte: start };
-  } else if (filterStr === 'year') {
-    const start = new Date(now.getFullYear(), 0, 1);
-    filter.createdAt = { $gte: start };
-  }
-  
-  return filter;
-};
+import Organization from '../models/Organization.js';
+import User from '../models/User.js';
 
 export const getAdminDashboardData = async () => {
   const [
@@ -57,7 +30,7 @@ export const getAdminDashboardData = async () => {
     getVehiclesCount({ status: 'ACTIVE' }), // active vehicles count
     getRevenueAggregate(), // total revenue
     getUsersCount({ isActive: false }), // pending requests count
-    getRealRecentActivities(5), // real recent activities
+    getRecentTrips(5), // recent activities (trips)
     getRecentNotifications(5), // recent notifications
     getAnalyticsSummary(), // analytics summary
     getRevenueChartData() // chart data
@@ -98,61 +71,56 @@ export const getAdminDashboardData = async () => {
   };
 };
 
-export const getAdminAnalyticsData = async (filterStr) => {
-  const dateFilter = getDateFilter(filterStr);
+export const getMonthlyGrowthStats = async () => {
+  const months = [];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const now = new Date();
+  
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      name: monthNames[d.getMonth()]
+    });
+  }
 
-  const [
-    totalOrganizations,
-    fleetManagers,
-    vehicles,
-    drivers,
-    activeTrips,
-    completedTrips,
-    maintenanceCount,
-    fuelUsage,
-    orgGrowthData,
-    managerGrowthData,
-    subscriptionData,
-    loginActivityData
-  ] = await Promise.all([
-    getFilteredCount('Organization', dateFilter),
-    getFilteredCount('User', { role: 'FLEET_MANAGER', ...dateFilter }),
-    getFilteredCount('Vehicle', dateFilter),
-    getFilteredCount('Driver', dateFilter),
-    getFilteredCount('Trip', { status: 'IN_PROGRESS', ...dateFilter }), // assuming active trip is IN_PROGRESS
-    getFilteredCount('Trip', { status: 'COMPLETED', ...dateFilter }),
-    getFilteredCount('Maintenance', dateFilter),
-    getFuelUsageAggregate(dateFilter),
-    getOrgGrowthData(dateFilter),
-    getManagerGrowthData(dateFilter),
-    getSubscriptionDistribution(),
-    getLoginActivityData(dateFilter)
+  // Get cumulative start counts
+  const firstMonthStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  let orgCumulative = await Organization.countDocuments({ createdAt: { $lt: firstMonthStart } });
+  let managerCumulative = await User.countDocuments({ role: 'FLEET_MANAGER', createdAt: { $lt: firstMonthStart } });
+
+  // Grouped counts per month
+  const orgGrowthAgg = await Organization.aggregate([
+    { $match: { createdAt: { $gte: firstMonthStart } } },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+        count: { $sum: 1 }
+      }
+    }
   ]);
 
-  // Format subscription data color
-  const colors = { 'Enterprise': '#0f172a', 'Professional': '#b45309', 'Standard': '#cbd5e1' };
-  const formattedSubscriptionData = subscriptionData.map(item => ({
-    name: item.name,
-    value: item.value,
-    color: colors[item.name] || '#cbd5e1'
-  }));
-
-  return {
-    kpis: {
-      totalOrganizations,
-      fleetManagers,
-      vehicles,
-      drivers,
-      activeTrips,
-      completedTrips,
-      maintenanceCount,
-      fuelUsage
-    },
-    charts: {
-      orgGrowthData: orgGrowthData.length ? orgGrowthData : [{ name: 'N/A', value: 0 }],
-      managerGrowthData: managerGrowthData.length ? managerGrowthData : [{ name: 'N/A', value: 0 }],
-      subscriptionData: formattedSubscriptionData.length ? formattedSubscriptionData : [{ name: 'Standard', value: 0, color: '#cbd5e1' }],
-      loginActivityData
+  const managerGrowthAgg = await User.aggregate([
+    { $match: { role: 'FLEET_MANAGER', createdAt: { $gte: firstMonthStart } } },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+        count: { $sum: 1 }
+      }
     }
-  };
+  ]);
+
+  const orgGrowthData = months.map(m => {
+    const match = orgGrowthAgg.find(item => item._id === m.key);
+    orgCumulative += match ? match.count : 0;
+    return { name: m.name, value: orgCumulative };
+  });
+
+  const managerGrowthData = months.map(m => {
+    const match = managerGrowthAgg.find(item => item._id === m.key);
+    managerCumulative += match ? match.count : 0;
+    return { name: m.name, value: managerCumulative };
+  });
+
+  return { orgGrowthData, managerGrowthData };
 };

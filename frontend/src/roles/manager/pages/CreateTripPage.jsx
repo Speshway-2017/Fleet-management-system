@@ -19,10 +19,12 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 
+import { managerApi } from "../api/managerApi";
+
 export default function CreateTripPage() {
   const navigate = useNavigate();
 
-  // Lists loaded from localStorage
+  // Lists loaded from backend
   const [drivers, setDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
 
@@ -42,19 +44,39 @@ export default function CreateTripPage() {
   const [status, setStatus] = useState("Scheduled");
   const [description, setDescription] = useState("");
 
-  // Load resources from localStorage
+  // Load resources from backend
   useEffect(() => {
-    const savedDrivers = localStorage.getItem("fleet_drivers");
-    if (savedDrivers) {
-      setDrivers(JSON.parse(savedDrivers));
-    }
-    const savedVehicles = localStorage.getItem("fleet_vehicles");
-    if (savedVehicles) {
-      setVehicles(JSON.parse(savedVehicles));
-    }
+    const fetchResources = async () => {
+      try {
+        const [dRes, vRes] = await Promise.all([
+          managerApi.getAvailableDrivers(),
+          managerApi.getAvailableVehicles()
+        ]);
+        const driversData = (dRes.data?.data || dRes.data || []).map(d => ({
+          ...d,
+          id: d._id,
+          name: d.fullName,
+          phone: d.phoneNumber,
+          status: d.driverStatus === "AVAILABLE" ? "Available" : d.driverStatus === "ON_TRIP" ? "On Trip" : d.driverStatus
+        }));
+        const vehiclesData = (vRes.data?.data || vRes.data || []).map(v => ({
+          ...v,
+          id: v._id,
+          name: v.vehicleName,
+          plateNumber: v.vehicleNumber,
+          status: v.currentStatus
+        }));
+        setDrivers(driversData);
+        setVehicles(vehiclesData);
+      } catch (error) {
+        toast.error("Failed to load driver/vehicle lists from database");
+        console.error(error);
+      }
+    };
+    fetchResources();
   }, []);
 
-  const handleDispatch = (e) => {
+  const handleDispatch = async (e) => {
     e.preventDefault();
     if (!selectedDriverId) {
       toast.error("Please select a driver from Driver Assignment");
@@ -77,54 +99,42 @@ export default function CreateTripPage() {
       return;
     }
 
-    // Generate new trip object
-    const newTrip = {
-      id: `TRP-${Math.floor(1000 + Math.random() * 9000)}`,
-      driverName: driver.name,
-      driverPhone: driver.phone,
-      vehicleName: vehicle.name,
-      vehiclePlate: vehicle.plateNumber,
-      startLocation: startLocation,
-      endLocation: endLocation,
-      departureTime: departureTime,
-      eta: eta,
-      status: status,
-      description: description || "General Dispatch Cargo"
-    };
+    try {
+      const tripNum = `TRP-${Math.floor(1000 + Math.random() * 9000)}`;
+      await managerApi.createTrip({
+        tripNumber: tripNum,
+        vehicle: vehicle._id,
+        driver: driver._id,
+        driverName: driver.name,
+        driverPhone: driver.phone,
+        vehicleName: vehicle.name,
+        vehiclePlate: vehicle.plateNumber,
+        startLocation: startLocation,
+        endLocation: endLocation,
+        departureTime: departureTime,
+        eta: eta,
+        status: status,
+        description: description || "General Dispatch Cargo"
+      });
 
-    // Update vehicle status in localStorage
-    const updatedVehicles = vehicles.map(v => {
-      if (String(v.id) === String(vehicle.id)) {
-        return {
-          ...v,
-          driver: driver.name,
-          status: status === "On Transit" ? "On Trip" : "Active"
-        };
-      }
-      return v;
-    });
-    localStorage.setItem("fleet_vehicles", JSON.stringify(updatedVehicles));
+      // Update vehicle status
+      await managerApi.updateVehicle(vehicle._id, {
+        driver: driver.name,
+        status: status === "On Transit" ? "On Trip" : "Active"
+      });
 
-    // Update driver status in localStorage
-    const updatedDrivers = drivers.map(d => {
-      if (String(d.id) === String(driver.id)) {
-        return {
-          ...d,
-          assignedVehicle: vehicle.plateNumber,
-          status: status === "On Transit" ? "On Trip" : "Available"
-        };
-      }
-      return d;
-    });
-    localStorage.setItem("fleet_drivers", JSON.stringify(updatedDrivers));
+      // Update driver status
+      await managerApi.updateDriver(driver._id, {
+        assignedVehicle: vehicle.plateNumber,
+        status: status === "On Transit" ? "On Trip" : "Available"
+      });
 
-    // Append trip to localStorage
-    const savedTrips = localStorage.getItem("fleet_trips");
-    const currentTrips = savedTrips ? JSON.parse(savedTrips) : [];
-    localStorage.setItem("fleet_trips", JSON.stringify([newTrip, ...currentTrips]));
-
-    toast.success("Trip dispatched successfully!");
-    navigate("/manager/trips");
+      toast.success("Trip dispatched successfully!");
+      navigate("/manager/trips");
+    } catch (error) {
+      toast.error("Failed to dispatch trip");
+      console.error(error);
+    }
   };
 
   return (
@@ -349,7 +359,7 @@ export default function CreateTripPage() {
                 ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
                 : vehicles
               ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center">No vehicles matching selection</p>
+                <p className="text-xs text-gray-400 py-4 text-center font-semibold">No available vehicles found.</p>
               ) : (
                 (filterAvailableVehicles 
                   ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
@@ -417,7 +427,7 @@ export default function CreateTripPage() {
                 ? drivers.filter(d => d.status === "Available")
                 : drivers
               ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center">No drivers matching selection</p>
+                <p className="text-xs text-gray-400 py-4 text-center font-semibold">No available drivers found.</p>
               ) : (
                 (filterAvailableDrivers 
                   ? drivers.filter(d => d.status === "Available")

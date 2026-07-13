@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Plus, Search, ChevronDown, Eye, Edit2, Trash2, FileText, MapPin, X, AlertTriangle, SlidersHorizontal, Users } from "lucide-react";
+import { ArrowLeft, Plus, Search, ChevronDown, Eye, Edit2, Trash2, FileText, MapPin, X, AlertTriangle, SlidersHorizontal, Users, Loader } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { vehicleApi } from "@/api/vehicleApi";
 import L from "leaflet";
+import { managerApi } from "../api/managerApi";
 
 
 // Fix Leaflet marker icons
@@ -24,6 +26,7 @@ export default function VehiclesListPage() {
   const [vehicles, setVehicles] = useState([]);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [isDeletingVehicle, setIsDeletingVehicle] = useState(false);
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [typeFilter, setTypeFilter] = useState("All Types");
   const [branchFilter, setBranchFilter] = useState("All Branches");
@@ -32,12 +35,41 @@ export default function VehiclesListPage() {
   const [availabilityFilter, setAvailabilityFilter] = useState("All Availabilities");
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 
-  // Load vehicles from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("fleet_vehicles");
-    if (saved) {
-      setVehicles(JSON.parse(saved));
+  const [loading, setLoading] = useState(true);
+
+  const normaliseVehicle = (v) => ({
+    ...v,
+    id:           v._id,
+    name:         v.vehicleName || `${v.brand} ${v.model}`,
+    manufacturer: v.brand || "",
+    plateNumber:  v.vehicleNumber || "",
+    type:         v.vehicleType || "Truck",
+    driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
+      ? v.assignedDriver.fullName
+      : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
+    fuelLevel:    v.fuelCapacity ? Math.round((v.odometer % v.fuelCapacity) || 50) : 50,
+    fastagBalance: v.fastagBalance ?? 0,
+    branch:       v.branch || "Pune",
+    dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
+    status:       v.currentStatus || 'Available',
+  });
+
+  const fetchVehicles = async () => {
+    try {
+      setLoading(true);
+      const res = await vehicleApi.list();
+      const raw = res.data?.data ?? [];
+      setVehicles(raw.map(normaliseVehicle));
+    } catch (err) {
+      console.error("Failed to fetch vehicles:", err);
+      toast.error("Failed to load vehicles from server.");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchVehicles();
   }, []);
 
   // Calculate filtered vehicles
@@ -147,6 +179,8 @@ export default function VehiclesListPage() {
     switch (status) {
       case "Available":
         return "bg-green-100 text-green-700";
+      case "Assigned":
+        return "bg-blue-100 text-blue-700";
       case "On Trip":
         return "bg-orange-100 text-orange-700";
       case "Maintenance":
@@ -169,13 +203,54 @@ export default function VehiclesListPage() {
   };
 
   // Delete vehicle
-  const handleDeleteVehicle = () => {
-    const updated = vehicles.filter((v) => v.id !== selectedVehicle.id);
-    setVehicles(updated);
-    localStorage.setItem("fleet_vehicles", JSON.stringify(updated));
-    toast.success("Vehicle deleted successfully!");
-    setDeleteModalOpen(false);
-    setSelectedVehicle(null);
+  const handleDeleteVehicle = async () => {
+    if (!selectedVehicle) return;
+
+    const vehicleId = selectedVehicle._id || selectedVehicle.id;
+
+    try {
+      setIsDeletingVehicle(true);
+      
+      // Call API to delete the vehicle
+      await vehicleApi.remove(vehicleId);
+      
+      // Remove from local state immediately
+      setVehicles(prev => prev.filter(v => v.id !== vehicleId));
+      toast.success("Vehicle deleted successfully!");
+    } catch (err) {
+      // Handle different HTTP error responses
+      if (!err.response) {
+        toast.error("Unable to connect to the server. Please try again.");
+      } else {
+        const statusCode = err.response.status;
+        const message = err.response?.data?.message;
+
+        switch (statusCode) {
+          case 400:
+            toast.error(message || "Invalid request.");
+            break;
+          case 401:
+            toast.error("You are not authenticated. Please log in again.");
+            break;
+          case 403:
+            toast.error("You do not have permission to delete this vehicle.");
+            break;
+          case 404:
+            toast.error("Vehicle not found.");
+            setVehicles(prev => prev.filter(v => v.id !== vehicleId));
+            break;
+          case 500:
+            toast.error("Server error. Please try again later.");
+            break;
+          default:
+            toast.error(message || "Failed to delete vehicle.");
+        }
+      }
+    } finally {
+      setIsDeletingVehicle(false);
+      setDeleteModalOpen(false);
+      setSelectedVehicle(null);
+    }
   };
 
   return (
@@ -411,9 +486,18 @@ export default function VehiclesListPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredVehicles.length > 0 ? (
+                   {loading ? (
+                    <tr>
+                      <td colSpan={7} className="py-16 text-center">
+                        <div className="flex flex-col items-center gap-3 text-[#64748B]">
+                          <Loader className="w-7 h-7 animate-spin text-[#B45A0A]" />
+                          <span className="text-sm font-semibold">Loading vehicles...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filteredVehicles.length > 0 ? (
                     filteredVehicles.map((vehicle, idx) => (
-                      <tr key={vehicle.id} className="border-b border-[#E7EAF0]/60 hover:bg-[#F5F7FB]/50 transition-colors">
+                      <tr key={vehicle._id} className="border-b border-[#E7EAF0]/60 hover:bg-[#F5F7FB]/50 transition-colors">
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex flex-col">
                             <p className="font-bold text-[#1E293B] text-sm">{vehicle.name}</p>
@@ -421,7 +505,7 @@ export default function VehiclesListPage() {
                           </div>
                         </td>
                         <td className="py-4 px-6 whitespace-nowrap">
-                          <p className="font-bold text-[#1E293B] uppercase text-sm">{vehicle.plateNumber}</p>
+                          <p className="font-bold text-[#1E293B] uppercase text-sm">{vehicle.plateNumber || vehicle.vehicleNumber}</p>
                         </td>
                         <td className="py-4 px-6 whitespace-nowrap">
                           <p className="text-[#64748B] text-sm">{vehicle.type}</p>
@@ -442,14 +526,14 @@ export default function VehiclesListPage() {
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
                             <button
-                              onClick={() => navigate(`/manager/vehicle-details/${vehicle.id}`)}
+                              onClick={() => navigate(`/manager/vehicle-details/${vehicle._id}`)}
                               className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                               title="View"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => navigate(`/manager/vehicle-edit/${vehicle.id}`)}
+                              onClick={() => navigate(`/manager/vehicle-edit/${vehicle._id}`)}
                               className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                               title="Edit"
                             >
@@ -558,10 +642,20 @@ export default function VehiclesListPage() {
               </button>
               <button
                 onClick={handleDeleteVehicle}
-                className="px-4 py-2.5 bg-red-600 hover:bg-red-700 rounded-xl text-sm font-semibold text-white transition-all cursor-pointer flex items-center gap-2"
+                disabled={isDeletingVehicle}
+                className="px-4 py-2.5 bg-red-600 hover:bg-red-700 rounded-xl text-sm font-semibold text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                <Trash2 className="w-4 h-4" />
-                Delete Vehicle
+                {isDeletingVehicle ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete Vehicle
+                  </>
+                )}
               </button>
             </div>
           </div>

@@ -9,52 +9,32 @@ export function useAdmin() {
 
 export function AdminProvider({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
-  const [notificationsError, setNotificationsError] = useState(null);
+
+  // ── Notifications ────────────────────────────────────────────────────────
+  const [notifications, setNotifications]           = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+
+  const mapNotification = (n) => {
+    const createdDate = new Date(n.createdAt);
+    const isToday = createdDate.toDateString() === new Date().toDateString();
+    return {
+      ...n,
+      id:     n._id,
+      unread: !n.isRead,
+      group:  isToday ? "TODAY" : "YESTERDAY",
+      time:   createdDate.toLocaleDateString() + " " +
+              createdDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      type:   n.type || "bell",
+    };
+  };
 
   const fetchNotifications = async () => {
-    setNotificationsLoading(true);
-    setNotificationsError(null);
     try {
       const response = await adminApi.getNotifications();
-      const rawData = response.data?.data || response.data || [];
-      
-      const formatted = rawData.map(n => {
-        const date = new Date(n.createdAt);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        
-        let group = "OLDER";
-        if (diffDays === 0) group = "TODAY";
-        else if (diffDays === 1) group = "YESTERDAY";
-
-        let timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        if (diffDays > 1) {
-          timeStr = date.toLocaleDateString();
-        } else if (diffDays === 0 && diffMs < 1000 * 60 * 60) {
-           const mins = Math.floor(diffMs / (1000 * 60));
-           timeStr = mins <= 1 ? "Just now" : `${mins} min ago`;
-        } else if (diffDays === 0) {
-           const hrs = Math.floor(diffMs / (1000 * 60 * 60));
-           timeStr = `${hrs} hour${hrs > 1 ? 's' : ''} ago`;
-        }
-        
-        return {
-          id: n._id,
-          title: n.title,
-          description: n.message,
-          time: timeStr,
-          type: n.type || 'bell',
-          unread: !n.isRead,
-          group
-        };
-      });
-      setNotifications(formatted);
+      const raw = response.data?.data || response.data || [];
+      setNotifications(raw.map(mapNotification));
     } catch (error) {
-      console.error("Failed to fetch notifications:", error);
-      setNotificationsError("Failed to load notifications.");
+      console.error("Failed to fetch admin notifications:", error);
     } finally {
       setNotificationsLoading(false);
     }
@@ -63,7 +43,7 @@ export function AdminProvider({ children }) {
   const markAllAsRead = async () => {
     try {
       await adminApi.markAllNotificationsRead();
-      setNotifications(notifications.map(n => ({ ...n, unread: false })));
+      fetchNotifications();
     } catch (error) {
       console.error("Failed to mark all as read:", error);
     }
@@ -72,23 +52,15 @@ export function AdminProvider({ children }) {
   const markAsRead = async (id) => {
     try {
       await adminApi.markNotificationRead(id);
-      setNotifications(notifications.map(n => n.id === id ? { ...n, unread: false } : n));
+      fetchNotifications();
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
     }
   };
 
-  const deleteNotification = async (id) => {
-    try {
-      await adminApi.deleteNotification(id);
-      setNotifications(notifications.filter(n => n.id !== id));
-    } catch (error) {
-      console.error("Failed to delete notification:", error);
-    }
-  };
-
+  // ── Organizations ────────────────────────────────────────────────────────
   const [organizations, setOrganizations] = useState([]);
-  
+
   const fetchOrganizations = async () => {
     try {
       const response = await adminApi.getOrganizations();
@@ -99,6 +71,7 @@ export function AdminProvider({ children }) {
     }
   };
 
+  // ── Fleet Managers ────────────────────────────────────────────────────────
   const [fleetManagers, setFleetManagers] = useState([]);
 
   const fetchFleetManagers = async () => {
@@ -111,32 +84,68 @@ export function AdminProvider({ children }) {
     }
   };
 
+  // ── Admin profile (name / avatar for top-nav) ─────────────────────────────
+  const [adminProfile, setAdminProfile] = useState({ name: "", avatarUrl: "" });
+
+  const fetchAdminProfile = async () => {
+    try {
+      const response = await adminApi.getProfile();
+      const data = response.data?.data || response.data || {};
+      setAdminProfile({ name: data.name || "", avatarUrl: data.avatarUrl || "" });
+    } catch (error) {
+      // Non-critical — silently ignore if profile endpoint fails
+      console.warn("Failed to fetch admin profile:", error?.response?.status);
+    }
+  };
+
+  // ── Bootstrap ─────────────────────────────────────────────────────────────
   useEffect(() => {
     fetchOrganizations();
     fetchFleetManagers();
     fetchNotifications();
+    fetchAdminProfile();
   }, []);
 
+  // ── Organization helpers ──────────────────────────────────────────────────
+  const getOrganization    = (id) => organizations.find(o => o.id === id || o._id === id);
+  const addOrganization    = (org) => setOrganizations(prev => [...prev, { ...org, id: Date.now().toString() }]);
+  const updateOrganization = (id, updated) => setOrganizations(prev => prev.map(o => (o.id === id || o._id === id) ? { ...o, ...updated } : o));
+  const deleteOrganization = (id) => setOrganizations(prev => prev.filter(o => o.id !== id && o._id !== id));
 
+  // ── Fleet Manager helpers ─────────────────────────────────────────────────
+  const getFleetManager    = (id) => fleetManagers.find(m => m.id === id || m._id === id);
+  const addFleetManager    = (manager) => setFleetManagers(prev => [...prev, { ...manager, id: Date.now().toString(), created: new Date().toLocaleDateString() }]);
+  const updateFleetManager = (id, updated) => setFleetManagers(prev => prev.map(m => (m.id === id || m._id === id) ? { ...m, ...updated } : m));
+  const deleteFleetManager = (id) => setFleetManagers(prev => prev.filter(m => m.id !== id && m._id !== id));
 
   return (
     <AdminContext.Provider value={{
       isSidebarOpen,
       setIsSidebarOpen,
+
       organizations,
       fetchOrganizations,
-      
+      getOrganization,
+      addOrganization,
+      updateOrganization,
+      deleteOrganization,
+
       fleetManagers,
       fetchFleetManagers,
+      getFleetManager,
+      addFleetManager,
+      updateFleetManager,
+      deleteFleetManager,
 
       notifications,
-      notificationsLoading,
-      notificationsError,
-      fetchNotifications,
       setNotifications,
+      notificationsLoading,
+      fetchNotifications,
       markAllAsRead,
       markAsRead,
-      deleteNotification
+
+      adminProfile,
+      setAdminProfile,
     }}>
       {children}
     </AdminContext.Provider>

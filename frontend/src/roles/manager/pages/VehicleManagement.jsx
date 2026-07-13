@@ -32,188 +32,39 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
-
-const INITIAL_VEHICLES = [
-  {
-    id: 1,
-    name: "Ashok Leyland 3118",
-    manufacturer: "Ashok Leyland",
-    plateNumber: "MH 12 AB 5678",
-    type: "Truck",
-    driver: "Rajesh Kumar",
-    status: "On Trip",
-    fuelLevel: 78,
-    fastagBalance: 12450,
-    insuranceExpiry: "2027-10-12",
-    lastService: "2026-05-10",
-    nextService: "2026-11-10",
-    branch: "Pune",
-    fuelType: "Diesel",
-    ownership: "Owned",
-    availability: "Immediate",
-    dateAdded: "2026-01-15"
-  },
-  {
-    id: 2,
-    name: "Tata Ace Gold",
-    manufacturer: "Tata",
-    plateNumber: "KA 02 AB 1456",
-    type: "Van",
-    driver: "Ram Kumar",
-    status: "Available",
-    fuelLevel: 45,
-    fastagBalance: 5320,
-    insuranceExpiry: "2027-08-15",
-    lastService: "2026-04-12",
-    nextService: "2026-10-12",
-    branch: "Bengaluru",
-    fuelType: "CNG",
-    ownership: "Leased",
-    availability: "Immediate",
-    dateAdded: "2026-02-10"
-  },
-  {
-    id: 3,
-    name: "Bharat Benz 211",
-    manufacturer: "Bharat Benz",
-    plateNumber: "AP 39 EP 9465",
-    type: "Truck",
-    driver: "Eshwar Singh",
-    status: "Idle",
-    fuelLevel: 12,
-    fastagBalance: 1222,
-    insuranceExpiry: "2026-11-05",
-    lastService: "2026-05-20",
-    nextService: "2026-11-20",
-    branch: "Hyderabad",
-    fuelType: "Diesel",
-    ownership: "Owned",
-    availability: "Scheduled",
-    dateAdded: "2026-01-20"
-  },
-  {
-    id: 4,
-    name: "Mahindra Bolero XL",
-    manufacturer: "Mahindra",
-    plateNumber: "TN 07 EQ 2312",
-    type: "Truck",
-    driver: "Manish Patel",
-    status: "On Trip",
-    fuelLevel: 92,
-    fastagBalance: 450,
-    insuranceExpiry: "2026-07-15",
-    lastService: "2026-03-05",
-    nextService: "2026-09-05",
-    branch: "Chennai",
-    fuelType: "Diesel",
-    ownership: "Leased",
-    availability: "Immediate",
-    dateAdded: "2026-03-01"
-  },
-  {
-    id: 5,
-    name: "Scania Model X",
-    manufacturer: "Scania",
-    plateNumber: "MH 12 AB 5679",
-    type: "Truck",
-    driver: "Ramana",
-    status: "Maintenance",
-    fuelLevel: 15,
-    fastagBalance: 320,
-    insuranceExpiry: "2026-01-12",
-    lastService: "2026-06-25",
-    nextService: "2026-08-25",
-    branch: "Mumbai",
-    fuelType: "Diesel",
-    ownership: "Owned",
-    availability: "Scheduled",
-    dateAdded: "2026-01-05"
-  },
-  {
-    id: 6,
-    name: "Eicher Pro 2049",
-    manufacturer: "Eicher",
-    plateNumber: "DL 03 EC 9876",
-    type: "Tipper",
-    driver: "Vijay Kumar",
-    status: "Available",
-    fuelLevel: 60,
-    fastagBalance: 6780,
-    insuranceExpiry: "2027-02-18",
-    lastService: "2026-05-15",
-    nextService: "2026-11-15",
-    branch: "Delhi",
-    fuelType: "Electric",
-    ownership: "Owned",
-    availability: "Immediate",
-    dateAdded: "2026-04-10"
-  },
-  {
-    id: 7,
-    name: "Force Traveller",
-    manufacturer: "Force",
-    plateNumber: "MH 14 EU 1122",
-    type: "Bus",
-    driver: "Sanjay Singh",
-    status: "Out of Service",
-    fuelLevel: 25,
-    fastagBalance: 120,
-    insuranceExpiry: "2026-05-20",
-    lastService: "2026-01-10",
-    nextService: "2026-07-10",
-    branch: "Pune",
-    fuelType: "Diesel",
-    ownership: "Leased",
-    availability: "Scheduled",
-    dateAdded: "2026-01-12"
-  },
-  {
-    id: 8,
-    name: "Tata Signa 4825",
-    manufacturer: "Tata",
-    plateNumber: "GJ 01 ZY 8899",
-    type: "Trailer",
-    driver: "Unassigned",
-    status: "Idle",
-    fuelLevel: 55,
-    fastagBalance: 14500,
-    insuranceExpiry: "2027-05-20",
-    lastService: "2026-02-28",
-    nextService: "2026-08-28",
-    branch: "Ahmedabad",
-    fuelType: "Diesel",
-    ownership: "Owned",
-    availability: "Immediate",
-    dateAdded: "2026-02-22"
-  }
-];
-
-const MOCK_DRIVERS = [
-  "Rajesh Kumar",
-  "Ram Kumar",
-  "Eshwar Singh",
-  "Manish Patel",
-  "Ramana",
-  "Vijay Kumar",
-  "Sanjay Singh",
-  "Amit Sharma",
-  "Unassigned"
-];
-
-const MOCK_ACTIVITIES = [
-  { id: 1, type: "assign", text: "Vehicle MH 12 AB 5678 assigned to Rajesh Kumar", time: "2 hrs ago", icon: UserCheck, color: "text-amber-600 bg-amber-50 border-amber-100" },
-  { id: 2, type: "renew", text: "Insurance policy renewed for Tata Ace Gold (KA 02 AB 1456)", time: "1 day ago", icon: FileText, color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
-  { id: 3, type: "repair", text: "Maintenance completed on Scania Model X", time: "2 days ago", icon: Wrench, color: "text-blue-600 bg-blue-50 border-blue-100" },
-  { id: 4, type: "fastag", text: "FASTag account auto-recharged for Tata Signa 4825 (+₹5,000)", time: "3 days ago", icon: Wallet, color: "text-purple-600 bg-purple-50 border-purple-100" },
-  { id: 5, type: "trip", text: "Trip ID #3021 completed successfully by Eicher Pro 2049", time: "4 days ago", icon: CheckCircle, color: "text-teal-600 bg-teal-50 border-teal-100" }
-];
+import { vehicleApi } from "@/api/vehicleApi";
+import { driverApi } from "@/api/driverApi";
+import { managerApi } from "../api/managerApi";
 
 export default function VehicleManagement() {
   const navigate = useNavigate();
-  const [vehicles, setVehicles] = useState(() => {
-    const saved = localStorage.getItem("fleet_vehicles");
-    return saved ? JSON.parse(saved) : INITIAL_VEHICLES;
+
+  /**
+   * Normalise a backend vehicle document to the shape this component expects.
+   * Backend uses: _id, brand, vehicleNumber, currentStatus (Available/Active/etc.)
+   */
+  const normaliseVehicle = (v) => ({
+    ...v,
+    id:           v._id,
+    name:         v.vehicleName || `${v.brand} ${v.model}`,
+    manufacturer: v.brand || "",
+    plateNumber:  v.vehicleNumber || "",
+    type:         v.vehicleType || 'Truck',
+    driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
+      ? v.assignedDriver.fullName
+      : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
+    fuelLevel:    v.fuelCapacity ? Math.round((v.odometer % v.fuelCapacity) || 50) : 50,
+    fastagBalance:v.fastagBalance ?? 0,
+    branch:       v.branch       || 'Pune',
+    dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
+    // Map backend currentStatus to status
+    status:       v.currentStatus || 'Available',
   });
+
+  const [vehicles, setVehicles] = useState([]);
+  const [vehiclesLoading, setVehiclesLoading] = useState(true);
+  const [drivers, setDrivers] = useState([]);
+  const [activities, setActivities] = useState([]);
 
   // Filter States
   const [search, setSearch] = useState("");
@@ -225,6 +76,70 @@ export default function VehicleManagement() {
   const [availFilter, setAvailFilter] = useState("All Availabilities");
   const [dateAddedFilter, setDateAddedFilter] = useState("");
   const [showMoreFilters, setShowMoreFilters] = useState(false);
+
+
+  // Fetch vehicles and drivers from backend on mount
+  useEffect(() => {
+    const fetchVehiclesAndDrivers = async () => {
+      try {
+        setVehiclesLoading(true);
+        const [vehRes, drvRes] = await Promise.all([
+          vehicleApi.list(),
+          driverApi.list()
+        ]);
+        const rawVeh = vehRes.data?.data ?? [];
+        const rawDrv = drvRes.data?.data ?? [];
+        setDrivers(rawDrv);
+        setVehicles(rawVeh.map(normaliseVehicle));
+
+        // Fetch dynamic activities (recent notifications)
+        try {
+          const notifRes = await managerApi.getNotifications();
+          const rawNotifs = notifRes.data?.data || notifRes.data || [];
+          
+          const mapped = rawNotifs.slice(0, 5).map(n => {
+            let icon = Truck;
+            let color = "text-blue-600 bg-blue-50 border-blue-100";
+            const lowerTitle = (n.title || "").toLowerCase();
+            
+            if (lowerTitle.includes('driver')) {
+              icon = UserCheck;
+              color = "text-amber-600 bg-amber-50 border-amber-100";
+            } else if (lowerTitle.includes('deleted')) {
+              icon = Trash2;
+              color = "text-rose-600 bg-rose-50 border-rose-100";
+            } else if (lowerTitle.includes('document')) {
+              icon = FileText;
+              color = "text-emerald-600 bg-emerald-50 border-emerald-100";
+            } else if (lowerTitle.includes('fuel')) {
+              icon = Fuel;
+              color = "text-purple-600 bg-purple-50 border-purple-100";
+            } else if (lowerTitle.includes('maintenance')) {
+              icon = Wrench;
+              color = "text-[#008080] bg-teal-50 border-teal-100";
+            }
+            
+            return {
+              id: n._id,
+              text: n.description,
+              time: new Date(n.createdAt).toLocaleDateString() + ' ' + new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              icon,
+              color
+            };
+          });
+          setActivities(mapped);
+        } catch (notifErr) {
+          console.error("Failed to fetch notification logs:", notifErr);
+        }
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+        toast.error('Failed to load vehicles from server.');
+      } finally {
+        setVehiclesLoading(false);
+      }
+    };
+    fetchVehiclesAndDrivers();
+  }, []);
 
   // Sorting
   const [sortField, setSortField] = useState("id");
@@ -254,10 +169,6 @@ export default function VehicleManagement() {
     dateAdded: new Date().toISOString().split('T')[0]
   });
 
-  // Persist to local storage
-  useEffect(() => {
-    localStorage.setItem("fleet_vehicles", JSON.stringify(vehicles));
-  }, [vehicles]);
 
   // Handle Sort
   const handleSort = (field) => {
@@ -418,13 +329,19 @@ export default function VehicleManagement() {
 
   const openEditModal = (vehicle) => {
     setSelectedVehicle(vehicle);
-    setFormData({ ...vehicle });
+    setFormData({
+      ...vehicle,
+      assignedDriver: vehicle.assignedDriver?._id || vehicle.assignedDriver || "Unassigned"
+    });
     setModalType("edit");
   };
 
   const openAssignModal = (vehicle) => {
     setSelectedVehicle(vehicle);
-    setFormData({ ...vehicle });
+    setFormData({
+      ...vehicle,
+      assignedDriver: vehicle.assignedDriver?._id || vehicle.assignedDriver || "Unassigned"
+    });
     setModalType("assign");
   };
 
@@ -438,46 +355,110 @@ export default function VehicleManagement() {
     setModalType("delete");
   };
 
-  const handleDeleteVehicle = () => {
-    const updated = vehicles.filter(v => v.id !== selectedVehicle.id);
-    setVehicles(updated);
-    setModalType(null);
-    setSelectedVehicle(null);
-    toast.success("Vehicle deleted successfully");
+  const handleDeleteVehicle = async () => {
+    if (!selectedVehicle) return;
+
+    const vehicleId = selectedVehicle._id || selectedVehicle.id;
+    
+    try {
+      // Send delete request with proper error handling
+      await vehicleApi.remove(vehicleId);
+      
+      // Remove from local state immediately after successful deletion
+      setVehicles(prev => prev.filter(v => v.id !== vehicleId));
+      toast.success("Vehicle deleted successfully");
+    } catch (err) {
+      // Handle different HTTP error responses
+      if (!err.response) {
+        toast.error("Unable to connect to the server. Please try again.");
+      } else {
+        const statusCode = err.response.status;
+        const message = err.response?.data?.message;
+
+        switch (statusCode) {
+          case 400:
+            toast.error(message || "Invalid request. Please check the vehicle details.");
+            break;
+          case 401:
+            toast.error("You are not authenticated. Please log in again.");
+            break;
+          case 403:
+            toast.error("You do not have permission to delete this vehicle.");
+            break;
+          case 404:
+            toast.error("Vehicle not found. It may have been already deleted.");
+            // Remove from UI anyway if it doesn't exist on server
+            setVehicles(prev => prev.filter(v => v.id !== vehicleId));
+            break;
+          case 500:
+            toast.error("Server error. Please try again later.");
+            break;
+          default:
+            toast.error(message || "Failed to delete vehicle.");
+        }
+      }
+    } finally {
+      setModalType(null);
+      setSelectedVehicle(null);
+    }
   };
 
-  const handleSaveVehicle = (e) => {
+  const handleSaveVehicle = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.plateNumber) {
       toast.error("Please fill in all required fields.");
       return;
     }
 
-    if (modalType === "add") {
-      const newVehicle = {
-        ...formData,
-        id: vehicles.length > 0 ? Math.max(...vehicles.map(v => v.id)) + 1 : 1,
-        fuelLevel: Number(formData.fuelLevel),
-        fastagBalance: Number(formData.fastagBalance)
-      };
-      setVehicles([...vehicles, newVehicle]);
-      toast.success("New vehicle added successfully!");
-    } else if (modalType === "edit") {
-      const updated = vehicles.map(v => v.id === selectedVehicle.id ? {
-        ...formData,
-        fuelLevel: Number(formData.fuelLevel),
-        fastagBalance: Number(formData.fastagBalance)
-      } : v);
-      setVehicles(updated);
-      toast.success("Vehicle updated successfully!");
-    } else if (modalType === "assign") {
-      const updated = vehicles.map(v => v.id === selectedVehicle.id ? { ...v, driver: formData.driver } : v);
-      setVehicles(updated);
-      toast.success(`Assigned driver ${formData.driver} successfully!`);
-    }
+    const vehicleId = selectedVehicle?._id || selectedVehicle?.id;
 
-    setModalType(null);
-    setSelectedVehicle(null);
+    try {
+      if (modalType === "edit") {
+        const payload = {
+          vehicleName:        `${formData.manufacturer || formData.brand} ${formData.model}`,
+          brand:              formData.manufacturer || formData.brand,
+          model:              formData.model,
+          vehicleNumber:      formData.plateNumber?.toUpperCase(),
+          vehicleType:        formData.type,
+          branch:             formData.branch,
+          fuelType:           formData.fuelType,
+          ownership:          formData.ownership,
+          availability:       formData.availability,
+          insuranceExpiry:    formData.insuranceExpiry || undefined,
+          lastService:        formData.lastService || undefined,
+          nextService:        formData.nextService || undefined,
+          fuelCapacity:       Number(formData.fuelCapacity) || 0,
+          fastagBalance:      Number(formData.fastagBalance) || 0,
+          currentStatus:      formData.status || "Available",
+          assignedDriver:     formData.assignedDriver === "Unassigned" ? "Unassigned" : formData.assignedDriver,
+        };
+        const res = await vehicleApi.update(vehicleId, payload);
+        
+        // Fetch fresh vehicles list to make sure we get populated driver details
+        const listRes = await vehicleApi.list();
+        const rawVeh = listRes.data?.data ?? [];
+        setVehicles(rawVeh.map(normaliseVehicle));
+        
+        toast.success("Vehicle updated successfully!");
+      } else if (modalType === "assign") {
+        const payload = {
+          assignedDriver: formData.assignedDriver === "Unassigned" ? "Unassigned" : formData.assignedDriver
+        };
+        await vehicleApi.update(vehicleId, payload);
+
+        // Fetch fresh vehicles list to make sure we get populated driver details
+        const listRes = await vehicleApi.list();
+        const rawVeh = listRes.data?.data ?? [];
+        setVehicles(rawVeh.map(normaliseVehicle));
+
+        toast.success("Driver assigned successfully!");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to save changes.");
+    } finally {
+      setModalType(null);
+      setSelectedVehicle(null);
+    }
   };
 
   // Helpers for formatting
@@ -863,7 +844,7 @@ export default function VehicleManagement() {
                     </tr>
                   ) : (
                     filteredVehicles.map((v) => (
-                      <tr key={v.id} className="hover:bg-[#F5F7FB]/50 transition-colors group">
+                      <tr key={v._id} className="hover:bg-[#F5F7FB]/50 transition-colors group">
                         {/* Vehicle Card Cell */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex items-center gap-3">
@@ -879,7 +860,7 @@ export default function VehicleManagement() {
 
                         {/* Registration Number */}
                         <td className="py-4 px-6 font-poppins font-semibold text-xs tracking-wider text-[#1E293B] whitespace-nowrap">
-                          {v.plateNumber}
+                          {v.plateNumber || v.vehicleNumber}
                         </td>
 
                         {/* Type */}
@@ -947,7 +928,7 @@ export default function VehicleManagement() {
                           <div className="flex items-center justify-end gap-1">
                             {/* View Details */}
                             <button
-                              onClick={() => navigate(`/manager/vehicle-details/${v.id}`)}
+                              onClick={() => navigate(`/manager/vehicle-details/${v._id}`)}
                               title="View details"
                               className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                             >
@@ -956,7 +937,7 @@ export default function VehicleManagement() {
 
                             {/* Edit */}
                             <button
-                              onClick={() => navigate(`/manager/vehicle-edit/${v.id}`)}
+                              onClick={() => navigate(`/manager/vehicle-edit/${v._id}`)}
                               title="Edit vehicle"
                               className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                             >
@@ -1192,7 +1173,7 @@ export default function VehicleManagement() {
               <h3 className="font-poppins font-black text-lg text-[#1E293B] mb-5 shrink-0">Recent Vehicle Activities</h3>
 
               <div className="flex-1 space-y-5 overflow-y-auto max-h-80 custom-scrollbar pr-2 select-none">
-                {MOCK_ACTIVITIES.map((act) => {
+                {activities.map((act) => {
                   const Icon = act.icon;
                   return (
                     <div key={act.id} className="flex gap-4">
@@ -1213,6 +1194,11 @@ export default function VehicleManagement() {
                     </div>
                   );
                 })}
+                {activities.length === 0 && (
+                  <div className="text-center text-xs text-[#64748B] py-8">
+                    No recent activities recorded.
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1221,63 +1207,94 @@ export default function VehicleManagement() {
               <h3 className="font-poppins font-black text-lg text-[#1E293B] mb-5 shrink-0">Upcoming Alerts</h3>
 
               <div className="flex-1 space-y-3 overflow-y-auto max-h-80 custom-scrollbar pr-2 select-none">
+                {(() => {
+                  const dynamicAlerts = [];
+                  vehicles.forEach((v) => {
+                    if (v.fastagBalance !== undefined && Number(v.fastagBalance) < 1000) {
+                      dynamicAlerts.push({
+                        id: `fastag-${v.id}`,
+                        title: "FASTag Low Balance",
+                        message: `${v.name} (${v.plateNumber}) has only ₹${v.fastagBalance} left!`,
+                        icon: AlertTriangle,
+                        iconColor: "text-[#EF4444] bg-[#EF4444]/10",
+                        badge: "Critical",
+                        badgeClass: "bg-[#EF4444] text-white",
+                        bgClass: "bg-red-50/50 border-red-100"
+                      });
+                    }
 
-                {/* Alert 1 */}
-                <div className="flex items-center justify-between p-3.5 bg-red-50/50 border border-red-100 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="text-[#EF4444] bg-[#EF4444]/10 p-2 rounded-lg">
-                      <AlertTriangle className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-extrabold text-[#EF4444] font-poppins">FASTag Low Balance</p>
-                      <span className="text-[10px] text-red-500 font-medium block mt-0.5">Scania Model X (MH 12 AB 5679) has only ₹320 left!</span>
-                    </div>
-                  </div>
-                  <span className="text-[9px] font-black uppercase bg-[#EF4444] text-white px-2 py-0.5 rounded-full font-poppins tracking-wider">Critical</span>
-                </div>
+                    if (v.insuranceExpiry) {
+                      const expDate = new Date(v.insuranceExpiry);
+                      const diffTime = expDate - new Date();
+                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                      if (diffDays < 0) {
+                        dynamicAlerts.push({
+                          id: `ins-exp-${v.id}`,
+                          title: "Insurance Expired",
+                          message: `${v.name} (${v.plateNumber}) expired on ${expDate.toLocaleDateString()}`,
+                          icon: FileText,
+                          iconColor: "text-[#EF4444] bg-[#EF4444]/10",
+                          badge: "Expired",
+                          badgeClass: "bg-[#EF4444] text-white",
+                          bgClass: "bg-red-50/50 border-red-100"
+                        });
+                      } else if (diffDays <= 30) {
+                        dynamicAlerts.push({
+                          id: `ins-warn-${v.id}`,
+                          title: "Insurance Expiring Soon",
+                          message: `${v.name} (${v.plateNumber}) expires in ${diffDays} days (${expDate.toLocaleDateString()})`,
+                          icon: Calendar,
+                          iconColor: "text-[#B45A0A] bg-[#FDF3EC]",
+                          badge: `${diffDays} Days`,
+                          badgeClass: "bg-[#B45A0A] text-white",
+                          bgClass: "bg-amber-50/50 border-amber-100"
+                        });
+                      }
+                    }
 
-                {/* Alert 2 */}
-                <div className="flex items-center justify-between p-3.5 bg-red-50/50 border border-red-100 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="text-[#EF4444] bg-[#EF4444]/10 p-2 rounded-lg">
-                      <FileText className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-extrabold text-[#EF4444] font-poppins">Insurance Expired</p>
-                      <span className="text-[10px] text-red-500 font-medium block mt-0.5">Scania Model X (MH 12 AB 5679) expired on 12 Jan 2026</span>
-                    </div>
-                  </div>
-                  <span className="text-[9px] font-black uppercase bg-[#EF4444] text-white px-2 py-0.5 rounded-full font-poppins tracking-wider">Expired</span>
-                </div>
+                    if (v.status === 'Maintenance') {
+                      dynamicAlerts.push({
+                        id: `maint-${v.id}`,
+                        title: "Maintenance Service Due",
+                        message: `${v.name} (${v.plateNumber}) is currently in maintenance.`,
+                        icon: Wrench,
+                        iconColor: "text-[#B45A0A] bg-[#FDF3EC]",
+                        badge: "Due",
+                        badgeClass: "bg-amber-100 text-[#B45A0A]",
+                        bgClass: "bg-amber-50/50 border-amber-100"
+                      });
+                    }
+                  });
 
-                {/* Alert 3 */}
-                <div className="flex items-center justify-between p-3.5 bg-amber-50/50 border border-amber-100 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="text-[#B45A0A] bg-[#FDF3EC] p-2 rounded-lg">
-                      <Calendar className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-extrabold text-[#B45A0A] font-poppins">Insurance Expiring Soon</p>
-                      <span className="text-[10px] text-[#B45A0A] font-medium block mt-0.5">Mahindra Bolero XL (TN 07 EQ 2312) expires on 15 Jul 2026</span>
-                    </div>
-                  </div>
-                  <span className="text-[9px] font-bold uppercase bg-[#B45A0A] text-white px-2 py-0.5 rounded-full font-poppins tracking-wider">12 Days</span>
-                </div>
+                  const displayed = dynamicAlerts.slice(0, 4);
+                  if (displayed.length === 0) {
+                    return (
+                      <div className="text-center text-xs text-[#64748B] py-8">
+                        All vehicles compliant. No alerts active.
+                      </div>
+                    );
+                  }
 
-                {/* Alert 4 */}
-                <div className="flex items-center justify-between p-3.5 bg-amber-50/50 border border-amber-100 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="text-[#B45A0A] bg-[#FDF3EC] p-2 rounded-lg">
-                      <Wrench className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-extrabold text-[#B45A0A] font-poppins">Maintenance Service Due</p>
-                      <span className="text-[10px] text-[#B45A0A] font-medium block mt-0.5">Scania Model X is scheduled for inspection next month.</span>
-                    </div>
-                  </div>
-                  <span className="text-[9px] font-bold uppercase bg-amber-100 text-[#B45A0A] px-2 py-0.5 rounded-full font-poppins">Due</span>
-                </div>
-
+                  return displayed.map((alert) => {
+                    const AlertIcon = alert.icon;
+                    return (
+                      <div key={alert.id} className={`flex items-center justify-between p-3.5 border rounded-xl ${alert.bgClass}`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${alert.iconColor}`}>
+                            <AlertIcon className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-extrabold font-poppins text-slate-800">{alert.title}</p>
+                            <span className="text-[10px] text-slate-500 font-medium block mt-0.5">{alert.message}</span>
+                          </div>
+                        </div>
+                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full font-poppins tracking-wider ${alert.badgeClass}`}>
+                          {alert.badge}
+                        </span>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
 
@@ -1381,12 +1398,13 @@ export default function VehicleManagement() {
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Assigned Driver</label>
                     <select
-                      value={formData.driver}
-                      onChange={(e) => setFormData({ ...formData, driver: e.target.value })}
+                      value={formData.assignedDriver || "Unassigned"}
+                      onChange={(e) => setFormData({ ...formData, assignedDriver: e.target.value })}
                       className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
                     >
-                      {MOCK_DRIVERS.map((d) => (
-                        <option key={d} value={d}>{d}</option>
+                      <option value="Unassigned">Unassigned</option>
+                      {drivers.map((d) => (
+                        <option key={d._id} value={d._id}>{d.fullName}</option>
                       ))}
                     </select>
                   </div>
@@ -1556,12 +1574,13 @@ export default function VehicleManagement() {
                 <div>
                   <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Select Driver</label>
                   <select
-                    value={formData.driver}
-                    onChange={(e) => setFormData({ ...formData, driver: e.target.value })}
+                    value={formData.assignedDriver || "Unassigned"}
+                    onChange={(e) => setFormData({ ...formData, assignedDriver: e.target.value })}
                     className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
                   >
-                    {MOCK_DRIVERS.map((d) => (
-                      <option key={d} value={d}>{d}</option>
+                    <option value="Unassigned">Unassigned</option>
+                    {drivers.map((d) => (
+                      <option key={d._id} value={d._id}>{d.fullName}</option>
                     ))}
                   </select>
                 </div>

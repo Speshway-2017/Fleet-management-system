@@ -4,12 +4,7 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import { Icon } from "@iconify/react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import {
-  mockDashboardStats,
-  mockVehicleStatus,
-  mockComplianceExpiry,
-  mockCostBreakdown,
-} from "@/data/mockManagerDashboard";
+import { managerApi } from "../api/managerApi";
 
 // Fix Leaflet marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -25,14 +20,56 @@ export default function ManagerDashboard() {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
-  const [vehicles, setVehicles] = useState([]);
 
-  // Load vehicles from localStorage
+  const [vehicles, setVehicles] = useState([]);
+  const [dbStats, setDbStats] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [fuelRecords, setFuelRecords] = useState([]);
+  const [maintenance, setMaintenance] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const normaliseVehicle = (v) => ({
+    ...v,
+    id:           v._id,
+    name:         v.vehicleName || `${v.brand} ${v.model}`,
+    plateNumber:  v.vehicleNumber || "",
+    driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
+      ? v.assignedDriver.fullName
+      : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
+    branch:       v.branch       || 'Pune',
+    status:       v.currentStatus || 'Available',
+  });
+
   useEffect(() => {
-    const saved = localStorage.getItem("fleet_vehicles");
-    if (saved) {
-      setVehicles(JSON.parse(saved));
-    }
+    const fetchAllData = async () => {
+      try {
+        setLoading(true);
+        const [dashRes, vehRes, docRes, fuelRes, maintRes] = await Promise.all([
+          managerApi.getDashboard(),
+          managerApi.getVehicles(),
+          managerApi.getDocuments(),
+          managerApi.getFuelRecords(),
+          managerApi.getMaintenance()
+        ]);
+        
+        const rawVeh = vehRes.data?.data || vehRes.data || [];
+        setVehicles(rawVeh.map(normaliseVehicle));
+        
+        const rawDash = dashRes.data?.data || dashRes.data || {};
+        setDbStats(rawDash);
+
+        const rawDocs = docRes.data?.data || docRes.data || [];
+        setDocuments(rawDocs);
+
+        setFuelRecords(fuelRes.data?.data || fuelRes.data || []);
+        setMaintenance(maintRes.data?.data || maintRes.data || []);
+      } catch (err) {
+        console.error("Failed to load dashboard data", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAllData();
   }, []);
 
   // Filter vehicles by zone
@@ -58,17 +95,19 @@ export default function ManagerDashboard() {
       case "Available":
         return "#22c55e"; // green
       case "On Trip":
+      case "Active":
         return "#B45A0A"; // orange
       case "Maintenance":
         return "#ef4444"; // red
       case "Idle":
+      case "Inactive":
         return "#6b7280"; // gray
       default:
         return "#6b7280";
     }
   };
 
-  // Get mock coordinates for vehicles
+  // Get coordinates for vehicles
   const getVehicleCoordinates = (branch, index) => {
     const locations = {
       "Pune": [18.5204, 73.8567],
@@ -84,9 +123,7 @@ export default function ManagerDashboard() {
     };
 
     const baseCoord = locations[branch] || [20.5937, 78.9629];
-
-    // Add slight variation to coordinates for visualization
-    const offset = (index % 5) * 0.05;
+    const offset = (index % 5) * 0.04;
     return [baseCoord[0] + offset, baseCoord[1] + offset];
   };
 
@@ -94,7 +131,6 @@ export default function ManagerDashboard() {
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // Initialize map if not already done
     if (!mapInstanceRef.current) {
       mapInstanceRef.current = L.map(mapRef.current).setView([20.5937, 78.9629], 5); // Center of India
 
@@ -111,7 +147,6 @@ export default function ManagerDashboard() {
     // Add markers for each vehicle
     filteredVehicles.forEach((vehicle, idx) => {
       const coordinates = getVehicleCoordinates(vehicle.branch, idx);
-
       const color = getMarkerColor(vehicle.status);
       const marker = L.circleMarker(coordinates, {
         radius: 8,
@@ -124,7 +159,7 @@ export default function ManagerDashboard() {
         .addTo(mapInstanceRef.current)
         .bindPopup(
           `<div class="font-bold text-sm">${vehicle.name}</div>
-           <div class="text-xs text-gray-600">${vehicle.plateNumber.replace(/-/g, ' ')}</div>
+           <div class="text-xs text-gray-600">${vehicle.plateNumber}</div>
            <div class="text-xs text-gray-600">Status: ${vehicle.status}</div>
            <div class="text-xs text-gray-600">Driver: ${vehicle.driver}</div>
            <div class="text-xs text-gray-600">Branch: ${vehicle.branch}</div>`
@@ -133,6 +168,59 @@ export default function ManagerDashboard() {
       markersRef.current.push(marker);
     });
   }, [filteredVehicles]);
+
+  const dashboardStats = [
+    {
+      label: "Total Vehicles",
+      value: dbStats?.totalVehicles ?? 0,
+      icon: "material-symbols:local-shipping-outline",
+      color: "bg-white",
+    },
+    {
+      label: "Active",
+      value: dbStats?.activeVehicles ?? 0,
+      icon: "material-symbols:bolt-outline",
+      color: "bg-white",
+    },
+    {
+      label: "Trips Today",
+      value: dbStats?.tripsToday ?? 0,
+      icon: "material-symbols:route-outline",
+      color: "bg-white",
+    },
+    {
+      label: "Under Repair",
+      value: dbStats?.underRepair ?? 0,
+      icon: "material-symbols:build-outline",
+      color: "bg-white",
+    },
+    {
+      label: "Drivers Available",
+      value: dbStats?.driversAvailable ?? 0,
+      icon: "material-symbols:person-outline",
+      color: "bg-white",
+    },
+    {
+      label: "Fuel Expense",
+      value: dbStats?.fuelExpense ?? "₹0",
+      icon: "material-symbols:local-gas-station-outline",
+      color: "bg-white",
+    },
+    {
+      label: "Total Earnings",
+      value: dbStats?.totalEarnings ?? "₹0",
+      icon: "material-symbols:payments-outline",
+      color: "bg-black",
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f4f7f6]">
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-[#B45A0A] border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full px-6 md:px-8 py-8 overflow-x-hidden">
@@ -157,7 +245,7 @@ export default function ManagerDashboard() {
         <div
           className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-7 gap-[12px] w-full box-border"
         >
-          {mockDashboardStats.map((stat, index) => (
+          {dashboardStats.map((stat, index) => (
             <div
               key={index}
               className={`rounded-2xl shadow-sm flex flex-col justify-between cursor-pointer group transition-all duration-300 hover:-translate-y-1.5 ${
@@ -168,8 +256,7 @@ export default function ManagerDashboard() {
               style={{
                 padding: '16px',
                 height: '120px',
-                boxSizing: 'border-box',
-                width: '100%'
+                boxSizing: 'border-box'
               }}
             >
               {/* Card Title at Top-Left */}
@@ -183,45 +270,34 @@ export default function ManagerDashboard() {
                 {stat.label}
               </p>
 
-              {/* Value with Icon at Bottom */}
-              <div
-                className="flex items-end justify-between"
-                style={{ marginTop: 'auto', gap: '8px' }}
-              >
-                <span
-                  className={`font-black font-poppins flex-1 ${stat.color === "bg-black"
-                      ? "text-white"
-                      : "text-gray-900"
+                {/* Value with Icon */}
+                <div className="flex items-end justify-between" style={{ marginTop: 'auto', gap: '8px' }}>
+                  <span
+                    className={`font-black font-poppins flex-1 ${stat.color === "bg-black" ? "text-white" : "text-gray-900"}`}
+                    style={{ fontSize: '20px', lineHeight: '1', minWidth: '0' }}
+                  >
+                    {stat.value}
+                  </span>
+                  <div
+                    className={`flex items-center justify-center flex-shrink-0 transition-transform duration-350 group-hover:scale-110 group-hover:rotate-3 ${
+                      stat.color === "bg-black" ? "text-gray-600 group-hover:text-[#C65D0E]" : "text-gray-400 group-hover:text-[#C65D0E]"
                     }`}
-                  style={{ fontSize: '22px', lineHeight: '1', minWidth: '0' }}
-                >
-                  {stat.value}
-                </span>
-                <div
-                  className={`flex items-center justify-center flex-shrink-0 transition-transform duration-350 group-hover:scale-110 group-hover:rotate-3 ${
-                    stat.color === "bg-black"
-                      ? "text-gray-600 group-hover:text-[#C65D0E]"
-                      : "text-gray-400 group-hover:text-[#C65D0E]"
-                  }`}
-                  style={{ width: '20px', height: '20px' }}
-                >
-                  <Icon
-                    icon={stat.icon}
-                    width="20"
-                    height="20"
-                  />
+                    style={{ width: '20px', height: '20px' }}
+                  >
+                    <Icon icon={stat.icon} width="20" height="20" />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+
       </div>
 
       {/* Map Section */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-8">
         <div className="p-4 flex items-center gap-4 border-b border-gray-200">
           <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-200">
-            <span className="w-3 h-3 bg-amber-700 rounded-full"></span>
+            <span className="w-3 h-3 bg-amber-700 rounded-full animate-ping"></span>
             <span className="text-sm font-medium text-gray-700">{filteredVehicles.length} Vehicles Online</span>
           </div>
           <select
@@ -236,13 +312,7 @@ export default function ManagerDashboard() {
             <option>West</option>
           </select>
         </div>
-        <div
-          ref={mapRef}
-          className="h-96 bg-gray-100 relative z-10"
-          style={{ width: "100%" }}
-        >
-          {/* Map will be rendered here by Leaflet */}
-        </div>
+        <div ref={mapRef} className="h-[400px] bg-gray-50 relative z-10" style={{ width: "100%" }} />
 
         {/* Map Legend */}
         <div className="p-4 bg-gray-50 border-t border-gray-200 flex items-center justify-center gap-6 text-xs font-medium flex-wrap">
@@ -260,7 +330,7 @@ export default function ManagerDashboard() {
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-gray-500"></div>
-            <span className="text-gray-600">Idle</span>
+            <span className="text-gray-600">Idle / Inactive</span>
           </div>
         </div>
       </div>
@@ -268,145 +338,201 @@ export default function ManagerDashboard() {
       {/* Bottom Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Vehicle Status */}
-        <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm p-6 flex flex-col">
-          <div className="flex items-center gap-2 mb-6 shrink-0">
-            <svg className="w-5 h-5 text-[#C65D0E]" fill="currentColor" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
-              <circle cx="12" cy="12" r="4" fill="currentColor" />
-            </svg>
-            <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Vehicle Status</h3>
-          </div>
+        {(() => {
+          const totalVehiclesCount = vehicles.length;
+          const activeVehiclesCount = vehicles.filter(v => v.status === "Active" || v.status === "On Trip").length;
+          const maintenanceVehiclesCount = vehicles.filter(v => v.status === "Maintenance").length;
+          const inactiveVehiclesCount = vehicles.filter(v => v.status === "Available" || v.status === "Idle").length;
 
-          <div className="flex-1 flex items-center justify-center py-6">
-            <div className="relative w-56 h-56">
-              <svg viewBox="0 0 120 120" className="w-full h-full transform -rotate-90">
-                {/* Active - Orange */}
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="45"
-                  fill="none"
-                  stroke="#C65D0E"
-                  strokeWidth="16"
-                  strokeDasharray={`${(380 / 450) * 282.7} 282.7`}
-                />
-                {/* Inactive - Light Gray */}
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="45"
-                  fill="none"
-                  stroke="#E5E7EB"
-                  strokeWidth="16"
-                  strokeDasharray={`${(55 / 450) * 282.7} 282.7`}
-                  strokeDashoffset={`${(380 / 450) * 282.7}`}
-                />
-                {/* Maintenance - Red */}
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="45"
-                  fill="none"
-                  stroke="#DC2626"
-                  strokeWidth="16"
-                  strokeDasharray={`${(15 / 450) * 282.7} 282.7`}
-                  strokeDashoffset={`${((380 + 55) / 450) * 282.7}`}
-                />
-              </svg>
+          const activePct = totalVehiclesCount > 0 ? (activeVehiclesCount / totalVehiclesCount) : 0.8;
+          const inactivePct = totalVehiclesCount > 0 ? (inactiveVehiclesCount / totalVehiclesCount) : 0.15;
+          const maintenancePct = totalVehiclesCount > 0 ? (maintenanceVehiclesCount / totalVehiclesCount) : 0.05;
 
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-4xl font-black text-[#1B2430] font-poppins">450</span>
-                <span className="text-[11px] text-[#6B7280] font-bold uppercase tracking-widest mt-2">Total</span>
+          const activeStroke = activePct * 282.7;
+          const inactiveStroke = inactivePct * 282.7;
+          const maintenanceStroke = maintenancePct * 282.7;
+
+          const inactiveOffset = activeStroke;
+          const maintenanceOffset = activeStroke + inactiveStroke;
+
+          return (
+            <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm p-6 flex flex-col">
+              <div className="flex items-center gap-2 mb-6 shrink-0">
+                <svg className="w-5 h-5 text-[#C65D0E]" fill="currentColor" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
+                  <circle cx="12" cy="12" r="4" fill="currentColor" />
+                </svg>
+                <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Vehicle Status</h3>
+              </div>
+
+              <div className="flex-1 flex items-center justify-center py-6">
+                <div className="relative w-56 h-56">
+                  <svg viewBox="0 0 120 120" className="w-full h-full transform -rotate-90">
+                    {/* Active - Orange */}
+                    <circle
+                      cx="60"
+                      cy="60"
+                      r="45"
+                      fill="none"
+                      stroke="#C65D0E"
+                      strokeWidth="16"
+                      strokeDasharray={`${activeStroke} 282.7`}
+                    />
+                    {/* Inactive - Light Gray */}
+                    <circle
+                      cx="60"
+                      cy="60"
+                      r="45"
+                      fill="none"
+                      stroke="#E5E7EB"
+                      strokeWidth="16"
+                      strokeDasharray={`${inactiveStroke} 282.7`}
+                      strokeDashoffset={`${-inactiveOffset}`}
+                    />
+                    {/* Maintenance - Red */}
+                    <circle
+                      cx="60"
+                      cy="60"
+                      r="45"
+                      fill="none"
+                      stroke="#DC2626"
+                      strokeWidth="16"
+                      strokeDasharray={`${maintenanceStroke} 282.7`}
+                      strokeDashoffset={`${-maintenanceOffset}`}
+                    />
+                  </svg>
+
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-4xl font-black text-[#1B2430] font-poppins">{totalVehiclesCount}</span>
+                    <span className="text-[11px] text-[#6B7280] font-bold uppercase tracking-widest mt-2">Total</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div className="mt-4 flex items-center justify-center gap-6 text-xs font-medium">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#C65D0E' }}></div>
+                  <span className="text-[#6B7280]">Active ({activeVehiclesCount})</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#DC2626' }}></div>
+                  <span className="text-[#6B7280]">Maintenance ({maintenanceVehiclesCount})</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#E5E7EB' }}></div>
+                  <span className="text-[#6B7280]">Inactive ({inactiveVehiclesCount})</span>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Legend */}
-          <div className="mt-4 flex items-center justify-center gap-6 text-xs font-medium">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#C65D0E' }}></div>
-              <span className="text-[#6B7280]">Active</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#DC2626' }}></div>
-              <span className="text-[#6B7280]">Maintenance</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#E5E7EB' }}></div>
-              <span className="text-[#6B7280]">Inactive</span>
-            </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Compliance Expiry */}
-        <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm overflow-hidden flex flex-col">
-          <div className="p-6 flex items-center justify-between border-b border-[#E5E7EB] shrink-0">
-            <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Compliance Expiry</h3>
-            <button
-              onClick={() => navigate("/manager/documents")}
-              className="text-[#C65D0E] text-xs font-bold hover:underline font-poppins cursor-pointer"
-            >
-              View All
-            </button>
-          </div>
+        {(() => {
+          const complianceAlerts = documents
+            .filter(d => d.status === "Expired" || d.status === "Expiring Soon")
+            .map(d => ({
+              id: d._id || d.id,
+              vehicle: d.vehicle || "All Fleet",
+              document: d.title || d.name,
+              status: d.status
+            }));
 
-          <div className="flex-1 overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left text-xs font-nunito whitespace-nowrap">
-              <thead className="bg-[#F5F7FA]">
-                <tr>
-                  <th className="px-4 py-3 text-[#6B7280] font-bold uppercase tracking-wider text-[10px]">Vehicle</th>
-                  <th className="px-4 py-3 text-[#6B7280] font-bold uppercase tracking-wider text-[10px]">Document</th>
-                  <th className="px-4 py-3 text-[#6B7280] font-bold uppercase tracking-wider text-[10px]">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockComplianceExpiry.slice(0, 3).map((row) => (
-                  <tr key={row.id} className="hover:bg-[#F9FAFB] transition-colors border-b border-[#F0F1F3]">
-                    <td className="px-4 py-4 font-poppins font-bold text-[#1B2430] text-[13px]">{row.vehicle.replace(/-/g, ' ')}</td>
-                    <td className="px-4 py-4 text-[#6B7280] font-medium text-[13px]">{row.document}</td>
-                    <td className="px-4 py-4">
-                      <span className={`inline-block px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider font-poppins whitespace-nowrap ${row.status === "Expired"
-                          ? "bg-red-600 text-white shadow-md shadow-red-200"
-                          : "bg-amber-500 text-white shadow-md shadow-amber-200"
-                        }`}>
-                        {row.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+          const displayedCompliance = complianceAlerts.slice(0, 3);
+
+          return (
+            <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm overflow-hidden flex flex-col">
+              <div className="p-6 flex items-center justify-between border-b border-[#E5E7EB] shrink-0">
+                <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Compliance Expiry</h3>
+                <button
+                  onClick={() => navigate("/manager/documents")}
+                  className="text-[#C65D0E] text-xs font-bold hover:underline font-poppins cursor-pointer"
+                >
+                  View All
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left text-xs font-nunito whitespace-nowrap">
+                  <thead className="bg-[#F5F7FA]">
+                    <tr>
+                      <th className="px-4 py-3 text-[#6B7280] font-bold uppercase tracking-wider text-[10px]">Vehicle</th>
+                      <th className="px-4 py-3 text-[#6B7280] font-bold uppercase tracking-wider text-[10px]">Document</th>
+                      <th className="px-4 py-3 text-[#6B7280] font-bold uppercase tracking-wider text-[10px]">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedCompliance.map((row, idx) => (
+                      <tr key={row.id || idx} className="hover:bg-[#F9FAFB] transition-colors border-b border-[#F0F1F3]">
+                        <td className="px-4 py-4 font-poppins font-bold text-[#1B2430] text-[13px]">{row.vehicle.replace(/-/g, ' ')}</td>
+                        <td className="px-4 py-4 text-[#6B7280] font-medium text-[13px]">{row.document}</td>
+                        <td className="px-4 py-4">
+                          <span className={`inline-block px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider font-poppins whitespace-nowrap ${row.status === "Expired"
+                              ? "bg-red-600 text-white shadow-md shadow-red-200"
+                              : "bg-amber-500 text-white shadow-md shadow-amber-200"
+                            }`}>
+                            {row.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {displayedCompliance.length === 0 && (
+                      <tr>
+                        <td colSpan="3" className="px-4 py-8 text-center text-[#6B7280] font-medium">
+                          All compliance documents are active & valid.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Cost Breakdown */}
-        <div className="bg-[#0D0D0D] rounded-2xl border border-[#1F1F1F] shadow-sm p-6 flex flex-col">
-          <div className="flex items-center gap-2 mb-6 shrink-0">
-            <svg className="w-5 h-5 text-[#C65D0E]" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z" />
-            </svg>
-            <h3 className="font-poppins font-bold text-white text-[16px]">Cost Breakdown</h3>
-          </div>
+        {(() => {
+          const fuelSum = fuelRecords.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+          const maintSum = maintenance.reduce((sum, m) => sum + (Number(m.cost) || 0), 0);
+          const tollSum = vehicles.reduce((sum, v) => sum + (Number(v.fastagBalance) || 0), 0);
+          const totalCost = fuelSum + maintSum + tollSum;
 
-          <div className="flex-1 space-y-4">
-            {mockCostBreakdown.map((cost, index) => (
-              <div key={index}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-[#9CA3AF]">{cost.category}</span>
-                  <span className="text-sm font-bold text-white">{cost.amount}</span>
-                </div>
-                <div className="w-full h-2 bg-[#262626] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-[#C65D0E] to-[#D97706] rounded-full transition-all duration-1000"
-                    style={{ width: `${cost.percentage}%` }}
-                  />
-                </div>
+          const costBreakdown = [
+            { category: "Fuel Expenses", amount: `₹${fuelSum.toLocaleString("en-IN")}`, percentage: totalCost > 0 ? Math.round((fuelSum / totalCost) * 100) : 0 },
+            { category: "Maintenance", amount: `₹${maintSum.toLocaleString("en-IN")}`, percentage: totalCost > 0 ? Math.round((maintSum / totalCost) * 100) : 0 },
+            { category: "Toll & Fastag", amount: `₹${tollSum.toLocaleString("en-IN")}`, percentage: totalCost > 0 ? Math.round((tollSum / totalCost) * 100) : 0 }
+          ];
+
+          return (
+            <div className="bg-[#0D0D0D] rounded-2xl border border-[#1F1F1F] shadow-sm p-6 flex flex-col">
+              <div className="flex items-center gap-2 mb-6 shrink-0">
+                <svg className="w-5 h-5 text-[#C65D0E]" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z" />
+                </svg>
+                <h3 className="font-poppins font-bold text-white text-[16px]">Cost Breakdown</h3>
               </div>
-            ))}
-          </div>
-        </div>
+
+              <div className="flex-1 space-y-4">
+                {costBreakdown.map((cost, index) => (
+                  <div key={index}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-[#9CA3AF]">{cost.category}</span>
+                      <span className="text-sm font-bold text-white">{cost.amount}</span>
+                    </div>
+                    <div className="w-full h-2 bg-[#262626] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-[#C65D0E] to-[#D97706] rounded-full transition-all duration-1000"
+                        style={{ width: `${cost.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
 }
-

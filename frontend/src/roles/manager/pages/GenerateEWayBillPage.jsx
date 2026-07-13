@@ -1,0 +1,490 @@
+import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { CheckCircle2, Download, RefreshCw, FileText } from "lucide-react";
+import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
+
+export default function GenerateEWayBillPage() {
+  const navigate = useNavigate();
+  const canvasRef = useRef(null);
+
+  // Form states
+  const [vehicleNo, setVehicleNo] = useState("");
+  const [transporterName, setTransporterName] = useState("");
+  const [fromLoc, setFromLoc] = useState("");
+  const [toLoc, setToLoc] = useState("");
+  const [invoiceNo, setInvoiceNo] = useState("");
+  const [goodsValue, setGoodsValue] = useState("");
+
+  const [generated, setGenerated] = useState(false);
+  const [ewbNumber, setEwbNumber] = useState("");
+  const [genDate, setGenDate] = useState("");
+  const [validityDays, setValidityDays] = useState(1);
+
+  // Suggestions state
+  const [allVehicles, setAllVehicles] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    const loadVehicles = async () => {
+      try {
+        const res = await managerApi.getVehicles();
+        const data = res.data?.data || res.data || [];
+        setAllVehicles(data);
+      } catch (err) {
+        console.error("Failed to fetch vehicles for suggestions", err);
+      }
+    };
+    loadVehicles();
+  }, []);
+
+  const suggestions = allVehicles.filter(v => {
+    const plate = v.vehicleNumber || "";
+    return plate.toLowerCase().includes(vehicleNo.toLowerCase()) && vehicleNo.trim() !== "";
+  });
+
+  const handleGenerate = async (e) => {
+    e.preventDefault();
+    if (!vehicleNo || !transporterName || !fromLoc || !toLoc || !invoiceNo || !goodsValue) {
+      toast.error("Please fill in all details");
+      return;
+    }
+
+    // Generate random E-Way Bill Number
+    const ewbNum = `${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)}`;
+
+    try {
+      const res = await managerApi.createEWayBill({
+        vehicleNo,
+        transporterName,
+        fromLoc,
+        toLoc,
+        invoiceNo,
+        goodsValue,
+        ewayBillNo: ewbNum,
+        validityDays
+      });
+
+      const billData = res.data?.data || res.data;
+      
+      setEwbNumber(billData.ewayBillNo);
+      
+      const dateStr = new Date(billData.createdAt).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      }) + " " + new Date(billData.createdAt).toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+
+      setGenDate(dateStr);
+      setGenerated(true);
+      toast.success("E-Way Bill generated and saved successfully!");
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || "Failed to generate and save E-Way Bill";
+      toast.error(errorMsg);
+      console.error(err);
+    }
+  };
+
+  const handleDownloadImage = () => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const url = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `EWayBill_${ewbNumber.replace(/\s+/g, "_")}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("E-Way Bill image downloaded!");
+  };
+
+  const handleReset = () => {
+    setVehicleNo("");
+    setTransporterName("");
+    setFromLoc("");
+    setToLoc("");
+    setInvoiceNo("");
+    setGoodsValue("");
+    setGenerated(false);
+  };
+
+  // Canvas drawing effect
+  useEffect(() => {
+    if (!generated || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+
+    // Clear canvas
+    ctx.clearRect(0, 0, 800, 1000);
+
+    // Background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 800, 1000);
+
+    // Thick outer border
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = 5;
+    ctx.strokeRect(20, 20, 760, 960);
+
+    // Double thin header border
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(25, 25, 750, 950);
+
+    // Header Content
+    ctx.fillStyle = "#1e293b";
+    ctx.font = "bold 26px Arial, Helvetica, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("GST E-WAY BILL SYSTEM", 400, 75);
+    ctx.font = "14px Arial, Helvetica, sans-serif";
+    ctx.fillText("GOVERNMENT OF INDIA", 400, 100);
+
+    // Horizontal divider
+    ctx.strokeStyle = "#475569";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(25, 120);
+    ctx.lineTo(775, 120);
+    ctx.stroke();
+
+    // Bill Number and Date Details
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 15px Arial, Helvetica, sans-serif";
+    ctx.fillText(`E-WAY BILL NO:  ${ewbNumber}`, 50, 160);
+    ctx.fillText(`GENERATION DATE: ${genDate}`, 50, 185);
+    ctx.font = "13px Arial, Helvetica, sans-serif";
+    ctx.fillStyle = "#475569";
+    ctx.fillText(`GENERATED BY:   GSTIN-27AAAAA1111A1Z1 (Alex Thompson)`, 50, 210);
+
+    // Barcode mock
+    ctx.fillStyle = "#000000";
+    for (let i = 0; i < 48; i++) {
+      let width = i % 3 === 0 ? 5 : i % 2 === 0 ? 2 : 3;
+      ctx.fillRect(480 + i * 5, 140, width, 55);
+    }
+    ctx.font = "10px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(ewbNumber.replace(/\s+/g, ""), 600, 210);
+
+    // Horizontal divider
+    ctx.strokeStyle = "#94a3b8";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(25, 230);
+    ctx.lineTo(775, 230);
+    ctx.stroke();
+
+    // PART-A Block
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(50, 250, 700, 30);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 13px Arial, Helvetica, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("PART-A (Document & Address Details)", 65, 270);
+
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "14px Arial, Helvetica, sans-serif";
+    
+    // Part A contents
+    const partALabels = [
+      `1. GSTIN of Supplier:    27BBBBB2222B2Z2 (Fleet Corp Ltd)`,
+      `2. GSTIN of Recipient:   29CCCCC3333C3Z3 (Client Logistics Ltd)`,
+      `3. Place of Dispatch:    ${fromLoc}`,
+      `4. Place of Delivery:    ${toLoc}`,
+      `5. Document No & Date:   ${invoiceNo} / ${genDate.split(" ")[0]}`,
+      `6. Value of Goods:       ${goodsValue}`,
+      `7. HSN Code / Category:  8708 / Automobile Spares`
+    ];
+
+    partALabels.forEach((label, idx) => {
+      ctx.fillText(label, 70, 315 + idx * 32);
+    });
+
+    // PART-B Block
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(50, 560, 700, 30);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 13px Arial, Helvetica, sans-serif";
+    ctx.fillText("PART-B (Vehicle & Transporter Details)", 65, 580);
+
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "14px Arial, Helvetica, sans-serif";
+    
+    // Part B contents
+    const partBLabels = [
+      `1. Transporter Name:     ${transporterName}`,
+      `2. Vehicle Number:       ${vehicleNo.toUpperCase()}`,
+      `3. Mode of Transport:    Road`,
+      `4. Multi-Vehicle Option: No (Direct Transit)`
+    ];
+
+    partBLabels.forEach((label, idx) => {
+      ctx.fillText(label, 70, 625 + idx * 32);
+    });
+
+    // Outer box for Parts
+    ctx.strokeStyle = "#cbd5e1";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(50, 250, 700, 510);
+
+    // Official verification seal
+    ctx.strokeStyle = "#059669";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(530, 800, 200, 90);
+    
+    // Seal texts
+    ctx.fillStyle = "#059669";
+    ctx.font = "bold 13px Arial, Helvetica, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("GST DEPARTMENT", 630, 825);
+    ctx.font = "bold 12px Arial, Helvetica, sans-serif";
+    ctx.fillText("VERIFIED & APPROVED", 630, 850);
+    ctx.font = "9px Arial, Helvetica, sans-serif";
+    ctx.fillText("E-WAY BILL COMPLIANCE", 630, 875);
+
+    // QR Code Mock (Draw nested boxes/patterns)
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(70, 800, 100, 100);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(78, 808, 84, 84);
+    ctx.fillStyle = "#1e293b";
+    // standard square positioning marks in QR codes
+    ctx.fillRect(84, 814, 25, 25);
+    ctx.fillRect(129, 814, 25, 25);
+    ctx.fillRect(84, 859, 25, 25);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(89, 819, 15, 15);
+    ctx.fillRect(134, 819, 15, 15);
+    ctx.fillRect(89, 864, 15, 15);
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(94, 824, 5, 5);
+    ctx.fillRect(139, 824, 5, 5);
+    ctx.fillRect(94, 869, 5, 5);
+    // some random noise dots
+    ctx.fillRect(115, 825, 6, 6);
+    ctx.fillRect(125, 845, 8, 4);
+    ctx.fillRect(110, 860, 4, 12);
+    ctx.fillRect(135, 860, 12, 12);
+
+    // Footer note
+    ctx.fillStyle = "#64748b";
+    ctx.font = "12px Arial, Helvetica, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("This is an electronically generated compliance receipt. No physical signature is required.", 400, 940);
+    ctx.fillText("Validity subject to standard transit authority checks on the GST portal.", 400, 960);
+  }, [generated, ewbNumber, genDate, vehicleNo, transporterName, fromLoc, toLoc, invoiceNo, goodsValue]);
+
+  return (
+    <div className="w-full px-6 md:px-8 py-8 min-h-full bg-gray-50 font-poppins">
+      <Breadcrumb />
+      {/* Page Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <div>
+          <h1 className="font-poppins font-bold text-2xl text-[#1E293B] tracking-tight">
+            Generate E-Way Bill
+          </h1>
+          <p className="text-sm text-[#64748B] mt-0.5 font-nunito">
+            Create compliance bills instantly and render in high-quality image format
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Side: Form */}
+        <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-amber-700" />
+            Enter Details
+          </h2>
+
+          <form onSubmit={handleGenerate} className="space-y-4">
+            <div className="space-y-1.5 relative">
+              <label className="text-xs font-bold text-gray-700 block uppercase tracking-wider">Vehicle Number *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. MH 12 QX 4582"
+                value={vehicleNo}
+                onChange={(e) => {
+                  setVehicleNo(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => {
+                  setTimeout(() => setShowSuggestions(false), 200);
+                }}
+                disabled={generated}
+                className="w-full p-3 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 bg-white font-nunito"
+              />
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-40 overflow-y-auto z-50 divide-y divide-gray-100">
+                  {suggestions.map(v => (
+                    <div
+                      key={v._id}
+                      onClick={() => {
+                        setVehicleNo(v.vehicleNumber);
+                        setShowSuggestions(false);
+                      }}
+                      className="p-3 text-xs hover:bg-amber-50/30 cursor-pointer transition-colors font-nunito flex justify-between items-center"
+                    >
+                      <span className="font-bold text-gray-800">{v.vehicleNumber}</span>
+                      <span className="text-gray-400 text-[10px]">{v.brand} {v.model}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-700 block uppercase tracking-wider">Transporter Name *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Gati KWE Logistics"
+                value={transporterName}
+                onChange={(e) => setTransporterName(e.target.value)}
+                disabled={generated}
+                className="w-full p-3 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 bg-white font-nunito"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700 block uppercase tracking-wider">From Location *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Mumbai"
+                  value={fromLoc}
+                  onChange={(e) => setFromLoc(e.target.value)}
+                  disabled={generated}
+                  className="w-full p-3 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 bg-white font-nunito"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700 block uppercase tracking-wider">To Location *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Delhi"
+                  value={toLoc}
+                  onChange={(e) => setToLoc(e.target.value)}
+                  disabled={generated}
+                  className="w-full p-3 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 bg-white font-nunito"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700 block uppercase tracking-wider">Invoice No *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. #INV-00421"
+                  value={invoiceNo}
+                  onChange={(e) => setInvoiceNo(e.target.value)}
+                  disabled={generated}
+                  className="w-full p-3 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 bg-white font-nunito"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700 block uppercase tracking-wider">Goods Value *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. ₹5,40,000"
+                  value={goodsValue}
+                  onChange={(e) => setGoodsValue(e.target.value)}
+                  disabled={generated}
+                  className="w-full p-3 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 bg-white font-nunito"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-700 block uppercase tracking-wider">Validity Period *</label>
+              <select
+                value={validityDays}
+                onChange={(e) => setValidityDays(Number(e.target.value))}
+                disabled={generated}
+                className="w-full p-3 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 bg-white font-nunito"
+              >
+                <option value={1}>1 Day</option>
+                <option value={2}>2 Days</option>
+                <option value={3}>3 Days</option>
+                <option value={5}>5 Days</option>
+                <option value={7}>7 Days</option>
+                <option value={10}>10 Days</option>
+                <option value={15}>15 Days</option>
+              </select>
+            </div>
+
+            {!generated ? (
+              <button
+                type="submit"
+                className="w-full py-3 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-bold tracking-wider uppercase transition-colors shadow-md shadow-amber-700/10 cursor-pointer mt-4"
+              >
+                Generate E-Way Bill (Image Form)
+              </button>
+            ) : (
+              <div className="flex gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="flex-1 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-colors hover:bg-gray-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadImage}
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-emerald-600/10"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Image
+                </button>
+              </div>
+            )}
+          </form>
+        </div>
+
+        {/* Right Side: E-Way Bill Preview/Canvas */}
+        <div className="lg:col-span-7 flex flex-col items-center justify-center">
+          {!generated ? (
+            <div className="w-full max-w-lg aspect-[4/5] bg-white border border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center p-8 text-center text-gray-400 select-none shadow-sm">
+              <div className="w-16 h-16 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center mb-4">
+                <FileText className="w-8 h-8" />
+              </div>
+              <h4 className="font-semibold text-[#1E293B] text-base">E-Way Bill Preview</h4>
+              <p className="text-xs text-[#64748B] mt-2 max-w-xs leading-relaxed">
+                Fill out the form details and click generate to view the official GST compliance bill receipt drawn on the image canvas
+              </p>
+            </div>
+          ) : (
+            <div className="w-full flex flex-col items-center gap-4 bg-slate-900/5 p-6 rounded-3xl border border-gray-200 shadow-inner">
+              <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold select-none">
+                <CheckCircle2 className="w-4 h-4" />
+                IMAGE CANVAS ACTIVE
+              </div>
+              <div className="w-full overflow-auto max-h-[700px] border border-gray-300 rounded-2xl shadow-xl no-scrollbar">
+                <canvas
+                  ref={canvasRef}
+                  width={800}
+                  height={1000}
+                  className="w-full h-auto block select-none bg-white"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

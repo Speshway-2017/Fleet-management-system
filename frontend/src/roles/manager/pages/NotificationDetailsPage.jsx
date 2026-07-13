@@ -5,7 +5,9 @@ import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
 import L from "leaflet";
 import DriverChatDrawer from "@/components/common/DriverChatDrawer";
-import { mockNotifications } from "@/data/mockNotifications";
+import DispatchWarningModal from "@/components/common/DispatchWarningModal";
+import ContactDriverModal from "@/components/common/ContactDriverModal";
+import { managerApi } from "../api/managerApi";
 
 const getIconColors = (type) => {
   switch (type) {
@@ -38,14 +40,38 @@ export default function NotificationDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [isChatOpen, setIsChatOpen] = useState(false);
-  
-  const notification = mockNotifications.find(n => n.id === parseInt(id)) || mockNotifications[0];
+  const [showDispatchWarningModal, setShowDispatchWarningModal] = useState(false);
+  const [showContactDriverModal, setShowContactDriverModal] = useState(false);
+  const [notification, setNotification] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
 
   useEffect(() => {
-    if (!mapRef.current) return;
+    const fetchNotification = async () => {
+      try {
+        setLoading(true);
+        const res = await managerApi.getNotifications();
+        const list = res.data?.data || res.data || [];
+        const found = list.find(n => n._id === id || n.id === id);
+        if (found) {
+          setNotification(found);
+        } else {
+          toast.error("Notification not found");
+          navigate("/manager/notifications");
+        }
+      } catch (err) {
+        console.error("Failed to load details", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotification();
+  }, [id, navigate]);
+
+  useEffect(() => {
+    if (loading || !notification || !mapRef.current) return;
 
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
@@ -74,7 +100,7 @@ export default function NotificationDetailsPage() {
       iconAnchor: [16, 16]
     });
 
-    L.marker(coords, { icon: pinIcon }).bindPopup(`<strong>Violation Location</strong><br/>${notification.locationName}`).addTo(map);
+    L.marker(coords, { icon: pinIcon }).bindPopup(`<strong>Violation Location</strong><br/>${notification.locationName || 'Location'}`).addTo(map);
 
     mapInstanceRef.current = map;
 
@@ -84,67 +110,76 @@ export default function NotificationDetailsPage() {
         mapInstanceRef.current = null;
       }
     };
-  }, [id]);
+  }, [id, loading, notification]);
 
   const handleBack = () => {
     navigate("/manager/notifications");
   };
 
   const handleAction = (action) => {
-    if (action.actionType === "navigate" && action.route) {
-      navigate(action.route);
+    const actType = typeof action === 'string' ? action : action?.actionType;
+    if (actType === "Dispatch Warning") {
+      setShowDispatchWarningModal(true);
+    } else if (actType === "Call Driver") {
+      setShowContactDriverModal(true);
+    } else if (actType === "Track Live") {
+      navigate("/manager/map");
+    } else if (actType === "View Analytics") {
+      navigate("/manager/analytics");
+    } else if (actType === "Schedule Now") {
+      navigate("/manager/maintenance/schedule", {
+        state: {
+          vehicleNumber: notification.vehicle,
+          maintenanceType: "Brake Check",
+          dueMileage: "150 miles"
+        }
+      });
+    } else if (actType === "Download PDF") {
+      toast.success(`Downloading PDF for ${notification.title}...`);
     } else {
-      toast.success(`${action.label} action triggered!`);
+      toast.success(`${actType || 'Action'} triggered!`);
     }
   };
 
-  // Not found guard
-  if (!notification) {
+  if (loading) {
     return (
-      <div className="p-8">
-        <div className="flex items-center gap-2 mb-8">
-          <button onClick={handleBack} className="p-2 hover:bg-gray-100 rounded-lg">
-            <Icon icon="mdi:arrow-left" className="w-6 h-6 text-gray-600" />
-          </button>
-          <h1 className="text-2xl font-bold text-gray-800">Notification Details</h1>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-200 p-12 shadow-sm text-center">
-          <Icon icon="mdi:bell-off" className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg font-medium">Notification not found.</p>
-          <button
-            onClick={handleBack}
-            className="mt-6 px-6 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors"
-          >
-            Back to Notifications
-          </button>
-        </div>
+      <div className="p-6 lg:p-8 flex items-center justify-center min-h-[300px]">
+        <Icon icon="mdi:loading" className="w-8 h-8 animate-spin text-[#B45A0A]" />
       </div>
     );
   }
 
-  const iconColors = getIconColors(notification.type);
-  const iconName = getIconName(notification.type);
+  if (!notification) return null;
+
   const locationLabel = getLocationLabel(notification.type);
 
   return (
-    <div className="p-6 lg:p-8">
+    <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto font-nunito">
       <Breadcrumb />
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      
+      {/* Top Header */}
+      <div className="flex items-center gap-4 border-b border-gray-100 pb-4">
+        <button
+          onClick={handleBack}
+          className="p-2 border border-gray-250 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer text-gray-700 bg-white"
+        >
+          <Icon icon="mdi:arrow-left" className="w-5 h-5" />
+        </button>
         <div>
-          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Notification Details</h1>
+          <h1 className="text-xl font-poppins font-black text-gray-900 leading-none">Notification Details</h1>
+          <p className="text-xs font-semibold text-gray-400 mt-1.5 font-poppins">ID: {notification._id || notification.id}</p>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Left Column */}
         <div className="flex-1 space-y-6">
-          {/* Main Card */}
+          {/* Main Details Card */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-            <div className="flex items-start justify-between mb-6 pb-6 border-b border-gray-200">
-              <div className="flex items-start gap-4">
-                <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${notification.bgClass}`}>
-                  <Icon icon={notification.iconName} className="w-8 h-8" />
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex gap-4">
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${getIconColors(notification.type)}`}>
+                  <Icon icon={getIconName(notification.type)} className="w-8 h-8" />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-gray-800 mb-2">{notification.title}</h2>
@@ -155,17 +190,9 @@ export default function NotificationDetailsPage() {
                     }`}>
                       {notification.priority} Priority
                     </span>
-                    <span className="text-sm text-gray-500">{notification.time}</span>
+                    <span className="text-sm text-gray-500">{notification.time || "Just now"}</span>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
-                  <Icon icon="mdi:email-outline" className="w-5 h-5" />
-                </button>
-                <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
-                  <Icon icon="mdi:archive-outline" className="w-5 h-5" />
-                </button>
               </div>
             </div>
 
@@ -178,37 +205,41 @@ export default function NotificationDetailsPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              {notification.stats.map((stat, i) => (
-                <div key={i} className="p-4 bg-blue-50 rounded-xl text-center">
-                  <p className="text-xs text-gray-500 uppercase mb-1">{stat.label}</p>
-                  <p className={`text-xl font-extrabold ${stat.isCritical ? 'text-red-600' : 'text-gray-700'}`}>{stat.value}</p>
-                </div>
-              ))}
-            </div>
+            {notification.stats && notification.stats.length > 0 && (
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                {notification.stats.map((stat, i) => (
+                  <div key={i} className="p-4 bg-blue-50 rounded-xl text-center">
+                    <p className="text-xs text-gray-500 uppercase mb-1">{stat.label}</p>
+                    <p className={`text-xl font-extrabold ${stat.isCritical ? 'text-red-600' : 'text-gray-700'}`}>{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Actions */}
-            <div className="flex flex-wrap gap-3">
-              {notification.actions.map((act, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleAction(act.actionType)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all active:scale-95 cursor-pointer ${
-                    act.bg === 'bg-white'
-                      ? `${act.bg} ${act.text} border ${act.border} hover:bg-gray-50`
-                      : `${act.bg} text-white ${act.hover || 'hover:bg-slate-800'}`
-                  }`}
-                >
-                  {act.actionType === "Call Driver" && <Icon icon="mdi:phone" className="w-5 h-5" />}
-                  {act.actionType === "Track Live" && <Icon icon="mdi:map-marker-radius" className="w-5 h-5" />}
-                  {act.actionType === "Dispatch Warning" && <Icon icon="mdi:alert-outline" className="w-5 h-5" />}
-                  {act.actionType === "View Analytics" && <Icon icon="mdi:chart-line" className="w-5 h-5" />}
-                  {act.actionType === "Schedule Now" && <Icon icon="mdi:calendar-clock" className="w-5 h-5" />}
-                  {act.actionType === "Download PDF" && <Icon icon="mdi:download" className="w-5 h-5" />}
-                  {act.label}
-                </button>
-              ))}
-            </div>
+            {notification.actions && notification.actions.length > 0 && (
+              <div className="flex flex-wrap gap-3">
+                {notification.actions.map((act, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleAction(act.actionType)}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all active:scale-95 cursor-pointer ${
+                      act.bg === 'bg-white'
+                        ? `${act.bg} ${act.text} border ${act.border} hover:bg-gray-50`
+                        : `${act.bg} text-white ${act.hover || 'hover:bg-slate-800'}`
+                    }`}
+                  >
+                    {act.actionType === "Call Driver" && <Icon icon="mdi:phone" className="w-5 h-5" />}
+                    {act.actionType === "Track Live" && <Icon icon="mdi:map-marker-radius" className="w-5 h-5" />}
+                    {act.actionType === "Dispatch Warning" && <Icon icon="mdi:alert-outline" className="w-5 h-5" />}
+                    {act.actionType === "View Analytics" && <Icon icon="mdi:chart-line" className="w-5 h-5" />}
+                    {act.actionType === "Schedule Now" && <Icon icon="mdi:calendar-clock" className="w-5 h-5" />}
+                    {act.actionType === "Download PDF" && <Icon icon="mdi:download" className="w-5 h-5" />}
+                    {act.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Location */}
@@ -236,7 +267,7 @@ export default function NotificationDetailsPage() {
                   <Icon icon="mdi:minus" className="w-5 h-5 text-gray-700" />
                 </button>
                 <button
-                  onClick={() => mapInstanceRef.current?.setView(notification.coords, 12)}
+                  onClick={() => mapInstanceRef.current?.setView(coords, 12)}
                   className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-pointer"
                 >
                   <Icon icon="mdi:target-variant" className="w-5 h-5 text-gray-700" />
@@ -249,44 +280,44 @@ export default function NotificationDetailsPage() {
         {/* Right Column */}
         <div className="lg:w-80 space-y-6">
           {/* Vehicle Details */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-800">Vehicle Details</h3>
-              <button className="text-xs font-medium text-amber-700 hover:underline">Full Profile</button>
-            </div>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <Icon icon="mdi:truck" className="w-8 h-8 text-gray-400" />
+          {notification.vehicle && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <h3 className="font-semibold text-gray-800 mb-4">Vehicle Details</h3>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <Icon icon="mdi:truck" className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800">{notification.vehicle}</p>
+                    <p className="text-xs text-gray-500">{notification.vehicleModel || 'No Model'}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-gray-800">{notification.vehicle}</p>
-                  <p className="text-xs text-gray-500">{notification.vehicleModel}</p>
-                </div>
+                {notification.meta && (
+                  <div className="pt-3 border-t border-gray-200">
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-xs text-gray-500">Total Mileage</span>
+                      <span className="text-xs font-medium text-gray-800">{notification.meta?.totalMileage || "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-xs text-gray-500">Last Service</span>
+                      <span className="text-xs font-medium text-gray-800">{notification.meta?.lastService || "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-xs text-gray-500">Maintenance Health</span>
+                      <span className="text-xs font-medium text-amber-700">{notification.meta?.maintenanceHealth || "—"}</span>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="pt-3 border-t border-gray-200">
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-xs text-gray-500">Total Mileage</span>
-                  <span className="text-xs font-medium text-gray-800">{notification.meta.totalMileage || "—"}</span>
-                </div>
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-xs text-gray-500">Last Service</span>
-                  <span className="text-xs font-medium text-gray-800">{notification.meta.lastService || "—"}</span>
-                </div>
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-xs text-gray-500">Maintenance Health</span>
-                  <span className="text-xs font-medium text-amber-700">{notification.meta.maintenanceHealth || "—"}</span>
-                </div>
-              </div>
             </div>
-          </div>
+          )}
 
           {/* Driver Details */}
           {notification.driver && (
             <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-800">Driver Details</h3>
-                <button className="text-xs font-medium text-amber-700 hover:underline">View History</button>
               </div>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
@@ -312,7 +343,7 @@ export default function NotificationDetailsPage() {
 
                 <button 
                   onClick={() => setIsChatOpen(true)}
-                  className="w-full py-2 border border-amber-700 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-50 transition-colors cursor-pointer"
+                  className="w-full py-2 border border-amber-700 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-50 transition-colors cursor-pointer bg-transparent"
                 >
                   <Icon icon="mdi:message-text-outline" className="w-4 h-4 inline mr-1" />
                   Message Driver
@@ -322,25 +353,27 @@ export default function NotificationDetailsPage() {
           )}
 
           {/* Recent Alerts */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-            <h3 className="font-semibold text-gray-800 mb-4">Recent Alerts for {notification.vehicle}</h3>
-            <div className="space-y-3">
-              {notification.recentAlerts.map((alert, i) => (
-                <div key={i} className={`p-3 ${i < notification.recentAlerts.length - 1 ? "border-b border-gray-100" : ""}`}>
-                  <p className="text-sm font-medium text-gray-800 mb-1">{alert.title}</p>
-                  <p className="text-xs text-gray-500">{alert.info}</p>
-                </div>
-              ))}
+          {notification.recentAlerts && notification.recentAlerts.length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <h3 className="font-semibold text-gray-800 mb-4">Recent Alerts for {notification.vehicle}</h3>
+              <div className="space-y-3">
+                {notification.recentAlerts.map((alert, i) => (
+                  <div key={i} className={`p-3 ${i < notification.recentAlerts.length - 1 ? "border-b border-gray-100" : ""}`}>
+                    <p className="text-sm font-medium text-gray-800 mb-1">{alert.title}</p>
+                    <p className="text-xs text-gray-500">{alert.info}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
       <DriverChatDrawer 
         isOpen={isChatOpen} 
         onClose={() => setIsChatOpen(false)} 
-        driverName={notification.driver.name}
-        driverPhone={notification.driver.phone}
+        driverName={notification.driver?.name}
+        driverPhone={notification.driver?.phone}
         initialMessages={[
           {
             id: 1,
@@ -351,10 +384,20 @@ export default function NotificationDetailsPage() {
           {
             id: 2,
             sender: "manager",
-            text: `Hi ${notification.driver.name.split(" ")[0]}, please address this immediately.`,
+            text: `Hi ${notification.driver?.name.split(" ")[0]}, please address this immediately.`,
             time: "02:17 PM",
           }
         ]}
+      />
+      <DispatchWarningModal
+        isOpen={showDispatchWarningModal}
+        onClose={() => setShowDispatchWarningModal(false)}
+        notification={notification.meta}
+      />
+      <ContactDriverModal
+        isOpen={showContactDriverModal}
+        onClose={() => setShowContactDriverModal(false)}
+        notification={notification.meta}
       />
     </div>
   );

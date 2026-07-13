@@ -4,26 +4,58 @@ import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import VehicleDocuments from "../vehicle-management/components/VehicleDocuments";
+import { vehicleApi } from "@/api/vehicleApi";
+import { driverApi } from "@/api/driverApi";
 
 export default function VehicleEditPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [vehicle, setVehicle] = useState(null);
   const [formData, setFormData] = useState({});
+  const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const vehicles = JSON.parse(localStorage.getItem("fleet_vehicles") || "[]");
-    const found = vehicles.find((v) => v.id === parseInt(id));
-    if (found) {
-      setVehicle(found);
-      setFormData({ ...found });
-    } else {
-      toast.error("Vehicle not found");
-      navigate("/manager/vehicles-list");
-    }
-    setLoading(false);
+    const loadVehicleAndDrivers = async () => {
+      try {
+        setLoading(true);
+        const [vehRes, drvRes] = await Promise.all([
+          vehicleApi.getById(id),
+          driverApi.list()
+        ]);
+        const found = vehRes.data?.data;
+        const rawDrivers = drvRes.data?.data ?? [];
+        setDrivers(rawDrivers);
+        if (found) {
+          setVehicle(found);
+          setFormData({
+            ...found,
+            name: found.vehicleName || `${found.brand} ${found.model}`,
+            manufacturer: found.brand || "",
+            plateNumber: found.vehicleNumber || "",
+            type: found.vehicleType || "Truck",
+            assignedDriver: found.assignedDriver?._id || found.assignedDriver || "Unassigned",
+            insuranceExpiry: found.insuranceExpiry ? found.insuranceExpiry.split('T')[0] : "",
+            rcExpiry: found.rcExpiry ? found.rcExpiry.split('T')[0] : "",
+            pollutionExpiry: found.pollutionExpiry ? found.pollutionExpiry.split('T')[0] : "",
+            permitExpiry: found.permitExpiry ? found.permitExpiry.split('T')[0] : "",
+            fitnessExpiry: found.fitnessExpiry ? found.fitnessExpiry.split('T')[0] : "",
+            status: found.currentStatus || "Available",
+          });
+        } else {
+          toast.error("Vehicle not found");
+          navigate("/manager/vehicles-list");
+        }
+      } catch (err) {
+        console.error("Failed to load vehicle:", err);
+        toast.error("Failed to load vehicle from server.");
+        navigate("/manager/vehicles-list");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadVehicleAndDrivers();
   }, [id, navigate]);
 
   const handleChange = (e) => {
@@ -34,21 +66,43 @@ export default function VehicleEditPage() {
     }));
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.plateNumber) {
       toast.error("Please fill in all required fields");
       return;
     }
-    setSaving(true);
-    setTimeout(() => {
-      const vehicles = JSON.parse(localStorage.getItem("fleet_vehicles") || "[]");
-      const updated = vehicles.map((v) => (v.id === vehicle.id ? formData : v));
-      localStorage.setItem("fleet_vehicles", JSON.stringify(updated));
+    try {
+      setSaving(true);
+      const payload = {
+        vehicleName:        formData.name,
+        brand:              formData.manufacturer || formData.brand,
+        model:              formData.model,
+        vehicleNumber:      formData.plateNumber.toUpperCase(),
+        vehicleType:        formData.type,
+        branch:             formData.branch,
+        fuelType:           formData.fuelType,
+        ownership:          formData.ownership,
+        availability:       formData.availability,
+        insuranceExpiry:    formData.insuranceExpiry || undefined,
+        rcExpiry:           formData.rcExpiry || undefined,
+        pollutionExpiry:    formData.pollutionExpiry || undefined,
+        permitExpiry:       formData.permitExpiry || undefined,
+        fitnessExpiry:      formData.fitnessExpiry || undefined,
+        fuelCapacity:       Number(formData.fuelCapacity) || 0,
+        fastagBalance:      Number(formData.fastagBalance) || 0,
+        odometer:           Number(formData.odometer) || 0,
+        currentStatus:      formData.status || "Available",
+        assignedDriver:     formData.assignedDriver === "Unassigned" ? "Unassigned" : formData.assignedDriver,
+      };
+      await vehicleApi.update(id, payload);
       toast.success("Vehicle updated successfully!");
+      navigate(`/manager/vehicle-details/${id}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to save vehicle details.");
+    } finally {
       setSaving(false);
-      navigate(`/manager/vehicle-details/${vehicle.id}`);
-    }, 500);
+    }
   };
 
   if (loading || !vehicle) {
@@ -82,7 +136,7 @@ export default function VehicleEditPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-[#1E293B]">{formData.name}</p>
-              <p className="text-xs text-[#64748B] mt-1 uppercase truncate">{formData.plateNumber}</p>
+              <p className="text-xs text-[#64748B] mt-1 uppercase truncate">{formData.plateNumber || formData.vehicleNumber}</p>
             </div>
           </div>
         </div>
@@ -142,7 +196,7 @@ export default function VehicleEditPage() {
           <div className="flex gap-2 ml-auto">
             <button
               type="button"
-              onClick={() => navigate(`/manager/vehicle-details/${vehicle.id}`)}
+              onClick={() => navigate(`/manager/vehicle-details/${vehicle._id}`)}
               className="px-4 py-2 border border-[#E7EAF0] rounded-lg text-sm font-semibold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer"
             >
               CANCEL
@@ -286,13 +340,17 @@ export default function VehicleEditPage() {
               </div>
               <div>
                 <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Driver Assigned</label>
-                <input
-                  type="text"
-                  name="driver"
-                  value={formData.driver || ""}
+                <select
+                  name="assignedDriver"
+                  value={formData.assignedDriver || "Unassigned"}
                   onChange={handleChange}
-                  className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white"
-                />
+                  className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                >
+                  <option value="Unassigned">Unassigned</option>
+                  {drivers.map((d) => (
+                    <option key={d._id} value={d._id}>{d.fullName}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Last Service Date</label>
@@ -372,7 +430,7 @@ export default function VehicleEditPage() {
 
       {/* Documents Section */}
       <div className="mt-8">
-        <VehicleDocuments vehicleId={vehicle.id} />
+        <VehicleDocuments vehicleId={vehicle._id} />
       </div>
     </div>
   );

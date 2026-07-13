@@ -6,7 +6,6 @@ export const protect = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('AUTH ERROR: No token provided');
       return res.status(401).json({ success: false, message: 'No token provided' });
     }
 
@@ -16,14 +15,13 @@ export const protect = async (req, res, next) => {
     const user = await User.findById(decoded.id).select('-password');
 
     if (!user) {
-      console.log('AUTH ERROR: User not found for ID', decoded.id);
       return res.status(401).json({ success: false, message: 'User not found' });
     }
 
     req.user = user;
     next();
   } catch (error) {
-    console.log('AUTH ERROR: Catch block -', error.message);
+    console.error('JWT Verification Error:', error.message, error.stack);
     return res.status(401).json({ success: false, message: 'Invalid or expired token' });
   }
 };

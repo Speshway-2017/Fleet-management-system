@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FileText,
@@ -12,15 +12,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
-
-// Mock data for documents
-const MOCK_DOCUMENTS = [
-  { id: 1, name: "Commercial Insurance - Truck #42", type: "Insurance", category: "Vehicle Docs", vehicle: "Volvo FM 12", expiry: "2025-10-24", status: "Expiring Soon", uploadedBy: "Alex Thompson", uploadDate: "2024-05-15", fileSize: "2.4 MB", fileType: "PDF" },
-  { id: 2, name: "Commercial Driver License (CDL)", type: "License", category: "Driver Docs", driver: "Robert L. Henderson", expiry: "2026-03-12", status: "Active", uploadedBy: "Sarah Lee", uploadDate: "2024-01-20", fileSize: "1.1 MB", fileType: "PDF" },
-  { id: 3, name: "Pollution Check (PUC)", type: "Compliance", category: "Vehicle Docs", vehicle: "Komila FM-30", expiry: "2024-08-15", status: "Expired", uploadedBy: "Mike Johnson", uploadDate: "2023-08-20", fileSize: "500 KB", fileType: "PDF" },
-  { id: 4, name: "Trip Invoice - Mumbai to Delhi", type: "Invoice", category: "Trip Invoices", trip: "TRP-2024-185", amount: "₹45,200", status: "Active", uploadedBy: "Rajesh Kumar", uploadDate: "2024-07-01", fileSize: "850 KB", fileType: "XLSX" },
-  { id: 5, name: "Road Tax Receipt 2024", type: "Tax", category: "Vehicle Docs", vehicle: "Ashok Leyland 3118", expiry: "2025-06-30", status: "Active", uploadedBy: "Alex Thompson", uploadDate: "2024-06-25", fileSize: "1.2 MB", fileType: "PDF" }
-];
+import { managerApi } from "../api/managerApi";
 
 const STATUS_OPTIONS = ["All Statuses", "Active", "Expiring Soon", "Expired"];
 const CATEGORY_OPTIONS = ["All Categories", "Vehicle Docs", "Driver Docs", "Trip Invoices", "Compliance"];
@@ -30,12 +22,45 @@ export default function DocumentsListPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDocuments = async () => {
+    try {
+      setLoading(true);
+      const response = await managerApi.getDocuments();
+      const result = response.data?.data || response.data;
+      if (Array.isArray(result)) {
+        setDocuments(result.map(d => ({
+          ...d,
+          id: d._id,
+          name: d.title
+        })));
+      } else {
+        setDocuments([]);
+      }
+    } catch (error) {
+      toast.error("Failed to load documents from database");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
 
   // Filter documents
-  const filteredDocs = MOCK_DOCUMENTS.filter(doc => {
-    const matchesSearch = doc.name.toLowerCase().includes(search.toLowerCase()) ||
-                          (doc.vehicle?.toLowerCase().includes(search.toLowerCase())) ||
-                          (doc.driver?.toLowerCase().includes(search.toLowerCase()));
+  const filteredDocs = documents.filter(doc => {
+    const nameStr = doc.name ? doc.name.toLowerCase() : "";
+    const vehicleStr = doc.vehicle ? doc.vehicle.toLowerCase() : "";
+    const driverStr = doc.driver ? doc.driver.toLowerCase() : "";
+    const query = search.toLowerCase();
+
+    const matchesSearch = nameStr.includes(query) ||
+                          vehicleStr.includes(query) ||
+                          driverStr.includes(query);
     const matchesStatus = statusFilter === "All Statuses" || doc.status === statusFilter;
     const matchesCategory = categoryFilter === "All Categories" || doc.category === categoryFilter;
     return matchesSearch && matchesStatus && matchesCategory;
@@ -69,8 +94,15 @@ export default function DocumentsListPage() {
     navigate(`/manager/documents/edit/${doc.id}`);
   };
 
-  const handleDelete = (doc) => {
-    toast.success(`Deleted document: ${doc.name}`);
+  const handleDelete = async (doc) => {
+    try {
+      await managerApi.deleteDocument(doc._id);
+      toast.success(`Deleted document: ${doc.name}`);
+      fetchDocuments();
+    } catch (error) {
+      toast.error("Failed to delete document");
+      console.error(error);
+    }
   };
 
   return (
