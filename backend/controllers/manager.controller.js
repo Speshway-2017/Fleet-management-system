@@ -159,6 +159,12 @@ export const createVehicle = async (req, res, next) => {
       fuelType, transmissionType, seatingCapacity, engineCC,
       insuranceExpiry, lastService, nextService,
       ownership, availability, status,
+      documents,
+      chassisNumber,
+      loadCapacity,
+      ownershipType,
+      insuranceDetails,
+      permitDetails,
     } = req.body;
 
     if (!vehicleNumber || !model || !brand) {
@@ -189,6 +195,12 @@ export const createVehicle = async (req, res, next) => {
       availability,
       status: status || 'ACTIVE',
       assignedManager: req.user._id,
+      documents,
+      chassisNumber,
+      loadCapacity: loadCapacity !== undefined ? Number(loadCapacity) : 0,
+      ownershipType: ownershipType || 'Owned',
+      insuranceDetails,
+      permitDetails,
     });
 
     await logActivity({
@@ -363,7 +375,11 @@ export const deleteDriver = async (req, res, next) => {
 // Trips Controllers
 export const listTrips = async (req, res, next) => {
   try {
-    const trips = await getTrips({ assignedManager: req.user._id });
+    const filter = { assignedManager: req.user._id };
+    if (req.query.vehicle) {
+      filter.vehicle = req.query.vehicle;
+    }
+    const trips = await getTrips(filter);
     return sendSuccess(res, 200, trips, 'Trips fetched');
   } catch (error) {
     next(error);
@@ -543,7 +559,11 @@ export const deleteTrip = async (req, res, next) => {
 // Fuel Controllers
 export const listFuelRecords = async (req, res, next) => {
   try {
-    const records = await getFuelRecords({ recordedBy: req.user._id });
+    const filter = { recordedBy: req.user._id };
+    if (req.query.vehicle) {
+      filter.vehicle = req.query.vehicle;
+    }
+    const records = await getFuelRecords(filter);
     return sendSuccess(res, 200, records, 'Fuel records fetched');
   } catch (error) {
     next(error);
@@ -636,7 +656,11 @@ export const deleteFuelRecord = async (req, res, next) => {
 // Maintenance Controllers
 export const listMaintenance = async (req, res, next) => {
   try {
-    const maintenance = await getMaintenances({ recordedBy: req.user._id });
+    const filter = { recordedBy: req.user._id };
+    if (req.query.vehicle) {
+      filter.vehicle = req.query.vehicle;
+    }
+    const maintenance = await getMaintenances(filter);
     return sendSuccess(res, 200, maintenance, 'Maintenance list fetched');
   } catch (error) {
     next(error);

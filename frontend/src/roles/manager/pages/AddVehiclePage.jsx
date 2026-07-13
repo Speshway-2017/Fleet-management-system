@@ -18,6 +18,7 @@ export default function AddVehiclePage() {
     plateNumber: "",
     vehicleType: "Truck",
     branch: "",
+    chassisNumber: "",
     
     // Registration Details
     registrationNumber: "",
@@ -149,9 +150,9 @@ export default function AddVehiclePage() {
         rcExpiry:           undefined,
         pollutionExpiry:    undefined,
         permitExpiry:       undefined,
-        fitnessExpiry:      undefined,
         odometer:           0,
         documents:          documents,
+        chassisNumber:      formData.chassisNumber,
       };
 
       await vehicleApi.create(payload);
@@ -277,6 +278,18 @@ export default function AddVehiclePage() {
                       placeholder="e.g. Pune"
                       value={formData.branch}
                       onChange={handleInputChange}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Chassis Number</label>
+                    <input
+                      type="text"
+                      name="chassisNumber"
+                      placeholder="e.g. 17-digit Chassis No."
+                      value={formData.chassisNumber}
+                      onChange={handleInputChange}
+                      maxLength={17}
                       className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
                     />
                   </div>

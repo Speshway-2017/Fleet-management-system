@@ -87,6 +87,12 @@ export const createVehicle = async (req, res, next) => {
       fitnessExpiry,
       odometer,
       image,
+      chassisNumber,
+      loadCapacity,
+      ownershipType,
+      insuranceDetails,
+      permitDetails,
+      documents,
     } = req.body;
 
     if (!vehicleNumber) {
@@ -114,6 +120,12 @@ export const createVehicle = async (req, res, next) => {
       odometer: odometer !== undefined ? Number(odometer) : 0,
       image: image || '',
       assignedManager: req.user?._id,
+      chassisNumber,
+      loadCapacity: loadCapacity !== undefined ? Number(loadCapacity) : 0,
+      ownershipType: ownershipType || 'Owned',
+      insuranceDetails,
+      permitDetails,
+      documents,
     });
 
     return sendSuccess(res, 201, vehicle, 'Vehicle created successfully');
