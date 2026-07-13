@@ -1,5 +1,11 @@
 import dotenv from 'dotenv';
-dotenv.config(); // must be first — loads .env before any other import reads process.env
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '.env') }); // must be first — loads .env before any other import reads process.env
 
 // Server setup (port 5002, final)
 
@@ -119,7 +125,7 @@ const startServer = async () => {
   server.listen(PORT, () => {
     console.log(`🚀  Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
     console.log(`🌐  CORS allowed for: ${process.env.CLIENT_URL}`);
-    printRoutes(app);
+    // printRoutes(app);
   });
   
   server.on('error', (err) => {

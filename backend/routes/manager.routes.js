@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getDashboard,
   getLiveTracking,
+  listActivities,
   // Vehicles
   listVehicles,
   createVehicle,
@@ -48,7 +49,7 @@ import {
   listNotifications,
   markNotificationRead,
   markAllNotificationsRead,
-  deleteNotification
+  deleteNotification,
   // E-Way Bills
   listEWayBills,
   createEWayBill,
@@ -66,6 +67,7 @@ const auth = [protect, authorizeRoles('FLEET_MANAGER')];
 // Dashboard
 router.get('/dashboard',       ...auth, getDashboard);
 router.get('/live-tracking',   ...auth, getLiveTracking);
+router.get('/activities',      ...auth, listActivities);
 
 // Vehicles
 router.get('/vehicles',        ...auth, listVehicles);

@@ -36,11 +36,8 @@ const MENU_ITEMS = [
   { label: "Drivers", to: "/manager/drivers", icon: Users },
   { label: "Trips", to: "/manager/trips", icon: Route },
   { label: "Live Tracking", to: "/manager/map", icon: MapPin },
-  { label: "Route Optimization", to: "/manager/route", icon: Compass },
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel },
   { label: "Maintenance", to: "/manager/maintenance", icon: Wrench },
-  { label: "E-Way Bills", to: "/manager/eway", icon: FileText },
-  { label: "FASTag & Toll", to: "/manager/fastag", icon: CreditCard },
   { label: "Documents", to: "/manager/documents", icon: FolderOpen },
   { label: "Analytics", to: "/manager/analytics", icon: BarChart3 },
   { label: "Reports", to: "/manager/reports", icon: ClipboardList },
@@ -72,11 +69,8 @@ const ADMIN_MOBILE_ITEMS = [
 
 const MANAGER_MOBILE_SIDEBAR_ITEMS = [
   { label: "Trips", to: "/manager/trips", icon: Route },
-  { label: "Route Optimization", to: "/manager/route", icon: Compass },
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel },
   { label: "Maintenance", to: "/manager/maintenance", icon: Wrench },
-  { label: "E-Way Bills", to: "/manager/eway", icon: FileText },
-  { label: "FASTag & Toll", to: "/manager/fastag", icon: CreditCard },
   { label: "Documents", to: "/manager/documents", icon: FolderOpen },
   { label: "Analytics", to: "/manager/analytics", icon: BarChart3 },
   { label: "Reports", to: "/manager/reports", icon: ClipboardList },

@@ -20,12 +20,8 @@ export default function Breadcrumb() {
     "/manager/trips-list": { label: "Trips List", parent: "/manager/trips" },
     "/manager/create-trip": { label: "Dispatch New Trip", parent: "/manager/trips" },
     "/manager/trip-details": { label: "Trip Details", parent: "/manager/trips" },
-    "/manager/route": { label: "Route Optimization" },
+
     "/manager/fuel": { label: "Fuel Management" },
-    "/manager/fastag": { label: "FASTag & Toll" },
-    "/manager/fastag/history": { label: "Toll History", parent: "/manager/fastag" },
-    "/manager/fastag/receipt": { label: "Receipt Details", parent: "/manager/fastag" },
-    "/manager/fastag/recharge": { label: "FASTag Recharge", parent: "/manager/fastag" },
     "/manager/documents": { label: "Documents" },
     "/manager/documents/list": { label: "All Documents", parent: "/manager/documents" },
     "/manager/documents/compliance-audit": { label: "Compliance Audit", parent: "/manager/documents" },
@@ -38,8 +34,7 @@ export default function Breadcrumb() {
     "/manager/notifications/": { label: "Notification Details", parent: "/manager/notifications" },
     "/manager/settings": { label: "Settings" },
     "/manager/change-password": { label: "Change Password", parent: "/manager/settings" },
-    "/manager/eway": { label: "E-Way Bills" },
-    "/manager/ewaybills": { label: "E-Way Bills" },
+
     "/manager/maintenance": { label: "Maintenance" },
     "/manager/maintenance/upcoming": { label: "Upcoming Services", parent: "/manager/maintenance" },
     "/manager/maintenance/schedule": { label: "Schedule Service", parent: "/manager/maintenance" },
