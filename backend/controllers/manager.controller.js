@@ -623,7 +623,94 @@ export const listDocuments = async (req, res, next) => {
       return doc;
     });
 
-    return sendSuccess(res, 200, enriched, 'Documents fetched');
+    // Fetch and seed EWayBill records if none exist (mirroring listEWayBills logic)
+    let bills = await EWayBill.find({ assignedManager: req.user._id }).sort({ createdAt: -1 });
+    if (bills.length === 0) {
+      const now = new Date();
+      const initialBills = [
+        {
+          ewayBillNo: "EWB-2024-8832",
+          invoiceNo: "#INV-00421",
+          vehicleNo: "MH 12 QX 4582",
+          transporterName: "Gati KWE Logistics",
+          fromLoc: "Mumbai",
+          toLoc: "Delhi",
+          goodsValue: "540000",
+          assignedManager: req.user._id,
+          generationDate: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000),
+          validityDays: 30,
+          expiryDate: new Date(now.getTime() + 25 * 24 * 60 * 60 * 1000),
+        },
+        {
+          ewayBillNo: "EWB-2024-7710",
+          invoiceNo: "#INV-00418",
+          vehicleNo: "KA 01 HY 9912",
+          transporterName: "VRL Logistics",
+          fromLoc: "Bangalore",
+          toLoc: "Chennai",
+          goodsValue: "320000",
+          assignedManager: req.user._id,
+          generationDate: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+          validityDays: 5,
+          expiryDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+        },
+        {
+          ewayBillNo: "EWB-2024-9102",
+          invoiceNo: "#INV-00430",
+          vehicleNo: "GJ 05 TR 3302",
+          transporterName: "Safe Express",
+          fromLoc: "Surat",
+          toLoc: "Ahmedabad",
+          goodsValue: "180000",
+          assignedManager: req.user._id,
+          generationDate: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000),
+          validityDays: 1,
+          expiryDate: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000),
+        }
+      ];
+      await EWayBill.insertMany(initialBills);
+      bills = await EWayBill.find({ assignedManager: req.user._id }).sort({ createdAt: -1 });
+    }
+
+    // Map EWayBills to Document-like schema
+    const mappedEWayBills = bills.map(b => {
+      const expDate = b.expiryDate ? new Date(b.expiryDate) : null;
+      let status = "Active";
+      if (expDate) {
+        const now = new Date();
+        expDate.setHours(0, 0, 0, 0);
+        now.setHours(0, 0, 0, 0);
+        const diffTime = expDate.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays < 0) {
+          status = "Expired";
+        } else if (diffDays <= 30) {
+          status = "Expiring Soon";
+        }
+      }
+
+      return {
+        _id: b._id,
+        title: `Trip Invoice ${b.invoiceNo || b.ewayBillNo} - ${b.fromLoc || ""} to ${b.toLoc || ""}`,
+        fileUrl: "https://res.cloudinary.com/dummy-document-file.pdf",
+        type: "Trip Invoices",
+        category: "Trip Invoices",
+        vehicle: b.vehicleNo || "",
+        driver: b.transporterName || "",
+        trip: `${b.fromLoc || ""} to ${b.toLoc || ""}`,
+        expiry: b.expiryDate ? b.expiryDate.toISOString().split('T')[0] : "",
+        status,
+        fileSize: "1.2 MB",
+        fileType: "PDF",
+        createdAt: b.generationDate || b.createdAt || new Date(),
+        updatedAt: b.updatedAt || b.generationDate || b.createdAt || new Date()
+      };
+    });
+
+    const combined = [...enriched, ...mappedEWayBills];
+    combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    return sendSuccess(res, 200, combined, 'Documents fetched');
   } catch (error) {
     next(error);
   }
@@ -631,9 +718,46 @@ export const listDocuments = async (req, res, next) => {
 
 export const getDocumentDetails = async (req, res, next) => {
   try {
-    const document = await getDocumentById(req.params.id);
+    let document = await getDocumentById(req.params.id);
     if (!document) {
-      return sendError(res, 404, 'Document not found');
+      // Fallback: search in EWayBills
+      const bill = await EWayBill.findOne({ _id: req.params.id, assignedManager: req.user._id });
+      if (!bill) {
+        return sendError(res, 404, 'Document not found');
+      }
+
+      const expDate = bill.expiryDate ? new Date(bill.expiryDate) : null;
+      let status = "Active";
+      if (expDate) {
+        const now = new Date();
+        expDate.setHours(0, 0, 0, 0);
+        now.setHours(0, 0, 0, 0);
+        const diffTime = expDate.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays < 0) {
+          status = "Expired";
+        } else if (diffDays <= 30) {
+          status = "Expiring Soon";
+        }
+      }
+
+      const doc = {
+        _id: bill._id,
+        title: `Trip Invoice ${bill.invoiceNo || bill.ewayBillNo} - ${bill.fromLoc || ""} to ${bill.toLoc || ""}`,
+        fileUrl: "https://res.cloudinary.com/dummy-document-file.pdf",
+        type: "Trip Invoices",
+        category: "Trip Invoices",
+        vehicle: bill.vehicleNo || "",
+        driver: bill.transporterName || "",
+        trip: `${bill.fromLoc || ""} to ${bill.toLoc || ""}`,
+        expiry: bill.expiryDate ? bill.expiryDate.toISOString().split('T')[0] : "",
+        status,
+        fileSize: "1.2 MB",
+        fileType: "PDF",
+        createdAt: bill.generationDate || bill.createdAt || new Date(),
+        updatedAt: bill.updatedAt || bill.generationDate || bill.createdAt || new Date()
+      };
+      return sendSuccess(res, 200, doc, 'Document details fetched');
     }
     
     const doc = document.toObject ? document.toObject() : document;
