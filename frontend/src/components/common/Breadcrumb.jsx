@@ -39,6 +39,7 @@ export default function Breadcrumb() {
     "/manager/settings": { label: "Settings" },
     "/manager/change-password": { label: "Change Password", parent: "/manager/settings" },
     "/manager/eway": { label: "E-Way Bills" },
+    "/manager/eway/generate": { label: "Generate E-Way Bill", parent: "/manager/eway" },
     "/manager/ewaybills": { label: "E-Way Bills" },
     "/manager/maintenance": { label: "Maintenance" },
     "/manager/maintenance/upcoming": { label: "Upcoming Services", parent: "/manager/maintenance" },
