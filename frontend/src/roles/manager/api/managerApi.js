@@ -61,8 +61,8 @@ export const managerApi = {
   },
 
   // Trips
-  getTrips: async () => {
-    return await axiosClient.get("/manager/trips");
+  getTrips: async (params) => {
+    return await axiosClient.get("/manager/trips", { params });
   },
 
   getTripById: async (id) => {
@@ -82,8 +82,8 @@ export const managerApi = {
   },
 
   // Fuel Management
-  getFuelRecords: async () => {
-    return await axiosClient.get("/manager/fuel");
+  getFuelRecords: async (params) => {
+    return await axiosClient.get("/manager/fuel", { params });
   },
 
   getFuelRecordById: async (id) => {
@@ -103,8 +103,8 @@ export const managerApi = {
   },
 
   // Maintenance
-  getMaintenance: async () => {
-    return await axiosClient.get("/manager/maintenance");
+  getMaintenance: async (params) => {
+    return await axiosClient.get("/manager/maintenance", { params });
   },
 
   getMaintenanceById: async (id) => {
@@ -188,5 +188,9 @@ export const managerApi = {
 
   getActivities: async () => {
     return await axiosClient.get("/manager/activities");
+  },
+
+  getNotifications: async () => {
+    return await axiosClient.get("/manager/notifications");
   },
 };
