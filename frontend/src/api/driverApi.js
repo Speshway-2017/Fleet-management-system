@@ -1,8 +1,8 @@
 import axiosClient from "./axiosClient";
 
 export const driverApi = {
-  /** Fetch all drivers */
-  list: () => axiosClient.get("/drivers"),
+  /** Fetch all drivers with optional filters, search, pagination */
+  list: (params) => axiosClient.get("/drivers", { params }),
 
   /** Fetch a single driver by MongoDB _id */
   getById: (id) => axiosClient.get(`/drivers/${id}`),

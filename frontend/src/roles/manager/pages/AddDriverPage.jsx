@@ -32,6 +32,45 @@ export default function AddDriverPage() {
   const navigate = useNavigate();
   const isEditMode = Boolean(id);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({
+    phoneNumber: "",
+    licenseNumber: "",
+  });
+
+  const validateField = (name, value) => {
+    let errorMsg = "";
+    if (name === "phoneNumber") {
+      if (value === "") {
+        errorMsg = "Mobile number is required.";
+      } else if (value.length < 10) {
+        errorMsg = "Mobile number must contain exactly 10 digits.";
+      }
+    } else if (name === "licenseNumber") {
+      if (value === "") {
+        errorMsg = "Driving License Number is required.";
+      } else if (value.length < 16) {
+        errorMsg = "Driving License Number must be exactly 16 characters.";
+      }
+    }
+    return errorMsg;
+  };
+  const handlePhoneChange = (e) => {
+    let val = e.target.value;
+    val = val.replace(/[^0-9]/g, "");
+    if (val.length > 10) val = val.slice(0, 10);
+    setFormData((prev) => ({ ...prev, phoneNumber: val }));
+    const errorMsg = validateField("phoneNumber", val);
+    setErrors((prev) => ({ ...prev, phoneNumber: errorMsg }));
+  };
+
+  const handleLicenseChange = (e) => {
+    let val = e.target.value.toUpperCase();
+    val = val.replace(/[^A-Z0-9]/g, "");
+    if (val.length > 16) val = val.slice(0, 16);
+    setFormData((prev) => ({ ...prev, licenseNumber: val }));
+    const errorMsg = validateField("licenseNumber", val);
+    setErrors((prev) => ({ ...prev, licenseNumber: errorMsg }));
+  };
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -45,6 +84,11 @@ export default function AddDriverPage() {
     joiningDate: new Date().toISOString().split("T")[0],
     medicalFitnessStatus: "Fit",
     licenseDocument: "",
+    employeeId: "",
+    dob: "",
+    gender: "Male",
+    address: "",
+    licenseIssuingAuthority: "",
   });
 
   // Upload state
@@ -75,7 +119,16 @@ export default function AddDriverPage() {
           joiningDate: d.joiningDate ? d.joiningDate.split("T")[0] : "",
           medicalFitnessStatus: d.medicalFitnessStatus || "Fit",
           licenseDocument: d.licenseDocument || "",
+          employeeId: d.employeeId || "",
+          dob: d.dob ? d.dob.split("T")[0] : "",
+          gender: d.gender || "Male",
+          address: d.address || "",
+          licenseIssuingAuthority: d.licenseIssuingAuthority || "",
         });
+        const pErr = validateField("phoneNumber", d.phoneNumber || "");
+        const lErr = validateField("licenseNumber", d.licenseNumber || "");
+        setErrors({ phoneNumber: pErr, licenseNumber: lErr });
+
         if (d.licenseDocument) {
           // Show existing document in edit mode
           setUploadedDoc({
@@ -172,8 +225,28 @@ export default function AddDriverPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.fullName || !formData.phoneNumber || !formData.email || !formData.licenseNumber) {
+    if (
+      !formData.fullName ||
+      !formData.phoneNumber ||
+      !formData.email ||
+      !formData.licenseNumber ||
+      !formData.dob ||
+      !formData.gender ||
+      !formData.address
+    ) {
       toast.error("Please fill in all required fields marked with *");
+      return;
+    }
+
+    const phoneError = validateField("phoneNumber", formData.phoneNumber);
+    const licenseError = validateField("licenseNumber", formData.licenseNumber);
+
+    if (phoneError || licenseError) {
+      setErrors({
+        phoneNumber: phoneError,
+        licenseNumber: licenseError,
+      });
+      toast.error("Please resolve the validation errors before submitting.");
       return;
     }
 
@@ -201,6 +274,14 @@ export default function AddDriverPage() {
       setIsSubmitting(false);
     }
   };
+
+  const isFormInvalid =
+    !formData.phoneNumber ||
+    formData.phoneNumber.length < 10 ||
+    !formData.licenseNumber ||
+    formData.licenseNumber.length < 16 ||
+    Boolean(errors.phoneNumber) ||
+    Boolean(errors.licenseNumber);
 
   return (
     <div className="p-6 lg:p-8 space-y-8 animate-fade-in">
@@ -231,6 +312,18 @@ export default function AddDriverPage() {
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Employee ID */}
+            <div>
+              <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Employee ID</label>
+              <input
+                type="text"
+                readOnly
+                placeholder="Auto-generated on save"
+                value={formData.employeeId}
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm bg-gray-50 text-gray-500 cursor-not-allowed outline-none"
+              />
+            </div>
+
             {/* Full Name */}
             <div>
               <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Full Name *</label>
@@ -250,11 +343,21 @@ export default function AddDriverPage() {
               <input
                 type="tel"
                 required
-                placeholder="e.g. +91 99988 87776"
+                placeholder="e.g. 9998887776"
                 value={formData.phoneNumber}
-                onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                onChange={handlePhoneChange}
+                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white text-[#1E293B] ${
+                  errors.phoneNumber
+                    ? "border-[#EF4444] focus:border-[#EF4444]"
+                    : "border-[#E7EAF0] focus:border-[#B45A0A]"
+                }`}
               />
+              {errors.phoneNumber && (
+                <p className="text-xs text-[#EF4444] mt-1 font-semibold flex items-center gap-1 font-poppins">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  {errors.phoneNumber}
+                </p>
+              )}
             </div>
 
             {/* Email Address */}
@@ -270,6 +373,32 @@ export default function AddDriverPage() {
               />
             </div>
 
+            {/* Date of Birth */}
+            <div>
+              <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Date of Birth *</label>
+              <input
+                type="date"
+                required
+                value={formData.dob}
+                onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+              />
+            </div>
+
+            {/* Gender */}
+            <div>
+              <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Gender *</label>
+              <select
+                value={formData.gender}
+                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+              >
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
             {/* Status Selection */}
             <div>
               <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Current Status</label>
@@ -283,6 +412,19 @@ export default function AddDriverPage() {
                 <option value="SUSPENDED">Suspended</option>
               </select>
             </div>
+
+            {/* Address */}
+            <div className="md:col-span-2">
+              <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Address *</label>
+              <textarea
+                required
+                rows={3}
+                placeholder="e.g. Flat 101, Green Meadows, Pune, MH"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B] font-sans resize-none"
+              />
+            </div>
           </div>
         </div>
 
@@ -293,18 +435,28 @@ export default function AddDriverPage() {
             Driving License &amp; Compliance Certificates
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* DL Number */}
             <div>
               <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">License Number *</label>
               <input
                 type="text"
                 required
-                placeholder="e.g. DL-1820220011223"
+                placeholder="e.g. DL18202200112234"
                 value={formData.licenseNumber}
-                onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                onChange={handleLicenseChange}
+                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white text-[#1E293B] ${
+                  errors.licenseNumber
+                    ? "border-[#EF4444] focus:border-[#EF4444]"
+                    : "border-[#E7EAF0] focus:border-[#B45A0A]"
+                }`}
               />
+              {errors.licenseNumber && (
+                <p className="text-xs text-[#EF4444] mt-1 font-semibold flex items-center gap-1 font-poppins">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  {errors.licenseNumber}
+                </p>
+              )}
             </div>
 
             {/* License Class/Type */}
@@ -329,6 +481,18 @@ export default function AddDriverPage() {
                 required
                 value={formData.licenseExpiry}
                 onChange={(e) => setFormData({ ...formData, licenseExpiry: e.target.value })}
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+              />
+            </div>
+
+            {/* Issuing Authority */}
+            <div>
+              <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Issuing Authority</label>
+              <input
+                type="text"
+                placeholder="e.g. RTO Pune"
+                value={formData.licenseIssuingAuthority}
+                onChange={(e) => setFormData({ ...formData, licenseIssuingAuthority: e.target.value })}
                 className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
               />
             </div>
@@ -458,7 +622,7 @@ export default function AddDriverPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Years Experience */}
             <div>
-              <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Driving Experience</label>
+              <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Years of Experience</label>
               <input
                 type="text"
                 placeholder="e.g. 5 Years"
@@ -507,7 +671,7 @@ export default function AddDriverPage() {
           </button>
           <button
             type="submit"
-            disabled={isSubmitting || isUploading}
+            disabled={isSubmitting || isUploading || isFormInvalid}
             className="px-7 py-3 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-extrabold text-white transition-all shadow-md shadow-[#B45A0A]/20 flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (

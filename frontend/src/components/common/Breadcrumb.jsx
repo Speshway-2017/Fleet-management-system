@@ -16,6 +16,7 @@ export default function Breadcrumb() {
     "/manager/driver-profile": { label: "Driver Profile", parent: "/manager/drivers" },
     "/manager/driver-assign-vehicle": { label: "Assign Vehicle", parent: "/manager/drivers" },
     "/manager/add-driver": { label: "Add Driver", parent: "/manager/drivers" },
+    "/manager/edit-driver": { label: "Edit Driver", parent: "/manager/drivers" },
     "/manager/trips": { label: "Trips" },
     "/manager/trips-list": { label: "Trips List", parent: "/manager/trips" },
     "/manager/create-trip": { label: "Dispatch New Trip", parent: "/manager/trips" },

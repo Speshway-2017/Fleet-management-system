@@ -25,6 +25,9 @@ export default function DriversListPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [licenseFilter, setLicenseFilter] = useState("All Types");
+  const [vehicleFilter, setVehicleFilter] = useState("All Vehicles");
+  const [licenseStatusFilter, setLicenseStatusFilter] = useState("All License Statuses");
+  const [sortBy, setSortBy] = useState("createdAt");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -51,19 +54,18 @@ export default function DriversListPage() {
     fetchDrivers();
   }, []);
 
-  useEffect(() => {
-    fetchDrivers();
-  }, [fetchDrivers]);
-
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, licenseFilter]);
+  }, [search, statusFilter, licenseFilter, vehicleFilter, licenseStatusFilter]);
 
   const handleResetFilters = () => {
     setSearch("");
     setStatusFilter("All Statuses");
     setLicenseFilter("All Types");
+    setVehicleFilter("All Vehicles");
+    setLicenseStatusFilter("All License Statuses");
+    setSortBy("createdAt");
     setCurrentPage(1);
     setRowsPerPage(5);
     toast.success("Filters reset successfully!");
@@ -97,6 +99,7 @@ export default function DriversListPage() {
     switch (status) {
       case "AVAILABLE": return "Available";
       case "ON_TRIP":   return "On Trip";
+      case "ON_LEAVE":  return "On Leave";
       case "SUSPENDED": return "Suspended";
       default:          return status;
     }
@@ -106,25 +109,85 @@ export default function DriversListPage() {
     switch (status) {
       case "AVAILABLE": return "bg-emerald-50 text-[#22C55E] border border-emerald-100";
       case "ON_TRIP":   return "bg-amber-50 text-[#B45A0A] border border-amber-100";
+      case "ON_LEAVE":  return "bg-blue-50 text-blue-600 border border-blue-100";
       case "SUSPENDED": return "bg-red-50 text-[#EF4444] border border-red-100";
-      default:          return "bg-gray-100 text-gray-500";
+      default:          return "bg-gray-100 text-gray-500 border border-gray-200";
+    }
+  };
+
+  const getLicenseStatusBadge = (expiryDateStr) => {
+    if (!expiryDateStr) return <span className="bg-red-50 text-[#EF4444] border border-red-100 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider">Expired / Missing</span>;
+    const expiryDate = new Date(expiryDateStr);
+    const today = new Date();
+    const diffTime = expiryDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return <span className="bg-red-50 text-[#EF4444] border border-red-100 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider">Expired</span>;
+    } else if (diffDays <= 30) {
+      return <span className="bg-amber-50 text-[#F59E0B] border border-amber-100 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider">{diffDays} Days Left</span>;
+    } else {
+      return <span className="bg-emerald-50 text-[#22C55E] border border-emerald-100 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider">Valid</span>;
     }
   };
 
   const getInitials = (name = "") =>
     name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
-  const filteredDrivers = drivers.filter((d) => {
-    const query = search.toLowerCase();
-    const matchesSearch =
-      (d.fullName || "").toLowerCase().includes(query) ||
-      (d.phoneNumber || "").includes(query) ||
-      (d.email || "").toLowerCase().includes(query) ||
-      (d.licenseNumber || "").toLowerCase().includes(query);
-    const matchesStatus = statusFilter === "All Statuses" || d.driverStatus === statusFilter;
-    const matchesLicense = licenseFilter === "All Types" || d.licenseType === licenseFilter;
-    return matchesSearch && matchesStatus && matchesLicense;
-  });
+  const filteredDrivers = drivers
+    .filter((d) => {
+      const query = search.toLowerCase();
+      const matchesSearch =
+        (d.fullName || "").toLowerCase().includes(query) ||
+        (d.phoneNumber || "").includes(query) ||
+        (d.email || "").toLowerCase().includes(query) ||
+        (d.employeeId || "").toLowerCase().includes(query) ||
+        (d.licenseNumber || "").toLowerCase().includes(query);
+
+      const matchesStatus = statusFilter === "All Statuses" || d.driverStatus === statusFilter;
+      const matchesLicense = licenseFilter === "All Types" || d.licenseType === licenseFilter;
+
+      let matchesVehicle = true;
+      if (vehicleFilter === "Assigned") {
+        matchesVehicle = d.assignedVehicle && d.assignedVehicle !== "Unassigned";
+      } else if (vehicleFilter === "Unassigned") {
+        matchesVehicle = !d.assignedVehicle || d.assignedVehicle === "Unassigned";
+      }
+
+      let matchesLicenseStatus = true;
+      if (licenseStatusFilter !== "All License Statuses") {
+        const today = new Date();
+        const expiryDate = d.licenseExpiry ? new Date(d.licenseExpiry) : null;
+        const diffTime = expiryDate ? expiryDate - today : -1;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (licenseStatusFilter === "Expired") {
+          matchesLicenseStatus = !expiryDate || diffDays < 0;
+        } else if (licenseStatusFilter === "Expiring Soon") {
+          matchesLicenseStatus = expiryDate && diffDays >= 0 && diffDays <= 30;
+        } else if (licenseStatusFilter === "Valid") {
+          matchesLicenseStatus = expiryDate && diffDays > 30;
+        }
+      }
+
+      return matchesSearch && matchesStatus && matchesLicense && matchesVehicle && matchesLicenseStatus;
+    })
+    .sort((a, b) => {
+      if (sortBy === "fullName") {
+        return (a.fullName || "").localeCompare(b.fullName || "");
+      }
+      if (sortBy === "tripsCompleted") {
+        return (b.tripsCompleted || 0) - (a.tripsCompleted || 0);
+      }
+      if (sortBy === "experience") {
+        const getExpYears = (expStr = "") => {
+          const num = parseInt(expStr.replace(/[^0-9]/g, ""));
+          return isNaN(num) ? 0 : num;
+        };
+        return getExpYears(b.experience) - getExpYears(a.experience);
+      }
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
 
   const totalPages = Math.max(1, Math.ceil(filteredDrivers.length / rowsPerPage));
   const indexOfFirstRow = (currentPage - 1) * rowsPerPage;
@@ -152,40 +215,45 @@ export default function DriversListPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-[#E7EAF0] p-4 mt-6">
+      <div className="bg-white rounded-xl border border-[#E7EAF0] p-4 mt-6 space-y-3">
         <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center">
           <div className="relative flex-1 min-w-0 w-full">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#94A3B8]" />
             <input
               type="text"
-              placeholder="Search by name, phone, email, or DL number..."
+              placeholder="Search by name, employee ID, phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
             />
           </div>
+        </div>
 
-          <div className="relative w-full lg:w-auto lg:min-w-44">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+          {/* Driver Status */}
+          <div className="relative">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
             >
               <option value="All Statuses">All Statuses</option>
               <option value="AVAILABLE">Available</option>
               <option value="ON_TRIP">On Trip</option>
+              <option value="ON_LEAVE">On Leave</option>
               <option value="SUSPENDED">Suspended</option>
             </select>
             <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          <div className="relative w-full lg:w-auto lg:min-w-40">
+          {/* License Type */}
+          <div className="relative">
             <select
               value={licenseFilter}
               onChange={(e) => setLicenseFilter(e.target.value)}
-              className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
             >
-              <option value="All Types">All Types</option>
+              <option value="All Types">All License Types</option>
               <option value="HMV">HMV</option>
               <option value="LMV">LMV</option>
               <option value="MCWG">MCWG</option>
@@ -193,19 +261,64 @@ export default function DriversListPage() {
             <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {(search || statusFilter !== "All Statuses" || licenseFilter !== "All Types") && (
-            <button
-              onClick={handleResetFilters}
-              className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer whitespace-nowrap self-center py-2.5"
+          {/* Vehicle Assignment */}
+          <div className="relative">
+            <select
+              value={vehicleFilter}
+              onChange={(e) => setVehicleFilter(e.target.value)}
+              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
             >
-              <RefreshCw className="w-3 h-3" />
-              <span>Reset</span>
-            </button>
-          )}
+              <option value="All Vehicles">All Vehicles</option>
+              <option value="Assigned">Assigned Only</option>
+              <option value="Unassigned">Unassigned Only</option>
+            </select>
+            <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* License Expiry Status */}
+          <div className="relative">
+            <select
+              value={licenseStatusFilter}
+              onChange={(e) => setLicenseStatusFilter(e.target.value)}
+              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+            >
+              <option value="All License Statuses">All License Statuses</option>
+              <option value="Valid">Valid</option>
+              <option value="Expiring Soon">Expiring Soon (30d)</option>
+              <option value="Expired">Expired</option>
+            </select>
+            <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Sort By */}
+          <div className="relative">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+            >
+              <option value="createdAt">Sort by Newest</option>
+              <option value="fullName">Sort by Name</option>
+              <option value="tripsCompleted">Sort by Trips</option>
+              <option value="experience">Sort by Experience</option>
+            </select>
+            <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
         </div>
 
-        <div className="border-t border-[#E7EAF0]/60 mt-3 pt-3 flex items-center justify-between text-xs text-[#64748B] font-medium font-poppins">
-          <span>Roster Listing</span>
+        <div className="border-t border-[#E7EAF0]/60 pt-3 flex items-center justify-between text-xs text-[#64748B] font-medium font-poppins">
+          <div className="flex items-center gap-2">
+            <span>Roster Listing</span>
+            {(search || statusFilter !== "All Statuses" || licenseFilter !== "All Types" || vehicleFilter !== "All Vehicles" || licenseStatusFilter !== "All License Statuses" || sortBy !== "createdAt") && (
+              <button
+                onClick={handleResetFilters}
+                className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>Reset Filters</span>
+              </button>
+            )}
+          </div>
           <span>Showing <strong>{currentRows.length}</strong> of {filteredDrivers.length} drivers</span>
         </div>
       </div>
@@ -216,18 +329,19 @@ export default function DriversListPage() {
           <table className="w-full text-left border-collapse text-sm font-nunito">
             <thead>
               <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none">
-                <th className="py-4 px-6 whitespace-nowrap">Driver</th>
-                <th className="py-4 px-6 whitespace-nowrap">Contact Number</th>
-                <th className="py-4 px-6 whitespace-nowrap">License Details</th>
+                <th className="py-4 px-6 whitespace-nowrap">Driver Name</th>
+                <th className="py-4 px-6 whitespace-nowrap">Employee ID</th>
+                <th className="py-4 px-6 whitespace-nowrap">Mobile Number</th>
                 <th className="py-4 px-6 whitespace-nowrap">Assigned Vehicle</th>
-                <th className="py-4 px-6 whitespace-nowrap">Status</th>
+                <th className="py-4 px-6 whitespace-nowrap">License Status</th>
+                <th className="py-4 px-6 whitespace-nowrap">Current Status</th>
                 <th className="py-4 px-6 text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7EAF0]/60">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-16 text-center">
+                  <td colSpan={7} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3 text-[#64748B]">
                       <Loader className="w-7 h-7 animate-spin text-[#B45A0A]" />
                       <span className="text-sm font-semibold">Loading drivers...</span>
@@ -236,7 +350,7 @@ export default function DriversListPage() {
                 </tr>
               ) : currentRows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-gray-400 font-medium">
+                  <td colSpan={7} className="py-12 text-center text-gray-400 font-medium">
                     {drivers.length === 0 ? "No drivers found. Add your first driver to get started." : "No drivers match the current filters."}
                   </td>
                 </tr>
@@ -254,22 +368,13 @@ export default function DriversListPage() {
                         </div>
                       </div>
                     </td>
+                    <td className="py-4 px-6 whitespace-nowrap text-xs font-bold text-[#1E293B] font-poppins">
+                      {d.employeeId || "—"}
+                    </td>
                     <td className="py-4 px-6 whitespace-nowrap text-xs text-[#1E293B] font-medium">
                       <div className="flex items-center gap-1.5">
                         <Phone className="w-3.5 h-3.5 text-[#64748B]" />
                         <span>{d.phoneNumber}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1">
-                          <Award className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                          <span className="font-bold text-xs text-[#1E293B]">{d.licenseNumber}</span>
-                          <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 rounded-md shrink-0">{d.licenseType}</span>
-                        </div>
-                        <span className="text-[10px] text-[#64748B] mt-0.5 block font-medium">
-                          Expires: {d.licenseExpiry ? new Date(d.licenseExpiry).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
-                        </span>
                       </div>
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap">
@@ -278,6 +383,9 @@ export default function DriversListPage() {
                       ) : (
                         <span className="text-indigo-600 font-bold text-xs bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100 inline-block">{d.assignedVehicle}</span>
                       )}
+                    </td>
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      {getLicenseStatusBadge(d.licenseExpiry)}
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap">
                       <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(d.driverStatus)}`}>
