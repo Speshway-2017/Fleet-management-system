@@ -22,8 +22,12 @@ export default function DocumentsListPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
+  const [dateFilter, setDateFilter] = useState("");
+  const [customerFilter, setCustomerFilter] = useState("All Customers");
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const customerOptions = ["All Customers", ...new Set(documents.filter(d => d.customerName).map(d => d.customerName))];
 
   const fetchDocuments = async () => {
     try {
@@ -54,16 +58,33 @@ export default function DocumentsListPage() {
   // Filter documents
   const filteredDocs = documents.filter(doc => {
     const nameStr = doc.name ? doc.name.toLowerCase() : "";
+    const invoiceNoStr = doc.invoiceNo ? doc.invoiceNo.toLowerCase() : "";
     const vehicleStr = doc.vehicle ? doc.vehicle.toLowerCase() : "";
     const driverStr = doc.driver ? doc.driver.toLowerCase() : "";
+    const customerStr = doc.customerName ? doc.customerName.toLowerCase() : "";
+    const tripStr = doc.trip ? doc.trip.toLowerCase() : "";
     const query = search.toLowerCase();
 
     const matchesSearch = nameStr.includes(query) ||
+                          invoiceNoStr.includes(query) ||
                           vehicleStr.includes(query) ||
-                          driverStr.includes(query);
+                          driverStr.includes(query) ||
+                          customerStr.includes(query) ||
+                          tripStr.includes(query);
     const matchesStatus = statusFilter === "All Statuses" || doc.status === statusFilter;
     const matchesCategory = categoryFilter === "All Categories" || doc.category === categoryFilter;
-    return matchesSearch && matchesStatus && matchesCategory;
+    
+    // Customer filter
+    const matchesCustomer = customerFilter === "All Customers" || doc.customerName === customerFilter;
+
+    // Generated Date filter
+    let matchesDate = true;
+    if (dateFilter) {
+      const docDate = new Date(doc.createdAt).toISOString().split('T')[0];
+      matchesDate = docDate === dateFilter;
+    }
+
+    return matchesSearch && matchesStatus && matchesCategory && matchesCustomer && matchesDate;
   });
 
   const getStatusBadge = (status) => {
@@ -88,6 +109,15 @@ export default function DocumentsListPage() {
 
   const handleView = (doc) => {
     navigate(`/manager/documents/view/${doc.id}`);
+  };
+
+  const handleDownload = (doc) => {
+    if (doc.fileUrl) {
+      window.open(doc.fileUrl, '_blank');
+      toast.success(`Downloading document: ${doc.name}`);
+    } else {
+      toast.error("File download URL not found");
+    }
   };
 
   const handleEdit = (doc) => {
@@ -133,7 +163,7 @@ export default function DocumentsListPage() {
               className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A] transition-colors"
             />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
               <select
                 value={statusFilter}
@@ -157,6 +187,27 @@ export default function DocumentsListPage() {
               <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
                 <ChevronDown className="w-4 h-4" />
               </span>
+            </div>
+            <div className="relative">
+              <select
+                value={customerFilter}
+                onChange={(e) => setCustomerFilter(e.target.value)}
+                className="px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none pr-10"
+              >
+                {customerOptions.map(opt => <option key={opt}>{opt}</option>)}
+              </select>
+              <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
+                <ChevronDown className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="relative">
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A]"
+                placeholder="Filter by Date"
+              />
             </div>
           </div>
         </div>
@@ -199,7 +250,7 @@ export default function DocumentsListPage() {
                       <p className="text-sm text-[#1E293B]">{doc.vehicle || doc.driver || doc.trip}</p>
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap text-sm text-[#1E293B] font-semibold">
-                      {doc.expiry && new Date(doc.expiry).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {doc.expiry && doc.expiry !== "-" ? new Date(doc.expiry).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' }) : "-"}
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(doc.status)}`}>
@@ -208,14 +259,24 @@ export default function DocumentsListPage() {
                       </span>
                     </td>
                     <td className="py-4 px-6 text-right select-none whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {!doc.fileUrl && (
+                          <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md mr-1 select-none">
+                            PDF Not Available
+                          </span>
+                        )}
                         <button onClick={() => handleView(doc)} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer">
                           <Eye className="w-4 h-4" />
                         </button>
+                        {doc.fileUrl && (
+                          <button onClick={() => handleDownload(doc)} className="p-2 text-green-600 bg-green-50 hover:bg-green-100 rounded-xl active:scale-95 transition-all cursor-pointer">
+                            <Download className="w-4 h-4" />
+                          </button>
+                        )}
                         <button onClick={() => handleEdit(doc)} className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer">
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(doc)} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer">
+                        <button onClick={() => handleDelete(doc)} className="p-2 text-[#EF4444] bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

@@ -205,7 +205,7 @@ export default function ViewDocument() {
               <div className="text-right">
                 <p className="text-xs uppercase tracking-widest text-[#64748B] mb-1">Expiry Date</p>
                 <span className="font-bold text-xl text-[#1E293B]">
-                  {new Date(doc?.expiry).toLocaleDateString("en-IN", { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {doc?.expiry && doc.expiry !== "-" ? new Date(doc.expiry).toLocaleDateString("en-IN", { month: 'short', day: 'numeric', year: 'numeric' }) : "No Expiry"}
                 </span>
               </div>
             </div>

@@ -624,7 +624,7 @@ export const listDocuments = async (req, res, next) => {
     });
 
     // Fetch and seed EWayBill records if none exist (mirroring listEWayBills logic)
-    let bills = await EWayBill.find({ assignedManager: req.user._id }).sort({ createdAt: -1 });
+    let bills = await EWayBill.find({ assignedManager: req.user._id }).populate('assignedManager', 'name').sort({ createdAt: -1 });
     if (bills.length === 0) {
       const now = new Date();
       const initialBills = [
@@ -669,7 +669,7 @@ export const listDocuments = async (req, res, next) => {
         }
       ];
       await EWayBill.insertMany(initialBills);
-      bills = await EWayBill.find({ assignedManager: req.user._id }).sort({ createdAt: -1 });
+      bills = await EWayBill.find({ assignedManager: req.user._id }).populate('assignedManager', 'name').sort({ createdAt: -1 });
     }
 
     // Map EWayBills to Document-like schema
@@ -691,15 +691,20 @@ export const listDocuments = async (req, res, next) => {
 
       return {
         _id: b._id,
+        invoiceNo: b.invoiceNo || b.ewayBillNo || "",
         title: `Trip Invoice ${b.invoiceNo || b.ewayBillNo} - ${b.fromLoc || ""} to ${b.toLoc || ""}`,
-        fileUrl: "https://res.cloudinary.com/dummy-document-file.pdf",
+        fileUrl: "", // Empty to show "PDF Not Available"
         type: "Trip Invoices",
         category: "Trip Invoices",
         vehicle: b.vehicleNo || "",
         driver: b.transporterName || "",
-        trip: `${b.fromLoc || ""} to ${b.toLoc || ""}`,
+        customerName: b.transporterName || "Internal Customer",
+        trip: b.ewayBillNo || "",
         expiry: b.expiryDate ? b.expiryDate.toISOString().split('T')[0] : "",
         status,
+        goodsValue: b.goodsValue || "0",
+        invoiceDate: b.generationDate || b.createdAt || new Date(),
+        generatedBy: b.assignedManager?.name || "Sai Kiran",
         fileSize: "1.2 MB",
         fileType: "PDF",
         createdAt: b.generationDate || b.createdAt || new Date(),
@@ -721,7 +726,7 @@ export const getDocumentDetails = async (req, res, next) => {
     let document = await getDocumentById(req.params.id);
     if (!document) {
       // Fallback: search in EWayBills
-      const bill = await EWayBill.findOne({ _id: req.params.id, assignedManager: req.user._id });
+      const bill = await EWayBill.findOne({ _id: req.params.id, assignedManager: req.user._id }).populate('assignedManager', 'name');
       if (!bill) {
         return sendError(res, 404, 'Document not found');
       }
@@ -743,15 +748,20 @@ export const getDocumentDetails = async (req, res, next) => {
 
       const doc = {
         _id: bill._id,
+        invoiceNo: bill.invoiceNo || bill.ewayBillNo || "",
         title: `Trip Invoice ${bill.invoiceNo || bill.ewayBillNo} - ${bill.fromLoc || ""} to ${bill.toLoc || ""}`,
-        fileUrl: "https://res.cloudinary.com/dummy-document-file.pdf",
+        fileUrl: "", // Empty for "PDF Not Available"
         type: "Trip Invoices",
         category: "Trip Invoices",
         vehicle: bill.vehicleNo || "",
         driver: bill.transporterName || "",
-        trip: `${bill.fromLoc || ""} to ${bill.toLoc || ""}`,
+        customerName: bill.transporterName || "Internal Customer",
+        trip: bill.ewayBillNo || "",
         expiry: bill.expiryDate ? bill.expiryDate.toISOString().split('T')[0] : "",
         status,
+        goodsValue: bill.goodsValue || "0",
+        invoiceDate: bill.generationDate || bill.createdAt || new Date(),
+        generatedBy: bill.assignedManager?.name || "Sai Kiran",
         fileSize: "1.2 MB",
         fileType: "PDF",
         createdAt: bill.generationDate || bill.createdAt || new Date(),

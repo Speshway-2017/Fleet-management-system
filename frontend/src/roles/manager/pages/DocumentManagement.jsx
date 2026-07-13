@@ -152,13 +152,19 @@ export default function DocumentManagement() {
   // Filter documents
   const filteredDocs = documents.filter(doc => {
     const nameStr = doc.name ? doc.name.toLowerCase() : "";
+    const invoiceNoStr = doc.invoiceNo ? doc.invoiceNo.toLowerCase() : "";
     const vehicleStr = doc.vehicle ? doc.vehicle.toLowerCase() : "";
     const driverStr = doc.driver ? doc.driver.toLowerCase() : "";
+    const customerStr = doc.customerName ? doc.customerName.toLowerCase() : "";
+    const tripStr = doc.trip ? doc.trip.toLowerCase() : "";
     const query = search.toLowerCase();
 
     const matchesSearch = nameStr.includes(query) ||
+                          invoiceNoStr.includes(query) ||
                           vehicleStr.includes(query) ||
-                          driverStr.includes(query);
+                          driverStr.includes(query) ||
+                          customerStr.includes(query) ||
+                          tripStr.includes(query);
     const matchesStatus = statusFilter === "All Statuses" || doc.status === statusFilter;
     const matchesCategory = categoryFilter === "All Categories" || doc.category === categoryFilter;
     return matchesSearch && matchesStatus && matchesCategory;
@@ -357,7 +363,7 @@ export default function DocumentManagement() {
                       <span className="text-[10px] text-[#64748B] block">{doc.uploadedBy}</span>
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap text-sm text-[#1E293B] font-semibold">
-                      {doc.expiry && new Date(doc.expiry).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {doc.expiry && doc.expiry !== "-" ? new Date(doc.expiry).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' }) : "-"}
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(doc.status)}`}>
@@ -369,7 +375,12 @@ export default function DocumentManagement() {
                       </span>
                     </td>
                     <td className="py-4 px-6 text-right select-none whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {!doc.fileUrl && (
+                          <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md mr-1 select-none">
+                            PDF Not Available
+                          </span>
+                        )}
                         <button
                           onClick={() => handleView(doc)}
                           title="View details"
@@ -377,6 +388,15 @@ export default function DocumentManagement() {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
+                        {doc.fileUrl && (
+                          <button
+                            onClick={() => handleDownload(doc)}
+                            title="Download PDF"
+                            className="p-2 text-green-600 bg-green-50 hover:bg-green-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEdit(doc)}
                           title="Edit"
@@ -387,7 +407,7 @@ export default function DocumentManagement() {
                         <button
                           onClick={() => handleDelete(doc)}
                           title="Delete"
-                          className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+                          className="p-2 text-[#EF4444] bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
