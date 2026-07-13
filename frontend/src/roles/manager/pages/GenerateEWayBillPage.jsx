@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Download, RefreshCw, FileText } from "lucide-react";
+import { CheckCircle2, Download, RefreshCw, FileText } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
 
 export default function GenerateEWayBillPage() {
   const navigate = useNavigate();
@@ -19,29 +20,73 @@ export default function GenerateEWayBillPage() {
   const [generated, setGenerated] = useState(false);
   const [ewbNumber, setEwbNumber] = useState("");
   const [genDate, setGenDate] = useState("");
+  const [validityDays, setValidityDays] = useState(1);
 
-  const handleGenerate = (e) => {
+  // Suggestions state
+  const [allVehicles, setAllVehicles] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    const loadVehicles = async () => {
+      try {
+        const res = await managerApi.getVehicles();
+        const data = res.data?.data || res.data || [];
+        setAllVehicles(data);
+      } catch (err) {
+        console.error("Failed to fetch vehicles for suggestions", err);
+      }
+    };
+    loadVehicles();
+  }, []);
+
+  const suggestions = allVehicles.filter(v => {
+    const plate = v.vehicleNumber || "";
+    return plate.toLowerCase().includes(vehicleNo.toLowerCase()) && vehicleNo.trim() !== "";
+  });
+
+  const handleGenerate = async (e) => {
     e.preventDefault();
     if (!vehicleNo || !transporterName || !fromLoc || !toLoc || !invoiceNo || !goodsValue) {
       toast.error("Please fill in all details");
       return;
     }
 
-    // Generate random mock E-Way Bill Number and Date
+    // Generate random E-Way Bill Number
     const ewbNum = `${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)}`;
-    const dateStr = new Date().toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric"
-    }) + " " + new Date().toLocaleTimeString("en-IN", {
-      hour: "2-digit",
-      minute: "2-digit"
-    });
 
-    setEwbNumber(ewbNum);
-    setGenDate(dateStr);
-    setGenerated(true);
-    toast.success("E-Way Bill generated successfully in image format!");
+    try {
+      const res = await managerApi.createEWayBill({
+        vehicleNo,
+        transporterName,
+        fromLoc,
+        toLoc,
+        invoiceNo,
+        goodsValue,
+        ewayBillNo: ewbNum,
+        validityDays
+      });
+
+      const billData = res.data?.data || res.data;
+      
+      setEwbNumber(billData.ewayBillNo);
+      
+      const dateStr = new Date(billData.createdAt).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      }) + " " + new Date(billData.createdAt).toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+
+      setGenDate(dateStr);
+      setGenerated(true);
+      toast.success("E-Way Bill generated and saved successfully!");
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || "Failed to generate and save E-Way Bill";
+      toast.error(errorMsg);
+      console.error(err);
+    }
   };
 
   const handleDownloadImage = () => {
@@ -239,12 +284,6 @@ export default function GenerateEWayBillPage() {
       <Breadcrumb />
       {/* Page Header */}
       <div className="flex items-center gap-4 mb-8">
-        <button
-          onClick={() => navigate("/manager/eway")}
-          className="p-2 bg-white border border-[#E7EAF0] rounded-xl text-[#64748B] hover:bg-gray-50 shadow-sm transition-colors cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
         <div>
           <h1 className="font-poppins font-bold text-2xl text-[#1E293B] tracking-tight">
             Generate E-Way Bill
@@ -264,17 +303,41 @@ export default function GenerateEWayBillPage() {
           </h2>
 
           <form onSubmit={handleGenerate} className="space-y-4">
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 relative">
               <label className="text-xs font-bold text-gray-700 block uppercase tracking-wider">Vehicle Number *</label>
               <input
                 type="text"
                 required
                 placeholder="e.g. MH 12 QX 4582"
                 value={vehicleNo}
-                onChange={(e) => setVehicleNo(e.target.value)}
+                onChange={(e) => {
+                  setVehicleNo(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => {
+                  setTimeout(() => setShowSuggestions(false), 200);
+                }}
                 disabled={generated}
                 className="w-full p-3 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 bg-white font-nunito"
               />
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-40 overflow-y-auto z-50 divide-y divide-gray-100">
+                  {suggestions.map(v => (
+                    <div
+                      key={v._id}
+                      onClick={() => {
+                        setVehicleNo(v.vehicleNumber);
+                        setShowSuggestions(false);
+                      }}
+                      className="p-3 text-xs hover:bg-amber-50/30 cursor-pointer transition-colors font-nunito flex justify-between items-center"
+                    >
+                      <span className="font-bold text-gray-800">{v.vehicleNumber}</span>
+                      <span className="text-gray-400 text-[10px]">{v.brand} {v.model}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -342,6 +405,24 @@ export default function GenerateEWayBillPage() {
                   className="w-full p-3 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 bg-white font-nunito"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-700 block uppercase tracking-wider">Validity Period *</label>
+              <select
+                value={validityDays}
+                onChange={(e) => setValidityDays(Number(e.target.value))}
+                disabled={generated}
+                className="w-full p-3 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 bg-white font-nunito"
+              >
+                <option value={1}>1 Day</option>
+                <option value={2}>2 Days</option>
+                <option value={3}>3 Days</option>
+                <option value={5}>5 Days</option>
+                <option value={7}>7 Days</option>
+                <option value={10}>10 Days</option>
+                <option value={15}>15 Days</option>
+              </select>
             </div>
 
             {!generated ? (

@@ -39,6 +39,7 @@ import { sendSuccess, sendError } from '../utils/response.js';
 import Trip from '../models/Trip.js';
 import Driver from '../models/Driver.js';
 import Vehicle from '../models/Vehicle.js';
+import EWayBill from '../models/EWayBill.js';
 
 export const getDashboard = async (_req, res) => {
   return sendSuccess(res, 200, { message: 'Manager dashboard ready' }, 'Dashboard loaded');
@@ -823,6 +824,256 @@ export const getLiveTracking = async (req, res, next) => {
     });
 
     return sendSuccess(res, 200, trackingData, 'Live tracking data fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// E-Way Bills Helper for Dynamic Validity & Status Calculation
+const enrichEWayBill = (billObj) => {
+  const bill = billObj.toObject ? billObj.toObject() : billObj;
+
+  // Resolve source of truth dates
+  const genDate = bill.generationDate ? new Date(bill.generationDate) : new Date(bill.createdAt || Date.now());
+  const valDays = parseInt(bill.validityDays) || 1;
+
+  let expDate;
+  if (bill.expiryDate) {
+    expDate = new Date(bill.expiryDate);
+  } else {
+    // Legacy fallback
+    expDate = new Date(genDate.getTime() + valDays * 24 * 60 * 60 * 1000);
+  }
+
+  // Calculate remaining days (midnight-to-midnight format for robust transitions)
+  const expiryMidnight = new Date(expDate);
+  expiryMidnight.setHours(23, 59, 59, 999);
+
+  const nowMidnight = new Date();
+  nowMidnight.setHours(0, 0, 0, 0);
+
+  const diffTime = expiryMidnight.getTime() - nowMidnight.getTime();
+  const remainingDays = Math.floor(diffTime / (24 * 60 * 60 * 1000));
+
+  // Status Mapping:
+  // - More than 7 days remaining → Active (Green)
+  // - 1–7 days remaining → Expiring Soon (Orange)
+  // - 0 days remaining → Expires Today (Blue)
+  // - Expired (remainingDays < 0) → Expired (Red)
+  let status = "Active";
+  let progressColor = "bg-green-600";
+
+  if (remainingDays < 0) {
+    status = "Expired";
+    progressColor = "bg-red-650";
+  } else if (remainingDays === 0) {
+    status = "Expires Today";
+    progressColor = "bg-blue-600";
+  } else if (remainingDays >= 1 && remainingDays <= 7) {
+    status = "Expiring Soon";
+    progressColor = "bg-amber-600";
+  }
+
+  // Remaining Validity text (e.g. "Expires Today", "Expired 5 Days Ago", "25 Days Remaining")
+  let remainingValidityText = "";
+  if (remainingDays === valDays) {
+    remainingValidityText = `Valid for ${valDays} Days`;
+  } else if (remainingDays > 0) {
+    remainingValidityText = `${remainingDays} Days Remaining`;
+  } else if (remainingDays === 0) {
+    remainingValidityText = "Expires Today";
+  } else {
+    remainingValidityText = `Expired ${Math.abs(remainingDays)} Days Ago`;
+  }
+
+  // Validity string representation (Format: "28 Jul, 13:52")
+  const validityStr = expDate.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short"
+  }) + ", " + expDate.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
+
+  // Validity progress bar percentage calculation
+  const validityProgress = remainingDays < 0
+    ? 0
+    : Math.max(0, Math.min(100, Math.round((remainingDays / valDays) * 100)));
+
+  return {
+    ...bill,
+    status,
+    progressColor,
+    validityProgress,
+    remainingDays,
+    remainingValidityText,
+    validity: validityStr,
+    generationDate: genDate,
+    expiryDate: expDate,
+    validityDays: valDays,
+    canExtend: remainingDays >= 0 && remainingDays <= 7 // Can extend in the expiring/expires today range
+  };
+};
+
+export const listEWayBills = async (req, res, next) => {
+  try {
+    let bills = await EWayBill.find({ assignedManager: req.user._id }).sort({ createdAt: -1 });
+
+    // Seed initial mock data if none exist
+    if (bills.length === 0) {
+      const now = new Date();
+      const initialBills = [
+        {
+          ewayBillNo: "EWB-2024-8832",
+          invoiceNo: "#INV-00421",
+          vehicleNo: "MH 12 QX 4582",
+          transporterName: "Gati KWE Logistics",
+          fromLoc: "Mumbai",
+          toLoc: "Delhi",
+          goodsValue: "540000",
+          assignedManager: req.user._id,
+          generationDate: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+          validityDays: 30,
+          expiryDate: new Date(now.getTime() + 25 * 24 * 60 * 60 * 1000), // expires in 25 days (Active)
+        },
+        {
+          ewayBillNo: "EWB-2024-7710",
+          invoiceNo: "#INV-00418",
+          vehicleNo: "KA 01 HY 9912",
+          transporterName: "VRL Logistics",
+          fromLoc: "Bangalore",
+          toLoc: "Chennai",
+          goodsValue: "320000",
+          assignedManager: req.user._id,
+          generationDate: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+          validityDays: 5,
+          expiryDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000), // expires in 3 days (Expiring Soon)
+        },
+        {
+          ewayBillNo: "EWB-2024-9102",
+          invoiceNo: "#INV-00430",
+          vehicleNo: "GJ 05 TR 3302",
+          transporterName: "Safe Express",
+          fromLoc: "Surat",
+          toLoc: "Ahmedabad",
+          goodsValue: "180000",
+          assignedManager: req.user._id,
+          generationDate: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+          validityDays: 1,
+          expiryDate: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000), // expired yesterday (Expired)
+        }
+      ];
+      await EWayBill.insertMany(initialBills);
+      bills = await EWayBill.find({ assignedManager: req.user._id }).sort({ createdAt: -1 });
+    }
+
+    const enriched = bills.map(enrichEWayBill);
+    return sendSuccess(res, 200, enriched, 'E-Way Bills fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createEWayBill = async (req, res, next) => {
+  try {
+    const {
+      vehicleNo,
+      transporterName,
+      fromLoc,
+      toLoc,
+      invoiceNo,
+      goodsValue,
+      ewayBillNo,
+      validityDays
+    } = req.body;
+
+    if (!vehicleNo || !transporterName || !fromLoc || !toLoc || !invoiceNo || !goodsValue) {
+      return sendError(res, 400, 'All details are required to generate E-Way Bill');
+    }
+
+    const days = parseInt(validityDays) || 1;
+    const genDate = new Date();
+    const expDate = new Date(genDate.getTime() + days * 24 * 60 * 60 * 1000);
+
+    const newBill = new EWayBill({
+      ewayBillNo: ewayBillNo || `EWB-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      invoiceNo,
+      vehicleNo,
+      transporterName,
+      fromLoc,
+      toLoc,
+      goodsValue,
+      generationDate: genDate,
+      validityDays: days,
+      expiryDate: expDate,
+      assignedManager: req.user._id
+    });
+
+    await newBill.save();
+    return sendSuccess(res, 201, enrichEWayBill(newBill), 'E-Way Bill generated');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const extendEWayBill = async (req, res, next) => {
+  try {
+    const bill = await EWayBill.findOne({ _id: req.params.id, assignedManager: req.user._id });
+    if (!bill) {
+      return sendError(res, 404, 'E-Way Bill not found');
+    }
+
+    const currentExp = bill.expiryDate ? new Date(bill.expiryDate) : new Date(Date.now());
+    bill.expiryDate = new Date(currentExp.getTime() + 24 * 60 * 60 * 1000); // add 24 hours
+    bill.validityDays = (bill.validityDays || 1) + 1;
+
+    await bill.save();
+    return sendSuccess(res, 200, enrichEWayBill(bill), 'E-Way Bill validity extended');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateEWayBill = async (req, res, next) => {
+  try {
+    const { vehicleNo, transporterName, fromLoc, toLoc, invoiceNo, goodsValue, validity } = req.body;
+    const bill = await EWayBill.findOne({ _id: req.params.id, assignedManager: req.user._id });
+    if (!bill) {
+      return sendError(res, 404, 'E-Way Bill not found');
+    }
+
+    if (vehicleNo !== undefined) bill.vehicleNo = vehicleNo;
+    if (transporterName !== undefined) bill.transporterName = transporterName;
+    if (fromLoc !== undefined) bill.fromLoc = fromLoc;
+    if (toLoc !== undefined) bill.toLoc = toLoc;
+    if (invoiceNo !== undefined) bill.invoiceNo = invoiceNo;
+    if (goodsValue !== undefined) bill.goodsValue = goodsValue;
+
+    if (validity !== undefined) {
+      const parsedDate = new Date(validity);
+      if (!isNaN(parsedDate.getTime())) {
+        bill.expiryDate = parsedDate;
+        const gen = bill.generationDate ? new Date(bill.generationDate) : new Date(bill.createdAt || Date.now());
+        const diffTime = parsedDate.getTime() - gen.getTime();
+        bill.validityDays = Math.max(1, Math.ceil(diffTime / (24 * 60 * 60 * 1000)));
+      }
+    }
+
+    await bill.save();
+    return sendSuccess(res, 200, enrichEWayBill(bill), 'E-Way Bill updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteEWayBill = async (req, res, next) => {
+  try {
+    const bill = await EWayBill.findOneAndDelete({ _id: req.params.id, assignedManager: req.user._id });
+    if (!bill) {
+      return sendError(res, 404, 'E-Way Bill not found');
+    }
+    return sendSuccess(res, 200, null, 'E-Way Bill deleted successfully');
   } catch (error) {
     next(error);
   }
