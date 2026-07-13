@@ -256,8 +256,7 @@ export default function ManagerDashboard() {
               style={{
                 padding: '16px',
                 height: '120px',
-                boxSizing: 'border-box',
-                width: '100%'
+                boxSizing: 'border-box'
               }}
             >
               {/* Card Title at Top-Left */}
@@ -270,31 +269,6 @@ export default function ManagerDashboard() {
               >
                 {stat.label}
               </p>
-
-              {/* Value with Icon at Bottom */}
-              <div
-                key={index}
-                className={`rounded-2xl shadow-sm flex flex-col justify-between cursor-pointer group transition-all duration-300 hover:-translate-y-1.5 ${
-                  stat.color === "bg-black"
-                    ? "bg-[#0D0D0D] border border-gray-900 hover:border-[#C65D0E]/50 hover:shadow-lg hover:shadow-[#C65D0E]/10 text-white"
-                    : "bg-white border border-gray-200 hover:border-gray-300 hover:shadow-lg hover:shadow-gray-200/80"
-                }`}
-                style={{
-                  padding: '16px',
-                  height: '120px',
-                  boxSizing: 'border-box',
-                  width: '100%'
-                }}
-              >
-                {/* Card Title */}
-                <p
-                  className={`text-xs font-bold uppercase tracking-wider whitespace-nowrap overflow-hidden text-ellipsis font-poppins ${
-                    stat.color === "bg-black" ? "text-gray-400" : "text-gray-600"
-                  }`}
-                  style={{ marginBottom: '10px' }}
-                >
-                  {stat.label}
-                </p>
 
                 {/* Value with Icon */}
                 <div className="flex items-end justify-between" style={{ marginTop: 'auto', gap: '8px' }}>
@@ -316,7 +290,7 @@ export default function ManagerDashboard() {
               </div>
             ))}
           </div>
-        )}
+
       </div>
 
       {/* Map Section */}

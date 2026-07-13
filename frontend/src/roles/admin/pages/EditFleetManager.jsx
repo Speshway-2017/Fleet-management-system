@@ -48,11 +48,11 @@ export default function EditFleetManager() {
   useEffect(() => {
     if (manager) {
       setFormData({
-        fullName:        manager.name  || "",
-        email:           manager.email || "",
-        phone:           manager.phone || "",
-        organization:    manager.org   || "",
-        role:            "Fleet Manager",
+        fullName: manager.name || "",
+        email: manager.email || "",
+        phone: manager.phone || "",
+        organization: manager.organizationId || manager.orgId || "",
+        role: "Fleet Manager",
         password:        "",
         confirmPassword: "",
       });

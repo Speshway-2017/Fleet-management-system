@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { adminApi } from "@/api/adminApi";
-import { io } from "socket.io-client";
 
 const AdminContext = createContext();
 
@@ -10,24 +9,22 @@ export function useAdmin() {
 
 export function AdminProvider({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(true);
 
-  const socketRef = useRef();
-  const [adminProfile, setAdminProfile] = useState({ name: "", avatarUrl: "" });
+  // ── Notifications ────────────────────────────────────────────────────────
+  const [notifications, setNotifications]           = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
 
   const mapNotification = (n) => {
     const createdDate = new Date(n.createdAt);
     const isToday = createdDate.toDateString() === new Date().toDateString();
-    const group = isToday ? "TODAY" : "YESTERDAY";
-    const time = createdDate.toLocaleDateString() + ' ' + createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     return {
       ...n,
-      id: n._id,
+      id:     n._id,
       unread: !n.isRead,
-      group,
-      time,
-      type: n.type || 'bell'
+      group:  isToday ? "TODAY" : "YESTERDAY",
+      time:   createdDate.toLocaleDateString() + " " +
+              createdDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      type:   n.type || "bell",
     };
   };
 
@@ -45,7 +42,7 @@ export function AdminProvider({ children }) {
 
   const markAllAsRead = async () => {
     try {
-      await Promise.all(notifications.filter(n => n.unread).map(n => adminApi.markNotificationRead(n.id)));
+      await adminApi.markAllNotificationsRead();
       fetchNotifications();
     } catch (error) {
       console.error("Failed to mark all as read:", error);
@@ -61,8 +58,9 @@ export function AdminProvider({ children }) {
     }
   };
 
+  // ── Organizations ────────────────────────────────────────────────────────
   const [organizations, setOrganizations] = useState([]);
-  
+
   const fetchOrganizations = async () => {
     try {
       const response = await adminApi.getOrganizations();
@@ -73,6 +71,7 @@ export function AdminProvider({ children }) {
     }
   };
 
+  // ── Fleet Managers ────────────────────────────────────────────────────────
   const [fleetManagers, setFleetManagers] = useState([]);
 
   const fetchFleetManagers = async () => {
@@ -85,70 +84,45 @@ export function AdminProvider({ children }) {
     }
   };
 
+  // ── Admin profile (name / avatar for top-nav) ─────────────────────────────
+  const [adminProfile, setAdminProfile] = useState({ name: "", avatarUrl: "" });
+
+  const fetchAdminProfile = async () => {
+    try {
+      const response = await adminApi.getProfile();
+      const data = response.data?.data || response.data || {};
+      setAdminProfile({ name: data.name || "", avatarUrl: data.avatarUrl || "" });
+    } catch (error) {
+      // Non-critical — silently ignore if profile endpoint fails
+      console.warn("Failed to fetch admin profile:", error?.response?.status);
+    }
+  };
+
+  // ── Bootstrap ─────────────────────────────────────────────────────────────
   useEffect(() => {
     fetchOrganizations();
     fetchFleetManagers();
     fetchNotifications();
-    // Fetch admin profile for avatar
-    const fetchProfile = async () => {
-      try {
-        const response = await adminApi.getProfile();
-        const data = response.data?.data || response.data || {};
-        setAdminProfile({ name: data.name || "", avatarUrl: data.avatarUrl || "" });
-      } catch (error) {
-        console.warn("Failed to fetch admin profile:", error);
-      }
-    };
-    fetchProfile();
-    // Initialize Socket.io client with reconnection handling
-    socketRef.current = io(import.meta.env.VITE_API_BASE_URL || "http://localhost:5000", {
-      query: { token: localStorage.getItem("token") },
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 2000,
-    });
-    const socket = socketRef.current;
-    socket.on("connect", () => console.log("Socket connected"));
-    socket.on("disconnect", (reason) => console.warn("Socket disconnected:", reason));
-    socket.on("notification", (newNotif) => {
-      const mapped = mapNotification(newNotif);
-      setNotifications((prev) => [mapped, ...prev]);
-    });
-    socket.on("connect_error", (err) => console.error("Socket connection error:", err));
-    return () => {
-      socket.disconnect();
-    };
+    fetchAdminProfile();
   }, []);
 
-  // Organization CRUD
-  const getOrganization = (id) => organizations.find(o => o.id === id);
-  const addOrganization = (org) => {
-    setOrganizations([...organizations, { ...org, id: Date.now().toString() }]);
-  };
-  const updateOrganization = (id, updatedOrg) => {
-    setOrganizations(organizations.map(o => o.id === id ? { ...o, ...updatedOrg } : o));
-  };
-  const deleteOrganization = (id) => {
-    setOrganizations(organizations.filter(o => o.id !== id));
-  };
+  // ── Organization helpers ──────────────────────────────────────────────────
+  const getOrganization    = (id) => organizations.find(o => o.id === id || o._id === id);
+  const addOrganization    = (org) => setOrganizations(prev => [...prev, { ...org, id: Date.now().toString() }]);
+  const updateOrganization = (id, updated) => setOrganizations(prev => prev.map(o => (o.id === id || o._id === id) ? { ...o, ...updated } : o));
+  const deleteOrganization = (id) => setOrganizations(prev => prev.filter(o => o.id !== id && o._id !== id));
 
-  // Fleet Manager CRUD
-  const getFleetManager = (id) => fleetManagers.find(m => m.id === id);
-  const addFleetManager = (manager) => {
-    setFleetManagers([...fleetManagers, { ...manager, id: Date.now().toString(), created: new Date().toLocaleDateString() }]);
-  };
-  const updateFleetManager = (id, updatedManager) => {
-    setFleetManagers(fleetManagers.map(m => m.id === id ? { ...m, ...updatedManager } : m));
-  };
-  const deleteFleetManager = (id) => {
-    setFleetManagers(fleetManagers.filter(m => m.id !== id));
-  };
+  // ── Fleet Manager helpers ─────────────────────────────────────────────────
+  const getFleetManager    = (id) => fleetManagers.find(m => m.id === id || m._id === id);
+  const addFleetManager    = (manager) => setFleetManagers(prev => [...prev, { ...manager, id: Date.now().toString(), created: new Date().toLocaleDateString() }]);
+  const updateFleetManager = (id, updated) => setFleetManagers(prev => prev.map(m => (m.id === id || m._id === id) ? { ...m, ...updated } : m));
+  const deleteFleetManager = (id) => setFleetManagers(prev => prev.filter(m => m.id !== id && m._id !== id));
 
   return (
     <AdminContext.Provider value={{
       isSidebarOpen,
       setIsSidebarOpen,
+
       organizations,
       fetchOrganizations,
       getOrganization,
@@ -165,11 +139,13 @@ export function AdminProvider({ children }) {
 
       notifications,
       setNotifications,
+      notificationsLoading,
       fetchNotifications,
       markAllAsRead,
       markAsRead,
+
       adminProfile,
-      setAdminProfile
+      setAdminProfile,
     }}>
       {children}
     </AdminContext.Provider>
