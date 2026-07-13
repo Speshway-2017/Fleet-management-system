@@ -6,34 +6,57 @@ import { ChevronLeft, Upload } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 
+import { adminApi } from "@/api/adminApi";
+
 export default function EditOrganization() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getOrganization, updateOrganization } = useAdmin();
-  const org = getOrganization(id);
+  const { fetchOrganizations, fetchNotifications } = useAdmin();
+  const [org, setOrg] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [form, setForm] = useState({
     name: "", industry: "", email: "", phone: "", address: "",
     city: "", state: "", country: "", plan: "", status: ""
   });
   const [errors, setErrors] = useState({});
+  const [logoPreview, setLogoPreview] = useState(null);
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setLogoPreview(url);
+    }
+  };
 
   useEffect(() => {
-    if (org) {
-      setForm({
-        name: org.name || "",
-        industry: org.industry || "",
-        email: org.email || "",
-        phone: org.phone || "",
-        address: org.address || "",
-        city: org.city || "",
-        state: org.state || "",
-        country: org.country || "",
-        plan: org.plan || "",
-        status: org.status || ""
-      });
-    }
-  }, [org]);
+    const fetchOrg = async () => {
+      try {
+        const res = await adminApi.getOrganizationById(id);
+        const data = res.data?.data || res.data;
+        setOrg(data);
+        setForm({
+          name: data.name || "",
+          industry: data.industry || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          address: data.address || "",
+          city: data.city || "",
+          state: data.state || "",
+          country: data.country || "",
+          plan: data.plan || "",
+          status: data.status || ""
+        });
+      } catch (error) {
+        toast.error("Failed to load organization details");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrg();
+  }, [id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -41,7 +64,7 @@ export default function EditOrganization() {
     setErrors(prev => ({ ...prev, [name]: "" }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
     if (!form.name) newErrors.name = "Organization Name is required";
@@ -53,10 +76,31 @@ export default function EditOrganization() {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    updateOrganization(id, form);
-    toast.success("Organization updated successfully!");
-    navigate("/admin/organizations");
+    setIsSubmitting(true);
+    try {
+      await adminApi.updateOrganization(id, form);
+      toast.success("Organization updated successfully!");
+      if (fetchOrganizations) await fetchOrganizations();
+      if (fetchNotifications) await fetchNotifications();
+      navigate("/admin/organizations");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update organization");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (loading) return (
+    <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
+      <NewAdminSidebar activeItem="organizations" />
+      <div className="flex-1 flex flex-col min-w-0">
+        <NewAdminTopNav title="Edit Organization" />
+        <main className="flex-1 flex items-center justify-center">
+           <div className="animate-spin w-8 h-8 border-4 border-[#A14000] border-t-transparent rounded-full"></div>
+        </main>
+      </div>
+    </div>
+  );
 
   if (!org) return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
@@ -113,8 +157,8 @@ export default function EditOrganization() {
                 <Link to="/admin/organizations" className="flex-1 sm:flex-none flex items-center justify-center px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-[#A14000] border border-[#A14000] bg-transparent hover:bg-[#A14000]/10 rounded-lg transition-colors text-center truncate">
                   Cancel
                 </Link>
-                <button type="submit" onClick={handleSubmit} className="flex-[2] sm:flex-none px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-[#A14000] border border-[#A14000] rounded-lg shadow-sm hover:bg-[#8a3700] transition-colors text-center truncate">
-                  Save Changes
+                <button type="submit" disabled={isSubmitting} onClick={handleSubmit} className="flex-[2] sm:flex-none px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-[#A14000] border border-[#A14000] rounded-lg shadow-sm hover:bg-[#8a3700] transition-colors text-center truncate disabled:opacity-50">
+                  {isSubmitting ? "Saving..." : "Save Changes"}
                 </button>
               </div>
           </div>
@@ -130,12 +174,16 @@ export default function EditOrganization() {
                 <label className="text-sm font-bold text-slate-700">Organization Logo</label>
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
-                    <span className="text-xs font-bold text-slate-400">LOGO</span>
+                    {logoPreview ? (
+                      <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs font-bold text-slate-400">LOGO</span>
+                    )}
                   </div>
                   <label className="cursor-pointer px-4 py-2 border border-slate-200 bg-white text-slate-700 text-sm font-semibold rounded-lg shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-2">
                     <Upload className="w-4 h-4" />
                     Upload Logo
-                    <input type="file" accept="image/*" className="hidden" />
+                    <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
                   </label>
                 </div>
               </div>

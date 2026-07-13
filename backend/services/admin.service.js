@@ -11,7 +11,8 @@ import {
   getOrgGrowthData,
   getManagerGrowthData,
   getSubscriptionDistribution,
-  getLoginActivityData
+  getLoginActivityData,
+  getAnalyticsSummary
 } from '../repositories/admin.repository.js';
 
 // Helper to convert filter string to date filter

@@ -265,7 +265,7 @@ function Dashboard() {
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col">
               <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
                 <h3 className="font-bold text-slate-800 text-sm">Recent Activities</h3>
-                <Link to="/admin/analytics" className="text-[11px] font-bold text-[#A14000] hover:text-[#8a3700] hover:underline transition-all flex items-center gap-1">
+                <Link to="/admin/notifications" className="text-[11px] font-bold text-[#A14000] hover:text-[#8a3700] hover:underline transition-all flex items-center gap-1">
                   View All <ArrowUpRight className="w-3 h-3" />
                 </Link>
               </div>

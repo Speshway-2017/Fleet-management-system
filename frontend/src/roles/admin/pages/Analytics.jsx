@@ -81,13 +81,7 @@ export default function Analytics() {
     { label: 'This Year', value: 'year' },
   ];
 
-  if (loading && !analyticsData.charts.orgGrowthData.length) {
-    return (
-      <div className="min-h-screen bg-[#f4f7f6] flex items-center justify-center font-sans">
-        <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
@@ -140,15 +134,15 @@ export default function Analytics() {
 
           {/* KPI Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8">
-            <KPICard title="Organizations" value={kpis.totalOrganizations} icon={Building2} />
-            <KPICard title="Fleet Managers" value={kpis.fleetManagers} icon={Users} />
-            <KPICard title="Total Vehicles" value={kpis.vehicles} icon={Activity} />
-            <KPICard title="Total Drivers" value={kpis.drivers} icon={CheckCircle2} />
+            <KPICard title="Organizations" value={kpis?.totalOrganizations || 0} icon={Building2} />
+            <KPICard title="Fleet Managers" value={kpis?.fleetManagers || 0} icon={Users} />
+            <KPICard title="Total Vehicles" value={kpis?.vehicles || 0} icon={Activity} />
+            <KPICard title="Total Drivers" value={kpis?.drivers || 0} icon={CheckCircle2} />
             
-            <KPICard title="Active Trips" value={kpis.activeTrips} icon={MapPin} />
-            <KPICard title="Completed Trips" value={kpis.completedTrips} icon={CheckCircle2} />
-            <KPICard title="Maintenance Records" value={kpis.maintenanceCount} icon={Wrench} />
-            <KPICard title="Fuel Usage (L)" value={kpis.fuelUsage} icon={Droplets} />
+            <KPICard title="Active Trips" value={kpis?.activeTrips || 0} icon={MapPin} />
+            <KPICard title="Completed Trips" value={kpis?.completedTrips || 0} icon={CheckCircle2} />
+            <KPICard title="Maintenance Records" value={kpis?.maintenanceCount || 0} icon={Wrench} />
+            <KPICard title="Fuel Usage (L)" value={kpis?.fuelUsage || 0} icon={Droplets} />
           </div>
 
           {/* Charts Row 1 */}
@@ -158,7 +152,7 @@ export default function Analytics() {
               <h3 className="text-sm font-extrabold text-slate-800 mb-6 tracking-wide">Organization Growth</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={charts.orgGrowthData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <LineChart data={charts?.orgGrowthData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dx={-10} allowDecimals={false} />
@@ -174,7 +168,7 @@ export default function Analytics() {
               <h3 className="text-sm font-extrabold text-slate-800 mb-6 tracking-wide">Fleet Manager Growth</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={charts.managerGrowthData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <LineChart data={charts?.managerGrowthData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dx={-10} allowDecimals={false} />
@@ -193,7 +187,7 @@ export default function Analytics() {
               <h3 className="text-sm font-extrabold text-slate-800 mb-6 tracking-wide">System Activity</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={charts.loginActivityData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <BarChart data={charts?.loginActivityData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dx={-10} allowDecimals={false} />
@@ -221,7 +215,7 @@ export default function Analytics() {
                         paddingAngle={5}
                         dataKey="value"
                       >
-                        {charts.subscriptionData.map((entry, index) => (
+                        {charts?.subscriptionData?.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
@@ -232,8 +226,8 @@ export default function Analytics() {
                 
                 {/* Custom Legend */}
                 <div className="w-full sm:w-[55%] space-y-5">
-                  {charts.subscriptionData.map((item, index) => {
-                    const total = charts.subscriptionData.reduce((sum, curr) => sum + curr.value, 0);
+                  {charts?.subscriptionData?.map((item, index) => {
+                    const total = charts.subscriptionData.reduce((sum, curr) => sum + (curr.value || 0), 0);
                     const percentage = total > 0 ? (item.value / total) * 100 : 0;
                     return (
                       <div key={index} className="flex flex-col gap-1.5">

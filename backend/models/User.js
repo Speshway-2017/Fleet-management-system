@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
     phone: { type: String, default: '' },
+    profileImage: { type: String, default: '' },
     organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
     isActive: { type: Boolean, default: true },
     resetPasswordOtp: { type: String },

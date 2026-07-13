@@ -18,7 +18,15 @@ export const createManager = async (managerData) => {
 };
 
 export const getManagerById = async (id) => {
-  return User.findOne({ _id: id, role: 'FLEET_MANAGER' }).select('-password');
+  return User.findOne({ _id: id, role: 'FLEET_MANAGER' }).select('-password').populate('organization', 'name');
+};
+
+export const updateManager = async (id, data) => {
+  return User.findOneAndUpdate({ _id: id, role: 'FLEET_MANAGER' }, data, { new: true }).select('-password');
+};
+
+export const deleteManager = async (id) => {
+  return User.findOneAndDelete({ _id: id, role: 'FLEET_MANAGER' });
 };
 
 export const getDistinctOrganizations = async (filter = {}) => {
@@ -29,6 +37,18 @@ export const getDistinctOrganizations = async (filter = {}) => {
 export const createOrganization = async (orgData) => {
   const org = new Organization(orgData);
   return org.save();
+};
+
+export const getOrganizationById = async (id) => {
+  return Organization.findById(id);
+};
+
+export const updateOrganization = async (id, data) => {
+  return Organization.findByIdAndUpdate(id, data, { new: true });
+};
+
+export const deleteOrganization = async (id) => {
+  return Organization.findByIdAndDelete(id);
 };
 
 export const getAllOrganizations = async () => {

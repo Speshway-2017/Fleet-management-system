@@ -5,11 +5,18 @@ import { useAdmin } from "@/roles/admin/context/AdminContext";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 
+import { adminApi } from "@/api/adminApi";
+import { Eye, EyeOff } from "lucide-react";
+
 export default function EditFleetManager() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getFleetManager, updateFleetManager, organizations } = useAdmin();
-  const manager = getFleetManager(id);
+  const { fetchFleetManagers, fetchNotifications, organizations } = useAdmin();
+  const [manager, setManager] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -23,25 +30,35 @@ export default function EditFleetManager() {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (manager) {
-      setFormData({
-        fullName: manager.name || "",
-        email: manager.email || "",
-        phone: manager.phone || "",
-        organization: manager.org || "",
-        role: "Fleet Manager",
-        password: "",
-        confirmPassword: ""
-      });
-    }
-  }, [manager]);
+    const fetchManager = async () => {
+      try {
+        const res = await adminApi.getFleetManagerById(id);
+        const data = res.data?.data || res.data;
+        setManager(data);
+        setFormData({
+          fullName: data.name || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          organization: data.organization || "",
+          role: data.role || "Fleet Manager",
+          password: "",
+          confirmPassword: ""
+        });
+      } catch (error) {
+        toast.error("Failed to load fleet manager details");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchManager();
+  }, [id]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setErrors({ ...errors, [e.target.name]: "" });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
     if (!formData.fullName) newErrors.fullName = "Full Name is required";
@@ -62,17 +79,38 @@ export default function EditFleetManager() {
 
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
-    
-    updateFleetManager(id, {
-      name: formData.fullName,
-      email: formData.email,
-      phone: formData.phone,
-      org: formData.organization,
-      role: formData.role
-    });
-    toast.success("Manager updated successfully!");
-    navigate("/admin/fleet-managers");
+    setIsSubmitting(true);
+    try {
+      await adminApi.updateFleetManager(id, {
+        name: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        organization: formData.organization,
+        role: formData.role,
+        password: formData.password
+      });
+      toast.success("Manager updated successfully!");
+      if (fetchFleetManagers) await fetchFleetManagers();
+      if (fetchNotifications) await fetchNotifications();
+      navigate("/admin/fleet-managers");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update fleet manager");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (loading) return (
+    <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
+      <NewAdminSidebar activeItem="fleet-managers" />
+      <div className="flex-1 flex flex-col min-w-0">
+        <NewAdminTopNav title="Edit Fleet Manager" />
+        <main className="flex-1 flex items-center justify-center">
+           <div className="animate-spin w-8 h-8 border-4 border-[#A14000] border-t-transparent rounded-full"></div>
+        </main>
+      </div>
+    </div>
+  );
 
   if (!manager) return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
@@ -122,8 +160,8 @@ export default function EditFleetManager() {
                 <Link to="/admin/fleet-managers" className="flex-1 sm:flex-none flex items-center justify-center px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-[#A14000] border border-[#A14000] bg-transparent hover:bg-[#A14000]/10 rounded-lg transition-colors text-center truncate">
                   Cancel
                 </Link>
-                <button type="submit" onClick={handleSubmit} className="flex-[2] sm:flex-none px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-[#B45A0A] border border-[#B45A0A] rounded-lg shadow-sm hover:bg-[#8a4406] transition-colors text-center truncate">
-                  Save Changes
+                <button type="submit" disabled={isSubmitting} onClick={handleSubmit} className="flex-[2] sm:flex-none px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-[#B45A0A] border border-[#B45A0A] rounded-lg shadow-sm hover:bg-[#8a4406] transition-colors text-center truncate disabled:opacity-50">
+                  {isSubmitting ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </div>
@@ -184,7 +222,7 @@ export default function EditFleetManager() {
                     >
                       <option value="" disabled>Select Organization</option>
                       {organizations.map(org => (
-                        <option key={org.id} value={org.name}>{org.name}</option>
+                        <option key={org.id} value={org.id}>{org.name}</option>
                       ))}
                     </select>
                     {errors.organization && <p className="text-xs text-red-500 mt-1">{errors.organization}</p>}
@@ -208,27 +246,45 @@ export default function EditFleetManager() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-2">Password</label>
-                    <input 
-                      type="password" 
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm tracking-widest focus:outline-none focus:ring-2 transition-all ${errors.password ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
-                      placeholder="••••••••"
-                    />
+                    <label className="block text-xs font-bold text-slate-700 mb-2">Password (Leave blank to keep unchanged)</label>
+                    <div className="relative">
+                      <input 
+                        type={showPassword ? "text" : "password"} 
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        className={`w-full px-4 py-2.5 pr-10 bg-white border rounded-lg text-sm tracking-widest focus:outline-none focus:ring-2 transition-all ${errors.password ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                        placeholder="••••••••"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                     {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-2">Confirm Password</label>
-                    <input 
-                      type="password" 
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm tracking-widest focus:outline-none focus:ring-2 transition-all ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
-                      placeholder="••••••••"
-                    />
+                    <div className="relative">
+                      <input 
+                        type={showConfirmPassword ? "text" : "password"} 
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        className={`w-full px-4 py-2.5 pr-10 bg-white border rounded-lg text-sm tracking-widest focus:outline-none focus:ring-2 transition-all ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                        placeholder="••••••••"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                     {errors.confirmPassword && <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>}
                   </div>
                 </div>

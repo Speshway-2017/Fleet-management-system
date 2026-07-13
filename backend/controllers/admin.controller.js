@@ -1,9 +1,13 @@
 import { getAdminDashboardData, getAdminAnalyticsData } from '../services/admin.service.js';
-import { createManager as createManagerInRepo, getAllManagers, getManagerById, createOrganization as createOrgInRepo, getAllOrganizations } from '../repositories/admin.repository.js';
-import { hashPassword } from '../utils/hashPassword.js';
+import { createManager as createManagerInRepo, getAllManagers, getManagerById, updateManager as updateManagerInRepo, deleteManager as deleteManagerInRepo, createOrganization as createOrgInRepo, getAllOrganizations, getOrganizationById as getOrgByIdInRepo, updateOrganization as updateOrgInRepo, deleteOrganization as deleteOrgInRepo } from '../repositories/admin.repository.js';
+import { hashPassword, comparePassword } from '../utils/hashPassword.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { logAction } from '../services/audit.service.js';
 import AuditLog from '../models/AuditLog.js';
+import Notification from '../models/Notification.js';
+import Setting from '../models/Setting.js';
+import User from '../models/User.js';
+import { uploadImageToCloudinary } from '../utils/cloudinary.js';
 import mongoose from 'mongoose';
 import os from 'os';
 
@@ -21,16 +25,19 @@ export const listOrganizations = async (_req, res, next) => {
     const orgs = await getAllOrganizations();
     
     // Map to frontend expected format
-    const formattedOrgs = orgs.map(org => ({
-      id: org._id.toString(),
-      name: org.name,
-      email: org.email,
-      phone: org.phone,
-      industry: org.industry,
-      subscription: org.plan || 'Standard',
-      status: org.status || 'Pending',
-      createdAt: new Date(org.createdAt).toLocaleDateString(),
-      activeManagers: 0, // Placeholder
+    const formattedOrgs = await Promise.all(orgs.map(async (org) => {
+      const activeManagers = await User.countDocuments({ organization: org._id, role: 'FLEET_MANAGER' });
+      return {
+        id: org._id.toString(),
+        name: org.name,
+        email: org.email,
+        phone: org.phone,
+        industry: org.industry,
+        subscription: org.plan || 'Standard',
+        status: org.status || 'Pending',
+        createdAt: new Date(org.createdAt).toLocaleDateString(),
+        activeManagers: activeManagers,
+      };
     }));
     
     return sendSuccess(res, 200, formattedOrgs, 'Organizations fetched');
@@ -55,11 +62,98 @@ export const createOrganization = async (req, res, next) => {
       ipAddress: req.ip || req.headers['x-forwarded-for'],
       status: 'Success'
     });
+    
+    if (req.user && req.user._id) {
+      await Notification.create({
+        recipient: req.user._id,
+        title: 'Organization Created',
+        message: `Organization ${name} was created successfully.`,
+        type: 'success',
+        priority: 'medium'
+      });
+    }
+
     return sendSuccess(res, 201, org, 'Organization created');
   } catch (error) {
     if (error.code === 11000) {
       return sendError(res, 400, 'An organization with this email already exists');
     }
+    next(error);
+  }
+};
+
+export const getOrganizationDetails = async (req, res, next) => {
+  try {
+    const org = await getOrgByIdInRepo(req.params.id);
+    if (!org) return sendError(res, 404, 'Organization not found');
+    
+    const activeManagers = await User.countDocuments({ organization: org._id, role: 'FLEET_MANAGER' });
+    
+    const formattedOrg = {
+      id: org._id.toString(),
+      name: org.name,
+      email: org.email,
+      phone: org.phone,
+      address: org.address,
+      city: org.city,
+      state: org.state,
+      country: org.country,
+      industry: org.industry,
+      plan: org.plan || 'Standard',
+      status: org.status || 'Pending',
+      activeManagers: activeManagers
+    };
+    
+    return sendSuccess(res, 200, formattedOrg, 'Organization details fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateOrganization = async (req, res, next) => {
+  try {
+    const org = await updateOrgInRepo(req.params.id, req.body);
+    if (!org) return sendError(res, 404, 'Organization not found');
+    
+    await logAction({
+      user: req.user ? req.user.email : 'Admin',
+      action: 'Organization Updated',
+      organization: org.name,
+      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      status: 'Success'
+    });
+    
+    if (req.user && req.user._id) {
+      await Notification.create({
+        recipient: req.user._id,
+        title: 'Organization Updated',
+        message: `Organization ${org.name} was updated successfully.`,
+        type: 'success',
+        priority: 'medium'
+      });
+    }
+    
+    return sendSuccess(res, 200, org, 'Organization updated');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteOrganization = async (req, res, next) => {
+  try {
+    const org = await deleteOrgInRepo(req.params.id);
+    if (!org) return sendError(res, 404, 'Organization not found');
+    
+    await logAction({
+      user: req.user ? req.user.email : 'Admin',
+      action: 'Organization Deleted',
+      organization: org.name,
+      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      status: 'Success'
+    });
+    
+    return sendSuccess(res, 200, null, 'Organization deleted');
+  } catch (error) {
     next(error);
   }
 };
@@ -121,6 +215,16 @@ export const createManager = async (req, res, next) => {
       status: 'Success'
     });
 
+    if (req.user && req.user._id) {
+      await Notification.create({
+        recipient: req.user._id,
+        title: 'Fleet Manager Added',
+        message: `Fleet manager ${name} was created successfully.`,
+        type: 'success',
+        priority: 'medium'
+      });
+    }
+
     return sendSuccess(res, 201, { id: manager._id, name: manager.name, email: manager.email, role: manager.role }, 'Fleet manager created');
   } catch (error) {
     if (error.code === 11000) {
@@ -134,7 +238,72 @@ export const getManagerDetails = async (req, res, next) => {
   try {
     const manager = await getManagerById(req.params.id);
     if (!manager) return sendError(res, 404, 'Fleet manager not found');
-    return sendSuccess(res, 200, manager, 'Fleet manager details fetched');
+    
+    const formattedManager = {
+      id: manager._id.toString(),
+      name: manager.name,
+      email: manager.email,
+      phone: manager.phone || '',
+      organization: manager.organization ? manager.organization._id.toString() : '',
+      orgName: manager.organization ? manager.organization.name : 'N/A',
+      role: manager.role,
+      status: manager.status || 'Active'
+    };
+    
+    return sendSuccess(res, 200, formattedManager, 'Fleet manager details fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateManager = async (req, res, next) => {
+  try {
+    const updateData = { ...req.body };
+    if (updateData.password) {
+      updateData.password = await hashPassword(updateData.password);
+    }
+    
+    const manager = await updateManagerInRepo(req.params.id, updateData);
+    if (!manager) return sendError(res, 404, 'Fleet manager not found');
+    
+    await logAction({
+      user: req.user ? req.user.email : 'Admin',
+      action: 'Fleet Manager Updated',
+      organization: manager.organization ? manager.organization.toString() : '—',
+      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      status: 'Success'
+    });
+    
+    if (req.user && req.user._id) {
+      await Notification.create({
+        recipient: req.user._id,
+        title: 'Fleet Manager Updated',
+        message: `Fleet manager ${manager.name} was updated successfully.`,
+        type: 'success',
+        priority: 'medium'
+      });
+    }
+    
+    return sendSuccess(res, 200, manager, 'Fleet manager updated');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteManager = async (req, res, next) => {
+  try {
+    const manager = await deleteManagerInRepo(req.params.id);
+    if (!manager) return sendError(res, 404, 'Fleet manager not found');
+    
+    await logAction({
+      user: req.user ? req.user.email : 'Admin',
+      action: 'Fleet Manager Deleted',
+      organization: manager.organization ? manager.organization.toString() : '—',
+      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      status: 'Success'
+    });
+    
+    return sendSuccess(res, 200, null, 'Fleet manager deleted');
   } catch (error) {
     next(error);
   }
@@ -250,6 +419,199 @@ export const getAuditLogs = async (req, res, next) => {
       }
     }, 'Audit logs retrieved');
   } catch (error) {
+    next(error);
+  }
+};
+
+export const getSettings = async (_req, res, next) => {
+  try {
+    let setting = await Setting.findOne();
+    if (!setting) {
+      setting = await Setting.create({}); // Creates with default values
+    }
+    return sendSuccess(res, 200, setting, 'Settings fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateSettings = async (req, res, next) => {
+  try {
+    const { platformName, timezone, language } = req.body;
+    let setting = await Setting.findOne();
+    if (!setting) {
+      setting = await Setting.create({});
+    }
+
+    if (platformName) setting.platformName = platformName;
+    if (timezone) setting.timezone = timezone;
+    if (language) setting.language = language;
+
+    // Handle logo upload
+    if (req.file) {
+      // upload to cloudinary
+      const uploadResult = await uploadImageToCloudinary(req.file.buffer, 'fleet_settings');
+      setting.logoUrl = uploadResult.secure_url;
+    }
+
+    await setting.save();
+    
+    // Log the action
+    await logAction({
+      user: req.user ? req.user.email : 'Admin',
+      action: 'Platform Settings Updated',
+      organization: '—',
+      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      status: 'Success'
+    });
+
+    return sendSuccess(res, 200, setting, 'Settings updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSecuritySettings = async (_req, res, next) => {
+  try {
+    let setting = await Setting.findOne();
+    if (!setting) {
+      setting = await Setting.create({});
+    }
+    return sendSuccess(res, 200, setting.security || {}, 'Security settings fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateSecuritySettings = async (req, res, next) => {
+  try {
+    let setting = await Setting.findOne();
+    if (!setting) {
+      setting = await Setting.create({});
+    }
+
+    // Merge req.body into security
+    setting.security = {
+      ...setting.security.toObject(),
+      ...req.body
+    };
+
+    await setting.save();
+
+    await logAction({
+      user: req.user ? req.user.email : 'Admin',
+      action: 'Security Settings Updated',
+      organization: '—',
+      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      status: 'Success'
+    });
+
+    return sendSuccess(res, 200, setting.security, 'Security settings updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getNotificationSettings = async (_req, res, next) => {
+  try {
+    let setting = await Setting.findOne();
+    if (!setting) {
+      setting = await Setting.create({});
+    }
+    return sendSuccess(res, 200, setting.notifications || {}, 'Notification settings fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateNotificationSettings = async (req, res, next) => {
+  try {
+    let setting = await Setting.findOne();
+    if (!setting) {
+      setting = await Setting.create({});
+    }
+
+    // Merge req.body into notifications
+    setting.notifications = {
+      ...setting.notifications.toObject(),
+      ...req.body
+    };
+
+    await setting.save();
+
+    await logAction({
+      user: req.user ? req.user.email : 'Admin',
+      action: 'Notification Settings Updated',
+      organization: '—',
+      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      status: 'Success'
+    });
+
+    return sendSuccess(res, 200, setting.notifications, 'Notification settings updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+    if (!user) {
+      return sendError(res, 404, 'User not found');
+    }
+    return sendSuccess(res, 200, user, 'Profile fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateProfile = async (req, res, next) => {
+  try {
+    const { name, email, phone, currentPassword, newPassword } = req.body;
+    
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return sendError(res, 404, 'User not found');
+    }
+
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (phone) user.phone = phone;
+
+    // Handle password change if requested
+    if (currentPassword && newPassword) {
+      const isMatch = await comparePassword(currentPassword, user.password);
+      if (!isMatch) {
+        return sendError(res, 400, 'Incorrect current password');
+      }
+      user.password = await hashPassword(newPassword);
+    }
+
+    // Handle profile image upload
+    if (req.file) {
+      const uploadResult = await uploadImageToCloudinary(req.file.buffer, 'fleet_profiles');
+      user.profileImage = uploadResult.secure_url;
+    }
+
+    await user.save();
+    
+    // Log action
+    await logAction({
+      user: user.email,
+      action: 'Profile Updated',
+      organization: '—',
+      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      status: 'Success'
+    });
+
+    const updatedUser = user.toObject();
+    delete updatedUser.password;
+    
+    return sendSuccess(res, 200, updatedUser, 'Profile updated successfully');
+  } catch (error) {
+    if (error.code === 11000) {
+      return sendError(res, 400, 'Email is already in use by another account');
+    }
     next(error);
   }
 };

@@ -18,12 +18,6 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
 
-  // Redirect already-authenticated users away from the login page
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate(role === "admin" ? "/admin/dashboard" : "/manager", { replace: true });
-    }
-  }, [isAuthenticated, role, navigate]);
 
   const validate = () => {
     const newErrors = {};

@@ -1,13 +1,42 @@
+import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useAdmin } from "@/roles/admin/context/AdminContext";
 import { ChevronLeft, Pencil } from "lucide-react";
+import toast from "react-hot-toast";
+import { adminApi } from "@/api/adminApi";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 
 export default function ManagerDetails() {
   const { id } = useParams();
-  const { getFleetManager } = useAdmin();
-  const manager = getFleetManager(id);
+  const [manager, setManager] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchManager = async () => {
+      try {
+        const res = await adminApi.getFleetManagerById(id);
+        const data = res.data?.data || res.data;
+        setManager(data);
+      } catch (error) {
+        toast.error("Failed to load fleet manager details");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchManager();
+  }, [id]);
+
+  if (loading) return (
+    <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
+      <NewAdminSidebar activeItem="fleet-managers" />
+      <div className="flex-1 flex flex-col min-w-0">
+        <NewAdminTopNav title="Fleet Manager Details" />
+        <main className="flex-1 flex items-center justify-center">
+           <div className="animate-spin w-8 h-8 border-4 border-[#A14000] border-t-transparent rounded-full"></div>
+        </main>
+      </div>
+    </div>
+  );
 
   if (!manager) return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">

@@ -35,7 +35,7 @@ export default function NotificationDetails() {
 
   return (
     <div className="h-screen bg-[#f4f7f6] flex font-sans">
-      <NewAdminSidebar />
+      <NewAdminSidebar activeItem="" />
       
       <div className="flex-1 flex flex-col min-w-0">
         <NewAdminTopNav title="Notification Details" />

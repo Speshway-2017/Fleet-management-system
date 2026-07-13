@@ -10,13 +10,7 @@ const AuthContext = createContext(null);
  *   FLEET_MANAGER → "manager"
  * Any other value is returned as-is so future roles don't hard-crash.
  */
-function normaliseRole(backendRole) {
-  const map = {
-    SUPER_ADMIN: "admin",
-    FLEET_MANAGER: "manager",
-  };
-  return map[backendRole] ?? backendRole?.toLowerCase() ?? null;
-}
+import { normaliseRole } from "@/utils/roleUtils";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -81,7 +75,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     user,
-    role: user?.role ?? null,
+    role: normaliseRole(user?.role) ?? null,
     isAuthenticated: !!user,
     loading,
     login,

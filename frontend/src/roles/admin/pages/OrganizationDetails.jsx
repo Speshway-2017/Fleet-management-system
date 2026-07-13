@@ -1,13 +1,42 @@
+import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useAdmin } from "@/roles/admin/context/AdminContext";
 import { ChevronLeft } from "lucide-react";
+import toast from "react-hot-toast";
+import { adminApi } from "@/api/adminApi";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 
 export default function OrganizationDetails() {
   const { id } = useParams();
-  const { getOrganization } = useAdmin();
-  const org = getOrganization(id);
+  const [org, setOrg] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOrg = async () => {
+      try {
+        const res = await adminApi.getOrganizationById(id);
+        const data = res.data?.data || res.data;
+        setOrg(data);
+      } catch (error) {
+        toast.error("Failed to load organization details");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrg();
+  }, [id]);
+
+  if (loading) return (
+    <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
+      <NewAdminSidebar activeItem="organizations" />
+      <div className="flex-1 flex flex-col min-w-0">
+        <NewAdminTopNav title="Organization Details" />
+        <main className="flex-1 flex items-center justify-center">
+           <div className="animate-spin w-8 h-8 border-4 border-[#A14000] border-t-transparent rounded-full"></div>
+        </main>
+      </div>
+    </div>
+  );
 
   if (!org) return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
