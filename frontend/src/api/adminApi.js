@@ -41,9 +41,89 @@ export const adminApi = {
     return axiosClient.put('/admin/settings', data);
   },
 
+  // Security Settings (Mocked via localStorage)
+  getSecuritySettings: async () => {
+    const saved = localStorage.getItem('mockSecuritySettings');
+    if (saved) {
+      return { data: JSON.parse(saved) };
+    }
+    return { data: {
+      twoFactorAdmin: true,
+      twoFactorManager: false,
+      sessionTimeout: 60,
+      maxLoginAttempts: 5,
+      passwordPolicy: { requireUppercase: true, requireNumber: true, requireSpecial: true },
+      ipAllowlistEnabled: false,
+      allowedIps: ""
+    } };
+  },
+  updateSecuritySettings: async (data) => {
+    localStorage.setItem('mockSecuritySettings', JSON.stringify(data));
+    return { data };
+  },
+
+  // Notification Settings (Mocked via localStorage)
+  getNotificationSettings: async () => {
+    const saved = localStorage.getItem('mockNotificationSettings');
+    if (saved) {
+      return { data: JSON.parse(saved) };
+    }
+    return { data: {
+      emailNotifications: true,
+      primaryEmailAddress: "admin@fleetcommand.io",
+      systemAlerts: true,
+      systemAlertsSeverity: "warning",
+      maintenanceAlerts: true,
+      maintenanceAlert48h: true,
+      maintenanceAlert1h: true,
+      inviteNotifications: true,
+      inviteSent: true,
+      inviteAccepted: true,
+      weeklyReports: true,
+      weeklyReportDay: "monday",
+      newOrganizationAlerts: true,
+      requireAdminReview: true
+    } };
+  },
+  updateNotificationSettings: async (data) => {
+    localStorage.setItem('mockNotificationSettings', JSON.stringify(data));
+    return { data };
+  },
+
   // Analytics
   getAnalytics: async () => {
     return axiosClient.get('/admin/analytics');
+  },
+  getSystemHealth: async () => {
+    // Mock system health data since backend doesn't have this endpoint yet
+    return {
+      data: {
+        api: { status: 'Operational', value: '99.9%' },
+        database: { status: 'Healthy', value: '12ms' },
+        server: { status: 'Normal', value: '4 Nodes' },
+        responseTime: { status: 'Fast', value: '45ms' },
+        storage: { status: 'Normal', value: '45% Used' },
+        cpu: { status: 'Normal', value: '32%' },
+        memory: { status: 'Normal', value: '4GB/16GB' },
+        uptime: { status: 'Operational', value: '99.99%' }
+      }
+    };
+  },
+  getAuditLogs: async (params) => {
+    // Mock audit logs
+    const logs = [
+      { id: 1, timestamp: new Date().toISOString(), user: "Super Admin", action: "Updated Organization", organization: "ARC Logistics", ip: "192.168.1.1", status: "Success" },
+      { id: 2, timestamp: new Date(Date.now() - 3600000).toISOString(), user: "System", action: "Daily Backup", organization: "System", ip: "localhost", status: "Success" },
+      { id: 3, timestamp: new Date(Date.now() - 7200000).toISOString(), user: "Super Admin", action: "Created Fleet Manager", organization: "XYZ Transport", ip: "192.168.1.1", status: "Success" }
+    ];
+    return {
+      data: {
+        data: {
+          logs,
+          pagination: { page: 1, limit: 15, totalPages: 1, total: logs.length }
+        }
+      }
+    };
   },
 
   // Platform Issues

@@ -471,8 +471,8 @@ export default function DocumentManagement() {
                   View Compliance Report
                 </button>
               </div>
-            );
-          })()}
+            </div>
+          </div>
         </div>
         <div className="bg-[#0F0F10] rounded-2xl border border-[#1B1B1D] p-6 shadow-sm text-white">
           <h3 className="font-poppins font-black text-xl text-white mb-4">Recent Notifications</h3>
