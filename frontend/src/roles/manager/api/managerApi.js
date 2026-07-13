@@ -185,4 +185,8 @@ export const managerApi = {
   deleteEWayBill: async (id) => {
     return await axiosClient.delete(`/manager/eway/${id}`);
   },
+
+  getActivities: async () => {
+    return await axiosClient.get("/manager/activities");
+  },
 };
