@@ -597,7 +597,33 @@ export const deleteMaintenance = async (req, res, next) => {
 export const listDocuments = async (req, res, next) => {
   try {
     const documents = await getDocuments({ uploadedBy: req.user._id });
-    return sendSuccess(res, 200, documents, 'Documents fetched');
+    
+    // Calculate dynamic status for each document on fetch
+    const enriched = documents.map(d => {
+      const doc = d.toObject ? d.toObject() : d;
+      if (doc.expiry) {
+        const expDate = new Date(doc.expiry);
+        if (!isNaN(expDate.getTime())) {
+          const now = new Date();
+          expDate.setHours(0, 0, 0, 0);
+          now.setHours(0, 0, 0, 0);
+          
+          const diffTime = expDate.getTime() - now.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (diffDays < 0) {
+            doc.status = "Expired";
+          } else if (diffDays <= 30) {
+            doc.status = "Expiring Soon";
+          } else {
+            doc.status = "Active";
+          }
+        }
+      }
+      return doc;
+    });
+
+    return sendSuccess(res, 200, enriched, 'Documents fetched');
   } catch (error) {
     next(error);
   }
@@ -609,7 +635,29 @@ export const getDocumentDetails = async (req, res, next) => {
     if (!document) {
       return sendError(res, 404, 'Document not found');
     }
-    return sendSuccess(res, 200, document, 'Document details fetched');
+    
+    const doc = document.toObject ? document.toObject() : document;
+    if (doc.expiry) {
+      const expDate = new Date(doc.expiry);
+      if (!isNaN(expDate.getTime())) {
+        const now = new Date();
+        expDate.setHours(0, 0, 0, 0);
+        now.setHours(0, 0, 0, 0);
+        
+        const diffTime = expDate.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+          doc.status = "Expired";
+        } else if (diffDays <= 30) {
+          doc.status = "Expiring Soon";
+        } else {
+          doc.status = "Active";
+        }
+      }
+    }
+
+    return sendSuccess(res, 200, doc, 'Document details fetched');
   } catch (error) {
     next(error);
   }
@@ -635,6 +683,27 @@ export const createDocument = async (req, res, next) => {
       return sendError(res, 400, 'Title, fileUrl, and type are required');
     }
 
+    let computedStatus = status || 'Active';
+    if (expiry) {
+      const expDate = new Date(expiry);
+      if (!isNaN(expDate.getTime())) {
+        const now = new Date();
+        expDate.setHours(0, 0, 0, 0);
+        now.setHours(0, 0, 0, 0);
+        
+        const diffTime = expDate.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+          computedStatus = 'Expired';
+        } else if (diffDays <= 30) {
+          computedStatus = 'Expiring Soon';
+        } else {
+          computedStatus = 'Active';
+        }
+      }
+    }
+
     const document = await createDocumentInRepo({
       title,
       fileUrl,
@@ -644,7 +713,7 @@ export const createDocument = async (req, res, next) => {
       driver,
       trip,
       expiry,
-      status,
+      status: computedStatus,
       fileSize,
       fileType,
       uploadedBy: req.user._id
@@ -658,11 +727,54 @@ export const createDocument = async (req, res, next) => {
 
 export const updateDocument = async (req, res, next) => {
   try {
-    const document = await updateDocumentInRepo(req.params.id, req.body);
+    const updateData = { ...req.body };
+    if (updateData.expiry) {
+      const expDate = new Date(updateData.expiry);
+      if (!isNaN(expDate.getTime())) {
+        const now = new Date();
+        expDate.setHours(0, 0, 0, 0);
+        now.setHours(0, 0, 0, 0);
+        
+        const diffTime = expDate.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+          updateData.status = 'Expired';
+        } else if (diffDays <= 30) {
+          updateData.status = 'Expiring Soon';
+        } else {
+          updateData.status = 'Active';
+        }
+      }
+    }
+
+    const document = await updateDocumentInRepo(req.params.id, updateData);
     if (!document) {
       return sendError(res, 404, 'Document not found');
     }
-    return sendSuccess(res, 200, document, 'Document updated');
+
+    const doc = document.toObject ? document.toObject() : document;
+    if (doc.expiry) {
+      const expDate = new Date(doc.expiry);
+      if (!isNaN(expDate.getTime())) {
+        const now = new Date();
+        expDate.setHours(0, 0, 0, 0);
+        now.setHours(0, 0, 0, 0);
+        
+        const diffTime = expDate.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+          doc.status = "Expired";
+        } else if (diffDays <= 30) {
+          doc.status = "Expiring Soon";
+        } else {
+          doc.status = "Active";
+        }
+      }
+    }
+
+    return sendSuccess(res, 200, doc, 'Document updated');
   } catch (error) {
     next(error);
   }

@@ -14,15 +14,6 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
 
-// Mock data for documents
-const MOCK_DOCUMENTS = [
-  { id: 1, name: "Commercial Insurance - Truck #42", type: "Insurance", category: "Vehicle Docs", vehicle: "Volvo FM 12", expiry: "2025-10-24", status: "Expiring Soon", uploadedBy: "Alex Thompson", uploadDate: "2024-05-15", fileSize: "2.4 MB", fileType: "PDF" },
-  { id: 2, name: "Commercial Driver License (CDL)", type: "License", category: "Driver Docs", driver: "Robert L. Henderson", expiry: "2026-03-12", status: "Active", uploadedBy: "Sarah Lee", uploadDate: "2024-01-20", fileSize: "1.1 MB", fileType: "PDF" },
-  { id: 3, name: "Pollution Check (PUC)", type: "Compliance", category: "Vehicle Docs", vehicle: "Komila FM-30", expiry: "2024-08-15", status: "Expired", uploadedBy: "Mike Johnson", uploadDate: "2023-08-20", fileSize: "500 KB", fileType: "PDF" },
-  { id: 4, name: "Trip Invoice - Mumbai to Delhi", type: "Invoice", category: "Trip Invoices", trip: "TRP-2024-185", amount: "₹45,200", status: "Active", uploadedBy: "Rajesh Kumar", uploadDate: "2024-07-01", fileSize: "850 KB", fileType: "XLSX" },
-  { id: 5, name: "Road Tax Receipt 2024", type: "Tax", category: "Vehicle Docs", vehicle: "Ashok Leyland 3118", expiry: "2025-06-30", status: "Active", uploadedBy: "Alex Thompson", uploadDate: "2024-06-25", fileSize: "1.2 MB", fileType: "PDF" }
-];
-
 const STATUS_OPTIONS = ["All Statuses", "Active", "Expiring Soon", "Expired"];
 const CATEGORY_OPTIONS = ["All Categories", "Vehicle Docs", "Driver Docs", "Trip Invoices", "Compliance"];
 

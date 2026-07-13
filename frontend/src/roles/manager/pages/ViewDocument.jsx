@@ -18,29 +18,6 @@ import {
 import { managerApi } from "../api/managerApi";
 import toast from "react-hot-toast";
 
-// Mock data for the document
-const MOCK_DOCUMENTS = [
-  {
-    id: 1,
-    name: "Commercial Insurance - Truck #42",
-    type: "Insurance",
-    category: "Vehicle Docs",
-    vehicle: "Volvo FM 12 [KA-01-FE-9912",
-    expiry: "2025-10-24",
-    status: "Active",
-    uploadedBy: "Alex Thompson",
-    uploadDate: "2024-05-15",
-    fileSize: "2.4 MB",
-    fileType: "PDF",
-    complianceScore: 8.5,
-    activityLog: [
-      { action: "Document Verified", user: "Alex Thompson", date: "2024-05-15 10:30 AM" },
-      { action: "Uploaded", user: "Alex Thompson", date: "2024-05-15 10:25 AM" },
-      { action: "Requested", user: "Sarah Lee", date: "2024-05-14 03:45 PM" }
-    ]
-  }
-];
-
 export default function ViewDocument() {
   const { id } = useParams();
   const navigate = useNavigate();

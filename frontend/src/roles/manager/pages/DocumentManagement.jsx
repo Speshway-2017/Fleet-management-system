@@ -25,82 +25,6 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
 
-// Mock data for documents
-const MOCK_DOCUMENTS = [
-  {
-    id: 1,
-    name: "Commercial Insurance - Truck #42",
-    type: "Insurance",
-    category: "Vehicle Docs",
-    vehicle: "Volu FM-30",
-    expiry: "2025-10-24",
-    status: "Expiring Soon",
-    uploadedBy: "Alex Thompson",
-    uploadDate: "2024-05-15",
-    fileSize: "2.4 MB",
-    fileType: "PDF"
-  },
-  {
-    id: 2,
-    name: "Commercial Driver License (CDL)",
-    type: "License",
-    category: "Driver Docs",
-    driver: "Robert L. Henderson",
-    expiry: "2026-03-12",
-    status: "Active",
-    uploadedBy: "Sarah Lee",
-    uploadDate: "2024-01-20",
-    fileSize: "1.1 MB",
-    fileType: "PDF"
-  },
-  {
-    id: 3,
-    name: "Pollution Check (PUC)",
-    type: "Compliance",
-    category: "Vehicle Docs",
-    vehicle: "Komila FM-30",
-    expiry: "2024-08-15",
-    status: "Expired",
-    uploadedBy: "Mike Johnson",
-    uploadDate: "2023-08-20",
-    fileSize: "500 KB",
-    fileType: "PDF"
-  },
-  {
-    id: 4,
-    name: "Trip Invoice - Mumbai to Delhi",
-    type: "Invoice",
-    category: "Trip Invoices",
-    trip: "TRP-2024-185",
-    amount: "₹45,200",
-    status: "Active",
-    uploadedBy: "Rajesh Kumar",
-    uploadDate: "2024-07-01",
-    fileSize: "850 KB",
-    fileType: "XLSX"
-  },
-  {
-    id: 5,
-    name: "Road Tax Receipt 2024",
-    type: "Tax",
-    category: "Vehicle Docs",
-    vehicle: "Ashok Leyland 3118",
-    expiry: "2025-06-30",
-    status: "Active",
-    uploadedBy: "Alex Thompson",
-    uploadDate: "2024-06-25",
-    fileSize: "1.2 MB",
-    fileType: "PDF"
-  }
-];
-
-const DOC_CATEGORIES = [
-  { name: "Vehicle Docs", icon: Truck, count: 124, lastUpdated: "2 hours ago" },
-  { name: "Driver Docs", icon: Users, count: 86, lastUpdated: "Yesterday" },
-  { name: "Trip Invoices", icon: FileSpreadsheet, count: 412, lastUpdated: "Just Now" },
-  { name: "Compliance", icon: ShieldCheck, count: 28, lastUpdated: "3 days ago" }
-];
-
 const STATUS_OPTIONS = ["All Statuses", "Active", "Expiring Soon", "Expired"];
 const CATEGORY_OPTIONS = ["All Categories", "Vehicle Docs", "Driver Docs", "Trip Invoices", "Compliance"];
 
@@ -118,6 +42,61 @@ export default function DocumentManagement() {
 
   const complianceSectionRef = useRef(null);
   const [highlightCompliance, setHighlightCompliance] = useState(false);
+
+  // Dynamic Category Stats Calculations
+  const categories = [
+    { name: "Vehicle Docs", icon: Truck, description: "Maintenance, Insurance & Permits" },
+    { name: "Driver Docs", icon: Users, description: "Licenses & Driver Profile Checks" },
+    { name: "Trip Invoices", icon: FileSpreadsheet, description: "Billing Records & Invoices" },
+    { name: "Compliance", icon: ShieldCheck, description: "Pollution checks & Audits" }
+  ].map(cat => {
+    const categoryDocs = documents.filter(d => d.category === cat.name);
+    const count = categoryDocs.length;
+    
+    let lastUpdated = "No files";
+    if (count > 0) {
+      const sorted = [...categoryDocs].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+      const latestDate = new Date(sorted[0].updatedAt || sorted[0].createdAt || Date.now());
+      const diffMin = Math.round((Date.now() - latestDate) / 60000);
+      if (diffMin < 1) lastUpdated = "Just Now";
+      else if (diffMin < 60) lastUpdated = `${diffMin} mins ago`;
+      else {
+        const diffHrs = Math.round(diffMin / 60);
+        if (diffHrs < 24) lastUpdated = `${diffHrs} hours ago`;
+        else lastUpdated = `${Math.round(diffHrs / 24)} days ago`;
+      }
+    }
+    
+    return {
+      ...cat,
+      count,
+      lastUpdated
+    };
+  });
+
+  // Dynamic compliance index calculations
+  const activeDocsCount = documents.filter(d => d.status === "Active").length;
+  const expiringDocsCount = documents.filter(d => d.status === "Expiring Soon").length;
+  const expiredDocsCount = documents.filter(d => d.status === "Expired").length;
+  const totalDocsCount = documents.length;
+  const compliancePercentage = totalDocsCount > 0 ? Math.round((activeDocsCount / totalDocsCount) * 100) : 100;
+  const strokeDashoffset = 251.2 - (251.2 * compliancePercentage) / 100;
+
+  // Dynamic alert notifications from database
+  const alertNotifications = documents
+    .filter(d => d.status === "Expiring Soon" || d.status === "Expired")
+    .map(d => {
+      const isExpired = d.status === "Expired";
+      return {
+        id: d.id,
+        text: isExpired 
+          ? `Alert: ${d.name} has expired.` 
+          : `Urgent: ${d.name} expires soon (Expiry: ${new Date(d.expiry).toLocaleDateString("en-IN")}).`,
+        time: d.updatedAt ? "Updated recently" : "Added recently",
+        icon: isExpired ? AlertTriangle : Clock,
+        iconClass: isExpired ? "bg-red-500/20 text-red-400" : "bg-amber-500/20 text-amber-400"
+      };
+    });
 
   const fetchDocuments = async () => {
     try {
@@ -261,7 +240,7 @@ export default function DocumentManagement() {
 
       {/* Document Categories Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {DOC_CATEGORIES.map((category, idx) => {
+        {categories.map((category, idx) => {
           const Icon = category.icon;
           const isCompliance = category.name === "Compliance";
           return (
@@ -287,7 +266,7 @@ export default function DocumentManagement() {
               </div>
               <h3 className="font-poppins font-bold text-xl text-[#1E293B] mt-4">{category.name}</h3>
               <p className="text-sm text-[#64748B] mt-1">
-                Maintenance, Insurance & Permits
+                {category.description}
               </p>
               <div className="mt-4 flex items-center justify-between text-[10px] text-[#64748B] border-t border-[#E7EAF0]/60 pt-3">
                 <span className="font-semibold uppercase">Last Updated</span>
@@ -426,7 +405,7 @@ export default function DocumentManagement() {
         </div>
         <div className="px-6 py-4 border-t border-[#E7EAF0] flex items-center justify-between">
           <span className="text-xs text-[#64748B] font-medium font-poppins">
-            Showing {filteredDocs.length} of {MOCK_DOCUMENTS.length} documents
+            Showing {filteredDocs.length} of {documents.length} documents
           </span>
           <div className="flex items-center gap-2">
             <button className="p-2 text-gray-500 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
@@ -456,26 +435,26 @@ export default function DocumentManagement() {
                 <circle cx="50" cy="50" r="40" stroke="#E7EAF0" strokeWidth="10" fill="none" />
                 <circle cx="50" cy="50" r="40" stroke="#22C55E" strokeWidth="10" fill="none"
                         strokeDasharray="251.2"
-                        strokeDashoffset="50"
+                        strokeDashoffset={strokeDashoffset}
                         strokeLinecap="round" />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-3xl font-black text-[#1E293B]">80%</span>
+                <span className="text-3xl font-black text-[#1E293B]">{compliancePercentage}%</span>
                 <span className="text-xs text-[#64748B]">Compliant</span>
               </div>
             </div>
             <div className="flex-1 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-[#64748B]">Valid Documents</span>
-                <span className="font-bold text-[#1E293B]">542</span>
+                <span className="font-bold text-[#1E293B]">{activeDocsCount}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-[#64748B]">Expiring Soon</span>
-                <span className="font-bold text-[#F59E0B]">28</span>
+                <span className="font-bold text-[#F59E0B]">{expiringDocsCount}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-[#64748B]">Expired</span>
-                <span className="font-bold text-[#EF4444]">5</span>
+                <span className="font-bold text-[#EF4444]">{expiredDocsCount}</span>
               </div>
               <div className="mt-4 pt-4 border-t border-[#E7EAF0]/60">
                 <button 
@@ -491,33 +470,24 @@ export default function DocumentManagement() {
         <div className="bg-[#0F0F10] rounded-2xl border border-[#1B1B1D] p-6 shadow-sm text-white">
           <h3 className="font-poppins font-black text-xl text-white mb-4">Recent Notifications</h3>
           <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="bg-amber-500/20 text-amber-400 p-2 rounded-full shrink-0">
-                <Clock className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Urgent: Asset #42 insurance expires in 72h.</p>
-                <span className="text-xs text-[#94A3B8]">1 hour ago</span>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="bg-green-500/20 text-green-400 p-2 rounded-full shrink-0">
-                <FileCheck className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Robert L. Henderson license renewed successfully.</p>
-                <span className="text-xs text-[#94A3B8]">Yesterday</span>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="bg-red-500/20 text-red-400 p-2 rounded-full shrink-0">
-                <AlertTriangle className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Pollution check for Komila FM-30 has expired.</p>
-                <span className="text-xs text-[#94A3B8]">2 days ago</span>
-              </div>
-            </div>
+            {alertNotifications.length === 0 ? (
+              <p className="text-xs text-gray-400 font-medium">No pending document alerts. All documents are active.</p>
+            ) : (
+              alertNotifications.slice(0, 3).map((notif, idx) => {
+                const Icon = notif.icon;
+                return (
+                  <div key={idx} className="flex items-start gap-3">
+                    <div className={`${notif.iconClass} p-2 rounded-full shrink-0`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-white">{notif.text}</p>
+                      <span className="text-[10px] text-[#94A3B8]">{notif.time}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
