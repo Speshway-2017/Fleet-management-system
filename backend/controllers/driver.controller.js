@@ -9,15 +9,81 @@ import { sendSuccess, sendError } from '../utils/response.js';
 import fs from 'fs';
 import Trip from '../models/Trip.js';
 import Driver from '../models/Driver.js';
+import mongoose from 'mongoose';
 
 /**
- * List all drivers
+ * List all drivers with filtering, search, sorting, and pagination
  * GET /api/drivers
  */
-export const listDrivers = async (_req, res, next) => {
+export const listDrivers = async (req, res, next) => {
   try {
-    const drivers = await getDrivers();
-    return sendSuccess(res, 200, drivers, 'Drivers fetched successfully');
+    const filter = {};
+
+    // 1. Search by Name, Employee ID, or Phone
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, 'i');
+      filter.$or = [
+        { fullName: searchRegex },
+        { employeeId: searchRegex },
+        { phoneNumber: searchRegex }
+      ];
+    }
+
+    // 2. Filter by Driver Status
+    if (req.query.driverStatus) {
+      filter.driverStatus = req.query.driverStatus;
+    }
+
+    // 3. Filter by Assigned Vehicle
+    if (req.query.assignedVehicle) {
+      if (req.query.assignedVehicle === 'Unassigned') {
+        filter.assignedVehicle = 'Unassigned';
+      } else {
+        filter.assignedVehicle = new RegExp(req.query.assignedVehicle, 'i');
+      }
+    }
+
+    // 4. Filter by License Status
+    if (req.query.licenseStatus) {
+      const today = new Date();
+      const thirtyDaysLater = new Date();
+      thirtyDaysLater.setDate(today.getDate() + 30);
+
+      if (req.query.licenseStatus === 'Expired') {
+        filter.licenseExpiry = { $lt: today };
+      } else if (req.query.licenseStatus === 'Expiring Soon') {
+        filter.licenseExpiry = { $gte: today, $lte: thirtyDaysLater };
+      } else if (req.query.licenseStatus === 'Valid') {
+        filter.licenseExpiry = { $gt: thirtyDaysLater };
+      }
+    }
+
+    // 5. Pagination & Sorting
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const sortField = req.query.sortBy || 'createdAt';
+    const sortOrder = req.query.order === 'asc' ? 1 : -1;
+    const sort = { [sortField]: sortOrder };
+
+    const total = await Driver.countDocuments(filter);
+    const drivers = await Driver.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Drivers fetched successfully',
+      data: drivers,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -82,6 +148,15 @@ export const createDriver = async (req, res, next) => {
       medicalFitnessStatus,
       profileImage,
       licenseDocument,
+      employeeId,
+      dob,
+      gender,
+      address,
+      licenseIssuingAuthority,
+      onTimeDeliveries,
+      attendancePercentage,
+      safetyRecord,
+      trafficViolations,
     } = req.body;
 
     if (!fullName || !email || !phoneNumber || !licenseNumber) {
@@ -103,6 +178,15 @@ export const createDriver = async (req, res, next) => {
       profileImage: profileImage || '',
       licenseDocument: licenseDocument || '',
       assignedManager: req.user?._id,
+      employeeId: employeeId || undefined,
+      dob: dob || undefined,
+      gender: gender || 'Male',
+      address: address || '',
+      licenseIssuingAuthority: licenseIssuingAuthority || '',
+      onTimeDeliveries: onTimeDeliveries !== undefined ? Number(onTimeDeliveries) : 0,
+      attendancePercentage: attendancePercentage !== undefined ? Number(attendancePercentage) : 100,
+      safetyRecord: safetyRecord || 'Excellent',
+      trafficViolations: trafficViolations !== undefined ? Number(trafficViolations) : 0,
     });
 
     return sendSuccess(res, 201, driver, 'Driver created successfully');
@@ -112,6 +196,8 @@ export const createDriver = async (req, res, next) => {
       const message =
         field === 'licenseNumber'
           ? 'A driver with this license number already exists'
+          : field === 'employeeId'
+          ? 'A driver with this Employee ID already exists'
           : 'A driver with this email already exists';
       return sendError(res, 409, message);
     }
@@ -136,6 +222,8 @@ export const updateDriver = async (req, res, next) => {
       const message =
         field === 'licenseNumber'
           ? 'A driver with this license number already exists'
+          : field === 'employeeId'
+          ? 'A driver with this Employee ID already exists'
           : 'A driver with this email already exists';
       return sendError(res, 409, message);
     }

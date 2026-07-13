@@ -379,6 +379,9 @@ export const listTrips = async (req, res, next) => {
     if (req.query.vehicle) {
       filter.vehicle = req.query.vehicle;
     }
+    if (req.query.driver) {
+      filter.driver = req.query.driver;
+    }
     const trips = await getTrips(filter);
     return sendSuccess(res, 200, trips, 'Trips fetched');
   } catch (error) {
