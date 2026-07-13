@@ -40,6 +40,13 @@ export default function DocumentManagement() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const DOC_CATEGORIES = [
+    { name: "Vehicle Docs", icon: Truck, count: documents.filter(d => d.category === "Vehicle Docs").length, lastUpdated: "2 hours ago" },
+    { name: "Driver Docs", icon: Users, count: documents.filter(d => d.category === "Driver Docs").length, lastUpdated: "Yesterday" },
+    { name: "Trip Invoices", icon: FileSpreadsheet, count: documents.filter(d => d.category === "Trip Invoices").length, lastUpdated: "Just Now" },
+    { name: "Compliance", icon: ShieldCheck, count: documents.filter(d => d.category === "Compliance").length, lastUpdated: "3 days ago" }
+  ];
+
   const complianceSectionRef = useRef(null);
   const [highlightCompliance, setHighlightCompliance] = useState(false);
 
@@ -464,8 +471,8 @@ export default function DocumentManagement() {
                   View Compliance Report
                 </button>
               </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
         <div className="bg-[#0F0F10] rounded-2xl border border-[#1B1B1D] p-6 shadow-sm text-white">
           <h3 className="font-poppins font-black text-xl text-white mb-4">Recent Notifications</h3>

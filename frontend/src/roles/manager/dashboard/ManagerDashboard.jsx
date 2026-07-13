@@ -168,8 +168,8 @@ export default function ManagerDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {compliance.map((row) => (
-                    <tr key={row.id} className="hover:bg-gray-50/50 transition-colors">
+                  {compliance.map((row, index) => (
+                    <tr key={row.id || row._id || index} className="hover:bg-gray-50/50 transition-colors">
                       <td className="py-3.5 px-3 font-poppins font-semibold text-[#1B2430]">{row.vehicle.replace(/-/g, " ")}</td>
                       <td className="py-3.5 px-3 text-gray-500 font-medium">{row.document}</td>
                       <td className="py-3.5 px-3 text-right">
@@ -198,11 +198,11 @@ export default function ManagerDashboard() {
             </div>
 
             <div className="flex-1 flex flex-col justify-between py-2">
-              {costs.map((cost) => (
-                <div key={cost.label} className="w-full">
+              {costs.map((cost, index) => (
+                <div key={cost.label || index} className="w-full">
                   <div className="flex items-center justify-between text-xs font-semibold text-gray-400 mb-1.5">
                     <span className="font-medium">{cost.label}</span>
-                    <span className="text-white font-poppins">₹{cost.amount}</span>
+                    <span className="text-white font-poppins">{cost.amount}</span>
                   </div>
                   <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
                     <div 

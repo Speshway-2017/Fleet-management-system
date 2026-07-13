@@ -8,6 +8,8 @@ import {
   getAnalyticsSummary,
   getRevenueChartData
 } from '../repositories/admin.repository.js';
+import Organization from '../models/Organization.js';
+import User from '../models/User.js';
 
 export const getAdminDashboardData = async () => {
   const [
@@ -67,4 +69,58 @@ export const getAdminDashboardData = async () => {
     analyticsSummary,
     chartData: formattedChartData
   };
+};
+
+export const getMonthlyGrowthStats = async () => {
+  const months = [];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const now = new Date();
+  
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      name: monthNames[d.getMonth()]
+    });
+  }
+
+  // Get cumulative start counts
+  const firstMonthStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  let orgCumulative = await Organization.countDocuments({ createdAt: { $lt: firstMonthStart } });
+  let managerCumulative = await User.countDocuments({ role: 'FLEET_MANAGER', createdAt: { $lt: firstMonthStart } });
+
+  // Grouped counts per month
+  const orgGrowthAgg = await Organization.aggregate([
+    { $match: { createdAt: { $gte: firstMonthStart } } },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const managerGrowthAgg = await User.aggregate([
+    { $match: { role: 'FLEET_MANAGER', createdAt: { $gte: firstMonthStart } } },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const orgGrowthData = months.map(m => {
+    const match = orgGrowthAgg.find(item => item._id === m.key);
+    orgCumulative += match ? match.count : 0;
+    return { name: m.name, value: orgCumulative };
+  });
+
+  const managerGrowthData = months.map(m => {
+    const match = managerGrowthAgg.find(item => item._id === m.key);
+    managerCumulative += match ? match.count : 0;
+    return { name: m.name, value: managerCumulative };
+  });
+
+  return { orgGrowthData, managerGrowthData };
 };

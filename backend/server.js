@@ -24,9 +24,17 @@ const startServer = async () => {
   }
 
   // 4. Start Express
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`🚀  Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
     console.log(`🌐  CORS allowed for: ${process.env.CLIENT_URL}`);
+  });
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`❌  Port ${PORT} is already in use by another process. Terminate the conflicting process or change the port.`);
+    } else {
+      console.error('❌  Server error:', err);
+    }
+    process.exit(1);
   });
 };
 
