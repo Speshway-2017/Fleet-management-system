@@ -62,16 +62,25 @@ export default function MaintenanceManagementPage() {
   const [isDeletingId, setIsDeletingId] = useState(null);
   const [isUpdatingId, setIsUpdatingId] = useState(null);
 
-  // Mock API service - will be replaced with real API
-  const maintenanceApi = {
-    list: async () => {
-      return { data: { data: INITIAL_WORK_ORDERS } };
-    },
-    update: async (id, data) => {
-      return { data: { data: { id, ...data } } };
-    },
-    remove: async (id) => {
-      throw new Error("Maintenance API not yet implemented. Please implement backend endpoints.");
+  const fetchWorkOrders = async () => {
+    try {
+      const response = await managerApi.getMaintenance();
+      const list = response.data?.data || response.data || [];
+      const mapped = list.map(item => ({
+        id: item._id || item.id,
+        vehicleId: item.vehiclePlate || item.vehicleNumber || item.vehicle || "—",
+        vehicleName: item.vehicleName || "Unknown Vehicle",
+        serviceType: item.serviceType || item.type || "General Service",
+        scheduledDate: item.scheduledDate || (item.date ? item.date.split("T")[0] : ""),
+        status: item.status || "Scheduled",
+        cost: item.cost ? `₹${Number(item.cost).toLocaleString()}` : "₹0",
+        specialist: item.specialist || "Not Assigned",
+        garage: item.garage || "Not Assigned"
+      }));
+      setWorkOrders(mapped);
+    } catch (err) {
+      console.error("Failed to load maintenance records", err);
+      toast.error("Failed to load maintenance records from database.");
     }
   };
 
@@ -90,17 +99,6 @@ export default function MaintenanceManagementPage() {
     }
   }, [location, navigate]);
 
-  // Load from local storage (temporary - will be replaced with API call)
-  useEffect(() => {
-    const saved = localStorage.getItem("fleet_work_orders");
-    if (saved) {
-      setWorkOrders(JSON.parse(saved));
-    } else {
-      localStorage.setItem("fleet_work_orders", JSON.stringify(INITIAL_WORK_ORDERS));
-      setWorkOrders(INITIAL_WORK_ORDERS);
-    }
-  };
-
   // Load from database
   useEffect(() => {
     fetchWorkOrders();
@@ -108,24 +106,16 @@ export default function MaintenanceManagementPage() {
 
   const handleStartService = async (orderId, e) => {
     e.stopPropagation();
-    
     setIsUpdatingId(orderId);
     try {
-      // Call API to update status
-      await maintenanceApi.update(orderId, { status: "In Progress" });
-      
+      await managerApi.updateMaintenance(orderId, { status: "In Progress" });
       const updated = workOrders.map(w =>
         w.id === orderId ? { ...w, status: "In Progress" } : w
       );
       setWorkOrders(updated);
-      localStorage.setItem("fleet_work_orders", JSON.stringify(updated));
       toast.success("Service started at garage!");
     } catch (err) {
-      if (!err.response) {
-        toast.error("Unable to connect to the server. Please try again.");
-      } else {
-        toast.error(err.response?.data?.message || "Failed to start service.");
-      }
+      toast.error(err.response?.data?.message || "Failed to start service.");
     } finally {
       setIsUpdatingId(null);
     }
@@ -133,24 +123,16 @@ export default function MaintenanceManagementPage() {
 
   const handleCompleteOrder = async (orderId, e) => {
     e.stopPropagation();
-    
     setIsUpdatingId(orderId);
     try {
-      // Call API to update status
-      await maintenanceApi.update(orderId, { status: "Completed" });
-      
+      await managerApi.updateMaintenance(orderId, { status: "Completed" });
       const updated = workOrders.map(w =>
         w.id === orderId ? { ...w, status: "Completed" } : w
       );
       setWorkOrders(updated);
-      localStorage.setItem("fleet_work_orders", JSON.stringify(updated));
       toast.success("Maintenance work order completed successfully!");
     } catch (err) {
-      if (!err.response) {
-        toast.error("Unable to connect to the server. Please try again.");
-      } else {
-        toast.error(err.response?.data?.message || "Failed to complete order.");
-      }
+      toast.error(err.response?.data?.message || "Failed to complete order.");
     } finally {
       setIsUpdatingId(null);
     }
@@ -159,43 +141,12 @@ export default function MaintenanceManagementPage() {
   const handleDeleteOrder = async (orderId) => {
     setIsDeletingId(orderId);
     try {
-      // Call API to delete order
-      await maintenanceApi.remove(orderId);
-      
-      // Remove from state after successful deletion
+      await managerApi.deleteMaintenance(orderId);
       const updated = workOrders.filter(w => w.id !== orderId);
       setWorkOrders(updated);
-      localStorage.setItem("fleet_work_orders", JSON.stringify(updated));
       toast.success("Work order deleted successfully");
     } catch (err) {
-      if (!err.response) {
-        toast.error("Unable to connect to the server. Please try again.");
-      } else {
-        const statusCode = err.response.status;
-        const message = err.response?.data?.message;
-
-        switch (statusCode) {
-          case 400:
-            toast.error(message || "Invalid request.");
-            break;
-          case 401:
-            toast.error("You are not authenticated. Please log in again.");
-            break;
-          case 403:
-            toast.error("You do not have permission to delete this order.");
-            break;
-          case 404:
-            toast.error("Work order not found.");
-            // Remove from UI anyway
-            setWorkOrders(prev => prev.filter(w => w.id !== orderId));
-            break;
-          case 500:
-            toast.error("Server error. Please try again later.");
-            break;
-          default:
-            toast.error(message || "Failed to delete work order.");
-        }
-      }
+      toast.error(err.response?.data?.message || "Failed to delete work order.");
     } finally {
       setIsDeletingId(null);
     }

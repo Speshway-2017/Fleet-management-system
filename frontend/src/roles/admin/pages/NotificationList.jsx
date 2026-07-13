@@ -53,7 +53,7 @@ export default function NotificationList() {
             <div className="bg-white rounded-xl border border-slate-200 p-6 flex items-center justify-between shadow-sm">
               <div>
                 <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">Total Notifications</p>
-                <h4 className="text-2xl font-black text-slate-800">10</h4>
+                <h4 className="text-2xl font-black text-slate-800">{notifications.length}</h4>
               </div>
               <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500">
                 <Bell className="w-5 h-5" />
@@ -63,12 +63,14 @@ export default function NotificationList() {
             <div className="bg-white rounded-xl border border-slate-200 p-6 flex items-center justify-between shadow-sm">
               <div>
                 <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">Unread</p>
-                <h4 className="text-2xl font-black text-[#b45309]">4</h4>
+                <h4 className="text-2xl font-black text-[#b45309]">{notifications.filter(n => n.unread).length}</h4>
               </div>
               <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-[#b45309]">
                 <div className="relative">
                   <Bell className="w-5 h-5" />
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#b45309] rounded-full border-2 border-orange-50"></span>
+                  {notifications.some(n => n.unread) && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#b45309] rounded-full border-2 border-orange-50"></span>
+                  )}
                 </div>
               </div>
             </div>
@@ -76,7 +78,9 @@ export default function NotificationList() {
             <div className="bg-white rounded-xl border border-slate-200 p-6 flex items-center justify-between shadow-sm">
               <div>
                 <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">Alerts</p>
-                <h4 className="text-2xl font-black text-slate-800">4</h4>
+                <h4 className="text-2xl font-black text-slate-800">
+                  {notifications.filter(n => n.type === 'alert' || n.type === 'danger' || n.type === 'warning').length}
+                </h4>
               </div>
               <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-500">
                 <AlertTriangle className="w-5 h-5" />
@@ -86,7 +90,7 @@ export default function NotificationList() {
             <div className="bg-white rounded-xl border border-slate-200 p-6 flex items-center justify-between shadow-sm">
               <div>
                 <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">System Events</p>
-                <h4 className="text-2xl font-black text-slate-800">4</h4>
+                <h4 className="text-2xl font-black text-slate-800">{notifications.filter(n => n.type === 'system').length}</h4>
               </div>
               <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
                 <Activity className="w-5 h-5" />

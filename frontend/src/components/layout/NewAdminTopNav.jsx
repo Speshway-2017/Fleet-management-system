@@ -7,9 +7,10 @@ import NotificationOverlay from "./NotificationOverlay";
 export default function NewAdminTopNav({ title = "Dashboard" }) {
   const location = useLocation();
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
-  const { notifications, isSidebarOpen, setIsSidebarOpen } = useAdmin();
+  const { notifications, isSidebarOpen, setIsSidebarOpen, adminProfile } = useAdmin();
   const isNotificationsActive = location.pathname.startsWith("/admin/notifications");
   const unreadCount = notifications ? notifications.filter(n => n.unread).length : 0;
+  const initials = adminProfile.name ? adminProfile.name.split(' ').map(part => part[0]).join('').toUpperCase() : 'A';
 
   return (
     <header className="h-[72px] bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-10">
@@ -45,10 +46,14 @@ export default function NewAdminTopNav({ title = "Dashboard" }) {
         
         <Link to="/admin/settings/profile" className="flex items-center gap-3 pl-3 sm:pl-6 border-l border-slate-200 cursor-pointer hover:opacity-80 transition-opacity">
           <div className="w-9 h-9 rounded-full bg-[#1a2332] text-white flex items-center justify-center font-bold text-xs shrink-0">
-            SA
+            {adminProfile.avatarUrl ? (
+              <img src={adminProfile.avatarUrl} alt="avatar" className="w-full h-full rounded-full object-cover" />
+            ) : (
+              initials
+            )}
           </div>
           <div className="hidden sm:flex flex-col">
-            <span className="text-xs font-bold text-slate-800">Super Admin</span>
+            <span className="text-xs font-bold text-slate-800">{adminProfile.name || 'Admin'}</span>
             <span className="text-[9px] font-bold text-green-500 uppercase tracking-widest mt-0.5">Online</span>
           </div>
         </Link>

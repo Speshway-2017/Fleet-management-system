@@ -152,4 +152,26 @@ export const managerApi = {
   deleteReport: async (id) => {
     return await axiosClient.delete(`/manager/reports/${id}`);
   },
+
+  // Profile
+  getProfile: async () => {
+    return await axiosClient.get("/manager/profile");
+  },
+
+  updateProfile: async (profileData) => {
+    return await axiosClient.put("/manager/profile", profileData);
+  },
+
+  // Notifications
+  getNotifications: async () => {
+    return await axiosClient.get("/manager/notifications");
+  },
+
+  markNotificationRead: async (id) => {
+    return await axiosClient.put(`/manager/notifications/${id}/read`);
+  },
+
+  deleteNotification: async (id) => {
+    return await axiosClient.delete(`/manager/notifications/${id}`);
+  },
 };
