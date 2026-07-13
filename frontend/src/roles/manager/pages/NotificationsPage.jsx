@@ -5,10 +5,9 @@ import toast from "react-hot-toast";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Breadcrumb from "@/components/common/Breadcrumb";
-import { mockNotifications } from "@/data/mockNotifications";
 import DispatchWarningModal from "@/components/common/DispatchWarningModal";
 import ContactDriverModal from "@/components/common/ContactDriverModal";
-import { notifications } from "@/roles/manager/data/notificationsData";
+import { managerApi } from "../api/managerApi";
 
 const mapTypeToTab = (type) => {
   if (type === "alert")  return "Critical";
@@ -20,12 +19,30 @@ const mapTypeToTab = (type) => {
 export default function NotificationsPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("All");
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
 
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const res = await managerApi.getNotifications();
+      setNotifications(res.data?.data || res.data || []);
+    } catch (err) {
+      console.error("Failed to load notifications", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
   // Find last critical notification
-  const lastCriticalNotif = mockNotifications.find(n => n.type === "alert" || n.type === "warning") || mockNotifications[0];
+  const lastCriticalNotif = notifications.find(n => n.type === "alert" || n.type === "warning") || notifications[0];
   const coords = lastCriticalNotif?.coords || [19.0760, 72.8777];
   const locationName = lastCriticalNotif?.locationName || "Mumbai Bypass Road";
 
@@ -58,7 +75,7 @@ export default function NotificationsPage() {
       iconAnchor: [14, 14]
     });
 
-    L.marker(coords, { icon: pinIcon }).bindPopup(`<strong>${lastCriticalNotif?.text}</strong><br/>${locationName}`).addTo(map);
+    L.marker(coords, { icon: pinIcon }).bindPopup(`<strong>${lastCriticalNotif?.title || 'No Incident'}</strong><br/>${locationName}`).addTo(map);
 
     mapInstanceRef.current = map;
 
@@ -68,18 +85,18 @@ export default function NotificationsPage() {
         mapInstanceRef.current = null;
       }
     };
-  }, [coords]);
+  }, [coords, notifications]);
 
-  const filteredNotifications = mockNotifications.filter((notif) => {
+  const filteredNotifications = notifications.filter((notif) => {
     if (activeTab === "Critical") return notif.type === "alert" || notif.type === "warning";
     if (activeTab === "Maintenance") return notif.type === "info";
     if (activeTab === "System") return notif.type === "success" || notif.type === "system";
     return true;
   });
+
   const [showDispatchWarningModal, setShowDispatchWarningModal] = useState(false);
   const [showContactDriverModal, setShowContactDriverModal] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
-  const [unreadNotifs, setUnreadNotifs] = useState(new Set([1, 2, 3]));
 
   const getIconColor = (type) => {
     switch (type) {
@@ -103,20 +120,30 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleMarkAllAsRead = () => {
-    setUnreadNotifs(new Set());
-    toast.success("All notifications marked as read!");
+  const handleMarkAllAsRead = async () => {
+    try {
+      const promises = notifications.filter(n => !n.isRead).map(n => managerApi.markNotificationRead(n._id || n.id));
+      await Promise.all(promises);
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      toast.success("All notifications marked as read!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to mark all read");
+    }
   };
 
-  const handleActionClick = (action, notification, e) => {
+  const handleActionClick = async (action, notification, e) => {
     e.stopPropagation();
     
-    // Mark as read
-    setUnreadNotifs(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(notification.id);
-      return newSet;
-    });
+    // Mark as read in DB
+    try {
+      await managerApi.markNotificationRead(notification._id || notification.id);
+      setNotifications(prev =>
+        prev.map(n => (n._id === notification._id || n.id === notification.id) ? { ...n, isRead: true } : n)
+      );
+    } catch (err) {
+      console.error("Failed to mark read", err);
+    }
 
     const actType = action.actionType;
     if (actType === "Dispatch Warning") {
@@ -144,18 +171,20 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleNotificationClick = (notification) => {
-    // Mark as read
-    setUnreadNotifs(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(notification.id);
-      return newSet;
-    });
+  const handleNotificationClick = async (notif) => {
+    try {
+      await managerApi.markNotificationRead(notif._id || notif.id);
+    } catch (err) {
+      console.error("Failed to mark read", err);
+    }
 
-    // Update active tab to match the notification's category
-    setActiveTab(mapTypeToTab(notification.type));
+    // Update active tab to match the category
+    setActiveTab(mapTypeToTab(notif.type));
+    navigate(`/manager/notifications/${notif._id || notif.id}`);
+  };
 
-    navigate(`/manager/notifications/${notification.id}`);
+  const countByPriority = (priority) => {
+    return notifications.filter(n => n.priority === priority).length;
   };
 
   return (
@@ -167,19 +196,21 @@ export default function NotificationsPage() {
           <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Notifications Center</h1>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
-          <button
-            onClick={handleMarkAllAsRead}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors w-full sm:w-auto cursor-pointer"
-          >
-            <Icon icon="mdi:check-all" className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="whitespace-nowrap">Mark all as read</span>
-          </button>
+          {notifications.length > 0 && (
+            <button
+              onClick={handleMarkAllAsRead}
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors w-full sm:w-auto cursor-pointer border-none"
+            >
+              <Icon icon="mdi:check-all" className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="whitespace-nowrap">Mark all as read</span>
+            </button>
+          )}
           <button 
-            onClick={() => navigate("/manager/settings#notifications")}
+            onClick={() => navigate("/manager/profile")}
             className="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors w-full sm:w-auto cursor-pointer"
           >
             <Icon icon="mdi:cog-outline" className="w-5 h-5" />
-            Notification Settings
+            Profile Settings
           </button>
         </div>
       </div>
@@ -196,46 +227,32 @@ export default function NotificationsPage() {
                   <div className="w-2 h-2 rounded-full bg-red-500" />
                   <span className="text-gray-700 font-medium text-sm sm:text-base">High Priority</span>
                 </div>
-                <span className="text-xl sm:text-2xl font-bold text-red-600">12</span>
+                <span className="text-xl sm:text-2xl font-bold text-red-600">{countByPriority("high")}</span>
               </div>
               <div className="flex items-center justify-between p-2.5 sm:p-3 bg-orange-50 rounded-xl">
                 <div className="flex items-center gap-2 sm:gap-3">
                   <div className="w-2 h-2 rounded-full bg-orange-500" />
                   <span className="text-gray-700 font-medium text-sm sm:text-base">Medium Priority</span>
                 </div>
-                <span className="text-xl sm:text-2xl font-bold text-orange-700">24</span>
+                <span className="text-xl sm:text-2xl font-bold text-orange-700">{countByPriority("medium")}</span>
               </div>
               <div className="flex items-center justify-between p-2.5 sm:p-3 bg-blue-50 rounded-xl">
                 <div className="flex items-center gap-2 sm:gap-3">
                   <div className="w-2 h-2 rounded-full bg-blue-500" />
                   <span className="text-gray-700 font-medium text-sm sm:text-base">Low Priority</span>
                 </div>
-                <span className="text-xl sm:text-2xl font-bold text-blue-700">48</span>
+                <span className="text-xl sm:text-2xl font-bold text-blue-700">{countByPriority("low")}</span>
               </div>
-            </div>
-          </div>
-
-          {/* Quick Filters */}
-          <div className="bg-black rounded-2xl p-4 sm:p-6 shadow-sm">
-            <h3 className="text-gray-300 font-medium mb-3 sm:mb-4 text-sm sm:text-base">Quick Filters</h3>
-            <div className="flex flex-wrap gap-2">
-              {['Last 24h', 'Fleet A-J', 'Fuel Usage', 'Night Shift', 'Geofence'].map((tag, i) => (
-                <button key={i} className="px-2.5 sm:px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg text-xs font-medium hover:bg-gray-700 transition-colors">
-                  {tag}
-                </button>
-              ))}
             </div>
           </div>
 
           {/* Last Critical Location */}
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
             <div className="relative h-48 bg-gray-100">
-              {/* Leaflet map node container */}
               <div ref={mapRef} className="absolute inset-0 z-0 h-full w-full" />
-              
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex items-end p-4 z-10 pointer-events-none">
                 <div>
-                  <p className="text-white font-semibold text-sm">Last Critical Location</p>
+                  <p className="text-white font-semibold text-sm">Incident Map Hub</p>
                   <p className="text-white/80 text-xs font-mono font-medium">{coords[0].toFixed(4)}° N, {coords[1].toFixed(4)}° E</p>
                   <p className="text-amber-400 text-[10px] font-bold uppercase tracking-wider mt-0.5">{locationName}</p>
                 </div>
@@ -252,9 +269,9 @@ export default function NotificationsPage() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border-none ${activeTab === tab
                     ? "bg-blue-100 text-blue-700"
-                    : "text-gray-500 hover:text-gray-700"
+                    : "text-gray-500 hover:text-gray-700 bg-transparent"
                   }`}
               >
                 {tab}
@@ -262,41 +279,64 @@ export default function NotificationsPage() {
             ))}
           </div>
 
-          {/* Notifications */}
-          {filteredNotifications.map((notif) => (
-            <div 
-              key={notif.id} 
-              onClick={() => handleNotificationClick(notif)}
-              className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-            >
-              <div className="flex gap-4">
-                <div className={`w-12 h-12 rounded-full ${getIconColor(notif.type)} flex items-center justify-center shrink-0`}>
-                  <Icon icon={getIcon(notif.type)} className="w-6 h-6" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-semibold text-gray-800">{notif.title}</h4>
-                    <span className="text-xs text-gray-400 font-medium">{notif.time}</span>
+          {/* Loading state / Empty state */}
+          {loading ? (
+            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500">
+              Loading alerts...
+            </div>
+          ) : filteredNotifications.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center text-gray-400 font-medium font-poppins select-none shadow-sm">
+              <div className="w-16 h-16 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Icon icon="mdi:bell-off-outline" className="w-8 h-8" />
+              </div>
+              <h4 className="text-gray-700 font-bold">No Alerts Found</h4>
+              <p className="text-xs text-gray-450 mt-1 max-w-xs mx-auto leading-relaxed">
+                You have no active notifications or priority updates matching this category.
+              </p>
+            </div>
+          ) : (
+            filteredNotifications.map((notif) => (
+              <div 
+                key={notif._id || notif.id} 
+                onClick={() => handleNotificationClick(notif)}
+                className={`bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative ${!notif.isRead ? 'border-l-4 border-l-[#B45A0A]' : ''}`}
+              >
+                <div className="flex gap-4">
+                  <div className={`w-12 h-12 rounded-full ${getIconColor(notif.type)} flex items-center justify-center shrink-0`}>
+                    <Icon icon={getIcon(notif.type)} className="w-6 h-6" />
                   </div>
-                  <p className="text-gray-600 text-sm mb-4">{notif.description}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {notif.actions.map((action, i) => (
-                      <button
-                        key={i}
-                        onClick={(e) => handleActionClick(action, notif, e)}
-                        className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${action.bg === 'bg-white'
-                            ? `${action.bg} ${action.text} border ${action.border} hover:bg-gray-50`
-                            : `${action.bg} text-white ${action.hover}`
-                          }`}
-                      >
-                        {action.label}
-                      </button>
-                    ))}
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                        {notif.title}
+                        {!notif.isRead && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#B45A0A]" />
+                        )}
+                      </h4>
+                      <span className="text-xs text-gray-400 font-medium">
+                        {notif.createdAt ? new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
+                      </span>
+                    </div>
+                    <p className="text-gray-600 text-sm mb-4">{notif.description}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(notif.actions || []).map((action, i) => (
+                        <button
+                          key={i}
+                          onClick={(e) => handleActionClick(action, notif, e)}
+                          className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer border ${action.bg === 'bg-white'
+                              ? `${action.bg} ${action.text} border-gray-300 hover:bg-gray-50`
+                              : `${action.bg} text-white border-transparent ${action.hover}`
+                            }`}
+                        >
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 

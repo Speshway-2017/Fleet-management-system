@@ -25,81 +25,7 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
 
-// Mock data for documents
-const MOCK_DOCUMENTS = [
-  {
-    id: 1,
-    name: "Commercial Insurance - Truck #42",
-    type: "Insurance",
-    category: "Vehicle Docs",
-    vehicle: "Volu FM-30",
-    expiry: "2025-10-24",
-    status: "Expiring Soon",
-    uploadedBy: "Alex Thompson",
-    uploadDate: "2024-05-15",
-    fileSize: "2.4 MB",
-    fileType: "PDF"
-  },
-  {
-    id: 2,
-    name: "Commercial Driver License (CDL)",
-    type: "License",
-    category: "Driver Docs",
-    driver: "Robert L. Henderson",
-    expiry: "2026-03-12",
-    status: "Active",
-    uploadedBy: "Sarah Lee",
-    uploadDate: "2024-01-20",
-    fileSize: "1.1 MB",
-    fileType: "PDF"
-  },
-  {
-    id: 3,
-    name: "Pollution Check (PUC)",
-    type: "Compliance",
-    category: "Vehicle Docs",
-    vehicle: "Komila FM-30",
-    expiry: "2024-08-15",
-    status: "Expired",
-    uploadedBy: "Mike Johnson",
-    uploadDate: "2023-08-20",
-    fileSize: "500 KB",
-    fileType: "PDF"
-  },
-  {
-    id: 4,
-    name: "Trip Invoice - Mumbai to Delhi",
-    type: "Invoice",
-    category: "Trip Invoices",
-    trip: "TRP-2024-185",
-    amount: "₹45,200",
-    status: "Active",
-    uploadedBy: "Rajesh Kumar",
-    uploadDate: "2024-07-01",
-    fileSize: "850 KB",
-    fileType: "XLSX"
-  },
-  {
-    id: 5,
-    name: "Road Tax Receipt 2024",
-    type: "Tax",
-    category: "Vehicle Docs",
-    vehicle: "Ashok Leyland 3118",
-    expiry: "2025-06-30",
-    status: "Active",
-    uploadedBy: "Alex Thompson",
-    uploadDate: "2024-06-25",
-    fileSize: "1.2 MB",
-    fileType: "PDF"
-  }
-];
 
-const DOC_CATEGORIES = [
-  { name: "Vehicle Docs", icon: Truck, count: 124, lastUpdated: "2 hours ago" },
-  { name: "Driver Docs", icon: Users, count: 86, lastUpdated: "Yesterday" },
-  { name: "Trip Invoices", icon: FileSpreadsheet, count: 412, lastUpdated: "Just Now" },
-  { name: "Compliance", icon: ShieldCheck, count: 28, lastUpdated: "3 days ago" }
-];
 
 const STATUS_OPTIONS = ["All Statuses", "Active", "Expiring Soon", "Expired"];
 const CATEGORY_OPTIONS = ["All Categories", "Vehicle Docs", "Driver Docs", "Trip Invoices", "Compliance"];
@@ -115,6 +41,13 @@ export default function DocumentManagement() {
   
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const DOC_CATEGORIES = [
+    { name: "Vehicle Docs", icon: Truck, count: documents.filter(d => d.category === "Vehicle Docs").length, lastUpdated: "2 hours ago" },
+    { name: "Driver Docs", icon: Users, count: documents.filter(d => d.category === "Driver Docs").length, lastUpdated: "Yesterday" },
+    { name: "Trip Invoices", icon: FileSpreadsheet, count: documents.filter(d => d.category === "Trip Invoices").length, lastUpdated: "Just Now" },
+    { name: "Compliance", icon: ShieldCheck, count: documents.filter(d => d.category === "Compliance").length, lastUpdated: "3 days ago" }
+  ];
 
   const complianceSectionRef = useRef(null);
   const [highlightCompliance, setHighlightCompliance] = useState(false);
@@ -426,7 +359,7 @@ export default function DocumentManagement() {
         </div>
         <div className="px-6 py-4 border-t border-[#E7EAF0] flex items-center justify-between">
           <span className="text-xs text-[#64748B] font-medium font-poppins">
-            Showing {filteredDocs.length} of {MOCK_DOCUMENTS.length} documents
+            Showing {filteredDocs.length} of {documents.length} documents
           </span>
           <div className="flex items-center gap-2">
             <button className="p-2 text-gray-500 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
@@ -450,43 +383,54 @@ export default function DocumentManagement() {
           }`}
         >
           <h3 className="font-poppins font-black text-xl text-[#1E293B] mb-4">Compliance Health Index</h3>
-          <div className="flex items-center gap-8">
-            <div className="relative w-36 h-36">
-              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                <circle cx="50" cy="50" r="40" stroke="#E7EAF0" strokeWidth="10" fill="none" />
-                <circle cx="50" cy="50" r="40" stroke="#22C55E" strokeWidth="10" fill="none"
-                        strokeDasharray="251.2"
-                        strokeDashoffset="50"
-                        strokeLinecap="round" />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-3xl font-black text-[#1E293B]">80%</span>
-                <span className="text-xs text-[#64748B]">Compliant</span>
+          {(() => {
+            const totalDocsCount = documents.length;
+            const validDocsCount = documents.filter(d => d.status === "Active").length;
+            const expiringDocsCount = documents.filter(d => d.status === "Expiring Soon").length;
+            const expiredDocsCount = documents.filter(d => d.status === "Expired").length;
+            const compliancePct = totalDocsCount > 0 ? Math.round((validDocsCount / totalDocsCount) * 100) : 100;
+            const strokeDashoffset = 251.2 - (251.2 * compliancePct) / 100;
+
+            return (
+              <div className="flex items-center gap-8">
+                <div className="relative w-36 h-36">
+                  <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                    <circle cx="50" cy="50" r="40" stroke="#E7EAF0" strokeWidth="10" fill="none" />
+                    <circle cx="50" cy="50" r="40" stroke="#22C55E" strokeWidth="10" fill="none"
+                            strokeDasharray="251.2"
+                            strokeDashoffset={strokeDashoffset}
+                            strokeLinecap="round" />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-black text-[#1E293B]">{compliancePct}%</span>
+                    <span className="text-[10px] text-[#64748B] font-bold">Compliant</span>
+                  </div>
+                </div>
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-[#64748B]">Valid Documents</span>
+                    <span className="font-bold text-[#1E293B]">{validDocsCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-[#64748B]">Expiring Soon</span>
+                    <span className="font-bold text-[#F59E0B]">{expiringDocsCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-[#64748B]">Expired</span>
+                    <span className="font-bold text-[#EF4444]">{expiredDocsCount}</span>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-[#E7EAF0]/60">
+                    <button 
+                      onClick={() => navigate("/manager/documents/compliance-audit")}
+                      className="px-4 py-2 bg-[#FDF3EC] text-[#B45A0A] text-sm font-bold rounded-xl hover:bg-[#F5E8D8] transition-colors cursor-pointer"
+                    >
+                      View Compliance Report
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="flex-1 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-[#64748B]">Valid Documents</span>
-                <span className="font-bold text-[#1E293B]">542</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-[#64748B]">Expiring Soon</span>
-                <span className="font-bold text-[#F59E0B]">28</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-[#64748B]">Expired</span>
-                <span className="font-bold text-[#EF4444]">5</span>
-              </div>
-              <div className="mt-4 pt-4 border-t border-[#E7EAF0]/60">
-                <button 
-                  onClick={() => navigate("/manager/documents/compliance-audit")}
-                  className="px-4 py-2 bg-[#FDF3EC] text-[#B45A0A] text-sm font-bold rounded-xl hover:bg-[#F5E8D8] transition-colors cursor-pointer"
-                >
-                  View Compliance Report
-                </button>
-              </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
         <div className="bg-[#0F0F10] rounded-2xl border border-[#1B1B1D] p-6 shadow-sm text-white">
           <h3 className="font-poppins font-black text-xl text-white mb-4">Recent Notifications</h3>
