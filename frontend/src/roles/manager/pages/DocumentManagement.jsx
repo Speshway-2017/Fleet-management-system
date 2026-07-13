@@ -246,11 +246,7 @@ export default function DocumentManagement() {
           return (
             <div 
               key={idx} 
-              onClick={() => {
-                setCategoryFilter(categoryFilter === category.name ? "All Categories" : category.name);
-                toast.success(`Filtered by: ${category.name}`);
-              }}
-              className={`bg-white rounded-2xl border p-6 shadow-sm hover-card-trigger relative overflow-hidden group cursor-pointer hover:shadow-md transition-all duration-500 ${
+              className={`bg-white rounded-2xl border p-6 shadow-sm relative overflow-hidden group transition-all duration-500 ${
                 isCompliance && highlightCompliance
                   ? "ring-4 ring-amber-500/80 scale-[1.02] shadow-2xl border-amber-300 bg-amber-50/10"
                   : "border-[#E7EAF0]"
