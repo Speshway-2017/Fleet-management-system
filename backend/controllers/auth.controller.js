@@ -8,20 +8,40 @@ import {
   resetUserPassword
 } from '../services/auth.service.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { logAction } from '../services/audit.service.js';
 
 export const login = async (req, res, next) => {
   try {
     const data = await loginUser(req.body);
+    await logAction({
+      user: data.user.email,
+      action: 'Login Successful',
+      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      status: 'Success'
+    });
     return sendSuccess(res, 200, data, 'Login successful');
   } catch (error) {
     if (error.message === 'Invalid credentials' || error.message === 'Role mismatch') {
+      await logAction({
+        user: req.body.email || 'Unknown',
+        action: 'Failed Login Attempt',
+        ipAddress: req.ip || req.headers['x-forwarded-for'],
+        status: 'Failed',
+        details: { reason: error.message }
+      });
       return sendError(res, 401, error.message);
     }
     next(error);
   }
 };
 
-export const logout = async (_req, res) => {
+export const logout = async (req, res) => {
+  await logAction({
+    user: req.user ? req.user.email : 'Unknown',
+    action: 'Logout',
+    ipAddress: req.ip || req.headers['x-forwarded-for'],
+    status: 'Success'
+  });
   return sendSuccess(res, 200, {}, 'Logout successful');
 };
 
@@ -41,6 +61,12 @@ export const changePassword = async (req, res, next) => {
   try {
     const { oldPassword, newPassword } = req.body;
     await changeUserPassword(req.user.email, oldPassword, newPassword);
+    await logAction({
+      user: req.user.email,
+      action: 'Password Changed',
+      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      status: 'Success'
+    });
     return sendSuccess(res, 200, {}, 'Password changed successfully');
   } catch (error) {
     if (error.message === 'Old password is incorrect' || error.message === 'User not found') {
@@ -66,6 +92,12 @@ export const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
     await processForgotPassword(email);
+    await logAction({
+      user: email,
+      action: 'Forgot Password Requested',
+      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      status: 'Success'
+    });
     return sendSuccess(res, 200, {}, 'OTP sent to email');
   } catch (error) {
     if (error.message === 'No user found with this email') {
@@ -92,6 +124,12 @@ export const resetPassword = async (req, res, next) => {
   try {
     const { email, otp, newPassword } = req.body;
     await resetUserPassword(email, otp, newPassword);
+    await logAction({
+      user: email,
+      action: 'Password Reset',
+      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      status: 'Success'
+    });
     return sendSuccess(res, 200, {}, 'Password reset successfully');
   } catch (error) {
     if (error.message === 'Invalid or expired OTP') {

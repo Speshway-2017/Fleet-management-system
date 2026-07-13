@@ -101,7 +101,7 @@ export default function Performance() {
               onClick={() => navigate("/login")}
               className="px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl bg-secondary text-white font-semibold text-[11px] sm:text-xs transition-all hover:bg-accent shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
             >
-              Get Started
+              Login
             </button>
           )}
 

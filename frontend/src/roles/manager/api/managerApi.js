@@ -165,25 +165,24 @@ export const managerApi = {
     return await axiosClient.delete(`/manager/reports/${id}`);
   },
 
-  // Profile
-  getProfile: async () => {
-    return await axiosClient.get("/manager/profile");
+  // E-Way Bills
+  getEWayBills: async () => {
+    return await axiosClient.get("/manager/eway");
   },
 
-  updateProfile: async (profileData) => {
-    return await axiosClient.put("/manager/profile", profileData);
+  createEWayBill: async (ewayData) => {
+    return await axiosClient.post("/manager/eway", ewayData);
   },
 
-  // Notifications
-  getNotifications: async () => {
-    return await axiosClient.get("/manager/notifications");
+  extendEWayBill: async (id) => {
+    return await axiosClient.put(`/manager/eway/${id}/extend`);
   },
 
-  markNotificationRead: async (id) => {
-    return await axiosClient.put(`/manager/notifications/${id}/read`);
+  updateEWayBill: async (id, ewayData) => {
+    return await axiosClient.put(`/manager/eway/${id}`, ewayData);
   },
 
-  deleteNotification: async (id) => {
-    return await axiosClient.delete(`/manager/notifications/${id}`);
+  deleteEWayBill: async (id) => {
+    return await axiosClient.delete(`/manager/eway/${id}`);
   },
 };

@@ -1,34 +1,67 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Upload, LogOut } from "lucide-react";
+import { Upload, LogOut, Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
+import { adminApi } from "@/api/adminApi";
 
 export default function ProfileSettings() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, checkAuth } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [profileUrl, setProfileUrl] = useState(null);
+  const [profileFile, setProfileFile] = useState(null);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [form, setForm] = useState({
-    firstName: "Super",
-    lastName: "Admin",
-    email: "admin@fleetmanagement.io",
-    phone: "+1 (555) 000-0000",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
     currentPassword: "",
     newPassword: "",
     confirmNewPassword: ""
   });
   const [errors, setErrors] = useState({});
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await adminApi.getProfile();
+        const user = response.data?.data || response.data;
+        if (user) {
+          const nameParts = (user.name || "").split(" ");
+          setForm((prev) => ({
+            ...prev,
+            firstName: nameParts[0] || "",
+            lastName: nameParts.slice(1).join(" ") || "",
+            email: user.email || "",
+            phone: user.phone || ""
+          }));
+          if (user.profileImage) {
+            setProfileUrl(user.profileImage);
+          }
+        }
+      } catch (error) {
+        toast.error("Failed to load profile data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setErrors({ ...errors, [e.target.name]: "" });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const newErrors = {};
     if (!form.firstName) newErrors.firstName = "First Name is required";
     if (!form.lastName) newErrors.lastName = "Last Name is required";
@@ -52,11 +85,37 @@ export default function ProfileSettings() {
     if (Object.keys(newErrors).length > 0) return;
 
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      const formData = new FormData();
+      formData.append("name", `${form.firstName} ${form.lastName}`.trim());
+      formData.append("email", form.email);
+      formData.append("phone", form.phone);
+      
+      if (form.currentPassword && form.newPassword) {
+        formData.append("currentPassword", form.currentPassword);
+        formData.append("newPassword", form.newPassword);
+      }
+      
+      if (profileFile) {
+        formData.append("profileImage", profileFile);
+      }
+
+      const response = await adminApi.updateProfile(formData);
+      
       toast.success("Profile saved successfully!");
       setForm({...form, currentPassword: '', newPassword: '', confirmNewPassword: ''});
-    }, 1000);
+      setProfileFile(null); // Clear file since it's uploaded
+      
+      // Optionally update user context if it holds these values
+      if (checkAuth) {
+        await checkAuth(); // Refresh the AuthContext
+      }
+      
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update profile");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -101,7 +160,12 @@ export default function ProfileSettings() {
             </div>
           </div>
 
-          <div className="space-y-6 max-w-5xl">
+          <div className="space-y-6 max-w-5xl relative">
+            {isLoading && (
+              <div className="absolute inset-0 bg-[#f4f7f6]/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-xl">
+                <div className="animate-spin w-8 h-8 border-4 border-[#b45309] border-t-transparent rounded-full"></div>
+              </div>
+            )}
             {/* Admin Profile Card */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
               <h3 className="text-[15px] font-extrabold text-slate-800 mb-6">Admin Profile</h3>
@@ -124,6 +188,7 @@ export default function ProfileSettings() {
                     accept="image/*" 
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
+                        setProfileFile(e.target.files[0]);
                         setProfileUrl(URL.createObjectURL(e.target.files[0]));
                       }
                     }} 
@@ -137,8 +202,8 @@ export default function ProfileSettings() {
                 </div>
                 
                 <div>
-                  <h4 className="text-lg font-bold text-slate-800">Super Admin</h4>
-                  <p className="text-sm text-slate-500 font-medium mb-1.5">admin@fleetmanagement.io</p>
+                  <h4 className="text-lg font-bold text-slate-800">{form.firstName} {form.lastName}</h4>
+                  <p className="text-sm text-slate-500 font-medium mb-1.5">{form.email}</p>
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-orange-50 text-orange-600">
                     Super Admin
                   </span>
@@ -205,40 +270,67 @@ export default function ProfileSettings() {
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="block text-[13px] font-bold text-slate-600">Current Password</label>
-                  <input 
-                    type="password" 
-                    name="currentPassword"
-                    value={form.currentPassword}
-                    onChange={handleChange}
-                    placeholder="********" 
-                    className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.currentPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showCurrentPassword ? "text" : "password"}
+                      name="currentPassword"
+                      value={form.currentPassword}
+                      onChange={handleChange}
+                      placeholder="********" 
+                      className={`w-full px-4 py-2.5 pr-10 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.currentPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                   {errors.currentPassword && <p className="text-xs text-red-500 mt-1">{errors.currentPassword}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <label className="block text-[13px] font-bold text-slate-600">New Password</label>
-                  <input 
-                    type="password" 
-                    name="newPassword"
-                    value={form.newPassword}
-                    onChange={handleChange}
-                    placeholder="********" 
-                    className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.newPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showNewPassword ? "text" : "password"}
+                      name="newPassword"
+                      value={form.newPassword}
+                      onChange={handleChange}
+                      placeholder="********" 
+                      className={`w-full px-4 py-2.5 pr-10 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.newPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                   {errors.newPassword && <p className="text-xs text-red-500 mt-1">{errors.newPassword}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <label className="block text-[13px] font-bold text-slate-600">Confirm New Password</label>
-                  <input 
-                    type="password" 
-                    name="confirmNewPassword"
-                    value={form.confirmNewPassword}
-                    onChange={handleChange}
-                    placeholder="********" 
-                    className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.confirmNewPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showConfirmPassword ? "text" : "password"}
+                      name="confirmNewPassword"
+                      value={form.confirmNewPassword}
+                      onChange={handleChange}
+                      placeholder="********" 
+                      className={`w-full px-4 py-2.5 pr-10 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.confirmNewPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                   {errors.confirmNewPassword && <p className="text-xs text-red-500 mt-1">{errors.confirmNewPassword}</p>}
                 </div>
               </div>
