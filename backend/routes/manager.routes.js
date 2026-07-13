@@ -43,7 +43,13 @@ import {
   createReport,
   getReportDetails,
   updateReport,
-  deleteReport
+  deleteReport,
+  // E-Way Bills
+  listEWayBills,
+  createEWayBill,
+  extendEWayBill,
+  updateEWayBill,
+  deleteEWayBill
 } from '../controllers/manager.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
@@ -104,5 +110,12 @@ router.post('/reports',       ...auth, createReport);
 router.get('/reports/:id',    ...auth, getReportDetails);
 router.put('/reports/:id',    ...auth, updateReport);
 router.delete('/reports/:id', ...auth, deleteReport);
+
+// E-Way Bills
+router.get('/eway',            ...auth, listEWayBills);
+router.post('/eway',           ...auth, createEWayBill);
+router.put('/eway/:id/extend', ...auth, extendEWayBill);
+router.put('/eway/:id',        ...auth, updateEWayBill);
+router.delete('/eway/:id',     ...auth, deleteEWayBill);
 
 export default router;

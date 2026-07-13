@@ -5,6 +5,7 @@ import {
   ChevronDown,
   RefreshCw,
   Eye,
+  Edit2,
   Trash2,
   Phone,
   Award,
@@ -285,10 +286,25 @@ export default function DriversListPage() {
                     </td>
                     <td className="py-4 px-6 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => navigate(`/manager/driver-profile/${d._id}`)} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer">
+                        <button 
+                          onClick={() => navigate(`/manager/driver-profile/${d._id}`)} 
+                          className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+                          title="View"
+                        >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button onClick={() => { setSelectedDriver(d); setDeleteModalOpen(true); }} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer">
+                        <button 
+                          onClick={() => navigate(`/manager/edit-driver/${d._id}`)} 
+                          className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => { setSelectedDriver(d); setDeleteModalOpen(true); }} 
+                          className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+                          title="Delete"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

@@ -173,6 +173,7 @@ export default function App() {
               <Route path="/manager/driver-profile/:id" element={<DriverProfilePage />} />
               <Route path="/manager/driver-assign-vehicle/:id" element={<AssignVehiclePage />} />
               <Route path="/manager/add-driver" element={<AddDriverPage />} />
+              <Route path="/manager/edit-driver/:id" element={<AddDriverPage />} />
               <Route path="/manager/route" element={<RouteOptimizationPage />} />
               <Route path="/manager/fuel" element={<FuelManagementPage />} />
               <Route path="/manager/analytics" element={<AnalyticsPage />} />
