@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import {
@@ -11,21 +11,50 @@ import {
   Calendar,
   Download
 } from "lucide-react";
-
-// Mock audit data
-const MOCK_AUDIT_DATA = [
-  { id: 1, document: "Commercial Insurance - Truck #42", type: "Insurance", status: "Compliant", lastChecked: "2024-07-05", nextCheck: "2024-10-05", score: 95 },
-  { id: 2, document: "Pollution Check (PUC)", type: "Compliance", status: "Non-Compliant", lastChecked: "2024-06-01", nextCheck: "2024-08-01", score: 40 },
-  { id: 3, document: "Commercial Driver License (CDL)", type: "License", status: "Compliant", lastChecked: "2024-07-02", nextCheck: "2026-03-12", score: 100 },
-  { id: 4, document: "Road Tax Receipt 2024", type: "Tax", status: "Compliant", lastChecked: "2024-07-01", nextCheck: "2025-06-30", score: 90 },
-  { id: 5, document: "Trip Invoice - Mumbai to Delhi", type: "Invoice", status: "Compliant", lastChecked: "2024-07-03", nextCheck: "-", score: 100 }
-];
+import { managerApi } from "../api/managerApi";
+import toast from "react-hot-toast";
 
 export default function ComplianceAuditPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("all"); // all, compliant, non-compliant
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredAuditData = MOCK_AUDIT_DATA.filter(item => {
+  useEffect(() => {
+    const fetchDocs = async () => {
+      try {
+        setLoading(true);
+        const response = await managerApi.getDocuments();
+        const data = response.data?.data || response.data;
+        if (Array.isArray(data)) {
+          setDocuments(data.map(d => {
+            const status = d.status === "Expired" ? "Non-Compliant" : "Compliant";
+            let score = 95;
+            if (d.status === "Expired") score = 40;
+            else if (d.status === "Expiring Soon") score = 75;
+            
+            return {
+              id: d._id,
+              document: d.title,
+              type: d.type,
+              status,
+              lastChecked: d.updatedAt || d.createdAt || new Date(),
+              nextCheck: d.expiry || "-",
+              score
+            };
+          }));
+        }
+      } catch (err) {
+        toast.error("Failed to load audit documents");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDocs();
+  }, []);
+
+  const filteredAuditData = documents.filter(item => {
     if (activeTab === "compliant") return item.status === "Compliant";
     if (activeTab === "non-compliant") return item.status === "Non-Compliant";
     return true;
@@ -55,7 +84,7 @@ export default function ComplianceAuditPage() {
             <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Total Documents</span>
             <div className="bg-gray-100 p-2 rounded-lg"><FileText className="w-5 h-5 text-gray-600" /></div>
           </div>
-          <p className="text-3xl font-black text-[#1E293B]">{MOCK_AUDIT_DATA.length}</p>
+          <p className="text-3xl font-black text-[#1E293B]">{documents.length}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm">
@@ -63,7 +92,7 @@ export default function ComplianceAuditPage() {
             <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Compliant</span>
             <div className="bg-green-100 p-2 rounded-lg"><CheckCircle2 className="w-5 h-5 text-green-600" /></div>
           </div>
-          <p className="text-3xl font-black text-[#22C55E]">{MOCK_AUDIT_DATA.filter(i => i.status === "Compliant").length}</p>
+          <p className="text-3xl font-black text-[#22C55E]">{documents.filter(i => i.status === "Compliant").length}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm">
@@ -71,7 +100,7 @@ export default function ComplianceAuditPage() {
             <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Non-Compliant</span>
             <div className="bg-red-100 p-2 rounded-lg"><AlertTriangle className="w-5 h-5 text-red-600" /></div>
           </div>
-          <p className="text-3xl font-black text-[#EF4444]">{MOCK_AUDIT_DATA.filter(i => i.status === "Non-Compliant").length}</p>
+          <p className="text-3xl font-black text-[#EF4444]">{documents.filter(i => i.status === "Non-Compliant").length}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm">
@@ -79,7 +108,7 @@ export default function ComplianceAuditPage() {
             <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Avg Score</span>
             <div className="bg-amber-100 p-2 rounded-lg"><ShieldCheck className="w-5 h-5 text-amber-600" /></div>
           </div>
-          <p className="text-3xl font-black text-[#B45A0A]">{Math.round(MOCK_AUDIT_DATA.reduce((a, b) => a + b.score, 0) / MOCK_AUDIT_DATA.length)}%</p>
+          <p className="text-3xl font-black text-[#B45A0A]">{documents.length > 0 ? Math.round(documents.reduce((a, b) => a + b.score, 0) / documents.length) : 100}%</p>
         </div>
       </div>
 
@@ -112,50 +141,67 @@ export default function ComplianceAuditPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7EAF0]/60">
-              {filteredAuditData.map(item => (
-                <tr key={item.id} className="hover:bg-[#F5F7FB]/50 transition-colors">
-                  <td className="py-4 px-6 whitespace-nowrap">
-                    <p className="font-bold text-[#1E293B] font-poppins text-sm">{item.document}</p>
-                  </td>
-                  <td className="py-4 px-6 whitespace-nowrap text-[#64748B]">
-                    {item.type}
-                  </td>
-                  <td className="py-4 px-6 whitespace-nowrap">
-                    <div className="flex items-center gap-2 text-sm text-[#1E293B]">
-                      <Calendar className="w-4 h-4 text-[#64748B]" />
-                      {new Date(item.lastChecked).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </div>
-                  </td>
-                  <td className="py-4 px-6 whitespace-nowrap">
-                    <div className="flex items-center gap-2 text-sm text-[#1E293B]">
-                      <Clock className="w-4 h-4 text-[#64748B]" />
-                      {item.nextCheck !== "-" ? new Date(item.nextCheck).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' }) : "-"}
-                    </div>
-                  </td>
-                  <td className="py-4 px-6 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div style={{ width: `${item.score}%` }} className={`h-full ${item.score >= 80 ? "bg-green-500" : item.score >= 50 ? "bg-amber-500" : "bg-red-500"}`} />
-                      </div>
-                      <span className="text-sm font-bold text-[#1E293B]">{item.score}%</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6 whitespace-nowrap">
-                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(item.status)}`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${item.status === "Compliant" ? "bg-green-500" : "bg-red-500"}`} />
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6 text-right select-none whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-2">
-                      <button className="px-3 py-1.5 bg-white border border-[#E7EAF0] rounded-lg text-xs font-semibold text-[#64748B] hover:bg-[#F5F7FB] transition-colors flex items-center gap-1 cursor-pointer">
-                        <Download className="w-3.5 h-3.5" />
-                        Report
-                      </button>
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-gray-400 font-medium">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-[#B45A0A] border-t-transparent rounded-full animate-spin" />
+                      <span>Loading Audit Trail...</span>
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : filteredAuditData.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-gray-400 font-medium">
+                    No documents found in compliance audit trail.
+                  </td>
+                </tr>
+              ) : (
+                filteredAuditData.map(item => (
+                  <tr key={item.id} className="hover:bg-[#F5F7FB]/50 transition-colors">
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      <p className="font-bold text-[#1E293B] font-poppins text-sm">{item.document}</p>
+                    </td>
+                    <td className="py-4 px-6 whitespace-nowrap text-[#64748B]">
+                      {item.type}
+                    </td>
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      <div className="flex items-center gap-2 text-sm text-[#1E293B]">
+                        <Calendar className="w-4 h-4 text-[#64748B]" />
+                        {new Date(item.lastChecked).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      <div className="flex items-center gap-2 text-sm text-[#1E293B]">
+                        <Clock className="w-4 h-4 text-[#64748B]" />
+                        {item.nextCheck !== "-" ? new Date(item.nextCheck).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' }) : "-"}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div style={{ width: `${item.score}%` }} className={`h-full ${item.score >= 80 ? "bg-green-500" : item.score >= 50 ? "bg-amber-500" : "bg-red-500"}`} />
+                        </div>
+                        <span className="text-sm font-bold text-[#1E293B]">{item.score}%</span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(item.status)}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${item.status === "Compliant" ? "bg-green-500" : "bg-red-500"}`} />
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 text-right select-none whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-2">
+                        <button className="px-3 py-1.5 bg-white border border-[#E7EAF0] rounded-lg text-xs font-semibold text-[#64748B] hover:bg-[#F5F7FB] transition-colors flex items-center gap-1 cursor-pointer">
+                          <Download className="w-3.5 h-3.5" />
+                          Report
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
