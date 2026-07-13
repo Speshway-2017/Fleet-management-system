@@ -9,13 +9,22 @@ import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 
 export default function AddOrganization() {
   const navigate = useNavigate();
-  const { fetchOrganizations } = useAdmin();
+  const { fetchOrganizations, fetchNotifications } = useAdmin();
   const [form, setForm] = useState({
     name: "", industry: "", email: "", phone: "", address: "",
     city: "", state: "", country: "", plan: "", status: ""
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [logoPreview, setLogoPreview] = useState(null);
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setLogoPreview(url);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -40,6 +49,7 @@ export default function AddOrganization() {
       await adminApi.createOrganization(form);
       toast.success("Organization created successfully!");
       if (fetchOrganizations) await fetchOrganizations(); // Refresh the list
+      if (fetchNotifications) await fetchNotifications(); // Refresh notifications
       navigate("/admin/organizations");
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || "Failed to create organization");
@@ -171,17 +181,28 @@ export default function AddOrganization() {
               <h3 className="font-bold text-slate-800 text-sm mb-4">Logo Upload</h3>
               <div className="bg-white rounded-xl p-8 border border-slate-200 shadow-sm flex flex-col items-center justify-center min-h-[200px]">
                 
-                <label className="w-full max-w-2xl border-2 border-dashed border-slate-300 rounded-xl p-10 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-[#A14000]/50 transition-colors cursor-pointer group relative">
-                  <input type="file" accept="image/png, image/jpeg" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="" />
-                  <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-4 group-hover:bg-[#A14000]/10 transition-colors pointer-events-none">
-                    <Upload className="w-5 h-5 text-slate-400 group-hover:text-[#A14000]" />
-                  </div>
-                  <p className="text-sm font-semibold text-slate-600 mb-1 pointer-events-none">
-                    Drag & drop logo here or <span className="text-[#A14000]">browse</span>
-                  </p>
-                  <p className="text-xs text-slate-400 pointer-events-none">
-                    PNG, JPG up to 5MB
-                  </p>
+                <label className="w-full max-w-2xl border-2 border-dashed border-slate-300 rounded-xl p-10 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-[#A14000]/50 transition-colors cursor-pointer group relative overflow-hidden">
+                  <input type="file" accept="image/png, image/jpeg" onChange={handleLogoChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="" />
+                  {logoPreview ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none">
+                      <img src={logoPreview} alt="Logo Preview" className="max-h-32 object-contain mb-4" />
+                      <p className="text-sm font-semibold text-slate-600 mb-1">
+                        Click to change logo
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-4 group-hover:bg-[#A14000]/10 transition-colors pointer-events-none">
+                        <Upload className="w-5 h-5 text-slate-400 group-hover:text-[#A14000]" />
+                      </div>
+                      <p className="text-sm font-semibold text-slate-600 mb-1 pointer-events-none">
+                        Drag & drop logo here or <span className="text-[#A14000]">browse</span>
+                      </p>
+                      <p className="text-xs text-slate-400 pointer-events-none">
+                        PNG, JPG up to 5MB
+                      </p>
+                    </>
+                  )}
                 </label>
 
               </div>

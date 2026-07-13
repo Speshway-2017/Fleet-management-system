@@ -9,8 +9,11 @@ import {
   Search,
   UserPlus,
   Eye,
-  Pencil
+  Pencil,
+  Trash2
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { adminApi } from "@/api/adminApi";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import KPICard from "@/components/common/KPICard";
@@ -32,7 +35,18 @@ function StatusBadge({ status }) {
 
 export default function FleetManagerList() {
   const [searchTerm, setSearchTerm] = useState("");
-  const { fleetManagers } = useAdmin();
+  const { fleetManagers, fetchFleetManagers } = useAdmin();
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this fleet manager?")) return;
+    try {
+      await adminApi.deleteFleetManager(id);
+      toast.success("Fleet manager deleted successfully");
+      if (fetchFleetManagers) await fetchFleetManagers();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete fleet manager");
+    }
+  };
 
   const filteredManagers = fleetManagers.filter(manager => 
     manager.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -156,6 +170,9 @@ export default function FleetManagerList() {
                           <Link to={`/admin/fleet-managers/edit/${manager.id}`} className="text-slate-400 hover:text-[#A14000] transition-colors" title="Edit">
                             <Pencil className="w-4 h-4" />
                           </Link>
+                          <button onClick={() => handleDelete(manager.id)} className="text-slate-400 hover:text-red-500 transition-colors" title="Delete">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>

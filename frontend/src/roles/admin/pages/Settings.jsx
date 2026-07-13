@@ -1,21 +1,72 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Upload } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 
 import toast from "react-hot-toast";
+import { adminApi } from "@/api/adminApi";
 
 export default function Settings() {
+  const [platformName, setPlatformName] = useState("");
+  const [timezone, setTimezone] = useState("");
+  const [language, setLanguage] = useState("");
   const [logoUrl, setLogoUrl] = useState("/logo.png");
+  const [logoFile, setLogoFile] = useState(null);
+  
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
+  const loadSettings = async () => {
+    try {
+      const response = await adminApi.getSettings();
+      const settings = response.data?.data || response.data;
+      if (settings) {
+        setPlatformName(settings.platformName || "FleetCommand");
+        setTimezone(settings.timezone || "UTC");
+        setLanguage(settings.language || "English");
+        setLogoUrl(settings.logoUrl || "/logo.png");
+      }
+    } catch (error) {
+      toast.error("Failed to load settings");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const handleSave = async () => {
+    if (!platformName || !timezone || !language) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      const formData = new FormData();
+      formData.append("platformName", platformName);
+      formData.append("timezone", timezone);
+      formData.append("language", language);
+      if (logoFile) {
+        formData.append("logo", logoFile);
+      }
+
+      const response = await adminApi.updateSettings(formData);
+      const updatedSettings = response.data?.data || response.data;
+      if (updatedSettings) {
+        setLogoUrl(updatedSettings.logoUrl);
+        setLogoFile(null);
+      }
       toast.success("Settings saved successfully!");
-    }, 1000);
+      await loadSettings();
+    } catch (error) {
+      toast.error("Failed to save settings");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -57,7 +108,12 @@ export default function Settings() {
           </div>
 
           {/* Settings Content */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 relative">
+            {isLoading && (
+              <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-xl">
+                <div className="animate-spin w-8 h-8 border-4 border-[#b45309] border-t-transparent rounded-full"></div>
+              </div>
+            )}
             <h3 className="text-[15px] font-extrabold text-slate-800 mb-6">Platform Settings</h3>
             
             <div className="space-y-6 max-w-4xl">
@@ -66,6 +122,8 @@ export default function Settings() {
                 <label className="block text-[13px] font-bold text-slate-600">Platform Name</label>
                 <input 
                   type="text" 
+                  value={platformName}
+                  onChange={(e) => setPlatformName(e.target.value)}
                   placeholder="FleetCommand" 
                   className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all"
                 />
@@ -77,6 +135,8 @@ export default function Settings() {
                   <label className="block text-[13px] font-bold text-slate-600">Timezone</label>
                   <input 
                     type="text" 
+                    value={timezone}
+                    onChange={(e) => setTimezone(e.target.value)}
                     className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all"
                   />
                 </div>
@@ -84,6 +144,8 @@ export default function Settings() {
                   <label className="block text-[13px] font-bold text-slate-600">Language</label>
                   <input 
                     type="text" 
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
                     className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all"
                   />
                 </div>
@@ -104,7 +166,9 @@ export default function Settings() {
                     accept="image/*" 
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
-                        setLogoUrl(URL.createObjectURL(e.target.files[0]));
+                        const file = e.target.files[0];
+                        setLogoFile(file);
+                        setLogoUrl(URL.createObjectURL(file));
                       }
                     }} 
                   />
