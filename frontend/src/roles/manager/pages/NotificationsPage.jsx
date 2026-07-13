@@ -8,6 +8,8 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import DispatchWarningModal from "@/components/common/DispatchWarningModal";
 import ContactDriverModal from "@/components/common/ContactDriverModal";
 import { managerApi } from "../api/managerApi";
+import { getSocket, disconnectSocket } from "@/api/socket";
+import { useAuth } from "@/context/AuthContext";
 
 const mapTypeToTab = (type) => {
   if (type === "alert")  return "Critical";
@@ -17,6 +19,7 @@ const mapTypeToTab = (type) => {
 };
 
 export default function NotificationsPage() {
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("All");
   const [notifications, setNotifications] = useState([]);
@@ -36,6 +39,51 @@ export default function NotificationsPage() {
       setLoading(false);
     }
   };
+
+  // Socket.IO
+  useEffect(() => {
+    if (isAuthenticated && user?.role === "manager") {
+      const socket = getSocket();
+
+      // Join rooms
+      socket.emit("joinManagerRoom", user._id || user.id);
+      if (user?.organizationId) {
+        socket.emit("joinOrganizationRoom", user.organizationId);
+      }
+
+      // Listen for events
+      socket.on("notification:new", (notification) => {
+        setNotifications(prev => [notification, ...prev]);
+      });
+
+      socket.on("notification:read", (notification) => {
+        setNotifications(prev => prev.map(n => 
+          (n._id === (notification._id || notification.id) || n.id === (notification._id || notification.id)) 
+            ? { ...n, isRead: true } 
+            : n
+        ));
+      });
+
+      socket.on("notification:update", (data) => {
+        if (data.allRead) {
+          setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        }
+      });
+
+      socket.on("notification:delete", (data) => {
+        setNotifications(prev => prev.filter(n => 
+          n._id !== data.id && n.id !== data.id
+        ));
+      });
+
+      return () => {
+        socket.off("notification:new");
+        socket.off("notification:read");
+        socket.off("notification:update");
+        socket.off("notification:delete");
+      };
+    }
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     fetchNotifications();

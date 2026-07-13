@@ -44,6 +44,11 @@ import {
   getReportDetails,
   updateReport,
   deleteReport,
+  // Notifications
+  listNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification
   // E-Way Bills
   listEWayBills,
   createEWayBill,
@@ -111,6 +116,12 @@ router.get('/reports/:id',    ...auth, getReportDetails);
 router.put('/reports/:id',    ...auth, updateReport);
 router.delete('/reports/:id', ...auth, deleteReport);
 
+// Notifications
+router.get('/notifications',         ...auth, listNotifications);
+router.patch('/notifications/read-all', ...auth, markAllNotificationsRead);
+router.patch('/notifications/:id/read', ...auth, markNotificationRead);
+router.put('/notifications/:id/read', ...auth, markNotificationRead);
+router.delete('/notifications/:id', ...auth, deleteNotification);
 // E-Way Bills
 router.get('/eway',            ...auth, listEWayBills);
 router.post('/eway',           ...auth, createEWayBill);

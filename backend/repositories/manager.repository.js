@@ -5,6 +5,7 @@ import Fuel from '../models/Fuel.js';
 import Maintenance from '../models/Maintenance.js';
 import Document from '../models/Document.js';
 import Report from '../models/Report.js';
+import Notification from '../models/Notification.js';
 
 // Vehicles
 export const getVehicles = async (filter = {}) =>
@@ -150,4 +151,21 @@ export const updateReport = async (id, data) => {
 
 export const deleteReport = async (id) => {
   return Report.findByIdAndDelete(id);
+};
+
+// Notifications
+export const getManagerNotifications = async (managerId) => {
+  return Notification.find({ $or: [{ recipient: managerId }, { recipientRole: 'FLEET_MANAGER' }] }).sort({ createdAt: -1 });
+};
+
+export const markManagerNotificationRead = async (id) => {
+  return Notification.findByIdAndUpdate(id, { isRead: true }, { new: true });
+};
+
+export const markAllManagerNotificationsRead = async (managerId) => {
+  return Notification.updateMany({ $or: [{ recipient: managerId }, { recipientRole: 'FLEET_MANAGER' }], isRead: false }, { isRead: true });
+};
+
+export const deleteManagerNotification = async (id) => {
+  return Notification.findByIdAndDelete(id);
 };

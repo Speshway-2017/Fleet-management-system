@@ -33,12 +33,18 @@ import {
   getReportById,
   createReport as createReportInRepo,
   updateReport as updateReportInRepo,
-  deleteReport as deleteReportInRepo
+  deleteReport as deleteReportInRepo,
+  getManagerNotifications,
+  markManagerNotificationRead,
+  markAllManagerNotificationsRead,
+  deleteManagerNotification
 } from '../repositories/manager.repository.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { createAndEmitNotification } from '../utils/notification.js';
 import Trip from '../models/Trip.js';
 import Driver from '../models/Driver.js';
 import Vehicle from '../models/Vehicle.js';
+import Notification from '../models/Notification.js';
 import EWayBill from '../models/EWayBill.js';
 
 export const getDashboard = async (_req, res) => {
@@ -941,6 +947,11 @@ export const getLiveTracking = async (req, res, next) => {
   }
 };
 
+// Notifications Controllers
+export const listNotifications = async (req, res, next) => {
+  try {
+    const notifications = await getManagerNotifications(req.user._id);
+    return sendSuccess(res, 200, notifications, 'Notifications fetched');
 // E-Way Bills Helper for Dynamic Validity & Status Calculation
 const enrichEWayBill = (billObj) => {
   const bill = billObj.toObject ? billObj.toObject() : billObj;
@@ -1129,6 +1140,20 @@ export const createEWayBill = async (req, res, next) => {
   }
 };
 
+export const markNotificationRead = async (req, res, next) => {
+  try {
+    const notification = await markManagerNotificationRead(req.params.id);
+    if (!notification) return sendError(res, 404, 'Notification not found');
+    
+    // Emit notification:read event
+    if (req.io) {
+      req.io.to(`manager:${req.user._id}`).emit('notification:read', notification);
+    }
+    
+    return sendSuccess(res, 200, notification, 'Notification marked as read');
+    } catch (error) {
+    next(error);
+  }
 export const extendEWayBill = async (req, res, next) => {
   try {
     const bill = await EWayBill.findOne({ _id: req.params.id, assignedManager: req.user._id });
@@ -1147,6 +1172,19 @@ export const extendEWayBill = async (req, res, next) => {
   }
 };
 
+export const markAllNotificationsRead = async (req, res, next) => {
+  try {
+    await markAllManagerNotificationsRead(req.user._id);
+    
+    // Emit notification:update event
+    if (req.io) {
+      req.io.to(`manager:${req.user._id}`).emit('notification:update', { allRead: true });
+    }
+    
+    return sendSuccess(res, 200, null, 'All notifications marked as read');
+     } catch (error) {
+    next(error);
+  }
 export const updateEWayBill = async (req, res, next) => {
   try {
     const { vehicleNo, transporterName, fromLoc, toLoc, invoiceNo, goodsValue, validity } = req.body;
@@ -1179,6 +1217,20 @@ export const updateEWayBill = async (req, res, next) => {
   }
 };
 
+export const deleteNotification = async (req, res, next) => {
+  try {
+    const notification = await deleteManagerNotification(req.params.id);
+    if (!notification) return sendError(res, 404, 'Notification not found');
+    
+    // Emit notification:delete event
+    if (req.io) {
+      req.io.to(`manager:${req.user._id}`).emit('notification:delete', { id: req.params.id });
+    }
+    
+    return sendSuccess(res, 200, null, 'Notification deleted');
+     } catch (error) {
+    next(error);
+  }
 export const deleteEWayBill = async (req, res, next) => {
   try {
     const bill = await EWayBill.findOneAndDelete({ _id: req.params.id, assignedManager: req.user._id });

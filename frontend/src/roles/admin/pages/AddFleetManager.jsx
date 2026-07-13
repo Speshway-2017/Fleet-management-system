@@ -33,7 +33,11 @@ export default function AddFleetManager() {
         setOrgsLoading(true);
         const response = await adminApi.getOrganizations();
         const data = response.data?.data || response.data || [];
-        const active = data.filter(org => org.status !== "Suspended");
+        // Deduplicate organizations and filter active ones
+        const uniqueOrgs = Array.from(
+          new Map(data.map(org => [org.id || org._id, org])).values()
+        );
+        const active = uniqueOrgs.filter(org => org.status !== "Suspended");
         setActiveOrgs(active);
       } catch (err) {
         console.error("Failed to fetch organizations:", err);
@@ -213,7 +217,7 @@ export default function AddFleetManager() {
                         {orgsLoading ? "Loading organizations..." : activeOrgs.length === 0 ? "No organizations available" : "Select Organization"}
                       </option>
                       {activeOrgs.map(org => (
-                        <option key={org.id} value={org.id}>{org.name}</option>
+                        <option key={org.id || org._id} value={org.id || org._id}>{org.name}</option>
                       ))}
                     </select>
                     {errors.organization && <p className="text-xs text-red-500 mt-1">{errors.organization}</p>}

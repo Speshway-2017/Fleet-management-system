@@ -17,7 +17,7 @@ export const createManager = async (managerData) => {
 };
 
 export const getManagerById = async (id) => {
-  return User.findOne({ _id: id, role: 'FLEET_MANAGER' }).select('-password');
+  return User.findOne({ _id: id, role: 'FLEET_MANAGER' }).populate('organization', 'name _id').select('-password');
 };
 
 export const getDistinctOrganizations = async (filter = {}) => {
