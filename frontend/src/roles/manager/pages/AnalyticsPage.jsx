@@ -19,7 +19,7 @@ const branchData = {
     maintPct: 26,
     tollCost: "₹41,890",
     tollPct: 17,
-    avgMileCost: "₹ 18.4",
+    avgKmCost: "₹ 11.4",
     topSpender: "Fleet-A",
     anomalies: "04"
   },
@@ -37,7 +37,7 @@ const branchData = {
     maintPct: 27,
     tollCost: "₹20,250",
     tollPct: 18,
-    avgMileCost: "₹ 17.9",
+    avgKmCost: "₹ 11.1",
     topSpender: "Fleet-M1",
     anomalies: "01"
   },
@@ -55,7 +55,7 @@ const branchData = {
     maintPct: 24,
     tollCost: "₹15,500",
     tollPct: 18,
-    avgMileCost: "₹ 19.1",
+    avgKmCost: "₹ 11.9",
     topSpender: "Fleet-D2",
     anomalies: "02"
   },
@@ -73,7 +73,7 @@ const branchData = {
     maintPct: 27,
     tollCost: "₹6,140",
     tollPct: 14,
-    avgMileCost: "₹ 16.5",
+    avgKmCost: "₹ 10.3",
     topSpender: "Fleet-B1",
     anomalies: "01"
   }
@@ -277,8 +277,8 @@ export default function AnalyticsPage() {
           </div>
           <div className="grid grid-cols-3 gap-4 mt-8">
             <div className="p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-gray-600 uppercase">Avg / Mile</p>
-              <p className="text-lg font-bold text-gray-800">{data.avgMileCost}</p>
+              <p className="text-xs text-gray-600 uppercase">Avg / Km</p>
+              <p className="text-lg font-bold text-gray-800">{data.avgKmCost}</p>
             </div>
             <div className="p-3 bg-blue-50 rounded-lg">
               <p className="text-xs text-gray-600 uppercase">Top Spender</p>
@@ -361,7 +361,7 @@ export default function AnalyticsPage() {
                   <h4 className="font-bold text-xs uppercase tracking-wider font-poppins">Brake Pad Maintenance</h4>
                 </div>
                 <p className="text-xs text-gray-600 font-medium leading-relaxed">
-                  Brakes for vehicle <strong className="text-gray-900">#VAN-402</strong> are at 88% wear limit. Pad replacement is recommended in the next 150 miles to avoid peak operational failure or breakdowns during transit.
+                  Brakes for vehicle <strong className="text-gray-900">#VAN-402</strong> are at 88% wear limit. Pad replacement is recommended in the next 250 km to avoid peak operational failure or breakdowns during transit.
                 </p>
                 <button onClick={() => { navigate("/manager/maintenance"); setShowInsights(false); }} className="text-[10px] font-bold text-amber-700 hover:underline cursor-pointer">
                   Schedule Service →

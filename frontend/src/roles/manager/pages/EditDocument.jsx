@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import Breadcrumb from "@/components/common/Breadcrumb";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Save,
@@ -12,11 +12,13 @@ import toast from "react-hot-toast";
 import { managerApi } from "../api/managerApi";
 
 const CATEGORIES = ["Insurance", "Vehicle Docs", "Driver Docs", "Trip Invoices", "Compliance"];
-const VEHICLES = ["Volvo FM 12 [KA-01-FE-9912]", "Ashok Leyland 3118", "Tata Ace Gold", "Komila FM-30"];
 
 export default function EditDocument() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+  const [vehiclesList, setVehiclesList] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     vehicle: "",
@@ -24,6 +26,44 @@ export default function EditDocument() {
     category: "Insurance",
   });
   const [doc, setDoc] = useState(null);
+
+  useEffect(() => {
+    const fetchVehicles = async () => {
+      try {
+        const response = await managerApi.getVehicles();
+        const data = response.data?.data || response.data;
+        if (Array.isArray(data)) {
+          setVehiclesList(data);
+        }
+      } catch (err) {
+        console.error("Failed to load vehicles", err);
+      }
+    };
+    fetchVehicles();
+  }, []);
+
+  const handleSelectFileClick = (e) => {
+    e.stopPropagation();
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 25 * 1024 * 1024) {
+        toast.error("File size exceeds 25MB limit");
+        return;
+      }
+      setSelectedFile(file);
+      toast.success(`Selected file: ${file.name}`);
+    }
+  };
+
+  const handleRemoveFile = (e) => {
+    e.stopPropagation();
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   useEffect(() => {
     const fetchDoc = async () => {
@@ -50,13 +90,19 @@ export default function EditDocument() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await managerApi.updateDocument(id, {
+      const updateData = {
         title: formData.name,
         vehicle: formData.vehicle,
         expiry: formData.expiry,
         type: formData.category,
         category: formData.category
-      });
+      };
+      if (selectedFile) {
+        updateData.fileSize = `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB`;
+        updateData.fileType = selectedFile.name.split('.').pop().toUpperCase();
+        updateData.fileUrl = "https://res.cloudinary.com/dummy-document-file.pdf";
+      }
+      await managerApi.updateDocument(id, updateData);
       toast.success("Document updated successfully!");
       navigate(`/manager/documents/view/${id}`);
     } catch (error) {
@@ -111,7 +157,12 @@ export default function EditDocument() {
                 onChange={(e) => setFormData({ ...formData, vehicle: e.target.value })}
                 className="w-full px-4 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A] transition-colors appearance-none"
               >
-                {VEHICLES.map(v => <option key={v}>{v}</option>)}
+                <option value="All Vehicles">All Vehicles</option>
+                {vehiclesList.map(v => (
+                  <option key={v._id} value={`${v.vehicleNumber} [${v.brand} ${v.model || ""}]`}>
+                    {v.vehicleNumber} ({v.brand} {v.model})
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -155,17 +206,43 @@ export default function EditDocument() {
             <label className="text-xs font-bold uppercase tracking-widest text-[#64748B] mb-3 block">
               Document File
             </label>
-            <div className="border-2 border-dashed border-[#E7EAF0] rounded-2xl p-12 text-center bg-[#F5F7FB]/50 hover:bg-[#F5F7FB] cursor-pointer transition-colors">
+            <div 
+              onClick={handleSelectFileClick}
+              className="border-2 border-dashed border-[#E7EAF0] rounded-2xl p-12 text-center bg-[#F5F7FB]/50 hover:bg-[#F5F7FB] cursor-pointer transition-colors relative"
+            >
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                accept=".pdf,.jpg,.jpeg,.png,.docx"
+                className="hidden" 
+              />
               <div className="bg-blue-100 text-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <UploadCloud className="w-8 h-8" />
               </div>
               <h3 className="font-poppins font-semibold text-xl text-[#1E293B]">
-                Replace Current File
+                {selectedFile ? "New File Ready" : "Replace Current File"}
               </h3>
-              <p className="text-sm text-[#64748B] mt-2">
-                Current: <span className="text-[#B45A0A]">{doc?.fileName}</span> ({doc?.fileSize})
-              </p>
-              <p className="text-xs text-[#94A3B8] mt-3">
+              {selectedFile ? (
+                <div className="bg-white border border-[#E7EAF0] rounded-xl p-3 max-w-sm mx-auto flex items-center justify-between gap-3 shadow-sm mt-3">
+                  <div className="text-left overflow-hidden">
+                    <p className="text-xs font-bold text-gray-800 truncate">{selectedFile.name}</p>
+                    <p className="text-[10px] text-gray-500 font-medium">{(selectedFile.size / 1024).toFixed(0)} KB</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveFile}
+                    className="text-xs font-bold text-red-600 hover:text-red-800"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm text-[#64748B] mt-2">
+                  Current: <span className="text-[#B45A0A]">{doc?.title}</span> ({doc?.fileSize || "1.0 MB"})
+                </p>
+              )}
+              <p className="text-xs text-[#94A3B8] mt-3 uppercase tracking-wider">
                 DRAG AND DROP OR CLICK TO BROWSE
               </p>
             </div>
