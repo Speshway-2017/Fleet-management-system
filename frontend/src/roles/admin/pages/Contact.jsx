@@ -131,6 +131,9 @@ export default function Contact() {
           <NavLink to="/about" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
             About
           </NavLink>
+          <NavLink to="/features" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
+            Features
+          </NavLink>
           <NavLink to="/performance" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
             Performance
           </NavLink>
@@ -196,6 +199,9 @@ export default function Contact() {
           </NavLink>
           <NavLink to="/about" className={({ isActive }) => `block w-full text-left py-2 font-semibold text-sm transition-colors ${isActive ? "text-[#A14000]" : "text-body hover:text-[#A14000]"}`} onClick={() => setMobileMenuOpen(false)}>
             About
+          </NavLink>
+          <NavLink to="/features" className={({ isActive }) => `block w-full text-left py-2 font-semibold text-sm transition-colors ${isActive ? "text-[#A14000]" : "text-body hover:text-[#A14000]"}`} onClick={() => setMobileMenuOpen(false)}>
+            Features
           </NavLink>
           <NavLink to="/performance" className={({ isActive }) => `block w-full text-left py-2 font-semibold text-sm transition-colors ${isActive ? "text-[#A14000]" : "text-body hover:text-[#A14000]"}`} onClick={() => setMobileMenuOpen(false)}>
             Performance

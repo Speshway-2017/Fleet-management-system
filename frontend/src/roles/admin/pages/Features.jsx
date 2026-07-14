@@ -2,8 +2,21 @@ import { useState } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
+import { 
+  MapPin, 
+  Coins, 
+  Users, 
+  Activity, 
+  ShieldCheck, 
+  TrendingUp,
+  Cpu,
+  Clock,
+  Bell,
+  Wrench,
+  Navigation
+} from "lucide-react";
 
-export default function Security() {
+export default function Features() {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -13,12 +26,13 @@ export default function Security() {
   };
 
   const mobileNavLinkClass = ({ isActive }) => {
-    return `block w-full text-left py-2 font-semibold text-sm transition-colors ${isActive ? "text-[#A14000]" : "text-body hover:text-[#A14000]"
-      }`;
+    return `block w-full text-left py-2 font-semibold text-sm transition-colors ${
+      isActive ? "text-[#A14000]" : "text-body hover:text-[#A14000]"
+    }`;
   };
 
   return (
-    <div className="bg-bg-page min-h-screen flex flex-col font-sans">
+    <div className="bg-bg-page min-h-screen flex flex-col font-sans text-body">
       {/* 1. Header/Navbar */}
       <header className="bg-white border-b border-border-custom px-4 sm:px-6 md:px-8 h-20 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-3">
@@ -121,153 +135,181 @@ export default function Security() {
         </div>
       )}
 
-      {/* Hero Section */}
-      <section className="bg-white py-16 sm:py-24 border-b border-border-custom">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#A14000]/10 text-[#A14000] text-xs font-semibold uppercase tracking-wider">
-            Built with Security & Reliability
+      {/* 2. Hero Section with Background Volvo Truck */}
+      <section className="relative w-full overflow-hidden border-b border-border-custom bg-white py-16 md:py-24 flex items-center min-h-[550px]">
+        {/* Background Sunset Highway Truck Image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: "url('/hero-bg.jpg')",
+          }}
+        />
+        {/* Translucent overlay for text legibility (minimized white casting for maximum image clarity) */}
+        <div className="absolute inset-0 bg-gradient-to-r from-white/60 via-white/20 to-transparent md:bg-gradient-to-r md:from-white/70 md:via-white/30 md:to-transparent lg:bg-gradient-to-r lg:from-white/65 lg:via-white/15 lg:to-transparent" />
+
+        {/* Content Container */}
+        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-10 py-12 md:py-16 space-y-12 z-10">
+          
+          {/* Main Hero Header */}
+          <div className="space-y-4 max-w-2xl">
+            {/* Pill badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#A14000]/10 text-[#A14000] text-xs font-bold w-fit">
+              <span>🚀</span>
+              <span>Advanced Operations Suite</span>
+            </div>
+
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black text-[#0B1B3D] tracking-tight leading-tight">
+              Powerful Features for <br />
+              <span className="text-[#A14000]">Modern Fleet Operations</span>
+            </h2>
+            <p className="text-sm md:text-base text-body leading-relaxed max-w-xl font-normal">
+              From real-time GPS telemetry to machine learning route planning, discover the advanced features designed to maximize operations efficiency.
+            </p>
           </div>
-          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black text-[#0B1B3D] tracking-tight">
-            Your Data. Your Trust. <span className="text-[#A14000]">Our Priority.</span>
-          </h2>
-          <p className="text-base sm:text-lg text-body max-w-2xl mx-auto leading-relaxed">
-            We employ bank-grade security protocols, advanced encryption, and robust access controls to keep your enterprise fleet operations secure and compliant at all times.
-          </p>
+
+          {/* 4 Feature Columns at the bottom of hero */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
+            
+            {/* Live GPS Tracking */}
+            <div className="flex gap-3 items-start bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-white/40 shadow-sm">
+              <div className="h-8 w-8 rounded-lg bg-[#A14000]/10 text-[#A14000] flex items-center justify-center shrink-0">
+                <MapPin className="w-4 h-4" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="font-bold text-xs text-[#0B1B3D]">Live GPS Tracking</h4>
+                <p className="text-[10px] text-body leading-normal">Real-time coordinates and visual location monitoring.</p>
+              </div>
+            </div>
+
+            {/* Fuel Optimization */}
+            <div className="flex gap-3 items-start bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-white/40 shadow-sm">
+              <div className="h-8 w-8 rounded-lg bg-[#A14000]/10 text-[#A14000] flex items-center justify-center shrink-0">
+                <Coins className="w-4 h-4" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="font-bold text-xs text-[#0B1B3D]">Fuel Optimization</h4>
+                <p className="text-[10px] text-body leading-normal">Consumption tracking, leak detection, and cost planning.</p>
+              </div>
+            </div>
+
+            {/* Driver Analytics */}
+            <div className="flex gap-3 items-start bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-white/40 shadow-sm">
+              <div className="h-8 w-8 rounded-lg bg-[#A14000]/10 text-[#A14000] flex items-center justify-center shrink-0">
+                <Users className="w-4 h-4" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="font-bold text-xs text-[#0B1B3D]">Driver Scoring</h4>
+                <p className="text-[10px] text-body leading-normal">Safety tracking, speed monitoring, and behavioral scoring.</p>
+              </div>
+            </div>
+
+            {/* AI Diagnostics */}
+            <div className="flex gap-3 items-start bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-white/40 shadow-sm">
+              <div className="h-8 w-8 rounded-lg bg-[#A14000]/10 text-[#A14000] flex items-center justify-center shrink-0">
+                <Activity className="w-4 h-4" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="font-bold text-xs text-[#0B1B3D]">AI Diagnostics</h4>
+                <p className="text-[10px] text-body leading-normal">Predictive maintenance planning and engine health alerts.</p>
+              </div>
+            </div>
+
+          </div>
+
         </div>
       </section>
 
-      {/* Security Features Grid */}
-      <section className="py-16 bg-bg-page px-4 sm:px-6 md:px-8">
-        <div className="max-w-6xl mx-auto">
+      {/* 3. Deep-Dive Features Breakdown */}
+      <section className="py-20 bg-white border-b border-border-custom px-4 sm:px-6 md:px-8">
+        <div className="max-w-6xl mx-auto space-y-16">
+          <div className="text-center max-w-3xl mx-auto space-y-4">
+            <h3 className="text-[#A14000] text-xs sm:text-sm font-bold tracking-widest uppercase">Comprehensive Toolkit</h3>
+            <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-black text-[#0B1B3D]">
+              Everything You Need to Manage Your Fleet
+            </h2>
+            <p className="text-xs sm:text-sm text-body leading-relaxed max-w-xl mx-auto">
+              Our integrated suite brings together coordinates, diagnostics, schedules, and accounting tools under a single interface.
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            
             {/* Feature 1 */}
-            <div className="bg-white p-8 rounded-3xl border border-border-custom hover:shadow-lg transition-all duration-300 space-y-4">
-              <div className="h-12 w-12 rounded-2xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center shadow-sm">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
+            <div className="bg-[#FAFBFC] p-8 rounded-2xl border border-border-custom hover:-translate-y-1 hover:shadow-md transition-all duration-300 space-y-4">
+              <div className="h-10 w-10 rounded-xl bg-orange-50 text-[#A14000] flex items-center justify-center border border-orange-100/40 shadow-sm">
+                <Navigation className="w-5 h-5" />
               </div>
-              <h3 className="font-display text-lg font-bold text-[#0B1B3D]">JWT Authentication</h3>
+              <h3 className="font-display font-extrabold text-[#0B1B3D] text-sm">Geofencing & Smart Routing</h3>
               <p className="text-xs text-body leading-relaxed">
-                Secure login and session management using industry-standard JSON Web Tokens, protecting your system from unauthorized access.
+                Create virtual geographic boundaries and map out custom delivery zones. Trigger automated mobile notifications whenever a vehicle enters or exits a geofence.
               </p>
             </div>
 
             {/* Feature 2 */}
-            <div className="bg-white p-8 rounded-3xl border border-border-custom hover:shadow-lg transition-all duration-300 space-y-4">
-              <div className="h-12 w-12 rounded-2xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center shadow-sm">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+            <div className="bg-[#FAFBFC] p-8 rounded-2xl border border-border-custom hover:-translate-y-1 hover:shadow-md transition-all duration-300 space-y-4">
+              <div className="h-10 w-10 rounded-xl bg-orange-50 text-[#A14000] flex items-center justify-center border border-orange-100/40 shadow-sm">
+                <Cpu className="w-5 h-5" />
               </div>
-              <h3 className="font-display text-lg font-bold text-[#0B1B3D]">Role-Based Access Control</h3>
+              <h3 className="font-display font-extrabold text-[#0B1B3D] text-sm">IoT Telematics Integration</h3>
               <p className="text-xs text-body leading-relaxed">
-                Granular access control settings. Grant administrative, manager, or driver roles with tailored system permissions.
+                Connect directly with onboard diagnostics (OBD) systems and telemetry transponders. Track parameters like engine RPM, coolant temperature, and DTC fault codes instantly.
               </p>
             </div>
 
             {/* Feature 3 */}
-            <div className="bg-white p-8 rounded-3xl border border-border-custom hover:shadow-lg transition-all duration-300 space-y-4">
-              <div className="h-12 w-12 rounded-2xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center shadow-sm">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
+            <div className="bg-[#FAFBFC] p-8 rounded-2xl border border-border-custom hover:-translate-y-1 hover:shadow-md transition-all duration-300 space-y-4">
+              <div className="h-10 w-10 rounded-xl bg-orange-50 text-[#A14000] flex items-center justify-center border border-orange-100/40 shadow-sm">
+                <Bell className="w-5 h-5" />
               </div>
-              <h3 className="font-display text-lg font-bold text-[#0B1B3D]">IDOR Protection</h3>
+              <h3 className="font-display font-extrabold text-[#0B1B3D] text-sm">Real-time Emergency Alerts</h3>
               <p className="text-xs text-body leading-relaxed">
-                Built-in defenses against Insecure Direct Object Reference vulnerabilities, ensuring users can only access their authorized data.
+                Configure instant alerts for safety events, sudden deceleration, speeding spikes, geofence breaches, or overnight unauthorized usage.
               </p>
             </div>
 
             {/* Feature 4 */}
-            <div className="bg-white p-8 rounded-3xl border border-border-custom hover:shadow-lg transition-all duration-300 space-y-4">
-              <div className="h-12 w-12 rounded-2xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center shadow-sm">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+            <div className="bg-[#FAFBFC] p-8 rounded-2xl border border-border-custom hover:-translate-y-1 hover:shadow-md transition-all duration-300 space-y-4">
+              <div className="h-10 w-10 rounded-xl bg-orange-50 text-[#A14000] flex items-center justify-center border border-orange-100/40 shadow-sm">
+                <Wrench className="w-5 h-5" />
               </div>
-              <h3 className="font-display text-lg font-bold text-[#0B1B3D]">API Rate Limiting</h3>
+              <h3 className="font-display font-extrabold text-[#0B1B3D] text-sm">Smart Maintenance Hub</h3>
               <p className="text-xs text-body leading-relaxed">
-                Protecting our API endpoints from denial-of-service attempts and resource misuse to guarantee high system availability.
+                Automate schedule warnings for oil filter changes, tire rotations, brake pad replacements, and emissions checks. Reduce downtime and repair costs.
               </p>
             </div>
 
             {/* Feature 5 */}
-            <div className="bg-white p-8 rounded-3xl border border-border-custom hover:shadow-lg transition-all duration-300 space-y-4">
-              <div className="h-12 w-12 rounded-2xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center shadow-sm">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
+            <div className="bg-[#FAFBFC] p-8 rounded-2xl border border-border-custom hover:-translate-y-1 hover:shadow-md transition-all duration-300 space-y-4">
+              <div className="h-10 w-10 rounded-xl bg-orange-50 text-[#A14000] flex items-center justify-center border border-orange-100/40 shadow-sm">
+                <ShieldCheck className="w-5 h-5" />
               </div>
-              <h3 className="font-display text-lg font-bold text-[#0B1B3D]">Secure File Uploads</h3>
+              <h3 className="font-display font-extrabold text-[#0B1B3D] text-sm">Digital Document Wallet</h3>
               <p className="text-xs text-body leading-relaxed">
-                Strong validation of all user uploads. Scans document extensions, sizes, and content types to prevent malicious uploads.
+                Store registration cards, road permits, commercial vehicle insurance, emission certifications, and driving licenses securely in the cloud. Get expiry notifications.
               </p>
             </div>
 
             {/* Feature 6 */}
-            <div className="bg-white p-8 rounded-3xl border border-border-custom hover:shadow-lg transition-all duration-300 space-y-4">
-              <div className="h-12 w-12 rounded-2xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center shadow-sm">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                </svg>
+            <div className="bg-[#FAFBFC] p-8 rounded-2xl border border-border-custom hover:-translate-y-1 hover:shadow-md transition-all duration-300 space-y-4">
+              <div className="h-10 w-10 rounded-xl bg-orange-50 text-[#A14000] flex items-center justify-center border border-orange-100/40 shadow-sm">
+                <Clock className="w-5 h-5" />
               </div>
-              <h3 className="font-display text-lg font-bold text-[#0B1B3D]">Encrypted Communication</h3>
-              <p className="text-xs text-body leading-relaxed">
-                All traffic is encrypted in transit using industry-standard TLS protocols, securing your data between client and server.
+              <h3 className="font-display font-extrabold text-[#0B1B3D] text-sm">Automated Trip Logging</h3>
+              <p className="text-[11px] text-body leading-relaxed">
+                Maintain accurate records of all driver routes, distance traveled, start/end locations, transit times, and delay patterns. Eliminate manual logbooks.
               </p>
             </div>
 
-            {/* Feature 7 */}
-            <div className="bg-white p-8 rounded-3xl border border-border-custom hover:shadow-lg transition-all duration-300 space-y-4">
-              <div className="h-12 w-12 rounded-2xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center shadow-sm">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-              </div>
-              <h3 className="font-display text-lg font-bold text-[#0B1B3D]">Audit Logging</h3>
-              <p className="text-xs text-body leading-relaxed">
-                Detailed audit logs document critical system events, actions, and user sessions for operational transparency and compliance audits.
-              </p>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="bg-bg-page py-16 px-4 sm:px-6 md:px-8">
-        <div className="max-w-6xl mx-auto rounded-3xl bg-[#0B1B3D] text-white p-8 md:p-16 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden shadow-xl">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/50 via-[#0B1B3D]/80 to-[#0B1B3D] pointer-events-none" />
-          <div className="relative z-10 space-y-4 max-w-xl text-center md:text-left">
-            <h3 className="font-display text-2xl md:text-3xl font-extrabold">Ready to Take Control of Your Fleet?</h3>
-            <p className="text-sm text-gray-400">Join hundreds of businesses that trust our platform to manage their fleet operations efficiently.</p>
-          </div>
-          <div className="relative z-10 flex flex-col sm:flex-row gap-4 shrink-0">
-            <button
-              onClick={() => navigate("/login")}
-              className="px-6 py-3.5 bg-[#A14000] hover:bg-[#853500] rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md hover:shadow-lg active:scale-[0.98]"
-            >
-              Login to Dashboard
-              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </button>
-            <button
-              onClick={() => navigate("/contact")}
-              className="px-6 py-3.5 bg-transparent border border-white hover:bg-white/10 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.98]"
-            >
-              Contact Us
-              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. Footer (Dark Background) */}
-      <footer className="bg-[#0B1B3D] text-gray-300 pt-12 sm:pt-16 pb-8 px-4 sm:px-6 md:px-8 mt-auto">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 md:gap-12 pb-12 border-b border-gray-800">
+      {/* 4. Footer */}
+      <footer className="bg-[#0B1B3D] text-white pt-16 pb-10 border-t border-border-custom px-4 sm:px-6 md:px-8 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#A14000]/30 to-transparent" />
+        
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/5">
+          {/* Column 1: Platform Branding */}
           <div className="space-y-4 lg:col-span-1">
             <div className="flex items-center gap-3">
               <img src="/logo.png" alt="Fleet Management Logo" className="h-9 w-auto object-contain bg-white rounded-lg p-1" />
@@ -275,6 +317,7 @@ export default function Security() {
             <p className="text-xs text-gray-400 leading-relaxed">
               A next-generation fleet management platform designed to help businesses streamline operations, improve efficiency, and drive growth.
             </p>
+            {/* Social Icons */}
             <div className="flex items-center gap-3 pt-2">
               <a href="#" className="text-[#A14000] hover:opacity-80 transition-opacity">
                 <span className="sr-only">Facebook</span>
@@ -295,6 +338,7 @@ export default function Security() {
             </div>
           </div>
 
+          {/* Column 2: QUICK LINKS */}
           <div className="space-y-4">
             <h5 className="font-display font-semibold text-white tracking-wider text-xs uppercase">Quick Links</h5>
             <ul className="space-y-2.5 text-xs text-gray-400">
@@ -305,17 +349,19 @@ export default function Security() {
             </ul>
           </div>
 
+          {/* Column 3: PLATFORM */}
           <div className="space-y-4">
             <h5 className="font-display font-semibold text-white tracking-wider text-xs uppercase">Platform</h5>
             <ul className="space-y-2.5 text-xs text-gray-400">
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Features"); }} className="hover:text-white transition-colors">Features</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Security"); }} className="hover:text-white transition-colors">Security</a></li>
+              <li><NavLink to="/features" className="hover:text-white transition-colors">Features</NavLink></li>
+              <li><NavLink to="/security" className="hover:text-white transition-colors">Security</NavLink></li>
               <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Integrations"); }} className="hover:text-white transition-colors">Integrations</a></li>
               <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Pricing"); }} className="hover:text-white transition-colors">Pricing</a></li>
               <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Documentation"); }} className="hover:text-white transition-colors">Documentation</a></li>
             </ul>
           </div>
 
+          {/* Column 4: COMPANY */}
           <div className="space-y-4">
             <h5 className="font-display font-semibold text-white tracking-wider text-xs uppercase">Company</h5>
             <ul className="space-y-2.5 text-xs text-gray-400">
@@ -327,6 +373,7 @@ export default function Security() {
             </ul>
           </div>
 
+          {/* Column 5: CONTACT */}
           <div className="space-y-4 text-xs text-gray-400">
             <h5 className="font-display font-semibold text-white tracking-wider text-xs uppercase">Contact Us</h5>
             <ul className="space-y-3">
@@ -359,6 +406,7 @@ export default function Security() {
           </div>
         </div>
 
+        {/* Copyright and Legal Links */}
         <div className="max-w-6xl mx-auto pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] text-gray-500 font-medium">
           <div>
             <span>© 2026 Fleet Management. All rights reserved.</span>
@@ -369,6 +417,7 @@ export default function Security() {
           </div>
         </div>
       </footer>
+
     </div>
   );
 }

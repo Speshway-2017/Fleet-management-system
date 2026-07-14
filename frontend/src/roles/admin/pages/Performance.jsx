@@ -58,6 +58,9 @@ export default function Performance() {
           <NavLink to="/about" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
             About
           </NavLink>
+          <NavLink to="/features" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
+            Features
+          </NavLink>
           <NavLink to="/performance" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
             Performance
           </NavLink>
@@ -123,6 +126,9 @@ export default function Performance() {
           </NavLink>
           <NavLink to="/about" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
             About
+          </NavLink>
+          <NavLink to="/features" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+            Features
           </NavLink>
           <NavLink to="/performance" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
             Performance

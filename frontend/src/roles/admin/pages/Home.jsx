@@ -38,6 +38,9 @@ export default function Home() {
           <NavLink to="/about" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
             About
           </NavLink>
+          <NavLink to="/features" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
+            Features
+          </NavLink>
           <NavLink to="/performance" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
             Performance
           </NavLink>
@@ -103,6 +106,9 @@ export default function Home() {
           </NavLink>
           <NavLink to="/about" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
             About
+          </NavLink>
+          <NavLink to="/features" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+            Features
           </NavLink>
           <NavLink to="/performance" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
             Performance
@@ -682,7 +688,7 @@ export default function Home() {
 
             <div className="group relative overflow-hidden rounded-2xl aspect-[3/4] shadow-md border border-border-custom">
               <img
-                src="https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?auto=format&fit=crop&q=80&w=400"
+                src="/delivery-van.png"
                 alt="Delivery Van"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
@@ -704,7 +710,7 @@ export default function Home() {
 
             <div className="group relative overflow-hidden rounded-2xl aspect-[3/4] shadow-md border border-border-custom">
               <img
-                src="https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&q=80&w=400"
+                src="/construction-vehicle.png"
                 alt="Construction Vehicle"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
@@ -715,7 +721,7 @@ export default function Home() {
 
             <div className="group relative overflow-hidden rounded-2xl aspect-[3/4] shadow-md border border-border-custom col-span-2 md:col-span-1 lg:col-span-1">
               <img
-                src="/bus.png"
+                src="/transport-vehicle.png"
                 alt="Transport Vehicle"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
