@@ -331,7 +331,7 @@ Status:          PAID & VERIFIED
       </div>
 
       {/* --- KPI SECTION --- */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
         {/* KPI 1: Fuel Spend */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center justify-between">
@@ -348,22 +348,6 @@ Status:          PAID & VERIFIED
           <div className="mt-4 flex items-center text-xs text-green-600 gap-1 font-semibold">
             <TrendingUp className="w-3.5 h-3.5" />
             <span>+22.4% vs last month</span>
-          </div>
-        </div>
-
-        {/* KPI 2: Mileage */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-xs font-bold text-gray-500 tracking-wider uppercase">Avg Fleet Mileage</span>
-              <h3 className="text-2xl font-extrabold text-gray-800 mt-2">4.5 km/l</h3>
-            </div>
-            <div className="bg-green-50 text-green-600 p-3 rounded-xl">
-              <Gauge className="w-6 h-6" />
-            </div>
-          </div>
-          <div className="mt-4 text-xs text-green-600 font-medium">
-            Optimized consumption: <span className="font-bold">-0.8% drop</span>
           </div>
         </div>
 

@@ -88,6 +88,7 @@ const vehicleSchema = new mongoose.Schema(
       }
     },
     assignedManager:    { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    branch:             { type: String, default: 'Pune', trim: true },
   },
   { timestamps: true }
 );

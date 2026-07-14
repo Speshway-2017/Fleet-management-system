@@ -974,7 +974,7 @@ export default function VehicleDetailsPage() {
                         t.status === "On Transit" ? "bg-amber-50 text-amber-700 border border-amber-100" :
                         "bg-blue-50 text-blue-700 border border-blue-100"
                       }`}>
-                        {t.status}
+                        {t.status === "Completed" ? "Complete" : t.status}
                       </span>
                     </div>
                     <p className="text-xs font-bold text-[#1E293B]">{t.startLocation} to {t.endLocation}</p>

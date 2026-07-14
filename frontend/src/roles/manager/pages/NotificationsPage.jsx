@@ -170,8 +170,7 @@ export default function NotificationsPage() {
 
   const handleMarkAllAsRead = async () => {
     try {
-      const promises = notifications.filter(n => !n.isRead).map(n => managerApi.markNotificationRead(n._id || n.id));
-      await Promise.all(promises);
+      await managerApi.markAllNotificationsRead();
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       toast.success("All notifications marked as read!");
     } catch (err) {

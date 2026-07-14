@@ -48,6 +48,7 @@ import Notification from '../models/Notification.js';
 import EWayBill from '../models/EWayBill.js';
 import Fuel from '../models/Fuel.js';
 import ActivityLog from '../models/ActivityLog.js';
+import Invoice from '../models/Invoice.js';
 import { logActivity } from '../utils/activityLogger.js';
 
 export const getDashboard = async (req, res, next) => {
@@ -99,10 +100,10 @@ export const getDashboard = async (req, res, next) => {
     
     let totalEarnings = "";
     if (earningsSum >= 10000000) {
-      const shortNum = Number((earningsSum / 10000000).toFixed(2));
-      totalEarnings = `₹${shortNum} cr`;
+      const shortNum = (earningsSum / 10000000).toFixed(1);
+      totalEarnings = `₹${shortNum} Cr`;
     } else if (earningsSum >= 100000) {
-      const shortNum = Number((earningsSum / 100000).toFixed(2));
+      const shortNum = (earningsSum / 100000).toFixed(1);
       totalEarnings = `₹${shortNum} L`;
     } else {
       totalEarnings = `₹${earningsSum.toLocaleString('en-IN')}`;
@@ -415,30 +416,78 @@ export const createTrip = async (req, res, next) => {
       endLocation,
       departureTime,
       eta,
-      status,
-      description
+      status = 'Scheduled',
+      description,
+      cargoType,
+      cargoWeight,
+      tripNotes,
+      estimatedDistance
     } = req.body;
 
     if (!tripNumber || !vehicle || !driver || !startLocation || !endLocation || !departureTime || !eta) {
       return sendError(res, 400, 'Trip number, vehicle, driver, route, and timing details are required');
     }
 
-    // A. Verify vehicle availability in database
+    // Validation: Pickup and Destination cannot be the same
+    if (startLocation.trim().toLowerCase() === endLocation.trim().toLowerCase()) {
+      return sendError(res, 400, 'Pickup Location and Destination cannot be the same');
+    }
+
+    // Validation: Pickup Date cannot be in the past
+    const pickupDate = new Date(departureTime);
+    const currentDate = new Date();
+    // Allow a small grace margin of 5 minutes for latency
+    if (pickupDate.getTime() + 300000 < currentDate.getTime()) {
+      return sendError(res, 400, 'Pickup Date and Time cannot be in the past');
+    }
+
+    // A. Verify vehicle details & availability in database
+    const selectedVeh = await Vehicle.findById(vehicle);
+    if (!selectedVeh) {
+      return sendError(res, 404, 'Vehicle not found');
+    }
+    if (selectedVeh.currentStatus !== 'Available' && selectedVeh.currentStatus !== 'Active') {
+      return sendError(res, 400, 'Selected vehicle is no longer available');
+    }
+
     const activeTripsWithVehicle = await Trip.findOne({
       vehicle,
-      status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip'] }
+      status: { $in: ['Scheduled', 'Assigned', 'In Progress'] }
     });
     if (activeTripsWithVehicle) {
       return sendError(res, 400, 'This vehicle is already allocated to another active trip');
     }
 
-    // B. Verify driver availability in database
+    // Verify selected vehicle is from the start location
+    const cleanStart = startLocation.trim().split(/[\s,]+/)[0].toLowerCase();
+    const vehicleBranch = (selectedVeh.branch || 'Pune').trim().split(/[\s,]+/)[0].toLowerCase();
+    if (!vehicleBranch.includes(cleanStart) && !cleanStart.includes(vehicleBranch)) {
+      return sendError(res, 400, `Selected vehicle is not from the Start Location (${startLocation})`);
+    }
+
+    // B. Verify driver license, availability & branch in database
+    const driverDoc = await Driver.findById(driver);
+    if (!driverDoc) {
+      return sendError(res, 404, 'Driver not found');
+    }
+    if (driverDoc.driverStatus !== 'AVAILABLE') {
+      return sendError(res, 400, 'Selected driver is no longer available');
+    }
+    if (driverDoc.licenseExpiry && new Date(driverDoc.licenseExpiry) < currentDate) {
+      return sendError(res, 400, 'Cannot assign driver with an expired license');
+    }
+
     const activeTripsWithDriver = await Trip.findOne({
       driver,
-      status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip'] }
+      status: { $in: ['Scheduled', 'Assigned', 'In Progress'] }
     });
     if (activeTripsWithDriver) {
       return sendError(res, 400, 'This driver is already allocated to another active trip');
+    }
+
+    const driverBranch = (driverDoc.branch || 'Pune').trim().split(/[\s,]+/)[0].toLowerCase();
+    if (!driverBranch.includes(cleanStart) && !cleanStart.includes(driverBranch)) {
+      return sendError(res, 400, `Selected driver is not from the Start Location (${startLocation})`);
     }
 
     // C. Create the trip
@@ -456,23 +505,44 @@ export const createTrip = async (req, res, next) => {
       eta,
       status,
       description,
+      cargoType,
+      cargoWeight: Number(cargoWeight) || 0,
+      tripNotes,
+      estimatedDistance: Number(estimatedDistance) || 120, // Default fallback distance
       assignedManager: req.user._id
     });
 
-    // D. Update vehicle status in MongoDB to Assigned
+    // D. Update vehicle status in MongoDB
+    const nextVehStatus = status === 'In Progress' ? 'On Trip' : 'Assigned';
     await Vehicle.findByIdAndUpdate(vehicle, {
-      currentStatus: 'Assigned',
+      currentStatus: nextVehStatus,
       assignedDriver: driver
     });
 
-    // E. Update driver status in MongoDB to ASSIGNED
-    const selectedVeh = await Vehicle.findById(vehicle);
+    // E. Update driver status in MongoDB
+    const nextDrvStatus = status === 'In Progress' ? 'ON_TRIP' : 'ASSIGNED';
     await Driver.findByIdAndUpdate(driver, {
-      driverStatus: 'ASSIGNED',
+      driverStatus: nextDrvStatus,
       assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned'
     });
 
-    return sendSuccess(res, 201, trip, 'Trip created');
+    // F. Automatically generate unique invoice and save to database
+    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
+    const seq = String(count + 1).padStart(4, '0');
+    const invoiceNumber = `INV-${datePart}-${seq}`;
+
+    const invoice = new Invoice({
+      invoiceNumber,
+      invoiceDate: new Date(),
+      trip: trip._id,
+      driver: trip.driver,
+      vehicle: trip.vehicle,
+      createdBy: req.user._id
+    });
+    await invoice.save();
+
+    return sendSuccess(res, 201, trip, 'Trip created and invoice generated successfully');
   } catch (error) {
     if (error.code === 11000) {
       return sendError(res, 400, 'A trip with this trip number already exists');
@@ -489,37 +559,79 @@ export const updateTrip = async (req, res, next) => {
       return sendError(res, 404, 'Trip not found');
     }
 
-    const updatedTrip = await updateTripInRepo(tripId, req.body);
+    // Validation: Cannot modify a completed trip
+    if (existingTrip.status === 'Completed') {
+      return sendError(res, 400, 'Cannot modify a completed trip');
+    }
 
     const newStatus = req.body.status;
-    if (newStatus && (newStatus === 'Completed' || newStatus === 'Cancelled' || newStatus === 'Canceled')) {
-      // Release vehicle
-      if (updatedTrip.vehicle) {
-        await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, {
-          currentStatus: 'Available',
-          assignedDriver: null
-        });
-      }
-      // Release driver
-      if (updatedTrip.driver) {
-        await Driver.findByIdAndUpdate(updatedTrip.driver, {
-          driverStatus: 'AVAILABLE',
-          assignedVehicle: 'Unassigned'
-        });
-      }
-    } else if (newStatus && (newStatus === 'On Transit' || newStatus === 'On Trip' || newStatus === 'Scheduled' || newStatus === 'Assigned' || newStatus === 'In Progress' || newStatus === 'Delayed')) {
-      if (updatedTrip.vehicle) {
-        await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, {
-          currentStatus: 'Assigned',
-          assignedDriver: updatedTrip.driver
-        });
-      }
-      if (updatedTrip.driver && updatedTrip.vehicle) {
-        const selectedVeh = await Vehicle.findById(updatedTrip.vehicle);
-        await Driver.findByIdAndUpdate(updatedTrip.driver, {
-          driverStatus: 'ASSIGNED',
-          assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned'
-        });
+
+    // Validation: Prevent starting a trip without both vehicle and driver
+    if (newStatus === 'In Progress' && (!existingTrip.vehicle || !existingTrip.driver)) {
+      return sendError(res, 400, 'Cannot start a trip without both an assigned vehicle and driver');
+    }
+
+    // Validation: Prevent ending a trip that has not started
+    if (newStatus === 'Completed' && existingTrip.status !== 'In Progress') {
+      return sendError(res, 400, 'Cannot end a trip that is not currently in progress');
+    }
+
+    // Handle Start Trip / End Trip specific fields automatically
+    if (newStatus === 'In Progress') {
+      req.body.actualStartTime = new Date();
+    } else if (newStatus === 'Completed') {
+      req.body.actualEndTime = new Date();
+      req.body.actualDistance = req.body.actualDistance || existingTrip.estimatedDistance || 120;
+    }
+
+    const updatedTrip = await updateTripInRepo(tripId, req.body);
+
+    if (newStatus) {
+      if (newStatus === 'Completed' || newStatus === 'Cancelled') {
+        // Release vehicle
+        if (updatedTrip.vehicle) {
+          await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, {
+            currentStatus: 'Available',
+            assignedDriver: null
+          });
+        }
+        // Release driver
+        if (updatedTrip.driver) {
+          await Driver.findByIdAndUpdate(updatedTrip.driver, {
+            driverStatus: 'AVAILABLE',
+            assignedVehicle: 'Unassigned'
+          });
+        }
+      } else if (newStatus === 'In Progress') {
+        // Set statuses to On Trip / ON_TRIP
+        if (updatedTrip.vehicle) {
+          await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, {
+            currentStatus: 'On Trip',
+            assignedDriver: updatedTrip.driver
+          });
+        }
+        if (updatedTrip.driver) {
+          const selectedVeh = await Vehicle.findById(updatedTrip.vehicle);
+          await Driver.findByIdAndUpdate(updatedTrip.driver, {
+            driverStatus: 'ON_TRIP',
+            assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned'
+          });
+        }
+      } else {
+        // Scheduled or Assigned
+        if (updatedTrip.vehicle) {
+          await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, {
+            currentStatus: 'Assigned',
+            assignedDriver: updatedTrip.driver
+          });
+        }
+        if (updatedTrip.driver) {
+          const selectedVeh = await Vehicle.findById(updatedTrip.vehicle);
+          await Driver.findByIdAndUpdate(updatedTrip.driver, {
+            driverStatus: 'ASSIGNED',
+            assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned'
+          });
+        }
       }
     }
 
@@ -1455,6 +1567,62 @@ export const listActivities = async (req, res, next) => {
       .limit(10);
 
     return sendSuccess(res, 200, activities, 'Activities fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getInvoiceByTripId = async (req, res, next) => {
+  try {
+    const tripId = req.params.tripId;
+    let invoice = await Invoice.findOne({ trip: tripId })
+      .populate({
+        path: 'trip',
+        populate: [
+          { path: 'driver' },
+          { path: 'vehicle' }
+        ]
+      })
+      .populate('driver')
+      .populate('vehicle')
+      .populate('createdBy', 'fullName email username');
+
+    // Safe dynamic auto-generation fallback if invoice is missing for any reason
+    if (!invoice) {
+      const trip = await Trip.findById(tripId);
+      if (!trip) {
+        return sendError(res, 404, 'Trip not found');
+      }
+
+      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
+      const seq = String(count + 1).padStart(4, '0');
+      const invoiceNumber = `INV-${datePart}-${seq}`;
+
+      const newInvoice = new Invoice({
+        invoiceNumber,
+        invoiceDate: new Date(),
+        trip: trip._id,
+        driver: trip.driver,
+        vehicle: trip.vehicle,
+        createdBy: req.user._id
+      });
+      await newInvoice.save();
+
+      invoice = await Invoice.findById(newInvoice._id)
+        .populate({
+          path: 'trip',
+          populate: [
+            { path: 'driver' },
+            { path: 'vehicle' }
+          ]
+        })
+        .populate('driver')
+        .populate('vehicle')
+        .populate('createdBy', 'fullName email username');
+    }
+
+    return sendSuccess(res, 200, invoice, 'Invoice fetched successfully');
   } catch (error) {
     next(error);
   }
