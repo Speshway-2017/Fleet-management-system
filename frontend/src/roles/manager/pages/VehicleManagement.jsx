@@ -1,4 +1,3 @@
-import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -123,7 +122,7 @@ export default function VehicleManagement() {
             return {
               id: n._id,
               text: n.description,
-              time: formatIFD() + ' ' + formatIFDWithTime(),
+              time: new Date(n.createdAt).toLocaleDateString() + ' ' + new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               icon,
               color
             };
@@ -898,17 +897,29 @@ export default function VehicleManagement() {
                         {/* Insurance Expiry */}
                         <td className="py-4 px-6 text-xs font-semibold whitespace-nowrap">
                           <span className={getInsuranceStyle(v.insuranceExpiry)}>
-                            {formatIFD()}
+                            {new Date(v.insuranceExpiry).toLocaleDateString("en-IN", {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
                           </span>
                         </td>
 
                         {/* Last Service */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <p className="text-xs font-semibold text-[#1E293B]">
-                            {formatIFD()}
+                            {new Date(v.lastService).toLocaleDateString("en-IN", {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
                           </p>
                           <span className="text-[10px] text-[#64748B] block mt-0.5 font-medium whitespace-nowrap">
-                            Next: {formatIFD()}
+                            Next: {new Date(v.nextService).toLocaleDateString("en-IN", {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
                           </span>
                         </td>
 
@@ -948,95 +959,7 @@ export default function VehicleManagement() {
                   )}
                 </tbody>
               </table>
-            </div>
-          </div>
-
-          {/* --- QUICK ANALYTICS PANEL --- */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-
-            {/* Analytics Card 1: Value */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm">
-              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Total Fleet Value</span>
-              <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-xl font-extrabold text-[#1E293B] font-poppins">₹24.5 Cr</span>
-                <span className="text-[10px] font-bold text-[#22C55E] font-poppins">+12.5% YoY</span>
-              </div>
-              <div className="mt-4">
-                <svg className="w-full h-8 overflow-visible" viewBox="0 0 100 20" preserveAspectRatio="none">
-                  <path d="M 0 15 Q 15 12 30 18 T 60 5 T 100 10" fill="none" stroke="#B45A0A" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M 0 15 Q 15 12 30 18 T 60 5 T 100 10 L 100 20 L 0 20 Z" fill="url(#grad1)" opacity="0.1" />
-                  <defs>
-                    <linearGradient id="grad1" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#B45A0A" />
-                      <stop offset="100%" stopColor="#B45A0A" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-            </div>
-
-            {/* Analytics Card 2: Age */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm">
-              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Average Vehicle Age</span>
-              <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-xl font-extrabold text-[#1E293B] font-poppins">3.2 Years</span>
-                <span className="text-[10px] font-medium text-[#64748B] font-poppins">Industry: 4.5Y</span>
-              </div>
-              <div className="mt-4">
-                <svg className="w-full h-8 overflow-visible" viewBox="0 0 100 20" preserveAspectRatio="none">
-                  <path d="M 0 5 Q 20 8 40 4 T 80 16 T 100 14" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M 0 5 Q 20 8 40 4 T 80 16 T 100 14 L 100 20 L 0 20 Z" fill="url(#grad2)" opacity="0.1" />
-                  <defs>
-                    <linearGradient id="grad2" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#22C55E" />
-                      <stop offset="100%" stopColor="#22C55E" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-            </div>
-
-            {/* Analytics Card 3: Fuel */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm">
-              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Fuel Consumption</span>
-              <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-xl font-extrabold text-[#1E293B] font-poppins">14,250 L</span>
-                <span className="text-[10px] font-bold text-[#EF4444] font-poppins">+4.2% MoM</span>
-              </div>
-              <div className="mt-4">
-                <svg className="w-full h-8 overflow-visible" viewBox="0 0 100 20" preserveAspectRatio="none">
-                  <path d="M 0 18 Q 25 5 50 12 T 100 2" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M 0 18 Q 25 5 50 12 T 100 2 L 100 20 L 0 20 Z" fill="url(#grad3)" opacity="0.1" />
-                  <defs>
-                    <linearGradient id="grad3" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3B82F6" />
-                      <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-            </div>
-
-            {/* Analytics Card 4: Cost */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm">
-              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Maintenance Cost</span>
-              <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-xl font-extrabold text-[#1E293B] font-poppins">₹8.4L</span>
-                <span className="text-[10px] font-bold text-[#22C55E] font-poppins">-2.1% MoM</span>
-              </div>
-              <div className="mt-4">
-                <svg className="w-full h-8 overflow-visible" viewBox="0 0 100 20" preserveAspectRatio="none">
-                  <path d="M 0 8 Q 20 18 45 6 T 85 15 T 100 12" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M 0 8 Q 20 18 45 6 T 85 15 T 100 12 L 100 20 L 0 20 Z" fill="url(#grad4)" opacity="0.1" />
-                  <defs>
-                    <linearGradient id="grad4" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#EF4444" />
-                      <stop offset="100%" stopColor="#EF4444" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-            </div>
+                    {/* Quick Analytics Panel removed */}        </div>
 
           </div>
 
@@ -1220,7 +1143,7 @@ export default function VehicleManagement() {
                         dynamicAlerts.push({
                           id: `ins-exp-${v.id}`,
                           title: "Insurance Expired",
-                          message: `${v.name} (${v.plateNumber}) expired on ${formatIFD()}`,
+                          message: `${v.name} (${v.plateNumber}) expired on ${expDate.toLocaleDateString()}`,
                           icon: FileText,
                           iconColor: "text-[#EF4444] bg-[#EF4444]/10",
                           badge: "Expired",
@@ -1231,7 +1154,7 @@ export default function VehicleManagement() {
                         dynamicAlerts.push({
                           id: `ins-warn-${v.id}`,
                           title: "Insurance Expiring Soon",
-                          message: `${v.name} (${v.plateNumber}) expires in ${diffDays} days (${formatIFD()})`,
+                          message: `${v.name} (${v.plateNumber}) expires in ${diffDays} days (${expDate.toLocaleDateString()})`,
                           icon: Calendar,
                           iconColor: "text-[#B45A0A] bg-[#FDF3EC]",
                           badge: `${diffDays} Days`,
@@ -1697,12 +1620,12 @@ export default function VehicleManagement() {
                   {/* Parameter 11 */}
                   <div>
                     <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Date Added</span>
-                    <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{formatIFD()}</span>
+                    <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{new Date(selectedVehicle.dateAdded).toLocaleDateString("en-IN")}</span>
                   </div>
                   {/* Parameter 12 */}
                   <div>
                     <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Insurance Expiry</span>
-                    <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{formatIFD()}</span>
+                    <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{new Date(selectedVehicle.insuranceExpiry).toLocaleDateString("en-IN")}</span>
                   </div>
                 </div>
 
@@ -1714,7 +1637,7 @@ export default function VehicleManagement() {
                       <Calendar className="w-5 h-5 text-gray-400 shrink-0" />
                       <div>
                         <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">Last Serviced</p>
-                        <span className="text-xs font-semibold text-[#1E293B] mt-0.5 block">{formatIFD()}</span>
+                        <span className="text-xs font-semibold text-[#1E293B] mt-0.5 block">{new Date(selectedVehicle.lastService).toLocaleDateString("en-IN")}</span>
                       </div>
                     </div>
 
@@ -1722,7 +1645,7 @@ export default function VehicleManagement() {
                       <Wrench className="w-5 h-5 text-gray-400 shrink-0" />
                       <div>
                         <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">Next Service Due</p>
-                        <span className="text-xs font-semibold text-[#1E293B] mt-0.5 block">{formatIFD()}</span>
+                        <span className="text-xs font-semibold text-[#1E293B] mt-0.5 block">{new Date(selectedVehicle.nextService).toLocaleDateString("en-IN")}</span>
                       </div>
                     </div>
                   </div>

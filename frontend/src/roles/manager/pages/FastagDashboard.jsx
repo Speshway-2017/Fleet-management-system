@@ -1,4 +1,3 @@
-import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
@@ -160,9 +159,9 @@ export default function FastagDashboard() {
                     <p className="text-xs text-[#64748B]">Plaza ID: {txn.plazaId}</p>
                   </td>
                   <td className="py-4 px-6 whitespace-nowrap">
-                    <p className="font-bold text-[#1E293B] text-sm">{formatIFDWithTime()}</p>
+                    <p className="font-bold text-[#1E293B] text-sm">{new Date(txn.time).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</p>
                     <p className="text-xs text-[#64748B]">
-                      Today, {formatIFD()}
+                      Today, {new Date(txn.time).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                     </p>
                   </td>
                   <td className="py-4 px-6 whitespace-nowrap">

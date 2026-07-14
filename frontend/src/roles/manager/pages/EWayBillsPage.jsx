@@ -1,4 +1,3 @@
-import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Download, Printer, Truck, ArrowRight, FileText, Clock, ClipboardCheck, Filter, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, X, AlertTriangle, Eye } from "lucide-react";
@@ -51,7 +50,14 @@ function EWayBillViewModal({ bill, onClose }) {
     ctx.stroke();
 
     const ewbNumber = bill.ewayBillNo || "";
-    const genDate = formatIFD() + " " + formatIFDWithTime();
+    const genDate = new Date(bill.createdAt).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    }) + " " + new Date(bill.createdAt).toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
 
     // Bill Number and Date Details
     ctx.textAlign = "left";
@@ -382,7 +388,14 @@ const formatLocalDatetimeToValidity = (dateTimeStr) => {
     const d = new Date(dateTimeStr);
     if (isNaN(d.getTime())) return "Awaiting Sync";
     
-    return formatIFD() + ", " + formatIFDWithTime();
+    return d.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short"
+    }) + ", " + d.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    });
   } catch (err) {
     return "Awaiting Sync";
   }
@@ -708,7 +721,7 @@ export default function EWayBillsPage() {
                         {bill.invoiceNo?.startsWith("Tax Invoice") ? bill.invoiceNo : `Tax Invoice: ${bill.invoiceNo}`}
                       </span>
                       <span className="text-[10px] text-gray-400 font-bold block mt-1">
-                        Gen: {formatIFD()}
+                        Gen: {new Date(bill.generationDate || bill.createdAt).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
                       </span>
                     </td>
                     

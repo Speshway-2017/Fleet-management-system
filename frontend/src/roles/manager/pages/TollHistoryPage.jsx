@@ -1,4 +1,3 @@
-import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -78,11 +77,11 @@ export default function TollHistoryPage() {
                   </td>
                   <td className="py-4 px-6 whitespace-nowrap">
                     <span className="text-sm text-gray-800 font-medium">
-                      {formatIFD()}
+                      {new Date(txn.time).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </span>
                     <span className="text-sm text-gray-400 mx-1.5 font-bold">•</span>
                     <span className="text-sm text-gray-600 font-medium">
-                      {formatIFDWithTime()}
+                      {new Date(txn.time).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </td>
                   <td className="py-4 px-6 whitespace-nowrap">

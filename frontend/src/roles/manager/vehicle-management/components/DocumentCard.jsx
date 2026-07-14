@@ -1,4 +1,3 @@
-import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { Eye, Download, Edit2, Trash2, File, FileText, Image } from "lucide-react";
 import { getDocumentStatus, getStatusBadgeClass } from "../services/documentService";
 
@@ -46,7 +45,7 @@ export default function DocumentCard({
         <div>
           <p className="text-[#64748B] font-medium">Upload Date</p>
           <p className="text-[#1E293B] font-semibold mt-1">
-            {formatIFD()}
+            {new Date(document.uploadDate).toLocaleDateString("en-IN")}
           </p>
         </div>
         <div>
@@ -58,7 +57,7 @@ export default function DocumentCard({
             <div>
               <p className="text-[#64748B] font-medium">Expiry Date</p>
               <p className="text-[#1E293B] font-semibold mt-1">
-                {formatIFD()}
+                {new Date(document.expiryDate).toLocaleDateString("en-IN")}
               </p>
             </div>
             <div>

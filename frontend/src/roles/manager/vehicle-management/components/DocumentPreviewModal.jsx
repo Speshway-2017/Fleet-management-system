@@ -1,4 +1,3 @@
-import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { X, Download } from "lucide-react";
 import { downloadVehicleDocument } from "../services/documentService";
 
@@ -34,11 +33,11 @@ export default function DocumentPreviewModal({
             <div className="flex items-center gap-2 mt-2 text-xs text-[#64748B]">
               <span>{document.category}</span>
               <span>•</span>
-              <span>{formatIFD()}</span>
+              <span>{new Date(document.uploadDate).toLocaleDateString("en-IN")}</span>
               {document.expiryDate && (
                 <>
                   <span>•</span>
-                  <span>Expires: {formatIFD()}</span>
+                  <span>Expires: {new Date(document.expiryDate).toLocaleDateString("en-IN")}</span>
                 </>
               )}
             </div>

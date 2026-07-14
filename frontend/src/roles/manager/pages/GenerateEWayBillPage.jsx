@@ -1,4 +1,3 @@
-import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, Download, RefreshCw, FileText } from "lucide-react";
@@ -71,7 +70,14 @@ export default function GenerateEWayBillPage() {
       
       setEwbNumber(billData.ewayBillNo);
       
-      const dateStr = formatIFD() + " " + formatIFDWithTime();
+      const dateStr = new Date(billData.createdAt).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      }) + " " + new Date(billData.createdAt).toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
 
       setGenDate(dateStr);
       setGenerated(true);

@@ -1,4 +1,3 @@
-import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect } from "react";
 import {
   TrendingUp,
@@ -26,6 +25,50 @@ export default function FuelManagementPage() {
   const [selectedRecord, setSelectedRecord] = useState(null);
   
   const [loading, setLoading] = useState(true);
+  const [billModalOpen, setBillModalOpen] = useState(false);
+  const [activeBillUrl, setActiveBillUrl] = useState("");
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectRecord, setRejectRecord] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const handleApproveBill = async (logId) => {
+    try {
+      await managerApi.updateFuelRecord(logId, { approvalStatus: "Approved" });
+      toast.success("Fuel bill approved successfully!");
+      fetchRecords();
+    } catch (error) {
+      toast.error("Failed to approve fuel bill.");
+      console.error(error);
+    }
+  };
+
+  const handleRejectBill = async (e) => {
+    e.preventDefault();
+    if (!rejectReason.trim()) {
+      toast.error("Rejection reason is required.");
+      return;
+    }
+    try {
+      await managerApi.updateFuelRecord(rejectRecord.id || rejectRecord._id, {
+        approvalStatus: "Rejected",
+        rejectionReason: rejectReason
+      });
+      toast.success("Fuel bill rejected successfully!");
+      setRejectModalOpen(false);
+      setRejectRecord(null);
+      setRejectReason("");
+      fetchRecords();
+    } catch (error) {
+      toast.error("Failed to reject fuel bill.");
+      console.error(error);
+    }
+  };
+
+  const handleViewBill = (url) => {
+    const fullUrl = url.startsWith("/uploads") ? `http://localhost:5000${url}` : url;
+    setActiveBillUrl(fullUrl);
+    setBillModalOpen(true);
+  };
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -55,7 +98,12 @@ export default function FuelManagementPage() {
           vehicleName: l.vehicleName || (l.vehicle && l.vehicle.name) || "Fleet Vehicle",
           qty: `${l.liters} L`,
           total: `₹${l.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
-          timestamp: formatIFD()
+          timestamp: new Date(l.createdAt).toLocaleDateString("en-IN", {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
         })));
       } else {
         setLogs([]);
@@ -283,7 +331,7 @@ Status:          PAID & VERIFIED
       </div>
 
       {/* --- KPI SECTION --- */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
         {/* KPI 1: Fuel Spend */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center justify-between">
@@ -300,22 +348,6 @@ Status:          PAID & VERIFIED
           <div className="mt-4 flex items-center text-xs text-green-600 gap-1 font-semibold">
             <TrendingUp className="w-3.5 h-3.5" />
             <span>+22.4% vs last month</span>
-          </div>
-        </div>
-
-        {/* KPI 2: Mileage */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-xs font-bold text-gray-500 tracking-wider uppercase">Avg Fleet Mileage</span>
-              <h3 className="text-2xl font-extrabold text-gray-800 mt-2">4.5 km/l</h3>
-            </div>
-            <div className="bg-green-50 text-green-600 p-3 rounded-xl">
-              <Gauge className="w-6 h-6" />
-            </div>
-          </div>
-          <div className="mt-4 text-xs text-green-600 font-medium">
-            Optimized consumption: <span className="font-bold">-0.8% drop</span>
           </div>
         </div>
 
@@ -357,15 +389,6 @@ Status:          PAID & VERIFIED
                 className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 font-medium w-[220px]"
               />
             </div>
-
-            {/* Log Fuel Button */}
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-amber-700/20"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Log Fuel</span>
-            </button>
           </div>
         </div>
 
@@ -379,17 +402,19 @@ Status:          PAID & VERIFIED
                 <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
                   <th className="py-4 px-6">Vehicle ID</th>
                   <th className="py-4 px-6">Driver</th>
-                  <th className="py-4 px-6">Timestamp</th>
+                  <th className="py-4 px-6">Trip ID</th>
+                  <th className="py-4 px-6">Fuel Date</th>
                   <th className="py-4 px-6">Fuel Station</th>
                   <th className="py-4 px-6">Qty (Liters)</th>
-                  <th className="py-4 px-6">Total Amount</th>
+                  <th className="py-4 px-6">Fuel Cost</th>
+                  <th className="py-4 px-6">Approval Status</th>
                   <th className="py-4 px-6 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E7EAF0]/60">
                 {filteredLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-gray-400 font-medium">
+                    <td colSpan={9} className="py-12 text-center text-gray-400 font-medium">
                       No fuel logs found matching filters.
                     </td>
                   </tr>
@@ -417,28 +442,48 @@ Status:          PAID & VERIFIED
                       </td>
 
                       {/* Driver */}
-                      <td className="py-4 px-6 font-semibold text-xs text-gray-800 whitespace-nowrap">
-                        {l.driver}
+                      <td className="py-4 px-6 whitespace-nowrap">
+                        <p className="font-bold text-gray-800 text-xs">{l.driver}</p>
+                        <span className="text-[10px] text-gray-500 block mt-0.5">{l.driverId || "—"}</span>
+                      </td>
+
+                      {/* Trip ID */}
+                      <td className="py-4 px-6 text-xs font-semibold text-gray-700 whitespace-nowrap">
+                        {l.tripId || "—"}
                       </td>
 
                       {/* Timestamp */}
-                      <td className={`py-4 px-6 text-xs whitespace-nowrap ${l.status === "anomaly" ? "text-red-500 font-bold" : "text-gray-500"}`}>
+                      <td className="py-4 px-6 text-xs text-gray-500 whitespace-nowrap">
                         {l.timestamp}
                       </td>
 
                       {/* Station */}
-                      <td className={`py-4 px-6 text-xs whitespace-nowrap ${l.status === "anomaly" ? "text-red-600 font-bold" : "text-gray-700"}`}>
+                      <td className="py-4 px-6 text-xs text-gray-700 whitespace-nowrap">
                         {l.fuelStation}
                       </td>
 
                       {/* Quantity */}
-                      <td className={`py-4 px-6 text-xs font-black whitespace-nowrap ${l.status === "anomaly" ? "text-red-600" : "text-gray-900"}`}>
+                      <td className="py-4 px-6 text-xs font-black text-gray-900 whitespace-nowrap">
                         {l.qty}
                       </td>
 
                       {/* Total Spend */}
                       <td className="py-4 px-6 text-xs font-black text-gray-900 whitespace-nowrap">
                         {l.total}
+                      </td>
+
+                      {/* Approval Status */}
+                      <td className="py-4 px-6 whitespace-nowrap">
+                        <span 
+                          title={l.rejectionReason ? `Reason: ${l.rejectionReason}` : ""}
+                          className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border select-none ${
+                            l.approvalStatus === "Approved" ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                            l.approvalStatus === "Rejected" ? "bg-red-50 text-red-600 border-red-100 cursor-help" :
+                            "bg-amber-50 text-amber-600 border-amber-100"
+                          }`}
+                        >
+                          {l.approvalStatus || "Pending"}
+                        </span>
                       </td>
 
                       {/* Actions */}
@@ -457,29 +502,35 @@ Status:          PAID & VERIFIED
                               Resolved
                             </span>
                           ) : (
-                            <>
+                            <div className="flex items-center gap-2">
                               <button
-                                onClick={() => handleDownloadReceipt(l)}
-                                title="Download slip receipt"
-                                className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer inline-flex"
+                                onClick={() => handleViewBill(l.billUrl || "/uploads/fuel_bill_receipt.png")}
+                                className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
                               >
-                                <FileText className="w-4 h-4" />
+                                View Bill
                               </button>
-                              <button
-                                onClick={() => handleOpenEdit(l)}
-                                title="Edit Fuel Log"
-                                className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer inline-flex"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleOpenDelete(l)}
-                                title="Delete Fuel Log"
-                                className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer inline-flex"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </>
+                              
+                              {(l.approvalStatus || "Pending") === "Pending" && (
+                                <>
+                                  <button
+                                    onClick={() => handleApproveBill(l.id || l._id)}
+                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm shadow-emerald-600/10"
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setRejectRecord(l);
+                                      setRejectReason("");
+                                      setRejectModalOpen(true);
+                                    }}
+                                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm shadow-red-600/10"
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           )}
                         </div>
                       </td>
@@ -499,241 +550,7 @@ Status:          PAID & VERIFIED
         </div>
       </div>
 
-      {/* --- ADD FUEL RECORD MODAL --- */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-gray-800/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl p-6 w-full max-w-md flex flex-col space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
-              <h4 className="font-bold text-sm text-gray-800 flex items-center gap-1.5">
-                <Plus className="w-4 h-4 text-amber-700" />
-                Log Fuel Entry
-              </h4>
-              <button onClick={() => setShowAddModal(false)} className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddFuel} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 block">Vehicle *</label>
-                <select
-                  required
-                  value={form.vehicleId}
-                  onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}
-                  className="w-full p-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 bg-white font-nunito"
-                >
-                  <option value="">Select Vehicle</option>
-                  {vehicles.map(v => (
-                    <option key={v._id} value={v._id}>{v.plateNumber} ({v.name})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 block">Qty (Liters) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    placeholder="e.g. 50"
-                    value={form.liters}
-                    onChange={(e) => setForm({ ...form, liters: e.target.value })}
-                    className="w-full p-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 font-nunito"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 block">Total cost (₹) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    placeholder="e.g. 4750"
-                    value={form.amount}
-                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                    className="w-full p-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 font-nunito"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 block">Fuel Station</label>
-                <input
-                  type="text"
-                  placeholder="e.g. IndianOil Station"
-                  value={form.fuelStation}
-                  onChange={(e) => setForm({ ...form, fuelStation: e.target.value })}
-                  className="w-full p-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 font-nunito"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 block">Status Type</label>
-                <select
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  className="w-full p-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 bg-white font-nunito"
-                >
-                  <option value="normal">Normal Entry</option>
-                  <option value="anomaly">Siphoning Alert / Anomaly</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="hasReceipt"
-                  checked={form.hasReceipt}
-                  onChange={(e) => setForm({ ...form, hasReceipt: e.target.checked })}
-                />
-                <label htmlFor="hasReceipt" className="text-xs text-gray-700 select-none cursor-pointer font-nunito">Has slip receipt</label>
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-2 font-nunito">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-bold text-gray-500 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer"
-                >
-                  Submit Log
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* --- EDIT FUEL RECORD MODAL --- */}
-      {showEditModal && selectedRecord && (
-        <div className="fixed inset-0 bg-gray-800/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl p-6 w-full max-w-md flex flex-col space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
-              <h4 className="font-bold text-sm text-gray-800 flex items-center gap-1.5">
-                <Edit className="w-4 h-4 text-blue-600" />
-                Edit Fuel Log
-              </h4>
-              <button onClick={() => setShowEditModal(false)} className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleEditFuel} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 block">Vehicle *</label>
-                <select
-                  required
-                  value={form.vehicleId}
-                  onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}
-                  className="w-full p-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 bg-white font-nunito"
-                >
-                  <option value="">Select Vehicle</option>
-                  {vehicles.map(v => (
-                    <option key={v._id} value={v._id}>{v.plateNumber} ({v.name})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 block">Qty (Liters) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={form.liters}
-                    onChange={(e) => setForm({ ...form, liters: e.target.value })}
-                    className="w-full p-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 font-nunito"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 block">Total cost (₹) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={form.amount}
-                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                    className="w-full p-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 font-nunito"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 block">Fuel Station</label>
-                <input
-                  type="text"
-                  value={form.fuelStation}
-                  onChange={(e) => setForm({ ...form, fuelStation: e.target.value })}
-                  className="w-full p-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 font-nunito"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="editHasReceipt"
-                  checked={form.hasReceipt}
-                  onChange={(e) => setForm({ ...form, hasReceipt: e.target.checked })}
-                />
-                <label htmlFor="editHasReceipt" className="text-xs text-gray-700 select-none cursor-pointer font-nunito">Has slip receipt</label>
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-2 font-nunito">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-bold text-gray-500 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* --- DELETE CONFIRMATION MODAL --- */}
-      {showDeleteConfirm && selectedRecord && (
-        <div className="fixed inset-0 bg-gray-800/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl p-6 w-full max-w-sm flex flex-col space-y-4 select-none">
-            <div className="flex items-center gap-3 text-red-600 border-b border-gray-100 pb-3">
-              <AlertTriangle className="w-6 h-6 animate-bounce" />
-              <h4 className="font-bold text-sm">Delete Fuel Record</h4>
-            </div>
-            <p className="text-xs text-gray-500 leading-relaxed font-nunito">
-              Are you sure you want to permanently delete this fuel record for <strong>{selectedRecord.vehicleId}</strong> logged at {selectedRecord.timestamp}? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-2.5 pt-2 font-nunito">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-bold text-gray-500 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteFuel}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer"
-              >
-                Delete Record
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modals removed for manager read-only restriction */}
 
       {/* Resolution Modal */}
       {resolutionModalOpen && selectedLog && (
@@ -786,6 +603,112 @@ Status:          PAID & VERIFIED
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Rejection Modal */}
+      {rejectModalOpen && rejectRecord && (
+        <div className="fixed inset-0 bg-gray-800/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] select-none font-poppins">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl p-6 w-full max-w-md flex flex-col space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+              <h4 className="font-bold text-sm text-gray-800 flex items-center gap-1.5 font-poppins">
+                <X className="w-4 h-4 text-red-600 animate-pulse" />
+                Reject Fuel Bill
+              </h4>
+              <button
+                onClick={() => {
+                  setRejectModalOpen(false);
+                  setRejectRecord(null);
+                }}
+                className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="text-xs text-gray-500 space-y-1 font-nunito">
+              <p><strong>Vehicle:</strong> {rejectRecord.vehicleId}</p>
+              <p><strong>Driver:</strong> {rejectRecord.driver}</p>
+              <p><strong>Amount:</strong> {rejectRecord.total}</p>
+            </div>
+
+            <form onSubmit={handleRejectBill} className="space-y-4 font-nunito">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700 block">Rejection Reason *</label>
+                <textarea
+                  placeholder="Specify why this fuel bill is being rejected..."
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  className="w-full p-3 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-red-500 h-24 resize-none"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRejectModalOpen(false);
+                    setRejectRecord(null);
+                  }}
+                  className="px-4 py-2 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-bold text-gray-500 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer"
+                >
+                  Reject Bill
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bill View Modal */}
+      {billModalOpen && activeBillUrl && (
+        <div className="fixed inset-0 bg-gray-800/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] select-none">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl p-6 w-full max-w-lg flex flex-col space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+              <h4 className="font-bold text-sm text-gray-800 flex items-center gap-1.5 font-poppins">
+                <FileText className="w-4 h-4 text-amber-700" />
+                View Fuel Bill Document
+              </h4>
+              <button
+                onClick={() => setBillModalOpen(false)}
+                className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="bg-gray-50 p-2 rounded-xl border border-gray-100 flex justify-center items-center overflow-auto max-h-[70vh]">
+              {activeBillUrl.toLowerCase().endsWith(".pdf") ? (
+                <iframe src={activeBillUrl} className="w-full h-[50vh] border-0 rounded-xl" title="Fuel Bill PDF" />
+              ) : (
+                <img src={activeBillUrl} alt="Fuel Bill" className="max-w-full max-h-[50vh] object-contain rounded-lg shadow-sm" />
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-2 font-nunito">
+              <a
+                href={activeBillUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center cursor-pointer"
+              >
+                Open in New Tab
+              </a>
+              <button
+                type="button"
+                onClick={() => setBillModalOpen(false)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-950 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

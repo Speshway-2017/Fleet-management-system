@@ -1,4 +1,3 @@
-import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useParams, useNavigate, Link } from "react-router-dom";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { useState, useEffect } from "react";
@@ -37,8 +36,8 @@ export default function ViewDocument() {
             complianceScore: 8.5,
             uploadedBy: "Alex Thompson",
             activityLog: [
-              { action: "Document Verified", user: "Alex Thompson", date: formatIFD() },
-              { action: "Uploaded", user: "Alex Thompson", date: formatIFD() }
+              { action: "Document Verified", user: "Alex Thompson", date: new Date(data.updatedAt).toLocaleDateString("en-IN") },
+              { action: "Uploaded", user: "Alex Thompson", date: new Date(data.createdAt).toLocaleDateString("en-IN") }
             ]
           });
         }
@@ -206,7 +205,7 @@ export default function ViewDocument() {
               <div className="text-right">
                 <p className="text-xs uppercase tracking-widest text-[#64748B] mb-1">Expiry Date</p>
                 <span className="font-bold text-xl text-[#1E293B]">
-                  {formatIFD()}
+                  {new Date(doc?.expiry).toLocaleDateString("en-IN", { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
               </div>
             </div>

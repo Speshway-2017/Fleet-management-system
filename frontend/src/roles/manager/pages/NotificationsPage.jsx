@@ -1,4 +1,3 @@
-import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
@@ -171,8 +170,7 @@ export default function NotificationsPage() {
 
   const handleMarkAllAsRead = async () => {
     try {
-      const promises = notifications.filter(n => !n.isRead).map(n => managerApi.markNotificationRead(n._id || n.id));
-      await Promise.all(promises);
+      await managerApi.markAllNotificationsRead();
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       toast.success("All notifications marked as read!");
     } catch (err) {
@@ -363,7 +361,7 @@ export default function NotificationsPage() {
                         )}
                       </h4>
                       <span className="text-xs text-gray-400 font-medium">
-                        {notif.createdAt ? formatIFDWithTime() : "Just now"}
+                        {notif.createdAt ? new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
                       </span>
                     </div>
                     <p className="text-gray-600 text-sm mb-4">{notif.description}</p>

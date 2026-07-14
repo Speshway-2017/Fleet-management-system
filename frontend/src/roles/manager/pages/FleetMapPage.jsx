@@ -1,4 +1,3 @@
-import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import L from "leaflet";
@@ -134,10 +133,10 @@ export default function FleetMapPage() {
       speed: activeTrip ? "65 km/h" : "0 km/h",
       fuelLevel: v.fuelCapacity ? `${Math.round(v.fuelCapacity * 0.85)} L` : "N/A",
       currentLocation: activeTrip ? `En route to ${activeTrip.endLocation}` : "At Depot / Idle",
-      lastUpdated: v.updatedAt ? formatIFDWithTime() : "N/A",
+      lastUpdated: v.updatedAt ? new Date(v.updatedAt).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' }) : "N/A",
       routeStart: startLocationName,
       routeEnd: endLocationName,
-      eta: activeTrip ? formatIFD() + ", " + formatIFDWithTime() : "N/A",
+      eta: activeTrip ? new Date(activeTrip.eta).toLocaleDateString("en-IN", { day: '2-digit', month: 'short' }) + ", " + new Date(activeTrip.eta).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' }) : "N/A",
       remaining: activeTrip ? "In transit" : "0 km",
       coords,
       routeCoords,

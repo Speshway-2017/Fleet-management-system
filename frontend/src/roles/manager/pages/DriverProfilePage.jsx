@@ -1,4 +1,3 @@
-import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -21,13 +20,58 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { driverApi } from "@/api/driverApi";
 import { vehicleApi } from "@/api/vehicleApi";
+import { managerApi } from "../api/managerApi";
 
-const MOCK_TRIPS_ROSTER = [
-  { id: "T-9081", route: "Pune Depot to Mumbai Depot", date: "2026-07-04", status: "Completed", fuelUsed: "45L" },
-  { id: "T-8942", route: "Mumbai Port to Pune Chinchwad", date: "2026-06-29", status: "Completed", fuelUsed: "48L" },
-  { id: "T-8711", route: "Pune Depot to Hyderabad Depot", date: "2026-06-15", status: "Completed", fuelUsed: "120L" },
-  { id: "T-8521", route: "Local Delivery Pune City", date: "2026-06-10", status: "Completed", fuelUsed: "15L" }
-];
+const CITY_COORDINATES = {
+  mumbai: [19.0760, 72.8777],
+  pune: [18.5204, 73.8567],
+  bengaluru: [12.9716, 77.5946],
+  bangalore: [12.9716, 77.5946],
+  hyderabad: [17.3850, 78.4867],
+  delhi: [28.7041, 77.1025],
+  chennai: [13.0827, 80.2707],
+  kolhapur: [16.7050, 74.2433],
+  satara: [17.6805, 73.9918],
+  anantapur: [14.6819, 77.6006],
+  goa: [15.2993, 74.1240],
+  visakhapatnam: [17.6868, 83.2185],
+  vizag: [17.6868, 83.2185],
+  kolkata: [22.5726, 88.3639],
+  ahmedabad: [23.0225, 72.5714],
+  surat: [21.1702, 72.8311],
+  jaipur: [26.9124, 75.7873],
+  lucknow: [26.8467, 80.9462]
+};
+
+const getCoordinates = (cityName) => {
+  if (!cityName) return [18.5204, 73.8567];
+  const norm = cityName.toLowerCase().trim();
+  for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
+    if (norm.includes(key)) return coords;
+  }
+  return [18.5204, 73.8567];
+};
+
+const calculateDistance = (startCity, endCity) => {
+  const startCoords = getCoordinates(startCity);
+  const endCoords = getCoordinates(endCity);
+
+  if (startCoords[0] === 18.5204 && startCoords[1] === 73.8567 && 
+      endCoords[0] === 18.5204 && endCoords[1] === 73.8567) {
+    return 350;
+  }
+
+  const R = 6371;
+  const dLat = (endCoords[0] - startCoords[0]) * Math.PI / 180;
+  const dLon = (endCoords[1] - startCoords[1]) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(startCoords[0] * Math.PI / 180) * Math.cos(endCoords[0] * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const d = R * c;
+  return Math.round(d);
+};
 
 export default function DriverProfilePage() {
   const { id } = useParams();
@@ -35,6 +79,28 @@ export default function DriverProfilePage() {
   const [driver, setDriver] = useState(null);
   const [vehicle, setVehicle] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const [trips, setTrips] = useState([]);
+  const [loadingTrips, setLoadingTrips] = useState(true);
+  const [tripsError, setTripsError] = useState("");
+
+  const fetchTrips = useCallback(async () => {
+    try {
+      setLoadingTrips(true);
+      setTripsError("");
+      const res = await managerApi.getTrips({ driver: id });
+      const fetchedTrips = res.data?.data ?? [];
+      const sorted = fetchedTrips.sort(
+        (a, b) => new Date(b.departureTime || b.createdAt) - new Date(a.departureTime || a.createdAt)
+      );
+      setTrips(sorted);
+    } catch (err) {
+      console.error("Failed to load driver trips:", err);
+      setTripsError("Failed to load trips for this driver.");
+    } finally {
+      setLoadingTrips(false);
+    }
+  }, [id]);
 
   const normaliseVehicle = (v) => ({
     ...v,
@@ -97,7 +163,8 @@ export default function DriverProfilePage() {
 
   useEffect(() => {
     fetchDriverData();
-  }, [fetchDriverData]);
+    fetchTrips();
+  }, [fetchDriverData, fetchTrips]);
 
   const handleUnassignVehicle = async () => {
     if (!driver || !vehicle) return;
@@ -111,6 +178,7 @@ export default function DriverProfilePage() {
 
       toast.success("Vehicle unassigned successfully from driver!");
       fetchDriverData();
+      fetchTrips();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to unassign vehicle.");
     }
@@ -272,7 +340,11 @@ export default function DriverProfilePage() {
               >
                 <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Expiry Date</span>
                 <span className="text-sm font-semibold text-[#1E293B] mt-1 block">
-                  {driver.licenseExpiry ? formatIFD() : "—"}
+                  {driver.licenseExpiry ? new Date(driver.licenseExpiry).toLocaleDateString("en-IN", {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                  }) : "—"}
                 </span>
               </div>
 
@@ -322,7 +394,11 @@ export default function DriverProfilePage() {
               <div>
                 <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Joining Date</span>
                 <span className="text-sm font-semibold text-[#1E293B] mt-1 block">
-                  {driver.joiningDate ? formatIFD() : "—"}
+                  {driver.joiningDate ? new Date(driver.joiningDate).toLocaleDateString("en-IN", {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                  }) : "—"}
                 </span>
               </div>
 
@@ -365,14 +441,10 @@ export default function DriverProfilePage() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-xs font-semibold text-gray-500 p-1">
+                <div className="text-xs font-semibold text-gray-500 p-1">
                   <div>
                     <span>Branch Depot:</span>
                     <span className="text-[#1E293B] block font-bold text-sm mt-0.5">{vehicle.branch || "—"}</span>
-                  </div>
-                  <div>
-                    <span>Fuel Configuration:</span>
-                    <span className="text-[#1E293B] block font-bold text-sm mt-0.5">{vehicle.fuelType} ({vehicle.fuelLevel}%)</span>
                   </div>
                 </div>
 
@@ -412,24 +484,55 @@ export default function DriverProfilePage() {
             </h3>
 
             <div className="space-y-4">
-              {MOCK_TRIPS_ROSTER.map((trip) => (
-                <div key={trip.id} className="flex items-center justify-between p-3 bg-gray-50/50 hover:bg-gray-50 border border-gray-100 rounded-xl transition-all">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-xs text-[#1E293B] font-poppins">{trip.id}</span>
-                      <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.2 rounded-md">
-                        {trip.status}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 font-medium mt-1">{trip.route}</p>
-                  </div>
-                  
-                  <div className="text-right">
-                    <span className="text-[10px] text-gray-400 block font-poppins">{trip.date}</span>
-                    <span className="text-[10px] text-[#64748B] font-semibold block mt-0.5">Cons: {trip.fuelUsed}</span>
-                  </div>
+              {loadingTrips ? (
+                <div className="space-y-3 animate-pulse">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-16 bg-gray-100 rounded-xl"></div>
+                  ))}
                 </div>
-              ))}
+              ) : tripsError ? (
+                <div className="text-center py-6 text-red-500 font-medium text-xs font-poppins">
+                  {tripsError}
+                </div>
+              ) : trips.length === 0 ? (
+                <div className="text-center py-8 text-[#64748B] font-medium text-xs font-nunito">
+                  No trips assigned Yet
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {trips.map((trip) => (
+                    <div key={trip._id} className="flex items-center justify-between p-3.5 bg-gray-50/50 hover:bg-gray-50 border border-gray-100 rounded-xl transition-all">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-[#1E293B] font-poppins">{trip.tripNumber}</span>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            trip.status === "Completed" ? "text-emerald-600 bg-emerald-50" :
+                            trip.status === "On Transit" || trip.status === "Ongoing" ? "text-blue-600 bg-blue-50" :
+                            trip.status === "Cancelled" ? "text-red-600 bg-red-50" :
+                            "text-amber-600 bg-amber-50"
+                          }`}>
+                            {trip.status === "Completed" ? "Complete" : trip.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 font-medium font-nunito">
+                          {trip.startLocation} to {trip.endLocation}
+                        </p>
+                        <div className="flex items-center gap-2 text-[10px] text-gray-400 font-semibold mt-0.5">
+                          <span>Reg: <strong className="text-gray-600 uppercase">{trip.vehiclePlate || (trip.vehicle && trip.vehicle.vehicleNumber) || "—"}</strong></span>
+                          <span>•</span>
+                          <span>Dist: <strong className="text-gray-600">{calculateDistance(trip.startLocation, trip.endLocation)} km</strong></span>
+                        </div>
+                      </div>
+                      
+                      <div className="text-right">
+                        <span className="text-[10px] text-gray-400 block font-poppins">
+                          {trip.departureTime ? new Date(trip.departureTime).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' }) : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

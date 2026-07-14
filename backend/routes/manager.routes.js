@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getDashboard,
   getLiveTracking,
+  listActivities,
   // Vehicles
   listVehicles,
   createVehicle,
@@ -20,6 +21,7 @@ import {
   getTripDetails,
   updateTrip,
   deleteTrip,
+  getInvoiceByTripId,
   // Fuel
   listFuelRecords,
   createFuelRecord,
@@ -66,6 +68,7 @@ const auth = [protect, authorizeRoles('FLEET_MANAGER')];
 // Dashboard
 router.get('/dashboard',       ...auth, getDashboard);
 router.get('/live-tracking',   ...auth, getLiveTracking);
+router.get('/activities',      ...auth, listActivities);
 
 // Vehicles
 router.get('/vehicles',        ...auth, listVehicles);
@@ -127,6 +130,9 @@ router.get('/eway',            ...auth, listEWayBills);
 router.post('/eway',           ...auth, createEWayBill);
 router.put('/eway/:id/extend', ...auth, extendEWayBill);
 router.put('/eway/:id',        ...auth, updateEWayBill);
-router.delete('/eway/:id',     ...auth, deleteEWayBill);
+// Invoices
+router.get('/invoices/trip/:tripId', ...auth, getInvoiceByTripId);
+router.get('/invoices/trip/:tripId/download', ...auth, getInvoiceByTripId);
+router.get('/invoices/trip/:tripId/print', ...auth, getInvoiceByTripId);
 
 export default router;
