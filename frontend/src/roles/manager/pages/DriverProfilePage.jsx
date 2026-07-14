@@ -511,7 +511,7 @@ export default function DriverProfilePage() {
                             trip.status === "Cancelled" ? "text-red-600 bg-red-50" :
                             "text-amber-600 bg-amber-50"
                           }`}>
-                            {trip.status}
+                            {trip.status === "Completed" ? "Complete" : trip.status}
                           </span>
                         </div>
                         <p className="text-xs text-gray-600 font-medium font-nunito">

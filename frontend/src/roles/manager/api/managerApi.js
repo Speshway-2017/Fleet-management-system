@@ -15,12 +15,12 @@ export const managerApi = {
     return await axiosClient.get("/manager/live-tracking");
   },
 
-  getAvailableVehicles: async () => {
-    return await axiosClient.get("/vehicles/available");
+  getAvailableVehicles: async (params) => {
+    return await axiosClient.get("/vehicles/available", { params });
   },
 
-  getAvailableDrivers: async () => {
-    return await axiosClient.get("/drivers/available");
+  getAvailableDrivers: async (params) => {
+    return await axiosClient.get("/drivers/available", { params });
   },
 
   getVehicleById: async (id) => {
@@ -79,6 +79,10 @@ export const managerApi = {
 
   deleteTrip: async (id) => {
     return await axiosClient.delete(`/manager/trips/${id}`);
+  },
+
+  getInvoiceByTripId: async (tripId) => {
+    return await axiosClient.get(`/manager/invoices/trip/${tripId}`);
   },
 
   // Fuel Management
@@ -192,5 +196,13 @@ export const managerApi = {
 
   getNotifications: async () => {
     return await axiosClient.get("/manager/notifications");
+  },
+
+  markNotificationRead: async (id) => {
+    return await axiosClient.patch(`/manager/notifications/${id}/read`);
+  },
+
+  markAllNotificationsRead: async () => {
+    return await axiosClient.patch("/manager/notifications/read-all");
   },
 };

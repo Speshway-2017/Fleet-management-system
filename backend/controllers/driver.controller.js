@@ -101,10 +101,22 @@ export const getAvailableDrivers = async (req, res, next) => {
 
     const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
 
-    const availableDrivers = await Driver.find({
+    const filter = {
       _id: { $nin: allocatedDriverIds },
-      driverStatus: 'AVAILABLE'
-    }).sort({ createdAt: -1 });
+      driverStatus: 'AVAILABLE',
+      $or: [
+        { licenseExpiry: { $exists: false } },
+        { licenseExpiry: null },
+        { licenseExpiry: { $gte: new Date() } }
+      ]
+    };
+
+    if (req.query.location) {
+      const cleanLoc = req.query.location.trim().split(/[\s,]+/)[0];
+      filter.branch = { $regex: new RegExp(cleanLoc, 'i') };
+    }
+
+    const availableDrivers = await Driver.find(filter).sort({ createdAt: -1 });
 
     return sendSuccess(res, 200, availableDrivers, 'Available drivers fetched successfully');
   } catch (error) {

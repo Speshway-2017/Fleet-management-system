@@ -43,6 +43,7 @@ const driverSchema = new mongoose.Schema(
     tripsCompleted: { type: Number, default: 0 },
     incidentCount: { type: Number, default: 0 },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    branch: { type: String, default: 'Pune', trim: true },
   },
   { timestamps: true }
 );

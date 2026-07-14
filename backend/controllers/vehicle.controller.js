@@ -34,10 +34,19 @@ export const getAvailableVehicles = async (req, res, next) => {
 
     const allocatedVehicleIds = activeTrips.map(t => t.vehicle).filter(Boolean);
 
-    const availableVehicles = await Vehicle.find({
+    const filter = {
       _id: { $nin: allocatedVehicleIds },
       currentStatus: { $in: ['Available', 'Active'] }
-    }).populate('assignedDriver').sort({ createdAt: -1 });
+    };
+
+    if (req.query.location) {
+      const cleanLoc = req.query.location.trim().split(/[\s,]+/)[0];
+      filter.branch = { $regex: new RegExp(cleanLoc, 'i') };
+    }
+
+    const availableVehicles = await Vehicle.find(filter)
+      .populate('assignedDriver')
+      .sort({ createdAt: -1 });
 
     return sendSuccess(res, 200, availableVehicles, 'Available vehicles fetched successfully');
   } catch (error) {

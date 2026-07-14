@@ -17,6 +17,17 @@ export default function ManagerDashboard() {
 
   const formatTotalEarnings = (val) => {
     if (val === null || val === undefined) return "₹0";
+
+    // If already pre-formatted containing units
+    if (typeof val === 'string' && (val.includes('L') || val.includes('Cr') || val.includes('cr') || val.includes('l'))) {
+      let cleanVal = val.trim();
+      const match = cleanVal.match(/(\d+\.\d)(\d+)\s*(L|Cr|cr|l)/);
+      if (match) {
+        cleanVal = cleanVal.replace(/(\d+\.\d)\d+(\s*(L|Cr|cr|l))/, '$1 $3');
+      }
+      return cleanVal;
+    }
+
     let num = 0;
     if (typeof val === 'number') {
       num = val;
@@ -29,17 +40,17 @@ export default function ManagerDashboard() {
     if (num >= 10000000) {
       const formatted = (num / 10000000).toFixed(1);
       const clean = parseFloat(formatted);
-      return `₹${clean}Cr`;
+      return `₹${clean} Cr`;
     }
     if (num >= 100000) {
       const formatted = (num / 100000).toFixed(1);
       const clean = parseFloat(formatted);
-      return `₹${clean}L`;
+      return `₹${clean} L`;
     }
     if (num >= 1000) {
       const formatted = (num / 1000).toFixed(1);
       const clean = parseFloat(formatted);
-      return `₹${clean}K`;
+      return `₹${clean} K`;
     }
     return `₹${num}`;
   };
