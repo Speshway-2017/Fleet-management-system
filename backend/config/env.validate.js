@@ -9,11 +9,11 @@ const REQUIRED_VARS = [
   'CLOUDINARY_CLOUD_NAME',
   'CLOUDINARY_API_KEY',
   'CLOUDINARY_API_SECRET',
-  'CLIENT_URL',
-  'SMTP_HOST',
-  'SMTP_PORT',
-  'SMTP_USER',
-  'SMTP_PASS',
+  'CLIENT_URL'
+  // 'SMTP_HOST',
+  // 'SMTP_PORT',
+  // 'SMTP_USER',
+  // 'SMTP_PASS',
 ];
 
 export function validateEnv() {
