@@ -81,6 +81,15 @@ export default function AssignVehiclePage() {
   const handleAssign = async (vehicle) => {
     if (!driver || !vehicle) return;
 
+    const expiryDate = driver.licenseExpiry ? new Date(driver.licenseExpiry) : null;
+    const today = new Date();
+    const isLicenseExpired = !expiryDate || expiryDate < today;
+
+    if (isLicenseExpired) {
+      toast.error("Cannot assign vehicle: Driver's driving license has expired!");
+      return;
+    }
+
     // A. Verify if the vehicle is already assigned to someone else
     if (vehicle.driver && vehicle.driver !== "Unassigned") {
       const confirmOverride = window.confirm(
@@ -178,6 +187,10 @@ export default function AssignVehiclePage() {
 
   if (!driver) return null;
 
+  const expiryDate = driver.licenseExpiry ? new Date(driver.licenseExpiry) : null;
+  const today = new Date();
+  const isLicenseExpired = !expiryDate || expiryDate < today;
+
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
       <Breadcrumb />
@@ -192,6 +205,16 @@ export default function AssignVehiclePage() {
           </div>
         </div>
       </div>
+
+      {isLicenseExpired && (
+        <div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-700 text-xs font-semibold mt-6">
+          <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-bold text-red-800">Vehicle Assignment Blocked</p>
+            <p className="mt-0.5 text-red-600">This driver's license has expired. Fleet compliance rules restrict assignment of vehicles to operators without a valid active license.</p>
+          </div>
+        </div>
+      )}
 
       {/* --- DRIVER QUICK RESUME INFO CARD --- */}
       <div className="p-5 bg-white border border-[#E7EAF0] rounded-2xl flex items-center justify-between shadow-sm select-none mt-6">
@@ -342,18 +365,18 @@ export default function AssignVehiclePage() {
                 <button
                   onClick={() => handleAssign(v)}
                   className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    v.status === "Maintenance" || v.status === "Out of Service" || assigningVehicleId === v.id
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    v.status === "Maintenance" || v.status === "Out of Service" || assigningVehicleId === v.id || isLicenseExpired
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
                       : "bg-white hover:bg-[#B45A0A] hover:text-white text-[#B45A0A] border border-[#B45A0A] shadow-sm hover:shadow-md"
                   }`}
-                  disabled={v.status === "Maintenance" || v.status === "Out of Service" || assigningVehicleId !== null}
+                  disabled={v.status === "Maintenance" || v.status === "Out of Service" || assigningVehicleId !== null || isLicenseExpired}
                 >
                   {assigningVehicleId === v.id ? (
                     <Loader className="w-4 h-4 animate-spin" />
                   ) : (
                     <CheckCircle2 className="w-4 h-4" />
                   )}
-                  <span>{assigningVehicleId === v.id ? "Assigning..." : "Select and Assign Vehicle"}</span>
+                  <span>{assigningVehicleId === v.id ? "Assigning..." : isLicenseExpired ? "License Expired" : "Select and Assign Vehicle"}</span>
                 </button>
               </div>
             </div>

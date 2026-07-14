@@ -11,7 +11,10 @@ import {
   Clock,
   Route,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Play,
+  CheckCircle2,
+  Pencil
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -21,14 +24,39 @@ import { managerApi } from "../api/managerApi";
 export default function TripsListPage() {
   const navigate = useNavigate();
   const [trips, setTrips] = useState([]);
+  const [driversList, setDriversList] = useState([]);
+  const [vehiclesList, setVehiclesList] = useState([]);
+
+  // Filter states
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
+  const [driverFilter, setDriverFilter] = useState("All Drivers");
+  const [vehicleFilter, setVehicleFilter] = useState("All Vehicles");
+  const [dateFilter, setDateFilter] = useState("");
+
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState(null);
+  const [editingTrip, setEditingTrip] = useState(null);
+
+  // Form State for Edit Modal
+  const [formData, setFormData] = useState({
+    driverId: "",
+    vehicleId: "",
+    startLocation: "",
+    endLocation: "",
+    departureTime: "",
+    eta: "",
+    status: "",
+    description: "",
+    cargoType: "",
+    cargoWeight: "",
+    tripNotes: ""
+  });
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const fetchTrips = async () => {
     try {
@@ -45,22 +73,109 @@ export default function TripsListPage() {
     }
   };
 
-  // Load from database
+  const fetchResources = async () => {
+    try {
+      const [dRes, vRes] = await Promise.all([
+        managerApi.getDrivers(),
+        managerApi.getVehicles()
+      ]);
+      setDriversList(dRes.data?.data || dRes.data || []);
+      setVehiclesList(vRes.data?.data || vRes.data || []);
+    } catch (err) {
+      console.error("Failed to fetch resource lists", err);
+    }
+  };
+
   useEffect(() => {
     fetchTrips();
+    fetchResources();
   }, []);
 
-  // Reset to first page when search/filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, driverFilter, vehicleFilter, dateFilter]);
 
   const handleResetFilters = () => {
     setSearch("");
     setStatusFilter("All Statuses");
+    setDriverFilter("All Drivers");
+    setVehicleFilter("All Vehicles");
+    setDateFilter("");
     setCurrentPage(1);
-    setRowsPerPage(5);
     toast.success("Filters reset successfully");
+  };
+
+  const handleStartTrip = async (id) => {
+    try {
+      await managerApi.updateTrip(id, { status: "In Progress" });
+      toast.success("Trip started successfully!");
+      fetchTrips();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to start trip");
+      console.error(err);
+    }
+  };
+
+  const handleEndTrip = async (id) => {
+    try {
+      await managerApi.updateTrip(id, { status: "Completed" });
+      toast.success("Trip completed successfully!");
+      fetchTrips();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to end trip");
+      console.error(err);
+    }
+  };
+
+  const handleOpenEdit = (t) => {
+    fetchResources();
+    setEditingTrip(t);
+    setFormData({
+      driverId: t.driver?._id || t.driver || "",
+      vehicleId: t.vehicle?._id || t.vehicle || "",
+      startLocation: t.startLocation,
+      endLocation: t.endLocation,
+      departureTime: t.departureTime ? new Date(t.departureTime).toISOString().slice(0, 16) : "",
+      eta: t.eta ? new Date(t.eta).toISOString().slice(0, 16) : "",
+      status: t.status,
+      description: t.description || "",
+      cargoType: t.cargoType || "",
+      cargoWeight: t.cargoWeight || "",
+      tripNotes: t.tripNotes || ""
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEditTrip = async (e) => {
+    e.preventDefault();
+    if (!formData.startLocation || !formData.endLocation || !formData.departureTime || !formData.eta) {
+      toast.error("Required fields cannot be empty");
+      return;
+    }
+    if (formData.startLocation.trim().toLowerCase() === formData.endLocation.trim().toLowerCase()) {
+      toast.error("Pickup and Destination cannot be the same");
+      return;
+    }
+
+    try {
+      await managerApi.updateTrip(editingTrip.id, {
+        startLocation: formData.startLocation,
+        endLocation: formData.endLocation,
+        departureTime: formData.departureTime,
+        eta: formData.eta,
+        description: formData.description,
+        cargoType: formData.cargoType,
+        cargoWeight: formData.cargoWeight ? Number(formData.cargoWeight) : undefined,
+        tripNotes: formData.tripNotes
+      });
+      toast.success("Trip updated successfully");
+      setShowEditModal(false);
+      setEditingTrip(null);
+      fetchTrips();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update trip");
+      console.error(error);
+    }
   };
 
   const handleDeleteTrip = async () => {
@@ -77,12 +192,12 @@ export default function TripsListPage() {
     }
   };
 
-  // Compute filtered trips list
   const filteredTrips = trips.filter(t => {
     const query = search.toLowerCase();
     const matchesSearch =
       (t.tripNumber || "").toLowerCase().includes(query) ||
       (t.driverName || "").toLowerCase().includes(query) ||
+      (t.vehiclePlate || "").toLowerCase().includes(query) ||
       (t.vehicleName || "").toLowerCase().includes(query) ||
       (t.startLocation || "").toLowerCase().includes(query) ||
       (t.endLocation || "").toLowerCase().includes(query) ||
@@ -90,7 +205,18 @@ export default function TripsListPage() {
 
     const matchesStatus = statusFilter === "All Statuses" || t.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    const matchesDriver = driverFilter === "All Drivers" || String(t.driver) === String(driverFilter);
+
+    const matchesVehicle = vehicleFilter === "All Vehicles" || String(t.vehicle) === String(vehicleFilter);
+
+    let matchesDate = true;
+    if (dateFilter) {
+      const filterYMD = new Date(dateFilter).toDateString();
+      const tripYMD = t.departureTime ? new Date(t.departureTime).toDateString() : "";
+      matchesDate = filterYMD === tripYMD;
+    }
+
+    return matchesSearch && matchesStatus && matchesDriver && matchesVehicle && matchesDate;
   });
 
   // Pagination helper calculations
@@ -101,14 +227,17 @@ export default function TripsListPage() {
 
   const getStatusBadge = (status) => {
     switch (status) {
+      case "In Progress":
       case "On Transit":
-        return "bg-[#FDF3EC] text-[#B45A0A] border border-[#FDF3EC]";
+        return "bg-[#FDF3EC] text-[#B45A0A] border border-[#FDF3EC] font-semibold";
       case "Scheduled":
-        return "bg-indigo-50 text-indigo-700 border border-indigo-100";
+        return "bg-blue-50 text-blue-700 border border-blue-100 font-semibold";
+      case "Assigned":
+        return "bg-indigo-50 text-indigo-700 border border-indigo-150 font-semibold";
       case "Completed":
-        return "bg-slate-900 text-white border border-slate-950";
-      case "Delayed":
-        return "bg-red-50 text-red-600 border border-red-100";
+        return "bg-slate-900 text-white border border-slate-950 font-semibold";
+      case "Cancelled":
+        return "bg-red-50 text-red-600 border border-red-100 font-semibold";
       default:
         return "bg-gray-100 text-gray-500";
     }
@@ -129,91 +258,140 @@ export default function TripsListPage() {
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
       <Breadcrumb />
       {/* Page Header */}
-      <div className="flex items-center justify-between gap-4 border-b border-[#E7EAF0] pb-6">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
-              Trips List
-            </h1>
-            <p className="text-[18px] text-[#64748B] mt-[12px] font-medium">
-              Complete listing of all registered trip dispatches
-            </p>
-          </div>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#E7EAF0] pb-6">
+        <div>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
+            Trips List
+          </h1>
+          <p className="text-[18px] text-[#64748B] mt-[12px] font-medium">
+            Complete database of all registered trip dispatches
+          </p>
         </div>
+        <button
+          onClick={() => navigate("/manager/trips")}
+          className="flex items-center gap-2 px-4.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-gray-50 transition-all cursor-pointer shadow-xs"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Dashboard
+        </button>
       </div>
 
-      {/* Search Bar with Filters */}
-      <div className="bg-white rounded-xl border border-[#E7EAF0] p-4 shadow-sm">
-        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-          {/* Search Bar */}
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#94A3B8]" />
+      {/* Search Bar with Filter Fields */}
+      <div className="bg-white rounded-xl border border-[#E7EAF0] p-5 shadow-sm mt-6 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* Search Input */}
+          <div className="relative col-span-1 sm:col-span-2 lg:col-span-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
             <input
               type="text"
-              placeholder="Search trips by ID, driver, vehicle, or locations..."
+              placeholder="Search ID, route..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+              className="w-full pl-9 pr-3 py-2.5 h-[44px] border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B] font-semibold"
             />
           </div>
 
           {/* Status Filter */}
-          <div className="relative min-w-44">
+          <div className="relative">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none cursor-pointer"
+              className="w-full pl-3.5 pr-8 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none cursor-pointer font-semibold"
             >
-              <option>All Statuses</option>
-              <option>Scheduled</option>
-              <option>On Transit</option>
-              <option>Delayed</option>
-              <option>Completed</option>
+              <option value="All Statuses">All Statuses</option>
+              <option value="Scheduled">Scheduled</option>
+              <option value="Assigned">Assigned</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled">Cancelled</option>
             </select>
-            <span className="absolute inset-y-0 right-3.5 flex items-center pointer-events-none text-[#64748B]">
-              <ChevronDown className="w-4 h-4" />
+            <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-[#64748B]">
+              <ChevronDown className="w-3.5 h-3.5" />
             </span>
           </div>
 
-          {/* Reset Trigger */}
-          {(search || statusFilter !== "All Statuses") && (
-            <button
-              onClick={handleResetFilters}
-              className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer whitespace-nowrap self-center py-2.5"
+          {/* Driver Filter */}
+          <div className="relative">
+            <select
+              value={driverFilter}
+              onChange={(e) => setDriverFilter(e.target.value)}
+              className="w-full pl-3.5 pr-8 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none cursor-pointer font-semibold"
             >
-              <RefreshCw className="w-3 h-3" />
-              <span>Reset Filters</span>
-            </button>
-          )}
+              <option value="All Drivers">All Drivers</option>
+              {driversList.map((drv) => (
+                <option key={drv._id} value={drv._id}>{drv.fullName || drv.name}</option>
+              ))}
+            </select>
+            <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-[#64748B]">
+              <ChevronDown className="w-3.5 h-3.5" />
+            </span>
+          </div>
+
+          {/* Vehicle Filter */}
+          <div className="relative">
+            <select
+              value={vehicleFilter}
+              onChange={(e) => setVehicleFilter(e.target.value)}
+              className="w-full pl-3.5 pr-8 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none cursor-pointer font-semibold"
+            >
+              <option value="All Vehicles">All Vehicles</option>
+              {vehiclesList.map((veh) => (
+                <option key={veh._id} value={veh._id}>{veh.vehicleNumber || veh.plateNumber}</option>
+              ))}
+            </select>
+            <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-[#64748B]">
+              <ChevronDown className="w-3.5 h-3.5" />
+            </span>
+          </div>
+
+          {/* Date Filter */}
+          <div>
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] font-semibold"
+            />
+          </div>
         </div>
 
-        <div className="border-t border-[#E7EAF0]/60 mt-3 pt-3 flex items-center justify-between text-xs text-[#64748B] font-medium font-poppins">
-          <span>Dispatches Database</span>
-          <span>Showing <strong>{currentRows.length}</strong> of {filteredTrips.length} trips</span>
+        <div className="flex items-center justify-between border-t border-[#E7EAF0]/60 pt-3 text-xs text-[#64748B] font-semibold font-poppins">
+          <span>Total Matches: <strong>{filteredTrips.length}</strong> dispatches</span>
+          {(search || statusFilter !== "All Statuses" || driverFilter !== "All Drivers" || vehicleFilter !== "All Vehicles" || dateFilter) && (
+            <button
+              onClick={handleResetFilters}
+              className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer whitespace-nowrap"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Clear Filters</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Trips Table */}
-      <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm overflow-hidden mt-6">
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse text-sm font-nunito">
             <thead>
               <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
                 <th className="py-4 px-6 whitespace-nowrap">Trip ID</th>
-                <th className="py-4 px-6 whitespace-nowrap">Driver</th>
-                <th className="py-4 px-6 whitespace-nowrap">Vehicle</th>
-                <th className="py-4 px-6 whitespace-nowrap">Route</th>
-                <th className="py-4 px-6 whitespace-nowrap">Departure</th>
-                <th className="py-4 px-6 whitespace-nowrap">ETA</th>
-                <th className="py-4 px-6 whitespace-nowrap">Status</th>
+                <th className="py-4 px-6 whitespace-nowrap">Pickup Location</th>
+                <th className="py-4 px-6 whitespace-nowrap">Destination</th>
+                <th className="py-4 px-6 whitespace-nowrap">Assigned Driver</th>
+                <th className="py-4 px-6 whitespace-nowrap">Assigned Vehicle</th>
+                <th className="py-4 px-6 whitespace-nowrap">Trip Status</th>
+                <th className="py-4 px-6 whitespace-nowrap">Pickup Date</th>
+                <th className="py-4 px-6 whitespace-nowrap">Expected Arrival</th>
+                <th className="py-4 px-6 whitespace-nowrap">Distance</th>
                 <th className="py-4 px-6 text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7EAF0]/60">
               {currentRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-gray-400 font-medium font-nunito">
-                    No trips found matching the selection.
+                  <td colSpan={10} className="py-12 text-center text-gray-400 font-medium font-nunito">
+                    No trips found matching the selections.
                   </td>
                 </tr>
               ) : (
@@ -232,14 +410,24 @@ export default function TripsListPage() {
                       </div>
                     </td>
 
+                    {/* Start Location */}
+                    <td className="py-4 px-6 whitespace-nowrap font-semibold text-xs text-[#1E293B]">
+                      {t.startLocation}
+                    </td>
+
+                    {/* Destination */}
+                    <td className="py-4 px-6 whitespace-nowrap font-semibold text-xs text-[#1E293B]">
+                      {t.endLocation}
+                    </td>
+
                     {/* Driver */}
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="font-bold text-sm text-[#1E293B] font-poppins group-hover:text-[#B45A0A] transition-colors">
-                          {t.driverName}
+                          {t.driverName || "Unassigned"}
                         </span>
                         <span className="text-[10px] text-[#64748B] mt-0.5 block font-semibold">
-                          {t.driverPhone}
+                          {t.driverPhone || ""}
                         </span>
                       </div>
                     </td>
@@ -248,21 +436,19 @@ export default function TripsListPage() {
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="font-bold text-xs text-[#1E293B]">
-                          {t.vehicleName}
+                          {t.vehicleName || "Unassigned"}
                         </span>
                         <span className="text-[10px] font-bold text-indigo-500 mt-0.5 uppercase tracking-wide block font-poppins">
-                          {t.vehiclePlate}
+                          {t.vehiclePlate || ""}
                         </span>
                       </div>
                     </td>
 
-                    {/* Route */}
+                    {/* Status */}
                     <td className="py-4 px-6 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-xs text-[#1E293B]">{t.startLocation}</span>
-                        <div className="h-2 border-l border-dashed border-gray-300 ml-1.5 my-0.5"></div>
-                        <span className="font-bold text-xs text-[#1E293B]">{t.endLocation}</span>
-                      </div>
+                      <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(t.status)}`}>
+                        {t.status === "Completed" ? "Complete" : t.status}
+                      </span>
                     </td>
 
                     {/* Departure */}
@@ -281,16 +467,15 @@ export default function TripsListPage() {
                       </div>
                     </td>
 
-                    {/* Status */}
-                    <td className="py-4 px-6 whitespace-nowrap">
-                      <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(t.status)}`}>
-                        {t.status}
-                      </span>
+                    {/* Distance */}
+                    <td className="py-4 px-6 whitespace-nowrap text-xs text-[#1E293B] font-bold">
+                      {t.status === "Completed" ? (t.actualDistance || t.estimatedDistance || 120) : (t.estimatedDistance || 120)} KM
                     </td>
 
                     {/* Actions */}
                     <td className="py-4 px-6 text-right select-none whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {/* View */}
                         <button
                           onClick={() => navigate(`/manager/trip-details/${t.id}`)}
                           title="View details"
@@ -298,16 +483,44 @@ export default function TripsListPage() {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => {
-                            setSelectedTrip(t);
-                            setDeleteModalOpen(true);
-                          }}
-                          title="Delete trip record"
-                          className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+
+
+
+                        {/* End Trip */}
+                        {t.status === "In Progress" && (
+                          <button
+                            onClick={() => handleEndTrip(t.id)}
+                            title="End Trip"
+                            className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {/* Edit */}
+                        {(t.status === "Scheduled" || t.status === "Assigned") && (
+                          <button
+                            onClick={() => handleOpenEdit(t)}
+                            title="Edit trip"
+                            className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {/* Delete */}
+                        {(t.status === "Scheduled" || t.status === "Assigned") && (
+                          <button
+                            onClick={() => {
+                              setSelectedTrip(t);
+                              setDeleteModalOpen(true);
+                            }}
+                            title="Delete trip record"
+                            className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
 
@@ -395,12 +608,12 @@ export default function TripsListPage() {
 
             <div className="space-y-6">
               <div>
-                <h3 className="text-xl font-bold font-poppins text-[#1E293B] flex items-center gap-2 text-[#EF4444]">
+                <h3 className="text-xl font-bold font-poppins flex items-center gap-2 text-[#EF4444]">
                   <AlertTriangle className="w-6 h-6 animate-pulse" />
                   Cancel Trip Dispatch
                 </h3>
                 <p className="text-xs text-[#64748B] mt-1 font-medium">
-                  Are you absolutely sure you want to cancel and delete trip logs for dispatch <strong>{selectedTrip.id}</strong>? This action cannot be undone.
+                  Are you absolutely sure you want to cancel and delete trip logs for dispatch <strong>{selectedTrip.tripNumber}</strong>? This action cannot be undone.
                 </p>
               </div>
 
@@ -419,6 +632,164 @@ export default function TripsListPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- EDIT TRIP MODAL --- */}
+      {showEditModal && editingTrip && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in select-none">
+          <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl border border-gray-100 animate-scale-up">
+            {/* Header */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-slate-900 text-white shrink-0 font-poppins">
+              <div className="flex items-center gap-2">
+                <Route className="w-5 h-5 text-amber-500" />
+                <h3 className="font-bold text-sm text-white">Edit Trip Specifications: {editingTrip.tripNumber}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowEditModal(false); setEditingTrip(null); }}
+                className="p-1.5 hover:bg-white/10 rounded-xl text-gray-300 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleEditTrip} className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50 custom-scrollbar text-left font-nunito">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Start Location */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Start Location *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.startLocation}
+                    onChange={(e) => setFormData({ ...formData, startLocation: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+
+                {/* End Location */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Destination *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.endLocation}
+                    onChange={(e) => setFormData({ ...formData, endLocation: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Departure Time */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Departure Time *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={formData.departureTime}
+                    onChange={(e) => setFormData({ ...formData, departureTime: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+
+                {/* ETA */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Estimated Arrival (ETA) *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={formData.eta}
+                    onChange={(e) => setFormData({ ...formData, eta: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Cargo Type */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Cargo Type (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.cargoType}
+                    onChange={(e) => setFormData({ ...formData, cargoType: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+
+                {/* Cargo Weight */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Cargo Weight (Optional, kg)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.cargoWeight}
+                    onChange={(e) => setFormData({ ...formData, cargoWeight: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Cargo Description */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Cargo Description
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+
+                {/* Trip Notes */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Trip Notes (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.tripNotes}
+                    onChange={(e) => setFormData({ ...formData, tripNotes: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="p-4 border-t border-gray-100 bg-white text-right shrink-0 flex items-center justify-end gap-3 rounded-b-2xl">
+                <button
+                  type="button"
+                  onClick={() => { setShowEditModal(false); setEditingTrip(null); }}
+                  className="px-5 py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

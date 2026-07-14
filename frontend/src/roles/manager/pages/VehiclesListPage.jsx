@@ -33,26 +33,57 @@ export default function VehiclesListPage() {
   const [fuelTypeFilter, setFuelTypeFilter] = useState("All Fuel Types");
   const [ownershipFilter, setOwnershipFilter] = useState("All Ownerships");
   const [availabilityFilter, setAvailabilityFilter] = useState("All Availabilities");
+  const [insuranceFilter, setInsuranceFilter] = useState("All Insurances");
+  const [permitFilter, setPermitFilter] = useState("All Permits");
   const [showMoreFilters, setShowMoreFilters] = useState(false);
+
+  const [sortField, setSortField] = useState("name");
+  const [sortDirection, setSortDirection] = useState("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   const [loading, setLoading] = useState(true);
 
-  const normaliseVehicle = (v) => ({
-    ...v,
-    id:           v._id,
-    name:         v.vehicleName || `${v.brand} ${v.model}`,
-    manufacturer: v.brand || "",
-    plateNumber:  v.vehicleNumber || "",
-    type:         v.vehicleType || "Truck",
-    driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
-      ? v.assignedDriver.fullName
-      : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
-    fuelLevel:    v.fuelCapacity ? Math.round((v.odometer % v.fuelCapacity) || 50) : 50,
-    fastagBalance: v.fastagBalance ?? 0,
-    branch:       v.branch || "Pune",
-    dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
-    status:       v.currentStatus || 'Available',
-  });
+  const getDocumentStatus = (expiryDate) => {
+    if (!expiryDate) return "Pending";
+    const exp = new Date(expiryDate);
+    const today = new Date();
+    exp.setHours(0,0,0,0);
+    today.setHours(0,0,0,0);
+    const diffTime = exp - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return "Expired";
+    if (diffDays <= 30) return "Expiring Soon";
+    return "Active";
+  };
+
+  const normaliseVehicle = (v) => {
+    const insExp = v.insuranceDetails?.expiryDate || v.insuranceExpiry;
+    const permExp = v.permitDetails?.expiryDate || v.permitExpiry;
+    return {
+      ...v,
+      id:           v._id,
+      name:         v.vehicleName || `${v.brand} ${v.model}`,
+      manufacturer: v.brand || "",
+      plateNumber:  v.vehicleNumber || "",
+      type:         v.vehicleType || "Truck",
+      driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
+        ? v.assignedDriver.fullName
+        : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
+      fuelLevel:    v.fuelCapacity ? Math.round((v.odometer % v.fuelCapacity) || 50) : 50,
+      fastagBalance: v.fastagBalance ?? 0,
+      branch:       v.branch || "Pune",
+      dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
+      status:       v.currentStatus || 'Available',
+      chassisNumber: v.chassisNumber || "N/A",
+      loadCapacity:  v.loadCapacity ?? 0,
+      ownershipType: v.ownershipType || "Owned",
+      insuranceDetails: v.insuranceDetails || {},
+      permitDetails: v.permitDetails || {},
+      insuranceStatus: getDocumentStatus(insExp),
+      permitStatus: getDocumentStatus(permExp),
+    };
+  };
 
   const fetchVehicles = async () => {
     try {
@@ -72,31 +103,65 @@ export default function VehiclesListPage() {
     fetchVehicles();
   }, []);
 
-  // Calculate filtered vehicles
-  const filteredVehicles = vehicles.filter((v) => {
-    const query = searchTerm.toLowerCase();
-    const matchesSearch =
-      v.name?.toLowerCase().includes(query) ||
-      v.plateNumber?.toLowerCase().includes(query) ||
-      v.manufacturer?.toLowerCase().includes(query);
-    
-    const matchesStatus = statusFilter === "All Statuses" || v.status === statusFilter;
-    const matchesType = typeFilter === "All Types" || v.type === typeFilter;
-    const matchesBranch = branchFilter === "All Branches" || v.branch === branchFilter;
-    const matchesFuelType = fuelTypeFilter === "All Fuel Types" || v.fuelType === fuelTypeFilter;
-    const matchesOwnership = ownershipFilter === "All Ownerships" || v.ownership === ownershipFilter;
-    const matchesAvailability = availabilityFilter === "All Availabilities" || v.availability === availabilityFilter;
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+    setCurrentPage(1);
+  };
 
-    return (
-      matchesSearch &&
-      matchesStatus &&
-      matchesType &&
-      matchesBranch &&
-      matchesFuelType &&
-      matchesOwnership &&
-      matchesAvailability
-    );
-  });
+  // Calculate filtered vehicles
+  const processedVehicles = vehicles
+    .filter((v) => {
+      const query = searchTerm.toLowerCase();
+      const matchesSearch =
+        v.name?.toLowerCase().includes(query) ||
+        v.plateNumber?.toLowerCase().includes(query) ||
+        v.manufacturer?.toLowerCase().includes(query);
+      
+      const matchesStatus = statusFilter === "All Statuses" || v.status === statusFilter;
+      const matchesType = typeFilter === "All Types" || v.type === typeFilter;
+      const matchesBranch = branchFilter === "All Branches" || v.branch === branchFilter;
+      const matchesFuelType = fuelTypeFilter === "All Fuel Types" || v.fuelType === fuelTypeFilter;
+      const matchesOwnership = ownershipFilter === "All Ownerships" || v.ownershipType === ownershipFilter;
+      const matchesAvailability = availabilityFilter === "All Availabilities" || v.availability === availabilityFilter;
+      const matchesInsurance = insuranceFilter === "All Insurances" || v.insuranceStatus === insuranceFilter;
+      const matchesPermit = permitFilter === "All Permits" || v.permitStatus === permitFilter;
+
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesType &&
+        matchesBranch &&
+        matchesFuelType &&
+        matchesOwnership &&
+        matchesAvailability &&
+        matchesInsurance &&
+        matchesPermit
+      );
+    })
+    .sort((a, b) => {
+      let valA = a[sortField];
+      let valB = b[sortField];
+      if (typeof valA === "string") {
+        valA = valA.toLowerCase();
+        valB = valB.toLowerCase();
+      }
+      if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+      if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+
+  const paginatedVehicles = processedVehicles.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  const totalPages = Math.ceil(processedVehicles.length / itemsPerPage);
+
+  const filteredVehicles = processedVehicles; // For backward compatibility with map and markers
 
   // Initialize and update map
   useEffect(() => {
@@ -178,28 +243,31 @@ export default function VehiclesListPage() {
   const getStatusColor = (status) => {
     switch (status) {
       case "Available":
-        return "bg-green-100 text-green-700";
+        return "bg-emerald-50 text-emerald-700 border border-emerald-100";
       case "Assigned":
-        return "bg-blue-100 text-blue-700";
+        return "bg-blue-50 text-blue-700 border border-blue-100";
       case "On Trip":
-        return "bg-orange-100 text-orange-700";
-      case "Maintenance":
-        return "bg-red-100 text-red-700";
-      case "Idle":
-        return "bg-gray-100 text-gray-700";
+        return "bg-amber-50 text-amber-700 border border-amber-100";
+      case "Under Maintenance":
+        return "bg-rose-50 text-rose-700 border border-rose-100";
+      case "Out of Service":
+        return "bg-zinc-800 text-zinc-100 border border-zinc-950";
       default:
-        return "bg-gray-100 text-gray-700";
+        return "bg-gray-50 text-gray-700 border border-gray-100";
     }
   };
 
-  const getInsuranceStyle = (expiry) => {
-    const expDate = new Date(expiry);
-    const today = new Date();
-    const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) return "text-red-600 font-bold";
-    if (diffDays <= 30) return "text-orange-600 font-bold";
-    return "text-gray-700";
+  const getDocStatusBadge = (status) => {
+    switch (status) {
+      case "Active":
+        return "bg-emerald-50 text-emerald-700 border border-emerald-200/60";
+      case "Expiring Soon":
+        return "bg-amber-50 text-amber-700 border border-amber-200/60 font-semibold";
+      case "Expired":
+        return "bg-rose-50 text-rose-700 border border-rose-200/60 font-bold animate-pulse";
+      default:
+        return "bg-gray-50 text-gray-600 border border-gray-200/60";
+    }
   };
 
   // Delete vehicle
@@ -352,10 +420,14 @@ export default function VehiclesListPage() {
                 >
                   <option>All Types</option>
                   <option>Truck</option>
+                  <option>Lorry</option>
                   <option>Van</option>
-                  <option>Tipper</option>
-                  <option>Trailer</option>
                   <option>Bus</option>
+                  <option>Pickup</option>
+                  <option>Trailer</option>
+                  <option>Mini Truck</option>
+                  <option>Tanker</option>
+                  <option>Container</option>
                 </select>
                 <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-[#64748B]">
                   <ChevronDown className="w-4 h-4" />
@@ -380,7 +452,7 @@ export default function VehiclesListPage() {
 
             {/* More Filters - Collapsible Section */}
             {showMoreFilters && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[#E7EAF0]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mt-4 pt-4 border-t border-[#E7EAF0]">
                 {/* Branch */}
                 <div className="relative">
                   <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block mb-2">Branch</label>
@@ -430,6 +502,7 @@ export default function VehiclesListPage() {
                     <option>All Ownerships</option>
                     <option>Owned</option>
                     <option>Leased</option>
+                    <option>Financed</option>
                   </select>
                   <span className="absolute bottom-2.5 right-3 flex items-center pointer-events-none text-[#64748B]">
                     <ChevronDown className="w-3.5 h-3.5" />
@@ -452,6 +525,44 @@ export default function VehiclesListPage() {
                     <ChevronDown className="w-3.5 h-3.5" />
                   </span>
                 </div>
+
+                {/* Insurance Status Filter */}
+                <div className="relative">
+                  <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block mb-2">Insurance Status</label>
+                  <select
+                    value={insuranceFilter}
+                    onChange={(e) => setInsuranceFilter(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+                  >
+                    <option>All Insurances</option>
+                    <option value="Active">Active</option>
+                    <option value="Expired">Expired</option>
+                    <option value="Expiring Soon">Expiring Soon</option>
+                    <option value="Pending">Pending</option>
+                  </select>
+                  <span className="absolute bottom-2.5 right-3 flex items-center pointer-events-none text-[#64748B]">
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+
+                {/* Permit Status Filter */}
+                <div className="relative">
+                  <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block mb-2">Permit Status</label>
+                  <select
+                    value={permitFilter}
+                    onChange={(e) => setPermitFilter(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+                  >
+                    <option>All Permits</option>
+                    <option value="Active">Active</option>
+                    <option value="Expired">Expired</option>
+                    <option value="Expiring Soon">Expiring Soon</option>
+                    <option value="Pending">Pending</option>
+                  </select>
+                  <span className="absolute bottom-2.5 right-3 flex items-center pointer-events-none text-[#64748B]">
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </span>
+                </div>
               </div>
             )}
           </div>
@@ -462,23 +573,29 @@ export default function VehiclesListPage() {
               <table className="w-full text-left border-collapse text-sm font-nunito">
                 <thead>
                   <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
-                    <th className="py-4 px-6 text-left whitespace-nowrap">
-                      VEHICLE
+                    <th className="py-4 px-6 text-left whitespace-nowrap cursor-pointer hover:bg-gray-100/50" onClick={() => handleSort("plateNumber")}>
+                      Registration No {sortField === "plateNumber" && (sortDirection === "asc" ? "▲" : "▼")}
                     </th>
-                    <th className="py-4 px-6 text-left whitespace-nowrap">
-                      PLATE NO.
+                    <th className="py-4 px-6 text-left whitespace-nowrap cursor-pointer hover:bg-gray-100/50" onClick={() => handleSort("name")}>
+                      Vehicle Name {sortField === "name" && (sortDirection === "asc" ? "▲" : "▼")}
                     </th>
-                    <th className="py-4 px-6 text-left whitespace-nowrap">
-                      TYPE
+                    <th className="py-4 px-6 text-left whitespace-nowrap cursor-pointer hover:bg-gray-100/50" onClick={() => handleSort("type")}>
+                      Type {sortField === "type" && (sortDirection === "asc" ? "▲" : "▼")}
                     </th>
-                    <th className="py-4 px-6 text-left whitespace-nowrap">
-                      STATUS
+                    <th className="py-4 px-6 text-left whitespace-nowrap cursor-pointer hover:bg-gray-100/50" onClick={() => handleSort("driver")}>
+                      Assigned Driver {sortField === "driver" && (sortDirection === "asc" ? "▲" : "▼")}
                     </th>
-                    <th className="py-4 px-6 text-left whitespace-nowrap">
-                      DRIVER
+                    <th className="py-4 px-6 text-left whitespace-nowrap cursor-pointer hover:bg-gray-100/50" onClick={() => handleSort("status")}>
+                      Availability Status {sortField === "status" && (sortDirection === "asc" ? "▲" : "▼")}
                     </th>
-                    <th className="py-4 px-6 text-left whitespace-nowrap">
-                      INSURANCE
+                    <th className="py-4 px-6 text-left whitespace-nowrap cursor-pointer hover:bg-gray-100/50" onClick={() => handleSort("insuranceStatus")}>
+                      Insurance {sortField === "insuranceStatus" && (sortDirection === "asc" ? "▲" : "▼")}
+                    </th>
+                    <th className="py-4 px-6 text-left whitespace-nowrap cursor-pointer hover:bg-gray-100/50" onClick={() => handleSort("permitStatus")}>
+                      Permit {sortField === "permitStatus" && (sortDirection === "asc" ? "▲" : "▼")}
+                    </th>
+                    <th className="py-4 px-6 text-left whitespace-nowrap cursor-pointer hover:bg-gray-100/50" onClick={() => handleSort("updatedAt")}>
+                      Last Updated {sortField === "updatedAt" && (sortDirection === "asc" ? "▲" : "▼")}
                     </th>
                     <th className="py-4 px-6 text-center whitespace-nowrap">
                       ACTIONS
@@ -488,16 +605,19 @@ export default function VehiclesListPage() {
                 <tbody>
                    {loading ? (
                     <tr>
-                      <td colSpan={7} className="py-16 text-center">
+                      <td colSpan={9} className="py-16 text-center">
                         <div className="flex flex-col items-center gap-3 text-[#64748B]">
                           <Loader className="w-7 h-7 animate-spin text-[#B45A0A]" />
                           <span className="text-sm font-semibold">Loading vehicles...</span>
                         </div>
                       </td>
                     </tr>
-                  ) : filteredVehicles.length > 0 ? (
-                    filteredVehicles.map((vehicle, idx) => (
+                  ) : paginatedVehicles.length > 0 ? (
+                    paginatedVehicles.map((vehicle, idx) => (
                       <tr key={vehicle._id} className="border-b border-[#E7EAF0]/60 hover:bg-[#F5F7FB]/50 transition-colors">
+                        <td className="py-4 px-6 whitespace-nowrap font-poppins font-semibold text-xs tracking-wider text-[#1E293B]">
+                          {vehicle.plateNumber || vehicle.vehicleNumber}
+                        </td>
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex flex-col">
                             <p className="font-bold text-[#1E293B] text-sm">{vehicle.name}</p>
@@ -505,23 +625,34 @@ export default function VehiclesListPage() {
                           </div>
                         </td>
                         <td className="py-4 px-6 whitespace-nowrap">
-                          <p className="font-bold text-[#1E293B] uppercase text-sm">{vehicle.plateNumber || vehicle.vehicleNumber}</p>
-                        </td>
-                        <td className="py-4 px-6 whitespace-nowrap">
                           <p className="text-[#64748B] text-sm">{vehicle.type}</p>
                         </td>
                         <td className="py-4 px-6 whitespace-nowrap">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold inline-block ${getStatusColor(vehicle.status)}`}>
+                          {vehicle.driver === "Unassigned" ? (
+                            <span className="text-rose-600 font-bold text-xs bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-lg flex items-center w-max gap-1">
+                              Unassigned
+                            </span>
+                          ) : (
+                            <span className="text-[#1E293B] font-medium text-xs">{vehicle.driver}</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-6 whitespace-nowrap">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider inline-block ${getStatusColor(vehicle.status)}`}>
                             {vehicle.status}
                           </span>
                         </td>
                         <td className="py-4 px-6 whitespace-nowrap">
-                          <p className="text-[#64748B] text-sm">{vehicle.driver}</p>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider inline-block ${getDocStatusBadge(vehicle.insuranceStatus)}`}>
+                            {vehicle.insuranceStatus}
+                          </span>
                         </td>
                         <td className="py-4 px-6 whitespace-nowrap">
-                          <p className={`text-xs font-bold ${getInsuranceStyle(vehicle.insuranceExpiry)}`}>
-                            {new Date(vehicle.insuranceExpiry).toLocaleDateString("en-IN")}
-                          </p>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider inline-block ${getDocStatusBadge(vehicle.permitStatus)}`}>
+                            {vehicle.permitStatus}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 whitespace-nowrap text-xs text-[#64748B]">
+                          {new Date(vehicle.updatedAt || vehicle.createdAt).toLocaleDateString("en-IN")}
                         </td>
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
@@ -555,7 +686,7 @@ export default function VehiclesListPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="7" className="px-6 py-8 text-center">
+                      <td colSpan="9" className="px-6 py-8 text-center">
                         <p className="text-[#64748B] font-medium">No vehicles found</p>
                       </td>
                     </tr>
@@ -565,11 +696,44 @@ export default function VehiclesListPage() {
             </div>
 
             {/* Table Footer */}
-            <div className="px-6 py-4 bg-[#F5F7FB] border-t border-[#E7EAF0] flex items-center justify-between">
+            <div className="px-6 py-4 bg-[#F5F7FB] border-t border-[#E7EAF0] flex items-center justify-between flex-wrap gap-4 select-none">
               <p className="text-xs font-medium text-[#64748B]">
-                Showing <span className="font-bold text-[#1E293B]">{filteredVehicles.length}</span> of{" "}
-                <span className="font-bold text-[#1E293B]">{vehicles.length}</span> vehicles
+                Showing <span className="font-bold text-[#1E293B]">{paginatedVehicles.length}</span> of{" "}
+                <span className="font-bold text-[#1E293B]">{processedVehicles.length}</span> vehicles
               </p>
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    className="px-3 py-1.5 border border-[#E7EAF0] rounded-lg text-xs font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-white transition-colors cursor-pointer disabled:opacity-40 disabled:hover:bg-transparent"
+                  >
+                    Previous
+                  </button>
+                  {[...Array(totalPages)].map((_, i) => (
+                    <button
+                      key={i + 1}
+                      onClick={() => setCurrentPage(i + 1)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        currentPage === i + 1
+                          ? "bg-[#B45A0A] text-white"
+                          : "border border-[#E7EAF0] text-[#64748B] hover:text-[#1E293B] hover:bg-white"
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    className="px-3 py-1.5 border border-[#E7EAF0] rounded-lg text-xs font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-white transition-colors cursor-pointer disabled:opacity-40 disabled:hover:bg-transparent"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

@@ -32,10 +32,6 @@ import NotificationDetails from "@/roles/admin/pages/NotificationDetails";
 import UserManagement from "@/roles/admin/pages/UserManagement";
 import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
 import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
-import FastagDashboard from "@/roles/manager/pages/FastagDashboard";
-import TollHistoryPage from "@/roles/manager/pages/TollHistoryPage";
-import FastagReceiptPage from "@/roles/manager/pages/FastagReceiptPage";
-import FastagRechargePage from "@/roles/manager/pages/FastagRechargePage";
 import VehicleManagement from "@/roles/manager/pages/VehicleManagement";
 import AddVehiclePage from "@/roles/manager/pages/AddVehiclePage";
 import VehiclesListPage from "@/roles/manager/pages/VehiclesListPage";
@@ -48,7 +44,6 @@ import AssignVehiclePage from "@/roles/manager/pages/AssignVehiclePage";
 import AddDriverPage from "@/roles/manager/pages/AddDriverPage";
 import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
 import TripsListPage from "@/roles/manager/pages/TripsListPage";
-import RouteOptimizationPage from "@/roles/manager/pages/RouteOptimizationPage";
 import CreateTripPage from "@/roles/manager/pages/CreateTripPage";
 import FuelManagementPage from "@/roles/manager/pages/FuelManagementPage";
 import MaintenanceManagementPage from "@/roles/manager/pages/MaintenanceManagementPage";
@@ -60,8 +55,6 @@ import ArchivedReportsPage from "@/roles/manager/pages/ArchivedReportsPage";
 import ManageSchedulesPage from "@/roles/manager/pages/ManageSchedulesPage";
 import SettingsPage from "@/roles/manager/pages/SettingsPage";
 import ChangePasswordPage from "@/roles/manager/pages/ChangePasswordPage";
-import EWayBillsPage from "@/roles/manager/pages/EWayBillsPage";
-import GenerateEWayBillPage from "@/roles/manager/pages/GenerateEWayBillPage";
 import UpcomingServicesPage from "@/roles/manager/pages/UpcomingServicesPage";
 import ScheduleServicePage from "@/roles/manager/pages/ScheduleServicePage";
 import ServiceDetailsPage from "@/roles/manager/pages/ServiceDetailsPage";
@@ -70,12 +63,7 @@ import ProfilePage from "@/roles/manager/pages/ProfilePage";
 import EditProfilePage from "@/roles/manager/pages/EditProfilePage";
 import ManagerResetPasswordPage from "@/roles/manager/pages/ManagerResetPasswordPage";
 import TwoFactorPage from "@/roles/manager/pages/TwoFactorPage";
-import DocumentManagement from "@/roles/manager/pages/DocumentManagement";
-import ViewDocument from "@/roles/manager/pages/ViewDocument";
-import EditDocument from "@/roles/manager/pages/EditDocument";
-import UploadDocument from "@/roles/manager/pages/UploadDocument";
-import DocumentsListPage from "@/roles/manager/pages/DocumentsListPage";
-import ComplianceAuditPage from "@/roles/manager/pages/ComplianceAuditPage";
+// Imports for document pages removed
 // import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
 // import TripsListPage from "@/roles/manager/pages/TripsListPage";
 
@@ -153,27 +141,16 @@ export default function App() {
               <Route path="/manager/vehicle-edit/:id" element={<VehicleEditPage />} />
               <Route path="/manager/add-vehicle" element={<AddVehiclePage />} />
               <Route path="/manager/map" element={<FleetMapPage />} />
-              <Route path="/manager/fastag" element={<FastagDashboard />} />
-              <Route path="/manager/fastag/history" element={<TollHistoryPage />} />
-              <Route path="/manager/fastag/receipt/:id" element={<FastagReceiptPage />} />
-              <Route path="/manager/fastag/recharge" element={<FastagRechargePage />} />
+
               {/* Placeholder routes for other sidebar items */}
               <Route path="/manager/vehicles" element={<div className="p-8"><h1 className="text-2xl font-bold">Vehicles Page</h1></div>} />
 
 
               <Route path="/manager/tracking" element={<div className="p-8"><h1 className="text-2xl font-bold">Live Tracking Page</h1></div>} />
-              <Route path="/manager/routes" element={<div className="p-8"><h1 className="text-2xl font-bold">Route Optimization Page</h1></div>} />
 
-              <Route path="/manager/ewaybills" element={<div className="p-8"><h1 className="text-2xl font-bold">E-Way Bills Page</h1></div>} />
-              <Route path="/manager/eway" element={<EWayBillsPage />} />
-              <Route path="/manager/eway/generate" element={<GenerateEWayBillPage />} />
+
+
               <Route path="/manager/settings" element={<SettingsPage />} />
-              <Route path="/manager/documents" element={<DocumentManagement />} />
-              <Route path="/manager/documents/list" element={<DocumentsListPage />} />
-              <Route path="/manager/documents/compliance-audit" element={<ComplianceAuditPage />} />
-              <Route path="/manager/documents/upload" element={<UploadDocument />} />
-              <Route path="/manager/documents/view/:id" element={<ViewDocument />} />
-              <Route path="/manager/documents/edit/:id" element={<EditDocument />} />
               <Route path="/manager/drivers" element={<DriversManagementPage />} />
               <Route path="/manager/drivers-list" element={<DriversListPage />} />
               <Route path="/manager/trips" element={<TripsManagementPage />} />
@@ -186,7 +163,7 @@ export default function App() {
               <Route path="/manager/driver-assign-vehicle/:id" element={<AssignVehiclePage />} />
               <Route path="/manager/add-driver" element={<AddDriverPage />} />
               <Route path="/manager/edit-driver/:id" element={<AddDriverPage />} />
-              <Route path="/manager/route" element={<RouteOptimizationPage />} />
+
               <Route path="/manager/fuel" element={<FuelManagementPage />} />
               <Route path="/manager/analytics" element={<AnalyticsPage />} />
               <Route path="/manager/reports" element={<ReportsPage />} />

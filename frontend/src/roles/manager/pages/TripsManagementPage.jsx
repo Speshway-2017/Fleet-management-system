@@ -17,6 +17,9 @@ import {
   TrendingUp,
   CheckSquare,
   Percent,
+  Play,
+  CheckCircle2,
+  Pencil,
   SlidersHorizontal,
   MapPin,
   User,
@@ -41,8 +44,10 @@ export default function TripsManagementPage() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("All Trips"); // All Trips, Active, Scheduled, Completed, Delayed
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState(null);
+  const [editingTrip, setEditingTrip] = useState(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -121,33 +126,24 @@ export default function TripsManagementPage() {
     }
 
     try {
-      const tripNum = `TRP-${Math.floor(1000 + Math.random() * 9000)}`;
+      const tripNum = `TRP-${Math.floor(100000 + Math.random() * 900000)}`;
       await managerApi.createTrip({
         tripNumber: tripNum,
         vehicle: selectedVehicle._id,
         driver: selectedDriver._id,
-        driverName: selectedDriver.name,
-        driverPhone: selectedDriver.phone,
-        vehicleName: selectedVehicle.name,
-        vehiclePlate: selectedVehicle.plateNumber,
+        driverName: selectedDriver.name || selectedDriver.fullName,
+        driverPhone: selectedDriver.phone || selectedDriver.phoneNumber,
+        vehicleName: selectedVehicle.name || selectedVehicle.vehicleName,
+        vehiclePlate: selectedVehicle.plateNumber || selectedVehicle.vehicleNumber,
         startLocation: formData.startLocation,
         endLocation: formData.endLocation,
         departureTime: formData.departureTime,
         eta: formData.eta,
         status: formData.status,
-        description: formData.description || "General Transport"
-      });
-
-      // Update vehicle status
-      await managerApi.updateVehicle(selectedVehicle._id, {
-        driver: selectedDriver.name,
-        status: formData.status === "On Transit" ? "On Trip" : "Active"
-      });
-
-      // Update driver status
-      await managerApi.updateDriver(selectedDriver._id, {
-        assignedVehicle: selectedVehicle.plateNumber,
-        status: formData.status === "On Transit" ? "On Trip" : "Available"
+        description: formData.description || "General Transport",
+        cargoType: formData.cargoType || "",
+        cargoWeight: formData.cargoWeight ? Number(formData.cargoWeight) : undefined,
+        tripNotes: formData.tripNotes || ""
       });
 
       setShowCreateModal(false);
@@ -159,12 +155,88 @@ export default function TripsManagementPage() {
         departureTime: "",
         eta: "",
         status: "Scheduled",
-        description: ""
+        description: "",
+        cargoType: "",
+        cargoWeight: "",
+        tripNotes: ""
       });
       toast.success("New trip created successfully!");
       fetchTrips();
     } catch (error) {
-      toast.error("Failed to create trip");
+      toast.error(error.response?.data?.message || "Failed to create trip");
+      console.error(error);
+    }
+  };
+
+  const handleStartTrip = async (id) => {
+    try {
+      await managerApi.updateTrip(id, { status: "In Progress" });
+      toast.success("Trip started successfully!");
+      fetchTrips();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to start trip");
+      console.error(err);
+    }
+  };
+
+  const handleEndTrip = async (id) => {
+    try {
+      await managerApi.updateTrip(id, { status: "Completed" });
+      toast.success("Trip completed successfully!");
+      fetchTrips();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to end trip");
+      console.error(err);
+    }
+  };
+
+  const handleOpenEdit = (t) => {
+    fetchResources();
+    setEditingTrip(t);
+    setFormData({
+      driverId: t.driver?._id || t.driver || "",
+      vehicleId: t.vehicle?._id || t.vehicle || "",
+      startLocation: t.startLocation,
+      endLocation: t.endLocation,
+      departureTime: t.departureTime ? new Date(t.departureTime).toISOString().slice(0, 16) : "",
+      eta: t.eta ? new Date(t.eta).toISOString().slice(0, 16) : "",
+      status: t.status,
+      description: t.description || "",
+      cargoType: t.cargoType || "",
+      cargoWeight: t.cargoWeight || "",
+      tripNotes: t.tripNotes || ""
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEditTrip = async (e) => {
+    e.preventDefault();
+    if (!formData.startLocation || !formData.endLocation || !formData.departureTime || !formData.eta) {
+      toast.error("Required fields cannot be empty");
+      return;
+    }
+    if (formData.startLocation.trim().toLowerCase() === formData.endLocation.trim().toLowerCase()) {
+      toast.error("Pickup and Destination cannot be the same");
+      return;
+    }
+
+    try {
+      await managerApi.updateTrip(editingTrip.id, {
+        startLocation: formData.startLocation,
+        endLocation: formData.endLocation,
+        departureTime: formData.departureTime,
+        eta: formData.eta,
+        description: formData.description,
+        cargoType: formData.cargoType,
+        cargoWeight: formData.cargoWeight ? Number(formData.cargoWeight) : undefined,
+        tripNotes: formData.tripNotes
+      });
+      toast.success("Trip updated successfully");
+      setShowEditModal(false);
+      setEditingTrip(null);
+      fetchTrips();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update trip");
       console.error(error);
     }
   };
@@ -197,9 +269,9 @@ export default function TripsManagementPage() {
   const getTabFilteredTrips = () => {
     switch (activeTab) {
       case "Active":
-        return trips.filter(t => t.status === "On Transit");
+        return trips.filter(t => t.status === "In Progress" || t.status === "On Transit");
       case "Scheduled":
-        return trips.filter(t => t.status === "Scheduled");
+        return trips.filter(t => t.status === "Scheduled" || t.status === "Assigned");
       case "Completed":
         return trips.filter(t => t.status === "Completed");
       case "Delayed":
@@ -218,6 +290,7 @@ export default function TripsManagementPage() {
         (t.tripNumber || "").toLowerCase().includes(q) ||
         (t.driverName || "").toLowerCase().includes(q) ||
         (t.vehicleName || "").toLowerCase().includes(q) ||
+        (t.vehiclePlate || "").toLowerCase().includes(q) ||
         (t.startLocation || "").toLowerCase().includes(q) ||
         (t.endLocation || "").toLowerCase().includes(q) ||
         (t.description || "").toLowerCase().includes(q)
@@ -231,14 +304,17 @@ export default function TripsManagementPage() {
 
   const getStatusBadge = (status) => {
     switch (status) {
+      case "In Progress":
       case "On Transit":
-        return "bg-[#FDF3EC] text-[#B45A0A] border border-[#FDF3EC]";
+        return "bg-[#FDF3EC] text-[#B45A0A] border border-[#FDF3EC] font-semibold";
       case "Scheduled":
-        return "bg-indigo-50 text-indigo-700 border border-indigo-100";
+        return "bg-blue-50 text-blue-700 border border-blue-100 font-semibold";
+      case "Assigned":
+        return "bg-indigo-50 text-indigo-700 border border-indigo-150 font-semibold";
       case "Completed":
-        return "bg-slate-900 text-white border border-slate-950";
-      case "Delayed":
-        return "bg-red-50 text-red-600 border border-red-100";
+        return "bg-slate-900 text-white border border-slate-950 font-semibold";
+      case "Cancelled":
+        return "bg-red-50 text-red-600 border border-red-100 font-semibold";
       default:
         return "bg-gray-100 text-gray-500";
     }
@@ -397,19 +473,21 @@ export default function TripsManagementPage() {
                 <thead>
                   <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
                     <th className="py-4 px-6 whitespace-nowrap">Trip ID</th>
-                    <th className="py-4 px-6 whitespace-nowrap">Driver</th>
-                    <th className="py-4 px-6 whitespace-nowrap">Vehicle</th>
-                    <th className="py-4 px-6 whitespace-nowrap">Route</th>
-                    <th className="py-4 px-6 whitespace-nowrap">Departure</th>
-                    <th className="py-4 px-6 whitespace-nowrap">ETA</th>
-                    <th className="py-4 px-6 whitespace-nowrap">Status</th>
+                    <th className="py-4 px-6 whitespace-nowrap">Pickup Location</th>
+                    <th className="py-4 px-6 whitespace-nowrap">Destination</th>
+                    <th className="py-4 px-6 whitespace-nowrap">Assigned Driver</th>
+                    <th className="py-4 px-6 whitespace-nowrap">Assigned Vehicle</th>
+                    <th className="py-4 px-6 whitespace-nowrap">Trip Status</th>
+                    <th className="py-4 px-6 whitespace-nowrap">Pickup Date</th>
+                    <th className="py-4 px-6 whitespace-nowrap">Expected Arrival</th>
+                    <th className="py-4 px-6 whitespace-nowrap">Distance</th>
                     <th className="py-4 px-6 text-right whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E7EAF0]/60">
                   {currentRows.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-gray-400 font-medium font-nunito">
+                      <td colSpan={10} className="py-12 text-center text-gray-400 font-medium font-nunito">
                         No trips found matching the selections.
                       </td>
                     </tr>
@@ -429,14 +507,24 @@ export default function TripsManagementPage() {
                           </div>
                         </td>
 
+                        {/* Pickup Location */}
+                        <td className="py-4 px-6 whitespace-nowrap font-semibold text-xs text-[#1E293B]">
+                          {t.startLocation}
+                        </td>
+
+                        {/* Destination */}
+                        <td className="py-4 px-6 whitespace-nowrap font-semibold text-xs text-[#1E293B]">
+                          {t.endLocation}
+                        </td>
+
                         {/* Driver */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex flex-col">
                             <span className="font-bold text-sm text-[#1E293B] font-poppins group-hover:text-[#B45A0A] transition-colors">
-                              {t.driverName}
+                              {t.driverName || "Unassigned"}
                             </span>
                             <span className="text-[10px] text-[#64748B] mt-0.5 block font-semibold">
-                              {t.driverPhone}
+                              {t.driverPhone || ""}
                             </span>
                           </div>
                         </td>
@@ -445,23 +533,19 @@ export default function TripsManagementPage() {
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex flex-col">
                             <span className="font-bold text-xs text-[#1E293B]">
-                              {t.vehicleName}
+                              {t.vehicleName || "Unassigned"}
                             </span>
                             <span className="text-[10px] font-bold text-indigo-500 mt-0.5 uppercase tracking-wide block font-poppins">
-                              {t.vehiclePlate}
+                              {t.vehiclePlate || ""}
                             </span>
                           </div>
                         </td>
 
-                        {/* Route Map indicator */}
+                        {/* Status */}
                         <td className="py-4 px-6 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <div className="flex flex-col">
-                              <span className="font-bold text-xs text-[#1E293B]">{t.startLocation}</span>
-                              <div className="h-2 border-l border-dashed border-gray-300 ml-1.5 my-0.5"></div>
-                              <span className="font-bold text-xs text-[#1E293B]">{t.endLocation}</span>
-                            </div>
-                          </div>
+                          <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(t.status)}`}>
+                            {t.status === "Completed" ? "Complete" : t.status}
+                          </span>
                         </td>
 
                         {/* Departure */}
@@ -480,16 +564,15 @@ export default function TripsManagementPage() {
                           </div>
                         </td>
 
-                        {/* Status */}
-                        <td className="py-4 px-6 whitespace-nowrap">
-                          <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(t.status)}`}>
-                            {t.status}
-                          </span>
+                        {/* Distance */}
+                        <td className="py-4 px-6 whitespace-nowrap text-xs text-[#1E293B] font-bold">
+                          {t.status === "Completed" ? (t.actualDistance || t.estimatedDistance || 120) : (t.estimatedDistance || 120)} KM
                         </td>
 
                         {/* Actions */}
                         <td className="py-4 px-6 text-right select-none whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* View */}
                             <button
                               onClick={() => navigate(`/manager/trip-details/${t.id}`)}
                               title="View details"
@@ -497,16 +580,44 @@ export default function TripsManagementPage() {
                             >
                               <Eye className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={() => {
+
+
+
+                            {/* End Trip */}
+                            {t.status === "In Progress" && (
+                              <button
+                                onClick={() => handleEndTrip(t.id)}
+                                title="End Trip"
+                                className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                              </button>
+                            )}
+
+                            {/* Edit */}
+                            {(t.status === "Scheduled" || t.status === "Assigned") && (
+                              <button
+                                onClick={() => handleOpenEdit(t)}
+                                title="Edit trip"
+                                className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                            )}
+
+                            {/* Delete */}
+                            {(t.status === "Scheduled" || t.status === "Assigned") && (
+                              <button
+                                onClick={() => {
                                   setSelectedTrip(t);
                                   setShowDeleteConfirm(true);
-                              }}
-                              title="Delete trip record"
-                              className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                                }}
+                                title="Delete trip record"
+                                className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
 
@@ -531,12 +642,12 @@ export default function TripsManagementPage() {
 
             <div className="space-y-6">
               <div>
-                <h3 className="text-xl font-bold font-poppins text-[#1E293B] flex items-center gap-2 text-[#EF4444]">
+                <h3 className="text-xl font-bold font-poppins flex items-center gap-2 text-[#EF4444]">
                   <AlertTriangle className="w-6 h-6 animate-pulse" />
                   Cancel Trip Dispatch
                 </h3>
                 <p className="text-xs text-[#64748B] mt-1 font-medium">
-                  Are you sure you want to cancel and delete trip logs for dispatch <strong>{selectedTrip.id}</strong>? This action cannot be undone.
+                  Are you sure you want to cancel and delete trip logs for dispatch <strong>{selectedTrip.tripNumber}</strong>? This action cannot be undone.
                 </p>
               </div>
 
@@ -555,6 +666,164 @@ export default function TripsManagementPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- EDIT TRIP MODAL --- */}
+      {showEditModal && editingTrip && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in select-none">
+          <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl border border-gray-100 animate-scale-up">
+            {/* Header */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-slate-900 text-white shrink-0 font-poppins">
+              <div className="flex items-center gap-2">
+                <Route className="w-5 h-5 text-amber-500" />
+                <h3 className="font-bold text-sm text-white">Edit Trip Specifications: {editingTrip.tripNumber}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowEditModal(false); setEditingTrip(null); }}
+                className="p-1.5 hover:bg-white/10 rounded-xl text-gray-300 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleEditTrip} className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50 custom-scrollbar text-left">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Start Location */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Start Location *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.startLocation}
+                    onChange={(e) => setFormData({ ...formData, startLocation: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+
+                {/* End Location */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Destination *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.endLocation}
+                    onChange={(e) => setFormData({ ...formData, endLocation: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Departure Time */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Departure Time *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={formData.departureTime}
+                    onChange={(e) => setFormData({ ...formData, departureTime: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+
+                {/* ETA */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Estimated Arrival (ETA) *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={formData.eta}
+                    onChange={(e) => setFormData({ ...formData, eta: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Cargo Type */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Cargo Type (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.cargoType}
+                    onChange={(e) => setFormData({ ...formData, cargoType: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+
+                {/* Cargo Weight */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Cargo Weight (Optional, kg)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.cargoWeight}
+                    onChange={(e) => setFormData({ ...formData, cargoWeight: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Cargo Description */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Cargo Description
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+
+                {/* Trip Notes */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Trip Notes (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.tripNotes}
+                    onChange={(e) => setFormData({ ...formData, tripNotes: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="p-4 border-t border-gray-100 bg-white text-right shrink-0 flex items-center justify-end gap-3 rounded-b-2xl">
+                <button
+                  type="button"
+                  onClick={() => { setShowEditModal(false); setEditingTrip(null); }}
+                  className="px-5 py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

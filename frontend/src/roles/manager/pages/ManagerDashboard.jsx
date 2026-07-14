@@ -1,32 +1,59 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { Icon } from "@iconify/react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 import { managerApi } from "../api/managerApi";
-
-// Fix Leaflet marker icons
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png"
-});
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function ManagerDashboard() {
   const navigate = useNavigate();
-  const [zone, setZone] = useState("All Zones");
-  const mapRef = useRef(null);
-  const mapInstanceRef = useRef(null);
-  const markersRef = useRef([]);
 
   const [vehicles, setVehicles] = useState([]);
   const [dbStats, setDbStats] = useState(null);
-  const [documents, setDocuments] = useState([]);
   const [fuelRecords, setFuelRecords] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activities, setActivities] = useState([]);
+
+  const formatTotalEarnings = (val) => {
+    if (val === null || val === undefined) return "₹0";
+
+    // If already pre-formatted containing units
+    if (typeof val === 'string' && (val.includes('L') || val.includes('Cr') || val.includes('cr') || val.includes('l'))) {
+      let cleanVal = val.trim();
+      const match = cleanVal.match(/(\d+\.\d)(\d+)\s*(L|Cr|cr|l)/);
+      if (match) {
+        cleanVal = cleanVal.replace(/(\d+\.\d)\d+(\s*(L|Cr|cr|l))/, '$1 $3');
+      }
+      return cleanVal;
+    }
+
+    let num = 0;
+    if (typeof val === 'number') {
+      num = val;
+    } else {
+      const clean = val.toString().replace(/[^\d.]/g, '');
+      num = parseFloat(clean);
+      if (isNaN(num)) num = 0;
+    }
+
+    if (num >= 10000000) {
+      const formatted = (num / 10000000).toFixed(1);
+      const clean = parseFloat(formatted);
+      return `₹${clean} Cr`;
+    }
+    if (num >= 100000) {
+      const formatted = (num / 100000).toFixed(1);
+      const clean = parseFloat(formatted);
+      return `₹${clean} L`;
+    }
+    if (num >= 1000) {
+      const formatted = (num / 1000).toFixed(1);
+      const clean = parseFloat(formatted);
+      return `₹${clean} K`;
+    }
+    return `₹${num}`;
+  };
 
   const normaliseVehicle = (v) => ({
     ...v,
@@ -41,15 +68,15 @@ export default function ManagerDashboard() {
   });
 
   useEffect(() => {
-    const fetchAllData = async () => {
+    const fetchAllData = async (isInitial = false) => {
       try {
-        setLoading(true);
-        const [dashRes, vehRes, docRes, fuelRes, maintRes] = await Promise.all([
+        if (isInitial) setLoading(true);
+        const [dashRes, vehRes, fuelRes, maintRes, actRes] = await Promise.all([
           managerApi.getDashboard(),
           managerApi.getVehicles(),
-          managerApi.getDocuments(),
           managerApi.getFuelRecords(),
-          managerApi.getMaintenance()
+          managerApi.getMaintenance(),
+          managerApi.getActivities()
         ]);
         
         const rawVeh = vehRes.data?.data || vehRes.data || [];
@@ -58,116 +85,25 @@ export default function ManagerDashboard() {
         const rawDash = dashRes.data?.data || dashRes.data || {};
         setDbStats(rawDash);
 
-        const rawDocs = docRes.data?.data || docRes.data || [];
-        setDocuments(rawDocs);
-
         setFuelRecords(fuelRes.data?.data || fuelRes.data || []);
         setMaintenance(maintRes.data?.data || maintRes.data || []);
+        setActivities(actRes.data?.data || actRes.data || []);
       } catch (err) {
         console.error("Failed to load dashboard data", err);
       } finally {
-        setLoading(false);
+        if (isInitial) setLoading(false);
       }
     };
-    fetchAllData();
+    fetchAllData(true);
+
+    const intervalId = setInterval(() => {
+      fetchAllData(false);
+    }, 5000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
-  // Filter vehicles by zone
-  const getZoneVehicles = () => {
-    if (zone === "All Zones") return vehicles;
 
-    const zoneMap = {
-      "North": ["Delhi", "Punjab"],
-      "South": ["Chennai", "Hyderabad", "Bengaluru"],
-      "East": ["Kolkata"],
-      "West": ["Mumbai", "Pune", "Ahmedabad", "Gujarat"]
-    };
-
-    const branches = zoneMap[zone] || [];
-    return vehicles.filter(v => branches.includes(v.branch));
-  };
-
-  const filteredVehicles = getZoneVehicles();
-
-  // Get marker color based on status
-  const getMarkerColor = (status) => {
-    switch (status) {
-      case "Available":
-        return "#22c55e"; // green
-      case "On Trip":
-      case "Active":
-        return "#B45A0A"; // orange
-      case "Maintenance":
-        return "#ef4444"; // red
-      case "Idle":
-      case "Inactive":
-        return "#6b7280"; // gray
-      default:
-        return "#6b7280";
-    }
-  };
-
-  // Get coordinates for vehicles
-  const getVehicleCoordinates = (branch, index) => {
-    const locations = {
-      "Pune": [18.5204, 73.8567],
-      "Mumbai": [19.076, 72.8777],
-      "Delhi": [28.7041, 77.1025],
-      "Bengaluru": [12.9716, 77.5946],
-      "Chennai": [13.0827, 80.2707],
-      "Hyderabad": [17.3850, 78.4867],
-      "Kolkata": [22.5726, 88.3639],
-      "Ahmedabad": [23.0225, 72.5714],
-      "Gujarat": [22.2587, 71.1924],
-      "Punjab": [31.1471, 75.3412]
-    };
-
-    const baseCoord = locations[branch] || [20.5937, 78.9629];
-    const offset = (index % 5) * 0.04;
-    return [baseCoord[0] + offset, baseCoord[1] + offset];
-  };
-
-  // Initialize and update map
-  useEffect(() => {
-    if (!mapRef.current) return;
-
-    if (!mapInstanceRef.current) {
-      mapInstanceRef.current = L.map(mapRef.current).setView([20.5937, 78.9629], 5); // Center of India
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19
-      }).addTo(mapInstanceRef.current);
-    }
-
-    // Clear existing markers
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = [];
-
-    // Add markers for each vehicle
-    filteredVehicles.forEach((vehicle, idx) => {
-      const coordinates = getVehicleCoordinates(vehicle.branch, idx);
-      const color = getMarkerColor(vehicle.status);
-      const marker = L.circleMarker(coordinates, {
-        radius: 8,
-        fillColor: color,
-        color: color,
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.8
-      })
-        .addTo(mapInstanceRef.current)
-        .bindPopup(
-          `<div class="font-bold text-sm">${vehicle.name}</div>
-           <div class="text-xs text-gray-600">${vehicle.plateNumber}</div>
-           <div class="text-xs text-gray-600">Status: ${vehicle.status}</div>
-           <div class="text-xs text-gray-600">Driver: ${vehicle.driver}</div>
-           <div class="text-xs text-gray-600">Branch: ${vehicle.branch}</div>`
-        );
-
-      markersRef.current.push(marker);
-    });
-  }, [filteredVehicles]);
 
   const dashboardStats = [
     {
@@ -201,14 +137,8 @@ export default function ManagerDashboard() {
       color: "bg-white",
     },
     {
-      label: "Fuel Expense",
-      value: dbStats?.fuelExpense ?? "₹0",
-      icon: "material-symbols:local-gas-station-outline",
-      color: "bg-white",
-    },
-    {
       label: "Total Earnings",
-      value: dbStats?.totalEarnings ?? "₹0",
+      value: formatTotalEarnings(dbStats?.totalEarnings),
       icon: "material-symbols:payments-outline",
       color: "bg-black",
     },
@@ -243,7 +173,7 @@ export default function ManagerDashboard() {
         }}
       >
         <div
-          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-7 gap-[12px] w-full box-border"
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-6 gap-[12px] w-full box-border"
         >
           {dashboardStats.map((stat, index) => (
             <div
@@ -274,7 +204,15 @@ export default function ManagerDashboard() {
                 <div className="flex items-end justify-between" style={{ marginTop: 'auto', gap: '8px' }}>
                   <span
                     className={`font-black font-poppins flex-1 ${stat.color === "bg-black" ? "text-white" : "text-gray-900"}`}
-                    style={{ fontSize: '20px', lineHeight: '1', minWidth: '0' }}
+                    style={{ 
+                      fontSize: stat.value.toString().length > 8 
+                        ? '14px' 
+                        : stat.value.toString().length > 6 
+                          ? '17px' 
+                          : '20px', 
+                      lineHeight: '1', 
+                      minWidth: '0' 
+                    }}
                   >
                     {stat.value}
                   </span>
@@ -293,245 +231,362 @@ export default function ManagerDashboard() {
 
       </div>
 
-      {/* Map Section */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-8">
-        <div className="p-4 flex items-center gap-4 border-b border-gray-200">
-          <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-200">
-            <span className="w-3 h-3 bg-amber-700 rounded-full animate-ping"></span>
-            <span className="text-sm font-medium text-gray-700">{filteredVehicles.length} Vehicles Online</span>
-          </div>
-          <select
-            value={zone}
-            onChange={(e) => setZone(e.target.value)}
-            className="bg-white border border-gray-200 px-4 py-2 rounded-xl text-sm font-medium text-gray-700 hover:border-gray-300 focus:outline-none focus:border-[#B45A0A] cursor-pointer"
-          >
-            <option>All Zones</option>
-            <option>North</option>
-            <option>South</option>
-            <option>East</option>
-            <option>West</option>
-          </select>
-        </div>
-        <div ref={mapRef} className="h-[400px] bg-gray-50 relative z-10" style={{ width: "100%" }} />
 
-        {/* Map Legend */}
-        <div className="p-4 bg-gray-50 border-t border-gray-200 flex items-center justify-center gap-6 text-xs font-medium flex-wrap">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <span className="text-gray-600">Available</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#B45A0A' }}></div>
-            <span className="text-gray-600">On Trip</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-            <span className="text-gray-600">Maintenance</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-gray-500"></div>
-            <span className="text-gray-600">Idle / Inactive</span>
-          </div>
-        </div>
-      </div>
 
       {/* Bottom Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Vehicle Status */}
-        {(() => {
-          const totalVehiclesCount = vehicles.length;
-          const activeVehiclesCount = vehicles.filter(v => v.status === "Active" || v.status === "On Trip").length;
-          const maintenanceVehiclesCount = vehicles.filter(v => v.status === "Maintenance").length;
-          const inactiveVehiclesCount = vehicles.filter(v => v.status === "Available" || v.status === "Idle").length;
+      <div className="space-y-6">
+        {/* Row 1: 3 Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Vehicle Status */}
+          {(() => {
+            const totalVehiclesCount = vehicles.length;
+            const activeCount = vehicles.filter(v => v.status === "Active").length;
+            const availableCount = vehicles.filter(v => v.status === "Available").length;
+            const inServiceCount = vehicles.filter(v => v.status === "On Trip" || v.status === "Assigned").length;
+            const maintenanceCount = vehicles.filter(v => v.status === "Maintenance").length;
+            const outOfServiceCount = vehicles.filter(v => v.status === "Inactive" || v.status === "Idle").length;
 
-          const activePct = totalVehiclesCount > 0 ? (activeVehiclesCount / totalVehiclesCount) : 0.8;
-          const inactivePct = totalVehiclesCount > 0 ? (inactiveVehiclesCount / totalVehiclesCount) : 0.15;
-          const maintenancePct = totalVehiclesCount > 0 ? (maintenanceVehiclesCount / totalVehiclesCount) : 0.05;
+            const chartData = [
+              { name: "Active", value: activeCount, color: "#C65D0E" },
+              { name: "Available", value: availableCount, color: "#10B981" },
+              { name: "In Service", value: inServiceCount, color: "#3B82F6" },
+              { name: "Under Maintenance", value: maintenanceCount, color: "#EF4444" },
+              { name: "Out of Service", value: outOfServiceCount, color: "#6B7280" }
+            ];
 
-          const activeStroke = activePct * 282.7;
-          const inactiveStroke = inactivePct * 282.7;
-          const maintenanceStroke = maintenancePct * 282.7;
-
-          const inactiveOffset = activeStroke;
-          const maintenanceOffset = activeStroke + inactiveStroke;
-
-          return (
-            <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm p-6 flex flex-col">
-              <div className="flex items-center gap-2 mb-6 shrink-0">
-                <svg className="w-5 h-5 text-[#C65D0E]" fill="currentColor" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
-                  <circle cx="12" cy="12" r="4" fill="currentColor" />
-                </svg>
-                <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Vehicle Status</h3>
-              </div>
-
-              <div className="flex-1 flex items-center justify-center py-6">
-                <div className="relative w-56 h-56">
-                  <svg viewBox="0 0 120 120" className="w-full h-full transform -rotate-90">
-                    {/* Active - Orange */}
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="45"
-                      fill="none"
-                      stroke="#C65D0E"
-                      strokeWidth="16"
-                      strokeDasharray={`${activeStroke} 282.7`}
-                    />
-                    {/* Inactive - Light Gray */}
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="45"
-                      fill="none"
-                      stroke="#E5E7EB"
-                      strokeWidth="16"
-                      strokeDasharray={`${inactiveStroke} 282.7`}
-                      strokeDashoffset={`${-inactiveOffset}`}
-                    />
-                    {/* Maintenance - Red */}
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="45"
-                      fill="none"
-                      stroke="#DC2626"
-                      strokeWidth="16"
-                      strokeDasharray={`${maintenanceStroke} 282.7`}
-                      strokeDashoffset={`${-maintenanceOffset}`}
-                    />
+            return (
+              <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm p-6 flex flex-col h-[380px]">
+                <div className="flex items-center gap-2 mb-4 shrink-0">
+                  <svg className="w-5 h-5 text-[#C65D0E]" fill="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
+                    <circle cx="12" cy="12" r="4" fill="currentColor" />
                   </svg>
-
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-black text-[#1B2430] font-poppins">{totalVehiclesCount}</span>
-                    <span className="text-[11px] text-[#6B7280] font-bold uppercase tracking-widest mt-2">Total</span>
-                  </div>
+                  <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Vehicle Status</h3>
                 </div>
-              </div>
 
-              {/* Legend */}
-              <div className="mt-4 flex items-center justify-center gap-6 text-xs font-medium">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#C65D0E' }}></div>
-                  <span className="text-[#6B7280]">Active ({activeVehiclesCount})</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#DC2626' }}></div>
-                  <span className="text-[#6B7280]">Maintenance ({maintenanceVehiclesCount})</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#E5E7EB' }}></div>
-                  <span className="text-[#6B7280]">Inactive ({inactiveVehiclesCount})</span>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Compliance Expiry */}
-        {(() => {
-          const complianceAlerts = documents
-            .filter(d => d.status === "Expired" || d.status === "Expiring Soon")
-            .map(d => ({
-              id: d._id || d.id,
-              vehicle: d.vehicle || "All Fleet",
-              document: d.title || d.name,
-              status: d.status
-            }));
-
-          const displayedCompliance = complianceAlerts.slice(0, 3);
-
-          return (
-            <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm overflow-hidden flex flex-col">
-              <div className="p-6 flex items-center justify-between border-b border-[#E5E7EB] shrink-0">
-                <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Compliance Expiry</h3>
-                <button
-                  onClick={() => navigate("/manager/documents")}
-                  className="text-[#C65D0E] text-xs font-bold hover:underline font-poppins cursor-pointer"
-                >
-                  View All
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left text-xs font-nunito whitespace-nowrap">
-                  <thead className="bg-[#F5F7FA]">
-                    <tr>
-                      <th className="px-4 py-3 text-[#6B7280] font-bold uppercase tracking-wider text-[10px]">Vehicle</th>
-                      <th className="px-4 py-3 text-[#6B7280] font-bold uppercase tracking-wider text-[10px]">Document</th>
-                      <th className="px-4 py-3 text-[#6B7280] font-bold uppercase tracking-wider text-[10px]">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedCompliance.map((row, idx) => (
-                      <tr key={row.id || idx} className="hover:bg-[#F9FAFB] transition-colors border-b border-[#F0F1F3]">
-                        <td className="px-4 py-4 font-poppins font-bold text-[#1B2430] text-[13px]">{row.vehicle.replace(/-/g, ' ')}</td>
-                        <td className="px-4 py-4 text-[#6B7280] font-medium text-[13px]">{row.document}</td>
-                        <td className="px-4 py-4">
-                          <span className={`inline-block px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider font-poppins whitespace-nowrap ${row.status === "Expired"
-                              ? "bg-red-600 text-white shadow-md shadow-red-200"
-                              : "bg-amber-500 text-white shadow-md shadow-amber-200"
-                            }`}>
-                            {row.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                    {displayedCompliance.length === 0 && (
-                      <tr>
-                        <td colSpan="3" className="px-4 py-8 text-center text-[#6B7280] font-medium">
-                          All compliance documents are active & valid.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Cost Breakdown */}
-        {(() => {
-          const fuelSum = fuelRecords.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
-          const maintSum = maintenance.reduce((sum, m) => sum + (Number(m.cost) || 0), 0);
-          const tollSum = vehicles.reduce((sum, v) => sum + (Number(v.fastagBalance) || 0), 0);
-          const totalCost = fuelSum + maintSum + tollSum;
-
-          const costBreakdown = [
-            { category: "Fuel Expenses", amount: `₹${fuelSum.toLocaleString("en-IN")}`, percentage: totalCost > 0 ? Math.round((fuelSum / totalCost) * 100) : 0 },
-            { category: "Maintenance", amount: `₹${maintSum.toLocaleString("en-IN")}`, percentage: totalCost > 0 ? Math.round((maintSum / totalCost) * 100) : 0 },
-            { category: "Toll & Fastag", amount: `₹${tollSum.toLocaleString("en-IN")}`, percentage: totalCost > 0 ? Math.round((tollSum / totalCost) * 100) : 0 }
-          ];
-
-          return (
-            <div className="bg-[#0D0D0D] rounded-2xl border border-[#1F1F1F] shadow-sm p-6 flex flex-col">
-              <div className="flex items-center gap-2 mb-6 shrink-0">
-                <svg className="w-5 h-5 text-[#C65D0E]" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z" />
-                </svg>
-                <h3 className="font-poppins font-bold text-white text-[16px]">Cost Breakdown</h3>
-              </div>
-
-              <div className="flex-1 space-y-4">
-                {costBreakdown.map((cost, index) => (
-                  <div key={index}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-[#9CA3AF]">{cost.category}</span>
-                      <span className="text-sm font-bold text-white">{cost.amount}</span>
-                    </div>
-                    <div className="w-full h-2 bg-[#262626] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#C65D0E] to-[#D97706] rounded-full transition-all duration-1000"
-                        style={{ width: `${cost.percentage}%` }}
+                <div className="flex-1 min-h-0 relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={chartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={75}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {chartData.map((entry, idx) => (
+                          <Cell key={`cell-${idx}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value, name) => {
+                          const pct = totalVehiclesCount > 0 ? ((value / totalVehiclesCount) * 100).toFixed(1) : 0;
+                          return [`${value} (${pct}%)`, name];
+                        }}
+                        contentStyle={{
+                          fontFamily: 'Poppins',
+                          fontSize: '12px',
+                          borderRadius: '8px',
+                          border: '1px solid #E5E7EB',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }}
                       />
-                    </div>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ top: '-10px' }}>
+                    <span className="text-3xl font-black text-[#1B2430] font-poppins">{totalVehiclesCount}</span>
+                    <span className="text-[10px] text-[#6B7280] font-bold uppercase tracking-wider">Vehicles</span>
                   </div>
-                ))}
+                </div>
+
+                {/* Legend Grid */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-2 shrink-0">
+                  {chartData.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-xs font-poppins text-gray-600">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                      <span className="truncate">{item.name}</span>
+                      <span className="font-bold ml-auto text-gray-900">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          );
-        })()}
+            );
+          })()}
+
+          {/* Maintenance Alerts */}
+          {(() => {
+            const getPriorityBadge = (type) => {
+              const lowerType = (type || "").toLowerCase();
+              if (lowerType.includes("engine") || lowerType.includes("brake") || lowerType.includes("transmission") || lowerType.includes("gearbox") || lowerType.includes("clutch")) {
+                return { label: "High", className: "bg-red-50 text-red-700 border-red-100" };
+              }
+              if (lowerType.includes("oil") || lowerType.includes("tyre") || lowerType.includes("tire") || lowerType.includes("battery") || lowerType.includes("coolant") || lowerType.includes("filter")) {
+                return { label: "Medium", className: "bg-amber-50 text-amber-700 border-amber-100" };
+              }
+              return { label: "Low", className: "bg-green-50 text-green-700 border-green-100" };
+            };
+
+            const alerts = maintenance
+              .filter(m => m.status !== "Completed")
+              .map(m => {
+                const due = new Date(m.scheduledDate);
+                const now = new Date();
+                due.setHours(0,0,0,0);
+                now.setHours(0,0,0,0);
+                const isOverdue = due < now;
+                const badge = getPriorityBadge(m.serviceType);
+                
+                return {
+                  id: m._id || m.id,
+                  vehicle: m.vehicleName || m.vehicleId || "Unassigned",
+                  type: m.serviceType,
+                  dueDate: m.scheduledDate,
+                  isOverdue,
+                  badge
+                };
+              })
+              .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+            const displayedAlerts = alerts.slice(0, 5);
+
+            return (
+              <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col h-[380px]">
+                <div className="p-5 flex items-center justify-between border-b border-[#E5E7EB] shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="material-symbols:warning-outline" className="w-5 h-5 text-[#C65D0E]" />
+                    <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Maintenance Alerts</h3>
+                  </div>
+                  <button
+                    onClick={() => navigate("/manager/maintenance")}
+                    className="text-[#C65D0E] text-xs font-bold hover:underline font-poppins cursor-pointer"
+                  >
+                    View All
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+                  {displayedAlerts.map(alert => (
+                    <div 
+                      key={alert.id} 
+                      className={`p-3 rounded-xl border flex items-center justify-between transition-all duration-300 hover:shadow-sm ${
+                        alert.isOverdue 
+                          ? "bg-red-50/40 border-red-100 hover:border-red-200" 
+                          : "bg-gray-50/50 border-gray-100 hover:border-gray-200"
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-poppins font-bold text-gray-900 text-xs truncate">
+                            {alert.vehicle}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide border ${alert.badge.className}`}>
+                            {alert.badge.label}
+                          </span>
+                          {alert.isOverdue && (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-600 text-white shadow-sm">
+                              Overdue
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-gray-500 font-medium font-poppins mt-1 truncate">
+                          {alert.type}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className={`text-[11px] font-poppins font-bold ${alert.isOverdue ? "text-red-600" : "text-gray-600"}`}>
+                          {new Date(alert.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {displayedAlerts.length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center text-center py-12">
+                      <Icon icon="material-symbols:check-circle-outline" className="w-12 h-12 text-green-500 mb-2" />
+                      <p className="text-xs font-semibold text-gray-500 font-poppins">No pending maintenance alerts.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Recent Activities */}
+          {(() => {
+            const getActivityIcon = (type) => {
+              switch (type) {
+                case "VEHICLE_ADDED":
+                  return { icon: "material-symbols:local-shipping-outline", bg: "bg-green-50 text-green-600 border-green-100" };
+                case "VEHICLE_UPDATED":
+                  return { icon: "material-symbols:edit-note-outline", bg: "bg-blue-50 text-blue-600 border-blue-100" };
+                case "VEHICLE_DELETED":
+                  return { icon: "material-symbols:delete-outline", bg: "bg-red-50 text-red-600 border-red-100" };
+                case "DRIVER_ASSIGNED":
+                  return { icon: "material-symbols:person-outline", bg: "bg-purple-50 text-purple-600 border-purple-100" };
+                case "MAINTENANCE_COMPLETED":
+                  return { icon: "material-symbols:build-circle-outline", bg: "bg-amber-50 text-amber-600 border-amber-100" };
+                case "FUEL_ENTRY_ADDED":
+                  return { icon: "material-symbols:local-gas-station-outline", bg: "bg-orange-50 text-orange-600 border-orange-100" };
+                case "DOCUMENT_UPLOADED":
+                  return { icon: "material-symbols:upload-file-outline", bg: "bg-teal-50 text-teal-600 border-teal-100" };
+                default:
+                  return { icon: "material-symbols:info-outline", bg: "bg-gray-50 text-gray-600 border-gray-100" };
+              }
+            };
+
+            const getRelativeTime = (dateStr) => {
+              const date = new Date(dateStr);
+              const now = new Date();
+              const diffMs = now - date;
+              const diffMins = Math.floor(diffMs / 60000);
+              if (diffMins < 1) return "Just now";
+              if (diffMins < 60) return `${diffMins}m ago`;
+              const diffHours = Math.floor(diffMins / 60);
+              if (diffHours < 24) return `${diffHours}h ago`;
+              const diffDays = Math.floor(diffHours / 24);
+              if (diffDays === 1) return "Yesterday";
+              return `${diffDays}d ago`;
+            };
+
+            return (
+              <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col h-[380px]">
+                <div className="p-5 flex items-center border-b border-[#E5E7EB] shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="material-symbols:history" className="w-5 h-5 text-[#C65D0E]" />
+                    <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Recent Activities</h3>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+                  {activities.map((act) => {
+                    const iconStyle = getActivityIcon(act.activityType);
+                    return (
+                      <div key={act._id} className="flex gap-3 items-start">
+                        <div className={`p-2 rounded-xl border shrink-0 flex items-center justify-center ${iconStyle.bg}`}>
+                          <Icon icon={iconStyle.icon} className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-poppins font-bold text-gray-900 text-xs truncate">
+                              {act.title}
+                            </span>
+                            <span className="text-[9px] font-poppins text-gray-400 font-semibold shrink-0">
+                              {getRelativeTime(act.createdAt)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-500 font-medium font-poppins mt-0.5 leading-relaxed">
+                            {act.description}
+                          </p>
+                          <span className="text-[9px] font-bold text-[#C65D0E] font-poppins block mt-1">
+                            by {act.user}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {activities.length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center text-center py-12">
+                      <Icon icon="material-symbols:history" className="w-12 h-12 text-gray-300 mb-2" />
+                      <p className="text-xs font-semibold text-gray-500 font-poppins">No recent activities found.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Row 2: 1 Column Layout (Upcoming Renewals) */}
+        <div className="grid grid-cols-1 gap-6">
+          {/* Upcoming Renewals */}
+          {(() => {
+            const renewals = [];
+            vehicles.forEach(v => {
+              const checkExpiry = (dateVal, typeLabel) => {
+                if (!dateVal) return;
+                const exp = new Date(dateVal);
+                const now = new Date();
+                exp.setHours(0,0,0,0);
+                now.setHours(0,0,0,0);
+                const diffTime = exp.getTime() - now.getTime();
+                const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                renewals.push({
+                  vehicleNumber: v.plateNumber || v.vehicleNumber,
+                  type: typeLabel,
+                  expiryDate: dateVal,
+                  daysRemaining: days
+                });
+              };
+
+              checkExpiry(v.insuranceExpiry, "Insurance");
+              checkExpiry(v.rcExpiry, "Registration");
+              checkExpiry(v.pollutionExpiry, "PUC");
+              checkExpiry(v.fitnessExpiry, "Fitness Certificate");
+              checkExpiry(v.permitExpiry, "Permit");
+            });
+
+            renewals.sort((a, b) => a.daysRemaining - b.daysRemaining);
+
+            const displayedRenewals = renewals.slice(0, 5);
+
+            const getStatusBadge = (days) => {
+              if (days < 7) {
+                return { label: days < 0 ? "Expired" : `${days}d left`, className: "bg-red-500 text-white" };
+              }
+              if (days <= 30) {
+                return { label: `${days}d left`, className: "bg-amber-500 text-white" };
+              }
+              return { label: `${days}d left`, className: "bg-green-600 text-white" };
+            };
+
+            return (
+              <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col h-[380px]">
+                <div className="p-5 flex items-center justify-between border-b border-[#E5E7EB] shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="material-symbols:event-repeat" className="w-5 h-5 text-[#C65D0E]" />
+                    <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Upcoming Renewals</h3>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+                  {displayedRenewals.map((renewal, idx) => {
+                    const badge = getStatusBadge(renewal.daysRemaining);
+                    return (
+                      <div key={idx} className="p-3 bg-gray-50/50 border border-gray-100 rounded-xl flex items-center justify-between transition-all duration-300 hover:border-gray-200 hover:shadow-sm">
+                        <div className="min-w-0">
+                          <span className="font-poppins font-bold text-gray-900 text-xs block truncate">
+                            {renewal.vehicleNumber}
+                          </span>
+                          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider font-poppins">
+                            {renewal.type}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-[11px] text-gray-600 font-medium font-poppins">
+                            {new Date(renewal.expiryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                          </span>
+                          <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold font-poppins shadow-sm min-w-[65px] text-center ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {displayedRenewals.length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center text-center py-12">
+                      <Icon icon="material-symbols:check-circle-outline" className="w-12 h-12 text-green-500 mb-2" />
+                      <p className="text-xs font-semibold text-gray-500 font-poppins">No upcoming renewals.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
       </div>
     </div>
   );
