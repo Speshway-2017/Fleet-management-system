@@ -292,11 +292,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4 mt-8">
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-gray-600 uppercase">Avg / Mile</p>
-              <p className="text-lg font-bold text-gray-800">{data.avgMileCost}</p>
-            </div>
+          <div className="grid grid-cols-2 gap-4 mt-8">
             <div className="p-3 bg-blue-50 rounded-lg">
               <p className="text-xs text-gray-600 uppercase">Top Spender</p>
               <p className="text-lg font-bold text-gray-800">{data.topSpender}</p>

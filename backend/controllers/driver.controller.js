@@ -186,7 +186,7 @@ export const createDriver = async (req, res, next) => {
       driverStatus: driverStatus || 'AVAILABLE',
       experience: experience || '',
       joiningDate: joiningDate || undefined,
-      medicalFitnessStatus: medicalFitnessStatus || 'Fit',
+      medicalFitnessStatus: medicalFitnessStatus || '✅ Fit',
       profileImage: profileImage || '',
       licenseDocument: licenseDocument || '',
       assignedManager: req.user?._id,
