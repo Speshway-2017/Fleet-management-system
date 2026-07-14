@@ -164,5 +164,22 @@ export const adminApi = {
   },
   updateProfile: async (data) => {
     return axiosClient.put('/admin/profile', data);
+  },
+  
+  // Contact Requests Management
+  getContactRequests: async (params) => {
+    return axiosClient.get('/admin/contacts', { params });
+  },
+  getContactAnalytics: async () => {
+    return axiosClient.get('/admin/contacts/analytics');
+  },
+  updateContactStatus: async (id, data) => {
+    return axiosClient.patch(`/admin/contacts/${id}/status`, data);
+  },
+  replyToContact: async (id, data) => {
+    return axiosClient.post(`/admin/contacts/${id}/reply`, data);
+  },
+  deleteContact: async (id) => {
+    return axiosClient.delete(`/admin/contacts/${id}`);
   }
 };

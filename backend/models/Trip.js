@@ -13,9 +13,16 @@ const tripSchema = new mongoose.Schema(
     endLocation: { type: String, required: true },
     departureTime: { type: String, required: true },
     eta: { type: String, required: true },
-    status: { type: String, default: 'Scheduled' }, // Scheduled, On Transit, Delayed, Completed
+    status: { type: String, enum: ['Scheduled', 'Assigned', 'In Progress', 'Completed', 'Cancelled'], default: 'Scheduled' },
     description: { type: String, default: '' },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    cargoType: { type: String, default: '' },
+    cargoWeight: { type: Number, default: 0 },
+    tripNotes: { type: String, default: '' },
+    actualStartTime: { type: Date },
+    actualEndTime: { type: Date },
+    estimatedDistance: { type: Number, default: 0 },
+    actualDistance: { type: Number, default: 0 }
   },
   { timestamps: true }
 );

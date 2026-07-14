@@ -49,7 +49,7 @@ export const getTrips = async (filter = {}) => {
 };
 
 export const getTripById = async (id) => {
-  return Trip.findById(id);
+  return Trip.findById(id).populate('driver').populate('vehicle');
 };
 
 export const createTrip = async (data) => {

@@ -34,10 +34,19 @@ export const getAvailableVehicles = async (req, res, next) => {
 
     const allocatedVehicleIds = activeTrips.map(t => t.vehicle).filter(Boolean);
 
-    const availableVehicles = await Vehicle.find({
+    const filter = {
       _id: { $nin: allocatedVehicleIds },
       currentStatus: { $in: ['Available', 'Active'] }
-    }).populate('assignedDriver').sort({ createdAt: -1 });
+    };
+
+    if (req.query.location) {
+      const cleanLoc = req.query.location.trim().split(/[\s,]+/)[0];
+      filter.branch = { $regex: new RegExp(cleanLoc, 'i') };
+    }
+
+    const availableVehicles = await Vehicle.find(filter)
+      .populate('assignedDriver')
+      .sort({ createdAt: -1 });
 
     return sendSuccess(res, 200, availableVehicles, 'Available vehicles fetched successfully');
   } catch (error) {
@@ -87,6 +96,12 @@ export const createVehicle = async (req, res, next) => {
       fitnessExpiry,
       odometer,
       image,
+      chassisNumber,
+      loadCapacity,
+      ownershipType,
+      insuranceDetails,
+      permitDetails,
+      documents,
     } = req.body;
 
     if (!vehicleNumber) {
@@ -114,6 +129,12 @@ export const createVehicle = async (req, res, next) => {
       odometer: odometer !== undefined ? Number(odometer) : 0,
       image: image || '',
       assignedManager: req.user?._id,
+      chassisNumber,
+      loadCapacity: loadCapacity !== undefined ? Number(loadCapacity) : 0,
+      ownershipType: ownershipType || 'Owned',
+      insuranceDetails,
+      permitDetails,
+      documents,
     });
 
     return sendSuccess(res, 201, vehicle, 'Vehicle created successfully');
@@ -147,22 +168,56 @@ export const updateVehicle = async (req, res, next) => {
       const prevDriverId = existingVehicle.assignedDriver;
       const newDriverId = updateData.assignedDriver;
 
+      // License status check before assignment
+      if (newDriverId && newDriverId !== 'Unassigned' && newDriverId !== '') {
+        const driverDoc = await Driver.findById(newDriverId);
+        if (driverDoc && driverDoc.licenseExpiry && new Date(driverDoc.licenseExpiry) < new Date()) {
+          return sendError(res, 400, 'Cannot assign driver with an expired driving license');
+        }
+      }
+
       // Case 1: Unassign the previous driver
       if (prevDriverId && String(prevDriverId) !== String(newDriverId)) {
-        await Driver.findByIdAndUpdate(prevDriverId, {
-          assignedVehicle: 'Unassigned',
-          driverStatus: 'AVAILABLE'
-        });
+        const prevDriverDoc = await Driver.findById(prevDriverId);
+        if (prevDriverDoc) {
+          prevDriverDoc.assignedVehicle = 'Unassigned';
+          prevDriverDoc.driverStatus = 'AVAILABLE';
+          prevDriverDoc.assignmentHistory.forEach(h => {
+            if (h.status === 'Active') {
+              h.status = 'Completed';
+              h.unassignmentDate = new Date();
+            }
+          });
+          await prevDriverDoc.save();
+        }
       }
 
       // Case 2: Assign the new driver
-      if (newDriverId && newDriverId !== 'Unassigned') {
-        const vehicleNumber = updateData.vehicleNumber || existingVehicle.vehicleNumber;
-        const currentStatus = updateData.currentStatus || existingVehicle.currentStatus;
-        await Driver.findByIdAndUpdate(newDriverId, {
-          assignedVehicle: vehicleNumber,
-          driverStatus: currentStatus === 'On Trip' ? 'ON_TRIP' : 'AVAILABLE'
-        });
+      if (newDriverId && newDriverId !== 'Unassigned' && newDriverId !== '') {
+        const driverDoc = await Driver.findById(newDriverId);
+        if (driverDoc) {
+          const vehicleNumber = updateData.vehicleNumber || existingVehicle.vehicleNumber;
+          const currentStatus = updateData.currentStatus || existingVehicle.currentStatus;
+          driverDoc.assignedVehicle = vehicleNumber;
+          driverDoc.driverStatus = currentStatus === 'On Trip' ? 'ON_TRIP' : 'AVAILABLE';
+          
+          driverDoc.assignmentHistory.forEach(h => {
+            if (h.status === 'Active') {
+              h.status = 'Completed';
+              h.unassignmentDate = new Date();
+            }
+          });
+
+          driverDoc.assignmentHistory.push({
+            vehicleId: existingVehicle._id,
+            vehicleNumber: vehicleNumber,
+            vehicleName: existingVehicle.vehicleName || `${existingVehicle.brand} ${existingVehicle.model}`,
+            assignmentDate: new Date(),
+            assignedBy: req.user ? req.user.email : 'Fleet Manager',
+            status: 'Active'
+          });
+          await driverDoc.save();
+        }
       } else {
         // If 'Unassigned' or empty string is passed, clear from mongoose model
         updateData.assignedDriver = null;

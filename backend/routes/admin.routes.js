@@ -32,6 +32,14 @@ import {
   updateManagerValidator,
   updateSettingsValidator
 } from '../middleware/admin.validator.js';
+import {
+  listContactRequests,
+  getContactAnalytics,
+  updateContactRequestStatus,
+  replyToContactRequest,
+  deleteContactRequest,
+  exportContactsCSV
+} from '../controllers/admin.contact.controller.js';
 
 const router = express.Router();
 const adminAuth = [protect, authorizeRoles('SUPER_ADMIN')];
@@ -72,6 +80,14 @@ router.patch('/notifications/read-all',        ...adminAuth, markAllNotification
 router.patch('/notifications/:id/read',        ...adminAuth, markNotificationRead);
 router.put('/notifications/:id/read',          ...adminAuth, markNotificationRead);
 router.delete('/notifications/:id',            ...adminAuth, deleteNotification);
+
+// ── Contact Requests ───────────────────────────────────────────────────────
+router.get('/contacts',                  ...adminAuth, listContactRequests);
+router.get('/contacts/analytics',        ...adminAuth, getContactAnalytics);
+router.get('/contacts/export',           ...adminAuth, exportContactsCSV);
+router.patch('/contacts/:id/status',     ...adminAuth, updateContactRequestStatus);
+router.post('/contacts/:id/reply',       ...adminAuth, replyToContactRequest);
+router.delete('/contacts/:id',           ...adminAuth, deleteContactRequest);
 
 // ── Profile ────────────────────────────────────────────────────────────────
 router.get('/profile',  ...adminAuth, getAdminProfile);

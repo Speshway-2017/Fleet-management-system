@@ -11,12 +11,13 @@ import adminRoutes from './routes/admin.routes.js';
 import managerRoutes from './routes/manager.routes.js';
 import driverRoutes from './routes/driver.routes.js';
 import vehicleRoutes from './routes/vehicle.routes.js';
+import contactRoutes from './routes/contact.routes.js';
 import { notFoundHandler, errorHandler } from './middleware/error.middleware.js';
-
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/manager', managerRoutes);
 app.use('/api/drivers', driverRoutes);
 app.use('/api/vehicles', vehicleRoutes);
+app.use('/api/contact', contactRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

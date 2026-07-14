@@ -15,12 +15,12 @@ export const managerApi = {
     return await axiosClient.get("/manager/live-tracking");
   },
 
-  getAvailableVehicles: async () => {
-    return await axiosClient.get("/vehicles/available");
+  getAvailableVehicles: async (params) => {
+    return await axiosClient.get("/vehicles/available", { params });
   },
 
-  getAvailableDrivers: async () => {
-    return await axiosClient.get("/drivers/available");
+  getAvailableDrivers: async (params) => {
+    return await axiosClient.get("/drivers/available", { params });
   },
 
   getVehicleById: async (id) => {
@@ -61,8 +61,8 @@ export const managerApi = {
   },
 
   // Trips
-  getTrips: async () => {
-    return await axiosClient.get("/manager/trips");
+  getTrips: async (params) => {
+    return await axiosClient.get("/manager/trips", { params });
   },
 
   getTripById: async (id) => {
@@ -81,9 +81,13 @@ export const managerApi = {
     return await axiosClient.delete(`/manager/trips/${id}`);
   },
 
+  getInvoiceByTripId: async (tripId) => {
+    return await axiosClient.get(`/manager/invoices/trip/${tripId}`);
+  },
+
   // Fuel Management
-  getFuelRecords: async () => {
-    return await axiosClient.get("/manager/fuel");
+  getFuelRecords: async (params) => {
+    return await axiosClient.get("/manager/fuel", { params });
   },
 
   getFuelRecordById: async (id) => {
@@ -103,8 +107,8 @@ export const managerApi = {
   },
 
   // Maintenance
-  getMaintenance: async () => {
-    return await axiosClient.get("/manager/maintenance");
+  getMaintenance: async (params) => {
+    return await axiosClient.get("/manager/maintenance", { params });
   },
 
   getMaintenanceById: async (id) => {
@@ -184,5 +188,21 @@ export const managerApi = {
 
   deleteEWayBill: async (id) => {
     return await axiosClient.delete(`/manager/eway/${id}`);
+  },
+
+  getActivities: async () => {
+    return await axiosClient.get("/manager/activities");
+  },
+
+  getNotifications: async () => {
+    return await axiosClient.get("/manager/notifications");
+  },
+
+  markNotificationRead: async (id) => {
+    return await axiosClient.patch(`/manager/notifications/${id}/read`);
+  },
+
+  markAllNotificationsRead: async () => {
+    return await axiosClient.patch("/manager/notifications/read-all");
   },
 };

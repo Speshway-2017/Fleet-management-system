@@ -12,19 +12,17 @@ export default function About() {
   };
 
   const navLinkClass = ({ isActive }) => {
-    return `text-sm font-semibold py-2 rounded-xl transition-all duration-200 px-3 ${
-      isActive 
-        ? "bg-secondary text-white" 
+    return `text-sm font-semibold py-2 rounded-xl transition-all duration-200 px-3 ${isActive
+        ? "bg-secondary text-white"
         : "text-body hover:text-heading bg-transparent"
-    }`;
+      }`;
   };
 
   const mobileNavLinkClass = ({ isActive }) => {
-    return `block w-full text-left py-2 font-semibold text-sm transition-colors ${
-      isActive 
-        ? "text-secondary" 
+    return `block w-full text-left py-2 font-semibold text-sm transition-colors ${isActive
+        ? "text-secondary"
         : "text-body hover:text-secondary"
-    }`;
+      }`;
   };
 
   const timelineItems = [
@@ -39,34 +37,34 @@ export default function About() {
     <div className="bg-bg-page min-h-screen flex flex-col font-sans">
       {/* 1. Header/Navbar */}
       <header className="bg-white border-b border-border-custom px-4 sm:px-6 md:px-8 h-20 flex items-center justify-between sticky top-0 z-30">
-        {/* Logo Section */}
         <div className="flex items-center gap-3">
-          <NavLink to="/">
-            <img src="/logo.png" alt="Fleet Management Logo" className="h-10 w-auto rounded-lg object-contain" />
+          <NavLink to="/" className="flex items-center gap-3">
+            <img src="/logo.png" alt="Fleet Management Logo" className="h-10 w-auto object-contain" />
+            <span className="font-display font-black text-[#0B1B3D] text-lg tracking-wide">
+              Fleet Management
+            </span>
           </NavLink>
-          <div>
-            <h1 className="font-display font-bold text-secondary tracking-wide text-sm sm:text-base hidden xs:block sm:block">Fleet Management</h1>
-          </div>
         </div>
 
-        {/* Center Links */}
-        <nav className="hidden md:flex items-center gap-3">
-          <NavLink to="/" className={navLinkClass} end>
+        <nav className="hidden md:flex items-center gap-6">
+          <NavLink to="/" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`} end>
             Home
           </NavLink>
-          <NavLink to="/performance" className={navLinkClass}>
-            Performance
-          </NavLink>
-          <NavLink to="/about" className={navLinkClass}>
+          <NavLink to="/about" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
             About
           </NavLink>
-          <NavLink to="/contact" className={navLinkClass}>
+          <NavLink to="/performance" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
+            Performance
+          </NavLink>
+          <NavLink to="/security" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
+            Security
+          </NavLink>
+          <NavLink to="/contact" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
             Contact Us
           </NavLink>
         </nav>
 
-        {/* Right CTA Actions */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-4">
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
               <span className="text-xs font-semibold text-body hidden sm:inline-block">
@@ -77,7 +75,7 @@ export default function About() {
                   logout();
                   navigate("/login");
                 }}
-                className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-secondary/10 text-secondary font-semibold text-[11px] sm:text-xs transition-all hover:bg-secondary/20 active:scale-[0.98] cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-secondary/10 text-secondary font-semibold text-xs transition-all hover:bg-secondary/20 active:scale-[0.98] cursor-pointer"
               >
                 Logout
               </button>
@@ -85,13 +83,15 @@ export default function About() {
           ) : (
             <button
               onClick={() => navigate("/login")}
-              className="px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl bg-secondary text-white font-semibold text-[11px] sm:text-xs transition-all hover:bg-accent shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
+              className="px-5 py-2 rounded-xl bg-[#0B1B3D] text-white font-semibold text-xs flex items-center gap-2 hover:bg-[#152e5c] transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-sm"
             >
-              login
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h3a3 3 0 013 3v1" />
+              </svg>
+              Login
             </button>
           )}
 
-          {/* Mobile Menu Toggle Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden p-2 rounded-xl text-secondary hover:bg-secondary/10 transition-colors cursor-pointer"
@@ -113,33 +113,19 @@ export default function About() {
       {/* Mobile Dropdown Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-b border-border-custom px-6 py-4 space-y-3 shadow-lg sticky top-20 z-20">
-          <NavLink 
-            to="/" 
-            className={mobileNavLinkClass} 
-            end
-            onClick={() => setMobileMenuOpen(false)}
-          >
+          <NavLink to="/" className={mobileNavLinkClass} end onClick={() => setMobileMenuOpen(false)}>
             Home
           </NavLink>
-          <NavLink 
-            to="/performance" 
-            className={mobileNavLinkClass} 
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Performance
-          </NavLink>
-          <NavLink 
-            to="/about" 
-            className={mobileNavLinkClass} 
-            onClick={() => setMobileMenuOpen(false)}
-          >
+          <NavLink to="/about" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
             About
           </NavLink>
-          <NavLink 
-            to="/contact" 
-            className={mobileNavLinkClass} 
-            onClick={() => setMobileMenuOpen(false)}
-          >
+          <NavLink to="/performance" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+            Performance
+          </NavLink>
+          <NavLink to="/security" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+            Security
+          </NavLink>
+          <NavLink to="/contact" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
             Contact Us
           </NavLink>
         </div>
