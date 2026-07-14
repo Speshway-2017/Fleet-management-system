@@ -48,7 +48,7 @@ import {
   listNotifications,
   markNotificationRead,
   markAllNotificationsRead,
-  deleteNotification
+  deleteNotification,
   // E-Way Bills
   listEWayBills,
   createEWayBill,

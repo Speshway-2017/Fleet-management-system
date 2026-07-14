@@ -1,3 +1,4 @@
+import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -271,11 +272,7 @@ export default function DriverProfilePage() {
               >
                 <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Expiry Date</span>
                 <span className="text-sm font-semibold text-[#1E293B] mt-1 block">
-                  {driver.licenseExpiry ? new Date(driver.licenseExpiry).toLocaleDateString("en-IN", {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric'
-                  }) : "—"}
+                  {driver.licenseExpiry ? formatIFD() : "—"}
                 </span>
               </div>
 
@@ -325,11 +322,7 @@ export default function DriverProfilePage() {
               <div>
                 <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Joining Date</span>
                 <span className="text-sm font-semibold text-[#1E293B] mt-1 block">
-                  {driver.joiningDate ? new Date(driver.joiningDate).toLocaleDateString("en-IN", {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric'
-                  }) : "—"}
+                  {driver.joiningDate ? formatIFD() : "—"}
                 </span>
               </div>
 

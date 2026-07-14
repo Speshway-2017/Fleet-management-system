@@ -1,3 +1,4 @@
+import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect } from "react";
 import {
   TrendingUp,
@@ -54,12 +55,7 @@ export default function FuelManagementPage() {
           vehicleName: l.vehicleName || (l.vehicle && l.vehicle.name) || "Fleet Vehicle",
           qty: `${l.liters} L`,
           total: `₹${l.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
-          timestamp: new Date(l.createdAt).toLocaleDateString("en-IN", {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })
+          timestamp: formatIFD()
         })));
       } else {
         setLogs([]);

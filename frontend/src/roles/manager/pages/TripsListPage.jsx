@@ -1,3 +1,4 @@
+import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -116,13 +117,7 @@ export default function TripsListPage() {
 
   const formatDateTime = (dtString) => {
     if (!dtString) return "N/A";
-    return new Date(dtString).toLocaleDateString("en-IN", {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+    return formatIFD();
   };
 
   return (

@@ -78,8 +78,8 @@ export const dashboardApi = {
         const total = fuelSum + maintSum || 1;
         
         return [
-          { label: "Fuel Cost", amount: `₹${fuelSum.toLocaleString()}`, percentage: Math.round((fuelSum / total) * 100) },
-          { label: "Maintenance Cost", amount: `₹${maintSum.toLocaleString()}`, percentage: Math.round((maintSum / total) * 100) }
+          { label: "Fuel Cost", amount: `₹${fuelSum.toLocaleString('en-IN')}`, percentage: Math.round((fuelSum / total) * 100) },
+          { label: "Maintenance Cost", amount: `₹${maintSum.toLocaleString('en-IN')}`, percentage: Math.round((maintSum / total) * 100) }
         ];
       })
       .catch((err) => {

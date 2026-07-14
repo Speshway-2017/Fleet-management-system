@@ -1,3 +1,4 @@
+import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useParams, useNavigate } from "react-router-dom";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { Icon } from "@iconify/react";
@@ -87,10 +88,10 @@ export default function FastagReceiptPage() {
               <p className="text-gray-500">Date & Time</p>
               <div className="text-right">
                 <p className="font-medium text-gray-800">
-                  {new Date(transaction.time).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  {formatIFD()}
                 </p>
                 <p className="text-sm text-gray-500">
-                  {new Date(transaction.time).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                  {formatIFDWithTime()}
                 </p>
               </div>
             </div>

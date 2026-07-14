@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
+import { adminApi } from "@/api/adminApi";
 import { useAdmin } from "@/roles/admin/context/AdminContext";
 import { ChevronLeft } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
@@ -30,8 +32,26 @@ function OrgTabs({ activeId, active }) {
 
 export default function OrganizationDetails() {
   const { id } = useParams();
-  const { getOrganization } = useAdmin();
-  const org = id ? getOrganization(id) : null;
+  const { getOrganization, fleetManagers } = useAdmin();
+  const contextOrg = id ? getOrganization(id) : null;
+  const [org, setOrg] = useState(contextOrg);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      setLoading(true);
+      adminApi.getOrganizationDetails(id)
+        .then((res) => {
+          setOrg(res.data?.data || res.data);
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [id]);
+
+  const orgManagers = org?.fleetManagers || (org 
+    ? fleetManagers.filter(m => m.organizationId === (org.id || org._id))
+    : []);
 
   const layout = (content) => (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
@@ -151,26 +171,59 @@ export default function OrganizationDetails() {
             <div className="bg-white rounded-xl p-8 border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between divide-y md:divide-y-0 md:divide-x divide-slate-100">
               
               <div className="flex flex-col items-center justify-center p-4 w-full">
-                <span className="text-3xl font-black text-slate-800 mb-1">{org.managers || 0}</span>
+                <span className="text-3xl font-black text-slate-800 mb-1">{org.stats?.totalFleetManagers ?? org.managers ?? 0}</span>
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fleet Managers</span>
               </div>
               
               <div className="flex flex-col items-center justify-center p-4 w-full">
-                <span className="text-3xl font-black text-slate-800 mb-1">—</span>
+                <span className="text-3xl font-black text-slate-800 mb-1">{org.stats?.totalVehicles ?? 0}</span>
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Registered Vehicles</span>
               </div>
               
               <div className="flex flex-col items-center justify-center p-4 w-full">
-                <span className="text-3xl font-black text-slate-800 mb-1">—</span>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Trips</span>
+                <span className="text-3xl font-black text-slate-800 mb-1">{org.stats?.totalActiveTrips ?? 0}</span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Trips</span>
               </div>
               
               <div className="flex flex-col items-center justify-center p-4 w-full">
-                <span className="text-3xl font-black text-slate-800 mb-1">—</span>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Cost</span>
+                <span className="text-3xl font-black text-slate-800 mb-1">₹{(org.stats?.totalRevenue ?? 0).toLocaleString('en-IN')}</span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Revenue</span>
               </div>
 
             </div>
+          </div>
+
+          {/* Fleet Managers List */}
+          <div>
+            <h3 className="font-bold text-slate-800 text-sm mb-4">Fleet Managers in {org.name}</h3>
+            {orgManagers.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {orgManagers.map(m => (
+                  <Link key={m.id} to={`/admin/fleet-managers/${m.id}`} className="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:border-slate-300 hover:shadow-sm transition-all">
+                    <div className="w-12 h-12 bg-[#0f172a] rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm shrink-0">
+                      {m.initials}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-slate-800 truncate">{m.name}</div>
+                      <div className="text-xs font-medium text-slate-500 mb-1 truncate">{m.email}</div>
+                      <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block tracking-wide ${
+                        m.status === "Active" ? "text-green-600 bg-green-50" : "text-slate-500 bg-slate-100"
+                      }`}>{m.status}</div>
+                    </div>
+                    {(m.stats?.activeTripsCount !== undefined || m.stats?.totalRevenue !== undefined) && (
+                      <div className="flex flex-col items-end gap-1 shrink-0 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trips <span className="text-slate-800 text-xs ml-1">{m.stats?.activeTripsCount ?? 0}</span></div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Revenue <span className="text-slate-800 text-xs ml-1">₹{(m.stats?.totalRevenue ?? 0).toLocaleString('en-IN')}</span></div>
+                      </div>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 bg-slate-50 rounded-xl border border-slate-200 text-center text-sm font-semibold text-slate-500">
+                No fleet managers assigned to this organization.
+              </div>
+            )}
           </div>
 
         </main>

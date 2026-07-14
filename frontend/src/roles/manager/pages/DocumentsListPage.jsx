@@ -1,3 +1,4 @@
+import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -199,7 +200,7 @@ export default function DocumentsListPage() {
                       <p className="text-sm text-[#1E293B]">{doc.vehicle || doc.driver || doc.trip}</p>
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap text-sm text-[#1E293B] font-semibold">
-                      {doc.expiry && new Date(doc.expiry).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {doc.expiry && formatIFD()}
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(doc.status)}`}>

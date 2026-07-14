@@ -1,3 +1,4 @@
+import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Plus, Search, ChevronDown, Eye, Edit2, Trash2, FileText, MapPin, X, AlertTriangle, SlidersHorizontal, Users, Loader } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -520,7 +521,7 @@ export default function VehiclesListPage() {
                         </td>
                         <td className="py-4 px-6 whitespace-nowrap">
                           <p className={`text-xs font-bold ${getInsuranceStyle(vehicle.insuranceExpiry)}`}>
-                            {new Date(vehicle.insuranceExpiry).toLocaleDateString("en-IN")}
+                            {formatIFD()}
                           </p>
                         </td>
                         <td className="py-4 px-6 whitespace-nowrap">

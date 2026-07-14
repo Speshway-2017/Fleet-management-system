@@ -1,3 +1,4 @@
+import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
@@ -362,7 +363,7 @@ export default function NotificationsPage() {
                         )}
                       </h4>
                       <span className="text-xs text-gray-400 font-medium">
-                        {notif.createdAt ? new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
+                        {notif.createdAt ? formatIFDWithTime() : "Just now"}
                       </span>
                     </div>
                     <p className="text-gray-600 text-sm mb-4">{notif.description}</p>

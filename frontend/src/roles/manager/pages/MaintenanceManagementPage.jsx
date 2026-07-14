@@ -1,3 +1,4 @@
+import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -250,11 +251,7 @@ Vehicle Name  : ${w.vehicleName}
 SERVICE DETAILS
 --------------------------------------------------
 Service Type  : ${w.serviceType}
-Scheduled Date: ${new Date(w.scheduledDate).toLocaleDateString("en-IN", {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    })}
+Scheduled Date: ${formatIFD()}
 Garage Name   : ${w.garage || "N/A"}
 
 --------------------------------------------------
@@ -602,11 +599,7 @@ For support, contact: maintenance@fleetmgmt.com
                       {w.serviceType}
                     </td>
                     <td className="py-4 px-6 text-xs text-gray-500 whitespace-nowrap">
-                      {new Date(w.scheduledDate).toLocaleDateString("en-IN", {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric'
-                      })}
+                      {formatIFD()}
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap">
                       <span className={`inline-block px-2.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${w.status === "In Progress"
@@ -882,11 +875,7 @@ For support, contact: maintenance@fleetmgmt.com
                     <div className="flex justify-between">
                       <span className="text-slate-500 font-semibold">Date:</span>
                       <span className="text-slate-800 font-bold">
-                        {new Date(viewingInvoice.scheduledDate).toLocaleDateString("en-IN", {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric'
-                        })}
+                        {formatIFD()}
                       </span>
                     </div>
                     <div className="flex justify-between">

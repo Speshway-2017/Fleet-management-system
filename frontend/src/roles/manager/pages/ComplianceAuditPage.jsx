@@ -1,3 +1,4 @@
+import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -168,13 +169,13 @@ export default function ComplianceAuditPage() {
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex items-center gap-2 text-sm text-[#1E293B]">
                         <Calendar className="w-4 h-4 text-[#64748B]" />
-                        {new Date(item.lastChecked).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
+                        {formatIFD()}
                       </div>
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex items-center gap-2 text-sm text-[#1E293B]">
                         <Clock className="w-4 h-4 text-[#64748B]" />
-                        {item.nextCheck !== "-" ? new Date(item.nextCheck).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' }) : "-"}
+                        {item.nextCheck !== "-" ? formatIFD() : "-"}
                       </div>
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap">

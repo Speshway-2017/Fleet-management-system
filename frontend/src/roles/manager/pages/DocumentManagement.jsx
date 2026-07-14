@@ -1,3 +1,4 @@
+import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -98,7 +99,7 @@ export default function DocumentManagement() {
         id: d.id,
         text: isExpired 
           ? `Alert: ${d.name} has expired.` 
-          : `Urgent: ${d.name} expires soon (Expiry: ${new Date(d.expiry).toLocaleDateString("en-IN")}).`,
+          : `Urgent: ${d.name} expires soon (Expiry: ${formatIFD()}).`,
         time: d.updatedAt ? "Updated recently" : "Added recently",
         icon: isExpired ? AlertTriangle : Clock,
         iconClass: isExpired ? "bg-red-500/20 text-red-400" : "bg-amber-500/20 text-amber-400"
@@ -368,7 +369,7 @@ export default function DocumentManagement() {
                       <span className="text-[10px] text-[#64748B] block">{doc.uploadedBy}</span>
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap text-sm text-[#1E293B] font-semibold">
-                      {doc.expiry && new Date(doc.expiry).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {doc.expiry && formatIFD()}
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(doc.status)}`}>

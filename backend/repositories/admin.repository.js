@@ -57,6 +57,17 @@ export const getRevenueAggregate = async () => {
   return result.length > 0 ? result[0].total : 0;
 };
 
+export const getTodayRevenueAggregate = async () => {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const result = await Analytics.aggregate([
+    { $match: { metric: 'Revenue', createdAt: { $gte: startOfDay } } },
+    { $group: { _id: null, total: { $sum: '$value' } } }
+  ]);
+  return result.length > 0 ? result[0].total : 0;
+};
+
 export const getRecentTrips = async (limit = 5) => {
   return Trip.find().sort({ createdAt: -1 }).limit(limit).populate('vehicle', 'vehicleNumber model').populate('driver', 'name');
 };

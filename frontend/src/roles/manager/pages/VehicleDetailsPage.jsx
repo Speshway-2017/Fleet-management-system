@@ -1,3 +1,4 @@
+import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Edit2, Trash2, MapPin, AlertTriangle, Download, Eye, FileText, Phone, Mail, Eye as EyeIcon, X, Loader } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -351,19 +352,19 @@ export default function VehicleDetailsPage() {
               <div>
                 <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Insurance Expiry</p>
                 <p className="text-sm font-semibold text-[#1E293B]">
-                  {new Date(vehicle.insuranceExpiry).toLocaleDateString("en-IN")}
+                  {formatIFD()}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Last Service</p>
                 <p className="text-sm font-semibold text-[#1E293B]">
-                  {new Date(vehicle.lastService).toLocaleDateString("en-IN")}
+                  {formatIFD()}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Next Service Due</p>
                 <p className="text-sm font-semibold text-[#1E293B]">
-                  {new Date(vehicle.nextService).toLocaleDateString("en-IN")}
+                  {formatIFD()}
                 </p>
               </div>
               <div>
@@ -443,7 +444,7 @@ export default function VehicleDetailsPage() {
               <div className="border-t border-orange-200 pt-4">
                 <p className="text-xs text-[#64748B] font-medium">Date Added</p>
                 <p className="font-bold text-[#1E293B] mt-1">
-                  {vehicle.dateAdded ? new Date(vehicle.dateAdded).toLocaleDateString("en-IN") : "N/A"}
+                  {vehicle.dateAdded ? formatIFD() : "N/A"}
                 </p>
               </div>
             </div>

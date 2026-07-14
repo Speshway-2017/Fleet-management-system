@@ -1,3 +1,4 @@
+import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect } from "react";
 import { ArrowLeft, Save, FileText, Calendar, Zap } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -150,7 +151,7 @@ export default function VehicleEditPage() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-green-600">
-                {formData.insuranceExpiry ? new Date(formData.insuranceExpiry).toLocaleDateString("en-IN") : "N/A"}
+                {formData.insuranceExpiry ? formatIFD() : "N/A"}
               </p>
               <p className="text-xs text-[#64748B] mt-1">✓ Valid and Active</p>
             </div>

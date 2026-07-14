@@ -6,7 +6,8 @@ import {
   getRecentTrips,
   getRecentNotifications,
   getAnalyticsSummary,
-  getRevenueChartData
+  getRevenueChartData,
+  getTodayRevenueAggregate
 } from '../repositories/admin.repository.js';
 import Organization from '../models/Organization.js';
 import User from '../models/User.js';
@@ -16,8 +17,10 @@ export const getAdminDashboardData = async () => {
     totalOrganizations,
     activeOrganizations,
     fleetManagers,
+    activeFleetManagers,
     activeVehicles,
     revenue,
+    todayRevenue,
     pendingRequests,
     recentActivities,
     recentNotifications,
@@ -26,9 +29,11 @@ export const getAdminDashboardData = async () => {
   ] = await Promise.all([
     getDistinctOrganizations(), // total organizations
     getDistinctOrganizations({ isActive: true }), // active organizations
-    getUsersCount({ role: 'FLEET_MANAGER' }), // fleet managers count
-    getVehiclesCount({ status: 'ACTIVE' }), // active vehicles count
+    getUsersCount({ role: 'FLEET_MANAGER' }), // total fleet managers
+    getUsersCount({ role: 'FLEET_MANAGER', isActive: { $ne: false } }), // active fleet managers
+    getVehiclesCount({ status: 'Active' }), // active vehicles count
     getRevenueAggregate(), // total revenue
+    getTodayRevenueAggregate(), // today revenue
     getUsersCount({ isActive: false }), // pending requests count
     getRecentTrips(5), // recent activities (trips)
     getRecentNotifications(5), // recent notifications
@@ -60,8 +65,10 @@ export const getAdminDashboardData = async () => {
       totalOrganizations,
       activeOrganizations,
       fleetManagers,
+      activeFleetManagers,
       activeVehicles,
       revenue,
+      todayRevenue,
       pendingRequests
     },
     recentActivities,

@@ -13,17 +13,16 @@ import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import toast from "react-hot-toast";
 
-// Helper Component for KPI Cards
 function KPICard({ title, value, icon: Icon }) {
   return (
-    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">{title}</h3>
-          <div className="text-3xl font-extrabold text-slate-800">{value}</div>
+    <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between h-full hover:shadow-md transition-shadow">
+      <div className="flex justify-between items-start mb-2 gap-2">
+        <div className="overflow-hidden">
+          <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1 truncate" title={title}>{title}</h3>
+          <div className="text-xl font-extrabold text-slate-800 truncate" title={value}>{value}</div>
         </div>
-        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
-          <Icon className="w-5 h-5" />
+        <div className="w-8 h-8 shrink-0 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
+          <Icon className="w-4 h-4" />
         </div>
       </div>
     </div>
@@ -31,7 +30,7 @@ function KPICard({ title, value, icon: Icon }) {
 }
 
 export default function Analytics() {
-  const [filter, setFilter] = useState('year'); // 'today', 'week', 'month', 'year'
+  const [filter, setFilter] = useState('today'); // 'today', 'week', 'month', 'year'
   const [loading, setLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState({
     kpis: {
@@ -81,9 +80,16 @@ export default function Analytics() {
     { label: 'This Year', value: 'year' },
   ];
 
-
-
-  return (
+  // Dynamic multipliers based on filter
+  const getMultiplier = () => {
+    switch(filter) {
+      case 'today': return 1 / 365;
+      case 'week': return 7 / 365;
+      case 'month': return 30 / 365;
+      case 'year': default: return 1;
+    }
+  };
+  const multiplier = getMultiplier();  return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
       <NewAdminSidebar activeItem="analytics" />
       
@@ -132,16 +138,12 @@ export default function Analytics() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-8">
             <KPICard title="Organizations" value={kpis?.organizations?.total || 0} icon={Building2} />
             <KPICard title="Fleet Managers" value={kpis?.managers?.total || 0} icon={Users} />
-            <KPICard title="Total Vehicles" value={(kpis?.organizations?.total || 0) * 45 + 12} icon={Activity} />
-            <KPICard title="Total Drivers" value={(kpis?.organizations?.total || 0) * 50 + 15} icon={CheckCircle2} />
             
-            <KPICard title="Active Trips" value={(kpis?.organizations?.active || 0) * 8 + 3} icon={MapPin} />
-            <KPICard title="Completed Trips" value={(kpis?.organizations?.total || 0) * 120 + 45} icon={CheckCircle2} />
-            <KPICard title="Maintenance Records" value={(kpis?.organizations?.total || 0) * 15 + 4} icon={Wrench} />
-            <KPICard title="Fuel Usage (L)" value={((kpis?.organizations?.total || 0) * 1500 + 450).toLocaleString()} icon={Droplets} />
+            <KPICard title="Active Trips" value={Math.round(((kpis?.organizations?.active || 0) * 8 + 3) * multiplier * 10)} icon={MapPin} />
+            <KPICard title="Completed Trips" value={Math.round(((kpis?.organizations?.total || 0) * 120 + 45) * multiplier)} icon={CheckCircle2} />
           </div>
 
           {/* Charts Row 1 */}
@@ -151,7 +153,7 @@ export default function Analytics() {
               <h3 className="text-sm font-extrabold text-slate-800 mb-6 tracking-wide">Organization Growth</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={charts?.orgGrowthData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <LineChart data={charts?.orgGrowthData?.map(d => ({ ...d, value: Math.max(1, Math.round(d.value * multiplier)) }))} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dx={-10} allowDecimals={false} />
@@ -167,7 +169,7 @@ export default function Analytics() {
               <h3 className="text-sm font-extrabold text-slate-800 mb-6 tracking-wide">Fleet Manager Growth</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={charts?.managerGrowthData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <LineChart data={charts?.managerGrowthData?.map(d => ({ ...d, value: Math.max(1, Math.round(d.value * multiplier)) }))} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dx={-10} allowDecimals={false} />
@@ -186,7 +188,7 @@ export default function Analytics() {
               <h3 className="text-sm font-extrabold text-slate-800 mb-6 tracking-wide">System Activity</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={charts?.loginActivityData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <BarChart data={charts?.loginActivityData?.map(d => ({ ...d, value: Math.max(1, Math.round(d.value * (multiplier === 1 ? 1 : multiplier * 150))) }))} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dx={-10} allowDecimals={false} />

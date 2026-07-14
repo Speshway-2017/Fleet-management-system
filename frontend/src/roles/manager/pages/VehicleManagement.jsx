@@ -1,3 +1,4 @@
+import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -122,7 +123,7 @@ export default function VehicleManagement() {
             return {
               id: n._id,
               text: n.description,
-              time: new Date(n.createdAt).toLocaleDateString() + ' ' + new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              time: formatIFD() + ' ' + formatIFDWithTime(),
               icon,
               color
             };
@@ -897,29 +898,17 @@ export default function VehicleManagement() {
                         {/* Insurance Expiry */}
                         <td className="py-4 px-6 text-xs font-semibold whitespace-nowrap">
                           <span className={getInsuranceStyle(v.insuranceExpiry)}>
-                            {new Date(v.insuranceExpiry).toLocaleDateString("en-IN", {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
+                            {formatIFD()}
                           </span>
                         </td>
 
                         {/* Last Service */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <p className="text-xs font-semibold text-[#1E293B]">
-                            {new Date(v.lastService).toLocaleDateString("en-IN", {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
+                            {formatIFD()}
                           </p>
                           <span className="text-[10px] text-[#64748B] block mt-0.5 font-medium whitespace-nowrap">
-                            Next: {new Date(v.nextService).toLocaleDateString("en-IN", {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
+                            Next: {formatIFD()}
                           </span>
                         </td>
 
@@ -1231,7 +1220,7 @@ export default function VehicleManagement() {
                         dynamicAlerts.push({
                           id: `ins-exp-${v.id}`,
                           title: "Insurance Expired",
-                          message: `${v.name} (${v.plateNumber}) expired on ${expDate.toLocaleDateString()}`,
+                          message: `${v.name} (${v.plateNumber}) expired on ${formatIFD()}`,
                           icon: FileText,
                           iconColor: "text-[#EF4444] bg-[#EF4444]/10",
                           badge: "Expired",
@@ -1242,7 +1231,7 @@ export default function VehicleManagement() {
                         dynamicAlerts.push({
                           id: `ins-warn-${v.id}`,
                           title: "Insurance Expiring Soon",
-                          message: `${v.name} (${v.plateNumber}) expires in ${diffDays} days (${expDate.toLocaleDateString()})`,
+                          message: `${v.name} (${v.plateNumber}) expires in ${diffDays} days (${formatIFD()})`,
                           icon: Calendar,
                           iconColor: "text-[#B45A0A] bg-[#FDF3EC]",
                           badge: `${diffDays} Days`,
@@ -1708,12 +1697,12 @@ export default function VehicleManagement() {
                   {/* Parameter 11 */}
                   <div>
                     <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Date Added</span>
-                    <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{new Date(selectedVehicle.dateAdded).toLocaleDateString("en-IN")}</span>
+                    <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{formatIFD()}</span>
                   </div>
                   {/* Parameter 12 */}
                   <div>
                     <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Insurance Expiry</span>
-                    <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{new Date(selectedVehicle.insuranceExpiry).toLocaleDateString("en-IN")}</span>
+                    <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{formatIFD()}</span>
                   </div>
                 </div>
 
@@ -1725,7 +1714,7 @@ export default function VehicleManagement() {
                       <Calendar className="w-5 h-5 text-gray-400 shrink-0" />
                       <div>
                         <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">Last Serviced</p>
-                        <span className="text-xs font-semibold text-[#1E293B] mt-0.5 block">{new Date(selectedVehicle.lastService).toLocaleDateString("en-IN")}</span>
+                        <span className="text-xs font-semibold text-[#1E293B] mt-0.5 block">{formatIFD()}</span>
                       </div>
                     </div>
 
@@ -1733,7 +1722,7 @@ export default function VehicleManagement() {
                       <Wrench className="w-5 h-5 text-gray-400 shrink-0" />
                       <div>
                         <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">Next Service Due</p>
-                        <span className="text-xs font-semibold text-[#1E293B] mt-0.5 block">{new Date(selectedVehicle.nextService).toLocaleDateString("en-IN")}</span>
+                        <span className="text-xs font-semibold text-[#1E293B] mt-0.5 block">{formatIFD()}</span>
                       </div>
                     </div>
                   </div>

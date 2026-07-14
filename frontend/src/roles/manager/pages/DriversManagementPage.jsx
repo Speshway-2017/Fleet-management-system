@@ -1,3 +1,4 @@
+import { formatIFD, formatIFDWithTime } from '@/utils/dateUtils';
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -193,7 +194,7 @@ export default function DriversManagementPage() {
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex flex-col">
                         <div className="flex items-center gap-1"><Award className="w-3.5 h-3.5 text-indigo-500" /><span className="font-bold text-xs text-[#1E293B]">{d.licenseNumber}</span><span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 rounded-md">{d.licenseType}</span></div>
-                        <span className="text-[10px] text-[#64748B] mt-0.5 font-medium">Expires: {d.licenseExpiry ? new Date(d.licenseExpiry).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</span>
+                        <span className="text-[10px] text-[#64748B] mt-0.5 font-medium">Expires: {d.licenseExpiry ? formatIFD() : "—"}</span>
                       </div>
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap">
