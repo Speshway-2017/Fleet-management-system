@@ -6,6 +6,7 @@ import {
   deleteVehicle as deleteVehicleInRepo,
 } from '../repositories/vehicle.repository.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { processVehicleDocuments } from '../utils/documentHelper.js';
 import Trip from '../models/Trip.js';
 import Vehicle from '../models/Vehicle.js';
 
@@ -82,6 +83,7 @@ export const createVehicle = async (req, res, next) => {
       registrationNumber,
       vehicleType,
       brand,
+      manufacturer,
       model,
       manufactureYear,
       assignedDriver,
@@ -99,21 +101,47 @@ export const createVehicle = async (req, res, next) => {
       chassisNumber,
       loadCapacity,
       ownershipType,
+      ownership,
       insuranceDetails,
       permitDetails,
       documents,
+      engineCC,
+      engineNumber,
+      fastagNumber,
+      lastService,
+      lastServiceDate,
+      nextService,
+      nextServiceDue,
+      transmissionType,
+      transmission,
+      seatingCapacity,
+      registrationState,
+      registrationType,
+      availability,
+      branch,
+      branchDepot,
     } = req.body;
 
     if (!vehicleNumber) {
       return sendError(res, 400, 'Vehicle number is required');
     }
 
+    const processedDocs = await processVehicleDocuments(documents, req.user);
+
+    const resolvedBrand = brand || manufacturer;
+    const resolvedTransmission = transmissionType || transmission || 'Manual';
+    const resolvedOwnership = ownershipType || ownership || 'Owned';
+    const resolvedBranch = branch || branchDepot || 'Pune';
+    const resolvedLastService = lastService || lastServiceDate || undefined;
+    const resolvedNextService = nextService || nextServiceDue || undefined;
+
     const vehicle = await createVehicleInRepo({
-      vehicleName,
+      vehicleName: vehicleName || (resolvedBrand ? `${resolvedBrand} ${model}` : model),
       vehicleNumber,
-      registrationNumber,
+      registrationNumber: registrationNumber || vehicleNumber,
       vehicleType: vehicleType || 'Truck',
-      brand,
+      brand: resolvedBrand,
+      manufacturer: resolvedBrand,
       model,
       manufactureYear: manufactureYear ? Number(manufactureYear) : undefined,
       assignedDriver: assignedDriver || undefined,
@@ -129,12 +157,29 @@ export const createVehicle = async (req, res, next) => {
       odometer: odometer !== undefined ? Number(odometer) : 0,
       image: image || '',
       assignedManager: req.user?._id,
+      createdBy: req.user?._id,
       chassisNumber,
       loadCapacity: loadCapacity !== undefined ? Number(loadCapacity) : 0,
-      ownershipType: ownershipType || 'Owned',
+      ownershipType: resolvedOwnership,
+      ownership: resolvedOwnership,
       insuranceDetails,
       permitDetails,
-      documents,
+      documents: processedDocs,
+      engineCC,
+      engineNumber,
+      fastagNumber,
+      lastService: resolvedLastService,
+      lastServiceDate: resolvedLastService,
+      nextService: resolvedNextService,
+      nextServiceDue: resolvedNextService,
+      transmissionType: resolvedTransmission,
+      transmission: resolvedTransmission,
+      seatingCapacity: seatingCapacity || '2',
+      registrationState,
+      registrationType: registrationType || 'New',
+      availability: availability || 'Immediate',
+      branch: resolvedBranch,
+      branchDepot: resolvedBranch,
     });
 
     return sendSuccess(res, 201, vehicle, 'Vehicle created successfully');
@@ -156,6 +201,36 @@ export const updateVehicle = async (req, res, next) => {
   try {
     const vehicleId = req.params.id;
     const updateData = { ...req.body };
+
+    if (updateData.documents) {
+      updateData.documents = await processVehicleDocuments(updateData.documents, req.user);
+    }
+
+    if (updateData.manufacturer !== undefined || updateData.brand !== undefined) {
+      updateData.brand = updateData.manufacturer || updateData.brand;
+      updateData.manufacturer = updateData.brand;
+    }
+    if (updateData.transmissionType !== undefined || updateData.transmission !== undefined) {
+      updateData.transmissionType = updateData.transmissionType || updateData.transmission;
+      updateData.transmission = updateData.transmissionType;
+    }
+    if (updateData.ownershipType !== undefined || updateData.ownership !== undefined) {
+      updateData.ownershipType = updateData.ownershipType || updateData.ownership;
+      updateData.ownership = updateData.ownershipType;
+    }
+    if (updateData.branch !== undefined || updateData.branchDepot !== undefined) {
+      updateData.branch = updateData.branch || updateData.branchDepot;
+      updateData.branchDepot = updateData.branch;
+    }
+    if (updateData.lastService !== undefined || updateData.lastServiceDate !== undefined) {
+      updateData.lastService = updateData.lastService || updateData.lastServiceDate;
+      updateData.lastServiceDate = updateData.lastService;
+    }
+    if (updateData.nextService !== undefined || updateData.nextServiceDue !== undefined) {
+      updateData.nextService = updateData.nextService || updateData.nextServiceDue;
+      updateData.nextServiceDue = updateData.nextService;
+    }
+    updateData.updatedBy = req.user?._id;
 
     // Fetch the current vehicle state before updating
     const existingVehicle = await getVehicleById(vehicleId);
