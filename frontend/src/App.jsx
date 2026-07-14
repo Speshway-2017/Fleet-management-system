@@ -63,12 +63,7 @@ import ProfilePage from "@/roles/manager/pages/ProfilePage";
 import EditProfilePage from "@/roles/manager/pages/EditProfilePage";
 import ManagerResetPasswordPage from "@/roles/manager/pages/ManagerResetPasswordPage";
 import TwoFactorPage from "@/roles/manager/pages/TwoFactorPage";
-import DocumentManagement from "@/roles/manager/pages/DocumentManagement";
-import ViewDocument from "@/roles/manager/pages/ViewDocument";
-import EditDocument from "@/roles/manager/pages/EditDocument";
-import UploadDocument from "@/roles/manager/pages/UploadDocument";
-import DocumentsListPage from "@/roles/manager/pages/DocumentsListPage";
-import ComplianceAuditPage from "@/roles/manager/pages/ComplianceAuditPage";
+// Imports for document pages removed
 // import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
 // import TripsListPage from "@/roles/manager/pages/TripsListPage";
 
@@ -152,12 +147,6 @@ export default function App() {
 
 
               <Route path="/manager/settings" element={<SettingsPage />} />
-              <Route path="/manager/documents" element={<DocumentManagement />} />
-              <Route path="/manager/documents/list" element={<DocumentsListPage />} />
-              <Route path="/manager/documents/compliance-audit" element={<ComplianceAuditPage />} />
-              <Route path="/manager/documents/upload" element={<UploadDocument />} />
-              <Route path="/manager/documents/view/:id" element={<ViewDocument />} />
-              <Route path="/manager/documents/edit/:id" element={<EditDocument />} />
               <Route path="/manager/drivers" element={<DriversManagementPage />} />
               <Route path="/manager/drivers-list" element={<DriversListPage />} />
               <Route path="/manager/trips" element={<TripsManagementPage />} />

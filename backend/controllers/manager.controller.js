@@ -562,7 +562,12 @@ export const deleteTrip = async (req, res, next) => {
 // Fuel Controllers
 export const listFuelRecords = async (req, res, next) => {
   try {
-    const filter = { recordedBy: req.user._id };
+    // 1. Fetch total vehicles assigned to this manager
+    const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id');
+    const vehicleIds = managerVehicles.map(v => v._id);
+
+    // 2. Filter fuel entries by manager's vehicles
+    const filter = { vehicle: { $in: vehicleIds } };
     if (req.query.vehicle) {
       filter.vehicle = req.query.vehicle;
     }
@@ -587,46 +592,7 @@ export const getFuelRecordDetails = async (req, res, next) => {
 
 export const createFuelRecord = async (req, res, next) => {
   try {
-    const {
-      vehicle,
-      vehicleId,
-      vehicleName,
-      driver,
-      fuelStation,
-      amount,
-      liters,
-      status,
-      resolutionComment,
-      hasReceipt
-    } = req.body;
-
-    if (!vehicle || amount === undefined || liters === undefined) {
-      return sendError(res, 400, 'Vehicle, amount, and liters are required');
-    }
-
-    const record = await createFuelRecordInRepo({
-      vehicle,
-      vehicleId,
-      vehicleName,
-      driver,
-      fuelStation,
-      amount,
-      liters,
-      status,
-      resolutionComment,
-      hasReceipt,
-      recordedBy: req.user._id
-    });
-
-    await logActivity({
-      title: 'Fuel Entry Added',
-      description: `Fuel entry of ₹${record.amount.toLocaleString('en-IN')} (${record.liters}L) was added for vehicle ${record.vehicleId || 'Unassigned'}.`,
-      activityType: 'FUEL_ENTRY_ADDED',
-      user: req.user,
-      assignedManager: req.user._id
-    });
-
-    return sendSuccess(res, 201, record, 'Fuel record created');
+    return sendError(res, 403, 'Managers are not authorized to create new fuel entries.');
   } catch (error) {
     next(error);
   }
@@ -634,6 +600,27 @@ export const createFuelRecord = async (req, res, next) => {
 
 export const updateFuelRecord = async (req, res, next) => {
   try {
+    const allowedKeys = ['status', 'resolutionComment', 'approvalStatus', 'rejectionReason', 'billStatus'];
+    const updates = Object.keys(req.body);
+    const isValidUpdate = updates.every(key => allowedKeys.includes(key));
+    
+    if (!isValidUpdate) {
+      return sendError(res, 403, 'Managers are not authorized to edit driver fuel logs.');
+    }
+
+    // Automatically stamp approvedBy/rejectedBy and timestamps if status changes
+    if (req.body.approvalStatus) {
+      if (req.body.approvalStatus === 'Approved') {
+        req.body.approvedBy = req.user.name || 'Fleet Manager';
+        req.body.approvedAt = new Date();
+        req.body.billStatus = 'Approved';
+      } else if (req.body.approvalStatus === 'Rejected') {
+        req.body.rejectedBy = req.user.name || 'Fleet Manager';
+        req.body.rejectedAt = new Date();
+        req.body.billStatus = 'Rejected';
+      }
+    }
+
     const record = await updateFuelRecordInRepo(req.params.id, req.body);
     if (!record) {
       return sendError(res, 404, 'Fuel record not found');
@@ -646,11 +633,7 @@ export const updateFuelRecord = async (req, res, next) => {
 
 export const deleteFuelRecord = async (req, res, next) => {
   try {
-    const record = await deleteFuelRecordInRepo(req.params.id);
-    if (!record) {
-      return sendError(res, 404, 'Fuel record not found');
-    }
-    return sendSuccess(res, 200, null, 'Fuel record deleted');
+    return sendError(res, 403, 'Managers are not authorized to delete driver fuel logs.');
   } catch (error) {
     next(error);
   }

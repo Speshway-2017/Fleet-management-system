@@ -38,7 +38,6 @@ const MENU_ITEMS = [
   { label: "Live Tracking", to: "/manager/map", icon: MapPin },
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel },
   { label: "Maintenance", to: "/manager/maintenance", icon: Wrench },
-  { label: "Documents", to: "/manager/documents", icon: FolderOpen },
   { label: "Analytics", to: "/manager/analytics", icon: BarChart3 },
   { label: "Reports", to: "/manager/reports", icon: ClipboardList },
   { label: "Notifications", to: "/manager/notifications", icon: Bell },
@@ -71,7 +70,6 @@ const MANAGER_MOBILE_SIDEBAR_ITEMS = [
   { label: "Trips", to: "/manager/trips", icon: Route },
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel },
   { label: "Maintenance", to: "/manager/maintenance", icon: Wrench },
-  { label: "Documents", to: "/manager/documents", icon: FolderOpen },
   { label: "Analytics", to: "/manager/analytics", icon: BarChart3 },
   { label: "Reports", to: "/manager/reports", icon: ClipboardList },
 ];

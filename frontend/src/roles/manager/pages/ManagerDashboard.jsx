@@ -10,7 +10,6 @@ export default function ManagerDashboard() {
 
   const [vehicles, setVehicles] = useState([]);
   const [dbStats, setDbStats] = useState(null);
-  const [documents, setDocuments] = useState([]);
   const [fuelRecords, setFuelRecords] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,10 +60,9 @@ export default function ManagerDashboard() {
     const fetchAllData = async (isInitial = false) => {
       try {
         if (isInitial) setLoading(true);
-        const [dashRes, vehRes, docRes, fuelRes, maintRes, actRes] = await Promise.all([
+        const [dashRes, vehRes, fuelRes, maintRes, actRes] = await Promise.all([
           managerApi.getDashboard(),
           managerApi.getVehicles(),
-          managerApi.getDocuments(),
           managerApi.getFuelRecords(),
           managerApi.getMaintenance(),
           managerApi.getActivities()
@@ -75,9 +73,6 @@ export default function ManagerDashboard() {
         
         const rawDash = dashRes.data?.data || dashRes.data || {};
         setDbStats(rawDash);
-
-        const rawDocs = docRes.data?.data || docRes.data || [];
-        setDocuments(rawDocs);
 
         setFuelRecords(fuelRes.data?.data || fuelRes.data || []);
         setMaintenance(maintRes.data?.data || maintRes.data || []);
@@ -493,8 +488,8 @@ export default function ManagerDashboard() {
           })()}
         </div>
 
-        {/* Row 2: 2 Column Layout (Upcoming Renewals and Compliance Expiry are wider) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Row 2: 1 Column Layout (Upcoming Renewals) */}
+        <div className="grid grid-cols-1 gap-6">
           {/* Upcoming Renewals */}
           {(() => {
             const renewals = [];
@@ -543,12 +538,6 @@ export default function ManagerDashboard() {
                     <Icon icon="material-symbols:event-repeat" className="w-5 h-5 text-[#C65D0E]" />
                     <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Upcoming Renewals</h3>
                   </div>
-                  <button
-                    onClick={() => navigate("/manager/documents")}
-                    className="text-[#C65D0E] text-xs font-bold hover:underline font-poppins cursor-pointer"
-                  >
-                    View All
-                  </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
@@ -582,69 +571,6 @@ export default function ManagerDashboard() {
                       <p className="text-xs font-semibold text-gray-500 font-poppins">No upcoming renewals.</p>
                     </div>
                   )}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Compliance Expiry */}
-          {(() => {
-            const complianceAlerts = documents
-              .filter(d => d.status === "Expired" || d.status === "Expiring Soon")
-              .map(d => ({
-                id: d._id || d.id,
-                vehicle: d.vehicle || "All Fleet",
-                document: d.title || d.name,
-                status: d.status
-              }));
-
-            const displayedCompliance = complianceAlerts.slice(0, 5); // Increased slice since the card is wider
-
-            return (
-              <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm overflow-hidden flex flex-col h-[380px]">
-                <div className="p-6 flex items-center justify-between border-b border-[#E5E7EB] shrink-0">
-                  <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Compliance Expiry</h3>
-                  <button
-                    onClick={() => navigate("/manager/documents")}
-                    className="text-[#C65D0E] text-xs font-bold hover:underline font-poppins cursor-pointer"
-                  >
-                    View All
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                  <table className="w-full text-left text-xs font-nunito whitespace-nowrap">
-                    <thead className="bg-[#F5F7FA]">
-                      <tr>
-                        <th className="px-4 py-3 text-[#6B7280] font-bold uppercase tracking-wider text-[10px]">Vehicle</th>
-                        <th className="px-4 py-3 text-[#6B7280] font-bold uppercase tracking-wider text-[10px]">Document</th>
-                        <th className="px-4 py-3 text-[#6B7280] font-bold uppercase tracking-wider text-[10px]">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedCompliance.map((row, idx) => (
-                        <tr key={row.id || idx} className="hover:bg-[#F9FAFB] transition-colors border-b border-[#F0F1F3]">
-                          <td className="px-4 py-4 font-poppins font-bold text-[#1B2430] text-[13px]">{row.vehicle.replace(/-/g, ' ')}</td>
-                          <td className="px-4 py-4 text-[#6B7280] font-medium text-[13px]">{row.document}</td>
-                          <td className="px-4 py-4">
-                            <span className={`inline-block px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider font-poppins whitespace-nowrap ${row.status === "Expired"
-                                ? "bg-red-600 text-white shadow-md shadow-red-200"
-                                : "bg-amber-500 text-white shadow-md shadow-amber-200"
-                              }`}>
-                              {row.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                      {displayedCompliance.length === 0 && (
-                        <tr>
-                          <td colSpan="3" className="px-4 py-8 text-center text-[#6B7280] font-medium">
-                            All compliance documents are active & valid.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
                 </div>
               </div>
             );
