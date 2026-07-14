@@ -4,38 +4,53 @@ import toast from "react-hot-toast";
 import { ArrowLeft, Check, X, AlertTriangle, Building2, Clock, CheckCircle2, AlertCircle, Info, ShieldAlert, Zap } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
+import { useAdmin } from "@/roles/admin/context/AdminContext";
 
 export default function NotificationDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [isRead, setIsRead] = useState(false);
+  const { notifications, markAsRead } = useAdmin();
 
-  // Mock data based on ID for demonstration
-  const notification = {
-    id: id || 1,
-    title: "New Organization Registered",
-    description: "Peak Freight Co. has completed their initial registration process on the platform. Their KYC documents have been submitted and are currently pending your manual review and approval before they can activate their fleet operations.",
-    timestamp: "2 min ago",
-    fullDate: "Oct 24, 2026, 14:32 PM",
-    priority: "High",
-    status: isRead ? "Read" : "Unread",
-    type: "Alert",
-    organization: {
-      name: "Peak Freight Co.",
-      id: "ORG-78291",
-      contact: "john.doe@peakfreight.com",
-      phone: "+1 (555) 123-4567"
+  // Find notification by ID
+  const dbNotification = notifications.find(n => n.id === id);
+
+  // Fallback to a basic structure or the selected notification
+  const notification = dbNotification ? {
+    id: dbNotification.id,
+    title: dbNotification.title,
+    description: dbNotification.description,
+    timestamp: dbNotification.time,
+    fullDate: new Date(dbNotification.createdAt).toLocaleString(),
+    priority: dbNotification.priority || "Low",
+    status: dbNotification.isRead ? "Read" : "Unread",
+    type: dbNotification.type || "bell",
+    organization: dbNotification.organization || {
+      name: "System Generated",
+      id: "SYS-ALERT",
+      contact: "support@fleet.com",
+      phone: "N/A"
     },
-    timeline: [
-      { id: 1, action: "Registration Submitted", time: "Oct 24, 2026, 14:30 PM", user: "System", active: false },
-      { id: 2, action: "KYC Documents Uploaded", time: "Oct 24, 2026, 14:31 PM", user: "Peak Freight Admin", active: false },
-      { id: 3, action: "Pending Manual Approval", time: "Oct 24, 2026, 14:32 PM", user: "System", active: true }
+    timeline: dbNotification.timeline || [
+      { id: 1, action: "Event Triggered", time: new Date(dbNotification.createdAt).toLocaleString(), user: "System", active: true }
     ]
+  } : {
+    id: "unknown",
+    title: "Loading Notification...",
+    description: "The notification detail is being fetched or does not exist.",
+    timestamp: "N/A",
+    fullDate: "N/A",
+    priority: "Low",
+    status: "Unknown",
+    type: "info",
+    organization: { name: "System", id: "SYS-000", contact: "info@fleet.com", phone: "N/A" },
+    timeline: []
   };
+
+  const isRead = dbNotification ? dbNotification.isRead : false;
 
   return (
     <div className="h-screen bg-[#f4f7f6] flex font-sans">
-      <NewAdminSidebar />
+      <NewAdminSidebar activeItem="" />
       
       <div className="flex-1 flex flex-col min-w-0">
         <NewAdminTopNav title="Notification Details" />
@@ -77,7 +92,7 @@ export default function NotificationDetails() {
                 </button>
                 {!isRead && (
                   <button 
-                    onClick={() => { setIsRead(true); toast.success("Marked as read"); }}
+                    onClick={async () => { await markAsRead(id); toast.success("Marked as read"); }}
                     className="px-4 py-2 bg-[#0f172a] hover:bg-slate-800 text-white text-[13px] font-bold rounded-lg shadow-sm transition-colors flex items-center gap-2"
                   >
                     <Check className="w-4 h-4" />

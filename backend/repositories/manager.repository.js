@@ -5,50 +5,43 @@ import Fuel from '../models/Fuel.js';
 import Maintenance from '../models/Maintenance.js';
 import Document from '../models/Document.js';
 import Report from '../models/Report.js';
+import Notification from '../models/Notification.js';
 
 // Vehicles
-export const getVehicles = async (filter = {}) => {
-  return Vehicle.find(filter);
-};
+export const getVehicles = async (filter = {}) =>
+  Vehicle.find(filter).populate('assignedDriver').sort({ createdAt: -1 });
 
-export const getVehicleById = async (id) => {
-  return Vehicle.findById(id);
-};
+export const getVehicleById = async (id) =>
+  Vehicle.findById(id).populate('assignedDriver');
 
 export const createVehicle = async (data) => {
   const vehicle = new Vehicle(data);
   return vehicle.save();
 };
 
-export const updateVehicle = async (id, data) => {
-  return Vehicle.findByIdAndUpdate(id, data, { new: true });
-};
+export const updateVehicle = async (id, data) =>
+  Vehicle.findByIdAndUpdate(id, data, { new: true, runValidators: true });
 
-export const deleteVehicle = async (id) => {
-  return Vehicle.findByIdAndDelete(id);
-};
+export const deleteVehicle = async (id) =>
+  Vehicle.findByIdAndDelete(id);
 
 // Drivers
-export const getDrivers = async (filter = {}) => {
-  return Driver.find(filter);
-};
+export const getDrivers = async (filter = {}) =>
+  Driver.find(filter).sort({ createdAt: -1 });
 
-export const getDriverById = async (id) => {
-  return Driver.findById(id);
-};
+export const getDriverById = async (id) =>
+  Driver.findById(id);
 
 export const createDriver = async (data) => {
   const driver = new Driver(data);
   return driver.save();
 };
 
-export const updateDriver = async (id, data) => {
-  return Driver.findByIdAndUpdate(id, data, { new: true });
-};
+export const updateDriver = async (id, data) =>
+  Driver.findByIdAndUpdate(id, data, { new: true, runValidators: true });
 
-export const deleteDriver = async (id) => {
-  return Driver.findByIdAndDelete(id);
-};
+export const deleteDriver = async (id) =>
+  Driver.findByIdAndDelete(id);
 
 // Trips
 export const getTrips = async (filter = {}) => {
@@ -56,7 +49,7 @@ export const getTrips = async (filter = {}) => {
 };
 
 export const getTripById = async (id) => {
-  return Trip.findById(id);
+  return Trip.findById(id).populate('driver').populate('vehicle');
 };
 
 export const createTrip = async (data) => {
@@ -158,4 +151,21 @@ export const updateReport = async (id, data) => {
 
 export const deleteReport = async (id) => {
   return Report.findByIdAndDelete(id);
+};
+
+// Notifications
+export const getManagerNotifications = async (managerId) => {
+  return Notification.find({ $or: [{ recipient: managerId }, { recipientRole: 'FLEET_MANAGER' }] }).sort({ createdAt: -1 });
+};
+
+export const markManagerNotificationRead = async (id) => {
+  return Notification.findByIdAndUpdate(id, { isRead: true }, { new: true });
+};
+
+export const markAllManagerNotificationsRead = async (managerId) => {
+  return Notification.updateMany({ $or: [{ recipient: managerId }, { recipientRole: 'FLEET_MANAGER' }], isRead: false }, { isRead: true });
+};
+
+export const deleteManagerNotification = async (id) => {
+  return Notification.findByIdAndDelete(id);
 };

@@ -28,13 +28,18 @@ export default function CreateTripPage() {
   const [drivers, setDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
 
-  // Selections
+  const [tripNumber, setTripNumber] = useState("");
   const [selectedDriverId, setSelectedDriverId] = useState("");
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
+  const [cargoType, setCargoType] = useState("");
+  const [cargoWeight, setCargoWeight] = useState("");
+  const [tripNotes, setTripNotes] = useState("");
 
   // Filters
-  const [filterAvailableVehicles, setFilterAvailableVehicles] = useState(false);
-  const [filterAvailableDrivers, setFilterAvailableDrivers] = useState(false);
+  const [filterAvailableVehicles, setFilterAvailableVehicles] = useState(true);
+  const [filterAvailableDrivers, setFilterAvailableDrivers] = useState(true);
+
+  const [loading, setLoading] = useState(false);
 
   // Form inputs
   const [startLocation, setStartLocation] = useState("");
@@ -44,28 +49,103 @@ export default function CreateTripPage() {
   const [status, setStatus] = useState("Scheduled");
   const [description, setDescription] = useState("");
 
-  // Load resources from backend
+  // Generate trip ID on mount
   useEffect(() => {
+    setTripNumber(`TRP-${Math.floor(100000 + Math.random() * 900000)}`);
+  }, []);
+
+  // Load resources dynamically from backend based on startLocation
+  useEffect(() => {
+    if (!startLocation.trim()) {
+      setVehicles([]);
+      setDrivers([]);
+      setSelectedDriverId("");
+      setSelectedVehicleId("");
+      return;
+    }
+
     const fetchResources = async () => {
+      setLoading(true);
       try {
         const [dRes, vRes] = await Promise.all([
-          managerApi.getDrivers(),
-          managerApi.getVehicles()
+          managerApi.getAvailableDrivers({ location: startLocation }),
+          managerApi.getAvailableVehicles({ location: startLocation })
         ]);
-        const driversData = (dRes.data?.data || dRes.data || []).map(d => ({ ...d, id: d._id }));
-        const vehiclesData = (vRes.data?.data || vRes.data || []).map(v => ({ ...v, id: v._id }));
+        const driversData = (dRes.data?.data || dRes.data || []).map(d => ({
+          ...d,
+          id: d._id,
+          name: d.fullName,
+          phone: d.phoneNumber,
+          status: d.driverStatus === "AVAILABLE" ? "Available" : d.driverStatus === "ON_TRIP" ? "On Trip" : d.driverStatus
+        }));
+        const vehiclesData = (vRes.data?.data || vRes.data || []).map(v => ({
+          ...v,
+          id: v._id,
+          name: v.vehicleName,
+          plateNumber: v.vehicleNumber,
+          status: v.currentStatus
+        }));
         setDrivers(driversData);
         setVehicles(vehiclesData);
+
+        // Auto-clear selection if it is not in the new filtered location list
+        setSelectedDriverId(prev => {
+          if (prev && !driversData.some(d => String(d.id) === String(prev))) {
+            return "";
+          }
+          return prev;
+        });
+        setSelectedVehicleId(prev => {
+          if (prev && !vehiclesData.some(v => String(v.id) === String(prev))) {
+            return "";
+          }
+          return prev;
+        });
       } catch (error) {
         toast.error("Failed to load driver/vehicle lists from database");
         console.error(error);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchResources();
-  }, []);
+
+    const debounceFetch = setTimeout(() => {
+      fetchResources();
+    }, 400);
+
+    return () => clearTimeout(debounceFetch);
+  }, [startLocation]);
 
   const handleDispatch = async (e) => {
     e.preventDefault();
+    if (!startLocation.trim()) {
+      toast.error("Pickup Location is required.");
+      return;
+    }
+    if (!endLocation.trim()) {
+      toast.error("Destination is required.");
+      return;
+    }
+    if (startLocation.trim().toLowerCase() === endLocation.trim().toLowerCase()) {
+      toast.error("Pickup and Destination cannot be the same.");
+      return;
+    }
+    if (!departureTime) {
+      toast.error("Departure Time is required.");
+      return;
+    }
+    if (!eta) {
+      toast.error("Estimated Arrival is required.");
+      return;
+    }
+
+    const pickupDate = new Date(departureTime);
+    const currentDate = new Date();
+    if (pickupDate.getTime() + 300000 < currentDate.getTime()) {
+      toast.error("Pickup Date and Time cannot be in the past.");
+      return;
+    }
+
     if (!selectedDriverId) {
       toast.error("Please select a driver from Driver Assignment");
       return;
@@ -74,53 +154,43 @@ export default function CreateTripPage() {
       toast.error("Please select a vehicle from Asset Allocation");
       return;
     }
-    if (!startLocation || !endLocation || !departureTime || !eta) {
-      toast.error("Please fill in all route and timing specifications");
-      return;
-    }
 
     const driver = drivers.find(d => String(d.id) === String(selectedDriverId));
     const vehicle = vehicles.find(v => String(v.id) === String(selectedVehicleId));
 
-    if (!driver || !vehicle) {
-      toast.error("Invalid selection data");
+    if (!vehicle) {
+      toast.error("Selected vehicle is not from the selected Start Location or is no longer available.");
+      return;
+    }
+    if (!driver) {
+      toast.error("Selected driver is not from the selected Start Location or is no longer available.");
       return;
     }
 
     try {
-      const tripNum = `TRP-${Math.floor(1000 + Math.random() * 9000)}`;
       await managerApi.createTrip({
-        tripNumber: tripNum,
+        tripNumber,
         vehicle: vehicle._id,
         driver: driver._id,
         driverName: driver.name,
         driverPhone: driver.phone,
         vehicleName: vehicle.name,
         vehiclePlate: vehicle.plateNumber,
-        startLocation: startLocation,
-        endLocation: endLocation,
-        departureTime: departureTime,
-        eta: eta,
-        status: status,
-        description: description || "General Dispatch Cargo"
-      });
-
-      // Update vehicle status
-      await managerApi.updateVehicle(vehicle._id, {
-        driver: driver.name,
-        status: status === "On Transit" ? "On Trip" : "Active"
-      });
-
-      // Update driver status
-      await managerApi.updateDriver(driver._id, {
-        assignedVehicle: vehicle.plateNumber,
-        status: status === "On Transit" ? "On Trip" : "Available"
+        startLocation,
+        endLocation,
+        departureTime,
+        eta,
+        status,
+        description: description || "General Dispatch Cargo",
+        cargoType,
+        cargoWeight: cargoWeight ? Number(cargoWeight) : undefined,
+        tripNotes
       });
 
       toast.success("Trip dispatched successfully!");
       navigate("/manager/trips");
     } catch (error) {
-      toast.error("Failed to dispatch trip");
+      toast.error(error.response?.data?.message || "Failed to dispatch trip");
       console.error(error);
     }
   };
@@ -167,6 +237,41 @@ export default function CreateTripPage() {
             <div className="flex items-center gap-2 pb-3 border-b border-[#E7EAF0]">
               <Route className="w-5 h-5 text-[#B45A0A]" />
               <h3 className="font-poppins font-bold text-[#1E293B] text-[16px]">Trip Specifications</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Trip ID */}
+              <div>
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                  Trip ID (Auto-generated)
+                </label>
+                <input
+                  type="text"
+                  value={tripNumber}
+                  disabled
+                  className="w-full px-3.5 py-2.5 h-[44px] bg-slate-50 border border-[#E7EAF0] rounded-xl text-sm text-[#64748B] font-medium focus:outline-none select-none"
+                />
+              </div>
+
+              {/* Status Selection */}
+              <div>
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                  Initial Trip Status *
+                </label>
+                <div className="relative">
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full pl-3.5 pr-8 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none cursor-pointer font-medium"
+                    required
+                  >
+                    <option value="Scheduled">Scheduled</option>
+                    <option value="On Transit">On Transit</option>
+                    <option value="Delayed">Delayed</option>
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -244,7 +349,37 @@ export default function CreateTripPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Cargo Details */}
+              {/* Cargo Type */}
+              <div>
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                  Cargo Type (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Perishable Goods, Electronics"
+                  value={cargoType}
+                  onChange={(e) => setCargoType(e.target.value)}
+                  className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                />
+              </div>
+
+              {/* Cargo Weight */}
+              <div>
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                  Cargo Weight (Optional, kg)
+                </label>
+                <input
+                  type="number"
+                  placeholder="e.g. 5000"
+                  value={cargoWeight}
+                  onChange={(e) => setCargoWeight(e.target.value)}
+                  className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Cargo Description */}
               <div>
                 <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
                   Cargo / Description
@@ -258,24 +393,18 @@ export default function CreateTripPage() {
                 />
               </div>
 
-              {/* Status Selection */}
+              {/* Trip Notes */}
               <div>
                 <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Initial Trip Status *
+                  Trip Notes (Optional)
                 </label>
-                <div className="relative">
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full pl-3.5 pr-8 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none cursor-pointer font-medium"
-                    required
-                  >
-                    <option value="Scheduled">Scheduled</option>
-                    <option value="On Transit">On Transit</option>
-                    <option value="Delayed">Delayed</option>
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+                <input
+                  type="text"
+                  placeholder="e.g. Handle with care, route via tollway"
+                  value={tripNotes}
+                  onChange={(e) => setTripNotes(e.target.value)}
+                  className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                />
               </div>
             </div>
           </div>
@@ -343,11 +472,21 @@ export default function CreateTripPage() {
             </div>
 
             <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
-              {(filterAvailableVehicles 
+              {!startLocation.trim() ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+                  <MapPin className="w-8 h-8 text-[#94A3B8] mb-2" />
+                  <p className="text-xs text-gray-400 font-semibold font-poppins">Please select a Start Location to view available vehicles and drivers.</p>
+                </div>
+              ) : loading ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available vehicles...</p>
+                </div>
+              ) : (filterAvailableVehicles 
                 ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
                 : vehicles
               ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center">No vehicles matching selection</p>
+                <p className="text-xs text-gray-400 py-4 text-center font-semibold">No available vehicles found for the selected start location.</p>
               ) : (
                 (filterAvailableVehicles 
                   ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
@@ -364,8 +503,13 @@ export default function CreateTripPage() {
                   >
                     <div>
                       <p className="font-bold text-xs text-[#1E293B]">{v.name}</p>
-                      <span className="text-[10px] text-[#64748B] font-semibold block mt-0.5 uppercase">{v.plateNumber}</span>
-                      <span className={`inline-block mt-1.5 px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
+                      <span className="text-[10px] text-[#64748B] font-semibold block mt-0.5 uppercase">Reg: {v.plateNumber}</span>
+                      <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
+                        <span>Type: <strong className="text-[#1E293B]">{v.vehicleType || v.type || "Truck"}</strong></span>
+                        <span>|</span>
+                        <span>Location: <strong className="text-[#1E293B]">{v.branch || "Pune"}</strong></span>
+                      </div>
+                      <span className={`inline-block mt-2 px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
                         v.status === "Active" || v.status === "Available"
                           ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
                           : "bg-amber-50 text-amber-600 border border-amber-100"
@@ -411,53 +555,92 @@ export default function CreateTripPage() {
             </div>
 
             <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
-              {(filterAvailableDrivers 
-                ? drivers.filter(d => d.status === "Available")
+              {!startLocation.trim() ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+                  <User className="w-8 h-8 text-[#94A3B8] mb-2" />
+                  <p className="text-xs text-gray-400 font-semibold font-poppins">Please select a Start Location to view available vehicles and drivers.</p>
+                </div>
+              ) : loading ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available drivers...</p>
+                </div>
+              ) : (filterAvailableDrivers 
+                ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
                 : drivers
               ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center">No drivers matching selection</p>
+                <p className="text-xs text-gray-400 py-4 text-center font-semibold">No available drivers found for the selected start location.</p>
               ) : (
                 (filterAvailableDrivers 
-                  ? drivers.filter(d => d.status === "Available")
+                  ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
                   : drivers
-                ).map(d => (
-                  <div
-                    key={d.id}
-                    onClick={() => setSelectedDriverId(String(d.id))}
-                    className={`p-3.5 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
-                      String(selectedDriverId) === String(d.id)
-                        ? "border-[#B45A0A] bg-orange-50/20 shadow-sm"
-                        : "border-[#E7EAF0] bg-white hover:bg-gray-50"
-                    }`}
-                  >
-                    <div>
-                      <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
-                      <span className="text-[10px] text-[#64748B] block mt-0.5">Exp: {d.experience}</span>
-                      <span className={`inline-block mt-1.5 px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
-                        d.status === "Available"
-                          ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                          : "bg-amber-50 text-amber-600 border border-amber-100"
-                      }`}>
-                        {d.status}
-                      </span>
-                    </div>
-                    
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
+                ).map(d => {
+                  const isExpired = d.licenseExpiry && new Date(d.licenseExpiry) < new Date();
+                  return (
+                    <div
+                      key={d.id}
+                      onClick={() => {
+                        if (isExpired) {
+                          toast.error("This driver has an expired license and cannot be assigned.");
+                          return;
+                        }
                         setSelectedDriverId(String(d.id));
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                        String(selectedDriverId) === String(d.id)
-                          ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
-                          : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
+                      className={`p-3.5 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
+                        isExpired
+                          ? "border-red-150 bg-red-50/10 opacity-60 cursor-not-allowed"
+                          : String(selectedDriverId) === String(d.id)
+                          ? "border-[#B45A0A] bg-orange-50/20 shadow-sm"
+                          : "border-[#E7EAF0] bg-white hover:bg-gray-50"
                       }`}
                     >
-                      {String(selectedDriverId) === String(d.id) ? "Assigned" : "Assign"}
-                    </button>
-                  </div>
-                ))
+                      <div>
+                        <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
+                        <span className="text-[10px] text-[#64748B] block mt-0.5 font-semibold">
+                          Emp ID: {d.employeeId || "N/A"}
+                        </span>
+                        <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
+                          <span>Lic Validity: <strong className={isExpired ? "text-red-500" : "text-[#1E293B]"}>{d.licenseExpiry ? new Date(d.licenseExpiry).toLocaleDateString() : "Valid"}</strong></span>
+                          <span>|</span>
+                          <span>Location: <strong className="text-[#1E293B]">{d.branch || "Pune"}</strong></span>
+                        </div>
+                        <div className="flex gap-1.5 mt-2">
+                          <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
+                            isExpired
+                              ? "bg-red-50 text-red-600 border border-red-100"
+                              : d.status === "Available"
+                              ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                              : "bg-amber-50 text-amber-600 border border-amber-100"
+                          }`}>
+                            {isExpired ? "Expired License" : d.status}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <button
+                        type="button"
+                        disabled={isExpired}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isExpired) {
+                            toast.error("This driver has an expired license and cannot be assigned.");
+                            return;
+                          }
+                          setSelectedDriverId(String(d.id));
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                          isExpired
+                            ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                            : String(selectedDriverId) === String(d.id)
+                            ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
+                            : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
+                        }`}
+                      >
+                        {String(selectedDriverId) === String(d.id) ? "Assigned" : "Assign"}
+                      </button>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>

@@ -85,36 +85,36 @@ export default function ReportsPage() {
   return (
     <div className="p-6 lg:p-8">
       <Breadcrumb />
-      <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none mb-8">Reports Center</h1>
+      <h1 className="font-poppins font-bold text-2xl text-[#1E293B] leading-none mb-6">Reports Center</h1>
 
       {/* Top Cards */}
-      <div className="grid grid-cols-2 gap-3 mb-8 md:grid-cols-2 lg:grid-cols-2">
-        <div className="bg-white rounded-[20px] border-l-4 border-gray-900 shadow-[0_8px_24px_rgba(0,0,0,0.08)] p-4 md:p-8 animate-fade-up">
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-white rounded-[20px] border-l-4 border-gray-900 shadow-sm border border-gray-200/80 p-5 animate-fade-up">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-gray-600 uppercase tracking-wide text-sm mb-2">Total Reports Generated</p>
-              <p className="text-5xl font-extrabold text-gray-800 mb-2">1,284</p>
-              <p className="text-green-600 text-sm font-medium flex items-center gap-1">
+              <p className="text-[#64748B] uppercase tracking-wider text-[10px] font-bold">Total Reports Generated</p>
+              <p className="text-3xl font-black text-gray-800 mt-2 mb-1.5 font-poppins">1,284</p>
+              <p className="text-green-600 text-xs font-semibold flex items-center gap-1 font-poppins">
                 <Icon icon="mdi:trending-up" /> +12% this month
               </p>
             </div>
-            <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center">
-              <Icon icon="mdi:file-document-multiple" className="w-8 h-8 text-gray-700" />
+            <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
+              <Icon icon="mdi:file-document-multiple" className="w-6 h-6 text-gray-700" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-[20px] border-l-4 border-amber-700 shadow-[0_8px_24px_rgba(0,0,0,0.08)] p-4 md:p-8 animate-fade-up">
+        <div className="bg-white rounded-[20px] border-l-4 border-amber-700 shadow-sm border border-gray-200/80 p-5 animate-fade-up">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-gray-600 uppercase tracking-wide text-sm mb-2">Pending Schedules</p>
-              <p className="text-5xl font-extrabold text-gray-800 mb-2">24</p>
-              <p className="text-amber-700 text-sm font-medium flex items-center gap-1">
+              <p className="text-[#64748B] uppercase tracking-wider text-[10px] font-bold">Pending Schedules</p>
+              <p className="text-3xl font-black text-gray-800 mt-2 mb-1.5 font-poppins">24</p>
+              <p className="text-amber-700 text-xs font-semibold flex items-center gap-1 font-poppins">
                 <Icon icon="mdi:clock-outline" /> Next delivery in 2h
               </p>
             </div>
-            <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center">
-              <Icon icon="mdi:calendar-check" className="w-8 h-8 text-orange-700" />
+            <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center shrink-0">
+              <Icon icon="mdi:calendar-check" className="w-6 h-6 text-orange-700" />
             </div>
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function ReportsPage() {
         <div className="lg:col-span-1">
           {/* Report Categories */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg">
-            <h3 className="text-xl font-semibold text-gray-800 mb-6">Report Categories</h3>
+            <h3 className="text-base font-bold text-gray-800 mb-6 font-poppins">Report Categories</h3>
             <div className="space-y-3">
               {reportCategories.map((cat, i) => (
                 <button
@@ -136,29 +136,15 @@ export default function ReportsPage() {
                   <div className="flex items-center gap-3">
                     <Icon icon={cat.icon} className="w-7 h-7 text-gray-700" />
                     <div>
-                      <p className="font-semibold text-gray-800">{cat.title}</p>
-                      <p className="text-xs text-gray-500">{cat.description}</p>
+                      <p className="font-semibold text-gray-800 text-sm">{cat.title}</p>
+                      <p className="text-[11px] text-gray-500">{cat.description}</p>
                     </div>
                   </div>
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Build Custom Insight */}
-          <div className="mt-6 bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-8 shadow-lg overflow-hidden relative">
-            <Icon icon="mdi:wrench" className="absolute top-4 right-4 w-40 h-40 text-white/10" />
-            <h3 className="text-2xl font-bold text-white mb-3 relative z-10">Build Custom Insight</h3>
-            <p className="text-gray-300 text-sm mb-6 relative z-10">
-              Combine over 150+ data points to create unique reports tailored to your fleet's needs.
-            </p>
-            <button
-              onClick={handleCustomInsight}
-              className="relative z-10 px-4 py-2 bg-[#B45A0A] text-white text-xs font-bold rounded-xl hover:bg-[#9A4D08] transition-colors"
-            >
-              Get Started
-            </button>
-          </div>
+          {/* Build Custom Insight removed */}
         </div>
 
         {/* Right column */}
@@ -166,17 +152,17 @@ export default function ReportsPage() {
           {/* Recent Reports table */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-gray-800">Recent Reports</h3>
+              <h3 className="text-base font-bold text-gray-800 font-poppins">Recent Reports</h3>
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleExportAll}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Export All
                 </button>
                 <button
                   onClick={handleRefresh}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Refresh
                 </button>
@@ -199,17 +185,17 @@ export default function ReportsPage() {
                       <td className="py-4 px-6 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <Icon icon={report.icon} className={`w-8 h-8 ${report.iconColor}`} />
-                          <span className="font-bold text-[#1E293B] text-sm">{report.name}</span>
+                          <span className="font-bold text-[#1E293B] text-xs">{report.name}</span>
                         </div>
                       </td>
                       <td className="py-4 px-6 whitespace-nowrap">
-                        <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold inline-block">{report.type}</span>
+                        <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold inline-block">{report.type}</span>
                       </td>
                       <td className="py-4 px-6 whitespace-nowrap">
-                        <p className="text-[#64748B] text-sm">{report.format}</p>
+                        <p className="text-[#64748B] text-xs">{report.format}</p>
                       </td>
                       <td className="py-4 px-6 whitespace-nowrap">
-                        <p className="text-[#64748B] text-sm">{report.date}</p>
+                        <p className="text-[#64748B] text-xs">{report.date}</p>
                       </td>
                       <td className="py-4 px-6 whitespace-nowrap">
                         <div className="flex items-center gap-2">
@@ -231,7 +217,7 @@ export default function ReportsPage() {
             <div className="p-4 border-t border-gray-200 bg-amber-50 text-center">
               <button 
                 onClick={() => setShowArchiveModal(true)}
-                className="text-amber-700 text-sm font-medium hover:underline cursor-pointer"
+                className="text-amber-700 text-xs font-medium hover:underline cursor-pointer"
               >
                 View All Archived Reports
               </button>
@@ -242,11 +228,11 @@ export default function ReportsPage() {
           <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Icon icon="mdi:clock-outline" className="w-7 h-7 text-amber-700" />
-              <p className="text-xl font-semibold text-gray-800">Scheduled Deliveries</p>
+              <p className="text-base font-bold text-gray-800 font-poppins">Scheduled Deliveries</p>
             </div>
             <button 
               onClick={() => setShowSchedulesModal(true)}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
+              className="px-4 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
             >
               Manage Schedules
               <Icon icon="mdi:cog-outline" className="w-4 h-4" />

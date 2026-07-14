@@ -9,8 +9,11 @@ import {
   Search,
   Plus,
   Eye,
-  Pencil
+  Pencil,
+  Trash2
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { adminApi } from "@/api/adminApi";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import KPICard from "@/components/common/KPICard";
@@ -33,7 +36,18 @@ function StatusBadge({ status }) {
 
 export default function OrganizationList() {
   const [searchTerm, setSearchTerm] = useState("");
-  const { organizations } = useAdmin();
+  const { organizations, fetchOrganizations } = useAdmin();
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this organization?")) return;
+    try {
+      await adminApi.deleteOrganization(id);
+      toast.success("Organization deleted successfully");
+      if (fetchOrganizations) await fetchOrganizations();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete organization");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
@@ -46,10 +60,10 @@ export default function OrganizationList() {
           
           {/* Tabs */}
           <div className="flex sm:inline-flex w-full sm:w-auto items-center p-1 bg-white border border-slate-200 rounded-full mb-8 shadow-sm">
-            <button className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 bg-[#0f172a] text-white text-[10px] sm:text-sm font-bold rounded-full shadow-sm whitespace-nowrap">
+            <Link to="/admin/organizations" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 bg-[#0f172a] text-white text-[10px] sm:text-sm font-bold rounded-full shadow-sm whitespace-nowrap">
               <span className="sm:hidden">List</span>
               <span className="hidden sm:inline">Organization List</span>
-            </button>
+            </Link>
             <Link to="/admin/organizations/add" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
               <span className="sm:hidden">Add Org</span>
               <span className="hidden sm:inline">Add Organization</span>
@@ -157,6 +171,9 @@ export default function OrganizationList() {
                           <Link to={`/admin/organizations/edit/${org.id}`} className="text-slate-400 hover:text-[#A14000] transition-colors" title="Edit">
                             <Pencil className="w-4 h-4" />
                           </Link>
+                          <button onClick={() => handleDelete(org.id)} className="text-slate-400 hover:text-red-500 transition-colors" title="Delete">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>

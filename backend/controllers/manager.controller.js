@@ -1,7 +1,7 @@
 import {
   createVehicle as createVehicleInRepo,
   getVehicles,
-  getVehicleById,
+  getVehicleById as getVehicleByIdInRepo,
   updateVehicle as updateVehicleInRepo,
   deleteVehicle as deleteVehicleInRepo,
   getDrivers,
@@ -33,12 +33,94 @@ import {
   getReportById,
   createReport as createReportInRepo,
   updateReport as updateReportInRepo,
-  deleteReport as deleteReportInRepo
+  deleteReport as deleteReportInRepo,
+  getManagerNotifications,
+  markManagerNotificationRead,
+  markAllManagerNotificationsRead,
+  deleteManagerNotification
 } from '../repositories/manager.repository.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { createAndEmitNotification } from '../utils/notification.js';
+import Trip from '../models/Trip.js';
+import Driver from '../models/Driver.js';
+import Vehicle from '../models/Vehicle.js';
+import Notification from '../models/Notification.js';
+import EWayBill from '../models/EWayBill.js';
+import Fuel from '../models/Fuel.js';
+import ActivityLog from '../models/ActivityLog.js';
+import Invoice from '../models/Invoice.js';
+import { logActivity } from '../utils/activityLogger.js';
 
-export const getDashboard = async (_req, res) => {
-  return sendSuccess(res, 200, { message: 'Manager dashboard ready' }, 'Dashboard loaded');
+export const getDashboard = async (req, res, next) => {
+  try {
+    const managerId = req.user._id;
+
+    // 1. Fetch total and active vehicles
+    const totalVehicles = await Vehicle.countDocuments({ assignedManager: managerId });
+    const activeVehicles = await Vehicle.countDocuments({ 
+      assignedManager: managerId, 
+      currentStatus: { $in: ['Active', 'On Trip'] } 
+    });
+
+    // 2. Trips Today (scheduled, on transit, delayed)
+    const tripsToday = await Trip.countDocuments({ 
+      assignedManager: managerId, 
+      status: { $in: ['Scheduled', 'On Transit', 'Delayed'] } 
+    });
+
+    // 3. Vehicles under repair
+    const underRepair = await Vehicle.countDocuments({ 
+      assignedManager: managerId, 
+      currentStatus: 'Maintenance' 
+    });
+
+    // 4. Drivers available
+    const driversAvailable = await Driver.countDocuments({ 
+      assignedManager: managerId, 
+      driverStatus: 'AVAILABLE' 
+    });
+
+    // 5. Fuel Expense: sum up amounts from Fuel records
+    // First, find all vehicle IDs assigned to the manager
+    const managerVehicles = await Vehicle.find({ assignedManager: managerId }, '_id');
+    const vehicleIds = managerVehicles.map(v => v._id);
+
+    const fuelDocs = await Fuel.find({ 
+      $or: [
+        { vehicle: { $in: vehicleIds } }, 
+        { recordedBy: managerId }
+      ] 
+    });
+    const fuelSum = fuelDocs.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+    const fuelExpense = `₹${fuelSum.toLocaleString('en-IN')}`;
+
+    // 6. Total Earnings: sum up goodsValue from generated EWayBills
+    const ewayBills = await EWayBill.find({ assignedManager: managerId });
+    const earningsSum = ewayBills.reduce((acc, curr) => acc + (Number(curr.goodsValue) || 0), 0);
+    
+    let totalEarnings = "";
+    if (earningsSum >= 10000000) {
+      const shortNum = (earningsSum / 10000000).toFixed(1);
+      totalEarnings = `₹${shortNum} Cr`;
+    } else if (earningsSum >= 100000) {
+      const shortNum = (earningsSum / 100000).toFixed(1);
+      totalEarnings = `₹${shortNum} L`;
+    } else {
+      totalEarnings = `₹${earningsSum.toLocaleString('en-IN')}`;
+    }
+
+    return sendSuccess(res, 200, {
+      totalVehicles,
+      activeVehicles,
+      tripsToday,
+      underRepair,
+      driversAvailable,
+      fuelExpense,
+      totalEarnings
+    }, 'Dashboard stats loaded');
+  } catch (error) {
+    next(error);
+  }
 };
 
 // Vehicles Controllers
@@ -66,26 +148,24 @@ export const getVehicleDetails = async (req, res, next) => {
 export const createVehicle = async (req, res, next) => {
   try {
     const {
-      vehicleNumber,
-      plateNumber,
-      name,
-      manufacturer,
-      brand,
-      model,
+      // Required
+      vehicleNumber, model, brand,
+      // Classification
+      type, branch,
+      // Assignment & metrics
+      driver, fuelLevel, fastagBalance,
+      // Optional fields
       year,
-      type,
-      driver,
-      status,
-      fuelLevel,
-      fastagBalance,
-      insuranceExpiry,
-      lastService,
-      nextService,
-      branch,
-      fuelType,
-      ownership,
-      availability,
-      dateAdded
+      registrationNumber, registrationState, registrationType,
+      fuelType, transmissionType, seatingCapacity, engineCC,
+      insuranceExpiry, lastService, nextService,
+      ownership, availability, status,
+      documents,
+      chassisNumber,
+      loadCapacity,
+      ownershipType,
+      insuranceDetails,
+      permitDetails,
     } = req.body;
 
     if (!vehicleNumber || !model || !brand) {
@@ -94,33 +174,59 @@ export const createVehicle = async (req, res, next) => {
 
     const vehicle = await createVehicleInRepo({
       vehicleNumber,
-      plateNumber: plateNumber || vehicleNumber,
-      name: name || `${brand} ${model}`,
-      manufacturer: manufacturer || brand,
-      brand,
       model,
-      year: year ? Number(year) : undefined,
+      brand,
       type,
-      driver,
-      status,
-      fuelLevel: fuelLevel !== undefined ? Number(fuelLevel) : undefined,
-      fastagBalance: fastagBalance !== undefined ? Number(fastagBalance) : undefined,
-      insuranceExpiry,
-      lastService,
-      nextService,
       branch,
+      driver,
+      fuelLevel: fuelLevel !== undefined ? Number(fuelLevel) : 50,
+      fastagBalance: fastagBalance !== undefined ? Number(fastagBalance) : 0,
+      year,
+      registrationNumber,
+      registrationState,
+      registrationType,
       fuelType,
+      transmissionType,
+      seatingCapacity,
+      engineCC,
+      insuranceExpiry: insuranceExpiry || undefined,
+      lastService: lastService || undefined,
+      nextService: nextService || undefined,
       ownership,
       availability,
-      dateAdded,
+      status: status || 'ACTIVE',
+      assignedManager: req.user._id,
+      documents,
+      chassisNumber,
+      loadCapacity: loadCapacity !== undefined ? Number(loadCapacity) : 0,
+      ownershipType: ownershipType || 'Owned',
+      insuranceDetails,
+      permitDetails,
+    });
+
+    await logActivity({
+      title: 'Vehicle Added',
+      description: `Vehicle ${vehicle.vehicleNumber} (${vehicle.brand} ${vehicle.model}) was added to branch ${vehicle.branch || 'Pune'}.`,
+      activityType: 'VEHICLE_ADDED',
+      user: req.user,
       assignedManager: req.user._id
     });
 
-    return sendSuccess(res, 201, vehicle, 'Vehicle created');
+    return sendSuccess(res, 201, vehicle, 'Vehicle created successfully');
   } catch (error) {
     if (error.code === 11000) {
-      return sendError(res, 400, 'A vehicle with this vehicle number already exists');
+      return sendError(res, 409, 'A vehicle with this registration number already exists');
     }
+    next(error);
+  }
+};
+
+export const getVehicleById = async (req, res, next) => {
+  try {
+    const vehicle = await getVehicleByIdInRepo(req.params.id);
+    if (!vehicle) return sendError(res, 404, 'Vehicle not found');
+    return sendSuccess(res, 200, vehicle, 'Vehicle fetched');
+  } catch (error) {
     next(error);
   }
 };
@@ -128,11 +234,19 @@ export const createVehicle = async (req, res, next) => {
 export const updateVehicle = async (req, res, next) => {
   try {
     const vehicle = await updateVehicleInRepo(req.params.id, req.body);
-    if (!vehicle) {
-      return sendError(res, 404, 'Vehicle not found');
-    }
-    return sendSuccess(res, 200, vehicle, 'Vehicle updated');
+    await logActivity({
+      title: 'Vehicle Updated',
+      description: `Vehicle ${vehicle.vehicleNumber} details were updated.`,
+      activityType: 'VEHICLE_UPDATED',
+      user: req.user,
+      assignedManager: req.user._id
+    });
+
+    return sendSuccess(res, 200, vehicle, 'Vehicle updated successfully');
   } catch (error) {
+    if (error.code === 11000) {
+      return sendError(res, 409, 'A vehicle with this registration number already exists');
+    }
     next(error);
   }
 };
@@ -140,11 +254,21 @@ export const updateVehicle = async (req, res, next) => {
 export const deleteVehicle = async (req, res, next) => {
   try {
     const vehicle = await deleteVehicleInRepo(req.params.id);
-    if (!vehicle) {
-      return sendError(res, 404, 'Vehicle not found');
-    }
-    return sendSuccess(res, 200, null, 'Vehicle deleted');
+    if (!vehicle) return sendError(res, 404, 'Vehicle not found');
+
+    await logActivity({
+      title: 'Vehicle Deleted',
+      description: `Vehicle ${vehicle.vehicleNumber} was deleted from the system.`,
+      activityType: 'VEHICLE_DELETED',
+      user: req.user,
+      assignedManager: req.user._id
+    });
+
+    return sendSuccess(res, 200, {}, 'Vehicle deleted successfully');
   } catch (error) {
+    if (error.code === 11000) {
+      return sendError(res, 400, 'A vehicle with this vehicle number already exists');
+    }
     next(error);
   }
 };
@@ -200,6 +324,14 @@ export const createDriver = async (req, res, next) => {
       assignedManager: req.user._id
     });
 
+    await logActivity({
+      title: 'Driver Assigned',
+      description: `Driver ${driver.name} was registered under status ${driver.status || 'AVAILABLE'}.`,
+      activityType: 'DRIVER_ASSIGNED',
+      user: req.user,
+      assignedManager: req.user._id
+    });
+
     return sendSuccess(res, 201, driver, 'Driver created');
   } catch (error) {
     if (error.code === 11000) {
@@ -215,6 +347,14 @@ export const updateDriver = async (req, res, next) => {
     if (!driver) {
       return sendError(res, 404, 'Driver not found');
     }
+    await logActivity({
+      title: 'Driver Updated',
+      description: `Driver ${driver.name} details were updated.`,
+      activityType: 'DRIVER_ASSIGNED',
+      user: req.user,
+      assignedManager: req.user._id
+    });
+
     return sendSuccess(res, 200, driver, 'Driver updated');
   } catch (error) {
     next(error);
@@ -236,7 +376,14 @@ export const deleteDriver = async (req, res, next) => {
 // Trips Controllers
 export const listTrips = async (req, res, next) => {
   try {
-    const trips = await getTrips({ assignedManager: req.user._id });
+    const filter = { assignedManager: req.user._id };
+    if (req.query.vehicle) {
+      filter.vehicle = req.query.vehicle;
+    }
+    if (req.query.driver) {
+      filter.driver = req.query.driver;
+    }
+    const trips = await getTrips(filter);
     return sendSuccess(res, 200, trips, 'Trips fetched');
   } catch (error) {
     next(error);
@@ -269,14 +416,81 @@ export const createTrip = async (req, res, next) => {
       endLocation,
       departureTime,
       eta,
-      status,
-      description
+      status = 'Scheduled',
+      description,
+      cargoType,
+      cargoWeight,
+      tripNotes,
+      estimatedDistance
     } = req.body;
 
     if (!tripNumber || !vehicle || !driver || !startLocation || !endLocation || !departureTime || !eta) {
       return sendError(res, 400, 'Trip number, vehicle, driver, route, and timing details are required');
     }
 
+    // Validation: Pickup and Destination cannot be the same
+    if (startLocation.trim().toLowerCase() === endLocation.trim().toLowerCase()) {
+      return sendError(res, 400, 'Pickup Location and Destination cannot be the same');
+    }
+
+    // Validation: Pickup Date cannot be in the past
+    const pickupDate = new Date(departureTime);
+    const currentDate = new Date();
+    // Allow a small grace margin of 5 minutes for latency
+    if (pickupDate.getTime() + 300000 < currentDate.getTime()) {
+      return sendError(res, 400, 'Pickup Date and Time cannot be in the past');
+    }
+
+    // A. Verify vehicle details & availability in database
+    const selectedVeh = await Vehicle.findById(vehicle);
+    if (!selectedVeh) {
+      return sendError(res, 404, 'Vehicle not found');
+    }
+    if (selectedVeh.currentStatus !== 'Available' && selectedVeh.currentStatus !== 'Active') {
+      return sendError(res, 400, 'Selected vehicle is no longer available');
+    }
+
+    const activeTripsWithVehicle = await Trip.findOne({
+      vehicle,
+      status: { $in: ['Scheduled', 'Assigned', 'In Progress'] }
+    });
+    if (activeTripsWithVehicle) {
+      return sendError(res, 400, 'This vehicle is already allocated to another active trip');
+    }
+
+    // Verify selected vehicle is from the start location
+    const cleanStart = startLocation.trim().split(/[\s,]+/)[0].toLowerCase();
+    const vehicleBranch = (selectedVeh.branch || 'Pune').trim().split(/[\s,]+/)[0].toLowerCase();
+    if (!vehicleBranch.includes(cleanStart) && !cleanStart.includes(vehicleBranch)) {
+      return sendError(res, 400, `Selected vehicle is not from the Start Location (${startLocation})`);
+    }
+
+    // B. Verify driver license, availability & branch in database
+    const driverDoc = await Driver.findById(driver);
+    if (!driverDoc) {
+      return sendError(res, 404, 'Driver not found');
+    }
+    if (driverDoc.driverStatus !== 'AVAILABLE') {
+      return sendError(res, 400, 'Selected driver is no longer available');
+    }
+    if (driverDoc.licenseExpiry && new Date(driverDoc.licenseExpiry) < currentDate) {
+      return sendError(res, 400, 'Cannot assign driver with an expired license');
+    }
+
+    const activeTripsWithDriver = await Trip.findOne({
+      driver,
+      status: { $in: ['Scheduled', 'Assigned', 'In Progress'] }
+    });
+    if (activeTripsWithDriver) {
+      return sendError(res, 400, 'This driver is already allocated to another active trip');
+    }
+
+    const driverBranch = (driverDoc.branch || 'Pune').trim().split(/[\s,]+/)[0].toLowerCase();
+    if (!driverBranch.includes(cleanStart) && !cleanStart.includes(driverBranch)) {
+      return sendError(res, 400, `Selected driver is not from the Start Location (${startLocation})`);
+    }
+
+    // C. Create the trip
     const trip = await createTripInRepo({
       tripNumber,
       vehicle,
@@ -291,10 +505,44 @@ export const createTrip = async (req, res, next) => {
       eta,
       status,
       description,
+      cargoType,
+      cargoWeight: Number(cargoWeight) || 0,
+      tripNotes,
+      estimatedDistance: Number(estimatedDistance) || 120, // Default fallback distance
       assignedManager: req.user._id
     });
 
-    return sendSuccess(res, 201, trip, 'Trip created');
+    // D. Update vehicle status in MongoDB
+    const nextVehStatus = status === 'In Progress' ? 'On Trip' : 'Assigned';
+    await Vehicle.findByIdAndUpdate(vehicle, {
+      currentStatus: nextVehStatus,
+      assignedDriver: driver
+    });
+
+    // E. Update driver status in MongoDB
+    const nextDrvStatus = status === 'In Progress' ? 'ON_TRIP' : 'ASSIGNED';
+    await Driver.findByIdAndUpdate(driver, {
+      driverStatus: nextDrvStatus,
+      assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned'
+    });
+
+    // F. Automatically generate unique invoice and save to database
+    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
+    const seq = String(count + 1).padStart(4, '0');
+    const invoiceNumber = `INV-${datePart}-${seq}`;
+
+    const invoice = new Invoice({
+      invoiceNumber,
+      invoiceDate: new Date(),
+      trip: trip._id,
+      driver: trip.driver,
+      vehicle: trip.vehicle,
+      createdBy: req.user._id
+    });
+    await invoice.save();
+
+    return sendSuccess(res, 201, trip, 'Trip created and invoice generated successfully');
   } catch (error) {
     if (error.code === 11000) {
       return sendError(res, 400, 'A trip with this trip number already exists');
@@ -305,11 +553,89 @@ export const createTrip = async (req, res, next) => {
 
 export const updateTrip = async (req, res, next) => {
   try {
-    const trip = await updateTripInRepo(req.params.id, req.body);
-    if (!trip) {
+    const tripId = req.params.id;
+    const existingTrip = await Trip.findById(tripId);
+    if (!existingTrip) {
       return sendError(res, 404, 'Trip not found');
     }
-    return sendSuccess(res, 200, trip, 'Trip updated');
+
+    // Validation: Cannot modify a completed trip
+    if (existingTrip.status === 'Completed') {
+      return sendError(res, 400, 'Cannot modify a completed trip');
+    }
+
+    const newStatus = req.body.status;
+
+    // Validation: Prevent starting a trip without both vehicle and driver
+    if (newStatus === 'In Progress' && (!existingTrip.vehicle || !existingTrip.driver)) {
+      return sendError(res, 400, 'Cannot start a trip without both an assigned vehicle and driver');
+    }
+
+    // Validation: Prevent ending a trip that has not started
+    if (newStatus === 'Completed' && existingTrip.status !== 'In Progress') {
+      return sendError(res, 400, 'Cannot end a trip that is not currently in progress');
+    }
+
+    // Handle Start Trip / End Trip specific fields automatically
+    if (newStatus === 'In Progress') {
+      req.body.actualStartTime = new Date();
+    } else if (newStatus === 'Completed') {
+      req.body.actualEndTime = new Date();
+      req.body.actualDistance = req.body.actualDistance || existingTrip.estimatedDistance || 120;
+    }
+
+    const updatedTrip = await updateTripInRepo(tripId, req.body);
+
+    if (newStatus) {
+      if (newStatus === 'Completed' || newStatus === 'Cancelled') {
+        // Release vehicle
+        if (updatedTrip.vehicle) {
+          await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, {
+            currentStatus: 'Available',
+            assignedDriver: null
+          });
+        }
+        // Release driver
+        if (updatedTrip.driver) {
+          await Driver.findByIdAndUpdate(updatedTrip.driver, {
+            driverStatus: 'AVAILABLE',
+            assignedVehicle: 'Unassigned'
+          });
+        }
+      } else if (newStatus === 'In Progress') {
+        // Set statuses to On Trip / ON_TRIP
+        if (updatedTrip.vehicle) {
+          await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, {
+            currentStatus: 'On Trip',
+            assignedDriver: updatedTrip.driver
+          });
+        }
+        if (updatedTrip.driver) {
+          const selectedVeh = await Vehicle.findById(updatedTrip.vehicle);
+          await Driver.findByIdAndUpdate(updatedTrip.driver, {
+            driverStatus: 'ON_TRIP',
+            assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned'
+          });
+        }
+      } else {
+        // Scheduled or Assigned
+        if (updatedTrip.vehicle) {
+          await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, {
+            currentStatus: 'Assigned',
+            assignedDriver: updatedTrip.driver
+          });
+        }
+        if (updatedTrip.driver) {
+          const selectedVeh = await Vehicle.findById(updatedTrip.vehicle);
+          await Driver.findByIdAndUpdate(updatedTrip.driver, {
+            driverStatus: 'ASSIGNED',
+            assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned'
+          });
+        }
+      }
+    }
+
+    return sendSuccess(res, 200, updatedTrip, 'Trip updated');
   } catch (error) {
     next(error);
   }
@@ -317,11 +643,29 @@ export const updateTrip = async (req, res, next) => {
 
 export const deleteTrip = async (req, res, next) => {
   try {
-    const trip = await deleteTripInRepo(req.params.id);
+    const tripId = req.params.id;
+    const trip = await Trip.findById(tripId);
     if (!trip) {
       return sendError(res, 404, 'Trip not found');
     }
-    return sendSuccess(res, 200, null, 'Trip deleted');
+
+    // Release vehicle
+    if (trip.vehicle) {
+      await Vehicle.findByIdAndUpdate(trip.vehicle, {
+        currentStatus: 'Available',
+        assignedDriver: null
+      });
+    }
+    // Release driver
+    if (trip.driver) {
+      await Driver.findByIdAndUpdate(trip.driver, {
+        driverStatus: 'AVAILABLE',
+        assignedVehicle: 'Unassigned'
+      });
+    }
+
+    await deleteTripInRepo(tripId);
+    return sendSuccess(res, 200, null, 'Trip deleted successfully');
   } catch (error) {
     next(error);
   }
@@ -330,7 +674,16 @@ export const deleteTrip = async (req, res, next) => {
 // Fuel Controllers
 export const listFuelRecords = async (req, res, next) => {
   try {
-    const records = await getFuelRecords({ recordedBy: req.user._id });
+    // 1. Fetch total vehicles assigned to this manager
+    const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id');
+    const vehicleIds = managerVehicles.map(v => v._id);
+
+    // 2. Filter fuel entries by manager's vehicles
+    const filter = { vehicle: { $in: vehicleIds } };
+    if (req.query.vehicle) {
+      filter.vehicle = req.query.vehicle;
+    }
+    const records = await getFuelRecords(filter);
     return sendSuccess(res, 200, records, 'Fuel records fetched');
   } catch (error) {
     next(error);
@@ -351,38 +704,7 @@ export const getFuelRecordDetails = async (req, res, next) => {
 
 export const createFuelRecord = async (req, res, next) => {
   try {
-    const {
-      vehicle,
-      vehicleId,
-      vehicleName,
-      driver,
-      fuelStation,
-      amount,
-      liters,
-      status,
-      resolutionComment,
-      hasReceipt
-    } = req.body;
-
-    if (!vehicle || amount === undefined || liters === undefined) {
-      return sendError(res, 400, 'Vehicle, amount, and liters are required');
-    }
-
-    const record = await createFuelRecordInRepo({
-      vehicle,
-      vehicleId,
-      vehicleName,
-      driver,
-      fuelStation,
-      amount,
-      liters,
-      status,
-      resolutionComment,
-      hasReceipt,
-      recordedBy: req.user._id
-    });
-
-    return sendSuccess(res, 201, record, 'Fuel record created');
+    return sendError(res, 403, 'Managers are not authorized to create new fuel entries.');
   } catch (error) {
     next(error);
   }
@@ -390,6 +712,27 @@ export const createFuelRecord = async (req, res, next) => {
 
 export const updateFuelRecord = async (req, res, next) => {
   try {
+    const allowedKeys = ['status', 'resolutionComment', 'approvalStatus', 'rejectionReason', 'billStatus'];
+    const updates = Object.keys(req.body);
+    const isValidUpdate = updates.every(key => allowedKeys.includes(key));
+    
+    if (!isValidUpdate) {
+      return sendError(res, 403, 'Managers are not authorized to edit driver fuel logs.');
+    }
+
+    // Automatically stamp approvedBy/rejectedBy and timestamps if status changes
+    if (req.body.approvalStatus) {
+      if (req.body.approvalStatus === 'Approved') {
+        req.body.approvedBy = req.user.name || 'Fleet Manager';
+        req.body.approvedAt = new Date();
+        req.body.billStatus = 'Approved';
+      } else if (req.body.approvalStatus === 'Rejected') {
+        req.body.rejectedBy = req.user.name || 'Fleet Manager';
+        req.body.rejectedAt = new Date();
+        req.body.billStatus = 'Rejected';
+      }
+    }
+
     const record = await updateFuelRecordInRepo(req.params.id, req.body);
     if (!record) {
       return sendError(res, 404, 'Fuel record not found');
@@ -402,11 +745,7 @@ export const updateFuelRecord = async (req, res, next) => {
 
 export const deleteFuelRecord = async (req, res, next) => {
   try {
-    const record = await deleteFuelRecordInRepo(req.params.id);
-    if (!record) {
-      return sendError(res, 404, 'Fuel record not found');
-    }
-    return sendSuccess(res, 200, null, 'Fuel record deleted');
+    return sendError(res, 403, 'Managers are not authorized to delete driver fuel logs.');
   } catch (error) {
     next(error);
   }
@@ -415,7 +754,11 @@ export const deleteFuelRecord = async (req, res, next) => {
 // Maintenance Controllers
 export const listMaintenance = async (req, res, next) => {
   try {
-    const maintenance = await getMaintenances({ recordedBy: req.user._id });
+    const filter = { recordedBy: req.user._id };
+    if (req.query.vehicle) {
+      filter.vehicle = req.query.vehicle;
+    }
+    const maintenance = await getMaintenances(filter);
     return sendSuccess(res, 200, maintenance, 'Maintenance list fetched');
   } catch (error) {
     next(error);
@@ -479,6 +822,16 @@ export const updateMaintenance = async (req, res, next) => {
     if (!maintenance) {
       return sendError(res, 404, 'Maintenance not found');
     }
+    if (maintenance.status === 'Completed') {
+      await logActivity({
+        title: 'Maintenance Completed',
+        description: `Maintenance for vehicle ${maintenance.vehicleId || 'Unassigned'} (${maintenance.serviceType}) is completed.`,
+        activityType: 'MAINTENANCE_COMPLETED',
+        user: req.user,
+        assignedManager: req.user._id
+      });
+    }
+
     return sendSuccess(res, 200, maintenance, 'Maintenance updated');
   } catch (error) {
     next(error);
@@ -501,7 +854,33 @@ export const deleteMaintenance = async (req, res, next) => {
 export const listDocuments = async (req, res, next) => {
   try {
     const documents = await getDocuments({ uploadedBy: req.user._id });
-    return sendSuccess(res, 200, documents, 'Documents fetched');
+    
+    // Calculate dynamic status for each document on fetch
+    const enriched = documents.map(d => {
+      const doc = d.toObject ? d.toObject() : d;
+      if (doc.expiry) {
+        const expDate = new Date(doc.expiry);
+        if (!isNaN(expDate.getTime())) {
+          const now = new Date();
+          expDate.setHours(0, 0, 0, 0);
+          now.setHours(0, 0, 0, 0);
+          
+          const diffTime = expDate.getTime() - now.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (diffDays < 0) {
+            doc.status = "Expired";
+          } else if (diffDays <= 30) {
+            doc.status = "Expiring Soon";
+          } else {
+            doc.status = "Active";
+          }
+        }
+      }
+      return doc;
+    });
+
+    return sendSuccess(res, 200, enriched, 'Documents fetched');
   } catch (error) {
     next(error);
   }
@@ -513,7 +892,29 @@ export const getDocumentDetails = async (req, res, next) => {
     if (!document) {
       return sendError(res, 404, 'Document not found');
     }
-    return sendSuccess(res, 200, document, 'Document details fetched');
+    
+    const doc = document.toObject ? document.toObject() : document;
+    if (doc.expiry) {
+      const expDate = new Date(doc.expiry);
+      if (!isNaN(expDate.getTime())) {
+        const now = new Date();
+        expDate.setHours(0, 0, 0, 0);
+        now.setHours(0, 0, 0, 0);
+        
+        const diffTime = expDate.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+          doc.status = "Expired";
+        } else if (diffDays <= 30) {
+          doc.status = "Expiring Soon";
+        } else {
+          doc.status = "Active";
+        }
+      }
+    }
+
+    return sendSuccess(res, 200, doc, 'Document details fetched');
   } catch (error) {
     next(error);
   }
@@ -539,6 +940,27 @@ export const createDocument = async (req, res, next) => {
       return sendError(res, 400, 'Title, fileUrl, and type are required');
     }
 
+    let computedStatus = status || 'Active';
+    if (expiry) {
+      const expDate = new Date(expiry);
+      if (!isNaN(expDate.getTime())) {
+        const now = new Date();
+        expDate.setHours(0, 0, 0, 0);
+        now.setHours(0, 0, 0, 0);
+        
+        const diffTime = expDate.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+          computedStatus = 'Expired';
+        } else if (diffDays <= 30) {
+          computedStatus = 'Expiring Soon';
+        } else {
+          computedStatus = 'Active';
+        }
+      }
+    }
+
     const document = await createDocumentInRepo({
       title,
       fileUrl,
@@ -548,10 +970,18 @@ export const createDocument = async (req, res, next) => {
       driver,
       trip,
       expiry,
-      status,
+      status: computedStatus,
       fileSize,
       fileType,
       uploadedBy: req.user._id
+    });
+
+    await logActivity({
+      title: 'Document Uploaded',
+      description: `Document "${document.title}" (${document.type}) was uploaded successfully.`,
+      activityType: 'DOCUMENT_UPLOADED',
+      user: req.user,
+      assignedManager: req.user._id
     });
 
     return sendSuccess(res, 201, document, 'Document uploaded');
@@ -562,11 +992,54 @@ export const createDocument = async (req, res, next) => {
 
 export const updateDocument = async (req, res, next) => {
   try {
-    const document = await updateDocumentInRepo(req.params.id, req.body);
+    const updateData = { ...req.body };
+    if (updateData.expiry) {
+      const expDate = new Date(updateData.expiry);
+      if (!isNaN(expDate.getTime())) {
+        const now = new Date();
+        expDate.setHours(0, 0, 0, 0);
+        now.setHours(0, 0, 0, 0);
+        
+        const diffTime = expDate.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+          updateData.status = 'Expired';
+        } else if (diffDays <= 30) {
+          updateData.status = 'Expiring Soon';
+        } else {
+          updateData.status = 'Active';
+        }
+      }
+    }
+
+    const document = await updateDocumentInRepo(req.params.id, updateData);
     if (!document) {
       return sendError(res, 404, 'Document not found');
     }
-    return sendSuccess(res, 200, document, 'Document updated');
+
+    const doc = document.toObject ? document.toObject() : document;
+    if (doc.expiry) {
+      const expDate = new Date(doc.expiry);
+      if (!isNaN(expDate.getTime())) {
+        const now = new Date();
+        expDate.setHours(0, 0, 0, 0);
+        now.setHours(0, 0, 0, 0);
+        
+        const diffTime = expDate.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+          doc.status = "Expired";
+        } else if (diffDays <= 30) {
+          doc.status = "Expiring Soon";
+        } else {
+          doc.status = "Active";
+        }
+      }
+    }
+
+    return sendSuccess(res, 200, doc, 'Document updated');
   } catch (error) {
     next(error);
   }
@@ -660,6 +1133,495 @@ export const deleteReport = async (req, res, next) => {
       return sendError(res, 404, 'Report not found');
     }
     return sendSuccess(res, 200, null, 'Report deleted');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getLiveTracking = async (req, res, next) => {
+  try {
+    const vehicles = await Vehicle.find().populate('assignedDriver').sort({ createdAt: -1 });
+    const trips = await Trip.find({
+      status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip', 'Ready to Dispatch'] }
+    }).populate('vehicle').populate('driver');
+
+    const trackingData = vehicles.map(v => {
+      const activeTrip = trips.find(t => t.vehicle && String(t.vehicle._id || t.vehicle) === String(v._id));
+
+      let assignmentStatus = "Available";
+      if (activeTrip) {
+        if (['Scheduled', 'Assigned', 'Ready to Dispatch'].includes(activeTrip.status)) {
+          assignmentStatus = "Assigned";
+        } else if (['In Progress', 'On Trip', 'On Transit', 'Delayed'].includes(activeTrip.status)) {
+          assignmentStatus = "On Trip";
+        }
+      } else if (v.currentStatus === "Maintenance") {
+        assignmentStatus = "Maintenance";
+      } else if (v.currentStatus === "Inactive") {
+        assignmentStatus = "Inactive";
+      } else if (v.currentStatus === "Assigned") {
+        assignmentStatus = "Assigned";
+      } else if (v.currentStatus === "On Trip") {
+        assignmentStatus = "On Trip";
+      }
+
+      const driverName = v.assignedDriver?.fullName || (activeTrip ? (activeTrip.driver?.fullName || activeTrip.driverName) : "Unassigned");
+      const driverPhone = v.assignedDriver?.phoneNumber || (activeTrip ? (activeTrip.driver?.phoneNumber || activeTrip.driverPhone) : "");
+
+      return {
+        _id: v._id,
+        vehicleName: v.vehicleName,
+        vehicleNumber: v.vehicleNumber,
+        vehicleType: v.vehicleType,
+        brand: v.brand,
+        model: v.model,
+        currentStatus: v.currentStatus,
+        fuelCapacity: v.fuelCapacity,
+        updatedAt: v.updatedAt,
+        assignedDriver: v.assignedDriver ? {
+          _id: v.assignedDriver._id,
+          fullName: driverName,
+          phoneNumber: driverPhone
+        } : (activeTrip ? {
+          fullName: driverName,
+          phoneNumber: driverPhone
+        } : null),
+        activeTrip: activeTrip ? {
+          _id: activeTrip._id,
+          tripNumber: activeTrip.tripNumber,
+          startLocation: activeTrip.startLocation,
+          endLocation: activeTrip.endLocation,
+          status: activeTrip.status,
+          eta: activeTrip.eta,
+          driverName: driverName,
+          driverPhone: driverPhone
+        } : null,
+        assignmentStatus
+      };
+    });
+
+    return sendSuccess(res, 200, trackingData, 'Live tracking data fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Notifications Controllers
+export const listNotifications = async (req, res, next) => {
+  try {
+    const notifications = await getManagerNotifications(req.user._id);
+    return sendSuccess(res, 200, notifications, 'Notifications fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+// E-Way Bills Helper for Dynamic Validity & Status Calculation
+const enrichEWayBill = (billObj) => {
+  const bill = billObj.toObject ? billObj.toObject() : billObj;
+
+  // Resolve source of truth dates
+  const genDate = bill.generationDate ? new Date(bill.generationDate) : new Date(bill.createdAt || Date.now());
+  const valDays = parseInt(bill.validityDays) || 1;
+
+  let expDate;
+  if (bill.expiryDate) {
+    expDate = new Date(bill.expiryDate);
+  } else {
+    // Legacy fallback
+    expDate = new Date(genDate.getTime() + valDays * 24 * 60 * 60 * 1000);
+  }
+
+  // Calculate remaining days (midnight-to-midnight format for robust transitions)
+  const expiryMidnight = new Date(expDate);
+  expiryMidnight.setHours(23, 59, 59, 999);
+
+  const nowMidnight = new Date();
+  nowMidnight.setHours(0, 0, 0, 0);
+
+  const diffTime = expiryMidnight.getTime() - nowMidnight.getTime();
+  const remainingDays = Math.floor(diffTime / (24 * 60 * 60 * 1000));
+
+  // Status Mapping:
+  // - More than 7 days remaining → Active (Green)
+  // - 1–7 days remaining → Expiring Soon (Orange)
+  // - 0 days remaining → Expires Today (Blue)
+  // - Expired (remainingDays < 0) → Expired (Red)
+  let status = "Active";
+  let progressColor = "bg-green-600";
+
+  if (remainingDays < 0) {
+    status = "Expired";
+    progressColor = "bg-red-650";
+  } else if (remainingDays === 0) {
+    status = "Expires Today";
+    progressColor = "bg-blue-600";
+  } else if (remainingDays >= 1 && remainingDays <= 7) {
+    status = "Expiring Soon";
+    progressColor = "bg-amber-600";
+  }
+
+  // Remaining Validity text (e.g. "Expires Today", "Expired 5 Days Ago", "25 Days Remaining")
+  let remainingValidityText = "";
+  if (remainingDays === valDays) {
+    remainingValidityText = `Valid for ${valDays} Days`;
+  } else if (remainingDays > 0) {
+    remainingValidityText = `${remainingDays} Days Remaining`;
+  } else if (remainingDays === 0) {
+    remainingValidityText = "Expires Today";
+  } else {
+    remainingValidityText = `Expired ${Math.abs(remainingDays)} Days Ago`;
+  }
+
+  // Validity string representation (Format: "28 Jul, 13:52")
+  const validityStr = expDate.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short"
+  }) + ", " + expDate.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
+
+  // Validity progress bar percentage calculation
+  const validityProgress = remainingDays < 0
+    ? 0
+    : Math.max(0, Math.min(100, Math.round((remainingDays / valDays) * 100)));
+
+  return {
+    ...bill,
+    status,
+    progressColor,
+    validityProgress,
+    remainingDays,
+    remainingValidityText,
+    validity: validityStr,
+    generationDate: genDate,
+    expiryDate: expDate,
+    validityDays: valDays,
+    canExtend: remainingDays >= 0 && remainingDays <= 7 // Can extend in the expiring/expires today range
+  };
+};
+
+export const listEWayBills = async (req, res, next) => {
+  try {
+    let bills = await EWayBill.find({ assignedManager: req.user._id }).sort({ createdAt: -1 });
+
+    // Seed initial mock data if none exist
+    if (bills.length === 0) {
+      const now = new Date();
+      const initialBills = [
+        {
+          ewayBillNo: "EWB-2024-8832",
+          invoiceNo: "#INV-00421",
+          vehicleNo: "MH 12 QX 4582",
+          transporterName: "Gati KWE Logistics",
+          fromLoc: "Mumbai",
+          toLoc: "Delhi",
+          goodsValue: "540000",
+          assignedManager: req.user._id,
+          generationDate: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+          validityDays: 30,
+          expiryDate: new Date(now.getTime() + 25 * 24 * 60 * 60 * 1000), // expires in 25 days (Active)
+        },
+        {
+          ewayBillNo: "EWB-2024-7710",
+          invoiceNo: "#INV-00418",
+          vehicleNo: "KA 01 HY 9912",
+          transporterName: "VRL Logistics",
+          fromLoc: "Bangalore",
+          toLoc: "Chennai",
+          goodsValue: "320000",
+          assignedManager: req.user._id,
+          generationDate: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+          validityDays: 5,
+          expiryDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000), // expires in 3 days (Expiring Soon)
+        },
+        {
+          ewayBillNo: "EWB-2024-9102",
+          invoiceNo: "#INV-00430",
+          vehicleNo: "GJ 05 TR 3302",
+          transporterName: "Safe Express",
+          fromLoc: "Surat",
+          toLoc: "Ahmedabad",
+          goodsValue: "180000",
+          assignedManager: req.user._id,
+          generationDate: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+          validityDays: 1,
+          expiryDate: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000), // expired yesterday (Expired)
+        }
+      ];
+      await EWayBill.insertMany(initialBills);
+      bills = await EWayBill.find({ assignedManager: req.user._id }).sort({ createdAt: -1 });
+    }
+
+    const enriched = bills.map(enrichEWayBill);
+    return sendSuccess(res, 200, enriched, 'E-Way Bills fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createEWayBill = async (req, res, next) => {
+  try {
+    const {
+      vehicleNo,
+      transporterName,
+      fromLoc,
+      toLoc,
+      invoiceNo,
+      goodsValue,
+      ewayBillNo,
+      validityDays
+    } = req.body;
+
+    if (!vehicleNo || !transporterName || !fromLoc || !toLoc || !invoiceNo || !goodsValue) {
+      return sendError(res, 400, 'All details are required to generate E-Way Bill');
+    }
+
+    const days = parseInt(validityDays) || 1;
+    const genDate = new Date();
+    const expDate = new Date(genDate.getTime() + days * 24 * 60 * 60 * 1000);
+
+    const newBill = new EWayBill({
+      ewayBillNo: ewayBillNo || `EWB-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      invoiceNo,
+      vehicleNo,
+      transporterName,
+      fromLoc,
+      toLoc,
+      goodsValue,
+      generationDate: genDate,
+      validityDays: days,
+      expiryDate: expDate,
+      assignedManager: req.user._id
+    });
+
+    await newBill.save();
+    return sendSuccess(res, 201, enrichEWayBill(newBill), 'E-Way Bill generated');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markNotificationRead = async (req, res, next) => {
+  try {
+    const notification = await markManagerNotificationRead(req.params.id);
+    if (!notification) return sendError(res, 404, 'Notification not found');
+    
+    // Emit notification:read event
+    if (req.io) {
+      req.io.to(`manager:${req.user._id}`).emit('notification:read', notification);
+    }
+    
+    return sendSuccess(res, 200, notification, 'Notification marked as read');
+  } catch (error) {
+    next(error);
+  }
+};
+export const extendEWayBill = async (req, res, next) => {
+  try {
+    const bill = await EWayBill.findOne({ _id: req.params.id, assignedManager: req.user._id });
+    if (!bill) {
+      return sendError(res, 404, 'E-Way Bill not found');
+    }
+
+    const currentExp = bill.expiryDate ? new Date(bill.expiryDate) : new Date(Date.now());
+    bill.expiryDate = new Date(currentExp.getTime() + 24 * 60 * 60 * 1000); // add 24 hours
+    bill.validityDays = (bill.validityDays || 1) + 1;
+
+    await bill.save();
+    return sendSuccess(res, 200, enrichEWayBill(bill), 'E-Way Bill validity extended');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markAllNotificationsRead = async (req, res, next) => {
+  try {
+    await markAllManagerNotificationsRead(req.user._id);
+    
+    // Emit notification:update event
+    if (req.io) {
+      req.io.to(`manager:${req.user._id}`).emit('notification:update', { allRead: true });
+    }
+    
+    return sendSuccess(res, 200, null, 'All notifications marked as read');
+  } catch (error) {
+    next(error);
+  }
+};
+export const updateEWayBill = async (req, res, next) => {
+  try {
+    const { vehicleNo, transporterName, fromLoc, toLoc, invoiceNo, goodsValue, validity } = req.body;
+    const bill = await EWayBill.findOne({ _id: req.params.id, assignedManager: req.user._id });
+    if (!bill) {
+      return sendError(res, 404, 'E-Way Bill not found');
+    }
+
+    if (vehicleNo !== undefined) bill.vehicleNo = vehicleNo;
+    if (transporterName !== undefined) bill.transporterName = transporterName;
+    if (fromLoc !== undefined) bill.fromLoc = fromLoc;
+    if (toLoc !== undefined) bill.toLoc = toLoc;
+    if (invoiceNo !== undefined) bill.invoiceNo = invoiceNo;
+    if (goodsValue !== undefined) bill.goodsValue = goodsValue;
+
+    if (validity !== undefined) {
+      const parsedDate = new Date(validity);
+      if (!isNaN(parsedDate.getTime())) {
+        bill.expiryDate = parsedDate;
+        const gen = bill.generationDate ? new Date(bill.generationDate) : new Date(bill.createdAt || Date.now());
+        const diffTime = parsedDate.getTime() - gen.getTime();
+        bill.validityDays = Math.max(1, Math.ceil(diffTime / (24 * 60 * 60 * 1000)));
+      }
+    }
+
+    await bill.save();
+    return sendSuccess(res, 200, enrichEWayBill(bill), 'E-Way Bill updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteNotification = async (req, res, next) => {
+  try {
+    const notification = await deleteManagerNotification(req.params.id);
+    if (!notification) return sendError(res, 404, 'Notification not found');
+    
+    // Emit notification:delete event
+    if (req.io) {
+      req.io.to(`manager:${req.user._id}`).emit('notification:delete', { id: req.params.id });
+    }
+    
+    return sendSuccess(res, 200, null, 'Notification deleted');
+  } catch (error) {
+    next(error);
+  }
+};
+export const deleteEWayBill = async (req, res, next) => {
+  try {
+    const bill = await EWayBill.findOneAndDelete({ _id: req.params.id, assignedManager: req.user._id });
+    if (!bill) {
+      return sendError(res, 404, 'E-Way Bill not found');
+    }
+    return sendSuccess(res, 200, null, 'E-Way Bill deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const listActivities = async (req, res, next) => {
+  try {
+    const managerId = req.user._id;
+
+    // Check if activities count is 0, then seed some initial mock logs for a nice UX!
+    const count = await ActivityLog.countDocuments({ assignedManager: managerId });
+    if (count === 0) {
+      const mockLogs = [
+        {
+          title: 'Vehicle Added',
+          description: 'Vehicle AP 39 EQ 2312 (Ashok Leyland 2200) was added to Pune branch.',
+          activityType: 'VEHICLE_ADDED',
+          user: req.user.name || req.user.email || 'System',
+          assignedManager: managerId,
+          createdAt: new Date(Date.now() - 5 * 60 * 1000) // 5 minutes ago
+        },
+        {
+          title: 'Driver Assigned',
+          description: 'Driver Sai Kiran was assigned status AVAILABLE.',
+          activityType: 'DRIVER_ASSIGNED',
+          user: req.user.name || req.user.email || 'System',
+          assignedManager: managerId,
+          createdAt: new Date(Date.now() - 30 * 60 * 1000) // 30 minutes ago
+        },
+        {
+          title: 'Document Uploaded',
+          description: 'Document "Insurance Expiry Renewal Certificate" (Insurance) was uploaded successfully.',
+          activityType: 'DOCUMENT_UPLOADED',
+          user: req.user.name || req.user.email || 'System',
+          assignedManager: managerId,
+          createdAt: new Date(Date.now() - 2 * 3600 * 1000) // 2 hours ago
+        },
+        {
+          title: 'Fuel Entry Added',
+          description: 'Fuel entry of ₹6,932 (85L) added for vehicle AP 39 EQ 2312.',
+          activityType: 'FUEL_ENTRY_ADDED',
+          user: req.user.name || req.user.email || 'System',
+          assignedManager: managerId,
+          createdAt: new Date(Date.now() - 24 * 3600 * 1000) // Yesterday
+        },
+        {
+          title: 'Maintenance Completed',
+          description: 'Maintenance for vehicle TN 12 EQ 3323 is completed.',
+          activityType: 'MAINTENANCE_COMPLETED',
+          user: req.user.name || req.user.email || 'System',
+          assignedManager: managerId,
+          createdAt: new Date(Date.now() - 2 * 24 * 3600 * 1000) // 2 days ago
+        }
+      ];
+      await ActivityLog.insertMany(mockLogs);
+    }
+
+    const activities = await ActivityLog.find({ assignedManager: managerId })
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    return sendSuccess(res, 200, activities, 'Activities fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getInvoiceByTripId = async (req, res, next) => {
+  try {
+    const tripId = req.params.tripId;
+    let invoice = await Invoice.findOne({ trip: tripId })
+      .populate({
+        path: 'trip',
+        populate: [
+          { path: 'driver' },
+          { path: 'vehicle' }
+        ]
+      })
+      .populate('driver')
+      .populate('vehicle')
+      .populate('createdBy', 'fullName email username');
+
+    // Safe dynamic auto-generation fallback if invoice is missing for any reason
+    if (!invoice) {
+      const trip = await Trip.findById(tripId);
+      if (!trip) {
+        return sendError(res, 404, 'Trip not found');
+      }
+
+      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
+      const seq = String(count + 1).padStart(4, '0');
+      const invoiceNumber = `INV-${datePart}-${seq}`;
+
+      const newInvoice = new Invoice({
+        invoiceNumber,
+        invoiceDate: new Date(),
+        trip: trip._id,
+        driver: trip.driver,
+        vehicle: trip.vehicle,
+        createdBy: req.user._id
+      });
+      await newInvoice.save();
+
+      invoice = await Invoice.findById(newInvoice._id)
+        .populate({
+          path: 'trip',
+          populate: [
+            { path: 'driver' },
+            { path: 'vehicle' }
+          ]
+        })
+        .populate('driver')
+        .populate('vehicle')
+        .populate('createdBy', 'fullName email username');
+    }
+
+    return sendSuccess(res, 200, invoice, 'Invoice fetched successfully');
   } catch (error) {
     next(error);
   }

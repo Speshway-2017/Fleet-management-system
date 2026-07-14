@@ -1,83 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
-
-const branchData = {
-  "All Branches": {
-    utilization: 78,
-    strokeDash: "196 56",
-    activeTrucks: 428,
-    idleDepot: 112,
-    safetyIndexPoints: "100,45 135,75 130,125 95,155 65,125 70,75",
-    totalCosts: "₹2,48,390",
-    costChange: "4.2% vs last month",
-    fuelCost: "₹1,42,000",
-    fuelPct: 57,
-    maintCost: "₹64,500",
-    maintPct: 26,
-    tollCost: "₹41,890",
-    tollPct: 17,
-    avgMileCost: "₹ 18.4",
-    topSpender: "Fleet-A",
-    anomalies: "04"
-  },
-  "Mumbai Hub": {
-    utilization: 85,
-    strokeDash: "213 39",
-    activeTrucks: 180,
-    idleDepot: 30,
-    safetyIndexPoints: "100,30 145,65 135,115 100,150 55,115 60,65",
-    totalCosts: "₹1,12,450",
-    costChange: "2.8% vs last month",
-    fuelCost: "₹62,000",
-    fuelPct: 55,
-    maintCost: "₹30,200",
-    maintPct: 27,
-    tollCost: "₹20,250",
-    tollPct: 18,
-    avgMileCost: "₹ 17.9",
-    topSpender: "Fleet-M1",
-    anomalies: "01"
-  },
-  "Delhi Hub": {
-    utilization: 72,
-    strokeDash: "180 72",
-    activeTrucks: 145,
-    idleDepot: 55,
-    safetyIndexPoints: "100,55 125,80 120,130 95,160 75,130 75,80",
-    totalCosts: "₹88,940",
-    costChange: "5.1% vs last month",
-    fuelCost: "₹52,000",
-    fuelPct: 58,
-    maintCost: "₹21,440",
-    maintPct: 24,
-    tollCost: "₹15,500",
-    tollPct: 18,
-    avgMileCost: "₹ 19.1",
-    topSpender: "Fleet-D2",
-    anomalies: "02"
-  },
-  "Bengaluru Hub": {
-    utilization: 82,
-    strokeDash: "206 46",
-    activeTrucks: 103,
-    idleDepot: 27,
-    safetyIndexPoints: "100,40 135,70 140,120 100,145 60,120 70,75",
-    totalCosts: "₹47,000",
-    costChange: "3.5% vs last month",
-    fuelCost: "₹28,000",
-    fuelPct: 59,
-    maintCost: "₹12,860",
-    maintPct: 27,
-    tollCost: "₹6,140",
-    tollPct: 14,
-    avgMileCost: "₹ 16.5",
-    topSpender: "Fleet-B1",
-    anomalies: "01"
-  }
-};
+import { managerApi } from "../api/managerApi";
 
 export default function AnalyticsPage() {
   const navigate = useNavigate();
@@ -85,11 +11,102 @@ export default function AnalyticsPage() {
   const [branchFilter, setBranchFilter] = useState("All Branches");
   const [showInsights, setShowInsights] = useState(false);
 
+  const [vehicles, setVehicles] = useState([]);
+  const [fuelRecords, setFuelRecords] = useState([]);
+  const [maintenance, setMaintenance] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [vRes, fRes, mRes] = await Promise.all([
+          managerApi.getVehicles(),
+          managerApi.getFuelRecords(),
+          managerApi.getMaintenance()
+        ]);
+        setVehicles(vRes.data?.data || vRes.data || []);
+        setFuelRecords(fRes.data?.data || fRes.data || []);
+        setMaintenance(mRes.data?.data || mRes.data || []);
+      } catch (err) {
+        console.error("Failed to load analytics data", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
   const handleExport = () => {
     toast.success("Analytics report exported successfully!");
   };
 
-  const data = branchData[branchFilter] || branchData["All Branches"];
+  const getBranchStats = (branchName) => {
+    // Filter vehicles by branch
+    const filteredVehicles = branchName === "All Branches" 
+      ? vehicles 
+      : vehicles.filter(v => (v.branch || "").toLowerCase() === branchName.toLowerCase().replace(" hub", ""));
+    
+    const activeTrucks = filteredVehicles.filter(v => v.currentStatus === "Active" || v.currentStatus === "On Trip").length;
+    const idleDepot = filteredVehicles.filter(v => v.currentStatus === "Available" || v.currentStatus === "Idle").length;
+    const totalVehiclesCount = filteredVehicles.length;
+
+    // Utilization calculation
+    const utilization = totalVehiclesCount > 0 
+      ? Math.round((activeTrucks / totalVehiclesCount) * 100) 
+      : 0;
+
+    // StrokeDash calculation (circumference of circle r=40 is ~251.2)
+    const activeStroke = Math.round(251.2 * utilization / 100);
+    const idleStroke = Math.round(251.2 * (100 - utilization) / 100);
+    const strokeDash = `${activeStroke} ${252 - activeStroke}`;
+
+    // Filter fuel/maintenance records associated with these vehicles
+    const vehicleNumbers = new Set(filteredVehicles.map(v => v.vehicleNumber));
+    
+    const branchFuel = fuelRecords.filter(f => vehicleNumbers.has(f.vehicleId));
+    const branchMaint = maintenance.filter(m => vehicleNumbers.has(m.vehicleId));
+
+    const fuelCostSum = branchFuel.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+    const maintCostSum = branchMaint.reduce((sum, m) => sum + (Number(m.cost) || 0), 0);
+    const tollCostSum = filteredVehicles.reduce((sum, v) => sum + (Number(v.fastagBalance) || 0), 0); 
+
+    const totalCostsNum = fuelCostSum + maintCostSum + tollCostSum;
+    const totalCosts = `₹${totalCostsNum.toLocaleString("en-IN")}`;
+
+    const fuelPct = totalCostsNum > 0 ? Math.round((fuelCostSum / totalCostsNum) * 100) : 0;
+    const maintPct = totalCostsNum > 0 ? Math.round((maintCostSum / totalCostsNum) * 100) : 0;
+    const tollPct = totalCostsNum > 0 ? Math.round((tollCostSum / totalCostsNum) * 100) : 0;
+
+    return {
+      utilization,
+      strokeDash,
+      activeTrucks,
+      idleDepot,
+      safetyIndexPoints: "100,45 135,75 130,125 95,155 65,125 70,75",
+      totalCosts,
+      costChange: "0% vs last month",
+      fuelCost: `₹${fuelCostSum.toLocaleString("en-IN")}`,
+      fuelPct,
+      maintCost: `₹${maintCostSum.toLocaleString("en-IN")}`,
+      maintPct,
+      tollCost: `₹${tollCostSum.toLocaleString("en-IN")}`,
+      tollPct,
+      avgMileCost: `₹ ${(totalCostsNum / Math.max(1, activeTrucks * 50)).toFixed(1)}`,
+      topSpender: filteredVehicles[0]?.vehicleNumber || "None",
+      anomalies: "00"
+    };
+  };
+
+  const data = getBranchStats(branchFilter);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-[#B45A0A] border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8">

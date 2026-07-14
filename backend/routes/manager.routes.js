@@ -1,96 +1,138 @@
 import express from 'express';
 import {
-  createVehicle,
   getDashboard,
+  getLiveTracking,
+  listActivities,
+  // Vehicles
   listVehicles,
-  getVehicleDetails,
+  createVehicle,
+  getVehicleById,
   updateVehicle,
   deleteVehicle,
+  // Drivers
   listDrivers,
-  getDriverDetails,
   createDriver,
+  getDriverDetails,
   updateDriver,
   deleteDriver,
+  // Trips
   listTrips,
-  getTripDetails,
   createTrip,
+  getTripDetails,
   updateTrip,
   deleteTrip,
+  getInvoiceByTripId,
+  // Fuel
   listFuelRecords,
-  getFuelRecordDetails,
   createFuelRecord,
+  getFuelRecordDetails,
   updateFuelRecord,
   deleteFuelRecord,
+  // Maintenance
   listMaintenance,
-  getMaintenanceDetails,
   createMaintenance,
+  getMaintenanceDetails,
   updateMaintenance,
   deleteMaintenance,
+  // Documents
   listDocuments,
-  getDocumentDetails,
   createDocument,
+  getDocumentDetails,
   updateDocument,
   deleteDocument,
+  // Reports
   listReports,
-  getReportDetails,
   createReport,
+  getReportDetails,
   updateReport,
-  deleteReport
+  deleteReport,
+  // Notifications
+  listNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification,
+  // E-Way Bills
+  listEWayBills,
+  createEWayBill,
+  extendEWayBill,
+  updateEWayBill,
+  deleteEWayBill
 } from '../controllers/manager.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
 
 const router = express.Router();
 
-router.get('/dashboard', protect, authorizeRoles('FLEET_MANAGER'), getDashboard);
+const auth = [protect, authorizeRoles('FLEET_MANAGER')];
 
-// Vehicles routes
-router.get('/vehicles', protect, authorizeRoles('FLEET_MANAGER'), listVehicles);
-router.get('/vehicles/:id', protect, authorizeRoles('FLEET_MANAGER'), getVehicleDetails);
-router.post('/vehicles', protect, authorizeRoles('FLEET_MANAGER'), createVehicle);
-router.put('/vehicles/:id', protect, authorizeRoles('FLEET_MANAGER'), updateVehicle);
-router.delete('/vehicles/:id', protect, authorizeRoles('FLEET_MANAGER'), deleteVehicle);
+// Dashboard
+router.get('/dashboard',       ...auth, getDashboard);
+router.get('/live-tracking',   ...auth, getLiveTracking);
+router.get('/activities',      ...auth, listActivities);
 
-// Drivers routes
-router.get('/drivers', protect, authorizeRoles('FLEET_MANAGER'), listDrivers);
-router.get('/drivers/:id', protect, authorizeRoles('FLEET_MANAGER'), getDriverDetails);
-router.post('/drivers', protect, authorizeRoles('FLEET_MANAGER'), createDriver);
-router.put('/drivers/:id', protect, authorizeRoles('FLEET_MANAGER'), updateDriver);
-router.delete('/drivers/:id', protect, authorizeRoles('FLEET_MANAGER'), deleteDriver);
+// Vehicles
+router.get('/vehicles',        ...auth, listVehicles);
+router.post('/vehicles',       ...auth, createVehicle);
+router.get('/vehicles/:id',    ...auth, getVehicleById);
+router.put('/vehicles/:id',    ...auth, updateVehicle);
+router.delete('/vehicles/:id', ...auth, deleteVehicle);
 
-// Trips routes
-router.get('/trips', protect, authorizeRoles('FLEET_MANAGER'), listTrips);
-router.get('/trips/:id', protect, authorizeRoles('FLEET_MANAGER'), getTripDetails);
-router.post('/trips', protect, authorizeRoles('FLEET_MANAGER'), createTrip);
-router.put('/trips/:id', protect, authorizeRoles('FLEET_MANAGER'), updateTrip);
-router.delete('/trips/:id', protect, authorizeRoles('FLEET_MANAGER'), deleteTrip);
+// Drivers
+router.get('/drivers',        ...auth, listDrivers);
+router.post('/drivers',       ...auth, createDriver);
+router.get('/drivers/:id',    ...auth, getDriverDetails);
+router.put('/drivers/:id',    ...auth, updateDriver);
+router.delete('/drivers/:id', ...auth, deleteDriver);
 
-// Fuel routes
-router.get('/fuel', protect, authorizeRoles('FLEET_MANAGER'), listFuelRecords);
-router.get('/fuel/:id', protect, authorizeRoles('FLEET_MANAGER'), getFuelRecordDetails);
-router.post('/fuel', protect, authorizeRoles('FLEET_MANAGER'), createFuelRecord);
-router.put('/fuel/:id', protect, authorizeRoles('FLEET_MANAGER'), updateFuelRecord);
-router.delete('/fuel/:id', protect, authorizeRoles('FLEET_MANAGER'), deleteFuelRecord);
+// Trips
+router.get('/trips',        ...auth, listTrips);
+router.post('/trips',       ...auth, createTrip);
+router.get('/trips/:id',    ...auth, getTripDetails);
+router.put('/trips/:id',    ...auth, updateTrip);
+router.delete('/trips/:id', ...auth, deleteTrip);
 
-// Maintenance routes
-router.get('/maintenance', protect, authorizeRoles('FLEET_MANAGER'), listMaintenance);
-router.get('/maintenance/:id', protect, authorizeRoles('FLEET_MANAGER'), getMaintenanceDetails);
-router.post('/maintenance', protect, authorizeRoles('FLEET_MANAGER'), createMaintenance);
-router.put('/maintenance/:id', protect, authorizeRoles('FLEET_MANAGER'), updateMaintenance);
-router.delete('/maintenance/:id', protect, authorizeRoles('FLEET_MANAGER'), deleteMaintenance);
+// Fuel
+router.get('/fuel',        ...auth, listFuelRecords);
+router.post('/fuel',       ...auth, createFuelRecord);
+router.get('/fuel/:id',    ...auth, getFuelRecordDetails);
+router.put('/fuel/:id',    ...auth, updateFuelRecord);
+router.delete('/fuel/:id', ...auth, deleteFuelRecord);
 
-// Documents routes
-router.get('/documents', protect, authorizeRoles('FLEET_MANAGER'), listDocuments);
-router.get('/documents/:id', protect, authorizeRoles('FLEET_MANAGER'), getDocumentDetails);
-router.post('/documents', protect, authorizeRoles('FLEET_MANAGER'), createDocument);
-router.put('/documents/:id', protect, authorizeRoles('FLEET_MANAGER'), updateDocument);
-router.delete('/documents/:id', protect, authorizeRoles('FLEET_MANAGER'), deleteDocument);
+// Maintenance
+router.get('/maintenance',        ...auth, listMaintenance);
+router.post('/maintenance',       ...auth, createMaintenance);
+router.get('/maintenance/:id',    ...auth, getMaintenanceDetails);
+router.put('/maintenance/:id',    ...auth, updateMaintenance);
+router.delete('/maintenance/:id', ...auth, deleteMaintenance);
 
-// Reports routes
-router.get('/reports', protect, authorizeRoles('FLEET_MANAGER'), listReports);
-router.get('/reports/:id', protect, authorizeRoles('FLEET_MANAGER'), getReportDetails);
-router.post('/reports', protect, authorizeRoles('FLEET_MANAGER'), createReport);
-router.put('/reports/:id', protect, authorizeRoles('FLEET_MANAGER'), updateReport);
-router.delete('/reports/:id', protect, authorizeRoles('FLEET_MANAGER'), deleteReport);
+// Documents
+router.get('/documents',        ...auth, listDocuments);
+router.post('/documents',       ...auth, createDocument);
+router.get('/documents/:id',    ...auth, getDocumentDetails);
+router.put('/documents/:id',    ...auth, updateDocument);
+router.delete('/documents/:id', ...auth, deleteDocument);
+
+// Reports
+router.get('/reports',        ...auth, listReports);
+router.post('/reports',       ...auth, createReport);
+router.get('/reports/:id',    ...auth, getReportDetails);
+router.put('/reports/:id',    ...auth, updateReport);
+router.delete('/reports/:id', ...auth, deleteReport);
+
+// Notifications
+router.get('/notifications',         ...auth, listNotifications);
+router.patch('/notifications/read-all', ...auth, markAllNotificationsRead);
+router.patch('/notifications/:id/read', ...auth, markNotificationRead);
+router.put('/notifications/:id/read', ...auth, markNotificationRead);
+router.delete('/notifications/:id', ...auth, deleteNotification);
+// E-Way Bills
+router.get('/eway',            ...auth, listEWayBills);
+router.post('/eway',           ...auth, createEWayBill);
+router.put('/eway/:id/extend', ...auth, extendEWayBill);
+router.put('/eway/:id',        ...auth, updateEWayBill);
+// Invoices
+router.get('/invoices/trip/:tripId', ...auth, getInvoiceByTripId);
+router.get('/invoices/trip/:tripId/download', ...auth, getInvoiceByTripId);
+router.get('/invoices/trip/:tripId/print', ...auth, getInvoiceByTripId);
 
 export default router;

@@ -19,100 +19,132 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { managerApi } from "../api/managerApi";
 
-const TRACKING_VEHICLES = [
-  {
-    id: "v1",
-    plateNumber: "TN-01-AX-1234",
-    name: "Heavy Duty Truck",
-    driver: "Ravi Kumar",
-    rating: 4.8,
-    status: "ON TRANSIT",
-    phone: "+91 98765 43210",
-    engineStatus: "Running",
-    temperature: "24 °C",
-    routeStart: "Pune Hub",
-    routeEnd: "Mumbai Port",
-    eta: "10:45 PM",
-    remaining: "134 km • 2h 15m",
-    coords: [18.7508, 73.4218], // Lonavala
-    routeCoords: [
-      [18.5204, 73.8567], // Pune
-      [18.7508, 73.4218], // Lonavala
-      [19.0760, 72.8777]  // Mumbai
-    ]
-  },
-  {
-    id: "v2",
-    plateNumber: "TN-05-DX-5678",
-    name: "Container",
-    driver: "Suresh Raina",
-    rating: 4.6,
-    status: "IDLE",
-    phone: "+91 87654 32109",
-    engineStatus: "Stopped",
-    temperature: "21 °C",
-    routeStart: "Chakan Depot",
-    routeEnd: "Nashik DC",
-    eta: "11:30 PM",
-    remaining: "85 km • 1h 45m",
-    coords: [18.7300, 73.6800], // Talegaon
-    routeCoords: [
-      [18.7600, 73.8500], // Chakan
-      [18.7300, 73.6800], // Talegaon
-      [19.9975, 73.7898]  // Nashik
-    ]
-  },
-  {
-    id: "v3",
-    plateNumber: "KA-03-MX-4455",
-    name: "Logistics Van",
-    driver: "Vikram Singh",
-    rating: 4.7,
-    status: "STOPPED",
-    phone: "+91 76543 21098",
-    engineStatus: "Stopped",
-    temperature: "26 °C",
-    routeStart: "Kolhapur Hub",
-    routeEnd: "Pune Terminal",
-    eta: "Tomorrow, 08:30 AM",
-    remaining: "28 km • 40m",
-    coords: [17.6805, 73.9918], // Satara
-    routeCoords: [
-      [16.7050, 74.2433], // Kolhapur
-      [17.6805, 73.9918], // Satara
-      [18.5204, 73.8567]  // Pune
-    ]
-  },
-  {
-    id: "v4",
-    plateNumber: "MH-12-PQ-8011",
-    name: "Flatbed",
-    driver: "Abhijeet Rao",
-    rating: 4.9,
-    status: "MAINT",
-    phone: "+91 65432 10987",
-    engineStatus: "Stopped",
-    temperature: "20 °C",
-    routeStart: "Wagholi Workshop",
-    routeEnd: "Pune Hub",
-    eta: "Completed",
-    remaining: "0 km • 0m",
-    coords: [18.5089, 73.9259], // Hadapsar
-    routeCoords: [
-      [18.5793, 73.9820], // Wagholi
-      [18.5089, 73.9259], // Hadapsar
-      [18.5204, 73.8567]  // Pune
-    ]
-  }
-];
+const CITY_COORDINATES = {
+  mumbai: [19.0760, 72.8777],
+  pune: [18.5204, 73.8567],
+  bengaluru: [12.9716, 77.5946],
+  bangalore: [12.9716, 77.5946],
+  hyderabad: [17.3850, 78.4867],
+  delhi: [28.7041, 77.1025],
+  chennai: [13.0827, 80.2707],
+  kolhapur: [16.7050, 74.2433],
+  satara: [17.6805, 73.9918],
+  anantapur: [14.6819, 77.6006],
+  goa: [15.2993, 74.1240],
+  visakhapatnam: [17.6868, 83.2185],
+  vizag: [17.6868, 83.2185],
+  kolkata: [22.5726, 88.3639],
+  ahmedabad: [23.0225, 72.5714],
+  surat: [21.1702, 72.8311],
+  jaipur: [26.9124, 75.7873],
+  lucknow: [26.8467, 80.9462]
+};
 
 export default function FleetMapPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [selectedVehicleId, setSelectedVehicleId] = useState("v1");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [isSatellite, setIsSatellite] = useState(false);
   const [isTrafficOn, setIsTrafficOn] = useState(true);
+
+  const [vehicles, setVehicles] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load from database on mount + polling every 10s
+  const fetchMapData = async () => {
+    try {
+      const response = await managerApi.getLiveTracking();
+      setVehicles(response.data?.data || response.data || []);
+    } catch (error) {
+      console.error("Failed to fetch map tracking data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMapData();
+    const interval = setInterval(fetchMapData, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getCoordinates = (cityName) => {
+    if (!cityName) return [18.5204, 73.8567]; // default Pune
+    const norm = cityName.toLowerCase().trim();
+    for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
+      if (norm.includes(key)) return coords;
+    }
+    return [18.5204, 73.8567]; // default Pune
+  };
+
+  const trackingVehicles = vehicles.map((v, index) => {
+    const activeTrip = v.activeTrip;
+
+    let status = "IDLE";
+    if (v.assignmentStatus === "On Trip") {
+      status = "ON TRANSIT";
+    } else if (v.assignmentStatus === "Maintenance") {
+      status = "MAINT";
+    } else if (v.assignmentStatus === "Inactive") {
+      status = "STOPPED";
+    } else if (v.assignmentStatus === "Assigned") {
+      status = "ASSIGNED";
+    }
+
+    const startLocationName = activeTrip ? activeTrip.startLocation : "Pune";
+    const endLocationName = activeTrip ? activeTrip.endLocation : "Pune";
+    const startCoords = getCoordinates(startLocationName);
+    const endCoords = getCoordinates(endLocationName);
+
+    const offset = (index * 0.007);
+    const idleCoords = [18.5204 + offset * Math.sin(index), 73.8567 + offset * Math.cos(index)];
+    
+    const transitCoords = [
+      (startCoords[0] + endCoords[0]) / 2,
+      (startCoords[1] + endCoords[1]) / 2
+    ];
+
+    const coords = activeTrip 
+      ? (activeTrip.status === "Scheduled" ? startCoords : transitCoords) 
+      : idleCoords;
+
+    const routeCoords = activeTrip 
+      ? [startCoords, coords, endCoords]
+      : [coords, coords];
+
+    const driverName = v.assignedDriver?.fullName || "Unassigned";
+    const driverPhone = v.assignedDriver?.phoneNumber || "";
+
+    return {
+      id: v._id,
+      plateNumber: v.vehicleNumber,
+      name: v.vehicleName,
+      driver: driverName,
+      type: v.vehicleType,
+      rating: 4.8,
+      status: status,
+      phone: driverPhone,
+      engineStatus: activeTrip ? "Running" : "Stopped",
+      temperature: activeTrip ? "24 °C" : "21 °C",
+      speed: activeTrip ? "65 km/h" : "0 km/h",
+      fuelLevel: v.fuelCapacity ? `${Math.round(v.fuelCapacity * 0.85)} L` : "N/A",
+      currentLocation: activeTrip ? `En route to ${activeTrip.endLocation}` : "At Depot / Idle",
+      lastUpdated: v.updatedAt ? new Date(v.updatedAt).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' }) : "N/A",
+      routeStart: startLocationName,
+      routeEnd: endLocationName,
+      eta: activeTrip ? new Date(activeTrip.eta).toLocaleDateString("en-IN", { day: '2-digit', month: 'short' }) + ", " + new Date(activeTrip.eta).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' }) : "N/A",
+      remaining: activeTrip ? "In transit" : "0 km",
+      coords,
+      routeCoords,
+      rawAssignmentStatus: v.assignmentStatus
+    };
+  });
+
+  const selectedVehicle = trackingVehicles.find(v => v.id === selectedVehicleId);
 
   // Check if navigated from notification with specific vehicle
   useEffect(() => {
@@ -121,6 +153,15 @@ export default function FleetMapPage() {
       toast.success("Vehicle Located on Map");
     }
   }, [location]);
+
+  useEffect(() => {
+    if (trackingVehicles.length > 0) {
+      const exists = trackingVehicles.some(v => v.id === selectedVehicleId);
+      if (!exists) {
+        setSelectedVehicleId(trackingVehicles[0].id);
+      }
+    }
+  }, [trackingVehicles, selectedVehicleId]);
 
   // Map DOM references
   const mapRef = useRef(null);
@@ -132,8 +173,6 @@ export default function FleetMapPage() {
   // Tile layers
   const defaultTileLayerRef = useRef(null);
   const satelliteTileLayerRef = useRef(null);
-
-  const selectedVehicle = TRACKING_VEHICLES.find(v => v.id === selectedVehicleId);
 
   // Initialize Map
   useEffect(() => {
@@ -200,9 +239,14 @@ export default function FleetMapPage() {
     trafficGroupRef.current.clearLayers();
 
     // 1. Draw vehicle markers
-    TRACKING_VEHICLES.forEach(v => {
+    trackingVehicles.forEach(v => {
       const isSelected = v.id === selectedVehicleId;
-      const markerColor = v.status === "ON TRANSIT" ? "#B45A0A" : v.status === "STOPPED" ? "#EF4444" : "#64748B";
+      const markerColor = 
+        v.status === "ON TRANSIT" ? "#B45A0A" : 
+        v.status === "ASSIGNED" ? "#2563EB" : 
+        v.status === "MAINT" ? "#D97706" : 
+        v.status === "STOPPED" ? "#EF4444" : 
+        "#64748B";
 
       const iconHtml = `<div class="relative w-8 h-8 rounded-full flex items-center justify-center text-white border-2 border-white shadow-lg transition-transform ${isSelected ? "scale-125 z-50" : ""}" style="background-color: ${markerColor};">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -254,21 +298,24 @@ export default function FleetMapPage() {
       }).addTo(trafficGroupRef.current);
     }
 
-  }, [selectedVehicleId, isTrafficOn]);
+  }, [selectedVehicleId, isTrafficOn, vehicles]);
 
-  const filteredVehicles = TRACKING_VEHICLES.filter(v => {
+  const filteredVehicles = trackingVehicles.filter(v => {
     const q = search.toLowerCase();
-    return (
-      v.plateNumber.toLowerCase().includes(q) ||
-      v.driver.toLowerCase().includes(q) ||
-      v.name.toLowerCase().includes(q)
-    );
+    const matchesSearch = (v.plateNumber || "").toLowerCase().includes(q) ||
+                          (v.driver || "").toLowerCase().includes(q) ||
+                          (v.name || "").toLowerCase().includes(q);
+
+    if (statusFilter === "All") return matchesSearch;
+    return matchesSearch && v.rawAssignmentStatus === statusFilter;
   });
 
   const getStatusBadge = (status) => {
     switch (status) {
       case "ON TRANSIT":
         return "bg-orange-50 text-[#B45A0A] border border-orange-100";
+      case "ASSIGNED":
+        return "bg-blue-50 text-blue-600 border border-blue-100";
       case "IDLE":
         return "bg-slate-50 text-[#64748B] border border-slate-100";
       case "MAINT":
@@ -290,7 +337,7 @@ export default function FleetMapPage() {
           <p className="text-[18px] text-[#64748B] mt-[12px]">Track all active vehicles and routes in real-time</p>
         </div>
         <span className="text-[10px] font-bold px-3 py-1.5 bg-orange-50 border border-orange-100 text-[#B45A0A] rounded-lg font-poppins tracking-wide">
-          {TRACKING_VEHICLES.length} LIVE
+          {trackingVehicles.length} LIVE
         </span>
       </div>
 
@@ -299,16 +346,35 @@ export default function FleetMapPage() {
         <div className="lg:col-span-3 bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-5 flex flex-col space-y-4 max-h-[600px] overflow-hidden">
           <h3 className="font-poppins font-black text-sm text-[#1E293B]">Active Vehicles</h3>
 
-          {/* Filter search bar */}
-          <div className="relative shrink-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
-            <input
-              type="text"
-              placeholder="Search active vehicles..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-medium"
-            />
+          {/* Filter search bar and status filter dropdown */}
+          <div className="relative shrink-0 flex flex-col gap-2">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+              <input
+                type="text"
+                placeholder="Search active vehicles..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-medium"
+              />
+            </div>
+            <div className="relative w-full">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full p-2 bg-white border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-medium appearance-none"
+              >
+                <option value="All">All Statuses</option>
+                <option value="Available">Available</option>
+                <option value="On Trip">On Trip</option>
+                <option value="Assigned">Assigned</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+              <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-[#64748B]">
+                <ChevronDown className="w-4 h-4" />
+              </span>
+            </div>
           </div>
 
           {/* Vehicles items list */}
@@ -328,11 +394,11 @@ export default function FleetMapPage() {
                   <div>
                     <p className="font-bold text-xs text-[#1E293B] font-poppins">{v.plateNumber}</p>
                     <span className="text-[10px] text-[#64748B] font-medium block mt-0.5">
-                      {v.driver} • {v.name}
+                      {v.driver} • {v.name} ({v.type || "Truck"})
                     </span>
                   </div>
                   <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${getStatusBadge(v.status)}`}>
-                    {v.status.replace("ON TRANSIT", "TRANSIT")}
+                    {v.status === "ON TRANSIT" ? "TRANSIT" : (v.status === "IDLE" ? "AVAILABLE" : v.status)}
                   </span>
                 </div>
               ))
@@ -427,6 +493,34 @@ export default function FleetMapPage() {
                   <span className="text-xs font-bold text-[#1E293B] mt-0.5">{selectedVehicle.temperature}</span>
                 </div>
 
+                {/* Speed Box */}
+                <div className="bg-white border border-[#E7EAF0] rounded-xl p-3 flex flex-col space-y-1">
+                  <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Speed</span>
+                  <span className="text-xs font-bold text-[#1E293B] mt-0.5">{selectedVehicle.speed}</span>
+                </div>
+
+                {/* Fuel Level Box */}
+                <div className="bg-white border border-[#E7EAF0] rounded-xl p-3 flex flex-col space-y-1">
+                  <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Fuel Level</span>
+                  <span className="text-xs font-bold text-[#1E293B] mt-0.5">{selectedVehicle.fuelLevel}</span>
+                </div>
+
+              </div>
+
+              {/* Additional Details */}
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-3.5 flex flex-col space-y-2.5 text-xs text-[#64748B] shrink-0">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">Type:</span>
+                  <span className="font-bold text-[#1E293B]">{selectedVehicle.type || "Truck"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">Current Location:</span>
+                  <span className="font-bold text-[#1E293B]">{selectedVehicle.currentLocation}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">Last Updated:</span>
+                  <span className="font-bold text-[#1E293B]">{selectedVehicle.lastUpdated}</span>
+                </div>
               </div>
 
               {/* Route Progress indicator card */}

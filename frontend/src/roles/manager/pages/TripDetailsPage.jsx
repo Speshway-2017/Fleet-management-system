@@ -17,7 +17,8 @@ import {
   Phone,
   Mail,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Eye
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -31,6 +32,8 @@ export default function TripDetailsPage() {
   const [trip, setTrip] = useState(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [invoice, setInvoice] = useState(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -47,7 +50,14 @@ export default function TripDetailsPage() {
     kolhapur: [16.7050, 74.2433],
     satara: [17.6805, 73.9918],
     anantapur: [14.6819, 77.6006],
-    goa: [15.2993, 74.1240]
+    goa: [15.2993, 74.1240],
+    visakhapatnam: [17.6868, 83.2185],
+    vizag: [17.6868, 83.2185],
+    kolkata: [22.5726, 88.3639],
+    ahmedabad: [23.0225, 72.5714],
+    surat: [21.1702, 72.8311],
+    jaipur: [26.9124, 75.7873],
+    lucknow: [26.8467, 80.9462]
   };
 
   const getCoordinates = (cityName) => {
@@ -57,6 +67,28 @@ export default function TripDetailsPage() {
       if (norm.includes(key)) return coords;
     }
     return [18.5204, 73.8567]; // default Pune
+  };
+
+  const calculateDistance = (startCity, endCity) => {
+    const startCoords = getCoordinates(startCity);
+    const endCoords = getCoordinates(endCity);
+
+    // If both resolve to default Pune, fallback to 350
+    if (startCoords[0] === 18.5204 && startCoords[1] === 73.8567 && 
+        endCoords[0] === 18.5204 && endCoords[1] === 73.8567) {
+      return 350;
+    }
+
+    const R = 6371; // Radius of the earth in km
+    const dLat = (endCoords[0] - startCoords[0]) * Math.PI / 180;
+    const dLon = (endCoords[1] - startCoords[1]) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(startCoords[0] * Math.PI / 180) * Math.cos(endCoords[0] * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c; // Distance in km
+    return Math.round(d);
   };
 
   // Initialize Leaflet map
@@ -134,22 +166,127 @@ export default function TripDetailsPage() {
     };
   }, [trip]);
 
-  // Load trip record
+  // Load trip record & invoice
   useEffect(() => {
-    const fetchTrip = async () => {
+    const fetchTripAndInvoice = async () => {
       try {
         const response = await managerApi.getTripById(id);
         const data = response.data?.data || response.data;
         if (data) {
           setTrip({ ...data, id: data.tripNumber });
+          
+          try {
+            const invRes = await managerApi.getInvoiceByTripId(data._id);
+            const invData = invRes.data?.data || invRes.data;
+            if (invData) {
+              setInvoice(invData);
+            }
+          } catch (invErr) {
+            console.error("Failed to load invoice:", invErr);
+          }
         }
       } catch (error) {
         toast.error("Failed to load trip details");
         console.error(error);
       }
     };
-    fetchTrip();
+    fetchTripAndInvoice();
   }, [id]);
+
+  const handlePrintInvoice = () => {
+    if (!invoice) return;
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Invoice ${invoice.invoiceNumber}</title>
+          <style>
+            body { font-family: 'Nunito', sans-serif; color: #1E293B; padding: 40px; margin: 0; }
+            .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #E7EAF0; border-radius: 12px; }
+            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #E7EAF0; padding-bottom: 20px; margin-bottom: 30px; }
+            .logo-section { display: flex; align-items: center; gap: 10px; }
+            .logo-icon { width: 32px; height: 32px; background: #B45A0A; border-radius: 8px; }
+            .logo-text { font-family: 'Poppins', sans-serif; font-weight: bold; font-size: 20px; color: #1E293B; }
+            .company-details { text-align: right; font-size: 11px; color: #64748B; line-height: 1.5; }
+            .details-grid { display: grid; grid-cols: 2; gap: 20px; margin-bottom: 30px; }
+            .details-col { font-size: 12px; }
+            .section-title { font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: bold; color: #64748B; text-transform: uppercase; border-bottom: 1px solid #E7EAF0; padding-bottom: 6px; margin-bottom: 12px; margin-top: 24px; }
+            .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 12px; }
+            .info-item { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #F1F5F9; }
+            .info-label { color: #64748B; }
+            .info-val { font-weight: bold; color: #1E293B; }
+            .footer { margin-top: 40px; border-top: 1px solid #E7EAF0; padding-top: 20px; font-size: 11px; color: #64748B; text-align: center; }
+          </style>
+        </head>
+        <body onload="window.print(); window.close();">
+          <div class="invoice-box">
+            <div class="header">
+              <div class="logo-section">
+                <div class="logo-icon"></div>
+                <div class="logo-text">Speshway Fleet</div>
+              </div>
+              <div class="company-details">
+                <strong>Speshway Logistics Pvt Ltd</strong><br/>
+                Plot 45, Industrial Depot, Sector 3<br/>
+                Pune, Maharashtra, 411018<br/>
+                Phone: +91 20 5566 7788<br/>
+                Email: billing@speshway.com
+              </div>
+            </div>
+            
+            <div class="info-grid">
+              <div class="info-item"><span class="info-label">Invoice Number</span><span class="info-val">${invoice.invoiceNumber}</span></div>
+              <div class="info-item"><span class="info-label">Invoice Date</span><span class="info-val">${new Date(invoice.invoiceDate).toLocaleDateString("en-IN")}</span></div>
+              <div class="info-item"><span class="info-label">Trip ID</span><span class="info-val">${trip.tripNumber}</span></div>
+              <div class="info-item"><span class="info-label">Trip Status</span><span class="info-val">${trip.status === "Completed" ? "Complete" : trip.status}</span></div>
+            </div>
+
+            <div class="section-title">Trip Information</div>
+            <div class="info-grid">
+              <div class="info-item"><span class="info-label">Pickup Location</span><span class="info-val">${trip.startLocation}</span></div>
+              <div class="info-item"><span class="info-label">Destination</span><span class="info-val">${trip.endLocation}</span></div>
+              <div class="info-item"><span class="info-label">Departure Date & Time</span><span class="info-val">${formatDateTime(trip.departureTime)}</span></div>
+              <div class="info-item"><span class="info-label">Estimated Arrival</span><span class="info-val">${formatDateTime(trip.eta)}</span></div>
+              <div class="info-item"><span class="info-label">Distance (KM)</span><span class="info-val">${trip.status === "Completed" ? (trip.actualDistance || trip.estimatedDistance || totalDistance) : (trip.estimatedDistance || totalDistance)} KM</span></div>
+              <div class="info-item"><span class="info-label">Cargo Type</span><span class="info-val">${trip.cargoType || "General Cargo"}</span></div>
+              <div class="info-item"><span class="info-label">Cargo Weight</span><span class="info-val">${trip.cargoWeight || 0} kg</span></div>
+              <div class="info-item"><span class="info-label">Trip Notes</span><span class="info-val">${trip.tripNotes || "None"}</span></div>
+            </div>
+
+            <div class="section-title">Vehicle Information</div>
+            <div class="info-grid">
+              <div class="info-item"><span class="info-label">Vehicle Name</span><span class="info-val">${trip.vehicleName || "N/A"}</span></div>
+              <div class="info-item"><span class="info-label">Registration Number</span><span class="info-val">${trip.vehiclePlate || "N/A"}</span></div>
+              <div class="info-item"><span class="info-label">Vehicle Type</span><span class="info-val">${trip.vehicle?.vehicleType || "Truck"}</span></div>
+            </div>
+
+            <div class="section-title">Driver Information</div>
+            <div class="info-grid">
+              <div class="info-item"><span class="info-label">Driver Name</span><span class="info-val">${trip.driverName || "N/A"}</span></div>
+              <div class="info-item"><span class="info-label">Employee ID</span><span class="info-val">${trip.driver?.employeeId || "N/A"}</span></div>
+              <div class="info-item"><span class="info-label">Mobile Number</span><span class="info-val">${trip.driverPhone || "N/A"}</span></div>
+            </div>
+
+            <div class="section-title">Additional Info</div>
+            <div class="info-grid">
+              <div class="info-item"><span class="info-label">Created By</span><span class="info-val">${invoice.createdBy?.fullName || "Manager"}</span></div>
+              <div class="info-item"><span class="info-label">Created Date & Time</span><span class="info-val">${new Date(invoice.createdAt || invoice.invoiceDate).toLocaleString("en-IN")}</span></div>
+            </div>
+
+            <div class="footer">
+              Thank you for using Speshway Fleet Management System. This is a computer generated document and does not require signature.
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const handleDownloadInvoice = () => {
+    handlePrintInvoice();
+    toast.success("Preparing PDF download via print options");
+  };
 
   if (!trip) {
     return (
@@ -169,6 +306,10 @@ export default function TripDetailsPage() {
   const isTransit = trip.status === "On Transit";
   const isCompleted = trip.status === "Completed";
   const isDelayed = trip.status === "Delayed";
+
+  const totalDistance = calculateDistance(trip.startLocation, trip.endLocation);
+  const distanceTravelled = trip.status === "Scheduled" ? 0 : isCompleted ? totalDistance : Math.round(totalDistance * 0.56);
+  const distancePercent = trip.status === "Scheduled" ? "0%" : isCompleted ? "100%" : "56%";
 
   const handleUpdateStatus = async (newStatus) => {
     try {
@@ -240,77 +381,93 @@ export default function TripDetailsPage() {
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
       <Breadcrumb />
 
-
       {/* Heading summary header card */}
       <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-6">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
-              {trip.id}
+              {trip.tripNumber}
             </h1>
             <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(trip.status)}`}>
-              {trip.status}
+              {trip.status === "Completed" ? "Complete" : trip.status}
             </span>
           </div>
-          <p className="text-[18px] text-[#64748B] mt-[12px] font-medium">
-            {trip.vehicleName} dispatch, route from <strong>{trip.startLocation}</strong> to <strong>{trip.endLocation}</strong>.
+          <p className="text-[14px] text-[#64748B] mt-[12px] font-medium">
+            Route from <strong>{trip.startLocation}</strong> to <strong>{trip.endLocation}</strong>.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 w-full md:w-auto">
-          {!isCompleted && (
+          {trip.status === "Scheduled" || trip.status === "Assigned" ? (
+            <button
+              onClick={() => handleUpdateStatus("In Progress")}
+              className="flex-1 md:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer text-center"
+            >
+              Start Trip
+            </button>
+          ) : trip.status === "In Progress" ? (
             <button
               onClick={() => handleUpdateStatus("Completed")}
-              className="flex-1 md:flex-none px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer text-center"
+              className="flex-1 md:flex-none px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer text-center"
             >
               Complete Trip
             </button>
+          ) : null}
+
+          {(trip.status === "Scheduled" || trip.status === "Assigned") && (
+            <button
+              onClick={() => setShowCancelConfirm(true)}
+              className="flex-1 md:flex-none px-5 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-xs font-bold transition-all border border-red-100 cursor-pointer text-center"
+            >
+              Cancel Dispatch
+            </button>
           )}
-          <button
-            onClick={() => setShowCancelConfirm(true)}
-            className="flex-1 md:flex-none px-5 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-xs font-bold transition-all border border-red-100 cursor-pointer text-center"
-          >
-            Cancel Dispatch
-          </button>
         </div>
       </div>
 
       {/* KPI statistics cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
         
-        {/* Distance Travelled */}
+        {/* Distance Stats */}
         <div className="bg-white rounded-xl border border-[#E7EAF0] p-5 shadow-sm space-y-3">
-          <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Distance Travelled</p>
+          <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Distance Details</p>
           <div className="flex items-baseline gap-1.5 mt-2">
-            <span className="text-3xl font-black text-[#1E293B] font-poppins">{isCompleted ? "320" : "180"}</span>
-            <span className="text-xs text-[#64748B] font-bold">/ 320 km</span>
+            <span className="text-3xl font-black text-[#1E293B] font-poppins">
+              {trip.status === "Completed" ? (trip.actualDistance || trip.estimatedDistance || totalDistance) : (trip.estimatedDistance || totalDistance)}
+            </span>
+            <span className="text-xs text-[#64748B] font-bold">KM</span>
           </div>
-          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-            <div className="bg-[#B45A0A] h-full rounded-full transition-all" style={{ width: isCompleted ? "100%" : "56%" }}></div>
+          <div className="text-[10px] text-gray-500 font-semibold">
+            {trip.status === "Completed" ? (
+              <span>Actual distance logged upon completion</span>
+            ) : (
+              <span>Estimated route distance: {trip.estimatedDistance || totalDistance} KM</span>
+            )}
           </div>
         </div>
 
-        {/* Estimated Arrival */}
+        {/* Departure Time */}
         <div className="bg-white rounded-xl border border-[#E7EAF0] p-5 shadow-sm space-y-3">
-          <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Estimated Arrival</p>
-          <p className="text-base font-bold text-[#1E293B] mt-2 font-poppins">
-            {formatDateTime(trip.eta)}
+          <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Planned Departure</p>
+          <p className="text-sm font-bold text-[#1E293B] mt-2 font-poppins">
+            {formatDateTime(trip.departureTime)}
           </p>
-          <span className={`inline-flex items-center gap-1 text-[10px] font-bold ${isDelayed ? "text-red-500" : "text-emerald-500"}`}>
-            <Clock className="w-3.5 h-3.5" />
-            {isDelayed ? "Delayed" : "On Schedule"}
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-500">
+            <Calendar className="w-3.5 h-3.5" />
+            Scheduled departure time
           </span>
         </div>
 
-        {/* Time Taken to Destination */}
+        {/* Expected Arrival */}
         <div className="bg-white rounded-xl border border-[#E7EAF0] p-5 shadow-sm space-y-3">
-          <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Time Taken to Destination</p>
-          <div className="flex items-baseline gap-1.5 mt-2">
-            <span className="text-2xl font-black text-[#1E293B] font-poppins">
-              {calculateDuration(trip.departureTime, trip.eta)}
-            </span>
-          </div>
-          <span className="text-[10px] text-indigo-500 font-bold block">Total Dispatch Duration</span>
+          <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Estimated Arrival (ETA)</p>
+          <p className="text-sm font-bold text-[#1E293B] mt-2 font-poppins">
+            {formatDateTime(trip.eta)}
+          </p>
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-500">
+            <Clock className="w-3.5 h-3.5" />
+            Expected delivery schedule
+          </span>
         </div>
 
       </div>
@@ -318,12 +475,13 @@ export default function TripDetailsPage() {
       {/* Form details / Map grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
         
-        {/* Left Column: Live Map */}
+        {/* Left Column: Live Map & Cargo Specifications */}
         <div className="lg:col-span-8 space-y-6">
+          {/* Live transit tracking */}
           <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-poppins font-bold text-[#1E293B] text-[14px]">Live Transit Tracking</h3>
-              <span className="px-2.5 py-1 bg-emerald-50 text-[#22C55E] border border-emerald-100 rounded-lg text-[9px] font-bold flex items-center gap-1 select-none">
+              <span className="px-2.5 py-1 bg-emerald-50 text-[#22C55E] border border-emerald-100 rounded-lg text-[9px] font-bold flex items-center gap-1 select-none font-poppins">
                 <Compass className="w-3 h-3 animate-spin" />
                 GPS Connection Active
               </span>
@@ -347,54 +505,136 @@ export default function TripDetailsPage() {
             </div>
           </div>
 
+          {/* Cargo Details Card */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
+            <h3 className="font-poppins font-bold text-[#1E293B] text-[14px] border-b border-gray-100 pb-3">Cargo & Dispatch Specifications</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Cargo Type</span>
+                <p className="text-sm font-bold text-[#1E293B]">{trip.cargoType || "Not Specified"}</p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Cargo Weight</span>
+                <p className="text-sm font-bold text-[#1E293B]">{trip.cargoWeight ? `${trip.cargoWeight} kg` : "N/A"}</p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Cargo Description</span>
+                <p className="text-sm font-semibold text-[#1E293B]">{trip.description || "No description provided"}</p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Trip Notes</span>
+                <p className="text-sm font-medium text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100">{trip.tripNotes || "No notes available for this dispatch"}</p>
+              </div>
+            </div>
+          </div>
+
           {/* Checkpoints Route Timeline */}
           <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
-            <h3 className="font-poppins font-bold text-[#1E293B] text-[14px]">Route Timeline & Checkpoints</h3>
+            <h3 className="font-poppins font-bold text-[#1E293B] text-[14px]">Route Timeline Logs</h3>
             
             <div className="relative pl-6 border-l-2 border-dashed border-gray-200 ml-3 space-y-6 pt-2">
               <div className="relative">
                 <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-[#B45A0A] rounded-full border-4 border-orange-100 z-10"></div>
                 <div>
-                  <p className="text-xs font-bold text-[#1E293B] font-poppins">{trip.startLocation}</p>
-                  <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">Departed: {formatDateTime(trip.departureTime)}</span>
+                  <p className="text-xs font-bold text-[#1E293B] font-poppins">Dispatch Initialized</p>
+                  <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">
+                    Planned Departure: {formatDateTime(trip.departureTime)}
+                  </span>
                 </div>
               </div>
 
               <div className="relative">
                 <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-emerald-500 rounded-full border-4 border-emerald-100 z-10"></div>
                 <div>
-                  <p className="text-xs font-bold text-[#1E293B] font-poppins">Transit Diagnostic Checkpoint</p>
-                  <span className="text-[10px] text-emerald-500 font-bold block mt-0.5">Passed: 2 Hours Ago</span>
+                  <p className="text-xs font-bold text-[#1E293B] font-poppins">Actual Start</p>
+                  <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">
+                    {trip.actualStartTime ? `Started at: ${formatDateTime(trip.actualStartTime)}` : "Waiting to start..."}
+                  </span>
                 </div>
               </div>
 
               <div className="relative">
-                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-gray-300 rounded-full border-4 border-gray-100 z-10"></div>
+                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-indigo-600 rounded-full border-4 border-indigo-100 z-10"></div>
                 <div>
-                  <p className="text-xs font-bold text-[#1E293B] font-poppins">{trip.endLocation}</p>
-                  <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">Estimated Arrival: {formatDateTime(trip.eta)}</span>
+                  <p className="text-xs font-bold text-[#1E293B] font-poppins">Actual End</p>
+                  <span className="text-[10px] text-indigo-600 font-bold block mt-0.5">
+                    {trip.actualEndTime ? `Completed at: ${formatDateTime(trip.actualEndTime)}` : "Waiting for completion..."}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
-
         </div>
 
         {/* Right Column: Driver and Vehicle Details */}
         <div className="lg:col-span-4 space-y-6">
           
+          {/* Dispatch Status Progress Timeline */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
+            <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Dispatch Progress</h4>
+            
+            <div className="space-y-4.5">
+              {[
+                { label: "Scheduled", desc: "Trip is scheduled in the calendar", done: true },
+                { label: "Assigned", desc: "Driver & vehicle allocated", done: trip.status !== "Scheduled" },
+                { label: "In Progress", desc: "Transit active on route", done: trip.status === "In Progress" || trip.status === "Completed" },
+                { label: "Completed", desc: "Arrived at destination points", done: trip.status === "Completed" }
+              ].map((step, idx) => (
+                <div key={idx} className="flex items-start gap-3">
+                  <div className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center border text-[9px] font-bold ${
+                    step.done
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-gray-400 border-gray-200"
+                  }`}>
+                    {idx + 1}
+                  </div>
+                  <div>
+                    <p className={`text-xs font-bold font-poppins ${step.done ? "text-[#1E293B]" : "text-gray-400"}`}>
+                      {step.label}
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{step.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Assigned Driver Profile Card */}
           <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
             <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Assigned Driver</h4>
             
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-orange-100 text-[#B45A0A] rounded-xl flex items-center justify-center shrink-0 font-poppins font-black text-base border border-orange-200">
-                {trip.driverName.split(" ").map(n => n[0]).join("").toUpperCase()}
+                {trip.driverName ? trip.driverName.split(" ").map(n => n[0]).join("").toUpperCase() : "DR"}
               </div>
               <div>
-                <h5 className="font-poppins font-bold text-[#1E293B] text-sm">{trip.driverName}</h5>
-                <div className="flex items-center gap-1 text-[11px] text-[#64748B] font-semibold mt-0.5">
-                </div>
+                <h5 className="font-poppins font-bold text-[#1E293B] text-sm">{trip.driverName || "Unassigned"}</h5>
+                <span className="text-[10px] text-gray-500 font-bold block mt-0.5">
+                  ID: {trip.driver?._id || "N/A"}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-500">License Number</span>
+                <span className="font-bold text-gray-700">{trip.driver?.licenseNumber || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">License Expiry</span>
+                <span className="font-bold text-gray-700">
+                  {trip.driver?.licenseExpiry ? new Date(trip.driver.licenseExpiry).toLocaleDateString("en-IN") : "N/A"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Driver Status</span>
+                <span className={`font-bold px-1.5 py-0.5 rounded text-[9px] uppercase ${
+                  trip.driver?.driverStatus === "AVAILABLE"
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-amber-50 text-amber-700"
+                }`}>
+                  {trip.driver?.driverStatus || "N/A"}
+                </span>
               </div>
             </div>
 
@@ -423,21 +663,27 @@ export default function TripDetailsPage() {
             <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[#64748B] font-medium font-poppins">Model</span>
-                <span className="font-bold text-[#1E293B]">{trip.vehicleName}</span>
+                <span className="font-bold text-[#1E293B]">{trip.vehicleName || "N/A"}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[#64748B] font-medium font-poppins">Plate Number</span>
                 <span className="font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded font-poppins uppercase text-[10px] tracking-wide border border-indigo-100">
-                  {trip.vehiclePlate}
+                  {trip.vehiclePlate || "N/A"}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-[#64748B] font-medium font-poppins">Current Speed</span>
-                <span className="font-bold text-[#1E293B]">{isTransit ? "62 km/h" : "0 km/h"}</span>
+                <span className="text-[#64748B] font-medium font-poppins">Vehicle Status</span>
+                <span className={`font-bold px-1.5 py-0.5 rounded text-[9px] uppercase ${
+                  trip.vehicle?.currentStatus === "Available"
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-indigo-50 text-indigo-700"
+                }`}>
+                  {trip.vehicle?.currentStatus || "N/A"}
+                </span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-[#64748B] font-medium font-poppins">Fuel Level</span>
-                <span className="font-bold text-[#1E293B]">84%</span>
+                <span className="text-[#64748B] font-medium font-poppins">Fuel Type</span>
+                <span className="font-bold text-gray-700 font-poppins">{trip.vehicle?.fuelType || "Diesel"}</span>
               </div>
             </div>
 
@@ -449,6 +695,60 @@ export default function TripDetailsPage() {
               View Fleet Diagnostics
             </button>
           </div>
+
+          {/* Trip Invoice Card */}
+          {invoice && (
+            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-[#E7EAF0]">
+                <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Trip Invoice</h4>
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md text-[9px] font-bold uppercase tracking-wider">
+                  Generated
+                </span>
+              </div>
+              
+              <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Invoice Number</span>
+                  <span className="font-bold text-gray-700">{invoice.invoiceNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Invoice Date</span>
+                  <span className="font-bold text-gray-700">
+                    {new Date(invoice.invoiceDate).toLocaleDateString("en-IN")}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Created By</span>
+                  <span className="font-bold text-gray-700">{invoice.createdBy?.fullName || "Manager"}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowInvoiceModal(true)}
+                  className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  View
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadInvoice}
+                  className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                >
+                  Download
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrintInvoice}
+                  className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                >
+                  Print
+                </button>
+              </div>
+            </div>
+          )}
 
         </div>
 
@@ -472,7 +772,7 @@ export default function TripDetailsPage() {
                   Cancel Trip Dispatch
                 </h3>
                 <p className="text-xs text-[#64748B] mt-1 font-medium">
-                  Are you absolutely sure you want to cancel and delete trip logs for dispatch <strong>{trip.id}</strong>? This action cannot be undone.
+                  Are you absolutely sure you want to cancel and delete trip logs for dispatch <strong>{trip.tripNumber}</strong>? This action cannot be undone.
                 </p>
               </div>
 
@@ -516,6 +816,136 @@ export default function TripDetailsPage() {
             }
           ]}
         />
+      )}
+      {/* --- INVOICE VIEW MODAL --- */}
+      {showInvoiceModal && invoice && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl p-6 md:p-8 border border-[#E7EAF0] relative my-8 animate-scale-up">
+            <button
+              onClick={() => setShowInvoiceModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Invoice Document Layout */}
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-[#E7EAF0]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 bg-[#B45A0A] rounded-xl flex items-center justify-center text-white font-poppins font-black text-sm">SF</div>
+                  <div>
+                    <h3 className="font-poppins font-bold text-[#1E293B] text-[18px] leading-tight">Speshway Fleet</h3>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Management System</p>
+                  </div>
+                </div>
+                <div className="text-left md:text-right text-[11px] text-[#64748B] font-medium leading-relaxed font-nunito">
+                  <p className="font-bold text-[#1E293B] text-xs">Speshway Logistics Pvt Ltd</p>
+                  <p>Plot 45, Industrial Depot, Sector 3</p>
+                  <p>Pune, Maharashtra, 411018</p>
+                  <p>Phone: +91 20 5566 7788 | Email: billing@speshway.com</p>
+                </div>
+              </div>
+
+              {/* Invoice Meta */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4.5 bg-gray-50 border border-gray-150 rounded-2xl font-nunito">
+                <div>
+                  <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider block">Invoice Number</span>
+                  <span className="font-bold text-xs text-[#1E293B] mt-1 block">{invoice.invoiceNumber}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider block">Invoice Date</span>
+                  <span className="font-bold text-xs text-[#1E293B] mt-1 block">{new Date(invoice.invoiceDate).toLocaleDateString("en-IN")}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider block">Trip ID</span>
+                  <span className="font-bold text-xs text-[#1E293B] mt-1 block">{trip.tripNumber}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider block">Trip Status</span>
+                  <span className={`inline-block mt-1.5 px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
+                    trip.status === "Completed"
+                      ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                      : "bg-blue-50 text-blue-600 border border-blue-100"
+                  }`}>
+                    {trip.status === "Completed" ? "Complete" : trip.status}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-nunito">
+                {/* Trip Info */}
+                <div className="space-y-3.5">
+                  <h4 className="font-poppins font-bold text-[11px] text-[#64748B] uppercase tracking-wider border-b border-[#E7EAF0] pb-1.5">Trip Information</h4>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Pickup Location</span><span className="font-bold text-gray-700">{trip.startLocation}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Destination</span><span className="font-bold text-gray-700">{trip.endLocation}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Departure Date & Time</span><span className="font-bold text-gray-700">{formatDateTime(trip.departureTime)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Estimated Arrival</span><span className="font-bold text-gray-700">{formatDateTime(trip.eta)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Distance</span><span className="font-bold text-gray-700">{trip.status === "Completed" ? (trip.actualDistance || trip.estimatedDistance || totalDistance) : (trip.estimatedDistance || totalDistance)} KM</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Cargo Type</span><span className="font-bold text-gray-700">{trip.cargoType || "General Cargo"}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Cargo Weight</span><span className="font-bold text-gray-700">{trip.cargoWeight || 0} kg</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Trip Notes</span><span className="font-bold text-gray-700">{trip.tripNotes || "None"}</span></div>
+                  </div>
+                </div>
+
+                {/* Assets Info */}
+                <div className="space-y-6">
+                  {/* Vehicle Info */}
+                  <div className="space-y-3.5">
+                    <h4 className="font-poppins font-bold text-[11px] text-[#64748B] uppercase tracking-wider border-b border-[#E7EAF0] pb-1.5">Vehicle Information</h4>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Vehicle Name</span><span className="font-bold text-gray-700">{trip.vehicleName || "N/A"}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Registration Number</span><span className="font-bold text-gray-700">{trip.vehiclePlate || "N/A"}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Vehicle Type</span><span className="font-bold text-gray-700">{trip.vehicle?.vehicleType || "Truck"}</span></div>
+                    </div>
+                  </div>
+
+                  {/* Driver Info */}
+                  <div className="space-y-3.5">
+                    <h4 className="font-poppins font-bold text-[11px] text-[#64748B] uppercase tracking-wider border-b border-[#E7EAF0] pb-1.5">Driver Information</h4>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Driver Name</span><span className="font-bold text-gray-700">{trip.driverName || "N/A"}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Employee ID</span><span className="font-bold text-gray-700">{trip.driver?.employeeId || "N/A"}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Mobile Number</span><span className="font-bold text-gray-700">{trip.driverPhone || "N/A"}</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Creator details */}
+              <div className="pt-4 border-t border-[#E7EAF0] flex flex-col sm:flex-row justify-between text-[10px] text-[#64748B] font-semibold gap-2">
+                <span>Created By: <strong>{invoice.createdBy?.fullName || "Manager"}</strong></span>
+                <span>Created Date & Time: <strong>{new Date(invoice.createdAt || invoice.invoiceDate).toLocaleString("en-IN")}</strong></span>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="flex items-center justify-end gap-3 pt-6 border-t border-[#E7EAF0]">
+                <button
+                  type="button"
+                  onClick={() => setShowInvoiceModal(false)}
+                  className="px-4.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-semibold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrintInvoice}
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-black rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer flex items-center gap-1.5"
+                >
+                  Print Invoice
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadInvoice}
+                  className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer flex items-center gap-1.5"
+                >
+                  Download PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

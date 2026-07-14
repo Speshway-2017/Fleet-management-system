@@ -42,8 +42,10 @@ function Dashboard() {
       totalOrganizations: 0,
       activeOrganizations: 0,
       fleetManagers: 0,
+      activeFleetManagers: 0,
       activeVehicles: 0,
       revenue: 0,
+      todayRevenue: 0,
       pendingRequests: 0,
     },
     recentActivities: [],
@@ -74,7 +76,8 @@ function Dashboard() {
     return () => clearInterval(intervalId);
   }, []);
 
-  const { statistics, recentActivities, chartData } = data;
+  const { statistics, chartData } = data;
+  const { notifications, fleetManagers } = useAdmin();
 
   // Transform data for pie chart
   const pendingOrgs = statistics.pendingRequests || 0; // fallback if needed
@@ -111,6 +114,31 @@ function Dashboard() {
     }
   };
 
+  const extractOrganization = (title, message) => {
+    if (!message) return 'N/A';
+    // Try to extract from 'Organization "OrgName"'
+    const orgMatch = message.match(/Organization "([^"]+)"/i);
+    if (orgMatch) return orgMatch[1];
+    
+    // Try to extract from 'assigned to "OrgName"'
+    const assignMatch = message.match(/assigned to "([^"]+)"/i);
+    if (assignMatch) return assignMatch[1];
+    
+    // Try to extract Fleet Manager name and look it up
+    const managerMatch = message.match(/Fleet Manager "([^"]+)"/i);
+    if (managerMatch) {
+      const managerName = managerMatch[1];
+      const manager = fleetManagers?.find(m => m.name === managerName);
+      if (manager && manager.org && manager.org !== 'N/A') return manager.org;
+    }
+
+    if (title && title.toLowerCase().includes('system')) {
+      return 'System';
+    }
+    
+    return 'N/A';
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f4f7f6] flex items-center justify-center font-sans">
@@ -129,39 +157,25 @@ function Dashboard() {
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
           
           {/* KPI Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5 mb-6">
-            <KPICard 
-              title="Total Organizations" 
-              value={statistics.totalOrganizations.toString()} 
-              subtitle="All registered orgs"
-              icon={<Building2 className="w-4 h-4 text-slate-600" />}
-              iconBg="bg-slate-100"
-            />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-6">
             <KPICard 
               title="Active Organizations" 
-              value={statistics.activeOrganizations.toString()} 
+              value={(statistics.activeOrganizations || 0).toString()} 
               subtitle={`${statistics.totalOrganizations > 0 ? Math.round((statistics.activeOrganizations / statistics.totalOrganizations) * 100) : 0}% of total`}
               icon={<CheckCircle2 className="w-4 h-4 text-green-500" />}
               iconBg="bg-green-50 border border-green-100"
             />
             <KPICard 
-              title="Total Fleet Managers" 
-              value={statistics.fleetManagers.toString()} 
-              subtitle="All managers"
-              icon={<Users className="w-4 h-4 text-slate-600" />}
-              iconBg="bg-slate-100"
-            />
-            <KPICard 
-              title="Active Vehicles" 
-              value={statistics.activeVehicles.toString()} 
-              subtitle="Currently operating"
-              icon={<UserCheck className="w-4 h-4 text-blue-500" />}
+              title="Active Fleet Managers" 
+              value={(statistics.activeFleetManagers || 0).toString()} 
+              subtitle="Currently active"
+              icon={<Users className="w-4 h-4 text-blue-500" />}
               iconBg="bg-blue-50 border border-blue-100"
             />
             <KPICard 
-              title="Total Revenue" 
-              value={`$${statistics.revenue.toLocaleString()}`} 
-              subtitle="All time"
+              title="Today Revenue" 
+              value={`₹${(statistics.todayRevenue || 0).toLocaleString('en-IN')}`} 
+              subtitle="Today"
               icon={<TrendingUp className="w-4 h-4 text-orange-500" />}
               iconBg="bg-orange-50 border border-orange-100"
             />
@@ -178,9 +192,13 @@ function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
             
             {/* Revenue Trend */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1">
-              <div className="flex items-center justify-between mb-6">
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
+              <div className="flex items-start justify-between mb-6">
                 <h3 className="font-bold text-slate-800 text-sm">Revenue Trend</h3>
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5">Total Revenue</div>
+                  <div className="text-lg font-black text-slate-800 leading-none">₹{(statistics.revenue || 0).toLocaleString('en-IN')}</div>
+                </div>
               </div>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
@@ -197,7 +215,13 @@ function Dashboard() {
 
             {/* Org Status */}
             <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
-              <h3 className="font-bold text-slate-800 text-sm mb-2">Organization Status</h3>
+              <div className="flex items-start justify-between mb-2">
+                <h3 className="font-bold text-slate-800 text-sm">Organization Status</h3>
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5">Total Orgs</div>
+                  <div className="text-lg font-black text-slate-800 leading-none">{statistics.totalOrganizations || 0}</div>
+                </div>
+              </div>
               <div className="flex-1 flex flex-col items-center justify-center relative">
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -236,8 +260,14 @@ function Dashboard() {
             </div>
 
             {/* Fleet Manager Status */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1">
-              <h3 className="font-bold text-slate-800 text-sm mb-6">Fleet Manager Status</h3>
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
+              <div className="flex items-start justify-between mb-6">
+                <h3 className="font-bold text-slate-800 text-sm">Fleet Manager Status</h3>
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5">Total Managers</div>
+                  <div className="text-lg font-black text-slate-800 leading-none">{statistics.fleetManagers || 0}</div>
+                </div>
+              </div>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={fleetManagerData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }} barSize={28}>
@@ -263,35 +293,58 @@ function Dashboard() {
             {/* Recent Activities */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col">
               <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
-                <h3 className="font-bold text-slate-800 text-sm">Recent Activities (Trips)</h3>
+                <h3 className="font-bold text-slate-800 text-sm">Recent Activities</h3>
+                <Link to="/admin/notifications" className="text-[12px] font-bold text-[#f97316] hover:text-[#ea580c] transition-colors">
+                  View all
+                </Link>
               </div>
               <div className="overflow-x-auto no-scrollbar">
                 <table className="w-full text-left text-sm min-w-[500px]">
-                  <thead className="bg-slate-50/50 border-b border-slate-100">
+                  <thead className="bg-white border-b border-slate-100">
                     <tr>
-                      <th className="py-3 px-5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Time</th>
-                      <th className="py-3 px-5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Activity</th>
-                      <th className="py-3 px-5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Details</th>
+                      <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Time</th>
+                      <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Activity</th>
+                      <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Organization</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
-                    {recentActivities.map((act, i) => (
-                      <tr key={i} className="hover:bg-slate-50/50 transition-colors cursor-pointer">
-                        <td className="py-3.5 px-5 text-slate-400 font-mono text-[11px] whitespace-nowrap">{formatTime(act.createdAt)}</td>
-                        <td className="py-3.5 px-5">
-                          <div className="flex items-center gap-2.5">
-                            <span className={`w-1.5 h-1.5 rounded-full ${getStatusColor(act.status)}`}></span>
-                            <span className="font-medium text-slate-700 text-[13px]">Trip {act.status}</span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-5 text-slate-500 text-[13px]">
-                          Trip #{act.tripNumber} - Vehicle: {act.vehicle?.vehicleNumber || 'N/A'} - Driver: {act.driver?.name || 'N/A'}
-                        </td>
-                      </tr>
-                    ))}
-                    {recentActivities.length === 0 && (
+                    {(notifications || []).slice(0, 6).map((act, i) => {
+                      // Determine dot color based on activity type or title
+                      let dotColor = 'bg-blue-500';
+                      if (act.type === 'success' || (act.title || '').toLowerCase().includes('created') || (act.title || '').toLowerCase().includes('activated')) {
+                        dotColor = 'bg-green-500';
+                      } else if (act.type === 'warning' || (act.title || '').toLowerCase().includes('updated')) {
+                        dotColor = 'bg-yellow-500';
+                      } else if ((act.title || '').toLowerCase().includes('invited') || (act.title || '').toLowerCase().includes('added')) {
+                        dotColor = 'bg-purple-500';
+                      } else if ((act.title || '').toLowerCase().includes('changed')) {
+                        dotColor = 'bg-orange-500';
+                      } else if (act.type === 'alert' || act.type === 'critical') {
+                        dotColor = 'bg-red-500';
+                      }
+
+                      return (
+                        <tr 
+                          key={act.id || act._id || i} 
+                          onClick={() => navigate(`/admin/notifications/${act.id || act._id || i}`)}
+                          className="hover:bg-slate-50/50 transition-colors cursor-pointer"
+                        >
+                          <td className="py-4 px-6 text-slate-500 font-medium text-[12px] whitespace-nowrap">{act.time || formatTime(act.createdAt)}</td>
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-3">
+                              <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`}></span>
+                              <span className="font-medium text-slate-700 text-[13px]">{act.title || act.action || 'Unknown Activity'}</span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6 text-slate-500 text-[13px] text-right">
+                            {act.organization?.name || act.organizationName || act.organization || extractOrganization(act.title, act.message || act.description)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {(!notifications || notifications.length === 0) && (
                       <tr>
-                        <td colSpan="3" className="py-6 px-5 text-center text-slate-400 text-xs">No recent activities found</td>
+                        <td colSpan="3" className="py-8 px-6 text-center text-slate-400 text-sm">No recent activities found</td>
                       </tr>
                     )}
                   </tbody>

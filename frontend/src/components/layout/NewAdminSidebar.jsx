@@ -9,7 +9,8 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  MoreHorizontal
+  MoreHorizontal,
+  MessageSquare
 } from "lucide-react";
 
 export default function NewAdminSidebar({ activeItem = "dashboard" }) {
@@ -21,6 +22,7 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
     { id: "dashboard", label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
     { id: "organizations", label: "Organizations", to: "/admin/organizations", icon: Building2 },
     { id: "fleet-managers", label: "Fleet Managers", to: "/admin/fleet-managers", icon: Users },
+    { id: "contact-requests", label: "Contact Requests", to: "/admin/contact-requests", icon: MessageSquare },
     { id: "analytics", label: "Analytics", to: "/admin/analytics", icon: BarChart3 },
     { id: "settings", label: "Settings", to: "/admin/settings", icon: Settings },
   ];
@@ -85,7 +87,7 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
       <div className="p-4 mb-4">
         <button
           onClick={() => { logout(); navigate('/login'); }}
-          className="w-full flex items-center justify-center gap-3 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 font-semibold text-red-500 transition-all hover:bg-red-500/20 hover:text-red-400"
+          className="w-full flex items-center justify-center gap-3 rounded-lg border border-[#b45309]/30 bg-transparent px-4 py-3 font-semibold text-[#b45309] transition-all hover:bg-[#b45309]/10"
         >
           <LogOut className="w-[18px] h-[18px]" />
           Logout

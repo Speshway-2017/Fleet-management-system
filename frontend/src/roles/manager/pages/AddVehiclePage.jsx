@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ArrowLeft, Upload, Check, X, FileText, Zap } from "lucide-react";
+import { ArrowLeft, Upload, Check, X, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
-import { extractDataFromAllDocuments, identifyDocumentType } from "../utils/documentParser";
+import { identifyDocumentType } from "../utils/documentParser";
+import { vehicleApi } from "@/api/vehicleApi";
 import { managerApi } from "../api/managerApi";
 
 export default function AddVehiclePage() {
@@ -15,6 +16,9 @@ export default function AddVehiclePage() {
     model: "",
     year: new Date().getFullYear(),
     plateNumber: "",
+    vehicleType: "Truck",
+    branch: "",
+    chassisNumber: "",
     
     // Registration Details
     registrationNumber: "",
@@ -33,6 +37,7 @@ export default function AddVehiclePage() {
     nextService: "",
     ownership: "Owned",
     availability: "Immediate",
+    fastagBalance: "",
     
     // Document Upload
     uploadedDocuments: []
@@ -40,8 +45,6 @@ export default function AddVehiclePage() {
 
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isExtracting, setIsExtracting] = useState(false);
-  const [extractedData, setExtractedData] = useState({});
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -86,7 +89,6 @@ export default function AddVehiclePage() {
         
         setUploadedFiles((prev) => {
           const updated = [...prev, newFile];
-          // Auto-extract data after all files are loaded
           if (updated.length === validFileCount + (uploadedFiles.length || 0)) {
             toast.success(`${file.name} uploaded successfully!`);
           }
@@ -95,60 +97,6 @@ export default function AddVehiclePage() {
       };
       reader.readAsDataURL(file);
       newFiles.push(file);
-    }
-
-    if (validFileCount > 0) {
-      toast.loading(`Preparing to extract data from ${validFileCount} document(s)...`, {
-        id: 'file-loading'
-      });
-    }
-  };
-
-  const handleExtractData = async () => {
-    if (uploadedFiles.length === 0) {
-      toast.error("Please upload documents first");
-      return;
-    }
-
-    setIsExtracting(true);
-    try {
-      // Extract data from all uploaded documents
-      const extracted = await extractDataFromAllDocuments(
-        uploadedFiles.map(f => f.originalFile)
-      );
-      
-      if (Object.keys(extracted).length > 0) {
-        setExtractedData(extracted);
-        
-        // Auto-fill form with extracted data
-        setFormData((prev) => {
-          const updated = { ...prev };
-          // Map extracted data to form fields
-          Object.entries(extracted).forEach(([key, value]) => {
-            if (key in updated && value) {
-              updated[key] = value;
-            }
-          });
-          return updated;
-        });
-
-        const extractedCount = Object.keys(extracted).length;
-        toast.success(`✨ Extracted and auto-filled ${extractedCount} field${extractedCount > 1 ? 's' : ''}!`, {
-          icon: '🚗',
-          duration: 3000
-        });
-      } else {
-        toast.error("Could not extract data from documents. Please fill manually.", {
-          icon: '⚠️'
-        });
-      }
-    } catch (error) {
-      console.error("Extraction error:", error);
-      toast.error("Error extracting data. Please fill manually.", {
-        icon: '❌'
-      });
-    } finally {
-      setIsExtracting(false);
     }
   };
 
@@ -165,38 +113,65 @@ export default function AddVehiclePage() {
     }
 
     setIsProcessing(true);
-    
     try {
+      // Map uploaded files to documents schema
+      const documents = uploadedFiles.map(file => {
+        const category = identifyDocumentType(file.name) || "Other";
+        return {
+          id: Math.random().toString(36).substring(2, 11),
+          name: file.name,
+          category: category,
+          documentNumber: "",
+          issueDate: new Date(),
+          uploadDate: new Date().toISOString().split('T')[0],
+          uploadedBy: "Manager",
+          status: "Valid",
+          fileData: file.data,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type
+        };
+      });
+
+      // Map frontend field names to backend field names matching the new MongoDB Vehicle schema
       const payload = {
-        name: `${formData.manufacturer} ${formData.model}`,
-        manufacturer: formData.manufacturer,
-        brand: formData.manufacturer,
-        model: formData.model,
-        year: Number(formData.year),
-        plateNumber: formData.plateNumber.toUpperCase(),
-        vehicleNumber: formData.plateNumber.toUpperCase(),
+        vehicleName:        `${formData.manufacturer} ${formData.model}`,
+        vehicleNumber:      formData.plateNumber.toUpperCase(),
         registrationNumber: formData.registrationNumber,
-        registrationState: formData.registrationState,
-        fuelType: formData.fuelType,
-        type: "Truck",
-        driver: "Unassigned",
-        status: "Available",
-        fastagBalance: 5000,
-        insuranceExpiry: formData.insuranceExpiry || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        lastService: formData.lastService || new Date().toISOString().split('T')[0],
-        nextService: formData.nextService || new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        branch: "Pune",
-        ownership: formData.ownership,
-        availability: formData.availability,
-        dateAdded: new Date().toISOString().split('T')[0]
+        vehicleType:        formData.vehicleType,
+        brand:              formData.manufacturer,
+        model:              formData.model,
+        manufactureYear:    formData.year ? Number(formData.year) : undefined,
+        currentStatus:      formData.availability === "Immediate" ? "Available" : "Inactive",
+        fuelType:           formData.fuelType,
+        fuelCapacity:       0,
+        fastagBalance:      formData.fastagBalance ? Number(formData.fastagBalance) : 0,
+        insuranceExpiry:    formData.insuranceExpiry || undefined,
+        rcExpiry:           undefined,
+        pollutionExpiry:    undefined,
+        permitExpiry:       undefined,
+        odometer:           0,
+        documents:          documents,
+        chassisNumber:      formData.chassisNumber,
       };
 
-      await managerApi.createVehicle(payload);
+      await vehicleApi.create(payload);
       toast.success("Vehicle added successfully!");
       navigate("/manager/vehicle-management");
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to add vehicle to database");
-      console.error(error);
+    } catch (err) {
+      if (!err.response) {
+        toast.error("Unable to connect to the server. Please try again.");
+      } else {
+        const msg = err.response?.data?.message;
+        const status = err.response?.status;
+        if (status === 409) {
+          toast.error(msg || "A vehicle with this plate number already exists.");
+        } else if (status === 400) {
+          toast.error(msg || "Please fill in all required fields.");
+        } else {
+          toast.error(msg || "Failed to save vehicle. Please try again.");
+        }
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -275,6 +250,47 @@ export default function AddVehiclePage() {
                       onChange={handleInputChange}
                       required
                       className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 uppercase bg-white text-[#1E293B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Vehicle Type</label>
+                    <select
+                      name="vehicleType"
+                      value={formData.vehicleType}
+                      onChange={handleInputChange}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                    >
+                      <option value="Truck">Truck</option>
+                      <option value="Van">Van</option>
+                      <option value="Bus">Bus</option>
+                      <option value="Trailer">Trailer</option>
+                      <option value="Tipper">Tipper</option>
+                      <option value="Tanker">Tanker</option>
+                      <option value="Car">Car</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Branch / Location</label>
+                    <input
+                      type="text"
+                      name="branch"
+                      placeholder="e.g. Pune"
+                      value={formData.branch}
+                      onChange={handleInputChange}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Chassis Number</label>
+                    <input
+                      type="text"
+                      name="chassisNumber"
+                      placeholder="e.g. 17-digit Chassis No."
+                      value={formData.chassisNumber}
+                      onChange={handleInputChange}
+                      maxLength={17}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
                     />
                   </div>
                 </div>
@@ -438,7 +454,7 @@ export default function AddVehiclePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Ownership</label>
                     <select
@@ -463,6 +479,17 @@ export default function AddVehiclePage() {
                       <option value="Immediate">Immediate</option>
                       <option value="Scheduled">Scheduled</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">FASTag Balance (INR)</label>
+                    <input
+                      type="number"
+                      name="fastagBalance"
+                      placeholder="e.g. 500"
+                      value={formData.fastagBalance}
+                      onChange={handleInputChange}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                    />
                   </div>
                 </div>
               </div>
@@ -501,24 +528,6 @@ export default function AddVehiclePage() {
                   <div className="space-y-4 mb-6">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Uploaded Files ({uploadedFiles.length})</p>
-                      <button
-                        type="button"
-                        onClick={handleExtractData}
-                        disabled={isExtracting || uploadedFiles.length === 0}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#B45A0A] to-[#9A4D08] hover:from-[#9A4D08] hover:to-[#7A3D06] rounded-lg text-xs font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isExtracting ? (
-                          <>
-                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            <span>Extracting...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Zap className="w-4 h-4" />
-                            <span>Extract Details</span>
-                          </>
-                        )}
-                      </button>
                     </div>
 
                     <div className="space-y-2">
@@ -542,34 +551,7 @@ export default function AddVehiclePage() {
                       ))}
                     </div>
 
-                    {/* Extracted Data Preview */}
-                    {Object.keys(extractedData).length > 0 && (
-                      <div className="p-4 bg-gradient-to-r from-[#FDF3EC] to-[#FEF5E7] border border-[#B45A0A]/30 rounded-xl">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Check className="w-4 h-4 text-green-600" />
-                          <p className="text-xs font-bold text-[#B45A0A]">Auto-filled Details from Documents</p>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {Object.entries(extractedData).map(([key, value]) => {
-                            // Convert camelCase to readable text
-                            const label = key
-                              .replace(/([A-Z])/g, ' $1')
-                              .replace(/^./, str => str.toUpperCase())
-                              .trim();
-                            
-                            return (
-                              <div key={key} className="bg-white/60 p-2.5 rounded-lg backdrop-blur-sm">
-                                <p className="text-[10px] text-[#64748B] font-semibold uppercase tracking-wider">{label}</p>
-                                <p className="text-xs font-bold text-[#1E293B] mt-1 line-clamp-2">{String(value)}</p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <p className="text-[10px] text-[#64748B] mt-3 italic">
-                          ℹ️ Review extracted values above. You can edit them before saving.
-                        </p>
-                      </div>
-                    )}
+
                   </div>
                 )}
               </div>
