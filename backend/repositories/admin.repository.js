@@ -162,11 +162,12 @@ export const deletePlatformIssueInRepo = async (id) => {
 // Notifications functions
 export const createNotificationInRepo = async (data) => {
   const notification = new Notification(data);
-  return notification.save();
+  await notification.save();
+  return notification.populate('organization', 'name email phone');
 };
 
 export const getAdminNotificationsInRepo = async () => {
-  return Notification.find({ recipientRole: 'SUPER_ADMIN' }).sort({ createdAt: -1 });
+  return Notification.find({ recipientRole: 'SUPER_ADMIN' }).populate('organization', 'name email phone').sort({ createdAt: -1 });
 };
 
 export const markNotificationReadInRepo = async (id) => {

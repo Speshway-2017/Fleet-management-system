@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { ArrowLeft, Check, X, AlertTriangle, Building2, Clock, CheckCircle2, AlertCircle, Info, ShieldAlert, Zap } from "lucide-react";
@@ -24,7 +24,12 @@ export default function NotificationDetails() {
     priority: dbNotification.priority || "Low",
     status: dbNotification.isRead ? "Read" : "Unread",
     type: dbNotification.type || "bell",
-    organization: dbNotification.organization || {
+    organization: dbNotification.organization ? {
+      name: dbNotification.organization.name || "N/A",
+      id: dbNotification.organization._id || dbNotification.organization.id || "N/A",
+      contact: dbNotification.organization.email || dbNotification.organization.contact || "N/A",
+      phone: dbNotification.organization.phone || "N/A"
+    } : {
       name: "System Generated",
       id: "SYS-ALERT",
       contact: "support@fleet.com",
@@ -47,6 +52,12 @@ export default function NotificationDetails() {
   };
 
   const isRead = dbNotification ? dbNotification.isRead : false;
+
+  useEffect(() => {
+    if (dbNotification && !dbNotification.isRead) {
+      markAsRead(dbNotification.id);
+    }
+  }, [dbNotification, markAsRead]);
 
   return (
     <div className="h-screen bg-[#f4f7f6] flex font-sans">
@@ -90,15 +101,7 @@ export default function NotificationDetails() {
                   <X className="w-4 h-4" />
                   Dismiss
                 </button>
-                {!isRead && (
-                  <button 
-                    onClick={async () => { await markAsRead(id); toast.success("Marked as read"); }}
-                    className="px-4 py-2 bg-[#0f172a] hover:bg-slate-800 text-white text-[13px] font-bold rounded-lg shadow-sm transition-colors flex items-center gap-2"
-                  >
-                    <Check className="w-4 h-4" />
-                    Mark as Read
-                  </button>
-                )}
+                
               </div>
             </div>
 
@@ -154,9 +157,9 @@ export default function NotificationDetails() {
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
                   <h3 className="text-[15px] font-extrabold text-slate-800 mb-5">Information</h3>
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div className="flex flex-col gap-1 border-b border-slate-100 pb-3">
                       <span className="text-[13px] font-bold text-slate-500">Notification ID</span>
-                      <span className="text-[13px] font-black text-slate-800">#{notification.id}</span>
+                      <span className="text-[13px] font-black text-slate-800 break-all">#{notification.id}</span>
                     </div>
                     <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                       <span className="text-[13px] font-bold text-slate-500">Category</span>

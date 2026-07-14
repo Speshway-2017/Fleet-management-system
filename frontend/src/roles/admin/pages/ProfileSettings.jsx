@@ -237,28 +237,30 @@ export default function ProfileSettings() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-[13px] font-bold text-slate-600">Email Address</label>
-                  <input 
-                    type="email" 
-                    name="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.email ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
-                  />
-                  {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-[13px] font-bold text-slate-600">Email Address</label>
+                    <input 
+                      type="email" 
+                      name="email"
+                      value={form.email}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.email ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
+                    />
+                    {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                  </div>
 
-                <div className="space-y-2">
-                  <label className="block text-[13px] font-bold text-slate-600">Phone Number</label>
-                  <input 
-                    type="tel" 
-                    name="phone"
-                    value={form.phone}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.phone ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
-                  />
-                  {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+                  <div className="space-y-2">
+                    <label className="block text-[13px] font-bold text-slate-600">Phone Number</label>
+                    <input 
+                      type="tel" 
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.phone ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
+                    />
+                    {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+                  </div>
                 </div>
               </div>
             </div>
@@ -290,48 +292,50 @@ export default function ProfileSettings() {
                   {errors.currentPassword && <p className="text-xs text-red-500 mt-1">{errors.currentPassword}</p>}
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-[13px] font-bold text-slate-600">New Password</label>
-                  <div className="relative">
-                    <input 
-                      type={showNewPassword ? "text" : "password"}
-                      name="newPassword"
-                      value={form.newPassword}
-                      onChange={handleChange}
-                      placeholder="********" 
-                      className={`w-full px-4 py-2.5 pr-10 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.newPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-[13px] font-bold text-slate-600">New Password</label>
+                    <div className="relative">
+                      <input 
+                        type={showNewPassword ? "text" : "password"}
+                        name="newPassword"
+                        value={form.newPassword}
+                        onChange={handleChange}
+                        placeholder="********" 
+                        className={`w-full px-4 py-2.5 pr-10 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.newPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {errors.newPassword && <p className="text-xs text-red-500 mt-1">{errors.newPassword}</p>}
                   </div>
-                  {errors.newPassword && <p className="text-xs text-red-500 mt-1">{errors.newPassword}</p>}
-                </div>
 
-                <div className="space-y-2">
-                  <label className="block text-[13px] font-bold text-slate-600">Confirm New Password</label>
-                  <div className="relative">
-                    <input 
-                      type={showConfirmPassword ? "text" : "password"}
-                      name="confirmNewPassword"
-                      value={form.confirmNewPassword}
-                      onChange={handleChange}
-                      placeholder="********" 
-                      className={`w-full px-4 py-2.5 pr-10 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.confirmNewPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                  <div className="space-y-2">
+                    <label className="block text-[13px] font-bold text-slate-600">Confirm New Password</label>
+                    <div className="relative">
+                      <input 
+                        type={showConfirmPassword ? "text" : "password"}
+                        name="confirmNewPassword"
+                        value={form.confirmNewPassword}
+                        onChange={handleChange}
+                        placeholder="********" 
+                        className={`w-full px-4 py-2.5 pr-10 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.confirmNewPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {errors.confirmNewPassword && <p className="text-xs text-red-500 mt-1">{errors.confirmNewPassword}</p>}
                   </div>
-                  {errors.confirmNewPassword && <p className="text-xs text-red-500 mt-1">{errors.confirmNewPassword}</p>}
                 </div>
               </div>
             </div>
