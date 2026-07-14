@@ -120,6 +120,7 @@ export const getOrganizationDetails = async (req, res, next) => {
         id: manager._id.toString(),
         name: manager.name,
         email: manager.email,
+        phone: manager.phone,
         status: manager.status || (manager.isActive ? 'Active' : 'Inactive'),
         initials: initials.toUpperCase(),
         stats: {
@@ -166,7 +167,7 @@ export const getOrganizationDetails = async (req, res, next) => {
 
 export const createOrganization = async (req, res, next) => {
   try {
-    const { name, industry, email, phone, address, city, state, country, plan, status } = req.body;
+    const { name, industry, email, phone, address, city, state, country, plan, status, managers } = req.body;
 
     console.log('[DEBUG createOrganization] req.body:', req.body);
 
@@ -174,21 +175,77 @@ export const createOrganization = async (req, res, next) => {
       return sendError(res, 400, 'Name, industry, and email are required');
     }
 
+    // 1. Create Organization
     const org = await createOrgInRepo({ name, industry, email, phone, address, city, state, country, plan, status: status || 'Pending' });
 
-    // Store Admin Notification in MongoDB
+    let createdManagerIds = [];
+    let createdManagersList = [];
+
+    // 2. Create Fleet Managers if provided
+    if (managers && Array.isArray(managers) && managers.length > 0) {
+      for (const manager of managers) {
+        if (manager.name && manager.email && manager.password) {
+          try {
+            const hashedPassword = await hashPassword(manager.password);
+            const createdManager = await createManagerInRepo({
+              name: manager.name,
+              email: manager.email,
+              password: hashedPassword,
+              phone: manager.phone,
+              organization: org._id,
+              role: "FLEET_MANAGER",
+              status: "Active",
+              isActive: true
+            });
+            createdManagerIds.push(createdManager._id);
+            createdManagersList.push(createdManager);
+
+            // Try sending an email to the newly created manager
+            try {
+              await sendEmail({
+                email: createdManager.email,
+                subject: "Fleet Management - Account Created",
+                message: `Hello ${createdManager.name},\n\nYour Fleet Management account has been created successfully.\n\nLogin Credentials:\nEmail: ${createdManager.email}\nPassword: ${manager.password}\n\nPlease login and change your password after your first login.\n\nRegards,\nFleet Management Team`,
+              });
+            } catch (mailError) {
+              console.error('[WARNING] Failed to send welcome email:', mailError);
+            }
+          } catch (managerError) {
+            // Rollback organization and successfully created managers
+            for (const id of createdManagerIds) {
+              await deleteManagerById(id);
+            }
+            await deleteOrganizationById(org._id);
+            
+            if (managerError.code === 11000) {
+              return sendError(res, 400, `A user with the email '${manager.email}' already exists. Transaction rolled back.`);
+            }
+            throw managerError;
+          }
+        }
+      }
+    }
+
+    // 3. Store Admin Notification in MongoDB
     const notification = await createNotificationInRepo({
       title: 'Organization Registered',
       message: `Organization "${org.name}" has been onboarded successfully under "${org.plan || 'Standard'}" plan.`,
       type: 'success',
       recipientRole: 'SUPER_ADMIN',
-      createdBy: req.user?._id
+      createdBy: req.user?._id,
+      organization: org._id
     });
-    if (req.io) {
-      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
-    return sendSuccess(res, 201, org, 'Organization created');
+    const responseData = { ...org.toObject() };
+    if (createdManagersList.length > 0) {
+      responseData.fleetManagersCount = createdManagersList.length;
+    }
+
+    return sendSuccess(res, 201, responseData, 'Organization created');
   } catch (error) {
     console.error('[ERROR createOrganization] Failed with error:', error);
     if (error.name === 'ValidationError') {
@@ -234,10 +291,12 @@ export const updateOrganization = async (req, res, next) => {
       message: `Organization "${updatedOrg.name}" details have been updated${statusMsg}.`,
       type: notificationType,
       recipientRole: 'SUPER_ADMIN',
-      createdBy: req.user?._id
+      createdBy: req.user?._id,
+      organization: updatedOrg._id
     });
-    if (req.io) {
-      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 200, updatedOrg, 'Organization updated successfully');
@@ -270,8 +329,9 @@ export const deleteOrganization = async (req, res, next) => {
       recipientRole: 'SUPER_ADMIN',
       createdBy: req.user?._id
     });
-    if (req.io) {
-      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 200, null, 'Organization deleted successfully');
@@ -352,29 +412,35 @@ export const createManager = async (req, res, next) => {
       message: `Fleet Manager "${manager.name}" has been created and assigned to "${orgName}".`,
       type: 'success',
       recipientRole: 'SUPER_ADMIN',
-      createdBy: req.user?._id
+      createdBy: req.user?._id,
+      organization: manager.organization
     });
-    if (req.io) {
-      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     // Send account email
-    await sendEmail({
-      email: manager.email,
-      subject: "Fleet Management - Account Created",
-      message: `Hello ${manager.name},
+    try {
+      await sendEmail({
+        email: manager.email,
+        subject: "Fleet Management - Account Created",
+        message: `Hello ${manager.name},
 
-Your Fleet Management account has been created successfully.
+  Your Fleet Management account has been created successfully.
 
-Login Credentials:
-Email: ${manager.email}
-Password: ${password}
+  Login Credentials:
+  Email: ${manager.email}
+  Password: ${password}
 
-Please login and change your password after your first login.
+  Please login and change your password after your first login.
 
-Regards,
-Fleet Management Team`,
-    });
+  Regards,
+  Fleet Management Team`,
+      });
+    } catch (mailError) {
+      console.error('[WARNING] Failed to send welcome email:', mailError);
+    }
 
     return sendSuccess(
       res,
@@ -446,10 +512,12 @@ export const updateManager = async (req, res, next) => {
       message: `Fleet Manager "${updatedManager.name}" details have been updated${statusMsg}.`,
       type: notificationType,
       recipientRole: 'SUPER_ADMIN',
-      createdBy: req.user?._id
+      createdBy: req.user?._id,
+      organization: updatedManager.organization
     });
-    if (req.io) {
-      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 200, updatedManager, 'Fleet manager updated successfully');
@@ -482,8 +550,9 @@ export const deleteManager = async (req, res, next) => {
       recipientRole: 'SUPER_ADMIN',
       createdBy: req.user?._id
     });
-    if (req.io) {
-      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 200, null, 'Fleet manager deleted successfully');
@@ -607,8 +676,9 @@ export const createIssue = async (req, res, next) => {
       recipientRole: 'SUPER_ADMIN',
       createdBy: req.user._id
     });
-    if (req.io) {
-      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 201, issue, 'Platform issue raised successfully');

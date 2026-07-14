@@ -91,8 +91,13 @@ function Dashboard() {
   ];
 
   // Transform data for bar chart
+  const activeManagers = statistics.activeFleetManagers || 0;
+  const totalManagers = statistics.fleetManagers || 0;
+  const inactiveManagers = Math.max(0, totalManagers - activeManagers);
+
   const fleetManagerData = [
-    { name: "Total", value: statistics.fleetManagers, fill: "#3b82f6" },
+    { name: "Active", value: activeManagers, fill: "#22c55e" },
+    { name: "Inactive", value: inactiveManagers, fill: "#ef4444" },
   ];
 
   // Helper to format time for recent activities

@@ -21,6 +21,7 @@ const notificationSchema = new mongoose.Schema(
     recentAlerts: { type: Array, default: [] },
     actions: { type: Array, default: [] },
     isRead: { type: Boolean, default: false },
+    organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   },
   { timestamps: true }
 );
