@@ -197,7 +197,7 @@ function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
             
             {/* Revenue Trend */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
               <div className="flex items-start justify-between mb-6">
                 <h3 className="font-bold text-slate-800 text-sm">Revenue Trend</h3>
                 <div className="text-right">
@@ -219,7 +219,7 @@ function Dashboard() {
             </div>
 
             {/* Org Status */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
               <div className="flex items-start justify-between mb-2">
                 <h3 className="font-bold text-slate-800 text-sm">Organization Status</h3>
                 <div className="text-right">
@@ -265,7 +265,7 @@ function Dashboard() {
             </div>
 
             {/* Fleet Manager Status */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
               <div className="flex items-start justify-between mb-6">
                 <h3 className="font-bold text-slate-800 text-sm">Fleet Manager Status</h3>
                 <div className="text-right">
@@ -296,7 +296,7 @@ function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             
             {/* Recent Activities */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
               <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
                 <h3 className="font-bold text-slate-800 text-sm">Recent Activities</h3>
                 <Link to="/admin/notifications" className="text-[12px] font-bold text-[#f97316] hover:text-[#ea580c] transition-colors">
