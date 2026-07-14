@@ -2,6 +2,8 @@ import { useState, useRef } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
+import LandingHeader from "@/components/layout/LandingHeader";
+import LandingFooter from "@/components/layout/LandingFooter";
 import ReCAPTCHA from "react-google-recaptcha";
 import { contactApi } from "@/api/contactApi";
 import { 
@@ -17,13 +19,13 @@ import {
   ChevronUp, 
   Headphones, 
   ArrowRight,
-  KeyRound
+  KeyRound,
+  X
 } from "lucide-react";
 
 export default function Contact() {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const recaptchaRef = useRef(null);
   const [captchaToken, setCaptchaToken] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -37,6 +39,31 @@ export default function Contact() {
   });
 
   const [activeFaq, setActiveFaq] = useState(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    { sender: "agent", text: "Hello! How can we help you with our Fleet Management System today?" }
+  ]);
+  const [chatInput, setChatInput] = useState("");
+
+  const handleSendChatMessage = () => {
+    if (!chatInput.trim()) return;
+    const userMsg = chatInput;
+    setChatMessages(prev => [...prev, { sender: "user", text: userMsg }]);
+    setChatInput("");
+
+    setTimeout(() => {
+      let replyText = "Thank you for reaching out! A fleet specialist has been notified and will connect with you here shortly.";
+      const query = userMsg.toLowerCase();
+      if (query.includes("pricing") || query.includes("cost") || query.includes("price")) {
+        replyText = "Our basic plan starts at $29/vehicle/month. I can have a sales representative email you the detailed pricing sheets if you wish!";
+      } else if (query.includes("demo") || query.includes("trial")) {
+        replyText = "We offer a 14-day free trial! You can sign up using the Contact Us form on this page or register a manager account directly.";
+      } else if (query.includes("features") || query.includes("track")) {
+        replyText = "Our platform offers live GPS tracking, IoT telematics integration, smart maintenance routing, and automated trip logging. Check our Features tab for more info!";
+      }
+      setChatMessages(prev => [...prev, { sender: "agent", text: replyText }]);
+    }, 1000);
+  };
 
   const toggleFaq = (index) => {
     setActiveFaq(activeFaq === index ? null : index);
@@ -113,107 +140,7 @@ export default function Contact() {
   return (
     <div className="bg-[#FAFBFC] min-h-screen flex flex-col font-sans text-[#4B5563]">
       
-      {/* 1. Header/Navbar */}
-      <header className="bg-white border-b border-border-custom px-4 sm:px-6 md:px-8 h-20 flex items-center justify-between sticky top-0 z-30 shadow-sm">
-        <div className="flex items-center gap-3">
-          <NavLink to="/" className="flex items-center gap-3">
-            <img src="/logo.png" alt="Fleet Management Logo" className="h-10 w-auto object-contain" />
-            <span className="font-display font-black text-[#0B1B3D] text-lg tracking-wide">
-              Fleet Management
-            </span>
-          </NavLink>
-        </div>
-
-        <nav className="hidden md:flex items-center gap-6">
-          <NavLink to="/" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`} end>
-            Home
-          </NavLink>
-          <NavLink to="/about" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            About
-          </NavLink>
-          <NavLink to="/features" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            Features
-          </NavLink>
-          <NavLink to="/performance" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            Performance
-          </NavLink>
-          <NavLink to="/security" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            Security
-          </NavLink>
-          <NavLink to="/contact" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            Contact Us
-          </NavLink>
-        </nav>
-
-        <div className="flex items-center gap-4">
-          {isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-body hidden sm:inline-block">
-                {user?.name || "Admin"}
-              </span>
-              <button
-                onClick={() => {
-                  logout();
-                  navigate("/login");
-                }}
-                className="px-4 py-2 rounded-xl bg-secondary/10 text-secondary font-semibold text-xs transition-all hover:bg-secondary/20 active:scale-[0.98] cursor-pointer"
-              >
-                Logout
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => navigate("/login")}
-              className="px-5 py-2 rounded-xl bg-[#0B1B3D] text-white font-semibold text-xs flex items-center gap-2 hover:bg-[#152e5c] transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-sm"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h3a3 3 0 013 3v1" />
-              </svg>
-              Login
-            </button>
-          )}
-
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-xl text-secondary hover:bg-secondary/10 transition-colors cursor-pointer"
-            aria-label="Toggle mobile menu"
-          >
-            {mobileMenuOpen ? (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            )}
-          </button>
-        </div>
-      </header>
-
-      {/* Mobile Menu Dropdown */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-border-custom px-6 py-4 space-y-3 shadow-lg sticky top-20 z-20">
-          <NavLink to="/" className={({ isActive }) => `block w-full text-left py-2 font-semibold text-sm transition-colors ${isActive ? "text-[#A14000]" : "text-body hover:text-[#A14000]"}`} end onClick={() => setMobileMenuOpen(false)}>
-            Home
-          </NavLink>
-          <NavLink to="/about" className={({ isActive }) => `block w-full text-left py-2 font-semibold text-sm transition-colors ${isActive ? "text-[#A14000]" : "text-body hover:text-[#A14000]"}`} onClick={() => setMobileMenuOpen(false)}>
-            About
-          </NavLink>
-          <NavLink to="/features" className={({ isActive }) => `block w-full text-left py-2 font-semibold text-sm transition-colors ${isActive ? "text-[#A14000]" : "text-body hover:text-[#A14000]"}`} onClick={() => setMobileMenuOpen(false)}>
-            Features
-          </NavLink>
-          <NavLink to="/performance" className={({ isActive }) => `block w-full text-left py-2 font-semibold text-sm transition-colors ${isActive ? "text-[#A14000]" : "text-body hover:text-[#A14000]"}`} onClick={() => setMobileMenuOpen(false)}>
-            Performance
-          </NavLink>
-          <NavLink to="/security" className={({ isActive }) => `block w-full text-left py-2 font-semibold text-sm transition-colors ${isActive ? "text-[#A14000]" : "text-body hover:text-[#A14000]"}`} onClick={() => setMobileMenuOpen(false)}>
-            Security
-          </NavLink>
-          <NavLink to="/contact" className={({ isActive }) => `block w-full text-left py-2 font-semibold text-sm transition-colors ${isActive ? "text-[#A14000]" : "text-body hover:text-[#A14000]"}`} onClick={() => setMobileMenuOpen(false)}>
-            Contact Us
-          </NavLink>
-        </div>
-      )}
+      <LandingHeader />
 
       {/* 2. Hero Section with Background Volvo Truck */}
       <section className="relative w-full overflow-hidden border-b border-[#E5E7EB] bg-white py-16 md:py-24">
@@ -293,7 +220,7 @@ export default function Contact() {
       </section>
 
       {/* 3. Quick Info Bar */}
-      <section className="py-10 max-w-7xl mx-auto w-full px-4 sm:px-6 md:px-10 -mt-10 relative z-10">
+      <section className="py-10 max-w-7xl mx-auto w-full px-4 sm:px-6 md:px-10 mt-6 relative z-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           
           <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-md flex items-start gap-4 hover:shadow-lg transition-shadow">
@@ -503,8 +430,8 @@ export default function Contact() {
                 <p className="text-[10px] text-gray-500 font-medium mt-0.5">For urgent support or technical issues, reach out to our dedicated support team.</p>
               </div>
             </div>
-            <button
-              onClick={() => handleAction("Live Chat Support")}
+             <button
+              onClick={() => setIsChatOpen(true)}
               className="px-4 py-2 border border-[#A14000] hover:bg-[#A14000] hover:text-white text-[#A14000] rounded-xl font-bold text-xs shrink-0 flex items-center gap-1.5 transition-all duration-200 cursor-pointer"
             >
               <Headphones className="h-3.5 w-3.5" />
@@ -596,119 +523,85 @@ export default function Contact() {
 
       {/* 6. Ready to Transform Banner */}
       <section className="py-10 max-w-7xl mx-auto w-full px-4 sm:px-6 md:px-10">
-        <div className="rounded-3xl bg-gradient-to-r from-[#A14000] to-[#b84a00] text-white p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-xl">
+        <div className="rounded-3xl bg-gradient-to-r from-[#A14000] to-[#b84a00] text-white p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-xl justify-center">
           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: "url('/hero-bg.jpg')", bgSize: 'cover' }} />
-          <div className="relative z-10 flex items-center gap-4 text-center md:text-left flex-col md:flex-row">
+          <div className="relative z-10 flex items-center gap-4 text-center md:text-left flex-col md:flex-row mx-auto">
             <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-md border border-white/20 shrink-0">
               <ShieldCheck className="h-6.5 w-6.5" />
             </div>
             <div>
               <h3 className="font-display text-lg sm:text-xl font-extrabold leading-tight">Ready to Transform Your Fleet Operations?</h3>
-              <p className="text-xs text-white/90 font-medium mt-1">Get in touch today and take the first step towards smarter, safer and more efficient fleet management.</p>
+              <p className="text-xs text-white/90 font-medium mt-1">Get in touch today and take the first step towards safer and more efficient fleet management.</p>
             </div>
           </div>
-          <button
-            onClick={() => handleAction("Request Demo")}
-            className="relative z-10 px-6 py-3.5 bg-[#0B1B3D] hover:bg-[#0D1B2A] rounded-xl font-bold text-xs text-white shrink-0 flex items-center gap-2 transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-md hover:shadow-lg"
-          >
-            Request Demo
-            <ArrowRight className="h-4 w-4" />
-          </button>
         </div>
       </section>
+      
+      <LandingFooter />
 
-      {/* 7. Footer */}
-      <footer className="bg-[#0B1B3D] text-gray-300 pt-16 pb-8 px-4 sm:px-6 md:px-8 mt-auto border-t border-gray-800">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 md:gap-12 pb-12 border-b border-gray-800">
-          
-          <div className="space-y-4 lg:col-span-1">
-            <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="Fleet Management Logo" className="h-9 w-auto object-contain bg-white rounded-lg p-1" />
+      {/* Support Chat Widget */}
+      {isChatOpen && (
+        <div className="fixed bottom-6 right-6 z-50 w-80 bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col h-[400px] animate-fade-in font-sans">
+          {/* Header */}
+          <div className="bg-[#0B1B3D] text-white p-4 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse shrink-0" />
+              <div>
+                <h4 className="font-bold text-xs">Live Support</h4>
+                <p className="text-[9px] text-slate-300 font-medium">Typically replies instantly</p>
+              </div>
             </div>
-            <p className="text-xs text-gray-400 leading-relaxed font-medium">
-              Manage your entire fleet efficiently with our intelligent cloud-based platform.
-            </p>
-            <div className="flex items-center gap-3 pt-2">
-              <a href="#" onClick={(e) => { e.preventDefault(); handleAction("Facebook"); }} className="h-8 w-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#A14000] transition-all">
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg>
-              </a>
-              <a href="#" onClick={(e) => { e.preventDefault(); handleAction("Twitter"); }} className="h-8 w-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#A14000] transition-all">
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
-              </a>
-              <a href="#" onClick={(e) => { e.preventDefault(); handleAction("LinkedIn"); }} className="h-8 w-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#A14000] transition-all">
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
-              </a>
-              <a href="#" onClick={(e) => { e.preventDefault(); handleAction("YouTube"); }} className="h-8 w-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#A14000] transition-all">
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.163a3.003 3.003 0 00-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.516 0-9.388.508a3.003 3.003 0 00-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 002.11 2.11c1.872.508 9.388.508 9.388.508s7.517 0 9.388-.508a3.003 3.003 0 002.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-              </a>
-            </div>
+            <button
+              onClick={() => setIsChatOpen(false)}
+              className="text-gray-400 hover:text-white transition-colors cursor-pointer p-1 rounded-lg hover:bg-white/10"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
-          <div className="space-y-4">
-            <h5 className="font-display font-bold text-white tracking-wider text-xs uppercase">Quick Links</h5>
-            <ul className="space-y-2.5 text-xs text-gray-400 font-medium">
-              <li><NavLink to="/" className="hover:text-white transition-colors">Home</NavLink></li>
-              <li><NavLink to="/about" className="hover:text-white transition-colors">About</NavLink></li>
-              <li><NavLink to="/performance" className="hover:text-white transition-colors">Performance</NavLink></li>
-              <li><NavLink to="/contact" className="hover:text-white transition-colors">Contact Us</NavLink></li>
-              <li><NavLink to="/login" className="hover:text-white transition-colors">Login</NavLink></li>
-            </ul>
+          {/* Chat Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 text-xs">
+            {chatMessages.map((msg, idx) => (
+              <div key={idx} className={`flex gap-2 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
+                {msg.sender === "agent" && (
+                  <div className="h-6 w-6 rounded-full bg-[#A14000]/15 text-[#A14000] flex items-center justify-center font-bold text-[9px] shrink-0 border border-[#A14000]/10">
+                    S
+                  </div>
+                )}
+                <div className={`p-3 max-w-[80%] rounded-2xl shadow-sm leading-relaxed ${
+                  msg.sender === "user" 
+                    ? "bg-[#A14000] text-white rounded-tr-none font-medium" 
+                    : "bg-white border border-gray-200 text-slate-700 rounded-tl-none font-normal"
+                }`}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
           </div>
 
-          <div className="space-y-4">
-            <h5 className="font-display font-bold text-white tracking-wider text-xs uppercase">Modules</h5>
-            <ul className="space-y-2.5 text-xs text-gray-400 font-medium">
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Vehicles"); }} className="hover:text-white transition-colors">Vehicles</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Drivers"); }} className="hover:text-white transition-colors">Drivers</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Trips"); }} className="hover:text-white transition-colors">Trips</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Fuel"); }} className="hover:text-white transition-colors">Fuel</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Maintenance"); }} className="hover:text-white transition-colors">Maintenance</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Reports"); }} className="hover:text-white transition-colors">Reports</a></li>
-            </ul>
-          </div>
-
-          <div className="space-y-4">
-            <h5 className="font-display font-bold text-white tracking-wider text-xs uppercase">Support</h5>
-            <ul className="space-y-2.5 text-xs text-gray-400 font-medium">
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Help Center"); }} className="hover:text-white transition-colors">Help Center</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Privacy Policy"); }} className="hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Terms & Conditions"); }} className="hover:text-white transition-colors">Terms & Conditions</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Support"); }} className="hover:text-white transition-colors">Support</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Sitemap"); }} className="hover:text-white transition-colors">Sitemap</a></li>
-            </ul>
-          </div>
-
-          <div className="space-y-4 text-xs text-gray-400">
-            <h5 className="font-display font-bold text-white tracking-wider text-xs uppercase">Contact</h5>
-            <ul className="space-y-3 font-medium">
-              <li className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-[#A14000] flex-shrink-0" />
-                <span>+91 98765 43210</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-[#A14000] flex-shrink-0" />
-                <span className="break-all">support@fleetmanagement.com</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 text-[#A14000] flex-shrink-0 mt-0.5" />
-                <span>Hyderabad, Telangana, India</span>
-              </li>
-            </ul>
-          </div>
-
-        </div>
-
-        <div className="max-w-7xl mx-auto pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] text-gray-500 font-bold">
-          <div>
-            <span>© 2025 Fleet Management System. All Rights Reserved.</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <a href="#" onClick={(e) => { e.preventDefault(); handleAction("Privacy Policy"); }} className="hover:text-white transition-colors">Privacy Policy</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); handleAction("Terms & Conditions"); }} className="hover:text-white transition-colors">Terms of Service</a>
+          {/* Input Area */}
+          <div className="p-3 border-t border-gray-100 bg-white flex items-center gap-2">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSendChatMessage();
+                }
+              }}
+              placeholder="Type your message..."
+              className="flex-1 pl-3 pr-2 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-[#A14000]"
+            />
+            <button
+              onClick={handleSendChatMessage}
+              className="px-3 py-2 bg-[#A14000] text-white rounded-xl hover:bg-[#853500] font-bold text-xs transition-colors cursor-pointer"
+            >
+              Send
+            </button>
           </div>
         </div>
-      </footer>
-
+      )}
     </div>
   );
 }

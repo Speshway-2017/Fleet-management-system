@@ -29,7 +29,9 @@ export const createAndEmitNotification = async (params) => {
       title,
       message,
       priority = 'normal',
-      metadata = {}
+      metadata = {},
+      referenceId,
+      referenceType
     } = params;
 
     // Create notification document
@@ -43,10 +45,17 @@ export const createAndEmitNotification = async (params) => {
       title,
       message,
       priority,
-      metadata
+      metadata,
+      referenceId,
+      referenceType
     });
 
     const savedNotification = await notification.save();
+
+    // Emit to super admin room if recipientRole is SUPER_ADMIN
+    if (recipientRole === 'SUPER_ADMIN' && io) {
+      io.to('role:SUPER_ADMIN').emit('notification:new', savedNotification.toObject());
+    }
 
     // Emit to specific manager room if recipient exists
     if (recipient && io) {

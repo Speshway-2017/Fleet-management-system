@@ -2,140 +2,27 @@ import { useState } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
+import LandingHeader from "@/components/layout/LandingHeader";
+import LandingFooter from "@/components/layout/LandingFooter";
 
 export default function About() {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const handleAction = (label) => {
     toast.success(`Action triggered: ${label}`);
-  };
-
-  const navLinkClass = ({ isActive }) => {
-    return `text-sm font-semibold py-2 rounded-xl transition-all duration-200 px-3 ${isActive
-        ? "bg-secondary text-white"
-        : "text-body hover:text-heading bg-transparent"
-      }`;
-  };
-
-  const mobileNavLinkClass = ({ isActive }) => {
-    return `block w-full text-left py-2 font-semibold text-sm transition-colors ${isActive
-        ? "text-secondary"
-        : "text-body hover:text-secondary"
-      }`;
   };
 
   const timelineItems = [
     { year: "2018", text: "FleetManagement founded in Bengaluru, India. Seed funding of ₹30 Cr." },
     { year: "2019", text: "First 50 enterprise customers. Launched real-time GPS tracking." },
-    { year: "2021", text: "Series A — ₹200 Cr. Expanded to fuel analytics and driver scoring." },
-    { year: "2023", text: "Surpassed 1M vehicles tracked. Launched predictive maintenance AI." },
+    { year: "2021", text: "Series A — ₹200 Cr. Expanded to reporting & analytics and driver management." },
+    { year: "2023", text: "Surpassed 1M vehicles tracked. Launched performance monitoring cloud platform." },
     { year: "2026", text: "340+ enterprise clients. ₹1,500 Cr+ in documented customer savings." },
   ];
 
   return (
     <div className="bg-bg-page min-h-screen flex flex-col font-sans">
-      {/* 1. Header/Navbar */}
-      <header className="bg-white border-b border-border-custom px-4 sm:px-6 md:px-8 h-20 flex items-center justify-between sticky top-0 z-30">
-        <div className="flex items-center gap-3">
-          <NavLink to="/" className="flex items-center gap-3">
-            <img src="/logo.png" alt="Fleet Management Logo" className="h-10 w-auto object-contain" />
-            <span className="font-display font-black text-[#0B1B3D] text-lg tracking-wide">
-              Fleet Management
-            </span>
-          </NavLink>
-        </div>
-
-        <nav className="hidden md:flex items-center gap-6">
-          <NavLink to="/" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`} end>
-            Home
-          </NavLink>
-          <NavLink to="/about" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            About
-          </NavLink>
-          <NavLink to="/features" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            Features
-          </NavLink>
-          <NavLink to="/performance" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            Performance
-          </NavLink>
-          <NavLink to="/security" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            Security
-          </NavLink>
-          <NavLink to="/contact" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            Contact Us
-          </NavLink>
-        </nav>
-
-        <div className="flex items-center gap-4">
-          {isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-body hidden sm:inline-block">
-                {user?.name || "Admin"}
-              </span>
-              <button
-                onClick={() => {
-                  logout();
-                  navigate("/login");
-                }}
-                className="px-4 py-2 rounded-xl bg-secondary/10 text-secondary font-semibold text-xs transition-all hover:bg-secondary/20 active:scale-[0.98] cursor-pointer"
-              >
-                Logout
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => navigate("/login")}
-              className="px-5 py-2 rounded-xl bg-[#0B1B3D] text-white font-semibold text-xs flex items-center gap-2 hover:bg-[#152e5c] transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-sm"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h3a3 3 0 013 3v1" />
-              </svg>
-              Login
-            </button>
-          )}
-
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-xl text-secondary hover:bg-secondary/10 transition-colors cursor-pointer"
-            aria-label="Toggle mobile menu"
-          >
-            {mobileMenuOpen ? (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            )}
-          </button>
-        </div>
-      </header>
-
-      {/* Mobile Dropdown Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-border-custom px-6 py-4 space-y-3 shadow-lg sticky top-20 z-20">
-          <NavLink to="/" className={mobileNavLinkClass} end onClick={() => setMobileMenuOpen(false)}>
-            Home
-          </NavLink>
-          <NavLink to="/about" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
-            About
-          </NavLink>
-          <NavLink to="/features" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
-            Features
-          </NavLink>
-          <NavLink to="/performance" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
-            Performance
-          </NavLink>
-          <NavLink to="/security" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
-            Security
-          </NavLink>
-          <NavLink to="/contact" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
-            Contact Us
-          </NavLink>
-        </div>
-      )}
+      <LandingHeader />
 
       {/* 2. Our Story Section */}
       <section className="py-12 sm:py-20 px-4 sm:px-6 md:px-8 bg-white border-b border-border-custom">
@@ -197,7 +84,7 @@ export default function About() {
             </h2>
             <div className="space-y-4 text-sm md:text-base text-body font-medium leading-relaxed">
               <p>
-                Every year, inefficient fleet management costs businesses billions in wasted fuel, unexpected breakdowns, and compliance failures. Most operators don't know what they don't know.
+                Every year, inefficient fleet management costs businesses billions in wasted resources, unexpected breakdowns, and compliance failures. Most operators don't know what they don't know.
               </p>
               <p>
                 FleetManagement gives operations teams complete, real-time intelligence across every asset in their fleet — so decisions are driven by data, not guesswork.
@@ -288,97 +175,42 @@ export default function About() {
           </div>
 
           {/* Timeline Nodes */}
-          <div className="space-y-8 text-left border-l border-border-custom pl-8 ml-4 relative">
-            {timelineItems.map((item, idx) => (
-              <div key={idx} className="relative space-y-1.5 pb-2">
-                {/* Timeline Bullet Point */}
-                <div className="absolute -left-[37px] top-1.5 h-3.5 w-3.5 rounded-full bg-secondary border-2 border-white shadow-sm" />
-                <h4 className="font-display font-extrabold text-sm text-heading tracking-wide">
-                  {item.year}
-                </h4>
-                <p className="text-xs text-body font-medium leading-relaxed">
-                  {item.text}
-                </p>
-              </div>
-            ))}
+          <div className="relative space-y-8 md:space-y-12 before:absolute before:top-0 before:bottom-0 before:left-3 md:before:left-1/2 before:w-[1px] before:bg-border-custom">
+            {timelineItems.map((item, idx) => {
+              const isEven = idx % 2 === 0;
+              return (
+                <div
+                  key={idx}
+                  className={`relative flex flex-col md:flex-row items-start md:items-center ${
+                    isEven ? "md:justify-start" : "md:justify-end"
+                  } pl-8 md:pl-0`}
+                >
+                  {/* Timeline Bullet Point */}
+                  <div className="absolute left-[5px] md:left-1/2 top-1.5 md:top-1/2 -translate-y-0 md:-translate-y-1/2 -translate-x-0 md:-translate-x-1/2 h-3.5 w-3.5 rounded-full bg-secondary border-2 border-white shadow-sm z-10" />
+
+                  {/* Timeline Content */}
+                  <div
+                    className={`w-full md:w-[calc(50%-2rem)] text-left ${
+                      isEven ? "md:text-right md:pr-8" : "md:text-left md:pl-8"
+                    } space-y-1`}
+                  >
+                    <h4 className="font-display font-extrabold text-sm text-heading tracking-wide">
+                      {item.year}
+                    </h4>
+                    <p className={`text-xs text-body font-medium leading-relaxed max-w-sm md:max-w-none ${
+                      isEven ? "md:ml-auto md:mr-0" : "md:mr-auto md:ml-0"
+                    }`}>
+                      {item.text}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* 5. Footer (Dark Background) */}
-      <footer className="bg-primary text-gray-300 pt-12 sm:pt-16 pb-8 px-4 sm:px-6 md:px-8 mt-auto">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 pb-12 border-b border-gray-800">
-          {/* Column 1: Brand Info */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="Fleet Management Logo" className="h-9 w-auto rounded-lg object-contain bg-white/10 p-0.5" />
-              <h4 className="font-display font-bold text-white tracking-wide text-sm">Fleet Management</h4>
-            </div>
-            <p className="text-xs text-muted leading-relaxed max-w-xs">
-              The industry's most trusted fleet management platform. Real-time visibility, intelligent routing, and proactive maintenance.
-            </p>
-          </div>
-
-          {/* Column 2: PRODUCT */}
-          <div className="space-y-4">
-            <h5 className="font-display font-semibold text-white tracking-wider text-xs uppercase">Product</h5>
-            <ul className="space-y-2.5 text-xs text-muted">
-              <li><a href="#performance" onClick={(e) => { e.preventDefault(); handleAction("Footer Product - Performance"); }} className="hover:text-white transition-colors">Performance</a></li>
-              <li><a href="#tracking" onClick={(e) => { e.preventDefault(); handleAction("Footer Product - Live Tracking"); }} className="hover:text-white transition-colors">Live Tracking</a></li>
-              <li><a href="#analytics" onClick={(e) => { e.preventDefault(); handleAction("Footer Product - Fuel Analytics"); }} className="hover:text-white transition-colors">Fuel Analytics</a></li>
-              <li><a href="#maintenance" onClick={(e) => { e.preventDefault(); handleAction("Footer Product - Maintenance"); }} className="hover:text-white transition-colors">Maintenance</a></li>
-            </ul>
-          </div>
-
-          {/* Column 3: COMPANY */}
-          <div className="space-y-4">
-            <h5 className="font-display font-semibold text-white tracking-wider text-xs uppercase">Company</h5>
-            <ul className="space-y-2.5 text-xs text-muted">
-              <li><a href="#about" onClick={(e) => { e.preventDefault(); handleAction("Footer Company - About"); }} className="hover:text-white transition-colors">About</a></li>
-              <li><a href="#contact" onClick={(e) => { e.preventDefault(); handleAction("Footer Company - Contact"); }} className="hover:text-white transition-colors">Contact</a></li>
-              <li><a href="#careers" onClick={(e) => { e.preventDefault(); handleAction("Footer Company - Careers"); }} className="hover:text-white transition-colors">Careers</a></li>
-              <li><a href="#blog" onClick={(e) => { e.preventDefault(); handleAction("Footer Company - Blog"); }} className="hover:text-white transition-colors">Blog</a></li>
-            </ul>
-          </div>
-
-          {/* Column 4: CONTACT */}
-          <div className="space-y-4">
-            <h5 className="font-display font-semibold text-white tracking-wider text-xs uppercase">Contact</h5>
-            <ul className="space-y-3 text-xs text-muted">
-              <li className="flex items-center gap-2">
-                <svg className="h-4 w-4 text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                <span>+91 1800 123 4567</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <svg className="h-4 w-4 text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 00-2.22 0L21 8M5 19h14a2 2 0 00-2-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <span>hello@fleetmanagement.io</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <svg className="h-4 w-4 text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                </svg>
-                <span>fleetmanagement.io</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Copyright and Legal Links */}
-        <div className="max-w-6xl mx-auto pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] text-muted font-medium">
-          <div>
-            <span>© 2026 FleetManagement Inc. All rights reserved.</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <a href="#privacy" onClick={(e) => { e.preventDefault(); handleAction("Privacy Policy"); }} className="hover:text-white transition-colors">Privacy Policy</a>
-            <a href="#terms" onClick={(e) => { e.preventDefault(); handleAction("Terms of Service"); }} className="hover:text-white transition-colors">Terms of Service</a>
-            <a href="#cookies" onClick={(e) => { e.preventDefault(); handleAction("Cookie Policy"); }} className="hover:text-white transition-colors">Cookie Policy</a>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }

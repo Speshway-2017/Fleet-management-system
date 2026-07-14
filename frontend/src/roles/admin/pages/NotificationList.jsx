@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, AlertTriangle, Activity, Check, CheckCircle2, AlertCircle } from "lucide-react";
+import { Bell, AlertTriangle, Activity, Check, CheckCircle2, AlertCircle, Mail } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import { useAdmin } from "@/roles/admin/context/AdminContext";
 
 export default function NotificationList() {
   const [activeTab, setActiveTab] = useState("All");
-  const { notifications, markAllAsRead } = useAdmin();
+  const { notifications, markAllAsRead, markAsRead } = useAdmin();
   const navigate = useNavigate();
 
   const getIcon = (type) => {
@@ -22,6 +22,8 @@ export default function NotificationList() {
         return { icon: AlertCircle, bg: "bg-red-50", text: "text-red-500" };
       case "system":
         return { icon: Activity, bg: "bg-blue-50", text: "text-blue-500" };
+      case "CONTACT_REQUEST":
+        return { icon: Mail, bg: "bg-blue-50", text: "text-[#b45309]" };
       default:
         return { icon: Bell, bg: "bg-slate-50", text: "text-slate-500" };
     }
@@ -154,7 +156,14 @@ export default function NotificationList() {
                         return (
                           <div 
                             key={notification.id}
-                            onClick={() => navigate(`/admin/notifications/${notification.id}`)}
+                            onClick={() => {
+                              markAsRead(notification.id);
+                              if (notification.type === "CONTACT_REQUEST" && notification.referenceId) {
+                                navigate(`/admin/contact-requests?id=${notification.referenceId}`);
+                              } else {
+                                navigate(`/admin/notifications/${notification.id}`);
+                              }
+                            }}
                             className={`flex items-start gap-4 p-6 hover:bg-slate-50 transition-colors cursor-pointer ${notification.unread ? 'bg-white' : 'bg-white opacity-80'}`}
                           >
                             <div className="pt-2 flex items-center justify-center w-2 shrink-0">

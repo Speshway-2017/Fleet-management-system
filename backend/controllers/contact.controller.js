@@ -3,6 +3,7 @@ import { sendSuccess, sendError } from '../utils/response.js';
 import sendEmail from '../utils/email.js';
 import sanitizeHtml from 'sanitize-html';
 import xss from 'xss';
+import { createAndEmitNotification } from '../utils/notification.js';
 
 const sanitize = (text) => {
   if (!text) return '';
@@ -43,25 +44,30 @@ export const createContactRequest = async (req, res, next) => {
 
     // 3. Verify token with Google reCAPTCHA verification endpoint
     let verificationResult;
-    try {
-      const secretKey = process.env.RECAPTCHA_SECRET_KEY;
-      console.log("Secret Key Loaded:", process.env.RECAPTCHA_SECRET_KEY?.substring(0, 10) + "...");
-      const params = new URLSearchParams({
-        secret: secretKey,
-        response: captchaToken,
-      });
+    if (process.env.NODE_ENV === 'development' && captchaToken === 'bypass') {
+      verificationResult = { success: true };
+      console.log("reCAPTCHA validation bypassed for local development testing.");
+    } else {
+      try {
+        const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+        console.log("Secret Key Loaded:", process.env.RECAPTCHA_SECRET_KEY?.substring(0, 10) + "...");
+        const params = new URLSearchParams({
+          secret: secretKey,
+          response: captchaToken,
+        });
 
-      const googleResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString(),
-      });
+        const googleResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+        });
 
-      verificationResult = await googleResponse.json();
-      console.log("Google Verification Response:", verificationResult);
-    } catch (error) {
-      console.error('reCAPTCHA validation API error:', error);
-      return sendError(res, 500, 'Captcha verification service unavailable due to network failure.');
+        verificationResult = await googleResponse.json();
+        console.log("Google Verification Response:", verificationResult);
+      } catch (error) {
+        console.error('reCAPTCHA validation API error:', error);
+        return sendError(res, 500, 'Captcha verification service unavailable due to network failure.');
+      }
     }
 
     // 4. Validate Google response success
@@ -101,6 +107,26 @@ export const createContactRequest = async (req, res, next) => {
     });
     await contact.save();
     console.log("Saved Contact:", contact);
+
+    // Create and emit notification for SUPER_ADMIN
+    try {
+      await createAndEmitNotification({
+        io: req.io || (req.app && req.app.locals && req.app.locals.io),
+        recipientRole: 'SUPER_ADMIN',
+        type: 'CONTACT_REQUEST',
+        title: 'New Contact Request',
+        message: `A new contact request has been submitted by ${cleanFullName}.\nSubject: ${cleanSubject}`,
+        referenceId: contact._id.toString(),
+        referenceType: 'CONTACT',
+        priority: 'high',
+        metadata: {
+          name: cleanFullName,
+          subject: cleanSubject
+        }
+      });
+    } catch (notifErr) {
+      console.error("Failed to create admin notification for contact request:", notifErr);
+    }
 
     // 6. Send Nodemailer email notifications asynchronously
     // Send Admin Notification Email
