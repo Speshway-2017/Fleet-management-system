@@ -23,12 +23,6 @@ export default function Breadcrumb() {
     "/manager/trip-details": { label: "Trip Details", parent: "/manager/trips" },
 
     "/manager/fuel": { label: "Fuel Management" },
-    "/manager/documents": { label: "Documents" },
-    "/manager/documents/list": { label: "All Documents", parent: "/manager/documents" },
-    "/manager/documents/compliance-audit": { label: "Compliance Audit", parent: "/manager/documents" },
-    "/manager/documents/upload": { label: "Upload Document", parent: "/manager/documents" },
-    "/manager/documents/view": { label: "View Document", parent: "/manager/documents" },
-    "/manager/documents/edit": { label: "Edit Document", parent: "/manager/documents" },
     "/manager/analytics": { label: "Analytics" },
     "/manager/reports": { label: "Reports" },
     "/manager/notifications": { label: "Notifications" },

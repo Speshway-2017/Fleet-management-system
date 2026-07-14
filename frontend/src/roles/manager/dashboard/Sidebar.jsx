@@ -28,7 +28,6 @@ const MENU_ITEMS = [
   { label: "Live Tracking", to: "/manager/map", icon: MapPin, isRealRoute: true },
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel, isRealRoute: true },
   { label: "Maintenance", to: "/manager/maintenance", icon: Wrench, isRealRoute: true },
-  { label: "Documents", to: "/manager/documents", icon: FolderOpen, isRealRoute: true },
   { label: "Analytics", to: "/manager/analytics", icon: BarChart3, isRealRoute: true },
   { label: "Reports", to: "/manager/reports", icon: ClipboardList, isRealRoute: true },
   { label: "Notifications", to: "/manager/notifications", icon: Bell, isRealRoute: true },
