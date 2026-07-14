@@ -72,6 +72,7 @@ import Performance from "@/roles/admin/pages/Performance";
 import About from "@/roles/admin/pages/About";
 import Contact from "@/roles/admin/pages/Contact";
 import Security from "@/roles/admin/pages/Security";
+import Features from "@/roles/admin/pages/Features";
 import ContactRequests from "@/roles/admin/pages/ContactRequests";
 
 function PublicRoute({ children }) {
@@ -92,6 +93,7 @@ export default function App() {
           <Route path="/" element={<PublicRoute><Home /></PublicRoute>} />
           <Route path="/performance" element={<PublicRoute><Performance /></PublicRoute>} />
           <Route path="/about" element={<PublicRoute><About /></PublicRoute>} />
+          <Route path="/features" element={<PublicRoute><Features /></PublicRoute>} />
           <Route path="/contact" element={<PublicRoute><Contact /></PublicRoute>} />
           <Route path="/security" element={<PublicRoute><Security /></PublicRoute>} />
           <Route path="/login" element={<LoginPage />} />
