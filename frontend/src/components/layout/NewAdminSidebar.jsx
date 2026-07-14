@@ -9,7 +9,8 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  MoreHorizontal
+  MoreHorizontal,
+  MessageSquare
 } from "lucide-react";
 
 export default function NewAdminSidebar({ activeItem = "dashboard" }) {
@@ -21,6 +22,7 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
     { id: "dashboard", label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
     { id: "organizations", label: "Organizations", to: "/admin/organizations", icon: Building2 },
     { id: "fleet-managers", label: "Fleet Managers", to: "/admin/fleet-managers", icon: Users },
+    { id: "contact-requests", label: "Contact Requests", to: "/admin/contact-requests", icon: MessageSquare },
     { id: "analytics", label: "Analytics", to: "/admin/analytics", icon: BarChart3 },
     { id: "settings", label: "Settings", to: "/admin/settings", icon: Settings },
   ];

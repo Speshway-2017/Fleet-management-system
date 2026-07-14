@@ -1215,7 +1215,6 @@ export const listNotifications = async (req, res, next) => {
     next(error);
   }
 };
-
 // E-Way Bills Helper for Dynamic Validity & Status Calculation
 const enrichEWayBill = (billObj) => {
   const bill = billObj.toObject ? billObj.toObject() : billObj;
@@ -1415,7 +1414,7 @@ export const markNotificationRead = async (req, res, next) => {
     }
     
     return sendSuccess(res, 200, notification, 'Notification marked as read');
-    } catch (error) {
+  } catch (error) {
     next(error);
   }
 };
@@ -1447,7 +1446,7 @@ export const markAllNotificationsRead = async (req, res, next) => {
     }
     
     return sendSuccess(res, 200, null, 'All notifications marked as read');
-     } catch (error) {
+  } catch (error) {
     next(error);
   }
 };
@@ -1494,7 +1493,7 @@ export const deleteNotification = async (req, res, next) => {
     }
     
     return sendSuccess(res, 200, null, 'Notification deleted');
-     } catch (error) {
+  } catch (error) {
     next(error);
   }
 };

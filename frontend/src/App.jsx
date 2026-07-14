@@ -71,6 +71,8 @@ import Home from "@/roles/admin/pages/Home";
 import Performance from "@/roles/admin/pages/Performance";
 import About from "@/roles/admin/pages/About";
 import Contact from "@/roles/admin/pages/Contact";
+import Security from "@/roles/admin/pages/Security";
+import ContactRequests from "@/roles/admin/pages/ContactRequests";
 
 function PublicRoute({ children }) {
   const { isAuthenticated, role } = useAuth();
@@ -91,6 +93,7 @@ export default function App() {
           <Route path="/performance" element={<PublicRoute><Performance /></PublicRoute>} />
           <Route path="/about" element={<PublicRoute><About /></PublicRoute>} />
           <Route path="/contact" element={<PublicRoute><Contact /></PublicRoute>} />
+          <Route path="/security" element={<PublicRoute><Security /></PublicRoute>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/otp-verification" element={<OtpVerificationPage />} />
@@ -113,6 +116,7 @@ export default function App() {
             <Route path="/admin/fleet-managers/edit" element={<EditFleetManager />} />
             <Route path="/admin/fleet-managers/edit/:id?" element={<EditFleetManager />} />
             <Route path="/admin/analytics" element={<Analytics />} />
+            <Route path="/admin/contact-requests" element={<ContactRequests />} />
             <Route path="/admin/system-health" element={<SystemHealth />} />
             <Route path="/admin/audit-logs" element={<AuditLogs />} />
             <Route path="/admin/settings" element={<Settings />} />

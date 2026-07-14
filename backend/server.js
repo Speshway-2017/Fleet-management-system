@@ -9,17 +9,17 @@ dotenv.config({ path: path.join(__dirname, '.env') }); // must be first — load
 
 // Server setup (port 5002, final)
 
-import { validateEnv }  from './config/env.validate.js';
-import app              from './app.js';
-import { connectDB }    from './config/db.config.js';
-import cloudinary       from './config/cloudinary.config.js';
+import { validateEnv } from './config/env.validate.js';
+import app from './app.js';
+import { connectDB } from './config/db.config.js';
+import cloudinary from './config/cloudinary.config.js';
 import http from 'http';
 import { Server } from 'socket.io';
 
 // 1. Validate all required env vars — exits with clear message if any are missing
 validateEnv();
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5002;
 
 const startServer = async () => {
   // 2. Connect to MongoDB Atlas
@@ -127,7 +127,7 @@ const startServer = async () => {
     console.log(`🌐  CORS allowed for: ${process.env.CLIENT_URL}`);
     // printRoutes(app);
   });
-  
+
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       console.error(`❌  Port ${PORT} is already in use by another process. Terminate the conflicting process or change the port.`);
