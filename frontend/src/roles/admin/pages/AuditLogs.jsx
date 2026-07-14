@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Search, Download, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { formatIFDWithTime } from "@/utils/dateUtils";
 import { adminApi } from "@/api/adminApi";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
@@ -170,7 +171,7 @@ export default function AuditLogs() {
                   ) : (
                     logs.map((log) => (
                       <tr key={log.id} className="hover:bg-slate-50/50 transition-colors group text-[13px] font-medium text-slate-600">
-                        <td className="py-4 px-6 text-slate-500">{log.timestamp}</td>
+                        <td className="py-4 px-6 text-slate-500">{formatIFDWithTime(log.timestamp)}</td>
                         <td className="py-4 px-6">{log.user}</td>
                         <td className="py-4 px-6 text-slate-800">{log.action}</td>
                         <td className="py-4 px-6">{log.organization}</td>

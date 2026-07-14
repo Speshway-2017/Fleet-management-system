@@ -42,8 +42,10 @@ function Dashboard() {
       totalOrganizations: 0,
       activeOrganizations: 0,
       fleetManagers: 0,
+      activeFleetManagers: 0,
       activeVehicles: 0,
       revenue: 0,
+      todayRevenue: 0,
       pendingRequests: 0,
     },
     recentActivities: [],
@@ -155,39 +157,25 @@ function Dashboard() {
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
           
           {/* KPI Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5 mb-6">
-            <KPICard 
-              title="Total Organizations" 
-              value={statistics.totalOrganizations.toString()} 
-              subtitle="All registered orgs"
-              icon={<Building2 className="w-4 h-4 text-slate-600" />}
-              iconBg="bg-slate-100"
-            />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-6">
             <KPICard 
               title="Active Organizations" 
-              value={statistics.activeOrganizations.toString()} 
+              value={(statistics.activeOrganizations || 0).toString()} 
               subtitle={`${statistics.totalOrganizations > 0 ? Math.round((statistics.activeOrganizations / statistics.totalOrganizations) * 100) : 0}% of total`}
               icon={<CheckCircle2 className="w-4 h-4 text-green-500" />}
               iconBg="bg-green-50 border border-green-100"
             />
             <KPICard 
-              title="Total Fleet Managers" 
-              value={statistics.fleetManagers.toString()} 
-              subtitle="All managers"
-              icon={<Users className="w-4 h-4 text-slate-600" />}
-              iconBg="bg-slate-100"
-            />
-            <KPICard 
-              title="Active Vehicles" 
-              value={statistics.activeVehicles.toString()} 
-              subtitle="Currently operating"
-              icon={<UserCheck className="w-4 h-4 text-blue-500" />}
+              title="Active Fleet Managers" 
+              value={(statistics.activeFleetManagers || 0).toString()} 
+              subtitle="Currently active"
+              icon={<Users className="w-4 h-4 text-blue-500" />}
               iconBg="bg-blue-50 border border-blue-100"
             />
             <KPICard 
-              title="Total Revenue" 
-              value={`$${statistics.revenue.toLocaleString()}`} 
-              subtitle="All time"
+              title="Today Revenue" 
+              value={`₹${(statistics.todayRevenue || 0).toLocaleString('en-IN')}`} 
+              subtitle="Today"
               icon={<TrendingUp className="w-4 h-4 text-orange-500" />}
               iconBg="bg-orange-50 border border-orange-100"
             />
@@ -204,9 +192,13 @@ function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
             
             {/* Revenue Trend */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1">
-              <div className="flex items-center justify-between mb-6">
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
+              <div className="flex items-start justify-between mb-6">
                 <h3 className="font-bold text-slate-800 text-sm">Revenue Trend</h3>
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5">Total Revenue</div>
+                  <div className="text-lg font-black text-slate-800 leading-none">₹{(statistics.revenue || 0).toLocaleString('en-IN')}</div>
+                </div>
               </div>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
@@ -223,7 +215,13 @@ function Dashboard() {
 
             {/* Org Status */}
             <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
-              <h3 className="font-bold text-slate-800 text-sm mb-2">Organization Status</h3>
+              <div className="flex items-start justify-between mb-2">
+                <h3 className="font-bold text-slate-800 text-sm">Organization Status</h3>
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5">Total Orgs</div>
+                  <div className="text-lg font-black text-slate-800 leading-none">{statistics.totalOrganizations || 0}</div>
+                </div>
+              </div>
               <div className="flex-1 flex flex-col items-center justify-center relative">
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -262,8 +260,14 @@ function Dashboard() {
             </div>
 
             {/* Fleet Manager Status */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1">
-              <h3 className="font-bold text-slate-800 text-sm mb-6">Fleet Manager Status</h3>
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
+              <div className="flex items-start justify-between mb-6">
+                <h3 className="font-bold text-slate-800 text-sm">Fleet Manager Status</h3>
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5">Total Managers</div>
+                  <div className="text-lg font-black text-slate-800 leading-none">{statistics.fleetManagers || 0}</div>
+                </div>
+              </div>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={fleetManagerData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }} barSize={28}>

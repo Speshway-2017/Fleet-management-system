@@ -9,7 +9,7 @@ import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 
 export default function AddFleetManager() {
   const navigate = useNavigate();
-  const { fetchFleetManagers, fetchNotifications } = useAdmin();
+  const { fetchFleetManagers, fetchNotifications, fetchOrganizations } = useAdmin();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -92,6 +92,7 @@ export default function AddFleetManager() {
       toast.success("Manager added successfully!");
       if (fetchFleetManagers) await fetchFleetManagers();
       if (fetchNotifications) await fetchNotifications();
+      if (fetchOrganizations) await fetchOrganizations();
       navigate("/admin/fleet-managers");
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || "Failed to create fleet manager");

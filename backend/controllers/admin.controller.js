@@ -79,6 +79,91 @@ export const listOrganizations = async (_req, res, next) => {
   }
 };
 
+export const getOrganizationDetails = async (req, res, next) => {
+  try {
+    const org = await getOrganizationById(req.params.id);
+    if (!org) return sendError(res, 404, 'Organization not found');
+
+    const User = (await import('../models/User.js')).default;
+    const Vehicle = (await import('../models/Vehicle.js')).default;
+    const Trip = (await import('../models/Trip.js')).default;
+    const Analytics = (await import('../models/Analytics.js')).default;
+
+    const activeManagers = await User.countDocuments({ role: 'FLEET_MANAGER', organization: org._id });
+    const totalVehicles = await Vehicle.countDocuments({ organization: org._id });
+    // Assuming active trips for organization: we can query trips whose vehicles belong to this org, or maybe the manager's org. Since trips don't have org directly, we can aggregate or maybe just query by manager if we don't have an org field on Trip.
+    // Wait, let's query the managers of this org and then query trips assigned to those managers.
+    const orgManagers = await User.find({ role: 'FLEET_MANAGER', organization: org._id });
+    const orgManagerIds = orgManagers.map(m => m._id);
+
+    // Active trips per manager
+    const activeTripsAgg = await Trip.aggregate([
+      { $match: { assignedManager: { $in: orgManagerIds }, status: 'Active' } },
+      { $group: { _id: '$assignedManager', count: { $sum: 1 } } }
+    ]);
+
+    // Revenue per manager
+    const revenuePerManagerAgg = await Analytics.aggregate([
+      { $match: { metric: 'Revenue', recordedBy: { $in: orgManagerIds } } },
+      { $group: { _id: '$recordedBy', total: { $sum: '$value' } } }
+    ]);
+
+    const managersWithStats = orgManagers.map(manager => {
+      const activeTripsCount = activeTripsAgg.find(t => t._id.toString() === manager._id.toString())?.count || 0;
+      const totalRevenue = revenuePerManagerAgg.find(r => r._id.toString() === manager._id.toString())?.total || 0;
+      const nameParts = (manager.name || '').split(' ');
+      const initials = nameParts.length > 1 
+        ? nameParts[0][0] + nameParts[nameParts.length - 1][0] 
+        : nameParts[0]?.substring(0, 2) || 'NA';
+
+      return {
+        id: manager._id.toString(),
+        name: manager.name,
+        email: manager.email,
+        status: manager.status || (manager.isActive ? 'Active' : 'Inactive'),
+        initials: initials.toUpperCase(),
+        stats: {
+          activeTripsCount,
+          totalRevenue
+        }
+      };
+    });
+
+    const activeTripsCount = managersWithStats.reduce((sum, m) => sum + m.stats.activeTripsCount, 0);
+    const totalRevenue = managersWithStats.reduce((sum, m) => sum + m.stats.totalRevenue, 0);
+
+    const formattedOrg = {
+      id: org._id.toString(),
+      name: org.name,
+      email: org.email,
+      phone: org.phone,
+      industry: org.industry,
+      subscription: org.plan || 'Standard',
+      status: org.status || 'Pending',
+      createdAt: new Date(org.createdAt).toLocaleDateString(),
+      activeManagers,
+      managers: activeManagers,
+      joined: new Date(org.createdAt).toLocaleDateString(),
+      address: org.address,
+      city: org.city,
+      state: org.state,
+      country: org.country,
+      plan: org.plan,
+      fleetManagers: managersWithStats,
+      stats: {
+        totalFleetManagers: activeManagers,
+        totalVehicles,
+        totalActiveTrips: activeTripsCount,
+        totalRevenue
+      }
+    };
+
+    return sendSuccess(res, 200, formattedOrg, 'Organization details fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const createOrganization = async (req, res, next) => {
   try {
     const { name, industry, email, phone, address, city, state, country, plan, status } = req.body;
@@ -417,6 +502,29 @@ export const getManagerDetails = async (req, res, next) => {
       ? nameParts[0][0] + nameParts[nameParts.length - 1][0] 
       : nameParts[0]?.substring(0, 2) || 'NA';
 
+    let orgManagersCount = 0;
+    let vehiclesCount = 0;
+    let activeTripsCount = 0;
+    let totalRevenue = 0;
+
+    if (manager.organization) {
+      orgManagersCount = await User.countDocuments({ role: 'FLEET_MANAGER', organization: manager.organization._id });
+      
+      const Vehicle = (await import('../models/Vehicle.js')).default;
+      vehiclesCount = await Vehicle.countDocuments({ organization: manager.organization._id });
+      
+      const Trip = (await import('../models/Trip.js')).default;
+      // Depending on schema, assignedManager might be used, or driver's organization. We'll use assignedManager for now or we just query trips where assignedManager = manager._id. Wait, tripSchema has assignedManager.
+      activeTripsCount = await Trip.countDocuments({ assignedManager: manager._id, status: 'Active' });
+      
+      const Analytics = (await import('../models/Analytics.js')).default;
+      const revenueAgg = await Analytics.aggregate([
+        { $match: { metric: 'Revenue', recordedBy: manager._id } },
+        { $group: { _id: null, total: { $sum: "$value" } } }
+      ]);
+      totalRevenue = revenueAgg[0]?.total || 0;
+    }
+
     const formatted = {
       id: manager._id.toString(),
       name: manager.name,
@@ -433,7 +541,13 @@ export const getManagerDetails = async (req, res, next) => {
       status: manager.status || (manager.isActive ? 'Active' : 'Inactive'),
       lastLogin: manager.lastLogin ? new Date(manager.lastLogin).toLocaleDateString() : 'Never',
       initials: initials.toUpperCase(),
-      created: new Date(manager.createdAt).toLocaleDateString()
+      created: new Date(manager.createdAt).toLocaleDateString(),
+      stats: {
+        orgManagersCount,
+        vehiclesCount,
+        activeTripsCount,
+        totalRevenue
+      }
     };
 
     return sendSuccess(res, 200, formatted, 'Fleet manager details fetched');

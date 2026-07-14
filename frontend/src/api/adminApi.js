@@ -9,6 +9,9 @@ export const adminApi = {
   getOrganizations: async () => {
     return axiosClient.get('/admin/organizations');
   },
+  getOrganizationDetails: async (id) => {
+    return axiosClient.get(`/admin/organizations/${id}`);
+  },
   createOrganization: async (data) => {
     return axiosClient.post('/admin/organizations', data);
   },
@@ -22,6 +25,9 @@ export const adminApi = {
   // Fleet Managers
   getFleetManagers: async () => {
     return axiosClient.get('/admin/fleet-managers');
+  },
+  getManagerDetails: async (id) => {
+    return axiosClient.get(`/admin/fleet-managers/${id}`);
   },
   createFleetManager: async (data) => {
     return axiosClient.post('/admin/fleet-managers', data);

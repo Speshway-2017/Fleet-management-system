@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { adminApi } from "@/api/adminApi";
 import { getSocket, disconnectSocket } from "@/api/socket";
 import { useAuth } from "@/context/AuthContext";
+import { formatIFDWithTime, formatIFD } from "@/utils/dateUtils";
 
 const AdminContext = createContext();
 
@@ -25,8 +26,7 @@ export function AdminProvider({ children }) {
       id:     n._id,
       unread: !n.isRead,
       group:  isToday ? "TODAY" : "YESTERDAY",
-      time:   createdDate.toLocaleDateString() + " " +
-              createdDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      time:   formatIFDWithTime(n.createdAt),
       type:   n.type || "bell",
     };
   };
@@ -173,7 +173,7 @@ export function AdminProvider({ children }) {
 
   // ── Fleet Manager helpers ─────────────────────────────────────────────────
   const getFleetManager    = (id) => fleetManagers.find(m => m.id === id || m._id === id);
-  const addFleetManager    = (manager) => setFleetManagers(prev => [...prev, { ...manager, id: Date.now().toString(), created: new Date().toLocaleDateString() }]);
+  const addFleetManager    = (manager) => setFleetManagers(prev => [...prev, { ...manager, id: Date.now().toString(), created: formatIFD(new Date()) }]);
   const updateFleetManager = (id, updated) => setFleetManagers(prev => prev.map(m => (m.id === id || m._id === id) ? { ...m, ...updated } : m));
   const deleteFleetManager = (id) => setFleetManagers(prev => prev.filter(m => m.id !== id && m._id !== id));
 

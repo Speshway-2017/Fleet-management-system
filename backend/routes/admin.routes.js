@@ -6,6 +6,7 @@ import {
   listManagers,
   createOrganization,
   listOrganizations,
+  getOrganizationDetails,
   updateOrganization,
   deleteOrganization,
   updateManager,
@@ -25,6 +26,13 @@ import {
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
 import {
+  createOrganizationValidator,
+  updateOrganizationValidator,
+  createManagerValidator,
+  updateManagerValidator,
+  updateSettingsValidator
+} from '../middleware/admin.validator.js';
+import {
   listContactRequests,
   getContactAnalytics,
   updateContactRequestStatus,
@@ -41,20 +49,21 @@ router.get('/dashboard', ...adminAuth, getDashboard);
 
 // ── Organizations ──────────────────────────────────────────────────────────
 router.get('/organizations',       ...adminAuth, listOrganizations);
-router.post('/organizations',      ...adminAuth, createOrganization);
-router.put('/organizations/:id',   ...adminAuth, updateOrganization);
+router.get('/organizations/:id',   ...adminAuth, getOrganizationDetails);
+router.post('/organizations',      ...adminAuth, createOrganizationValidator, createOrganization);
+router.put('/organizations/:id',   ...adminAuth, updateOrganizationValidator, updateOrganization);
 router.delete('/organizations/:id',...adminAuth, deleteOrganization);
 
 // ── Fleet Managers ─────────────────────────────────────────────────────────
 router.get('/fleet-managers',          ...adminAuth, listManagers);
-router.post('/fleet-managers',         ...adminAuth, createManager);
+router.post('/fleet-managers',         ...adminAuth, createManagerValidator, createManager);
 router.get('/fleet-managers/:id',      ...adminAuth, getManagerDetails);
-router.put('/fleet-managers/:id',      ...adminAuth, updateManager);
+router.put('/fleet-managers/:id',      ...adminAuth, updateManagerValidator, updateManager);
 router.delete('/fleet-managers/:id',   ...adminAuth, deleteManager);
 
 // ── Settings ───────────────────────────────────────────────────────────────
 router.get('/settings',  ...adminAuth, getSettings);
-router.put('/settings',  ...adminAuth, updateSettings);
+router.put('/settings',  ...adminAuth, updateSettingsValidator, updateSettings);
 
 // ── Analytics ──────────────────────────────────────────────────────────────
 router.get('/analytics', ...adminAuth, getAnalytics);

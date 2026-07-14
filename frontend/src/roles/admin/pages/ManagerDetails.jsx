@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
+import { adminApi } from "@/api/adminApi";
 import { useAdmin } from "@/roles/admin/context/AdminContext";
 import { ChevronLeft, Pencil } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
@@ -30,8 +32,27 @@ function FMTabs({ activeId, active }) {
 
 export default function ManagerDetails() {
   const { id } = useParams();
-  const { getFleetManager } = useAdmin();
-  const manager = id ? getFleetManager(id) : null;
+  const { getFleetManager, fleetManagers } = useAdmin();
+  const contextManager = id ? getFleetManager(id) : null;
+  const [manager, setManager] = useState(contextManager);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      setLoading(true);
+      adminApi.getManagerDetails(id)
+        .then((res) => {
+          setManager(res.data?.data || res.data);
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [id]);
+
+  const orgId = manager?.organizationId;
+  const orgManagers = orgId 
+    ? fleetManagers.filter(m => m.organizationId === orgId)
+    : [];
 
   const layout = (content) => (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
@@ -156,6 +177,53 @@ export default function ManagerDetails() {
         </div>
 
       </div>
+
+      {/* Organization Overview */}
+      {manager.org && manager.org !== 'N/A' && (
+        <div className="mt-6 bg-white border border-slate-200 rounded-xl p-8 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-[15px] font-extrabold text-slate-800 tracking-wide">Organization Overview</h3>
+            <span className="text-sm font-bold text-slate-500 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+              {manager.org}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+              <p className="text-xs font-bold text-slate-500 uppercase mb-1">Total Fleet Managers</p>
+              <h4 className="text-2xl font-black text-slate-800">{manager.stats?.orgManagersCount || 0}</h4>
+            </div>
+            <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+              <p className="text-xs font-bold text-slate-500 uppercase mb-1">Total Vehicles</p>
+              <h4 className="text-2xl font-black text-slate-800">{manager.stats?.vehiclesCount || 0}</h4>
+            </div>
+            <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+              <p className="text-xs font-bold text-slate-500 uppercase mb-1">Active Trips</p>
+              <h4 className="text-2xl font-black text-slate-800">{manager.stats?.activeTripsCount || 0}</h4>
+            </div>
+            <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+              <p className="text-xs font-bold text-slate-500 uppercase mb-1">Total Revenue</p>
+              <h4 className="text-2xl font-black text-slate-800">₹{(manager.stats?.totalRevenue || 0).toLocaleString('en-IN')}</h4>
+            </div>
+          </div>
+
+          <h4 className="text-sm font-bold text-slate-800 mb-4">Other Fleet Managers in {manager.org}</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {orgManagers.map(m => (
+              <Link key={m.id} to={`/admin/fleet-managers/${m.id}`} className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-sm transition-all">
+                <div className="w-10 h-10 bg-[#0f172a] rounded-full flex items-center justify-center text-white font-bold text-sm">
+                  {m.initials}
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-slate-800">{m.name}</div>
+                  <div className="text-xs font-medium text-slate-500">{m.status}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
     </main>
   );
 }
