@@ -107,7 +107,7 @@ export function AdminProvider({ children }) {
     try {
       const response = await adminApi.getProfile();
       const data = response.data?.data || response.data || {};
-      setAdminProfile({ name: data.name || "", avatarUrl: data.avatarUrl || "" });
+      setAdminProfile({ name: data.name || "", avatarUrl: data.profileImage || data.avatarUrl || "" });
     } catch (error) {
       // Non-critical — silently ignore if profile endpoint fails
       console.warn("Failed to fetch admin profile:", error?.response?.status);

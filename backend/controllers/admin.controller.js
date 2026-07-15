@@ -26,6 +26,7 @@ import {
 import { changeUserPassword } from '../services/auth.service.js';
 import { hashPassword } from '../utils/hashPassword.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { uploadImageToCloudinary } from '../utils/cloudinary.js';
 import sendEmail from '../utils/email.js';
 import User from '../models/User.js';
 import Organization from '../models/Organization.js';
@@ -905,15 +906,21 @@ export const deleteNotification = async (req, res, next) => {
 // Profile Update
 export const updateAdminProfile = async (req, res, next) => {
   try {
-    const { firstName, lastName, email, phone, currentPassword, newPassword } = req.body;
+    const { name, email, phone, currentPassword, newPassword } = req.body;
     const user = await User.findById(req.user._id);
     if (!user) return sendError(res, 404, 'Admin user not found');
 
-    if (firstName || lastName) {
-      user.name = `${firstName || ''} ${lastName || ''}`.trim();
+    if (name) {
+      user.name = name;
     }
     if (email) user.email = email;
     if (phone !== undefined) user.phone = phone;
+
+    // Handle Profile Image Upload
+    if (req.file) {
+      const uploadResult = await uploadImageToCloudinary(req.file.buffer, 'fleet_management/profiles');
+      user.profileImage = uploadResult.secure_url;
+    }
 
     if (currentPassword && newPassword) {
       await changeUserPassword(user.email, currentPassword, newPassword);

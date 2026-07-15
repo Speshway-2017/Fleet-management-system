@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { 
   Search, Mail, Phone, Calendar, Download, Trash2, 
   MessageSquare, Eye, X, Check, ArrowRight, CornerDownRight,
-  TrendingUp, HelpCircle
+  TrendingUp, HelpCircle, ChevronDown
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { adminApi } from "@/api/adminApi";
@@ -227,8 +227,10 @@ export default function ContactRequests() {
     <div className="min-h-screen bg-[#f8fafc] flex font-sans text-slate-700">
       <NewAdminSidebar activeItem="contact-requests" />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <NewAdminTopNav title="Contact Requests" />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden pt-[72px]">
+        <div className="fixed top-0 left-0 lg:left-[260px] right-0 z-30">
+          <NewAdminTopNav title="Contact Requests" />
+        </div>
 
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
           
@@ -333,32 +335,38 @@ export default function ContactRequests() {
                 {/* Status Filter */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Status</label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full text-xs font-medium rounded-xl border border-slate-200 px-4 py-3 bg-white focus:outline-none focus:border-indigo-500 cursor-pointer"
-                  >
-                    <option value="All">All Statuses</option>
-                    <option value="New">New</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Resolved">Resolved</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="appearance-none w-full text-xs font-medium rounded-xl border border-slate-200 px-4 py-3 bg-white focus:outline-none focus:border-indigo-500 cursor-pointer pr-10"
+                    >
+                      <option value="All">All Statuses</option>
+                      <option value="New">New</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Resolved">Resolved</option>
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
+                  </div>
                 </div>
 
                 {/* Subject Filter */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Subject</label>
-                  <select
-                    value={subjectFilter}
-                    onChange={(e) => setSubjectFilter(e.target.value)}
-                    className="w-full text-xs font-medium rounded-xl border border-slate-200 px-4 py-3 bg-white focus:outline-none focus:border-indigo-500 cursor-pointer"
-                  >
-                    <option value="All">All Subjects</option>
-                    <option value="Sales">Sales Inquiry</option>
-                    <option value="Demo">Request a Demo</option>
-                    <option value="Support">Technical Support</option>
-                    <option value="Partnership">Partnership</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={subjectFilter}
+                      onChange={(e) => setSubjectFilter(e.target.value)}
+                      className="appearance-none w-full text-xs font-medium rounded-xl border border-slate-200 px-4 py-3 bg-white focus:outline-none focus:border-indigo-500 cursor-pointer pr-10"
+                    >
+                      <option value="All">All Subjects</option>
+                      <option value="Sales">Sales Inquiry</option>
+                      <option value="Demo">Request a Demo</option>
+                      <option value="Support">Technical Support</option>
+                      <option value="Partnership">Partnership</option>
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
+                  </div>
                 </div>
               </div>
 

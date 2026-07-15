@@ -25,6 +25,7 @@ import {
 } from '../controllers/admin.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
+import memoryUpload from '../middleware/memoryUpload.middleware.js';
 import {
   createOrganizationValidator,
   updateOrganizationValidator,
@@ -91,7 +92,7 @@ router.delete('/contacts/:id',           ...adminAuth, deleteContactRequest);
 
 // ── Profile ────────────────────────────────────────────────────────────────
 router.get('/profile',  ...adminAuth, getAdminProfile);
-router.put('/profile',  ...adminAuth, updateAdminProfile);
+router.put('/profile',  ...adminAuth, memoryUpload.single('profileImage'), updateAdminProfile);
 
 export default router;
 

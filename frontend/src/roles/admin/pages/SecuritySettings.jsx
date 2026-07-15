@@ -155,13 +155,15 @@ export default function SecuritySettings() {
                     <p className="text-[13px] text-slate-500 font-medium">Require 2FA for all admin accounts</p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <button 
+                    <div 
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => { e.stopPropagation(); setTwoFactorAdmin(!twoFactorAdmin); }}
-                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${twoFactorAdmin || twoFactorManager ? 'bg-green-500' : 'bg-slate-200'}`}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 cursor-pointer ${twoFactorAdmin || twoFactorManager ? 'bg-green-500' : 'bg-slate-200'}`}
+                      style={{ minWidth: '44px', height: '24px', padding: 0, margin: 0 }}
                     >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${twoFactorAdmin || twoFactorManager ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                    </button>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === '2fa' ? 'rotate-180' : ''}`} />
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${twoFactorAdmin || twoFactorManager ? 'translate-x-5' : 'translate-x-0.5'}`} style={{ minWidth: '20px', height: '20px' }} />
+                    </div>
                   </div>
                 </div>
                 <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === '2fa' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -189,13 +191,15 @@ export default function SecuritySettings() {
                     <p className="text-[13px] text-slate-500 font-medium">Auto-logout inactive sessions</p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <button 
+                    <div 
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => { e.stopPropagation(); setSessionTimeoutEnabled(!sessionTimeoutEnabled); }}
-                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${sessionTimeoutEnabled ? 'bg-green-500' : 'bg-slate-200'}`}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 cursor-pointer ${sessionTimeoutEnabled ? 'bg-green-500' : 'bg-slate-200'}`}
+                      style={{ minWidth: '44px', height: '24px', padding: 0, margin: 0 }}
                     >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${sessionTimeoutEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                    </button>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === 'session' ? 'rotate-180' : ''}`} />
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${sessionTimeoutEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} style={{ minWidth: '20px', height: '20px' }} />
+                    </div>
                   </div>
                 </div>
                 <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'session' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -287,13 +291,15 @@ export default function SecuritySettings() {
                     <p className="text-[13px] text-slate-500 font-medium">Restrict access to specific IPs</p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <button 
+                    <div 
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => { e.stopPropagation(); setIpAllowlistEnabled(!ipAllowlistEnabled); }}
-                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${ipAllowlistEnabled ? 'bg-green-500' : 'bg-slate-200'}`}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 cursor-pointer ${ipAllowlistEnabled ? 'bg-green-500' : 'bg-slate-200'}`}
+                      style={{ minWidth: '44px', height: '24px', padding: 0, margin: 0 }}
                     >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${ipAllowlistEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                    </button>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === 'ip' ? 'rotate-180' : ''}`} />
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${ipAllowlistEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} style={{ minWidth: '20px', height: '20px' }} />
+                    </div>
                   </div>
                 </div>
                 <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'ip' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
