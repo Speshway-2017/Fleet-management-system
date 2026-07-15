@@ -1,10 +1,18 @@
-import { useState, useEffect } from "react";
-import { ArrowLeft, Save, FileText, Calendar, Zap, Upload, Check, X } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { ArrowLeft, Save, FileText, Calendar, Zap, Upload, Check, X, Loader2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { vehicleApi } from "@/api/vehicleApi";
 import { driverApi } from "@/api/driverApi";
+
+// Defined at module level so useCallback never captures a stale reference
+const DUPLICATE_FIELDS = {
+  plateNumber:        'vehicleNumber',
+  registrationNumber: 'registrationNumber',
+  chassisNumber:      'chassisNumber',
+};
+
 
 export default function VehicleEditPage() {
   const navigate = useNavigate();
@@ -22,6 +30,9 @@ export default function VehicleEditPage() {
     permit: null,
     roadTax: null
   });
+  const [formErrors, setFormErrors] = useState({});
+  const [duplicateErrors, setDuplicateErrors] = useState({});
+  const [validatingFields, setValidatingFields] = useState({});
   const [uploadingDocs, setUploadingDocs] = useState({
     rc: false,
     insurance: false,
@@ -38,6 +49,34 @@ export default function VehicleEditPage() {
     permit: "",
     roadTax: ""
   });
+
+  // Debounce timers (one per field)
+  const debounceTimers = useRef({});
+
+
+  const checkFieldDuplicate = useCallback(async (formField, value) => {
+    const backendField = DUPLICATE_FIELDS[formField];
+    if (!backendField || !value || String(value).trim() === '') {
+      setDuplicateErrors(prev => ({ ...prev, [formField]: '' }));
+      return;
+    }
+    setValidatingFields(prev => ({ ...prev, [formField]: true }));
+    try {
+      const res = await vehicleApi.checkDuplicate(backendField, value.trim(), id);
+      const isDuplicate = res.data?.data?.isDuplicate;
+      setDuplicateErrors(prev => ({
+        ...prev,
+        [formField]: isDuplicate ? 'Already exists.' : '',
+      }));
+    } catch (err) {
+      // Log API errors during real-time check so they're visible in devtools
+      console.warn('[DuplicateCheck] API error:', err?.response?.status, err?.response?.data?.message || err?.message);
+    } finally {
+      setValidatingFields(prev => ({ ...prev, [formField]: false }));
+    }
+  }, [id]);
+
+  const hasDuplicateErrors = Object.values(duplicateErrors).some(Boolean);
 
   useEffect(() => {
     const loadVehicleAndDrivers = async () => {
@@ -169,12 +208,54 @@ export default function VehicleEditPage() {
       ...prev,
       [name]: name === "fastagBalance" ? Number(value) : value
     }));
+
+    if (name === "chassisNumber") {
+      const trimmed = value.trim();
+      if (trimmed.length === 17) {
+        setFormErrors(prev => ({ ...prev, chassisNumber: "" }));
+      } else {
+        setFormErrors(prev => ({ ...prev, chassisNumber: "Please enter exactly 17 characters." }));
+      }
+    } else {
+      setFormErrors(prev => ({ ...prev, [name]: "" }));
+    }
+
+    // Real-time duplicate check: debounced 600ms
+    if (name in DUPLICATE_FIELDS) {
+      setDuplicateErrors(prev => ({ ...prev, [name]: '' }));
+      if (debounceTimers.current[name]) {
+        clearTimeout(debounceTimers.current[name]);
+      }
+      if (!value || String(value).trim() === '') return;
+      debounceTimers.current[name] = setTimeout(() => {
+        checkFieldDuplicate(name, value);
+      }, 600);
+    }
+  };
+
+  const handleDuplicateBlur = (e) => {
+    const { name, value } = e.target;
+    if (!(name in DUPLICATE_FIELDS)) return;
+    if (debounceTimers.current[name]) {
+      clearTimeout(debounceTimers.current[name]);
+      delete debounceTimers.current[name];
+    }
+    if (value && String(value).trim() !== '') {
+      checkFieldDuplicate(name, value);
+    }
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.plateNumber) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    const trimmedChassis = (formData.chassisNumber || "").trim();
+    if (trimmedChassis.length !== 17) {
+      setFormErrors(prev => ({ ...prev, chassisNumber: "Please enter exactly 17 characters." }));
+      toast.error("Please enter exactly 17 characters.");
       return;
     }
 
@@ -215,7 +296,17 @@ export default function VehicleEditPage() {
       toast.success("Vehicle updated successfully!");
       navigate(`/manager/vehicle-details/${id}`);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to save vehicle details.");
+      const msg = err.response?.data?.message || "";
+      toast.error(msg || "Failed to save vehicle details.");
+      if (err.response?.status === 409) {
+        if (msg.toLowerCase().includes("registration plate")) {
+          setFormErrors(prev => ({ ...prev, plateNumber: msg }));
+        } else if (msg.toLowerCase().includes("registration number")) {
+          setFormErrors(prev => ({ ...prev, registrationNumber: msg }));
+        } else if (msg.toLowerCase().includes("chassis number")) {
+          setFormErrors(prev => ({ ...prev, chassisNumber: msg }));
+        }
+      }
     } finally {
       setSaving(false);
     }
@@ -321,6 +412,7 @@ export default function VehicleEditPage() {
               onClick={handleSave}
               disabled={
                 saving ||
+                hasDuplicateErrors ||
                 !formData.name ||
                 !formData.plateNumber ||
                 !vehicleDocs.rc ||
@@ -424,15 +516,32 @@ export default function VehicleEditPage() {
               </div>
               <div>
                 <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Chassis Number</label>
-                <input
-                  type="text"
-                  name="chassisNumber"
-                  value={formData.chassisNumber || ""}
-                  onChange={handleChange}
-                  placeholder="Enter Chassis Number"
-                  maxLength={17}
-                  className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="chassisNumber"
+                    value={formData.chassisNumber || ""}
+                    onChange={handleChange}
+                    onBlur={handleDuplicateBlur}
+                    placeholder="Enter Chassis Number"
+                    maxLength={17}
+                    className={`w-full px-3.5 py-2.5 border ${
+                      formErrors.chassisNumber || duplicateErrors.chassisNumber
+                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                        : 'border-[#E7EAF0] focus:border-[#B45A0A]'
+                    } rounded-lg text-sm focus:outline-none bg-white text-[#1E293B]`}
+                  />
+                  {validatingFields.chassisNumber && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B45A0A] animate-spin" />
+                  )}
+                </div>
+                {(formErrors.chassisNumber || duplicateErrors.chassisNumber) ? (
+                  <p className="text-xs text-red-600 font-semibold mt-1">
+                    {formErrors.chassisNumber || duplicateErrors.chassisNumber}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-gray-500 mt-1 font-medium">Enter exactly 17 characters.</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -470,24 +579,54 @@ export default function VehicleEditPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Plate No.</label>
-                  <input
-                    type="text"
-                    name="plateNumber"
-                    value={formData.plateNumber || ""}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] uppercase bg-white text-[#1E293B]"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="plateNumber"
+                      value={formData.plateNumber || ""}
+                      onChange={handleChange}
+                      onBlur={handleDuplicateBlur}
+                      required
+                      className={`w-full px-3.5 py-2.5 border ${
+                        formErrors.plateNumber || duplicateErrors.plateNumber
+                          ? 'border-red-500 focus:border-red-500'
+                          : 'border-[#E7EAF0] focus:border-[#B45A0A]'
+                      } rounded-lg text-sm focus:outline-none uppercase bg-white text-[#1E293B]`}
+                    />
+                    {validatingFields.plateNumber && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B45A0A] animate-spin" />
+                    )}
+                  </div>
+                  {(formErrors.plateNumber || duplicateErrors.plateNumber) && (
+                    <p className="text-xs text-red-600 font-semibold mt-1">
+                      {formErrors.plateNumber || duplicateErrors.plateNumber}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Registration No.</label>
-                  <input
-                    type="text"
-                    name="registrationNumber"
-                    value={formData.registrationNumber || ""}
-                    onChange={handleChange}
-                    className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] uppercase bg-white text-[#1E293B]"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="registrationNumber"
+                      value={formData.registrationNumber || ""}
+                      onChange={handleChange}
+                      onBlur={handleDuplicateBlur}
+                      className={`w-full px-3.5 py-2.5 border ${
+                        formErrors.registrationNumber || duplicateErrors.registrationNumber
+                          ? 'border-red-500 focus:border-red-500'
+                          : 'border-[#E7EAF0] focus:border-[#B45A0A]'
+                      } rounded-lg text-sm focus:outline-none uppercase bg-white text-[#1E293B]`}
+                    />
+                    {validatingFields.registrationNumber && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B45A0A] animate-spin" />
+                    )}
+                  </div>
+                  {(formErrors.registrationNumber || duplicateErrors.registrationNumber) && (
+                    <p className="text-xs text-red-600 font-semibold mt-1">
+                      {formErrors.registrationNumber || duplicateErrors.registrationNumber}
+                    </p>
+                  )}
                 </div>
               </div>
 

@@ -15,12 +15,13 @@ import Document from '../models/Document.js';
 import mongoose from 'mongoose';
 
 /**
- * List all drivers with filtering, search, sorting, and pagination
+ * List drivers belonging to the logged-in manager
  * GET /api/drivers
  */
 export const listDrivers = async (req, res, next) => {
   try {
-    const filter = {};
+    // Always scope to the logged-in manager
+    const filter = { assignedManager: req.user._id };
 
     // 1. Search by Name, Employee ID, or Phone
     if (req.query.search) {
@@ -105,6 +106,7 @@ export const getAvailableDrivers = async (req, res, next) => {
     const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
 
     const filter = {
+      assignedManager: req.user._id,
       _id: { $nin: allocatedDriverIds },
       driverStatus: 'AVAILABLE',
       $or: [
@@ -128,7 +130,7 @@ export const getAvailableDrivers = async (req, res, next) => {
 };
 
 /**
- * Get a single driver by ID
+ * Get a single driver by ID — only if they belong to the logged-in manager
  * GET /api/drivers/:id
  */
 export const getDriver = async (req, res, next) => {
@@ -136,6 +138,10 @@ export const getDriver = async (req, res, next) => {
     const driver = await getDriverById(req.params.id);
     if (!driver) {
       return sendError(res, 404, 'Driver not found');
+    }
+    // Ownership check
+    if (String(driver.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this driver belongs to another manager');
     }
     return sendSuccess(res, 200, driver, 'Driver fetched successfully');
   } catch (error) {
@@ -221,11 +227,19 @@ export const createDriver = async (req, res, next) => {
 };
 
 /**
- * Update a driver
+ * Update a driver — only if they belong to the logged-in manager
  * PUT /api/drivers/:id
  */
 export const updateDriver = async (req, res, next) => {
   try {
+    // Ownership check before update
+    const existing = await getDriverById(req.params.id);
+    if (!existing) {
+      return sendError(res, 404, 'Driver not found');
+    }
+    if (String(existing.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this driver belongs to another manager');
+    }
     const driver = await updateDriverRecord(req.params.id, req.body);
     if (!driver) {
       return sendError(res, 404, 'Driver not found');
@@ -247,15 +261,20 @@ export const updateDriver = async (req, res, next) => {
 };
 
 /**
- * Delete a driver
+ * Delete a driver — only if they belong to the logged-in manager
  * DELETE /api/drivers/:id
  */
 export const deleteDriver = async (req, res, next) => {
   try {
-    const driver = await deleteDriverRecord(req.params.id);
-    if (!driver) {
+    // Ownership check before delete
+    const existing = await getDriverById(req.params.id);
+    if (!existing) {
       return sendError(res, 404, 'Driver not found');
     }
+    if (String(existing.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this driver belongs to another manager');
+    }
+    await deleteDriverRecord(req.params.id);
     return sendSuccess(res, 200, {}, 'Driver deleted successfully');
   } catch (error) {
     next(error);
