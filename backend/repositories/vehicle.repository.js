@@ -1,7 +1,7 @@
 import Vehicle from '../models/Vehicle.js';
 
-export const getVehicles = async () =>
-  Vehicle.find()
+export const getVehicles = async (filter = {}) =>
+  Vehicle.find(filter)
     .populate('assignedDriver')
     .populate('assignedManager')
     .populate('createdBy')

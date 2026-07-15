@@ -97,11 +97,11 @@ export default function App() {
           <Route path="/features" element={<PublicRoute><Features /></PublicRoute>} />
           <Route path="/contact" element={<PublicRoute><Contact /></PublicRoute>} />
           <Route path="/security" element={<PublicRoute><Security /></PublicRoute>} />
-          <Route path="/blogs" element={<PublicRoute><Blogs /></PublicRoute>} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/otp-verification" element={<OtpVerificationPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+          <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
+          <Route path="/otp-verification" element={<PublicRoute><OtpVerificationPage /></PublicRoute>} />
+          <Route path="/reset-password" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+    <Route path="/blogs" element={<PublicRoute><Blogs /></PublicRoute>} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           <Route element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "admin"]} />}>

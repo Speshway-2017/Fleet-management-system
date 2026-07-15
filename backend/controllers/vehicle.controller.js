@@ -11,12 +11,12 @@ import Trip from '../models/Trip.js';
 import Vehicle from '../models/Vehicle.js';
 
 /**
- * List all vehicles
+ * List all vehicles belonging to the logged-in manager
  * GET /api/vehicles
  */
-export const listVehicles = async (_req, res, next) => {
+export const listVehicles = async (req, res, next) => {
   try {
-    const vehicles = await getVehicles();
+    const vehicles = await getVehicles({ assignedManager: req.user._id });
     return sendSuccess(res, 200, vehicles, 'Vehicles fetched successfully');
   } catch (error) {
     next(error);
@@ -24,7 +24,7 @@ export const listVehicles = async (_req, res, next) => {
 };
 
 /**
- * List all available (unallocated) vehicles
+ * List available (unallocated) vehicles belonging to the logged-in manager
  * GET /api/vehicles/available
  */
 export const getAvailableVehicles = async (req, res, next) => {
@@ -36,6 +36,7 @@ export const getAvailableVehicles = async (req, res, next) => {
     const allocatedVehicleIds = activeTrips.map(t => t.vehicle).filter(Boolean);
 
     const filter = {
+      assignedManager: req.user._id,
       _id: { $nin: allocatedVehicleIds },
       currentStatus: { $in: ['Available', 'Active'] }
     };
@@ -56,7 +57,7 @@ export const getAvailableVehicles = async (req, res, next) => {
 };
 
 /**
- * Get a single vehicle by ID
+ * Get a single vehicle by ID — only if it belongs to the logged-in manager
  * GET /api/vehicles/:id
  */
 export const getVehicle = async (req, res, next) => {
@@ -64,6 +65,10 @@ export const getVehicle = async (req, res, next) => {
     const vehicle = await getVehicleById(req.params.id);
     if (!vehicle) {
       return sendError(res, 404, 'Vehicle not found');
+    }
+    // Ownership check
+    if (String(vehicle.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
     }
     return sendSuccess(res, 200, vehicle, 'Vehicle fetched successfully');
   } catch (error) {
@@ -124,6 +129,34 @@ export const createVehicle = async (req, res, next) => {
 
     if (!vehicleNumber) {
       return sendError(res, 400, 'Vehicle number is required');
+    }
+
+    const trimmedChassis = (chassisNumber || '').trim();
+    if (trimmedChassis.length !== 17) {
+      return sendError(res, 400, 'Please enter exactly 17 characters.');
+    }
+
+    const conflictOr = [
+      { vehicleNumber: vehicleNumber.toUpperCase() }
+    ];
+    if (registrationNumber) {
+      conflictOr.push({ registrationNumber: registrationNumber.toUpperCase() });
+    }
+    if (trimmedChassis) {
+      conflictOr.push({ chassisNumber: trimmedChassis });
+    }
+
+    const existingVehicle = await Vehicle.findOne({ $or: conflictOr });
+    if (existingVehicle) {
+      if (existingVehicle.vehicleNumber === vehicleNumber.toUpperCase()) {
+        return sendError(res, 409, 'A vehicle with this registration plate already exists');
+      }
+      if (registrationNumber && existingVehicle.registrationNumber === registrationNumber.toUpperCase()) {
+        return sendError(res, 409, 'A vehicle with this registration number already exists');
+      }
+      if (trimmedChassis && existingVehicle.chassisNumber === trimmedChassis) {
+        return sendError(res, 409, 'A vehicle with this chassis number already exists');
+      }
     }
 
     const processedDocs = await processVehicleDocuments(documents, req.user);
@@ -201,6 +234,42 @@ export const updateVehicle = async (req, res, next) => {
   try {
     const vehicleId = req.params.id;
     const updateData = { ...req.body };
+    if (updateData.chassisNumber !== undefined) {
+      const trimmedChassis = String(updateData.chassisNumber || '').trim();
+      if (trimmedChassis.length !== 17) {
+        return sendError(res, 400, 'Please enter exactly 17 characters.');
+      }
+      updateData.chassisNumber = trimmedChassis;
+    }
+
+    const conflictOr = [];
+    if (updateData.vehicleNumber) {
+      conflictOr.push({ vehicleNumber: updateData.vehicleNumber.toUpperCase() });
+    }
+    if (updateData.registrationNumber) {
+      conflictOr.push({ registrationNumber: updateData.registrationNumber.toUpperCase() });
+    }
+    if (updateData.chassisNumber) {
+      conflictOr.push({ chassisNumber: updateData.chassisNumber.trim() });
+    }
+
+    if (conflictOr.length > 0) {
+      const existingVehicle = await Vehicle.findOne({
+        _id: { $ne: vehicleId },
+        $or: conflictOr
+      });
+      if (existingVehicle) {
+        if (updateData.vehicleNumber && existingVehicle.vehicleNumber === updateData.vehicleNumber.toUpperCase()) {
+          return sendError(res, 409, 'A vehicle with this registration plate already exists');
+        }
+        if (updateData.registrationNumber && existingVehicle.registrationNumber === updateData.registrationNumber.toUpperCase()) {
+          return sendError(res, 409, 'A vehicle with this registration number already exists');
+        }
+        if (updateData.chassisNumber && existingVehicle.chassisNumber === updateData.chassisNumber.trim()) {
+          return sendError(res, 409, 'A vehicle with this chassis number already exists');
+        }
+      }
+    }
 
     if (updateData.documents) {
       updateData.documents = await processVehicleDocuments(updateData.documents, req.user);
@@ -309,6 +378,11 @@ export const updateVehicle = async (req, res, next) => {
       }
     }
 
+    // Ownership check — only the owning manager can update
+    if (String(existingVehicle.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
+    }
+
     const vehicle = await updateVehicleInRepo(vehicleId, updateData);
     return sendSuccess(res, 200, vehicle, 'Vehicle updated successfully');
   } catch (error) {
@@ -320,15 +394,54 @@ export const updateVehicle = async (req, res, next) => {
 };
 
 /**
- * Delete a vehicle
+ * Check whether a specific field value already exists (for real-time validation)
+ * GET /api/vehicles/check-duplicate?field=vehicleNumber&value=MH12AB5678&excludeId=<id>
+ */
+export const checkVehicleDuplicate = async (req, res, next) => {
+  try {
+    const { field, value, excludeId } = req.query;
+
+    const allowedFields = ['vehicleNumber', 'registrationNumber', 'chassisNumber'];
+    if (!field || !allowedFields.includes(field)) {
+      return sendError(res, 400, 'Invalid or missing field. Must be one of: vehicleNumber, registrationNumber, chassisNumber');
+    }
+
+    if (!value || String(value).trim() === '') {
+      return sendSuccess(res, 200, { isDuplicate: false, field }, 'No value to check');
+    }
+
+    const normalizedValue = field === 'chassisNumber'
+      ? String(value).trim()
+      : String(value).trim().toUpperCase();
+
+    const query = { [field]: normalizedValue };
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
+
+    const existing = await Vehicle.findOne(query).select('_id').lean();
+
+    return sendSuccess(res, 200, { isDuplicate: !!existing, field }, 'Duplicate check complete');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Delete a vehicle — only if it belongs to the logged-in manager
  * DELETE /api/vehicles/:id
  */
 export const deleteVehicle = async (req, res, next) => {
   try {
-    const vehicle = await deleteVehicleInRepo(req.params.id);
+    // Ownership check before delete
+    const vehicle = await getVehicleById(req.params.id);
     if (!vehicle) {
       return sendError(res, 404, 'Vehicle not found');
     }
+    if (String(vehicle.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
+    }
+    await deleteVehicleInRepo(req.params.id);
     return sendSuccess(res, 200, {}, 'Vehicle deleted successfully');
   } catch (error) {
     next(error);

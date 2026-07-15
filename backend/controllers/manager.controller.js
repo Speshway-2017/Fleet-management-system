@@ -196,9 +196,37 @@ export const createVehicle = async (req, res, next) => {
       branchDepot,
     } = req.body;
 
-    const resolvedVehicleNumber = vehicleNumber || req.body.vehicleNumber;
+     const resolvedVehicleNumber = vehicleNumber || req.body.vehicleNumber;
     if (!resolvedVehicleNumber) {
       return sendError(res, 400, 'Vehicle number is required');
+    }
+
+    const trimmedChassis = (chassisNumber || '').trim();
+    if (trimmedChassis.length !== 17) {
+      return sendError(res, 400, 'Please enter exactly 17 characters.');
+    }
+
+    const conflictOr = [
+      { vehicleNumber: resolvedVehicleNumber.toUpperCase() }
+    ];
+    if (registrationNumber) {
+      conflictOr.push({ registrationNumber: registrationNumber.toUpperCase() });
+    }
+    if (trimmedChassis) {
+      conflictOr.push({ chassisNumber: trimmedChassis });
+    }
+
+    const existingVehicle = await Vehicle.findOne({ $or: conflictOr });
+    if (existingVehicle) {
+      if (existingVehicle.vehicleNumber === resolvedVehicleNumber.toUpperCase()) {
+        return sendError(res, 409, 'A vehicle with this registration plate already exists');
+      }
+      if (registrationNumber && existingVehicle.registrationNumber === registrationNumber.toUpperCase()) {
+        return sendError(res, 409, 'A vehicle with this registration number already exists');
+      }
+      if (trimmedChassis && existingVehicle.chassisNumber === trimmedChassis) {
+        return sendError(res, 409, 'A vehicle with this chassis number already exists');
+      }
     }
 
     const processedDocs = await processVehicleDocuments(documents, req.user);
@@ -279,6 +307,10 @@ export const getVehicleById = async (req, res, next) => {
   try {
     const vehicle = await getVehicleByIdInRepo(req.params.id);
     if (!vehicle) return sendError(res, 404, 'Vehicle not found');
+    // Ownership check
+    if (String(vehicle.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
+    }
     return sendSuccess(res, 200, vehicle, 'Vehicle fetched');
   } catch (error) {
     next(error);
@@ -287,7 +319,50 @@ export const getVehicleById = async (req, res, next) => {
 
 export const updateVehicle = async (req, res, next) => {
   try {
+    // Ownership check before update
+    const existingVeh = await getVehicleByIdInRepo(req.params.id);
+    if (!existingVeh) return sendError(res, 404, 'Vehicle not found');
+    if (String(existingVeh.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
+    }
+
     const updateData = { ...req.body };
+    if (updateData.chassisNumber !== undefined) {
+      const trimmedChassis = String(updateData.chassisNumber || '').trim();
+      if (trimmedChassis.length !== 17) {
+        return sendError(res, 400, 'Please enter exactly 17 characters.');
+      }
+      updateData.chassisNumber = trimmedChassis;
+    }
+
+    const conflictOr = [];
+    if (updateData.vehicleNumber) {
+      conflictOr.push({ vehicleNumber: updateData.vehicleNumber.toUpperCase() });
+    }
+    if (updateData.registrationNumber) {
+      conflictOr.push({ registrationNumber: updateData.registrationNumber.toUpperCase() });
+    }
+    if (updateData.chassisNumber) {
+      conflictOr.push({ chassisNumber: updateData.chassisNumber.trim() });
+    }
+
+    if (conflictOr.length > 0) {
+      const existingVehicle = await Vehicle.findOne({
+        _id: { $ne: req.params.id },
+        $or: conflictOr
+      });
+      if (existingVehicle) {
+        if (updateData.vehicleNumber && existingVehicle.vehicleNumber === updateData.vehicleNumber.toUpperCase()) {
+          return sendError(res, 409, 'A vehicle with this registration plate already exists');
+        }
+        if (updateData.registrationNumber && existingVehicle.registrationNumber === updateData.registrationNumber.toUpperCase()) {
+          return sendError(res, 409, 'A vehicle with this registration number already exists');
+        }
+        if (updateData.chassisNumber && existingVehicle.chassisNumber === updateData.chassisNumber.trim()) {
+          return sendError(res, 409, 'A vehicle with this chassis number already exists');
+        }
+      }
+    }
     if (updateData.documents) {
       updateData.documents = await processVehicleDocuments(updateData.documents, req.user);
     }
@@ -338,6 +413,13 @@ export const updateVehicle = async (req, res, next) => {
 
 export const deleteVehicle = async (req, res, next) => {
   try {
+    // Ownership check before delete
+    const existingVeh = await getVehicleByIdInRepo(req.params.id);
+    if (!existingVeh) return sendError(res, 404, 'Vehicle not found');
+    if (String(existingVeh.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
+    }
+
     const vehicle = await deleteVehicleInRepo(req.params.id);
     if (!vehicle) return sendError(res, 404, 'Vehicle not found');
 
@@ -351,9 +433,6 @@ export const deleteVehicle = async (req, res, next) => {
 
     return sendSuccess(res, 200, {}, 'Vehicle deleted successfully');
   } catch (error) {
-    if (error.code === 11000) {
-      return sendError(res, 400, 'A vehicle with this vehicle number already exists');
-    }
     next(error);
   }
 };
@@ -373,6 +452,10 @@ export const getDriverDetails = async (req, res, next) => {
     const driver = await getDriverById(req.params.id);
     if (!driver) {
       return sendError(res, 404, 'Driver not found');
+    }
+    // Ownership check
+    if (String(driver.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this driver belongs to another manager');
     }
     return sendSuccess(res, 200, driver, 'Driver details fetched');
   } catch (error) {
@@ -428,6 +511,13 @@ export const createDriver = async (req, res, next) => {
 
 export const updateDriver = async (req, res, next) => {
   try {
+    // Ownership check before update
+    const existingDriver = await getDriverById(req.params.id);
+    if (!existingDriver) return sendError(res, 404, 'Driver not found');
+    if (String(existingDriver.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this driver belongs to another manager');
+    }
+
     const driver = await updateDriverInRepo(req.params.id, req.body);
     if (!driver) {
       return sendError(res, 404, 'Driver not found');
@@ -448,6 +538,13 @@ export const updateDriver = async (req, res, next) => {
 
 export const deleteDriver = async (req, res, next) => {
   try {
+    // Ownership check before delete
+    const existingDriver = await getDriverById(req.params.id);
+    if (!existingDriver) return sendError(res, 404, 'Driver not found');
+    if (String(existingDriver.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this driver belongs to another manager');
+    }
+
     const driver = await deleteDriverInRepo(req.params.id);
     if (!driver) {
       return sendError(res, 404, 'Driver not found');
@@ -480,6 +577,10 @@ export const getTripDetails = async (req, res, next) => {
     const trip = await getTripById(req.params.id);
     if (!trip) {
       return sendError(res, 404, 'Trip not found');
+    }
+    // Ownership check
+    if (String(trip.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this trip belongs to another manager');
     }
     return sendSuccess(res, 200, trip, 'Trip details fetched');
   } catch (error) {
@@ -644,6 +745,11 @@ export const updateTrip = async (req, res, next) => {
       return sendError(res, 404, 'Trip not found');
     }
 
+    // Ownership check
+    if (String(existingTrip.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this trip belongs to another manager');
+    }
+
     // Validation: Cannot modify a completed trip
     if (existingTrip.status === 'Completed') {
       return sendError(res, 400, 'Cannot modify a completed trip');
@@ -734,6 +840,11 @@ export const deleteTrip = async (req, res, next) => {
       return sendError(res, 404, 'Trip not found');
     }
 
+    // Ownership check
+    if (String(trip.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this trip belongs to another manager');
+    }
+
     // Release vehicle
     if (trip.vehicle) {
       await Vehicle.findByIdAndUpdate(trip.vehicle, {
@@ -780,6 +891,14 @@ export const getFuelRecordDetails = async (req, res, next) => {
     const record = await getFuelRecordById(req.params.id);
     if (!record) {
       return sendError(res, 404, 'Fuel record not found');
+    }
+    // Ownership check via vehicle's assignedManager
+    if (record.vehicle && String(record.vehicle.assignedManager || record.vehicle) !== String(req.user._id)) {
+      const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id');
+      const managerVehicleIds = managerVehicles.map(v => String(v._id));
+      if (!managerVehicleIds.includes(String(record.vehicle._id || record.vehicle))) {
+        return sendError(res, 403, 'Access denied: this fuel record belongs to another manager');
+      }
     }
     return sendSuccess(res, 200, record, 'Fuel record details fetched');
   } catch (error) {
@@ -856,6 +975,10 @@ export const getMaintenanceDetails = async (req, res, next) => {
     if (!maintenance) {
       return sendError(res, 404, 'Maintenance not found');
     }
+    // Ownership check
+    if (String(maintenance.recordedBy) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this maintenance record belongs to another manager');
+    }
     return sendSuccess(res, 200, maintenance, 'Maintenance details fetched');
   } catch (error) {
     next(error);
@@ -903,6 +1026,13 @@ export const createMaintenance = async (req, res, next) => {
 
 export const updateMaintenance = async (req, res, next) => {
   try {
+    // Ownership check before update
+    const existingMaint = await getMaintenanceById(req.params.id);
+    if (!existingMaint) return sendError(res, 404, 'Maintenance not found');
+    if (String(existingMaint.recordedBy) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this maintenance record belongs to another manager');
+    }
+
     const maintenance = await updateMaintenanceInRepo(req.params.id, req.body);
     if (!maintenance) {
       return sendError(res, 404, 'Maintenance not found');
@@ -925,6 +1055,13 @@ export const updateMaintenance = async (req, res, next) => {
 
 export const deleteMaintenance = async (req, res, next) => {
   try {
+    // Ownership check before delete
+    const existingMaint = await getMaintenanceById(req.params.id);
+    if (!existingMaint) return sendError(res, 404, 'Maintenance not found');
+    if (String(existingMaint.recordedBy) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this maintenance record belongs to another manager');
+    }
+
     const maintenance = await deleteMaintenanceInRepo(req.params.id);
     if (!maintenance) {
       return sendError(res, 404, 'Maintenance not found');
@@ -976,6 +1113,10 @@ export const getDocumentDetails = async (req, res, next) => {
     const document = await getDocumentById(req.params.id);
     if (!document) {
       return sendError(res, 404, 'Document not found');
+    }
+    // Ownership check
+    if (String(document.uploadedBy) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this document belongs to another manager');
     }
     
     const doc = document.toObject ? document.toObject() : document;
@@ -1077,6 +1218,13 @@ export const createDocument = async (req, res, next) => {
 
 export const updateDocument = async (req, res, next) => {
   try {
+    // Ownership check before update
+    const existingDoc = await getDocumentById(req.params.id);
+    if (!existingDoc) return sendError(res, 404, 'Document not found');
+    if (String(existingDoc.uploadedBy) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this document belongs to another manager');
+    }
+
     const updateData = { ...req.body };
     if (updateData.expiry) {
       const expDate = new Date(updateData.expiry);
@@ -1132,6 +1280,13 @@ export const updateDocument = async (req, res, next) => {
 
 export const deleteDocument = async (req, res, next) => {
   try {
+    // Ownership check before delete
+    const existingDoc = await getDocumentById(req.params.id);
+    if (!existingDoc) return sendError(res, 404, 'Document not found');
+    if (String(existingDoc.uploadedBy) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this document belongs to another manager');
+    }
+
     const document = await deleteDocumentInRepo(req.params.id);
     if (!document) {
       return sendError(res, 404, 'Document not found');
@@ -1157,6 +1312,10 @@ export const getReportDetails = async (req, res, next) => {
     const report = await getReportById(req.params.id);
     if (!report) {
       return sendError(res, 404, 'Report not found');
+    }
+    // Ownership check
+    if (String(report.generatedBy) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this report belongs to another manager');
     }
     return sendSuccess(res, 200, report, 'Report details fetched');
   } catch (error) {
@@ -1201,6 +1360,13 @@ export const createReport = async (req, res, next) => {
 
 export const updateReport = async (req, res, next) => {
   try {
+    // Ownership check before update
+    const existingReport = await getReportById(req.params.id);
+    if (!existingReport) return sendError(res, 404, 'Report not found');
+    if (String(existingReport.generatedBy) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this report belongs to another manager');
+    }
+
     const report = await updateReportInRepo(req.params.id, req.body);
     if (!report) {
       return sendError(res, 404, 'Report not found');
@@ -1213,6 +1379,13 @@ export const updateReport = async (req, res, next) => {
 
 export const deleteReport = async (req, res, next) => {
   try {
+    // Ownership check before delete
+    const existingReport = await getReportById(req.params.id);
+    if (!existingReport) return sendError(res, 404, 'Report not found');
+    if (String(existingReport.generatedBy) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this report belongs to another manager');
+    }
+
     const report = await deleteReportInRepo(req.params.id);
     if (!report) {
       return sendError(res, 404, 'Report not found');
@@ -1225,8 +1398,12 @@ export const deleteReport = async (req, res, next) => {
 
 export const getLiveTracking = async (req, res, next) => {
   try {
-    const vehicles = await Vehicle.find().populate('assignedDriver').sort({ createdAt: -1 });
+    const managerId = req.user._id;
+    // Only vehicles belonging to the logged-in manager
+    const vehicles = await Vehicle.find({ assignedManager: managerId }).populate('assignedDriver').sort({ createdAt: -1 });
+    // Only trips belonging to the logged-in manager
     const trips = await Trip.find({
+      assignedManager: managerId,
       status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip', 'Ready to Dispatch'] }
     }).populate('vehicle').populate('driver');
 
@@ -1389,56 +1566,8 @@ const enrichEWayBill = (billObj) => {
 
 export const listEWayBills = async (req, res, next) => {
   try {
-    let bills = await EWayBill.find({ assignedManager: req.user._id }).sort({ createdAt: -1 });
-
-    // Seed initial mock data if none exist
-    if (bills.length === 0) {
-      const now = new Date();
-      const initialBills = [
-        {
-          ewayBillNo: "EWB-2024-8832",
-          invoiceNo: "#INV-00421",
-          vehicleNo: "MH 12 QX 4582",
-          transporterName: "Gati KWE Logistics",
-          fromLoc: "Mumbai",
-          toLoc: "Delhi",
-          goodsValue: "540000",
-          assignedManager: req.user._id,
-          generationDate: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-          validityDays: 30,
-          expiryDate: new Date(now.getTime() + 25 * 24 * 60 * 60 * 1000), // expires in 25 days (Active)
-        },
-        {
-          ewayBillNo: "EWB-2024-7710",
-          invoiceNo: "#INV-00418",
-          vehicleNo: "KA 01 HY 9912",
-          transporterName: "VRL Logistics",
-          fromLoc: "Bangalore",
-          toLoc: "Chennai",
-          goodsValue: "320000",
-          assignedManager: req.user._id,
-          generationDate: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-          validityDays: 5,
-          expiryDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000), // expires in 3 days (Expiring Soon)
-        },
-        {
-          ewayBillNo: "EWB-2024-9102",
-          invoiceNo: "#INV-00430",
-          vehicleNo: "GJ 05 TR 3302",
-          transporterName: "Safe Express",
-          fromLoc: "Surat",
-          toLoc: "Ahmedabad",
-          goodsValue: "180000",
-          assignedManager: req.user._id,
-          generationDate: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
-          validityDays: 1,
-          expiryDate: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000), // expired yesterday (Expired)
-        }
-      ];
-      await EWayBill.insertMany(initialBills);
-      bills = await EWayBill.find({ assignedManager: req.user._id }).sort({ createdAt: -1 });
-    }
-
+    // Always scope to the logged-in manager — never return another manager's bills
+    const bills = await EWayBill.find({ assignedManager: req.user._id }).sort({ createdAt: -1 });
     const enriched = bills.map(enrichEWayBill);
     return sendSuccess(res, 200, enriched, 'E-Way Bills fetched');
   } catch (error) {
@@ -1597,54 +1726,6 @@ export const deleteEWayBill = async (req, res, next) => {
 export const listActivities = async (req, res, next) => {
   try {
     const managerId = req.user._id;
-
-    // Check if activities count is 0, then seed some initial mock logs for a nice UX!
-    const count = await ActivityLog.countDocuments({ assignedManager: managerId });
-    if (count === 0) {
-      const mockLogs = [
-        {
-          title: 'Vehicle Added',
-          description: 'Vehicle AP 39 EQ 2312 (Ashok Leyland 2200) was added to Pune branch.',
-          activityType: 'VEHICLE_ADDED',
-          user: req.user.name || req.user.email || 'System',
-          assignedManager: managerId,
-          createdAt: new Date(Date.now() - 5 * 60 * 1000) // 5 minutes ago
-        },
-        {
-          title: 'Driver Assigned',
-          description: 'Driver Sai Kiran was assigned status AVAILABLE.',
-          activityType: 'DRIVER_ASSIGNED',
-          user: req.user.name || req.user.email || 'System',
-          assignedManager: managerId,
-          createdAt: new Date(Date.now() - 30 * 60 * 1000) // 30 minutes ago
-        },
-        {
-          title: 'Document Uploaded',
-          description: 'Document "Insurance Expiry Renewal Certificate" (Insurance) was uploaded successfully.',
-          activityType: 'DOCUMENT_UPLOADED',
-          user: req.user.name || req.user.email || 'System',
-          assignedManager: managerId,
-          createdAt: new Date(Date.now() - 2 * 3600 * 1000) // 2 hours ago
-        },
-        {
-          title: 'Fuel Entry Added',
-          description: 'Fuel entry of ₹6,932 (85L) added for vehicle AP 39 EQ 2312.',
-          activityType: 'FUEL_ENTRY_ADDED',
-          user: req.user.name || req.user.email || 'System',
-          assignedManager: managerId,
-          createdAt: new Date(Date.now() - 24 * 3600 * 1000) // Yesterday
-        },
-        {
-          title: 'Maintenance Completed',
-          description: 'Maintenance for vehicle TN 12 EQ 3323 is completed.',
-          activityType: 'MAINTENANCE_COMPLETED',
-          user: req.user.name || req.user.email || 'System',
-          assignedManager: managerId,
-          createdAt: new Date(Date.now() - 2 * 24 * 3600 * 1000) // 2 days ago
-        }
-      ];
-      await ActivityLog.insertMany(mockLogs);
-    }
 
     const activities = await ActivityLog.find({ assignedManager: managerId })
       .sort({ createdAt: -1 })
