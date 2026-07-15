@@ -7,13 +7,11 @@ import { useAuth } from "@/context/AuthContext";
 import { identifyDocumentType } from "../utils/documentParser";
 import { vehicleApi } from "@/api/vehicleApi";
 import { managerApi } from "../api/managerApi";
-import { driverApi } from "@/api/driverApi";
 
 export default function AddVehiclePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
-  const [drivers, setDrivers] = useState([]);
 
   const [formData, setFormData] = useState({
     // Basic Information
@@ -81,18 +79,6 @@ export default function AddVehiclePage() {
   });
   const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
-    const loadDrivers = async () => {
-      try {
-        const res = await driverApi.list();
-        setDrivers(res.data?.data || []);
-      } catch (err) {
-        console.error("Failed to load drivers:", err);
-      }
-    };
-    loadDrivers();
-  }, []);
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -123,7 +109,7 @@ export default function AddVehiclePage() {
 
     setUploadingDocs(prev => ({ ...prev, [key]: true }));
     try {
-      const response = await driverApi.uploadDocument(file);
+      const response = await vehicleApi.uploadDocument(file);
       const data = response.data?.data || response.data;
       
       setVehicleDocs(prev => ({

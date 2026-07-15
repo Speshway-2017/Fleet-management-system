@@ -9,7 +9,6 @@ import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import managerRoutes from './routes/manager.routes.js';
-import driverRoutes from './routes/driver.routes.js';
 import vehicleRoutes from './routes/vehicle.routes.js';
 import contactRoutes from './routes/contact.routes.js';
 import subscriptionRoutes from './routes/subscription.routes.js';
@@ -42,7 +41,6 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/manager', managerRoutes);
-app.use('/api/drivers', driverRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);

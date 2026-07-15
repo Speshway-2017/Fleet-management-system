@@ -15,5 +15,21 @@ export const vehicleApi = {
 
   /** Delete a vehicle by _id */
   remove: (id) => axiosClient.delete(`/vehicles/${id}`),
+
+  /** Upload vehicle document */
+  uploadDocument: (file, onProgress) => {
+    const formData = new FormData();
+    formData.append("document", file);
+    return axiosClient.post("/vehicles/upload-document", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          onProgress(progressEvent.loaded, progressEvent.total);
+        }
+      },
+    });
+  },
 };
 export default vehicleApi;

@@ -23,7 +23,6 @@ import "./manager.css";
 const MENU_ITEMS = [
   { label: "Dashboard", to: "/manager", icon: LayoutDashboard, isRealRoute: true },
   { label: "Vehicle Management", to: "/manager/vehicle-management", icon: Truck, isRealRoute: true },
-  { label: "Drivers", to: "/manager/drivers", icon: Users, isRealRoute: true },
   { label: "Trips", to: "/manager/trips", icon: Route, isRealRoute: true },
   { label: "Live Tracking", to: "/manager/map", icon: MapPin, isRealRoute: true },
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel, isRealRoute: true },

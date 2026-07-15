@@ -5,7 +5,6 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { useAuth } from "@/context/AuthContext";
 import { vehicleApi } from "@/api/vehicleApi";
-import { driverApi } from "@/api/driverApi";
 
 export default function VehicleEditPage() {
   const navigate = useNavigate();
@@ -14,7 +13,6 @@ export default function VehicleEditPage() {
   const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
   const [vehicle, setVehicle] = useState(null);
   const [formData, setFormData] = useState({});
-  const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [vehicleDocs, setVehicleDocs] = useState({
@@ -43,16 +41,11 @@ export default function VehicleEditPage() {
   });
 
   useEffect(() => {
-    const loadVehicleAndDrivers = async () => {
+    const loadVehicle = async () => {
       try {
         setLoading(true);
-        const [vehRes, drvRes] = await Promise.all([
-          vehicleApi.getById(id),
-          driverApi.list()
-        ]);
+        const vehRes = await vehicleApi.getById(id);
         const found = vehRes.data?.data;
-        const rawDrivers = drvRes.data?.data ?? [];
-        setDrivers(rawDrivers);
         if (found) {
           setVehicle(found);
           setFormData({
@@ -109,7 +102,7 @@ export default function VehicleEditPage() {
         setLoading(false);
       }
     };
-    loadVehicleAndDrivers();
+    loadVehicle();
   }, [id, navigate]);
 
   const handleSingleFileUpload = async (key, file) => {
@@ -134,7 +127,7 @@ export default function VehicleEditPage() {
 
     setUploadingDocs(prev => ({ ...prev, [key]: true }));
     try {
-      const response = await driverApi.uploadDocument(file);
+      const response = await vehicleApi.uploadDocument(file);
       const data = response.data?.data || response.data;
       
       setVehicleDocs(prev => ({

@@ -4,11 +4,6 @@ import {
   getVehicleById as getVehicleByIdInRepo,
   updateVehicle as updateVehicleInRepo,
   deleteVehicle as deleteVehicleInRepo,
-  getDrivers,
-  getDriverById,
-  createDriver as createDriverInRepo,
-  updateDriver as updateDriverInRepo,
-  deleteDriver as deleteDriverInRepo,
   getTrips,
   getTripById,
   createTrip as createTripInRepo,
@@ -43,7 +38,6 @@ import { sendSuccess, sendError } from '../utils/response.js';
 import { createAndEmitNotification } from '../utils/notification.js';
 import { processVehicleDocuments } from '../utils/documentHelper.js';
 import Trip from '../models/Trip.js';
-import Driver from '../models/Driver.js';
 import Vehicle from '../models/Vehicle.js';
 import Notification from '../models/Notification.js';
 import EWayBill from '../models/EWayBill.js';
@@ -76,10 +70,7 @@ export const getDashboard = async (req, res, next) => {
     });
 
     // 4. Drivers available
-    const driversAvailable = await Driver.countDocuments({ 
-      assignedManager: managerId, 
-      driverStatus: 'AVAILABLE' 
-    });
+    const driversAvailable = 0;
 
     // 5. Fuel Expense: sum up amounts from Fuel records
     // First, find all vehicle IDs assigned to the manager
@@ -357,107 +348,6 @@ export const deleteVehicle = async (req, res, next) => {
     next(error);
   }
 };
-
-// Drivers Controllers
-export const listDrivers = async (req, res, next) => {
-  try {
-    const drivers = await getDrivers({ assignedManager: req.user._id });
-    return sendSuccess(res, 200, drivers, 'Drivers fetched');
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getDriverDetails = async (req, res, next) => {
-  try {
-    const driver = await getDriverById(req.params.id);
-    if (!driver) {
-      return sendError(res, 404, 'Driver not found');
-    }
-    return sendSuccess(res, 200, driver, 'Driver details fetched');
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const createDriver = async (req, res, next) => {
-  try {
-    const {
-      name,
-      email,
-      phone,
-      licenseNumber,
-      licenseType,
-      licenseExpiry,
-      assignedVehicle,
-      status
-    } = req.body;
-
-    if (!name || !email || !phone || !licenseNumber) {
-      return sendError(res, 400, 'Name, email, phone, and license number are required');
-    }
-
-    const driver = await createDriverInRepo({
-      name,
-      email,
-      phone,
-      licenseNumber,
-      licenseType,
-      licenseExpiry,
-      assignedVehicle,
-      status,
-      assignedManager: req.user._id
-    });
-
-    await logActivity({
-      title: 'Driver Assigned',
-      description: `Driver ${driver.name} was registered under status ${driver.status || 'AVAILABLE'}.`,
-      activityType: 'DRIVER_ASSIGNED',
-      user: req.user,
-      assignedManager: req.user._id
-    });
-
-    return sendSuccess(res, 201, driver, 'Driver created');
-  } catch (error) {
-    if (error.code === 11000) {
-      return sendError(res, 400, 'A driver with this email or license number already exists');
-    }
-    next(error);
-  }
-};
-
-export const updateDriver = async (req, res, next) => {
-  try {
-    const driver = await updateDriverInRepo(req.params.id, req.body);
-    if (!driver) {
-      return sendError(res, 404, 'Driver not found');
-    }
-    await logActivity({
-      title: 'Driver Updated',
-      description: `Driver ${driver.name} details were updated.`,
-      activityType: 'DRIVER_ASSIGNED',
-      user: req.user,
-      assignedManager: req.user._id
-    });
-
-    return sendSuccess(res, 200, driver, 'Driver updated');
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const deleteDriver = async (req, res, next) => {
-  try {
-    const driver = await deleteDriverInRepo(req.params.id);
-    if (!driver) {
-      return sendError(res, 404, 'Driver not found');
-    }
-    return sendSuccess(res, 200, null, 'Driver deleted');
-  } catch (error) {
-    next(error);
-  }
-};
-
 // Trips Controllers
 export const listTrips = async (req, res, next) => {
   try {
@@ -550,38 +440,13 @@ export const createTrip = async (req, res, next) => {
       return sendError(res, 400, `Selected vehicle is not from the Start Location (${startLocation})`);
     }
 
-    // B. Verify driver license, availability & branch in database
-    const driverDoc = await Driver.findById(driver);
-    if (!driverDoc) {
-      return sendError(res, 404, 'Driver not found');
-    }
-    if (driverDoc.driverStatus !== 'AVAILABLE') {
-      return sendError(res, 400, 'Selected driver is no longer available');
-    }
-    if (driverDoc.licenseExpiry && new Date(driverDoc.licenseExpiry) < currentDate) {
-      return sendError(res, 400, 'Cannot assign driver with an expired license');
-    }
-
-    const activeTripsWithDriver = await Trip.findOne({
-      driver,
-      status: { $in: ['Scheduled', 'Assigned', 'In Progress'] }
-    });
-    if (activeTripsWithDriver) {
-      return sendError(res, 400, 'This driver is already allocated to another active trip');
-    }
-
-    const driverBranch = (driverDoc.branch || 'Pune').trim().split(/[\s,]+/)[0].toLowerCase();
-    if (!driverBranch.includes(cleanStart) && !cleanStart.includes(driverBranch)) {
-      return sendError(res, 400, `Selected driver is not from the Start Location (${startLocation})`);
-    }
-
     // C. Create the trip
     const trip = await createTripInRepo({
       tripNumber,
       vehicle,
-      driver,
-      driverName,
-      driverPhone,
+      driver: driver || undefined,
+      driverName: driverName || "",
+      driverPhone: driverPhone || "",
       vehicleName,
       vehiclePlate,
       startLocation,
@@ -601,14 +466,7 @@ export const createTrip = async (req, res, next) => {
     const nextVehStatus = status === 'In Progress' ? 'On Trip' : 'Assigned';
     await Vehicle.findByIdAndUpdate(vehicle, {
       currentStatus: nextVehStatus,
-      assignedDriver: driver
-    });
-
-    // E. Update driver status in MongoDB
-    const nextDrvStatus = status === 'In Progress' ? 'ON_TRIP' : 'ASSIGNED';
-    await Driver.findByIdAndUpdate(driver, {
-      driverStatus: nextDrvStatus,
-      assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned'
+      assignedDriver: driver || undefined
     });
 
     // F. Automatically generate unique invoice and save to database
@@ -621,7 +479,7 @@ export const createTrip = async (req, res, next) => {
       invoiceNumber,
       invoiceDate: new Date(),
       trip: trip._id,
-      driver: trip.driver,
+      driver: trip.driver || undefined,
       vehicle: trip.vehicle,
       createdBy: req.user._id
     });
@@ -651,9 +509,9 @@ export const updateTrip = async (req, res, next) => {
 
     const newStatus = req.body.status;
 
-    // Validation: Prevent starting a trip without both vehicle and driver
-    if (newStatus === 'In Progress' && (!existingTrip.vehicle || !existingTrip.driver)) {
-      return sendError(res, 400, 'Cannot start a trip without both an assigned vehicle and driver');
+    // Validation: Prevent starting a trip without vehicle
+    if (newStatus === 'In Progress' && !existingTrip.vehicle) {
+      return sendError(res, 400, 'Cannot start a trip without an assigned vehicle');
     }
 
     // Validation: Prevent ending a trip that has not started
@@ -680,26 +538,12 @@ export const updateTrip = async (req, res, next) => {
             assignedDriver: null
           });
         }
-        // Release driver
-        if (updatedTrip.driver) {
-          await Driver.findByIdAndUpdate(updatedTrip.driver, {
-            driverStatus: 'AVAILABLE',
-            assignedVehicle: 'Unassigned'
-          });
-        }
       } else if (newStatus === 'In Progress') {
         // Set statuses to On Trip / ON_TRIP
         if (updatedTrip.vehicle) {
           await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, {
             currentStatus: 'On Trip',
-            assignedDriver: updatedTrip.driver
-          });
-        }
-        if (updatedTrip.driver) {
-          const selectedVeh = await Vehicle.findById(updatedTrip.vehicle);
-          await Driver.findByIdAndUpdate(updatedTrip.driver, {
-            driverStatus: 'ON_TRIP',
-            assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned'
+            assignedDriver: updatedTrip.driver || undefined
           });
         }
       } else {
@@ -707,14 +551,7 @@ export const updateTrip = async (req, res, next) => {
         if (updatedTrip.vehicle) {
           await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, {
             currentStatus: 'Assigned',
-            assignedDriver: updatedTrip.driver
-          });
-        }
-        if (updatedTrip.driver) {
-          const selectedVeh = await Vehicle.findById(updatedTrip.vehicle);
-          await Driver.findByIdAndUpdate(updatedTrip.driver, {
-            driverStatus: 'ASSIGNED',
-            assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned'
+            assignedDriver: updatedTrip.driver || undefined
           });
         }
       }
@@ -739,13 +576,6 @@ export const deleteTrip = async (req, res, next) => {
       await Vehicle.findByIdAndUpdate(trip.vehicle, {
         currentStatus: 'Available',
         assignedDriver: null
-      });
-    }
-    // Release driver
-    if (trip.driver) {
-      await Driver.findByIdAndUpdate(trip.driver, {
-        driverStatus: 'AVAILABLE',
-        assignedVehicle: 'Unassigned'
       });
     }
 
@@ -1225,10 +1055,10 @@ export const deleteReport = async (req, res, next) => {
 
 export const getLiveTracking = async (req, res, next) => {
   try {
-    const vehicles = await Vehicle.find().populate('assignedDriver').sort({ createdAt: -1 });
+    const vehicles = await Vehicle.find().sort({ createdAt: -1 });
     const trips = await Trip.find({
       status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip', 'Ready to Dispatch'] }
-    }).populate('vehicle').populate('driver');
+    }).populate('vehicle');
 
     const trackingData = vehicles.map(v => {
       const activeTrip = trips.find(t => t.vehicle && String(t.vehicle._id || t.vehicle) === String(v._id));
@@ -1263,7 +1093,7 @@ export const getLiveTracking = async (req, res, next) => {
         currentStatus: v.currentStatus,
         fuelCapacity: v.fuelCapacity,
         updatedAt: v.updatedAt,
-        assignedDriver: v.assignedDriver ? {
+        assignedDriver: (v.assignedDriver && typeof v.assignedDriver === 'object') ? {
           _id: v.assignedDriver._id,
           fullName: driverName,
           phoneNumber: driverPhone
@@ -1663,11 +1493,9 @@ export const getInvoiceByTripId = async (req, res, next) => {
       .populate({
         path: 'trip',
         populate: [
-          { path: 'driver' },
           { path: 'vehicle' }
         ]
       })
-      .populate('driver')
       .populate('vehicle')
       .populate('createdBy', 'fullName email username');
 
@@ -1687,7 +1515,7 @@ export const getInvoiceByTripId = async (req, res, next) => {
         invoiceNumber,
         invoiceDate: new Date(),
         trip: trip._id,
-        driver: trip.driver,
+        driver: trip.driver || undefined,
         vehicle: trip.vehicle,
         createdBy: req.user._id
       });
@@ -1697,11 +1525,9 @@ export const getInvoiceByTripId = async (req, res, next) => {
         .populate({
           path: 'trip',
           populate: [
-            { path: 'driver' },
             { path: 'vehicle' }
           ]
         })
-        .populate('driver')
         .populate('vehicle')
         .populate('createdBy', 'fullName email username');
     }

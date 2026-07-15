@@ -1,5 +1,4 @@
 import Vehicle from '../models/Vehicle.js';
-import Driver from '../models/Driver.js';
 import Trip from '../models/Trip.js';
 import Fuel from '../models/Fuel.js';
 import Maintenance from '../models/Maintenance.js';
@@ -9,10 +8,10 @@ import Notification from '../models/Notification.js';
 
 // Vehicles
 export const getVehicles = async (filter = {}) =>
-  Vehicle.find(filter).populate('assignedDriver').sort({ createdAt: -1 });
+  Vehicle.find(filter).sort({ createdAt: -1 });
 
 export const getVehicleById = async (id) =>
-  Vehicle.findById(id).populate('assignedDriver');
+  Vehicle.findById(id);
 
 export const createVehicle = async (data) => {
   const vehicle = new Vehicle(data);
@@ -25,31 +24,13 @@ export const updateVehicle = async (id, data) =>
 export const deleteVehicle = async (id) =>
   Vehicle.findByIdAndDelete(id);
 
-// Drivers
-export const getDrivers = async (filter = {}) =>
-  Driver.find(filter).sort({ createdAt: -1 });
-
-export const getDriverById = async (id) =>
-  Driver.findById(id);
-
-export const createDriver = async (data) => {
-  const driver = new Driver(data);
-  return driver.save();
-};
-
-export const updateDriver = async (id, data) =>
-  Driver.findByIdAndUpdate(id, data, { new: true, runValidators: true });
-
-export const deleteDriver = async (id) =>
-  Driver.findByIdAndDelete(id);
-
 // Trips
 export const getTrips = async (filter = {}) => {
   return Trip.find(filter);
 };
 
 export const getTripById = async (id) => {
-  return Trip.findById(id).populate('driver').populate('vehicle');
+  return Trip.findById(id).populate('vehicle');
 };
 
 export const createTrip = async (data) => {

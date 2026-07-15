@@ -9,12 +9,6 @@ import {
   getVehicleById,
   updateVehicle,
   deleteVehicle,
-  // Drivers
-  listDrivers,
-  createDriver,
-  getDriverDetails,
-  updateDriver,
-  deleteDriver,
   // Trips
   listTrips,
   createTrip,
@@ -77,14 +71,6 @@ router.post('/vehicles',       ...auth, checkActiveSubscription, createVehicle);
 router.get('/vehicles/:id',    ...auth, getVehicleById);
 router.put('/vehicles/:id',    ...auth, checkActiveSubscription, updateVehicle);
 router.delete('/vehicles/:id', ...auth, checkActiveSubscription, deleteVehicle);
-
-// Drivers
-router.get('/drivers',        ...auth, listDrivers);
-router.post('/drivers',       ...auth, checkActiveSubscription, createDriver);
-router.get('/drivers/:id',    ...auth, getDriverDetails);
-router.put('/drivers/:id',    ...auth, checkActiveSubscription, updateDriver);
-router.delete('/drivers/:id', ...auth, checkActiveSubscription, deleteDriver);
-
 // Trips
 router.get('/trips',        ...auth, listTrips);
 router.post('/trips',       ...auth, checkActiveSubscription, createTrip);

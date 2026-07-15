@@ -39,11 +39,6 @@ import AddVehiclePage from "@/roles/manager/pages/AddVehiclePage";
 import VehiclesListPage from "@/roles/manager/pages/VehiclesListPage";
 import VehicleDetailsPage from "@/roles/manager/pages/VehicleDetailsPage";
 import VehicleEditPage from "@/roles/manager/pages/VehicleEditPage";
-import DriversManagementPage from "@/roles/manager/pages/DriversManagementPage";
-import DriversListPage from "@/roles/manager/pages/DriversListPage";
-import DriverProfilePage from "@/roles/manager/pages/DriverProfilePage";
-import AssignVehiclePage from "@/roles/manager/pages/AssignVehiclePage";
-import AddDriverPage from "@/roles/manager/pages/AddDriverPage";
 import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
 import TripsListPage from "@/roles/manager/pages/TripsListPage";
 import CreateTripPage from "@/roles/manager/pages/CreateTripPage";
@@ -165,18 +160,12 @@ export default function App() {
 
 
               <Route path="/manager/settings" element={<SettingsPage />} />
-              <Route path="/manager/drivers" element={<DriversManagementPage />} />
-              <Route path="/manager/drivers-list" element={<DriversListPage />} />
               <Route path="/manager/trips" element={<TripsManagementPage />} />
               <Route path="/manager/trips-list" element={<TripsListPage />} />
               <Route path="/manager/create-trip" element={<CreateTripPage />} />
               <Route path="/manager/trip-details/:id" element={<TripDetailsPage />} />
               {/* <Route path="/manager/trips" element={<TripsManagementPage />} />
               <Route path="/manager/trips-list" element={<TripsListPage />} /> */}
-              <Route path="/manager/driver-profile/:id" element={<DriverProfilePage />} />
-              <Route path="/manager/driver-assign-vehicle/:id" element={<AssignVehiclePage />} />
-              <Route path="/manager/add-driver" element={<AddDriverPage />} />
-              <Route path="/manager/edit-driver/:id" element={<AddDriverPage />} />
 
               <Route path="/manager/fuel" element={<FuelManagementPage />} />
               <Route path="/manager/analytics" element={<AnalyticsPage />} />
