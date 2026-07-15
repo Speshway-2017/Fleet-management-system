@@ -126,8 +126,8 @@ export default function OrganizationList() {
               </Link>
             </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto no-scrollbar">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto no-scrollbar">
               <table className="w-full text-center border-collapse min-w-[800px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
@@ -180,6 +180,61 @@ export default function OrganizationList() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden flex flex-col p-4 gap-4 bg-slate-50/50">
+              {organizations
+                .filter(org => 
+                  org.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                  org.industry.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+                .map((org) => (
+                <div key={org.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-500 shrink-0">
+                        {org.name.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800">{org.name}</div>
+                        <div className="text-xs text-slate-500">{org.industry}</div>
+                      </div>
+                    </div>
+                    <StatusBadge status={org.status} />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Managers</span>
+                      <span className="text-sm font-medium text-slate-700">{org.activeManagers}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Plan</span>
+                      <span className="text-sm font-medium text-slate-700">{org.subscription}</span>
+                    </div>
+                    <div className="flex flex-col col-span-2 mt-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Created Date</span>
+                      <span className="text-sm font-medium text-slate-700">{org.createdAt}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-4 mt-3 pt-3 border-t border-slate-100">
+                    <Link to={`/admin/organizations/details/${org.id}`} className="text-slate-400 hover:text-slate-600 transition-colors" title="View Details">
+                      <Eye className="w-4 h-4" />
+                    </Link>
+                    <Link to={`/admin/organizations/edit/${org.id}`} className="text-slate-400 hover:text-[#A14000] transition-colors" title="Edit">
+                      <Pencil className="w-4 h-4" />
+                    </Link>
+                    <button onClick={() => handleDelete(org.id)} className="text-slate-400 hover:text-red-500 transition-colors" title="Delete">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {organizations.filter(org => org.name.toLowerCase().includes(searchTerm.toLowerCase()) || org.industry.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                <div className="text-center text-slate-500 py-8 text-sm">No organizations found.</div>
+              )}
             </div>
           </div>
           

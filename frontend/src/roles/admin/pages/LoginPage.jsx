@@ -7,9 +7,7 @@ import {
   Lock, 
   Eye, 
   EyeOff, 
-  ArrowRight, 
-  ShieldCheck, 
-  Zap
+  ArrowRight
 } from "lucide-react";
 import TermsModal from "@/components/common/TermsModal";
 
@@ -114,137 +112,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#F8FAFC] font-sans text-[#1E293B] relative overflow-hidden">
-      
-      {/* ── LEFT PANEL (55% Width) ── */}
-      <div 
-        className="w-full lg:w-[55%] flex flex-col justify-between p-8 lg:p-14 relative overflow-hidden bg-cover bg-center min-h-[600px] lg:min-h-screen shrink-0"
-        style={{
-          backgroundImage: "url('/hero-bg.jpg')",
-        }}
-      >
-        {/* Soft dark overlay for text readability while maintaining high image clarity */}
-        <div className="absolute inset-0 bg-slate-900/40 pointer-events-none z-0" />
-        
-        {/* Top Header: Logo + Title */}
-        <div className="relative z-10">
-          <NavLink to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
-            <img src="/logo.png" alt="Fleet Management Logo" className="h-10 w-auto object-contain bg-white/95 rounded-xl p-1 shadow-sm" />
-            <span className="font-display font-black text-white text-lg tracking-wide">
-              Fleet Management
-            </span>
-          </NavLink>
-        </div>
-
-        {/* Middle Hero details */}
-        <div className="relative z-10 space-y-7 max-w-xl my-auto py-12">
-          
-          <h1 className="font-display font-black text-white text-3xl sm:text-4xl md:text-5xl leading-[1.15] tracking-tight">
-            Fleet Management <br />
-            <span className="text-[#A14000]">System</span>
-          </h1>
-
-          <p className="text-sm text-slate-200 font-medium leading-relaxed max-w-lg">
-            Manage fleets, drivers, vehicles, centralized dashboard and operations from one intelligent platform. 
-            Improve operational efficiency, monitor vehicle health in real time, reduce operational costs, 
-            and secure your logistics operations with enterprise-grade technology.
-          </p>
-
-          {/* Features rows */}
-          <div className="space-y-4 pt-4">
-            
-            {/* Feature 1 */}
-            <div className="flex items-start gap-3">
-              <div className="h-9 w-9 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
-                <span className="text-lg">🚛</span>
-              </div>
-              <div>
-                <h4 className="font-display font-bold text-xs text-white">Real-Time Fleet Tracking</h4>
-                <p className="text-[11px] text-slate-300 font-medium">Monitor vehicles live using GPS and telematics.</p>
-              </div>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="flex items-start gap-3">
-              <div className="h-9 w-9 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
-                <ShieldCheck className="h-4.5 w-4.5" />
-              </div>
-              <div>
-                <h4 className="font-display font-bold text-xs text-white">Enterprise Security</h4>
-                <p className="text-[11px] text-slate-300 font-medium">Role-based authentication with secure access.</p>
-              </div>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="flex items-start gap-3">
-              <div className="h-9 w-9 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
-                <span className="text-lg">📊</span>
-              </div>
-              <div>
-                <h4 className="font-display font-bold text-xs text-white">Smart Analytics</h4>
-                <p className="text-[11px] text-slate-300 font-medium">Generate reports and optimize operational performance.</p>
-              </div>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="flex items-start gap-3">
-              <div className="h-9 w-9 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
-                <Zap className="h-4.5 w-4.5" />
-              </div>
-              <div>
-                <h4 className="font-display font-bold text-xs text-white">Automated Operations</h4>
-                <p className="text-[11px] text-slate-300 font-medium">Reduce manual work through workflow automation.</p>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Left panel CTA buttons: Login button removed as requested */}
-          <div className="flex items-center gap-4 pt-4">
-            <button
-              onClick={() => navigate("/contact")}
-              className="px-6 py-3 rounded-xl bg-white/80 border border-gray-300 hover:bg-white text-[#1E293B] font-bold text-xs shadow-sm hover:shadow-md active:scale-[0.98] transition-all cursor-pointer"
-            >
-              Learn More
-            </button>
-          </div>
-
-        </div>
-
-        {/* Bottom stats bar: Dark glassmorphic stats bar with four metrics */}
-        <div className="relative z-10 w-full mt-auto pt-6 border-t border-gray-300/30">
-          <div className="bg-[#0F2345]/85 backdrop-blur-md border border-white/10 rounded-2xl p-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-white shadow-xl">
-            
-            <div className="space-y-1 text-center md:text-left">
-              <div className="text-2xl font-black text-[#A14000] tracking-tight leading-none">500+</div>
-              <p className="text-[9px] font-bold text-gray-300 uppercase tracking-widest mt-1">Vehicles Managed</p>
-            </div>
-
-            <div className="space-y-1 text-center md:text-left">
-              <div className="text-2xl font-black text-[#A14000] tracking-tight leading-none">250+</div>
-              <p className="text-[9px] font-bold text-gray-300 uppercase tracking-widest mt-1">Enterprise Clients</p>
-            </div>
-
-            <div className="space-y-1 text-center md:text-left">
-              <div className="text-2xl font-black text-[#A14000] tracking-tight leading-none">1.2M+</div>
-              <p className="text-[9px] font-bold text-gray-300 uppercase tracking-widest mt-1">KM Tracked</p>
-            </div>
-
-            <div className="space-y-1 text-center md:text-left">
-              <div className="text-2xl font-black text-[#A14000] tracking-tight leading-none">99.9%</div>
-              <p className="text-[9px] font-bold text-gray-300 uppercase tracking-widest mt-1">Platform Uptime</p>
-            </div>
-
-          </div>
-        </div>
-
-      </div>
-
-      {/* ── RIGHT PANEL (45% Width) ── */}
-      <div className="w-full lg:w-[45%] flex items-center justify-center p-6 sm:p-12 md:p-16 bg-[#F8FAFC] min-h-screen">
-        
-        {/* Premium Glassmorphism Card */}
-        <div className="w-full max-w-[440px] bg-white/95 backdrop-blur-md border border-[#E5E7EB] rounded-[20px] p-6 sm:p-10 shadow-2xl relative z-10 lg:-translate-y-14">
+    <>
+      {/* Premium Glassmorphism Card */}
+      <div className="w-full max-w-[440px] bg-white/95 backdrop-blur-md border border-[#E5E7EB] rounded-[20px] p-6 sm:p-10 shadow-2xl relative z-10 my-auto">
           
           {/* Back to Home Navigation Link */}
           <div className="mb-6">
@@ -428,9 +298,7 @@ export default function LoginPage() {
 
         </div>
 
-      </div>
-
       <TermsModal isOpen={isTermsOpen} onClose={() => setIsTermsOpen(false)} />
-    </div>
+    </>
   );
 }

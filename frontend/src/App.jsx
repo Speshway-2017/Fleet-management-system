@@ -5,6 +5,7 @@ import { AdminProvider } from "@/roles/admin/context/AdminContext";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
+import AuthLayout from "@/components/layout/AuthLayout";
 import LoginPage from "@/roles/admin/pages/LoginPage";
 import ForgotPasswordPage from "@/roles/admin/pages/ForgotPasswordPage";
 import OtpVerificationPage from "@/roles/admin/pages/OtpVerificationPage";
@@ -98,10 +99,12 @@ export default function App() {
           <Route path="/contact" element={<PublicRoute><Contact /></PublicRoute>} />
           <Route path="/security" element={<PublicRoute><Security /></PublicRoute>} />
           <Route path="/blogs" element={<PublicRoute><Blogs /></PublicRoute>} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/otp-verification" element={<OtpVerificationPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/otp-verification" element={<OtpVerificationPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+          </Route>
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           <Route element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "admin"]} />}>

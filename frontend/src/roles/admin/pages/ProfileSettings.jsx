@@ -3,13 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 import { Upload, LogOut, Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
+import { useAdmin } from "@/roles/admin/context/AdminContext";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import { adminApi } from "@/api/adminApi";
 
 export default function ProfileSettings() {
   const navigate = useNavigate();
-  const { logout, checkAuth } = useAuth();
+  const { logout, checkAuth, user, login } = useAuth(); // login to potentially update user session
+  const { setAdminProfile } = useAdmin();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [profileUrl, setProfileUrl] = useState(null);
@@ -27,7 +29,25 @@ export default function ProfileSettings() {
     newPassword: "",
     confirmNewPassword: ""
   });
+  const [initialForm, setInitialForm] = useState(null);
   const [errors, setErrors] = useState({});
+
+  const isProfileDirty = () => {
+    if (!initialForm) return false;
+    return (
+      form.firstName !== initialForm.firstName ||
+      form.lastName !== initialForm.lastName ||
+      form.email !== initialForm.email ||
+      form.phone !== initialForm.phone ||
+      profileFile !== null
+    );
+  };
+
+  const isPasswordDirty = () => {
+    return form.currentPassword !== "" || form.newPassword !== "" || form.confirmNewPassword !== "";
+  };
+
+  const isDirty = isProfileDirty() || isPasswordDirty();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -36,13 +56,17 @@ export default function ProfileSettings() {
         const user = response.data?.data || response.data;
         if (user) {
           const nameParts = (user.name || "").split(" ");
-          setForm((prev) => ({
-            ...prev,
+          const profileData = {
             firstName: nameParts[0] || "",
             lastName: nameParts.slice(1).join(" ") || "",
             email: user.email || "",
             phone: user.phone || ""
+          };
+          setForm((prev) => ({
+            ...prev,
+            ...profileData
           }));
+          setInitialForm(profileData);
           if (user.profileImage) {
             setProfileUrl(user.profileImage);
           }
@@ -63,13 +87,14 @@ export default function ProfileSettings() {
 
   const handleSave = async () => {
     const newErrors = {};
-    if (!form.firstName) newErrors.firstName = "First Name is required";
-    if (!form.lastName) newErrors.lastName = "Last Name is required";
-    if (!form.email) newErrors.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = "Invalid email format";
-    if (form.phone && !/^\+?[0-9\s-]{7,15}$/.test(form.phone)) newErrors.phone = "Invalid phone format";
+    if (isProfileDirty()) {
+      if (!form.firstName) newErrors.firstName = "First Name is required";
+      if (!form.email) newErrors.email = "Email is required";
+      else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = "Invalid email format";
+      if (form.phone && !/^\+?[0-9\s-]{7,15}$/.test(form.phone)) newErrors.phone = "Invalid phone format";
+    }
 
-    if (form.currentPassword || form.newPassword || form.confirmNewPassword) {
+    if (isPasswordDirty()) {
       if (!form.currentPassword) newErrors.currentPassword = "Current Password is required";
       if (!form.newPassword) newErrors.newPassword = "New Password is required";
       else {
@@ -87,25 +112,49 @@ export default function ProfileSettings() {
     setIsSaving(true);
     try {
       const formData = new FormData();
-      formData.append("name", `${form.firstName} ${form.lastName}`.trim());
-      formData.append("email", form.email);
-      formData.append("phone", form.phone);
       
-      if (form.currentPassword && form.newPassword) {
+      if (isProfileDirty()) {
+        formData.append("name", `${form.firstName} ${form.lastName}`.trim());
+        formData.append("email", form.email);
+        formData.append("phone", form.phone);
+        if (profileFile) {
+          formData.append("profileImage", profileFile);
+        }
+      }
+      
+      if (isPasswordDirty()) {
         formData.append("currentPassword", form.currentPassword);
         formData.append("newPassword", form.newPassword);
       }
-      
-      if (profileFile) {
-        formData.append("profileImage", profileFile);
-      }
 
       const response = await adminApi.updateProfile(formData);
+      const updatedUser = response.data?.data || response.data;
       
       toast.success("Profile saved successfully!");
       setForm({...form, currentPassword: '', newPassword: '', confirmNewPassword: ''});
       setProfileFile(null); // Clear file since it's uploaded
       
+      if (isProfileDirty()) {
+        const nameParts = (updatedUser.name || "").split(" ");
+        setInitialForm({
+          firstName: nameParts[0] || "",
+          lastName: nameParts.slice(1).join(" ") || "",
+          email: updatedUser.email || "",
+          phone: updatedUser.phone || ""
+        });
+      }
+      
+      // Update local state image
+      if (updatedUser.profileImage) {
+        setProfileUrl(updatedUser.profileImage);
+      }
+      
+      // Update top navbar via AdminContext
+      setAdminProfile({
+        name: updatedUser.name || "",
+        avatarUrl: updatedUser.profileImage || ""
+      });
+
       // Optionally update user context if it holds these values
       if (checkAuth) {
         await checkAuth(); // Refresh the AuthContext
@@ -152,10 +201,17 @@ export default function ProfileSettings() {
               </button>
               <button 
                 onClick={handleSave}
-                disabled={isSaving}
-                className="flex-[2] sm:flex-none px-2 sm:px-6 py-2.5 bg-[#b45309] hover:bg-[#92400e] text-white text-xs sm:text-sm font-bold rounded-lg shadow-sm transition-colors disabled:opacity-70 disabled:cursor-wait text-center w-full sm:w-auto truncate"
+                disabled={!isDirty || isSaving}
+                className="flex-[2] sm:flex-none px-2 sm:px-6 py-2.5 bg-[#b45309] hover:bg-[#92400e] text-white text-xs sm:text-sm font-bold rounded-lg shadow-sm transition-colors disabled:opacity-70 disabled:cursor-not-allowed text-center w-full sm:w-auto truncate flex items-center justify-center"
               >
-                {isSaving ? "Saving..." : "Save Profile"}
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
               </button>
             </div>
           </div>
@@ -193,12 +249,15 @@ export default function ProfileSettings() {
                       }
                     }} 
                   />
-                  <button 
+                  <div 
+                    role="button"
+                    tabIndex={0}
                     onClick={() => document.getElementById('profile-upload').click()}
                     className="absolute bottom-0 right-0 w-6 h-6 bg-[#b45309] hover:bg-[#92400e] text-white rounded-full flex items-center justify-center border-2 border-white transition-colors cursor-pointer"
+                    style={{ minWidth: '24px', minHeight: '24px', padding: 0, margin: 0 }}
                   >
                     <Upload className="w-3 h-3" />
-                  </button>
+                  </div>
                 </div>
                 
                 <div>
@@ -278,7 +337,8 @@ export default function ProfileSettings() {
                       name="currentPassword"
                       value={form.currentPassword}
                       onChange={handleChange}
-                      placeholder="********" 
+                      placeholder="********"
+                      autoComplete="new-password"
                       className={`w-full px-4 py-2.5 pr-10 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.currentPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
                     />
                     <button 
@@ -301,7 +361,8 @@ export default function ProfileSettings() {
                         name="newPassword"
                         value={form.newPassword}
                         onChange={handleChange}
-                        placeholder="********" 
+                        placeholder="********"
+                        autoComplete="new-password"
                         className={`w-full px-4 py-2.5 pr-10 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.newPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
                       />
                       <button 
@@ -323,7 +384,8 @@ export default function ProfileSettings() {
                         name="confirmNewPassword"
                         value={form.confirmNewPassword}
                         onChange={handleChange}
-                        placeholder="********" 
+                        placeholder="********"
+                        autoComplete="new-password"
                         className={`w-full px-4 py-2.5 pr-10 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all placeholder-slate-400 ${errors.confirmNewPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#b45309]/20 focus:border-[#b45309]'}`}
                       />
                       <button 
