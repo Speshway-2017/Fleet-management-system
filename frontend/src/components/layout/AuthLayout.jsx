@@ -15,8 +15,8 @@ export default function AuthLayout({ children, backLabel, onBack }) {
             "url('/hero-bg.jpg')",
         }}
       >
-        {/* Translucent overlay for text legibility */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/80 to-black/60 pointer-events-none z-0" />
+        {/* Soft dark overlay for text readability while maintaining high image clarity */}
+        <div className="absolute inset-0 bg-slate-900/40 pointer-events-none z-0" />
 
         {/* ── TOP: Brand & Description Zone ── */}
         <div className="relative z-10 space-y-6">
@@ -25,19 +25,19 @@ export default function AuthLayout({ children, backLabel, onBack }) {
             <div className="bg-white rounded-full p-1 shadow-md border border-gray-100 flex items-center justify-center h-10 w-10">
               <img src="/logo.png" alt="Fleet Management Logo" className="h-7 w-7 object-contain" />
             </div>
-            <span className="font-display font-black text-gray-900 text-sm tracking-wide">
+            <span className="font-display font-black text-white text-sm tracking-wide">
               Fleet Management
             </span>
           </div>
 
           {/* Heading */}
-          <h1 className="font-display font-black text-[#0B1B3D] leading-tight tracking-tight text-3xl sm:text-4xl">
+          <h1 className="font-display font-black text-white leading-tight tracking-tight text-3xl sm:text-4xl">
             Fleet Management <br />
             <span className="text-[#A14000]">System</span>
           </h1>
 
           {/* Description */}
-          <p className="text-gray-600 font-medium leading-relaxed text-xs max-w-sm">
+          <p className="text-slate-200 font-medium leading-relaxed text-xs max-w-sm">
             Manage your fleet operations efficiently with real-time telematics, driver performance tracking, and automated maintenance scheduling.
           </p>
 

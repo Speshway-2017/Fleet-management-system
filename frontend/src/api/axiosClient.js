@@ -25,7 +25,9 @@ axiosClient.interceptors.response.use(
       sessionStorage.removeItem("token");
       sessionStorage.removeItem("user");
       sessionStorage.removeItem("authToken");
-      window.location.href = "/login";
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   },

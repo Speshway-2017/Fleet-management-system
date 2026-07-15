@@ -11,11 +11,23 @@ import {
   ShieldCheck, 
   Zap
 } from "lucide-react";
+import TermsModal from "@/components/common/TermsModal";
 
 export default function LoginPage() {
   const { login, loading, isAuthenticated, role } = useAuth();
   const navigate = useNavigate();
   const emailInputRef = useRef(null);
+  const passwordInputRef = useRef(null);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
+
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+
+  const [loginError, setLoginError] = useState(null);
+  const [isPasswordError, setIsPasswordError] = useState(false);
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -23,10 +35,32 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, role, navigate]);
 
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [errors, setErrors] = useState({});
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleInputChange = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: null }));
+    }
+
+    if (loginError) {
+      setLoginError(null);
+    }
+    if (isPasswordError) {
+      setIsPasswordError(false);
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  };
 
   const validate = () => {
     const newErrors = {};
@@ -41,6 +75,13 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoginError(null);
+    setIsPasswordError(false);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
     if (!validate()) return;
 
     try {
@@ -48,7 +89,21 @@ export default function LoginPage() {
       toast.success(`Welcome back, ${user.name || "User"}!`);
       navigate(user.role === "SUPER_ADMIN" || user.role === "admin" ? "/admin/dashboard" : "/manager");
     } catch (err) {
-      toast.error(err.message || "Invalid email or password");
+      const backendMessage = err.response?.data?.message;
+      const displayMsg = backendMessage || "Invalid email or password.";
+      
+      setLoginError(displayMsg);
+      setIsPasswordError(true);
+      setForm(prev => ({ ...prev, password: "" }));
+      
+      setTimeout(() => {
+        passwordInputRef.current?.focus();
+      }, 50);
+
+      timeoutRef.current = setTimeout(() => {
+        setLoginError(null);
+        setIsPasswordError(false);
+      }, 5000);
     }
   };
 
@@ -68,30 +123,30 @@ export default function LoginPage() {
           backgroundImage: "url('/hero-bg.jpg')",
         }}
       >
-        {/* Soft, light white gradient overlay from the left edge so text remains readable while preserving the truck image */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent pointer-events-none z-0" />
+        {/* Soft dark overlay for text readability while maintaining high image clarity */}
+        <div className="absolute inset-0 bg-slate-900/40 pointer-events-none z-0" />
         
         {/* Top Header: Logo + Title */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="bg-white rounded-2xl p-1.5 shadow-md border border-gray-100 flex items-center justify-center h-11 w-11 hover:scale-105 transition-transform duration-200">
-            <img src="/logo.png" alt="Fleet Management Logo" className="h-8 w-8 object-contain" />
-          </div>
-          <span className="font-display font-black text-[#0F2345] text-base tracking-wide">
-            Fleet Management
-          </span>
+        <div className="relative z-10">
+          <NavLink to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+            <img src="/logo.png" alt="Fleet Management Logo" className="h-10 w-auto object-contain bg-white/95 rounded-xl p-1 shadow-sm" />
+            <span className="font-display font-black text-white text-lg tracking-wide">
+              Fleet Management
+            </span>
+          </NavLink>
         </div>
 
         {/* Middle Hero details */}
         <div className="relative z-10 space-y-7 max-w-xl my-auto py-12">
           
-          <h1 className="font-display font-black text-[#0F2345] text-3xl sm:text-4xl md:text-5xl leading-[1.15] tracking-tight">
+          <h1 className="font-display font-black text-white text-3xl sm:text-4xl md:text-5xl leading-[1.15] tracking-tight">
             Fleet Management <br />
             <span className="text-[#A14000]">System</span>
           </h1>
 
-          <p className="text-sm text-[#1E293B] font-medium leading-relaxed max-w-lg">
-            Manage fleets, drivers, vehicles, routes and operations from one intelligent platform. 
-            Improve operational efficiency, monitor vehicle health in real time, reduce fuel costs, 
+          <p className="text-sm text-slate-200 font-medium leading-relaxed max-w-lg">
+            Manage fleets, drivers, vehicles, centralized dashboard and operations from one intelligent platform. 
+            Improve operational efficiency, monitor vehicle health in real time, reduce operational costs, 
             and secure your logistics operations with enterprise-grade technology.
           </p>
 
@@ -104,8 +159,8 @@ export default function LoginPage() {
                 <span className="text-lg">🚛</span>
               </div>
               <div>
-                <h4 className="font-display font-bold text-xs text-[#0F2345]">Real-Time Fleet Tracking</h4>
-                <p className="text-[11px] text-[#1E293B]/70 font-medium">Monitor vehicles live using GPS and telematics.</p>
+                <h4 className="font-display font-bold text-xs text-white">Real-Time Fleet Tracking</h4>
+                <p className="text-[11px] text-slate-300 font-medium">Monitor vehicles live using GPS and telematics.</p>
               </div>
             </div>
 
@@ -115,8 +170,8 @@ export default function LoginPage() {
                 <ShieldCheck className="h-4.5 w-4.5" />
               </div>
               <div>
-                <h4 className="font-display font-bold text-xs text-[#0F2345]">Enterprise Security</h4>
-                <p className="text-[11px] text-[#1E293B]/70 font-medium">Role-based authentication with secure access.</p>
+                <h4 className="font-display font-bold text-xs text-white">Enterprise Security</h4>
+                <p className="text-[11px] text-slate-300 font-medium">Role-based authentication with secure access.</p>
               </div>
             </div>
 
@@ -126,8 +181,8 @@ export default function LoginPage() {
                 <span className="text-lg">📊</span>
               </div>
               <div>
-                <h4 className="font-display font-bold text-xs text-[#0F2345]">Smart Analytics</h4>
-                <p className="text-[11px] text-[#1E293B]/70 font-medium">Generate reports and optimize operational performance.</p>
+                <h4 className="font-display font-bold text-xs text-white">Smart Analytics</h4>
+                <p className="text-[11px] text-slate-300 font-medium">Generate reports and optimize operational performance.</p>
               </div>
             </div>
 
@@ -137,8 +192,8 @@ export default function LoginPage() {
                 <Zap className="h-4.5 w-4.5" />
               </div>
               <div>
-                <h4 className="font-display font-bold text-xs text-[#0F2345]">Automated Operations</h4>
-                <p className="text-[11px] text-[#1E293B]/70 font-medium">Reduce manual work through workflow automation.</p>
+                <h4 className="font-display font-bold text-xs text-white">Automated Operations</h4>
+                <p className="text-[11px] text-slate-300 font-medium">Reduce manual work through workflow automation.</p>
               </div>
             </div>
 
@@ -189,7 +244,7 @@ export default function LoginPage() {
       <div className="w-full lg:w-[45%] flex items-center justify-center p-6 sm:p-12 md:p-16 bg-[#F8FAFC] min-h-screen">
         
         {/* Premium Glassmorphism Card */}
-        <div className="w-full max-w-[440px] bg-white/95 backdrop-blur-md border border-[#E5E7EB] rounded-[20px] p-6 sm:p-10 shadow-2xl relative z-10">
+        <div className="w-full max-w-[440px] bg-white/95 backdrop-blur-md border border-[#E5E7EB] rounded-[20px] p-6 sm:p-10 shadow-2xl relative z-10 lg:-translate-y-14">
           
           {/* Back to Home Navigation Link */}
           <div className="mb-6">
@@ -204,7 +259,9 @@ export default function LoginPage() {
             </NavLink>
           </div>
 
-          {/* Logo block and company name removed from right side as requested */}
+
+
+          {/* Welcome heading */}
           <div className="flex flex-col items-start justify-start mb-8">
             <h2 className="font-display text-2xl font-black text-[#0F2345] tracking-tight">
               Welcome Back
@@ -213,6 +270,30 @@ export default function LoginPage() {
               Access your Fleet Management Dashboard securely.
             </p>
           </div>
+
+          {/* Error alert component */}
+          {loginError && (
+            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2.5 animate-fadeIn">
+              <span className="text-sm shrink-0">❌</span>
+              <div className="flex-1 font-medium leading-relaxed">
+                {loginError}
+              </div>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setLoginError(null);
+                  setIsPasswordError(false);
+                  if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                    timeoutRef.current = null;
+                  }
+                }}
+                className="text-red-400 hover:text-red-600 transition-colors cursor-pointer font-bold ml-1"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             
@@ -231,7 +312,7 @@ export default function LoginPage() {
                   ref={emailInputRef}
                   placeholder="name@organization.com"
                   value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
                   className={`w-full pl-11 pr-4 py-3 rounded-xl border text-xs text-[#1E293B] placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${
                     errors.email 
                       ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' 
@@ -254,11 +335,12 @@ export default function LoginPage() {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  ref={passwordInputRef}
                   placeholder="••••••••"
                   value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  onChange={(e) => handleInputChange("password", e.target.value)}
                   className={`w-full pl-11 pr-11 py-3 rounded-xl border text-xs text-[#1E293B] placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${
-                    errors.password 
+                    errors.password || isPasswordError
                       ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' 
                       : 'border-gray-200 focus:ring-[#A14000]/15 focus:border-[#A14000]'
                   }`}
@@ -341,13 +423,14 @@ export default function LoginPage() {
           {/* Footer inside card */}
           <div className="mt-8 text-center text-[10px] text-gray-400 font-semibold leading-relaxed">
             By logging in, you agree to our <br />
-            <a href="#" onClick={(e) => { e.preventDefault(); toast.success("Displaying Terms of Service..."); }} className="text-[#A14000] hover:underline">Terms of Service</a> & <a href="#" onClick={(e) => { e.preventDefault(); toast.success("Displaying Privacy Policy..."); }} className="text-[#A14000] hover:underline">Privacy Policy</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); setIsTermsOpen(true); }} className="text-[#A14000] hover:underline">Terms of Service</a> & <a href="#" onClick={(e) => { e.preventDefault(); setIsTermsOpen(true); }} className="text-[#A14000] hover:underline">Privacy Policy</a>
           </div>
 
         </div>
 
       </div>
 
+      <TermsModal isOpen={isTermsOpen} onClose={() => setIsTermsOpen(false)} />
     </div>
   );
 }

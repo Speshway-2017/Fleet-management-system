@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { 
   Search, Mail, Phone, Calendar, Download, Trash2, 
   MessageSquare, Eye, X, Check, ArrowRight, CornerDownRight,
@@ -12,6 +13,9 @@ import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import KPICard from "@/components/common/KPICard";
 
 export default function ContactRequests() {
+  const location = useLocation();
+  const highlightId = new URLSearchParams(location.search).get("id");
+  
   const [contacts, setContacts] = useState([]);
   const [analytics, setAnalytics] = useState({
     summary: { total: 0, new: 0, pending: 0, resolved: 0 },
@@ -90,6 +94,15 @@ export default function ContactRequests() {
   useEffect(() => {
     fetchAnalytics();
   }, []);
+
+  useEffect(() => {
+    if (highlightId && contacts.length > 0) {
+      const matchingContact = contacts.find(c => c._id === highlightId);
+      if (matchingContact) {
+        openViewModal(matchingContact);
+      }
+    }
+  }, [contacts, highlightId]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -427,8 +440,17 @@ export default function ContactRequests() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs">
-                    {contacts.map((contact) => (
-                      <tr key={contact._id} className="hover:bg-slate-50/50 transition-colors">
+                    {contacts.map((contact) => {
+                      const isHighlighted = contact._id === highlightId;
+                      return (
+                        <tr 
+                          key={contact._id} 
+                          className={`hover:bg-slate-50/50 transition-colors ${
+                            isHighlighted 
+                              ? "bg-amber-50 hover:bg-amber-100/70 border-l-4 border-[#A14000] font-semibold" 
+                              : ""
+                          }`}
+                        >
                         {/* Ticket ID */}
                         <td className="px-6 py-4.5 font-bold text-slate-900 tracking-wide font-mono">
                           {contact.ticketId || "N/A"}
@@ -483,7 +505,8 @@ export default function ContactRequests() {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -73,6 +73,7 @@ import About from "@/roles/admin/pages/About";
 import Contact from "@/roles/admin/pages/Contact";
 import Security from "@/roles/admin/pages/Security";
 import Features from "@/roles/admin/pages/Features";
+import Blogs from "@/roles/admin/pages/Blogs";
 import ContactRequests from "@/roles/admin/pages/ContactRequests";
 
 function PublicRoute({ children }) {
@@ -100,6 +101,7 @@ export default function App() {
           <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
           <Route path="/otp-verification" element={<PublicRoute><OtpVerificationPage /></PublicRoute>} />
           <Route path="/reset-password" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+    <Route path="/blogs" element={<PublicRoute><Blogs /></PublicRoute>} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           <Route element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "admin"]} />}>
