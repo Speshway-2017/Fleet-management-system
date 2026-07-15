@@ -41,6 +41,7 @@ import {
 } from '../repositories/manager.repository.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { createAndEmitNotification } from '../utils/notification.js';
+import { processVehicleDocuments } from '../utils/documentHelper.js';
 import Trip from '../models/Trip.js';
 import Driver from '../models/Driver.js';
 import Vehicle from '../models/Vehicle.js';
@@ -148,60 +149,113 @@ export const getVehicleDetails = async (req, res, next) => {
 export const createVehicle = async (req, res, next) => {
   try {
     const {
-      // Required
-      vehicleNumber, model, brand,
-      // Classification
-      type, branch,
-      // Assignment & metrics
-      driver, fuelLevel, fastagBalance,
-      // Optional fields
+      vehicleName,
+      vehicleNumber,
+      registrationNumber,
+      vehicleType,
+      brand,
+      manufacturer,
+      model,
+      manufactureYear,
       year,
-      registrationNumber, registrationState, registrationType,
-      fuelType, transmissionType, seatingCapacity, engineCC,
-      insuranceExpiry, lastService, nextService,
-      ownership, availability, status,
-      documents,
+      assignedDriver,
+      driver,
+      currentStatus,
+      status,
+      fuelType,
+      fuelCapacity,
+      fastagBalance,
+      insuranceExpiry,
+      rcExpiry,
+      pollutionExpiry,
+      permitExpiry,
+      fitnessExpiry,
+      odometer,
+      image,
       chassisNumber,
       loadCapacity,
       ownershipType,
+      ownership,
       insuranceDetails,
       permitDetails,
-    } = req.body;
-
-    if (!vehicleNumber || !model || !brand) {
-      return sendError(res, 400, 'Vehicle number, model, and brand are required');
-    }
-
-    const vehicle = await createVehicleInRepo({
-      vehicleNumber,
-      model,
-      brand,
-      type,
-      branch,
-      driver,
-      fuelLevel: fuelLevel !== undefined ? Number(fuelLevel) : 50,
-      fastagBalance: fastagBalance !== undefined ? Number(fastagBalance) : 0,
-      year,
-      registrationNumber,
+      documents,
+      engineCC,
+      engineNumber,
+      fastagNumber,
+      lastService,
+      lastServiceDate,
+      nextService,
+      nextServiceDue,
+      transmissionType,
+      transmission,
+      seatingCapacity,
       registrationState,
       registrationType,
-      fuelType,
-      transmissionType,
-      seatingCapacity,
-      engineCC,
-      insuranceExpiry: insuranceExpiry || undefined,
-      lastService: lastService || undefined,
-      nextService: nextService || undefined,
-      ownership,
       availability,
-      status: status || 'ACTIVE',
-      assignedManager: req.user._id,
-      documents,
+      branch,
+      branchDepot,
+    } = req.body;
+
+    const resolvedVehicleNumber = vehicleNumber || req.body.vehicleNumber;
+    if (!resolvedVehicleNumber) {
+      return sendError(res, 400, 'Vehicle number is required');
+    }
+
+    const processedDocs = await processVehicleDocuments(documents, req.user);
+
+    const resolvedBrand = brand || manufacturer;
+    const resolvedTransmission = transmissionType || transmission || 'Manual';
+    const resolvedOwnership = ownershipType || ownership || 'Owned';
+    const resolvedBranch = branch || branchDepot || 'Pune';
+    const resolvedLastService = lastService || lastServiceDate || undefined;
+    const resolvedNextService = nextService || nextServiceDue || undefined;
+    const resolvedYear = manufactureYear || year;
+
+    const vehicle = await createVehicleInRepo({
+      vehicleName: vehicleName || (resolvedBrand ? `${resolvedBrand} ${model}` : model),
+      vehicleNumber: resolvedVehicleNumber,
+      registrationNumber: registrationNumber || resolvedVehicleNumber,
+      vehicleType: vehicleType || req.body.type || 'Truck',
+      brand: resolvedBrand,
+      manufacturer: resolvedBrand,
+      model,
+      manufactureYear: resolvedYear ? Number(resolvedYear) : undefined,
+      assignedDriver: assignedDriver || driver || undefined,
+      currentStatus: currentStatus || status || 'Available',
+      fuelType: fuelType || 'Diesel',
+      fuelCapacity: fuelCapacity !== undefined ? Number(fuelCapacity) : 0,
+      fastagBalance: fastagBalance !== undefined ? Number(fastagBalance) : 0,
+      insuranceExpiry: insuranceExpiry || undefined,
+      rcExpiry: rcExpiry || undefined,
+      pollutionExpiry: pollutionExpiry || undefined,
+      permitExpiry: permitExpiry || undefined,
+      fitnessExpiry: fitnessExpiry || undefined,
+      odometer: odometer !== undefined ? Number(odometer) : 0,
+      image: image || '',
+      assignedManager: req.user?._id,
+      createdBy: req.user?._id,
       chassisNumber,
       loadCapacity: loadCapacity !== undefined ? Number(loadCapacity) : 0,
-      ownershipType: ownershipType || 'Owned',
+      ownershipType: resolvedOwnership,
+      ownership: resolvedOwnership,
       insuranceDetails,
       permitDetails,
+      documents: processedDocs,
+      engineCC,
+      engineNumber,
+      fastagNumber,
+      lastService: resolvedLastService,
+      lastServiceDate: resolvedLastService,
+      nextService: resolvedNextService,
+      nextServiceDue: resolvedNextService,
+      transmissionType: resolvedTransmission,
+      transmission: resolvedTransmission,
+      seatingCapacity: seatingCapacity || '2',
+      registrationState,
+      registrationType: registrationType || 'New',
+      availability: availability || 'Immediate',
+      branch: resolvedBranch,
+      branchDepot: resolvedBranch,
     });
 
     await logActivity({
@@ -233,7 +287,38 @@ export const getVehicleById = async (req, res, next) => {
 
 export const updateVehicle = async (req, res, next) => {
   try {
-    const vehicle = await updateVehicleInRepo(req.params.id, req.body);
+    const updateData = { ...req.body };
+    if (updateData.documents) {
+      updateData.documents = await processVehicleDocuments(updateData.documents, req.user);
+    }
+    
+    if (updateData.manufacturer !== undefined || updateData.brand !== undefined) {
+      updateData.brand = updateData.manufacturer || updateData.brand;
+      updateData.manufacturer = updateData.brand;
+    }
+    if (updateData.transmissionType !== undefined || updateData.transmission !== undefined) {
+      updateData.transmissionType = updateData.transmissionType || updateData.transmission;
+      updateData.transmission = updateData.transmissionType;
+    }
+    if (updateData.ownershipType !== undefined || updateData.ownership !== undefined) {
+      updateData.ownershipType = updateData.ownershipType || updateData.ownership;
+      updateData.ownership = updateData.ownershipType;
+    }
+    if (updateData.branch !== undefined || updateData.branchDepot !== undefined) {
+      updateData.branch = updateData.branch || updateData.branchDepot;
+      updateData.branchDepot = updateData.branch;
+    }
+    if (updateData.lastService !== undefined || updateData.lastServiceDate !== undefined) {
+      updateData.lastService = updateData.lastService || updateData.lastServiceDate;
+      updateData.lastServiceDate = updateData.lastService;
+    }
+    if (updateData.nextService !== undefined || updateData.nextServiceDue !== undefined) {
+      updateData.nextService = updateData.nextService || updateData.nextServiceDue;
+      updateData.nextServiceDue = updateData.nextService;
+    }
+    updateData.updatedBy = req.user?._id;
+    
+    const vehicle = await updateVehicleInRepo(req.params.id, updateData);
     await logActivity({
       title: 'Vehicle Updated',
       description: `Vehicle ${vehicle.vehicleNumber} details were updated.`,

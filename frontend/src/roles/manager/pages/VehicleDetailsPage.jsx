@@ -33,6 +33,13 @@ const CITY_COORDINATES = {
   lucknow: [26.8467, 80.9462]
 };
 
+const getDocumentUrl = (path) => {
+  if (!path) return "";
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) return path;
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").replace("/api", "");
+  return `${baseUrl}${path}`;
+};
+
 export default function VehicleDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -85,18 +92,31 @@ export default function VehicleDetailsPage() {
     return {
       ...v,
       id:           v._id,
-      name:         v.vehicleName || `${v.brand} ${v.model}`,
-      manufacturer: v.brand || "",
+      name:         v.vehicleName || (v.manufacturer ? `${v.manufacturer} ${v.model}` : (v.brand ? `${v.brand} ${v.model}` : v.model)),
+      manufacturer: v.manufacturer || v.brand || "",
       plateNumber:  v.vehicleNumber || "",
       type:         v.vehicleType || "Truck",
       driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
         ? v.assignedDriver.fullName
         : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
+      manager:      v.assignedManager && typeof v.assignedManager === 'object'
+        ? v.assignedManager.name || v.assignedManager.fullName || v.assignedManager.email
+        : (typeof v.assignedManager === 'string' ? v.assignedManager : 'N/A'),
+      createdByVal: v.createdBy && typeof v.createdBy === 'object'
+        ? v.createdBy.name || v.createdBy.fullName || v.createdBy.email
+        : (typeof v.createdBy === 'string' ? v.createdBy : 'N/A'),
+      updatedByVal: v.updatedBy && typeof v.updatedBy === 'object'
+        ? v.updatedBy.name || v.updatedBy.fullName || v.updatedBy.email
+        : (typeof v.updatedBy === 'string' ? v.updatedBy : 'N/A'),
       fuelLevel:    v.fuelCapacity ? Math.round((v.odometer % v.fuelCapacity) || 50) : 50,
       fastagBalance: v.fastagBalance ?? 0,
-      branch:       v.branch || "Pune",
+      branch:       v.branch || v.branchDepot || "Pune",
       dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
       status:       v.currentStatus || 'Available',
+      transmission: v.transmission || v.transmissionType || "Manual",
+      ownership:    v.ownership || v.ownershipType || "Owned",
+      lastService:  v.lastService || v.lastServiceDate || "",
+      nextService:  v.nextService || v.nextServiceDue || "",
     };
   };
 
@@ -478,12 +498,17 @@ export default function VehicleDetailsPage() {
                 </div>
                 <div>
                   <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Ownership Type</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.ownershipType || "N/A"}</p>
+                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.ownership || vehicle.ownershipType || "N/A"}</p>
                 </div>
                 <div>
                   <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Branch / Location</p>
                   <p className="text-sm font-semibold text-[#1E293B]">{vehicle.branch}</p>
                 </div>
+                <div>
+                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Assigned Manager</p>
+                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.manager || "N/A"}</p>
+                </div>
+
               </div>
             </div>
 
@@ -499,7 +524,7 @@ export default function VehicleDetailsPage() {
                 </div>
                 <div>
                   <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Transmission</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.transmissionType || "Manual"}</p>
+                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.transmission || vehicle.transmissionType || "Manual"}</p>
                 </div>
                 <div>
                   <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Engine (CC)</p>
@@ -528,83 +553,7 @@ export default function VehicleDetailsPage() {
               </div>
             </div>
 
-            {/* Insurance Details */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
-              <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
-                Insurance Information
-              </h3>
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Insurance Provider</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.insuranceDetails?.provider || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Policy Number</p>
-                  <p className="text-sm font-semibold text-[#1E293B] font-poppins">{vehicle.insuranceDetails?.policyNumber || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Premium Amount</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.insuranceDetails?.premiumAmount ? `₹${vehicle.insuranceDetails.premiumAmount.toLocaleString("en-IN")}` : "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Start Date</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.insuranceDetails?.startDate ? new Date(vehicle.insuranceDetails.startDate).toLocaleDateString("en-IN") : "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Expiry Date</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.insuranceDetails?.expiryDate ? new Date(vehicle.insuranceDetails.expiryDate).toLocaleDateString("en-IN") : (vehicle.insuranceExpiry ? new Date(vehicle.insuranceExpiry).toLocaleDateString("en-IN") : "N/A")}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Remaining Validity</p>
-                  <p className="text-sm font-semibold">
-                    {(() => {
-                      const days = calculateRemainingDays(vehicle.insuranceDetails?.expiryDate || vehicle.insuranceExpiry);
-                      if (days === null) return "N/A";
-                      if (days < 0) return <span className="text-red-600 font-bold">Expired ({Math.abs(days)} days ago)</span>;
-                      if (days <= 30) return <span className="text-amber-600 font-semibold">{days} days remaining (Renewal Needed)</span>;
-                      return <span className="text-green-600 font-semibold">{days} days remaining</span>;
-                    })()}
-                  </p>
-                </div>
-              </div>
-            </div>
 
-            {/* Permit Details */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
-              <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
-                Permit Information
-              </h3>
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Permit Number</p>
-                  <p className="text-sm font-semibold text-[#1E293B] font-poppins">{vehicle.permitDetails?.permitNumber || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Permit Type</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.permitDetails?.permitType || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Issue Date</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.permitDetails?.issueDate ? new Date(vehicle.permitDetails.issueDate).toLocaleDateString("en-IN") : "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Expiry Date</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.permitDetails?.expiryDate ? new Date(vehicle.permitDetails.expiryDate).toLocaleDateString("en-IN") : (vehicle.permitExpiry ? new Date(vehicle.permitExpiry).toLocaleDateString("en-IN") : "N/A")}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Remaining Validity</p>
-                  <p className="text-sm font-semibold">
-                    {(() => {
-                      const days = calculateRemainingDays(vehicle.permitDetails?.expiryDate || vehicle.permitExpiry);
-                      if (days === null) return "N/A";
-                      if (days < 0) return <span className="text-red-600 font-bold">Expired ({Math.abs(days)} days ago)</span>;
-                      if (days <= 30) return <span className="text-amber-600 font-semibold">{days} days remaining (Renewal Needed)</span>;
-                      return <span className="text-green-600 font-semibold">{days} days remaining</span>;
-                    })()}
-                  </p>
-                </div>
-              </div>
-            </div>
 
             {/* Documents Section */}
             <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
@@ -623,14 +572,24 @@ export default function VehicleDetailsPage() {
                             <p className="text-[10px] text-[#64748B]">{doc.size} KB • {doc.uploadDate}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 ml-2">
+                        <div className="flex items-center gap-1 ml-2">
                           <button
-                            onClick={() => setPreviewDocument(doc)}
-                            className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                            onClick={() => setPreviewDocument({ name: doc.name, data: getDocumentUrl(doc.fileUrl || doc.data), type: doc.mimeType || doc.fileType || "application/pdf", size: doc.fileSize || doc.size, uploadDate: doc.uploadDate })}
+                            className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
                             title="View Document"
                           >
                             <Eye className="w-4 h-4 text-blue-600" />
                           </button>
+                          <a
+                            href={getDocumentUrl(doc.fileUrl || doc.data)}
+                            download={doc.name || "document"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 hover:bg-green-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                            title="Download Document"
+                          >
+                            <Download className="w-4 h-4 text-green-600" />
+                          </a>
                         </div>
                       </div>
                     ))
@@ -655,15 +614,23 @@ export default function VehicleDetailsPage() {
                                 <p className="text-[10px] text-[#64748B] truncate">{doc.originalName || "document"}</p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 ml-2">
-                              <a
-                                href={doc.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            <div className="flex items-center gap-1 ml-2">
+                              <button
+                                onClick={() => setPreviewDocument({ name: docLabels[key] || key, data: getDocumentUrl(doc.fileUrl), type: doc.mimeType || "application/pdf", size: doc.fileSize, uploadDate: new Date(doc.uploadDate).toLocaleDateString("en-IN") })}
                                 className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
                                 title="View Document"
                               >
                                 <Eye className="w-4 h-4 text-blue-600" />
+                              </button>
+                              <a
+                                href={getDocumentUrl(doc.fileUrl)}
+                                download={doc.originalName || `${key}_document`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 hover:bg-green-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                                title="Download Document"
+                              >
+                                <Download className="w-4 h-4 text-green-600" />
                               </a>
                             </div>
                           </div>

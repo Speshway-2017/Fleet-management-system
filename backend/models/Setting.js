@@ -10,7 +10,7 @@ const settingSchema = new mongoose.Schema(
     timezone: {
       type: String,
       required: true,
-      default: 'UTC',
+      default: 'IFD',
     },
     language: {
       type: String,

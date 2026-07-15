@@ -27,7 +27,14 @@ export const createOrganizationValidator = validate([
   body('state').optional().trim(),
   body('country').optional().trim(),
   body('plan').optional().isIn(['Enterprise', 'Professional', 'Standard', '']).withMessage('Invalid subscription plan'),
-  body('status').optional().isIn(['Active', 'Pending', 'Suspended', '']).withMessage('Invalid status')
+  body('status').optional().isIn(['Active', 'Pending', 'Suspended', '']).withMessage('Invalid status'),
+  
+  // Optional Managers array
+  body('managers').optional().isArray().withMessage('Managers must be an array'),
+  body('managers.*.name').if(body('managers').exists()).notEmpty().withMessage('Manager name is required').trim(),
+  body('managers.*.email').if(body('managers').exists()).isEmail().withMessage('Valid manager email is required').normalizeEmail(),
+  body('managers.*.password').if(body('managers').exists()).isLength({ min: 6 }).withMessage('Manager password must be at least 6 characters long'),
+  body('managers.*.phone').if(body('managers').exists()).optional().trim()
 ]);
 
 export const updateOrganizationValidator = validate([

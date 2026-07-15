@@ -455,7 +455,7 @@ For support, contact: maintenance@fleetmgmt.com
               {getCalendarDays().map((cell, idx) => {
                 const hasService = cell.isCurrentMonth && workOrders.some(w => {
                   const wDate = new Date(w.scheduledDate);
-                  return wDate.getFullYear() === 2026 && wDate.getMonth() === 6 && wDate.getDate() === cell.day;
+                  return wDate.getFullYear() === 2026 && wDate.getMonth() === 6 && wDate.getDate() === cell.day && w.status !== "Completed";
                 });
                 
                 const isSelected = cell.isCurrentMonth && cell.day === selectedCalendarDay;

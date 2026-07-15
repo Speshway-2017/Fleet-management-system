@@ -67,20 +67,22 @@ export default function VehicleEditPage() {
             status: found.currentStatus || "Available",
             chassisNumber: found.chassisNumber || "",
             ownershipType: found.ownershipType || "Owned",
+            ownership: found.ownership || found.ownershipType || "Owned",
             currentStatus: found.currentStatus || "Available",
             fuelCapacity: found.fuelCapacity || "",
             loadCapacity: found.loadCapacity || "",
-            insuranceProvider: found.insuranceDetails?.provider || "",
-            insurancePolicyNumber: found.insuranceDetails?.policyNumber || "",
-            insuranceStartDate: found.insuranceDetails?.startDate ? found.insuranceDetails.startDate.split('T')[0] : "",
-            insuranceExpiryDate: found.insuranceDetails?.expiryDate ? found.insuranceDetails.expiryDate.split('T')[0] : "",
-            insurancePremiumAmount: found.insuranceDetails?.premiumAmount || "",
-            insuranceStatus: found.insuranceDetails?.status || "Active",
-            permitNumber: found.permitDetails?.permitNumber || "",
-            permitType: found.permitDetails?.permitType || "National",
-            permitIssueDate: found.permitDetails?.issueDate ? found.permitDetails.issueDate.split('T')[0] : "",
-            permitExpiryDate: found.permitDetails?.expiryDate ? found.permitDetails.expiryDate.split('T')[0] : "",
-            permitStatus: found.permitDetails?.status || "Active",
+            lastService: found.lastService ? found.lastService.split('T')[0] : "",
+            nextService: found.nextService ? found.nextService.split('T')[0] : "",
+            transmissionType: found.transmissionType || found.transmission || "Manual",
+            registrationNumber: found.registrationNumber || found.vehicleNumber || "",
+            branch: found.branch || found.branchDepot || "",
+            registrationState: found.registrationState || "",
+            registrationType: found.registrationType || "",
+            fuelType: found.fuelType || "Diesel",
+            seatingCapacity: found.seatingCapacity || "2",
+            engineCC: found.engineCC || "",
+            availability: found.availability || "Immediate",
+            fastagBalance: found.fastagBalance || "",
           });
 
           // Prepopulate vehicle documents
@@ -176,12 +178,7 @@ export default function VehicleEditPage() {
       return;
     }
 
-    const requiredKeys = ['rc', 'insurance', 'puc', 'fitness', 'permit', 'roadTax'];
-    const missingKeys = requiredKeys.filter(k => !vehicleDocs[k]);
-    if (missingKeys.length > 0) {
-      toast.error("Please upload all six required documents before saving.");
-      return;
-    }
+
 
     try {
       setSaving(true);
@@ -190,34 +187,28 @@ export default function VehicleEditPage() {
         brand:              formData.manufacturer || formData.brand,
         model:              formData.model,
         vehicleNumber:      formData.plateNumber.toUpperCase(),
+        registrationNumber: formData.registrationNumber,
         vehicleType:        formData.type,
         branch:             formData.branch,
         fuelType:           formData.fuelType,
         fuelCapacity:       Number(formData.fuelCapacity) || 0,
         fastagBalance:      Number(formData.fastagBalance) || 0,
-        odometer:           Number(formData.odometer) || 0,
+        odometer:           0,
         currentStatus:      formData.currentStatus || "Available",
         assignedDriver:     formData.assignedDriver === "Unassigned" ? "Unassigned" : formData.assignedDriver,
         chassisNumber:      formData.chassisNumber,
         loadCapacity:       Number(formData.loadCapacity) || 0,
         ownershipType:      formData.ownershipType || "Owned",
-        insuranceExpiry:    formData.insuranceExpiryDate || undefined,
-        permitExpiry:       formData.permitExpiryDate || undefined,
-        insuranceDetails: {
-          provider:         formData.insuranceProvider,
-          policyNumber:     formData.insurancePolicyNumber,
-          startDate:        formData.insuranceStartDate || undefined,
-          expiryDate:       formData.insuranceExpiryDate || undefined,
-          premiumAmount:    Number(formData.insurancePremiumAmount) || 0,
-          status:           formData.insuranceStatus || "Active"
-        },
-        permitDetails: {
-          permitNumber:     formData.permitNumber,
-          permitType:       formData.permitType || "National",
-          issueDate:        formData.permitIssueDate || undefined,
-          expiryDate:       formData.permitExpiryDate || undefined,
-          status:           formData.permitStatus || "Active"
-        },
+        insuranceExpiry:    formData.insuranceExpiry || undefined,
+        permitExpiry:       formData.permitExpiry || undefined,
+        engineCC:           formData.engineCC,
+        transmissionType:   formData.transmissionType || "Manual",
+        seatingCapacity:    formData.seatingCapacity || "2",
+        registrationState:  formData.registrationState,
+        registrationType:   formData.registrationType || "New",
+        availability:       formData.availability || "Immediate",
+        lastService:        formData.lastService || undefined,
+        nextService:        formData.nextService || undefined,
         documents:          vehicleDocs,
       };
       await vehicleApi.update(id, payload);
@@ -443,6 +434,30 @@ export default function VehicleEditPage() {
                   className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
                 />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Branch / Location</label>
+                  <input
+                    type="text"
+                    name="branch"
+                    value={formData.branch || ""}
+                    onChange={handleChange}
+                    className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Availability</label>
+                  <select
+                    name="availability"
+                    value={formData.availability || "Immediate"}
+                    onChange={handleChange}
+                    className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                  >
+                    <option value="Immediate">Immediate</option>
+                    <option value="Scheduled">Scheduled</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -452,17 +467,121 @@ export default function VehicleEditPage() {
               Registration & Legal
             </h3>
             <div className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Plate No.</label>
-                <input
-                  type="text"
-                  name="plateNumber"
-                  value={formData.plateNumber || ""}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] uppercase bg-white text-[#1E293B]"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Plate No.</label>
+                  <input
+                    type="text"
+                    name="plateNumber"
+                    value={formData.plateNumber || ""}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] uppercase bg-white text-[#1E293B]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Registration No.</label>
+                  <input
+                    type="text"
+                    name="registrationNumber"
+                    value={formData.registrationNumber || ""}
+                    onChange={handleChange}
+                    className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] uppercase bg-white text-[#1E293B]"
+                  />
+                </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">State</label>
+                  <select
+                    name="registrationState"
+                    value={formData.registrationState || ""}
+                    onChange={handleChange}
+                    className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                  >
+                    <option value="">Select State</option>
+                    <option value="MH">Maharashtra</option>
+                    <option value="KA">Karnataka</option>
+                    <option value="AP">Andhra Pradesh</option>
+                    <option value="TN">Tamil Nadu</option>
+                    <option value="DL">Delhi</option>
+                    <option value="GJ">Gujarat</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Registration Type</label>
+                  <select
+                    name="registrationType"
+                    value={formData.registrationType || "New"}
+                    onChange={handleChange}
+                    className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                  >
+                    <option value="New">New</option>
+                    <option value="RTO Transfer">RTO Transfer</option>
+                    <option value="Re-registration">Re-registration</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Fuel Type</label>
+                  <select
+                    name="fuelType"
+                    value={formData.fuelType || "Diesel"}
+                    onChange={handleChange}
+                    className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                  >
+                    <option value="Diesel">Diesel</option>
+                    <option value="Petrol">Petrol</option>
+                    <option value="CNG">CNG</option>
+                    <option value="LPG">LPG</option>
+                    <option value="Electric">Electric</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Transmission</label>
+                  <select
+                    name="transmissionType"
+                    value={formData.transmissionType || "Manual"}
+                    onChange={handleChange}
+                    className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                  >
+                    <option value="Manual">Manual</option>
+                    <option value="Automatic">Automatic</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Seat Cap.</label>
+                  <select
+                    name="seatingCapacity"
+                    value={formData.seatingCapacity || "2"}
+                    onChange={handleChange}
+                    className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                  >
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5+</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Engine (CC)</label>
+                  <input
+                    type="text"
+                    name="engineCC"
+                    value={formData.engineCC || ""}
+                    onChange={handleChange}
+                    placeholder="e.g. 2500"
+                    className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Status</label>
@@ -493,20 +612,6 @@ export default function VehicleEditPage() {
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Driver Assigned</label>
-                <select
-                  name="assignedDriver"
-                  value={formData.assignedDriver || "Unassigned"}
-                  onChange={handleChange}
-                  className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
-                >
-                  <option value="Unassigned">Unassigned</option>
-                  {drivers.map((d) => (
-                    <option key={d._id} value={d._id}>{d.fullName}</option>
-                  ))}
-                </select>
-              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Last Service Date</label>
@@ -528,16 +633,6 @@ export default function VehicleEditPage() {
                     className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Odometer (km)</label>
-                <input
-                  type="number"
-                  name="odometer"
-                  value={formData.odometer || ""}
-                  onChange={handleChange}
-                  className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
-                />
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
@@ -575,6 +670,7 @@ export default function VehicleEditPage() {
             </div>
           </div>
         </div>
+
       </form>
 
       {/* SECTION: Document Upload */}
@@ -603,80 +699,79 @@ export default function VehicleEditPage() {
               const label = docLabels[key];
 
               return (
-                <div key={key} className="bg-gray-50/50 border border-[#E7EAF0] rounded-2xl p-5 flex flex-col justify-between h-[180px] hover:border-[#B45A0A]/40 transition-colors">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-[#1E293B] font-poppins">{label}</span>
-                      {doc && (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 font-poppins bg-green-50 px-2 py-0.5 rounded-full">
-                          <Check className="w-3 h-3" /> Uploaded
-                        </span>
-                      )}
-                    </div>
+                <div key={key} className="bg-gray-50/50 border border-[#E7EAF0] rounded-2xl p-4 flex flex-col justify-between h-[135px] hover:border-[#B45A0A]/40 transition-colors">
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-[#1E293B] font-poppins">{label}</span>
+                              {doc && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 font-poppins bg-green-50 px-2 py-0.5 rounded-full">
+                                  <Check className="w-3 h-3" /> Uploaded
+                                </span>
+                              )}
+                            </div>
 
-                    {error && (
-                      <p className="text-[10px] text-red-600 font-medium font-poppins mt-1">
-                        {error}
-                      </p>
-                    )}
-                  </div>
+                            {error && (
+                              <p className="text-[10px] text-red-600 font-medium font-poppins mt-1">
+                                {error}
+                              </p>
+                            )}
+                          </div>
 
-                  <div className="flex-1 flex flex-col justify-center">
-                    {isUploading ? (
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <div className="w-6 h-6 border-2 border-[#B45A0A] border-t-transparent rounded-full animate-spin" />
-                        <span className="text-[11px] text-gray-500 font-medium">Uploading...</span>
-                      </div>
-                    ) : doc ? (
-                      <div className="bg-white border border-[#E7EAF0] rounded-xl p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <FileText className="w-4 h-4 text-[#B45A0A] shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold text-gray-700 truncate">{doc.originalName}</p>
-                            <p className="text-[9px] text-gray-400">{(doc.fileSize / 1024).toFixed(1)} KB</p>
+                          <div className="flex-1 flex flex-col justify-center">
+                            {isUploading ? (
+                              <div className="flex flex-col items-center justify-center gap-1">
+                                <div className="w-5 h-5 border-2 border-[#B45A0A] border-t-transparent rounded-full animate-spin" />
+                                <span className="text-[10px] text-gray-500 font-medium">Uploading...</span>
+                              </div>
+                            ) : doc ? (
+                              <div className="bg-white border border-[#E7EAF0] rounded-xl p-2.5 flex items-center justify-between">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <FileText className="w-4 h-4 text-[#B45A0A] shrink-0" />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-semibold text-gray-700 truncate">{doc.originalName}</p>
+                                    <p className="text-[9px] text-gray-400">{(doc.fileSize / 1024).toFixed(1)} KB</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => window.open(doc.fileUrl, '_blank')}
+                                    className="p-1 hover:bg-[#F5F7FB] rounded text-[11px] font-bold text-[#B45A0A] cursor-pointer"
+                                  >
+                                    Preview
+                                  </button>
+                                  <label className="p-1 hover:bg-[#F5F7FB] rounded text-[11px] font-bold text-gray-600 cursor-pointer">
+                                    Replace
+                                    <input
+                                      type="file"
+                                      accept=".pdf,.jpg,.jpeg,.png"
+                                      onChange={(e) => handleSingleFileUpload(key, e.target.files[0])}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveFile(key)}
+                                    className="p-1 hover:bg-red-50 rounded text-[11px] font-bold text-red-600 cursor-pointer"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <label className="border border-dashed border-gray-300 hover:border-[#B45A0A] hover:bg-[#FDF3EC]/30 rounded-xl p-2 flex items-center justify-center gap-2 cursor-pointer transition-colors h-[50px]">
+                                <input
+                                  type="file"
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  onChange={(e) => handleSingleFileUpload(key, e.target.files[0])}
+                                  className="hidden"
+                                />
+                                <Upload className="w-4 h-4 text-gray-400" />
+                                <span className="text-xs font-bold text-[#1E293B]">Upload document (PDF, Image)</span>
+                              </label>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                          <button
-                            type="button"
-                            onClick={() => window.open(doc.fileUrl, '_blank')}
-                            className="p-1 hover:bg-[#F5F7FB] rounded text-xs font-bold text-[#B45A0A] cursor-pointer"
-                          >
-                            Preview
-                          </button>
-                          <label className="p-1 hover:bg-[#F5F7FB] rounded text-xs font-bold text-gray-600 cursor-pointer">
-                            Replace
-                            <input
-                              type="file"
-                              accept=".pdf,.jpg,.jpeg,.png"
-                              onChange={(e) => handleSingleFileUpload(key, e.target.files[0])}
-                              className="hidden"
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFile(key)}
-                            className="p-1 hover:bg-red-50 rounded text-xs font-bold text-red-600 cursor-pointer"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <label className="border border-dashed border-gray-300 hover:border-[#B45A0A] hover:bg-[#FDF3EC]/30 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-colors h-[100px]">
-                        <input
-                          type="file"
-                          accept=".pdf,.jpg,.jpeg,.png"
-                          onChange={(e) => handleSingleFileUpload(key, e.target.files[0])}
-                          className="hidden"
-                        />
-                        <Upload className="w-5 h-5 text-gray-400 mb-1" />
-                        <span className="text-xs font-bold text-[#1E293B]">Drag & drop or browse</span>
-                        <span className="text-[9px] text-[#64748B] mt-0.5">PDF, JPG, PNG up to 5MB</span>
-                      </label>
-                    )}
-                  </div>
-                </div>
               );
             });
           })()}

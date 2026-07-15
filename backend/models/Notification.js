@@ -24,6 +24,7 @@ const notificationSchema = new mongoose.Schema(
     referenceId: { type: String },
     referenceType: { type: String },
     metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
+    organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   },
   { timestamps: true }
 );

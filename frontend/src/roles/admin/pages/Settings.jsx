@@ -23,7 +23,7 @@ export default function Settings() {
       const settings = response.data?.data || response.data;
       if (settings) {
         setPlatformName(settings.platformName || "FleetCommand");
-        setTimezone(settings.timezone || "UTC");
+        setTimezone(settings.timezone || "IFD");
         setLanguage(settings.language || "English");
         setLogoUrl(settings.logoUrl || "/logo.png");
       }

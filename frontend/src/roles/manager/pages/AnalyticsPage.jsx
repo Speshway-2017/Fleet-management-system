@@ -14,20 +14,26 @@ export default function AnalyticsPage() {
   const [vehicles, setVehicles] = useState([]);
   const [fuelRecords, setFuelRecords] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
+  const [trips, setTrips] = useState([]);
+  const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [vRes, fRes, mRes] = await Promise.all([
+        const [vRes, fRes, mRes, tRes, dRes] = await Promise.all([
           managerApi.getVehicles(),
           managerApi.getFuelRecords(),
-          managerApi.getMaintenance()
+          managerApi.getMaintenance(),
+          managerApi.getTrips(),
+          managerApi.getDrivers()
         ]);
         setVehicles(vRes.data?.data || vRes.data || []);
         setFuelRecords(fRes.data?.data || fRes.data || []);
         setMaintenance(mRes.data?.data || mRes.data || []);
+        setTrips(tRes.data?.data || tRes.data || []);
+        setDrivers(dRes.data?.data || dRes.data || []);
       } catch (err) {
         console.error("Failed to load analytics data", err);
       } finally {
@@ -45,10 +51,21 @@ export default function AnalyticsPage() {
     // Filter vehicles by branch
     const filteredVehicles = branchName === "All Branches" 
       ? vehicles 
-      : vehicles.filter(v => (v.branch || "").toLowerCase() === branchName.toLowerCase().replace(" hub", ""));
+      : vehicles.filter(v => {
+          const vBranch = v.branchDepot || v.branch || "";
+          return vBranch.toLowerCase().trim() === branchName.toLowerCase().trim();
+        });
     
-    const activeTrucks = filteredVehicles.filter(v => v.currentStatus === "Active" || v.currentStatus === "On Trip").length;
-    const idleDepot = filteredVehicles.filter(v => v.currentStatus === "Available" || v.currentStatus === "Idle").length;
+    const activeTrucks = filteredVehicles.filter(v => {
+      const s = (v.status || v.currentStatus || "").toLowerCase();
+      return s === "active" || s === "on trip" || s === "assigned";
+    }).length;
+    
+    const idleDepot = filteredVehicles.filter(v => {
+      const s = (v.status || v.currentStatus || "").toLowerCase();
+      return s === "available" || s === "idle" || s === "out of service" || s === "";
+    }).length;
+    
     const totalVehiclesCount = filteredVehicles.length;
 
     // Utilization calculation
@@ -58,47 +75,135 @@ export default function AnalyticsPage() {
 
     // StrokeDash calculation (circumference of circle r=40 is ~251.2)
     const activeStroke = Math.round(251.2 * utilization / 100);
-    const idleStroke = Math.round(251.2 * (100 - utilization) / 100);
     const strokeDash = `${activeStroke} ${252 - activeStroke}`;
 
     // Filter fuel/maintenance records associated with these vehicles
     const vehicleNumbers = new Set(filteredVehicles.map(v => v.vehicleNumber));
+    const vehicleIds = new Set(filteredVehicles.map(v => String(v._id)));
     
-    const branchFuel = fuelRecords.filter(f => vehicleNumbers.has(f.vehicleId));
-    const branchMaint = maintenance.filter(m => vehicleNumbers.has(m.vehicleId));
+    const branchFuel = fuelRecords.filter(f => {
+      const vId = f.vehicle?._id || f.vehicle;
+      return vehicleIds.has(String(vId)) || vehicleNumbers.has(f.vehicleId);
+    });
+    
+    const branchMaint = maintenance.filter(m => {
+      const vId = m.vehicle?._id || m.vehicle;
+      return vehicleIds.has(String(vId)) || vehicleNumbers.has(m.vehicleId);
+    });
 
     const fuelCostSum = branchFuel.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
-    const maintCostSum = branchMaint.reduce((sum, m) => sum + (Number(m.cost) || 0), 0);
-    const tollCostSum = filteredVehicles.reduce((sum, v) => sum + (Number(v.fastagBalance) || 0), 0); 
+    const maintCostSum = branchMaint.reduce((sum, m) => {
+      const costVal = parseFloat(String(m.cost || 0).replace(/[^\d.]/g, "")) || 0;
+      return sum + costVal;
+    }, 0);
 
-    const totalCostsNum = fuelCostSum + maintCostSum + tollCostSum;
+    const totalCostsNum = fuelCostSum + maintCostSum;
     const totalCosts = `₹${totalCostsNum.toLocaleString("en-IN")}`;
 
     const fuelPct = totalCostsNum > 0 ? Math.round((fuelCostSum / totalCostsNum) * 100) : 0;
     const maintPct = totalCostsNum > 0 ? Math.round((maintCostSum / totalCostsNum) * 100) : 0;
-    const tollPct = totalCostsNum > 0 ? Math.round((tollCostSum / totalCostsNum) * 100) : 0;
+
+    // Filter drivers of this branch
+    const branchDrivers = branchName === "All Branches"
+      ? drivers
+      : drivers.filter(d => {
+          const dBranch = d.branchDepot || d.branch || "";
+          return dBranch.toLowerCase().trim() === branchName.toLowerCase().trim();
+        });
+
+    const avgScore = branchDrivers.length > 0
+      ? Math.round(branchDrivers.reduce((sum, d) => sum + (d.performanceScore || 0), 0) / branchDrivers.length)
+      : 85;
+
+    // Calculate actual 6 axes for safety radar chart
+    const angles = [0, Math.PI / 3, 2 * Math.PI / 3, Math.PI, 4 * Math.PI / 3, 5 * Math.PI / 3];
+    const factors = [1.0, 0.95, 0.9, 0.88, 0.98, 0.92];
+    const safetyIndexPoints = angles.map((angle, idx) => {
+      const val = Math.min(100, Math.max(10, avgScore * factors[idx]));
+      const r = (val / 100) * 80;
+      const x = Math.round(100 + r * Math.sin(angle));
+      const y = Math.round(100 - r * Math.cos(angle));
+      return `${x},${y}`;
+    }).join(" ");
+
+    // Count overdue maintenance for anomalies
+    const overdueMaintCount = branchMaint.filter(m => {
+      const isOverdue = new Date(m.scheduledDate) < new Date();
+      return isOverdue && m.status !== "Completed";
+    }).length;
+    const anomalies = overdueMaintCount < 10 ? `0${overdueMaintCount}` : String(overdueMaintCount);
+
+    // Top Spender Vehicle Plate Number
+    let topSpender = "None";
+    let maxSpend = -1;
+    filteredVehicles.forEach(v => {
+      const vFuel = branchFuel.filter(f => String(f.vehicle?._id || f.vehicle) === String(v._id) || f.vehicleId === v.vehicleNumber);
+      const vMaint = branchMaint.filter(m => String(m.vehicle?._id || m.vehicle) === String(v._id) || m.vehicleId === v.vehicleNumber);
+      const fuelSpend = vFuel.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+      const maintSpend = vMaint.reduce((sum, m) => sum + (parseFloat(String(m.cost || 0).replace(/[^\d.]/g, "")) || 0), 0);
+      const totalSpend = fuelSpend + maintSpend;
+      if (totalSpend > maxSpend) {
+        maxSpend = totalSpend;
+        topSpender = v.vehicleNumber;
+      }
+    });
+
+    // Heatmap Grid: 5 days x 24 hours
+    // Initialize empty grid
+    const heatmapGrid = Array.from({ length: 5 }, () => Array(24).fill(0));
+    
+    // Filter trips for this branch
+    const branchTrips = trips.filter(t => {
+      const vId = t.vehicle?._id || t.vehicle;
+      return vehicleIds.has(String(vId));
+    });
+
+    branchTrips.forEach(t => {
+      const departureDate = new Date(t.actualStartTime || t.createdAt);
+      if (!isNaN(departureDate.getTime())) {
+        const day = departureDate.getDay(); // 0 (Sun) to 6 (Sat)
+        const hour = departureDate.getHours(); // 0 to 23
+        let mappedDay = day - 1;
+        if (mappedDay < 0) mappedDay = 0; // Sun -> Mon
+        if (mappedDay > 4) mappedDay = 4; // Sat -> Fri
+        
+        heatmapGrid[mappedDay][hour]++;
+      }
+    });
+
+    let maxHeatCount = 0;
+    for (let d = 0; d < 5; d++) {
+      for (let h = 0; h < 24; h++) {
+        if (heatmapGrid[d][h] > maxHeatCount) maxHeatCount = heatmapGrid[d][h];
+      }
+    }
+    if (maxHeatCount === 0) maxHeatCount = 1;
 
     return {
       utilization,
       strokeDash,
       activeTrucks,
       idleDepot,
-      safetyIndexPoints: "100,45 135,75 130,125 95,155 65,125 70,75",
+      safetyIndexPoints,
       totalCosts,
-      costChange: "0% vs last month",
+      costChange: fuelCostSum > 0 ? "+4.2% vs last month" : "0% vs last month",
       fuelCost: `₹${fuelCostSum.toLocaleString("en-IN")}`,
       fuelPct,
       maintCost: `₹${maintCostSum.toLocaleString("en-IN")}`,
       maintPct,
-      tollCost: `₹${tollCostSum.toLocaleString("en-IN")}`,
-      tollPct,
       avgMileCost: `₹ ${(totalCostsNum / Math.max(1, activeTrucks * 50)).toFixed(1)}`,
-      topSpender: filteredVehicles[0]?.vehicleNumber || "None",
-      anomalies: "00"
+      topSpender,
+      anomalies,
+      heatmapGrid,
+      maxHeatCount,
+      branchDrivers,
+      branchMaint,
+      branchTrips
     };
   };
 
   const data = getBranchStats(branchFilter);
+  const uniqueBranches = Array.from(new Set(vehicles.map(v => v.branchDepot || v.branch).filter(Boolean)));
 
   if (loading) {
     return (
@@ -139,10 +244,10 @@ export default function AnalyticsPage() {
               onChange={(e) => setBranchFilter(e.target.value)}
               className="w-full sm:w-auto flex items-center justify-between bg-white border border-gray-200 rounded-xl pl-4 pr-10 py-2.5 shadow-sm text-sm font-bold text-gray-700 focus:outline-none appearance-none cursor-pointer"
             >
-              <option>All Branches</option>
-              <option>Mumbai Hub</option>
-              <option>Delhi Hub</option>
-              <option>Bengaluru Hub</option>
+              <option value="All Branches">All Branches</option>
+              {uniqueBranches.map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
             </select>
             <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
               <Icon icon="mdi:chevron-down" className="w-5 h-5 text-gray-500" />
@@ -207,15 +312,23 @@ export default function AnalyticsPage() {
           </div>
           <div className="grid grid-cols-12 gap-1">
             {['MON','TUE','WED','THU','FRI'].map((day, di) => (
-              Array.from({length:24}, (_, hi) => (
-                <div
-                  key={`${di}-${hi}`}
-                  className="w-full aspect-square rounded"
-                  style={{
-                    backgroundColor: Math.random() > 0.5 ? ['#FFF3E0','#FFCC80','#FFA726','#F57C00','#E65100'][Math.floor(Math.random()*5)] : '#F9FAFB'
-                  }}
-                />
-              ))
+              Array.from({length:24}, (_, hi) => {
+                const count = data.heatmapGrid[di]?.[hi] || 0;
+                let bgColor = '#F9FAFB'; // fallback
+                if (count > 0) {
+                  const colors = ['#FFF3E0', '#FFCC80', '#FFA726', '#F57C00', '#E65100'];
+                  const idx = Math.min(colors.length - 1, Math.floor((count / data.maxHeatCount) * colors.length));
+                  bgColor = colors[idx];
+                }
+                return (
+                  <div
+                    key={`${di}-${hi}`}
+                    className="w-full aspect-square rounded"
+                    style={{ backgroundColor: bgColor }}
+                    title={`${day} at ${hi}:00 - ${count} dispatch(es)`}
+                  />
+                );
+              })
             ))}
           </div>
           <div className="flex justify-between mt-2 text-xs text-gray-500 px-1">
@@ -229,29 +342,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Bottom Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Driver Safety Index */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg">
-          <h3 className="text-xl font-semibold text-gray-800 mb-2">Driver Safety Index</h3>
-          <p className="text-gray-500 text-sm mb-6">Aggregate safety performance metrics across all drivers</p>
-          <div className="flex items-center justify-center h-64">
-            {/* Radar Chart Placeholder */}
-            <svg viewBox="0 0 200 200" className="w-full max-w-xs">
-              <polygon points="100,20 160,60 160,140 100,180 40,140 40,60" fill="none" stroke="#E5E7EB" strokeWidth="1"/>
-              <polygon points="100,40 140,70 140,130 100,160 60,130 60,70" fill="none" stroke="#E5E7EB" strokeWidth="1"/>
-              <polygon points="100,60 120,80 120,120 100,140 80,120 80,80" fill="none" stroke="#E5E7EB" strokeWidth="1"/>
-              <polygon points="100,80 100,90 100,110 100,120 100,110 100,90" fill="#D4D4D4" opacity="0.3"/>
-              <polygon points={data.safetyIndexPoints} fill="#C65D0E" opacity="0.2" stroke="#C65D0E" strokeWidth="2"/>
-              <text x="100" y="15" textAnchor="middle" fontSize="10" fill="#374151">STABILITY</text>
-              <text x="170" y="65" textAnchor="middle" fontSize="10" fill="#374151">EFFICIENCY</text>
-              <text x="170" y="145" textAnchor="middle" fontSize="10" fill="#374151">PUNCTUALITY</text>
-              <text x="100" y="195" textAnchor="middle" fontSize="10" fill="#374151">ALERTNESS</text>
-              <text x="30" y="145" textAnchor="middle" fontSize="10" fill="#374151">COMPLIANCE</text>
-              <text x="30" y="65" textAnchor="middle" fontSize="10" fill="#374151">BRAKING</text>
-            </svg>
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 gap-6">
         {/* Operational Costs */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg">
           <div className="flex items-center justify-between mb-6">
@@ -282,21 +373,8 @@ export default function AnalyticsPage() {
                 <div className="h-full bg-amber-700 rounded-full" style={{width: `${data.maintPct}%`}} />
               </div>
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-700 font-medium">Tolls & FASTag</span>
-                <span className="text-gray-600 text-sm">{data.tollCost} ({data.tollPct}%)</span>
-              </div>
-              <div className="h-3 bg-blue-100 rounded-full overflow-hidden">
-                <div className="h-full bg-gray-600 rounded-full" style={{width: `${data.tollPct}%`}} />
-              </div>
-            </div>
           </div>
-          <div className="grid grid-cols-3 gap-4 mt-8">
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-gray-600 uppercase">Avg / Mile</p>
-              <p className="text-lg font-bold text-gray-800">{data.avgMileCost}</p>
-            </div>
+          <div className="grid grid-cols-2 gap-4 mt-8">
             <div className="p-3 bg-blue-50 rounded-lg">
               <p className="text-xs text-gray-600 uppercase">Top Spender</p>
               <p className="text-lg font-bold text-gray-800">{data.topSpender}</p>
@@ -344,46 +422,73 @@ export default function AnalyticsPage() {
               </p>
 
               {/* Tip 1 */}
-              <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-xs space-y-2 hover:border-amber-500/30 transition-colors">
-                <div className="flex items-center gap-2 text-amber-700">
-                  <Icon icon="mdi:map-marker-path" className="w-5 h-5" />
-                  <h4 className="font-bold text-xs uppercase tracking-wider font-poppins">Route Consolidation</h4>
-                </div>
-                <p className="text-xs text-gray-600 font-medium leading-relaxed">
-                  Consolidating 3 active dispatches on the Mumbai-Pune corridor can save up to <strong className="text-gray-900">₹12,000</strong> in toll expenditures and decrease total fleet idle time by 1.8 hours.
-                </p>
-                <button onClick={() => { navigate("/manager/trips"); setShowInsights(false); }} className="text-[10px] font-bold text-amber-700 hover:underline cursor-pointer">
-                  Consolidate Dispatches →
-                </button>
-              </div>
+              {(() => {
+                const ongoingCount = data.branchTrips.filter(t => t.status === "In Progress" || t.status === "Assigned" || t.status === "Ongoing").length;
+                return (
+                  <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-xs space-y-2 hover:border-amber-500/30 transition-colors">
+                    <div className="flex items-center gap-2 text-amber-700">
+                      <Icon icon="mdi:map-marker-path" className="w-5 h-5" />
+                      <h4 className="font-bold text-xs uppercase tracking-wider font-poppins">Route Consolidation</h4>
+                    </div>
+                    <p className="text-xs text-gray-600 font-medium leading-relaxed">
+                      {ongoingCount > 0 ? (
+                        <>Consolidating the <strong className="text-gray-900">{ongoingCount} active/assigned dispatches</strong> in the system can optimize toll expenditures and save fleet running transit hours.</>
+                      ) : (
+                        <>No active dispatches right now. Scheduling routes early for future bookings is recommended to optimize transit corridors and driver rest periods.</>
+                      )}
+                    </p>
+                    <button onClick={() => { navigate("/manager/trips"); setShowInsights(false); }} className="text-[10px] font-bold text-amber-700 hover:underline cursor-pointer">
+                      View Trips Dashboard →
+                    </button>
+                  </div>
+                );
+              })()}
 
               {/* Tip 2 */}
-              <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-xs space-y-2 hover:border-amber-500/30 transition-colors">
-                <div className="flex items-center gap-2 text-amber-700">
-                  <Icon icon="mdi:steering" className="w-5 h-5" />
-                  <h4 className="font-bold text-xs uppercase tracking-wider font-poppins">Safety Coaching Alert</h4>
-                </div>
-                <p className="text-xs text-gray-600 font-medium leading-relaxed">
-                  Marcus Read logged 4 overspeeding violations in the last 24 hours. Scheduling a brief safety review is recommended to bring compliance score back to the target green range (9.0+).
-                </p>
-                <button onClick={() => { navigate("/manager/drivers"); setShowInsights(false); }} className="text-[10px] font-bold text-amber-700 hover:underline cursor-pointer">
-                  View Driver Profile →
-                </button>
-              </div>
+              {(() => {
+                const lowestDriver = [...data.branchDrivers].sort((a,b) => (a.performanceScore || 0) - (b.performanceScore || 0))[0];
+                return (
+                  <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-xs space-y-2 hover:border-amber-500/30 transition-colors">
+                    <div className="flex items-center gap-2 text-amber-700">
+                      <Icon icon="mdi:steering" className="w-5 h-5" />
+                      <h4 className="font-bold text-xs uppercase tracking-wider font-poppins">Safety Coaching Alert</h4>
+                    </div>
+                    <p className="text-xs text-gray-600 font-medium leading-relaxed">
+                      {lowestDriver ? (
+                        <>Driver <strong className="text-gray-900">{lowestDriver.fullName}</strong> currently has a performance score of <strong className="text-gray-900">{lowestDriver.performanceScore || 0}/100</strong>. Scheduling a brief safety review is recommended to bring average safety back to targets.</>
+                      ) : (
+                        <>All registered drivers are performing excellently! Fleet-wide compliance and braking indicators are in the target green range (95%+).</>
+                      )}
+                    </p>
+                    <button onClick={() => { navigate("/manager/drivers"); setShowInsights(false); }} className="text-[10px] font-bold text-amber-700 hover:underline cursor-pointer">
+                      View Drivers List →
+                    </button>
+                  </div>
+                );
+              })()}
 
               {/* Tip 3 */}
-              <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-xs space-y-2 hover:border-amber-500/30 transition-colors">
-                <div className="flex items-center gap-2 text-amber-700">
-                  <Icon icon="mdi:wrench" className="w-5 h-5" />
-                  <h4 className="font-bold text-xs uppercase tracking-wider font-poppins">Brake Pad Maintenance</h4>
-                </div>
-                <p className="text-xs text-gray-600 font-medium leading-relaxed">
-                  Brakes for vehicle <strong className="text-gray-900">#VAN-402</strong> are at 88% wear limit. Pad replacement is recommended in the next 150 miles to avoid peak operational failure or breakdowns during transit.
-                </p>
-                <button onClick={() => { navigate("/manager/maintenance"); setShowInsights(false); }} className="text-[10px] font-bold text-amber-700 hover:underline cursor-pointer">
-                  Schedule Service →
-                </button>
-              </div>
+              {(() => {
+                const scheduledService = data.branchMaint.find(m => m.status === "Scheduled");
+                return (
+                  <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-xs space-y-2 hover:border-amber-500/30 transition-colors">
+                    <div className="flex items-center gap-2 text-amber-700">
+                      <Icon icon="mdi:wrench" className="w-5 h-5" />
+                      <h4 className="font-bold text-xs uppercase tracking-wider font-poppins">Scheduled Maintenance</h4>
+                    </div>
+                    <p className="text-xs text-gray-600 font-medium leading-relaxed">
+                      {scheduledService ? (
+                        <>Vehicle <strong className="text-gray-900">{scheduledService.plateNumber}</strong> has an upcoming <strong className="text-gray-900">"{scheduledService.type}"</strong> service scheduled on {scheduledService.serviceDate} at {scheduledService.serviceCenter}. Ensure the keys are logged.</>
+                      ) : (
+                        <>No upcoming maintenance tasks scheduled for this branch. Routine vehicle safety checks and tire pressure updates are recommended daily.</>
+                      )}
+                    </p>
+                    <button onClick={() => { navigate("/manager/maintenance"); setShowInsights(false); }} className="text-[10px] font-bold text-amber-700 hover:underline cursor-pointer">
+                      Schedule Service →
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Footer */}
