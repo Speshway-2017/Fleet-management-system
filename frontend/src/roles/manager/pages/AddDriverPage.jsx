@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { useAuth } from "@/context/AuthContext";
 import { driverApi } from "@/api/driverApi";
 
 // Format bytes to readable string
@@ -30,6 +31,8 @@ const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 export default function AddDriverPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
   const isEditMode = Boolean(id);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({
@@ -681,8 +684,9 @@ export default function AddDriverPage() {
           </button>
           <button
             type="submit"
-            disabled={isSubmitting || isUploading || isFormInvalid}
-            className="px-7 py-3 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-extrabold text-white transition-all shadow-md shadow-[#B45A0A]/20 flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={isSubmitting || isUploading || isFormInvalid || isViewOnly}
+            title={isViewOnly ? "This feature is available after activating a subscription." : ""}
+            className={`px-7 py-3 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-extrabold text-white transition-all shadow-md shadow-[#B45A0A]/20 flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             {isSubmitting ? (
               <>

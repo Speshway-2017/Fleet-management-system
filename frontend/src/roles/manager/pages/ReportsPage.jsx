@@ -2,9 +2,12 @@ import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { useAuth } from "@/context/AuthContext";
 import { managerApi } from "../api/managerApi";
 
 export default function ReportsPage() {
+  const { user } = useAuth();
+  const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [trips, setTrips] = useState([]);
@@ -791,16 +794,18 @@ export default function ReportsPage() {
               <div className="flex items-end gap-2">
                 <button
                   onClick={handleExportExcel}
-                  className="flex-1 py-2.5 border border-[#E7EAF0] hover:bg-gray-50 rounded-xl text-xs font-bold text-gray-600 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
-                  title="Export to CSV / Excel"
+                  disabled={isViewOnly}
+                  className={`flex-1 py-2.5 border border-[#E7EAF0] hover:bg-gray-50 rounded-xl text-xs font-bold text-gray-600 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
+                  title={isViewOnly ? "This feature is available after activating a subscription." : "Export to CSV / Excel"}
                 >
                   <Icon icon="mdi:file-excel" className="w-4 h-4 text-emerald-600" />
                   Excel
                 </button>
                 <button
                   onClick={handlePrint}
-                  className="flex-1 py-2.5 bg-black text-white hover:bg-gray-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 animate-fade-in"
-                  title="Print Report or Save as PDF"
+                  disabled={isViewOnly}
+                  className={`flex-1 py-2.5 bg-black text-white hover:bg-gray-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 animate-fade-in ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
+                  title={isViewOnly ? "This feature is available after activating a subscription." : "Print Report or Save as PDF"}
                 >
                   <Icon icon="mdi:printer" className="w-4 h-4" />
                   Print / PDF

@@ -60,6 +60,7 @@ import {
 } from '../controllers/manager.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
+import { checkActiveSubscription } from '../middleware/subscription.middleware.js';
 
 const router = express.Router();
 
@@ -72,52 +73,52 @@ router.get('/activities',      ...auth, listActivities);
 
 // Vehicles
 router.get('/vehicles',        ...auth, listVehicles);
-router.post('/vehicles',       ...auth, createVehicle);
+router.post('/vehicles',       ...auth, checkActiveSubscription, createVehicle);
 router.get('/vehicles/:id',    ...auth, getVehicleById);
-router.put('/vehicles/:id',    ...auth, updateVehicle);
-router.delete('/vehicles/:id', ...auth, deleteVehicle);
+router.put('/vehicles/:id',    ...auth, checkActiveSubscription, updateVehicle);
+router.delete('/vehicles/:id', ...auth, checkActiveSubscription, deleteVehicle);
 
 // Drivers
 router.get('/drivers',        ...auth, listDrivers);
-router.post('/drivers',       ...auth, createDriver);
+router.post('/drivers',       ...auth, checkActiveSubscription, createDriver);
 router.get('/drivers/:id',    ...auth, getDriverDetails);
-router.put('/drivers/:id',    ...auth, updateDriver);
-router.delete('/drivers/:id', ...auth, deleteDriver);
+router.put('/drivers/:id',    ...auth, checkActiveSubscription, updateDriver);
+router.delete('/drivers/:id', ...auth, checkActiveSubscription, deleteDriver);
 
 // Trips
 router.get('/trips',        ...auth, listTrips);
-router.post('/trips',       ...auth, createTrip);
+router.post('/trips',       ...auth, checkActiveSubscription, createTrip);
 router.get('/trips/:id',    ...auth, getTripDetails);
-router.put('/trips/:id',    ...auth, updateTrip);
-router.delete('/trips/:id', ...auth, deleteTrip);
+router.put('/trips/:id',    ...auth, checkActiveSubscription, updateTrip);
+router.delete('/trips/:id', ...auth, checkActiveSubscription, deleteTrip);
 
 // Fuel
 router.get('/fuel',        ...auth, listFuelRecords);
-router.post('/fuel',       ...auth, createFuelRecord);
+router.post('/fuel',       ...auth, checkActiveSubscription, createFuelRecord);
 router.get('/fuel/:id',    ...auth, getFuelRecordDetails);
-router.put('/fuel/:id',    ...auth, updateFuelRecord);
-router.delete('/fuel/:id', ...auth, deleteFuelRecord);
+router.put('/fuel/:id',    ...auth, checkActiveSubscription, updateFuelRecord);
+router.delete('/fuel/:id', ...auth, checkActiveSubscription, deleteFuelRecord);
 
 // Maintenance
 router.get('/maintenance',        ...auth, listMaintenance);
-router.post('/maintenance',       ...auth, createMaintenance);
+router.post('/maintenance',       ...auth, checkActiveSubscription, createMaintenance);
 router.get('/maintenance/:id',    ...auth, getMaintenanceDetails);
-router.put('/maintenance/:id',    ...auth, updateMaintenance);
-router.delete('/maintenance/:id', ...auth, deleteMaintenance);
+router.put('/maintenance/:id',    ...auth, checkActiveSubscription, updateMaintenance);
+router.delete('/maintenance/:id', ...auth, checkActiveSubscription, deleteMaintenance);
 
 // Documents
 router.get('/documents',        ...auth, listDocuments);
-router.post('/documents',       ...auth, createDocument);
+router.post('/documents',       ...auth, checkActiveSubscription, createDocument);
 router.get('/documents/:id',    ...auth, getDocumentDetails);
-router.put('/documents/:id',    ...auth, updateDocument);
-router.delete('/documents/:id', ...auth, deleteDocument);
+router.put('/documents/:id',    ...auth, checkActiveSubscription, updateDocument);
+router.delete('/documents/:id', ...auth, checkActiveSubscription, deleteDocument);
 
 // Reports
 router.get('/reports',        ...auth, listReports);
-router.post('/reports',       ...auth, createReport);
+router.post('/reports',       ...auth, checkActiveSubscription, createReport);
 router.get('/reports/:id',    ...auth, getReportDetails);
-router.put('/reports/:id',    ...auth, updateReport);
-router.delete('/reports/:id', ...auth, deleteReport);
+router.put('/reports/:id',    ...auth, checkActiveSubscription, updateReport);
+router.delete('/reports/:id', ...auth, checkActiveSubscription, deleteReport);
 
 // Notifications
 router.get('/notifications',         ...auth, listNotifications);
@@ -127,9 +128,9 @@ router.put('/notifications/:id/read', ...auth, markNotificationRead);
 router.delete('/notifications/:id', ...auth, deleteNotification);
 // E-Way Bills
 router.get('/eway',            ...auth, listEWayBills);
-router.post('/eway',           ...auth, createEWayBill);
-router.put('/eway/:id/extend', ...auth, extendEWayBill);
-router.put('/eway/:id',        ...auth, updateEWayBill);
+router.post('/eway',           ...auth, checkActiveSubscription, createEWayBill);
+router.put('/eway/:id/extend', ...auth, checkActiveSubscription, extendEWayBill);
+router.put('/eway/:id',        ...auth, checkActiveSubscription, updateEWayBill);
 // Invoices
 router.get('/invoices/trip/:tripId', ...auth, getInvoiceByTripId);
 router.get('/invoices/trip/:tripId/download', ...auth, getInvoiceByTripId);

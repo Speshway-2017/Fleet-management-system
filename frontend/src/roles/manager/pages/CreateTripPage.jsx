@@ -18,11 +18,13 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
-
+import { useAuth } from "@/context/AuthContext";
 import { managerApi } from "../api/managerApi";
 
 export default function CreateTripPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
 
   // Lists loaded from backend
   const [drivers, setDrivers] = useState([]);
@@ -219,7 +221,9 @@ export default function CreateTripPage() {
           </button>
           <button
             onClick={handleDispatch}
-            className="flex-1 md:flex-none px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer text-center"
+            disabled={isViewOnly}
+            title={isViewOnly ? "This feature is available after activating a subscription." : "Dispatch Trip"}
+            className={`flex-1 md:flex-none px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer text-center ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             Dispatch Trip
           </button>

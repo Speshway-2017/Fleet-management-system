@@ -16,10 +16,13 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { useAuth } from "@/context/AuthContext";
 import { driverApi } from "@/api/driverApi";
 
 export default function DriversListPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -206,7 +209,9 @@ export default function DriversListPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/manager/add-driver")}
-            className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 cursor-pointer"
+            disabled={isViewOnly}
+            title={isViewOnly ? "This feature is available after activating a subscription." : ""}
+            className={`px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             <Plus className="w-4.5 h-4.5" />
             <span>Add Driver</span>
@@ -403,15 +408,17 @@ export default function DriversListPage() {
                         </button>
                         <button 
                           onClick={() => navigate(`/manager/edit-driver/${d._id}`)} 
-                          className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
-                          title="Edit"
+                          disabled={isViewOnly}
+                          title={isViewOnly ? "This feature is available after activating a subscription." : "Edit"}
+                          className={`p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={() => { setSelectedDriver(d); setDeleteModalOpen(true); }} 
-                          className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"
-                          title="Delete"
+                          disabled={isViewOnly}
+                          title={isViewOnly ? "This feature is available after activating a subscription." : "Delete"}
+                          className={`p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

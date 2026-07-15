@@ -3,6 +3,7 @@ import { ArrowLeft, Upload, Check, X, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { useAuth } from "@/context/AuthContext";
 import { identifyDocumentType } from "../utils/documentParser";
 import { vehicleApi } from "@/api/vehicleApi";
 import { managerApi } from "../api/managerApi";
@@ -10,6 +11,8 @@ import { driverApi } from "@/api/driverApi";
 
 export default function AddVehiclePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
   const [drivers, setDrivers] = useState([]);
 
   const [formData, setFormData] = useState({
@@ -684,8 +687,9 @@ export default function AddVehiclePage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isProcessing}
-                  className="px-8 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                  disabled={isProcessing || isViewOnly}
+                  title={isViewOnly ? "This feature is available after activating a subscription." : "Save Vehicle"}
+                  className={`px-8 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer disabled:opacity-50 flex items-center gap-2 ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   {isProcessing ? (
                     <>

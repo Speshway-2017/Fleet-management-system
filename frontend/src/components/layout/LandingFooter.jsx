@@ -61,7 +61,7 @@ export default function LandingFooter() {
             <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Features"); }} className="hover:text-white transition-colors">Features</a></li>
             <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Security"); }} className="hover:text-white transition-colors">Security</a></li>
             <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Integrations"); }} className="hover:text-white transition-colors">Integrations</a></li>
-            <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Pricing"); }} className="hover:text-white transition-colors">Pricing</a></li>
+            <li><NavLink to="/pricing" className="hover:text-white transition-colors">Pricing</NavLink></li>
             <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Documentation"); }} className="hover:text-white transition-colors">Documentation</a></li>
           </ul>
         </div>

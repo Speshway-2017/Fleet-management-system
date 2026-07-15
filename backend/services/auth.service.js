@@ -17,7 +17,19 @@ export const loginUser = async ({ email, password, role }) => {
   }
 
   const token = generateToken({ id: user._id, role: user.role });
-  return { token, user: { id: user._id, name: user.name, email: user.email, role: user.role } };
+  return {
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      subscriptionStatus: user.subscriptionStatus,
+      subscriptionPlan: user.subscriptionPlan,
+      subscriptionExpiry: user.subscriptionExpiry,
+      subscriptionRequestedPlan: user.subscriptionRequestedPlan
+    }
+  };
 };
 
 export const getUserProfile = async (userId) => {

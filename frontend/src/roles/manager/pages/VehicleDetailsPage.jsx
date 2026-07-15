@@ -6,6 +6,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { useAuth } from "@/context/AuthContext";
 import { vehicleApi } from "@/api/vehicleApi";
 import { driverApi } from "@/api/driverApi";
 import L from "leaflet";
@@ -43,6 +44,8 @@ const getDocumentUrl = (path) => {
 export default function VehicleDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
+  const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const gpsMapRef = useRef(null);
@@ -426,14 +429,18 @@ export default function VehicleDetailsPage() {
           <div className="flex items-center gap-2 md:ml-auto">
             <button
               onClick={() => navigate(`/manager/vehicle-edit/${vehicle._id}`)}
-              className="px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer"
+              disabled={isViewOnly}
+              title={isViewOnly ? "This feature is available after activating a subscription." : "Edit Vehicle"}
+              className={`px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <Edit2 className="w-4 h-4" />
               EDIT
             </button>
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="px-4 py-2.5 border border-red-300 hover:bg-red-50 rounded-lg text-sm font-bold text-red-600 transition-all flex items-center gap-2 cursor-pointer"
+              disabled={isViewOnly}
+              title={isViewOnly ? "This feature is available after activating a subscription." : "Delete Vehicle"}
+              className={`px-4 py-2.5 border border-red-300 hover:bg-red-50 rounded-lg text-sm font-bold text-red-600 transition-all flex items-center gap-2 cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <Trash2 className="w-4 h-4" />
               DELETE
