@@ -73,6 +73,7 @@ import About from "@/roles/admin/pages/About";
 import Contact from "@/roles/admin/pages/Contact";
 import Security from "@/roles/admin/pages/Security";
 import Features from "@/roles/admin/pages/Features";
+import Blogs from "@/roles/admin/pages/Blogs";
 import ContactRequests from "@/roles/admin/pages/ContactRequests";
 
 function PublicRoute({ children }) {
@@ -96,6 +97,7 @@ export default function App() {
           <Route path="/features" element={<PublicRoute><Features /></PublicRoute>} />
           <Route path="/contact" element={<PublicRoute><Contact /></PublicRoute>} />
           <Route path="/security" element={<PublicRoute><Security /></PublicRoute>} />
+          <Route path="/blogs" element={<PublicRoute><Blogs /></PublicRoute>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/otp-verification" element={<OtpVerificationPage />} />

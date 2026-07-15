@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
+import LandingHeader from "@/components/layout/LandingHeader";
+import LandingFooter from "@/components/layout/LandingFooter";
 import { 
   Shield, 
   Settings, 
@@ -26,121 +28,14 @@ import {
 export default function Performance() {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleAction = (label) => {
     toast.success(`Action triggered: ${label}`);
   };
 
-  const mobileNavLinkClass = ({ isActive }) => {
-    return `block w-full text-left py-2 font-semibold text-sm transition-colors ${
-      isActive ? "text-[#A14000]" : "text-body hover:text-[#A14000]"
-    }`;
-  };
-
   return (
     <div className="bg-bg-page min-h-screen flex flex-col font-sans text-body">
-      {/* 1. Header/Navbar */}
-      <header className="bg-white border-b border-border-custom px-4 sm:px-6 md:px-8 h-20 flex items-center justify-between sticky top-0 z-30">
-        <div className="flex items-center gap-3">
-          <NavLink to="/" className="flex items-center gap-3">
-            <img src="/logo.png" alt="Fleet Management Logo" className="h-10 w-auto object-contain" />
-            <span className="font-display font-black text-[#0B1B3D] text-lg tracking-wide">
-              Fleet Management
-            </span>
-          </NavLink>
-        </div>
-
-        <nav className="hidden md:flex items-center gap-6">
-          <NavLink to="/" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`} end>
-            Home
-          </NavLink>
-          <NavLink to="/about" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            About
-          </NavLink>
-          <NavLink to="/features" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            Features
-          </NavLink>
-          <NavLink to="/performance" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            Performance
-          </NavLink>
-          <NavLink to="/security" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            Security
-          </NavLink>
-          <NavLink to="/contact" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-            Contact Us
-          </NavLink>
-        </nav>
-
-        <div className="flex items-center gap-4">
-          {isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-body hidden sm:inline-block">
-                {user?.name || "Admin"}
-              </span>
-              <button
-                onClick={() => {
-                  logout();
-                  navigate("/login");
-                }}
-                className="px-4 py-2 rounded-xl bg-secondary/10 text-secondary font-semibold text-xs transition-all hover:bg-secondary/20 active:scale-[0.98] cursor-pointer"
-              >
-                Logout
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => navigate("/login")}
-              className="px-5 py-2 rounded-xl bg-[#0B1B3D] text-white font-semibold text-xs flex items-center gap-2 hover:bg-[#152e5c] transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-sm"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h3a3 3 0 013 3v1" />
-              </svg>
-              Login
-            </button>
-          )}
-
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-xl text-secondary hover:bg-secondary/10 transition-colors cursor-pointer"
-            aria-label="Toggle mobile menu"
-          >
-            {mobileMenuOpen ? (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            )}
-          </button>
-        </div>
-      </header>
-
-      {/* Mobile Dropdown Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-border-custom px-6 py-4 space-y-3 shadow-lg sticky top-20 z-20">
-          <NavLink to="/" className={mobileNavLinkClass} end onClick={() => setMobileMenuOpen(false)}>
-            Home
-          </NavLink>
-          <NavLink to="/about" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
-            About
-          </NavLink>
-          <NavLink to="/features" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
-            Features
-          </NavLink>
-          <NavLink to="/performance" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
-            Performance
-          </NavLink>
-          <NavLink to="/security" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
-            Security
-          </NavLink>
-          <NavLink to="/contact" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
-            Contact Us
-          </NavLink>
-        </div>
-      )}
+      <LandingHeader />
 
       {/* 2. Hero Section */}
       <section className="relative w-full overflow-hidden border-b border-border-custom bg-white min-h-[550px] md:min-h-[600px] flex items-center">
@@ -278,7 +173,7 @@ export default function Performance() {
               Performance at Every Mile
             </h2>
             <p className="text-xs sm:text-sm text-body max-w-xl mx-auto leading-relaxed">
-              From real-time tracking to maintenance and fuel management, our system ensures peak performance across your entire fleet.
+              From real-time tracking to vehicle and driver management, our system ensures peak performance across your entire fleet.
             </p>
           </div>
 
@@ -301,8 +196,8 @@ export default function Performance() {
                   <Settings className="w-4.5 h-4.5" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-[#0B1B3D]">Optimized Routes</h4>
-                  <p className="text-xs text-body leading-relaxed mt-0.5">Efficient routing algorithms reduce travel time, distance & fuel.</p>
+                  <h4 className="font-bold text-sm text-[#0B1B3D]">Fleet Visibility</h4>
+                  <p className="text-xs text-body leading-relaxed mt-0.5">Real-time tracking algorithms reduce transit delay, idle time, and resource waste.</p>
                 </div>
               </div>
 
@@ -311,8 +206,8 @@ export default function Performance() {
                   <Coins className="w-4.5 h-4.5" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-[#0B1B3D]">Fuel Efficiency</h4>
-                  <p className="text-xs text-body leading-relaxed mt-0.5">Monitor consumption logs and optimize fuel performance indicators.</p>
+                  <h4 className="font-bold text-sm text-[#0B1B3D]">Performance Monitoring</h4>
+                  <p className="text-xs text-body leading-relaxed mt-0.5">Monitor utilization logs and optimize key performance indicators.</p>
                 </div>
               </div>
 
@@ -321,8 +216,8 @@ export default function Performance() {
                   <Truck className="w-4.5 h-4.5" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-[#0B1B3D]">Preventive Maintenance</h4>
-                  <p className="text-xs text-body leading-relaxed mt-0.5">Automated schedules and timely alerts prevent major vehicle breakdowns.</p>
+                  <h4 className="font-bold text-sm text-[#0B1B3D]">Compliance Monitoring</h4>
+                  <p className="text-xs text-body leading-relaxed mt-0.5">Automated scheduling alerts and timely warnings prevent major vehicle breakdowns.</p>
                 </div>
               </div>
 
@@ -430,7 +325,7 @@ export default function Performance() {
               </div>
               <div className="space-y-1">
                 <h4 className="font-bold text-xs sm:text-sm text-[#0B1B3D]">Lower Operational Costs</h4>
-                <p className="text-[11px] text-body leading-relaxed">Optimize fuel usage, maintenance, and overall expenses.</p>
+                 <p className="text-[11px] text-body leading-relaxed">Optimize resource usage, vehicle health, and overall expenses.</p>
               </div>
             </div>
 
@@ -441,7 +336,7 @@ export default function Performance() {
               </div>
               <div className="space-y-1">
                 <h4 className="font-bold text-xs sm:text-sm text-[#0B1B3D]">Happier Drivers</h4>
-                <p className="text-[11px] text-body leading-relaxed">Better communication, routes, and support for all drivers.</p>
+                 <p className="text-[11px] text-body leading-relaxed">Better communication, tracking, and support for all drivers.</p>
               </div>
             </div>
 
@@ -452,7 +347,7 @@ export default function Performance() {
               </div>
               <div className="space-y-1">
                 <h4 className="font-bold text-xs sm:text-sm text-[#0B1B3D]">Fewer Breakdowns</h4>
-                <p className="text-[11px] text-body leading-relaxed">Preventive maintenance helps reduce unexpected vehicle downtime.</p>
+                 <p className="text-[11px] text-body leading-relaxed">Proactive monitoring helps reduce unexpected vehicle downtime.</p>
               </div>
             </div>
 
@@ -493,95 +388,7 @@ export default function Performance() {
         </div>
       </section>
 
-      {/* 7. Footer (Dark Background) */}
-      <footer className="bg-[#0B1B3D] text-gray-300 pt-12 sm:pt-16 pb-8 px-4 sm:px-6 md:px-8 mt-auto border-t border-blue-900/30">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 md:gap-12 pb-12 border-b border-gray-800">
-          {/* Column 1: Brand Info */}
-          <div className="space-y-4 lg:col-span-1">
-            <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="Fleet Management Logo" className="h-9 w-auto object-contain bg-white rounded-lg p-1" />
-              <span className="font-display font-black text-white text-sm tracking-wide">
-                Fleet Management
-              </span>
-            </div>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              A next-generation fleet management platform designed to help businesses streamline operations, improve efficiency, and drive growth.
-            </p>
-          </div>
-
-          {/* Column 2: QUICK LINKS */}
-          <div className="space-y-4">
-            <h5 className="font-display font-semibold text-white tracking-wider text-xs uppercase">Quick Links</h5>
-            <ul className="space-y-2.5 text-xs text-gray-400">
-              <li><NavLink to="/" className="hover:text-white transition-colors">Home</NavLink></li>
-              <li><NavLink to="/performance" className="hover:text-white transition-colors">Performance</NavLink></li>
-              <li><NavLink to="/security" className="hover:text-white transition-colors">Security</NavLink></li>
-              <li><NavLink to="/contact" className="hover:text-white transition-colors">Contact Us</NavLink></li>
-            </ul>
-          </div>
-
-          {/* Column 3: PLATFORM */}
-          <div className="space-y-4">
-            <h5 className="font-display font-semibold text-white tracking-wider text-xs uppercase">Platform</h5>
-            <ul className="space-y-2.5 text-xs text-gray-400">
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Features"); }} className="hover:text-white transition-colors">Features</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Security"); }} className="hover:text-white transition-colors">Security</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Integrations"); }} className="hover:text-white transition-colors">Integrations</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Pricing"); }} className="hover:text-white transition-colors">Pricing</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Documentation"); }} className="hover:text-white transition-colors">Documentation</a></li>
-            </ul>
-          </div>
-
-          {/* Column 4: COMPANY */}
-          <div className="space-y-4">
-            <h5 className="font-display font-semibold text-white tracking-wider text-xs uppercase">Company</h5>
-            <ul className="space-y-2.5 text-xs text-gray-400">
-              <li><NavLink to="/about" className="hover:text-white transition-colors">About Us</NavLink></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Careers"); }} className="hover:text-white transition-colors">Careers</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Blog"); }} className="hover:text-white transition-colors">Blog</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Privacy"); }} className="hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Terms"); }} className="hover:text-white transition-colors">Terms of Service</a></li>
-            </ul>
-          </div>
-
-          {/* Column 5: CONTACT */}
-          <div className="space-y-4 text-xs text-gray-400">
-            <h5 className="font-display font-semibold text-white tracking-wider text-xs uppercase">Contact Us</h5>
-            <ul className="space-y-3">
-              <li className="flex items-center gap-2">
-                <svg className="h-4 w-4 text-[#A14000] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                <span>+91 12345 67890</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <svg className="h-4 w-4 text-[#A14000] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <span>info@fleetmanagement.com</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <svg className="h-4 w-4 text-[#A14000] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span>Hyderabad, Telangana, India</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Copyright and Legal Links */}
-        <div className="max-w-7xl mx-auto pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] text-gray-500 font-medium">
-          <div>
-            <span>© 2026 Fleet Management. All rights reserved.</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <a href="#" onClick={(e) => { e.preventDefault(); handleAction("Privacy Policy"); }} className="hover:text-white transition-colors">Privacy Policy</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); handleAction("Terms of Service"); }} className="hover:text-white transition-colors">Terms of Service</a>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }
