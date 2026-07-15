@@ -14,6 +14,9 @@ const documentSchema = new mongoose.Schema(
     fileSize: { type: String, default: '1.0 MB' },
     fileType: { type: String, default: 'PDF' },
     uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    public_id: { type: String, default: '' },
+    secure_url: { type: String, default: '' },
+    originalName: { type: String, default: '' },
   },
   { timestamps: true }
 );

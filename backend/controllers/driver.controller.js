@@ -7,17 +7,21 @@ import {
 } from '../repositories/driver.repository.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import fs from 'fs';
+import path from 'path';
+import cloudinary from '../utils/cloudinary.js';
 import Trip from '../models/Trip.js';
 import Driver from '../models/Driver.js';
+import Document from '../models/Document.js';
 import mongoose from 'mongoose';
 
 /**
- * List all drivers with filtering, search, sorting, and pagination
+ * List drivers belonging to the logged-in manager
  * GET /api/drivers
  */
 export const listDrivers = async (req, res, next) => {
   try {
-    const filter = {};
+    // Always scope to the logged-in manager
+    const filter = { assignedManager: req.user._id };
 
     // 1. Search by Name, Employee ID, or Phone
     if (req.query.search) {
@@ -102,6 +106,7 @@ export const getAvailableDrivers = async (req, res, next) => {
     const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
 
     const filter = {
+      assignedManager: req.user._id,
       _id: { $nin: allocatedDriverIds },
       driverStatus: 'AVAILABLE',
       $or: [
@@ -125,7 +130,7 @@ export const getAvailableDrivers = async (req, res, next) => {
 };
 
 /**
- * Get a single driver by ID
+ * Get a single driver by ID — only if they belong to the logged-in manager
  * GET /api/drivers/:id
  */
 export const getDriver = async (req, res, next) => {
@@ -133,6 +138,10 @@ export const getDriver = async (req, res, next) => {
     const driver = await getDriverById(req.params.id);
     if (!driver) {
       return sendError(res, 404, 'Driver not found');
+    }
+    // Ownership check
+    if (String(driver.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this driver belongs to another manager');
     }
     return sendSuccess(res, 200, driver, 'Driver fetched successfully');
   } catch (error) {
@@ -218,11 +227,19 @@ export const createDriver = async (req, res, next) => {
 };
 
 /**
- * Update a driver
+ * Update a driver — only if they belong to the logged-in manager
  * PUT /api/drivers/:id
  */
 export const updateDriver = async (req, res, next) => {
   try {
+    // Ownership check before update
+    const existing = await getDriverById(req.params.id);
+    if (!existing) {
+      return sendError(res, 404, 'Driver not found');
+    }
+    if (String(existing.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this driver belongs to another manager');
+    }
     const driver = await updateDriverRecord(req.params.id, req.body);
     if (!driver) {
       return sendError(res, 404, 'Driver not found');
@@ -244,15 +261,20 @@ export const updateDriver = async (req, res, next) => {
 };
 
 /**
- * Delete a driver
+ * Delete a driver — only if they belong to the logged-in manager
  * DELETE /api/drivers/:id
  */
 export const deleteDriver = async (req, res, next) => {
   try {
-    const driver = await deleteDriverRecord(req.params.id);
-    if (!driver) {
+    // Ownership check before delete
+    const existing = await getDriverById(req.params.id);
+    if (!existing) {
       return sendError(res, 404, 'Driver not found');
     }
+    if (String(existing.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this driver belongs to another manager');
+    }
+    await deleteDriverRecord(req.params.id);
     return sendSuccess(res, 200, {}, 'Driver deleted successfully');
   } catch (error) {
     next(error);
@@ -267,28 +289,76 @@ export const deleteDriver = async (req, res, next) => {
 export const uploadDriverDocument = async (req, res, next) => {
   try {
     if (!req.file) {
+      console.log("Upload failed: No file uploaded");
       return sendError(res, 400, 'No file uploaded');
     }
 
-    const fileUrl = `/uploads/${req.file.filename}`;
+    // 1. Log file info
+    console.log("------ File Upload Received ------");
+    console.log("req.file details:", req.file);
+    console.log("File size:", req.file.size);
+    console.log("File mimetype:", req.file.mimetype);
 
+    // 2. Perform Cloudinary Stream Upload
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'fleet_documents',
+          resource_type: 'auto'
+        },
+        (error, uploadResult) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(uploadResult);
+          }
+        }
+      );
+      uploadStream.end(req.file.buffer);
+    });
+
+    // 3. Log Cloudinary response
+    console.log("Cloudinary Upload Response:", result);
+
+    // 4. Save metadata into MongoDB (Document collection)
+    const fileExt = path.extname(req.file.originalname).replace('.', '').toUpperCase() || 'PDF';
+    const sizeInMb = (req.file.size / (1024 * 1024)).toFixed(2) + ' MB';
+
+    const doc = new Document({
+      title: req.file.originalname,
+      fileUrl: result.secure_url,
+      type: fileExt,
+      category: 'Driver Doc',
+      fileSize: sizeInMb,
+      fileType: fileExt,
+      uploadedBy: req.user ? req.user._id : null,
+      public_id: result.public_id,
+      secure_url: result.secure_url,
+      originalName: req.file.originalname
+    });
+    
+    await doc.save();
+    console.log("MongoDB Document saved successfully:", doc);
+
+    // 5. Return the Cloudinary URL in the API response
     return sendSuccess(
       res,
       201,
       {
-        url: fileUrl,
+        url: result.secure_url,
         originalName: req.file.originalname,
         size: req.file.size,
-        filename: req.file.filename,
+        filename: req.file.originalname,
+        public_id: result.public_id,
+        secure_url: result.secure_url,
+        docId: doc._id
       },
       'Document uploaded successfully'
     );
   } catch (error) {
-    if (req.file && req.file.path) {
-      fs.unlink(req.file.path, (err) => {
-        if (err) console.error('Error deleting file:', err);
-      });
-    }
-    next(error);
+    // 6. Log Cloudinary / general errors
+    console.error("------ Cloudinary Upload Failure ------");
+    console.error("Complete error object:", error);
+    return sendError(res, 500, `Cloudinary upload failed: ${error.message || error}`);
   }
 };

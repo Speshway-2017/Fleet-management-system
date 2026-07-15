@@ -10,7 +10,7 @@ import {
 } from '../controllers/driver.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
-import { uploadDocument } from '../middleware/upload.middleware.js';
+import memoryUpload from '../middleware/memoryUpload.middleware.js';
 
 const router = express.Router();
 
@@ -23,7 +23,7 @@ router.post('/',   ...auth, createDriver);
 // IMPORTANT: /upload-document must come BEFORE /:id
 // so Express does not interpret "upload-document" as a driver ID
 router.post('/upload-document', ...auth, (req, res, next) => {
-  uploadDocument(req, res, (err) => {
+  memoryUpload.single('document')(req, res, (err) => {
     if (err) {
       return res.status(400).json({ success: false, message: err.message });
     }
