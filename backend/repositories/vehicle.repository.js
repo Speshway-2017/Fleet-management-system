@@ -20,12 +20,17 @@ export const createVehicle = async (data) => {
   return vehicle.save();
 };
 
-export const updateVehicle = async (id, data) =>
-  Vehicle.findByIdAndUpdate(id, data, { new: true, runValidators: true })
+export const updateVehicle = async (id, data) => {
+  const vehicle = await Vehicle.findById(id);
+  if (!vehicle) return null;
+  Object.assign(vehicle, data);
+  const saved = await vehicle.save();
+  return Vehicle.findById(saved._id)
     .populate('assignedDriver')
     .populate('assignedManager')
     .populate('createdBy')
     .populate('updatedBy');
+};
 
 export const deleteVehicle = async (id) =>
   Vehicle.findByIdAndDelete(id);

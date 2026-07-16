@@ -57,7 +57,8 @@ export default function TripDetailsPage() {
     ahmedabad: [23.0225, 72.5714],
     surat: [21.1702, 72.8311],
     jaipur: [26.9124, 75.7873],
-    lucknow: [26.8467, 80.9462]
+    lucknow: [26.8467, 80.9462],
+    manali: [32.2396, 77.1887]
   };
 
   const getCoordinates = (cityName) => {
@@ -247,7 +248,7 @@ export default function TripDetailsPage() {
               <div class="info-item"><span class="info-label">Destination</span><span class="info-val">${trip.endLocation}</span></div>
               <div class="info-item"><span class="info-label">Departure Date & Time</span><span class="info-val">${formatDateTime(trip.departureTime)}</span></div>
               <div class="info-item"><span class="info-label">Estimated Arrival</span><span class="info-val">${formatDateTime(trip.eta)}</span></div>
-              <div class="info-item"><span class="info-label">Distance (KM)</span><span class="info-val">${trip.status === "Completed" ? (trip.actualDistance || trip.estimatedDistance || totalDistance) : (trip.estimatedDistance || totalDistance)} KM</span></div>
+              <div class="info-item"><span class="info-label">Distance (KM)</span><span class="info-val">${trip.status === "Completed" ? ((trip.actualDistance && trip.actualDistance !== 120) ? trip.actualDistance : ((trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance)) : ((trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance)} KM</span></div>
               <div class="info-item"><span class="info-label">Cargo Type</span><span class="info-val">${trip.cargoType || "General Cargo"}</span></div>
               <div class="info-item"><span class="info-label">Cargo Weight</span><span class="info-val">${trip.cargoWeight || 0} kg</span></div>
               <div class="info-item"><span class="info-label">Trip Notes</span><span class="info-val">${trip.tripNotes || "None"}</span></div>
@@ -433,7 +434,11 @@ export default function TripDetailsPage() {
           <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Distance Details</p>
           <div className="flex items-baseline gap-1.5 mt-2">
             <span className="text-3xl font-black text-[#1E293B] font-poppins">
-              {trip.status === "Completed" ? (trip.actualDistance || trip.estimatedDistance || totalDistance) : (trip.estimatedDistance || totalDistance)}
+              {(() => {
+                const est = (trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance;
+                const act = (trip.actualDistance && trip.actualDistance !== 120) ? trip.actualDistance : est;
+                return trip.status === "Completed" ? act : est;
+              })()}
             </span>
             <span className="text-xs text-[#64748B] font-bold">KM</span>
           </div>
@@ -441,7 +446,7 @@ export default function TripDetailsPage() {
             {trip.status === "Completed" ? (
               <span>Actual distance logged upon completion</span>
             ) : (
-              <span>Estimated route distance: {trip.estimatedDistance || totalDistance} KM</span>
+              <span>Estimated route distance: { (trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance } KM</span>
             )}
           </div>
         </div>
@@ -882,7 +887,7 @@ export default function TripDetailsPage() {
                     <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Destination</span><span className="font-bold text-gray-700">{trip.endLocation}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Departure Date & Time</span><span className="font-bold text-gray-700">{formatDateTime(trip.departureTime)}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Estimated Arrival</span><span className="font-bold text-gray-700">{formatDateTime(trip.eta)}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Distance</span><span className="font-bold text-gray-700">{trip.status === "Completed" ? (trip.actualDistance || trip.estimatedDistance || totalDistance) : (trip.estimatedDistance || totalDistance)} KM</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Distance</span><span className="font-bold text-gray-700">{trip.status === "Completed" ? ((trip.actualDistance && trip.actualDistance !== 120) ? trip.actualDistance : ((trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance)) : ((trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance)} KM</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Cargo Type</span><span className="font-bold text-gray-700">{trip.cargoType || "General Cargo"}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Cargo Weight</span><span className="font-bold text-gray-700">{trip.cargoWeight || 0} kg</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Trip Notes</span><span className="font-bold text-gray-700">{trip.tripNotes || "None"}</span></div>

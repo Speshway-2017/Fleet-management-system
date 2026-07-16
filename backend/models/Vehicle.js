@@ -127,8 +127,18 @@ const vehicleSchema = new mongoose.Schema(
     },
     assignedManager:    { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     branch:             { type: String, default: 'Pune', trim: true },
+    currentLocation:    { type: String, default: '', trim: true },
   },
   { timestamps: true }
 );
+
+vehicleSchema.pre('validate', function(next) {
+  if (this.isModified('branch') && !this.isModified('currentLocation')) {
+    this.currentLocation = this.branch;
+  } else if (this.isModified('currentLocation') && !this.isModified('branch')) {
+    this.branch = this.currentLocation;
+  }
+  next();
+});
 
 export default mongoose.model('Vehicle', vehicleSchema);

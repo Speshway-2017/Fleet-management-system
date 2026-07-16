@@ -56,7 +56,11 @@ import {
   createEWayBill,
   extendEWayBill,
   updateEWayBill,
-  deleteEWayBill
+  deleteEWayBill,
+  // Milestone Reviews
+  getPendingMilestone,
+  submitReview,
+  maybeLater
 } from '../controllers/manager.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
@@ -135,5 +139,10 @@ router.put('/eway/:id',        ...auth, checkActiveSubscription, updateEWayBill)
 router.get('/invoices/trip/:tripId', ...auth, getInvoiceByTripId);
 router.get('/invoices/trip/:tripId/download', ...auth, getInvoiceByTripId);
 router.get('/invoices/trip/:tripId/print', ...auth, getInvoiceByTripId);
+
+// Trip Milestone Reviews
+router.get('/reviews/pending-milestone', ...auth, getPendingMilestone);
+router.post('/reviews',                  ...auth, submitReview);
+router.post('/reviews/maybe-later',      ...auth, maybeLater);
 
 export default router;

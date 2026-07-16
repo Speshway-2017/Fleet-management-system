@@ -50,7 +50,10 @@ import EWayBill from '../models/EWayBill.js';
 import Fuel from '../models/Fuel.js';
 import ActivityLog from '../models/ActivityLog.js';
 import Invoice from '../models/Invoice.js';
+import Review from '../models/Review.js';
+import ManagerMilestone from '../models/ManagerMilestone.js';
 import { logActivity } from '../utils/activityLogger.js';
+import { calculateDistance } from '../utils/distanceCalculator.js';
 
 export const getDashboard = async (req, res, next) => {
   try {
@@ -308,7 +311,8 @@ export const getVehicleById = async (req, res, next) => {
     const vehicle = await getVehicleByIdInRepo(req.params.id);
     if (!vehicle) return sendError(res, 404, 'Vehicle not found');
     // Ownership check
-    if (String(vehicle.assignedManager) !== String(req.user._id)) {
+    const managerId = vehicle.assignedManager?._id || vehicle.assignedManager;
+    if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
     }
     return sendSuccess(res, 200, vehicle, 'Vehicle fetched');
@@ -322,7 +326,8 @@ export const updateVehicle = async (req, res, next) => {
     // Ownership check before update
     const existingVeh = await getVehicleByIdInRepo(req.params.id);
     if (!existingVeh) return sendError(res, 404, 'Vehicle not found');
-    if (String(existingVeh.assignedManager) !== String(req.user._id)) {
+    const managerId = existingVeh.assignedManager?._id || existingVeh.assignedManager;
+    if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
     }
 
@@ -416,7 +421,8 @@ export const deleteVehicle = async (req, res, next) => {
     // Ownership check before delete
     const existingVeh = await getVehicleByIdInRepo(req.params.id);
     if (!existingVeh) return sendError(res, 404, 'Vehicle not found');
-    if (String(existingVeh.assignedManager) !== String(req.user._id)) {
+    const managerId = existingVeh.assignedManager?._id || existingVeh.assignedManager;
+    if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
     }
 
@@ -454,7 +460,8 @@ export const getDriverDetails = async (req, res, next) => {
       return sendError(res, 404, 'Driver not found');
     }
     // Ownership check
-    if (String(driver.assignedManager) !== String(req.user._id)) {
+    const managerId = driver.assignedManager?._id || driver.assignedManager;
+    if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this driver belongs to another manager');
     }
     return sendSuccess(res, 200, driver, 'Driver details fetched');
@@ -514,7 +521,8 @@ export const updateDriver = async (req, res, next) => {
     // Ownership check before update
     const existingDriver = await getDriverById(req.params.id);
     if (!existingDriver) return sendError(res, 404, 'Driver not found');
-    if (String(existingDriver.assignedManager) !== String(req.user._id)) {
+    const managerId = existingDriver.assignedManager?._id || existingDriver.assignedManager;
+    if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this driver belongs to another manager');
     }
 
@@ -541,7 +549,8 @@ export const deleteDriver = async (req, res, next) => {
     // Ownership check before delete
     const existingDriver = await getDriverById(req.params.id);
     if (!existingDriver) return sendError(res, 404, 'Driver not found');
-    if (String(existingDriver.assignedManager) !== String(req.user._id)) {
+    const managerId = existingDriver.assignedManager?._id || existingDriver.assignedManager;
+    if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this driver belongs to another manager');
     }
 
@@ -566,7 +575,20 @@ export const listTrips = async (req, res, next) => {
       filter.driver = req.query.driver;
     }
     const trips = await getTrips(filter);
-    return sendSuccess(res, 200, trips, 'Trips fetched');
+    
+    // Map over trips and dynamically replace default/120 KM distances
+    const processedTrips = trips.map(t => {
+      const tripObj = t.toObject ? t.toObject() : t;
+      if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120) {
+        tripObj.estimatedDistance = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+      }
+      if (!tripObj.actualDistance || tripObj.actualDistance === 120) {
+        tripObj.actualDistance = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+      }
+      return tripObj;
+    });
+
+    return sendSuccess(res, 200, processedTrips, 'Trips fetched');
   } catch (error) {
     next(error);
   }
@@ -582,7 +604,16 @@ export const getTripDetails = async (req, res, next) => {
     if (String(trip.assignedManager) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this trip belongs to another manager');
     }
-    return sendSuccess(res, 200, trip, 'Trip details fetched');
+
+    const tripObj = trip.toObject ? trip.toObject() : trip;
+    if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120) {
+      tripObj.estimatedDistance = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+    }
+    if (!tripObj.actualDistance || tripObj.actualDistance === 120) {
+      tripObj.actualDistance = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+    }
+
+    return sendSuccess(res, 200, tripObj, 'Trip details fetched');
   } catch (error) {
     next(error);
   }
@@ -619,12 +650,17 @@ export const createTrip = async (req, res, next) => {
       return sendError(res, 400, 'Pickup Location and Destination cannot be the same');
     }
 
-    // Validation: Pickup Date cannot be in the past
+    // Validation: Departure Date cannot be in the past
     const pickupDate = new Date(departureTime);
     const currentDate = new Date();
     // Allow a small grace margin of 5 minutes for latency
     if (pickupDate.getTime() + 300000 < currentDate.getTime()) {
-      return sendError(res, 400, 'Pickup Date and Time cannot be in the past');
+      return sendError(res, 400, 'Departure Time cannot be in the past.');
+    }
+
+    const etaDate = new Date(eta);
+    if (etaDate.getTime() <= pickupDate.getTime()) {
+      return sendError(res, 400, 'Estimated Arrival (ETA) must be later than the Departure Time.');
     }
 
     // A. Verify vehicle details & availability in database
@@ -646,8 +682,8 @@ export const createTrip = async (req, res, next) => {
 
     // Verify selected vehicle is from the start location
     const cleanStart = startLocation.trim().split(/[\s,]+/)[0].toLowerCase();
-    const vehicleBranch = (selectedVeh.branch || 'Pune').trim().split(/[\s,]+/)[0].toLowerCase();
-    if (!vehicleBranch.includes(cleanStart) && !cleanStart.includes(vehicleBranch)) {
+    const vehicleLoc = (selectedVeh.currentLocation || selectedVeh.branch || 'Pune').trim().split(/[\s,]+/)[0].toLowerCase();
+    if (!vehicleLoc.includes(cleanStart) && !cleanStart.includes(vehicleLoc)) {
       return sendError(res, 400, `Selected vehicle is not from the Start Location (${startLocation})`);
     }
 
@@ -671,8 +707,8 @@ export const createTrip = async (req, res, next) => {
       return sendError(res, 400, 'This driver is already allocated to another active trip');
     }
 
-    const driverBranch = (driverDoc.branch || 'Pune').trim().split(/[\s,]+/)[0].toLowerCase();
-    if (!driverBranch.includes(cleanStart) && !cleanStart.includes(driverBranch)) {
+    const driverLocVal = (driverDoc.currentLocation || driverDoc.driverLocation || driverDoc.branch || 'Pune').trim().split(/[\s,]+/)[0].toLowerCase();
+    if (!driverLocVal.includes(cleanStart) && !cleanStart.includes(driverLocVal)) {
       return sendError(res, 400, `Selected driver is not from the Start Location (${startLocation})`);
     }
 
@@ -694,7 +730,7 @@ export const createTrip = async (req, res, next) => {
       cargoType,
       cargoWeight: Number(cargoWeight) || 0,
       tripNotes,
-      estimatedDistance: Number(estimatedDistance) || 120, // Default fallback distance
+      estimatedDistance: Number(estimatedDistance) || calculateDistance(startLocation, endLocation),
       assignedManager: req.user._id
     });
 
@@ -755,6 +791,25 @@ export const updateTrip = async (req, res, next) => {
       return sendError(res, 400, 'Cannot modify a completed trip');
     }
 
+    // Validation: Date and Time validation
+    const depTime = req.body.departureTime !== undefined ? req.body.departureTime : existingTrip.departureTime;
+    const etaTime = req.body.eta !== undefined ? req.body.eta : existingTrip.eta;
+
+    if (depTime) {
+      const depDate = new Date(depTime);
+      const currentDate = new Date();
+      if (req.body.departureTime !== undefined && depDate.getTime() + 300000 < currentDate.getTime()) {
+        return sendError(res, 400, 'Departure Time cannot be in the past.');
+      }
+
+      if (etaTime) {
+        const etaDate = new Date(etaTime);
+        if (etaDate.getTime() <= depDate.getTime()) {
+          return sendError(res, 400, 'Estimated Arrival (ETA) must be later than the Departure Time.');
+        }
+      }
+    }
+
     const newStatus = req.body.status;
 
     // Validation: Prevent starting a trip without both vehicle and driver
@@ -772,7 +827,7 @@ export const updateTrip = async (req, res, next) => {
       req.body.actualStartTime = new Date();
     } else if (newStatus === 'Completed') {
       req.body.actualEndTime = new Date();
-      req.body.actualDistance = req.body.actualDistance || existingTrip.estimatedDistance || 120;
+      req.body.actualDistance = req.body.actualDistance || existingTrip.estimatedDistance || calculateDistance(existingTrip.startLocation, existingTrip.endLocation);
     }
 
     const updatedTrip = await updateTripInRepo(tripId, req.body);
@@ -781,17 +836,27 @@ export const updateTrip = async (req, res, next) => {
       if (newStatus === 'Completed' || newStatus === 'Cancelled') {
         // Release vehicle
         if (updatedTrip.vehicle) {
-          await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, {
+          const vehicleUpdate = {
             currentStatus: 'Available',
             assignedDriver: null
-          });
+          };
+          if (newStatus === 'Completed') {
+            vehicleUpdate.branch = updatedTrip.endLocation;
+            vehicleUpdate.currentLocation = updatedTrip.endLocation;
+          }
+          await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, vehicleUpdate);
         }
         // Release driver
         if (updatedTrip.driver) {
-          await Driver.findByIdAndUpdate(updatedTrip.driver, {
+          const driverUpdate = {
             driverStatus: 'AVAILABLE',
             assignedVehicle: 'Unassigned'
-          });
+          };
+          if (newStatus === 'Completed') {
+            driverUpdate.driverLocation = updatedTrip.endLocation;
+            driverUpdate.currentLocation = updatedTrip.endLocation;
+          }
+          await Driver.findByIdAndUpdate(updatedTrip.driver, driverUpdate);
         }
       } else if (newStatus === 'In Progress') {
         // Set statuses to On Trip / ON_TRIP
@@ -826,7 +891,8 @@ export const updateTrip = async (req, res, next) => {
       }
     }
 
-    return sendSuccess(res, 200, updatedTrip, 'Trip updated');
+    const finalTrip = await Trip.findById(tripId).populate('vehicle').populate('driver');
+    return sendSuccess(res, 200, finalTrip, 'Trip updated');
   } catch (error) {
     next(error);
   }
@@ -1788,6 +1854,176 @@ export const getInvoiceByTripId = async (req, res, next) => {
     }
 
     return sendSuccess(res, 200, invoice, 'Invoice fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Trip Milestone Review Controllers
+export const getPendingMilestone = async (req, res, next) => {
+  try {
+    const managerId = req.user._id;
+
+    // 1. Get count of completed trips for this manager
+    const completedTrips = await Trip.countDocuments({
+      assignedManager: managerId,
+      status: 'Completed'
+    });
+
+    // 2. Find or create the ManagerMilestone document
+    let milestoneDoc = await ManagerMilestone.findOne({ managerId });
+    if (!milestoneDoc) {
+      milestoneDoc = new ManagerMilestone({ managerId });
+      await milestoneDoc.save();
+    }
+
+    const milestones = [10, 50, 100];
+    let pendingMilestone = null;
+
+    // Check each milestone in order
+    for (const M of milestones) {
+      const mState = milestoneDoc.tripMilestones[String(M)];
+      if (!mState) continue;
+      
+      if (mState.reviewSubmitted) {
+        continue;
+      }
+
+      // Initialize nextPopupTrip if completedTrips reached milestone but nextPopupTrip is still 0
+      if (completedTrips >= M && mState.nextPopupTrip === 0) {
+        mState.nextPopupTrip = M;
+        milestoneDoc.markModified('tripMilestones');
+        await milestoneDoc.save();
+      }
+
+      // Evaluate trigger conditions using nextPopupTrip:
+      // Phase 1: completedTrips >= M && nextPopupTrip === M && reminderCount === 0
+      // Phase 2: completedTrips >= M + 1 && nextPopupTrip === M + 1 && reminderCount === 1
+      // Phase 3: completedTrips >= M + 2 && nextPopupTrip === M + 2 && reminderCount === 2
+      const isPhase1 = (completedTrips >= M && mState.nextPopupTrip === M && mState.reminderCount === 0);
+      const isPhase2 = (completedTrips >= M + 1 && mState.nextPopupTrip === M + 1 && mState.reminderCount === 1);
+      const isPhase3 = (completedTrips >= M + 2 && mState.nextPopupTrip === M + 2 && mState.reminderCount === 2);
+
+      const popupShouldOpen = isPhase1 || isPhase2 || isPhase3;
+
+      if (!popupShouldOpen) {
+        // Skip
+      } else {
+        const isMandatory = isPhase3;
+        
+        // Skip optional phases if they were already triggered for this exact trip count
+        if (!isMandatory && mState.lastTripTriggered === completedTrips) {
+          continue;
+        }
+
+        // Set lastTripTriggered to completedTrips to prevent repeat showing on reload
+        if (mState.lastTripTriggered !== completedTrips) {
+          mState.lastTripTriggered = completedTrips;
+          milestoneDoc.markModified('tripMilestones');
+          await milestoneDoc.save();
+        }
+
+        pendingMilestone = {
+          milestone: M,
+          isMandatory,
+          reminderCount: mState.reminderCount,
+          completedTrips
+        };
+        break; // Show lowest pending milestone first
+      }
+    }
+
+    return sendSuccess(res, 200, pendingMilestone, 'Pending milestone check complete');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const submitReview = async (req, res, next) => {
+  try {
+    const { rating, reviewText, milestone } = req.body;
+
+    if (!rating || !reviewText || !milestone) {
+      return sendError(res, 400, 'Rating, reviewText, and milestone are required');
+    }
+
+    const valRating = Number(rating);
+    if (isNaN(valRating) || valRating < 1 || valRating > 5) {
+      return sendError(res, 400, 'Rating must be a number between 1 and 5');
+    }
+
+    const cleanReview = String(reviewText).trim();
+    if (cleanReview.length < 20 || cleanReview.length > 500) {
+      return sendError(res, 400, 'Review text must be between 20 and 500 characters');
+    }
+
+    const M = Number(milestone);
+    if (![10, 50, 100].includes(M)) {
+      return sendError(res, 400, 'Milestone must be 10, 50, or 100');
+    }
+
+    const managerId = req.user._id;
+
+    // Save review
+    const review = new Review({
+      managerId,
+      managerName: req.user.name || req.user.email || 'Fleet Manager',
+      rating: valRating,
+      reviewText: cleanReview,
+      tripMilestone: M
+    });
+    await review.save();
+
+    // Mark milestone as submitted
+    let milestoneDoc = await ManagerMilestone.findOne({ managerId });
+    if (!milestoneDoc) {
+      milestoneDoc = new ManagerMilestone({ managerId });
+    }
+
+    const mState = milestoneDoc.tripMilestones[String(M)];
+    if (mState) {
+      mState.reviewSubmitted = true;
+      milestoneDoc.markModified('tripMilestones');
+      await milestoneDoc.save();
+    }
+
+    return sendSuccess(res, 201, review, 'Review submitted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const maybeLater = async (req, res, next) => {
+  try {
+    const { milestone } = req.body;
+    const M = Number(milestone);
+
+    if (![10, 50, 100].includes(M)) {
+      return sendError(res, 400, 'Milestone must be 10, 50, or 100');
+    }
+
+    const managerId = req.user._id;
+    let milestoneDoc = await ManagerMilestone.findOne({ managerId });
+    if (milestoneDoc) {
+      const mState = milestoneDoc.tripMilestones[String(M)];
+      if (mState) {
+        if (mState.reminderCount === 0) {
+          mState.reminderCount = 1;
+          mState.nextPopupTrip = M + 1; // e.g. 11
+        } else if (mState.reminderCount === 1) {
+          mState.reminderCount = 2;
+          mState.nextPopupTrip = M + 2; // e.g. 12
+        } else {
+          mState.reminderCount = 2;
+          mState.nextPopupTrip = M + 2;
+        }
+
+        milestoneDoc.markModified('tripMilestones');
+        await milestoneDoc.save();
+      }
+    }
+
+    return sendSuccess(res, 200, null, 'Milestone dismissed for now');
   } catch (error) {
     next(error);
   }

@@ -28,6 +28,7 @@ import Settings from "@/roles/admin/pages/Settings";
 import SecuritySettings from "@/roles/admin/pages/SecuritySettings";
 import NotificationSettings from "@/roles/admin/pages/NotificationSettings";
 import ProfileSettings from "@/roles/admin/pages/ProfileSettings";
+import ReviewsSettings from "@/roles/admin/pages/ReviewsSettings";
 import SettingsBlogs from "@/roles/admin/pages/SettingsBlogs";
 import SettingsAbout from "@/roles/admin/pages/SettingsAbout";
 import NotificationList from "@/roles/admin/pages/NotificationList";

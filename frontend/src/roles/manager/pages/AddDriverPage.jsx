@@ -88,6 +88,7 @@ export default function AddDriverPage() {
     dob: "",
     gender: "Male",
     address: "",
+    driverLocation: "",
     licenseIssuingAuthority: "",
   });
 
@@ -131,6 +132,7 @@ export default function AddDriverPage() {
           dob: d.dob ? d.dob.split("T")[0] : "",
           gender: d.gender || "Male",
           address: d.address || "",
+          driverLocation: d.driverLocation || "",
           licenseIssuingAuthority: d.licenseIssuingAuthority || "",
         });
         const pErr = validateField("phoneNumber", d.phoneNumber || "");
@@ -240,7 +242,8 @@ export default function AddDriverPage() {
       !formData.licenseNumber ||
       !formData.dob ||
       !formData.gender ||
-      !formData.address
+      !formData.address ||
+      !formData.driverLocation
     ) {
       toast.error("Please fill in all required fields marked with *");
       return;
@@ -421,6 +424,19 @@ export default function AddDriverPage() {
                 <option value="ON_TRIP">On Trip</option>
                 <option value="SUSPENDED">Suspended</option>
               </select>
+            </div>
+
+            {/* Current Location */}
+            <div>
+              <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Current Location (City/Branch) *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Pune, Hyderabad, Delhi"
+                value={formData.driverLocation}
+                onChange={(e) => setFormData({ ...formData, driverLocation: e.target.value })}
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+              />
             </div>
 
             {/* Address */}

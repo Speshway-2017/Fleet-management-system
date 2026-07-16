@@ -183,6 +183,12 @@ export const adminApi = {
     return axiosClient.delete(`/admin/contacts/${id}`);
   },
 
+  // Milestone Reviews
+  getReviews: async () => {
+    return axiosClient.get('/admin/reviews');
+  },
+  toggleReviewPublic: async (id, showPublic) => {
+    return axiosClient.patch(`/admin/reviews/${id}/public`, { showPublic });
   // Blogs Management
   getBlogs: async () => {
     return axiosClient.get('/admin/blogs');

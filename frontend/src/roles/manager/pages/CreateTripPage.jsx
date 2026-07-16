@@ -51,6 +51,83 @@ export default function CreateTripPage() {
   const [status, setStatus] = useState("Scheduled");
   const [description, setDescription] = useState("");
 
+  const [departureError, setDepartureError] = useState("");
+  const [etaError, setEtaError] = useState("");
+
+  const getCurrentDateTimeString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const getMinEtaString = (depTime) => {
+    if (!depTime) return getCurrentDateTimeString();
+    const d = new Date(depTime);
+    d.setMinutes(d.getMinutes() + 1);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const validateDates = (depVal, etaVal) => {
+    let depErr = "";
+    let etaErr = "";
+
+    const currentDate = new Date();
+
+    if (depVal) {
+      const depDate = new Date(depVal);
+      if (depDate.getTime() + 60000 < currentDate.getTime()) {
+        depErr = "Departure Time cannot be in the past.";
+      }
+    }
+
+    if (depVal && etaVal) {
+      const depDate = new Date(depVal);
+      const etaDate = new Date(etaVal);
+      if (etaDate.getTime() <= depDate.getTime()) {
+        etaErr = "Estimated Arrival (ETA) must be later than the Departure Time.";
+      }
+    }
+
+    setDepartureError(depErr);
+    setEtaError(etaErr);
+
+    return { depErr, etaErr };
+  };
+
+  const handleDepartureTimeChange = (val) => {
+    setDepartureTime(val);
+    
+    let updatedEta = eta;
+    if (val && eta) {
+      const depDate = new Date(val);
+      const etaDate = new Date(eta);
+      if (depDate.getTime() >= etaDate.getTime()) {
+        setEta("");
+        updatedEta = "";
+      }
+    }
+
+    validateDates(val, updatedEta);
+  };
+
+  const handleEtaChange = (val) => {
+    setEta(val);
+    validateDates(departureTime, val);
+  };
+
+  const handleBlur = () => {
+    validateDates(departureTime, eta);
+  };
+
   // Generate trip ID on mount
   useEffect(() => {
     setTripNumber(`TRP-${Math.floor(100000 + Math.random() * 900000)}`);
@@ -110,6 +187,13 @@ export default function CreateTripPage() {
 
   const handleDispatch = async (e) => {
     e.preventDefault();
+
+    const { depErr, etaErr } = validateDates(departureTime, eta);
+    if (depErr || etaErr) {
+      toast.error(depErr || etaErr);
+      return;
+    }
+
     if (!startLocation.trim()) {
       toast.error("Pickup Location is required.");
       return;
@@ -207,9 +291,12 @@ export default function CreateTripPage() {
           </button>
           <button
             onClick={handleDispatch}
-            disabled={isViewOnly}
-            title={isViewOnly ? "This feature is available after activating a subscription." : "Dispatch Trip"}
-            className={`flex-1 md:flex-none px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer text-center ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
+            disabled={!!departureError || !!etaError || !departureTime || !eta}
+            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-md cursor-pointer text-center ${
+              (departureError || etaError || !departureTime || !eta)
+                ? "bg-gray-300 shadow-none cursor-not-allowed opacity-60"
+                : "bg-[#B45A0A] hover:bg-[#9A4D08] shadow-[#B45A0A]/20"
+            }`}
           >
             Dispatch Trip
           </button>
@@ -313,11 +400,18 @@ export default function CreateTripPage() {
                   <input
                     type="datetime-local"
                     value={departureTime}
-                    onChange={(e) => setDepartureTime(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    onChange={(e) => handleDepartureTimeChange(e.target.value)}
+                    onBlur={handleBlur}
+                    min={getCurrentDateTimeString()}
+                    className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium ${
+                      departureError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
+                    }`}
                     required
                   />
                 </div>
+                {departureError && (
+                  <p className="text-red-500 text-xs mt-1 font-semibold">{departureError}</p>
+                )}
               </div>
 
               {/* ETA */}
@@ -330,11 +424,18 @@ export default function CreateTripPage() {
                   <input
                     type="datetime-local"
                     value={eta}
-                    onChange={(e) => setEta(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    onChange={(e) => handleEtaChange(e.target.value)}
+                    onBlur={handleBlur}
+                    min={getMinEtaString(departureTime)}
+                    className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium ${
+                      etaError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
+                    }`}
                     required
                   />
                 </div>
+                {etaError && (
+                  <p className="text-red-500 text-xs mt-1 font-semibold">{etaError}</p>
+                )}
               </div>
             </div>
 
@@ -592,7 +693,7 @@ export default function CreateTripPage() {
                         <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
                           <span>Lic Validity: <strong className={isExpired ? "text-red-500" : "text-[#1E293B]"}>{d.licenseExpiry ? new Date(d.licenseExpiry).toLocaleDateString() : "Valid"}</strong></span>
                           <span>|</span>
-                          <span>Location: <strong className="text-[#1E293B]">{d.branch || "Pune"}</strong></span>
+                          <span>Location: <strong className="text-[#1E293B]">{d.driverLocation || d.branch || "Pune"}</strong></span>
                         </div>
                         <div className="flex gap-1.5 mt-2">
                           <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${

@@ -417,8 +417,8 @@ export default function DriverProfilePage() {
               </div>
 
               <div>
-                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Terminal Branch</span>
-                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">Pune Hub Depot</span>
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Current Location</span>
+                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{driver.driverLocation || driver.branch || "Pune"}</span>
               </div>
             </div>
           </div>

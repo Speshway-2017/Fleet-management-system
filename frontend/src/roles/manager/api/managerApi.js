@@ -205,4 +205,17 @@ export const managerApi = {
   markAllNotificationsRead: async () => {
     return await axiosClient.patch("/manager/notifications/read-all");
   },
+
+  // Trip Milestone Reviews
+  getPendingMilestone: async () => {
+    return await axiosClient.get("/manager/reviews/pending-milestone");
+  },
+
+  submitReview: async (reviewData) => {
+    return await axiosClient.post("/manager/reviews", reviewData);
+  },
+
+  maybeLater: async (milestone) => {
+    return await axiosClient.post("/manager/reviews/maybe-later", { milestone });
+  },
 };

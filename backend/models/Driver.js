@@ -44,9 +44,20 @@ const driverSchema = new mongoose.Schema(
     incidentCount: { type: Number, default: 0 },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     branch: { type: String, default: 'Pune', trim: true },
+    driverLocation: { type: String, default: '', trim: true },
+    currentLocation: { type: String, default: '', trim: true },
   },
   { timestamps: true }
 );
+
+driverSchema.pre('validate', function(next) {
+  if (this.isModified('driverLocation') && !this.isModified('currentLocation')) {
+    this.currentLocation = this.driverLocation;
+  } else if (this.isModified('currentLocation') && !this.isModified('driverLocation')) {
+    this.driverLocation = this.currentLocation;
+  }
+  next();
+});
 
 driverSchema.post('init', function (doc) {
   doc._originalAssignedVehicle = doc.assignedVehicle;

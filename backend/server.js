@@ -89,34 +89,27 @@ const startServer = async () => {
 
   // Socket.IO connection handler
   io.on('connection', (socket) => {
-    console.log(`✅ Socket connected: ${socket.id}`);
-
     // Join admin-specific room
     socket.on('joinAdminRoom', (adminId) => {
       socket.join(`admin:${adminId}`);
-      console.log(`📡 Admin ${adminId} joined room`);
     });
 
     // Join manager-specific room
     socket.on('joinManagerRoom', (managerId) => {
       socket.join(`manager:${managerId}`);
-      console.log(`📡 Manager ${managerId} joined room`);
     });
 
     // Join organization-specific room
     socket.on('joinOrganizationRoom', (organizationId) => {
       socket.join(`organization:${organizationId}`);
-      console.log(`📡 Organization ${organizationId} joined room`);
     });
 
     // Join role room (for SUPER_ADMIN or FLEET_MANAGER)
     socket.on('joinRoleRoom', (role) => {
       socket.join(`role:${role}`);
-      console.log(`📡 Joined role room: ${role}`);
     });
 
     socket.on('disconnect', () => {
-      console.log(`❌ Socket disconnected: ${socket.id}`);
     });
   });
 

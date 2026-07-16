@@ -31,6 +31,56 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 
 import { managerApi } from "../api/managerApi";
 
+const CITY_COORDINATES = {
+  mumbai: [19.0760, 72.8777],
+  pune: [18.5204, 73.8567],
+  bengaluru: [12.9716, 77.5946],
+  bangalore: [12.9716, 77.5946],
+  hyderabad: [17.3850, 78.4867],
+  delhi: [28.7041, 77.1025],
+  chennai: [13.0827, 80.2707],
+  kolhapur: [16.7050, 74.2433],
+  satara: [17.6805, 73.9918],
+  anantapur: [14.6819, 77.6006],
+  goa: [15.2993, 74.1240],
+  visakhapatnam: [17.6868, 83.2185],
+  vizag: [17.6868, 83.2185],
+  kolkata: [22.5726, 88.3639],
+  ahmedabad: [23.0225, 72.5714],
+  surat: [21.1702, 72.8311],
+  jaipur: [26.9124, 75.7873],
+  lucknow: [26.8467, 80.9462],
+  manali: [32.2396, 77.1887]
+};
+
+const getCoordinates = (cityName) => {
+  if (!cityName) return [18.5204, 73.8567];
+  const norm = cityName.toLowerCase().trim();
+  for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
+    if (norm.includes(key)) return coords;
+  }
+  return [18.5204, 73.8567];
+};
+
+const getDistance = (startCity, endCity) => {
+  const startCoords = getCoordinates(startCity);
+  const endCoords = getCoordinates(endCity);
+  if (startCoords[0] === 18.5204 && startCoords[1] === 73.8567 && 
+      endCoords[0] === 18.5204 && endCoords[1] === 73.8567) {
+    return 350;
+  }
+  const R = 6371;
+  const dLat = (endCoords[0] - startCoords[0]) * Math.PI / 180;
+  const dLon = (endCoords[1] - startCoords[1]) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(startCoords[0] * Math.PI / 180) * Math.cos(endCoords[0] * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const d = R * c;
+  return Math.round(d);
+};
+
 export default function TripsManagementPage() {
   const navigate = useNavigate();
   const [trips, setTrips] = useState([]);
@@ -61,13 +111,103 @@ export default function TripsManagementPage() {
     description: ""
   });
 
+  const [departureError, setDepartureError] = useState("");
+  const [etaError, setEtaError] = useState("");
+
+  const getCurrentDateTimeString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const getMinEtaString = (depTime) => {
+    if (!depTime) return getCurrentDateTimeString();
+    const d = new Date(depTime);
+    d.setMinutes(d.getMinutes() + 1);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const validateDates = (depVal, etaVal) => {
+    let depErr = "";
+    let etaErr = "";
+
+    const currentDate = new Date();
+
+    if (depVal) {
+      const depDate = new Date(depVal);
+      if (depDate.getTime() + 60000 < currentDate.getTime()) {
+        depErr = "Departure Time cannot be in the past.";
+      }
+    }
+
+    if (depVal && etaVal) {
+      const depDate = new Date(depVal);
+      const etaDate = new Date(etaVal);
+      if (etaDate.getTime() <= depDate.getTime()) {
+        etaErr = "Estimated Arrival (ETA) must be later than the Departure Time.";
+      }
+    }
+
+    setDepartureError(depErr);
+    setEtaError(etaErr);
+
+    return { depErr, etaErr };
+  };
+
+  const handleDepartureTimeChange = (val) => {
+    let updatedEta = formData.eta;
+    if (val && formData.eta) {
+      const depDate = new Date(val);
+      const etaDate = new Date(formData.eta);
+      if (depDate.getTime() >= etaDate.getTime()) {
+        updatedEta = "";
+      }
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      departureTime: val,
+      eta: updatedEta
+    }));
+
+    validateDates(val, updatedEta);
+  };
+
+  const handleEtaChange = (val) => {
+    setFormData(prev => ({
+      ...prev,
+      eta: val
+    }));
+    validateDates(formData.departureTime, val);
+  };
+
+  const handleBlur = () => {
+    validateDates(formData.departureTime, formData.eta);
+  };
+
+
+
   const fetchTrips = async () => {
     try {
       setLoading(true);
       const response = await managerApi.getTrips();
       const result = response.data?.data || response.data;
       if (Array.isArray(result)) {
-        setTrips(result.map(t => ({ ...t, id: t._id })));
+        const sortedResult = [...result].sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt) : new Date(a.departureTime || 0);
+          const dateB = b.createdAt ? new Date(b.createdAt) : new Date(b.departureTime || 0);
+          return dateB - dateA;
+        });
+        setTrips(sortedResult.map(t => ({ ...t, id: t._id })));
       } else {
         setTrips([]);
       }
@@ -202,11 +342,20 @@ export default function TripsManagementPage() {
       cargoWeight: t.cargoWeight || "",
       tripNotes: t.tripNotes || ""
     });
+    setDepartureError("");
+    setEtaError("");
     setShowEditModal(true);
   };
 
   const handleEditTrip = async (e) => {
     e.preventDefault();
+
+    const { depErr, etaErr } = validateDates(formData.departureTime, formData.eta);
+    if (depErr || etaErr) {
+      toast.error(depErr || etaErr);
+      return;
+    }
+
     if (!formData.startLocation || !formData.endLocation || !formData.departureTime || !formData.eta) {
       toast.error("Required fields cannot be empty");
       return;
@@ -562,7 +711,11 @@ export default function TripsManagementPage() {
 
                         {/* Distance */}
                         <td className="py-4 px-6 whitespace-nowrap text-xs text-[#1E293B] font-bold">
-                          {t.status === "Completed" ? (t.actualDistance || t.estimatedDistance || 120) : (t.estimatedDistance || 120)} KM
+                          {(() => {
+                            const est = (t.estimatedDistance && t.estimatedDistance !== 120) ? t.estimatedDistance : getDistance(t.startLocation, t.endLocation);
+                            const act = (t.actualDistance && t.actualDistance !== 120) ? t.actualDistance : est;
+                            return t.status === "Completed" ? act : est;
+                          })()} KM
                         </td>
 
                         {/* Actions */}
@@ -727,9 +880,16 @@ export default function TripsManagementPage() {
                     type="datetime-local"
                     required
                     value={formData.departureTime}
-                    onChange={(e) => setFormData({ ...formData, departureTime: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    onChange={(e) => handleDepartureTimeChange(e.target.value)}
+                    onBlur={handleBlur}
+                    min={getCurrentDateTimeString()}
+                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium ${
+                      departureError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
+                    }`}
                   />
+                  {departureError && (
+                    <p className="text-red-500 text-xs mt-1 font-semibold">{departureError}</p>
+                  )}
                 </div>
 
                 {/* ETA */}
@@ -741,9 +901,16 @@ export default function TripsManagementPage() {
                     type="datetime-local"
                     required
                     value={formData.eta}
-                    onChange={(e) => setFormData({ ...formData, eta: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    onChange={(e) => handleEtaChange(e.target.value)}
+                    onBlur={handleBlur}
+                    min={getMinEtaString(formData.departureTime)}
+                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium ${
+                      etaError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
+                    }`}
                   />
+                  {etaError && (
+                    <p className="text-red-500 text-xs mt-1 font-semibold">{etaError}</p>
+                  )}
                 </div>
               </div>
 
@@ -807,14 +974,19 @@ export default function TripsManagementPage() {
               <div className="p-4 border-t border-gray-100 bg-white text-right shrink-0 flex items-center justify-end gap-3 rounded-b-2xl">
                 <button
                   type="button"
-                  onClick={() => { setShowEditModal(false); setEditingTrip(null); }}
+                  onClick={() => { setShowEditModal(false); setEditingTrip(null); setDepartureError(""); setEtaError(""); }}
                   className="px-5 py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md"
+                  disabled={!!departureError || !!etaError || !formData.departureTime || !formData.eta}
+                  className={`px-6 py-2.5 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md ${
+                    (departureError || etaError || !formData.departureTime || !formData.eta)
+                      ? "bg-gray-300 shadow-none cursor-not-allowed opacity-60"
+                      : "bg-[#B45A0A] hover:bg-[#9A4D08]"
+                  }`}
                 >
                   Save Changes
                 </button>

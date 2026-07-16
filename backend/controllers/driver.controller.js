@@ -116,12 +116,35 @@ export const getAvailableDrivers = async (req, res, next) => {
       ]
     };
 
-    if (req.query.location) {
-      const cleanLoc = req.query.location.trim().split(/[\s,]+/)[0];
-      filter.branch = { $regex: new RegExp(cleanLoc, 'i') };
+    const cleanLoc = req.query.location ? req.query.location.trim().split(/[\s,]+/)[0].toLowerCase() : null;
+
+    if (cleanLoc) {
+      filter.$and = [
+        {
+          $or: [
+            { branch: { $regex: new RegExp(cleanLoc, 'i') } },
+            { driverLocation: { $regex: new RegExp(cleanLoc, 'i') } },
+            { currentLocation: { $regex: new RegExp(cleanLoc, 'i') } }
+          ]
+        }
+      ];
     }
 
-    const availableDrivers = await Driver.find(filter).sort({ createdAt: -1 });
+    const availableDrivers = await Driver.find(filter);
+
+    if (cleanLoc) {
+      availableDrivers.sort((a, b) => {
+        const aLoc = (a.currentLocation || a.driverLocation || a.branch || '').toLowerCase();
+        const bLoc = (b.currentLocation || b.driverLocation || b.branch || '').toLowerCase();
+        const aMatch = aLoc.includes(cleanLoc) || cleanLoc.includes(aLoc);
+        const bMatch = bLoc.includes(cleanLoc) || cleanLoc.includes(bLoc);
+        if (aMatch && !bMatch) return -1;
+        if (!aMatch && bMatch) return 1;
+        return 0;
+      });
+    } else {
+      availableDrivers.sort((a, b) => b.createdAt - a.createdAt);
+    }
 
     return sendSuccess(res, 200, availableDrivers, 'Available drivers fetched successfully');
   } catch (error) {
@@ -140,7 +163,8 @@ export const getDriver = async (req, res, next) => {
       return sendError(res, 404, 'Driver not found');
     }
     // Ownership check
-    if (String(driver.assignedManager) !== String(req.user._id)) {
+    const managerId = driver.assignedManager?._id || driver.assignedManager;
+    if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this driver belongs to another manager');
     }
     return sendSuccess(res, 200, driver, 'Driver fetched successfully');
@@ -173,6 +197,7 @@ export const createDriver = async (req, res, next) => {
       dob,
       gender,
       address,
+      driverLocation,
       licenseIssuingAuthority,
       onTimeDeliveries,
       attendancePercentage,
@@ -203,6 +228,7 @@ export const createDriver = async (req, res, next) => {
       dob: dob || undefined,
       gender: gender || 'Male',
       address: address || '',
+      driverLocation: driverLocation || '',
       licenseIssuingAuthority: licenseIssuingAuthority || '',
       onTimeDeliveries: onTimeDeliveries !== undefined ? Number(onTimeDeliveries) : 0,
       attendancePercentage: attendancePercentage !== undefined ? Number(attendancePercentage) : 100,
@@ -237,7 +263,8 @@ export const updateDriver = async (req, res, next) => {
     if (!existing) {
       return sendError(res, 404, 'Driver not found');
     }
-    if (String(existing.assignedManager) !== String(req.user._id)) {
+    const managerId = existing.assignedManager?._id || existing.assignedManager;
+    if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this driver belongs to another manager');
     }
     const driver = await updateDriverRecord(req.params.id, req.body);
@@ -271,7 +298,8 @@ export const deleteDriver = async (req, res, next) => {
     if (!existing) {
       return sendError(res, 404, 'Driver not found');
     }
-    if (String(existing.assignedManager) !== String(req.user._id)) {
+    const managerId = existing.assignedManager?._id || existing.assignedManager;
+    if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this driver belongs to another manager');
     }
     await deleteDriverRecord(req.params.id);

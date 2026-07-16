@@ -47,7 +47,7 @@ export const deleteDriver = async (id) =>
 
 // Trips
 export const getTrips = async (filter = {}) => {
-  return Trip.find(filter);
+  return Trip.find(filter).sort({ createdAt: -1 });
 };
 
 export const getTripById = async (id) => {
