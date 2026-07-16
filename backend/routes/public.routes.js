@@ -1,6 +1,7 @@
 import express from 'express';
 import Blog from '../models/Blog.js';
 import About from '../models/About.js';
+import Settings from '../models/Settings.js';
 import { sendSuccess } from '../utils/response.js';
 
 const router = express.Router();
@@ -10,6 +11,17 @@ router.get('/blogs', async (req, res, next) => {
   try {
     const blogs = await Blog.find().sort({ createdAt: -1 });
     return sendSuccess(res, 200, blogs, 'Blogs fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/public/settings
+router.get('/settings', async (req, res, next) => {
+  try {
+    const settings = await Settings.findOne();
+    const data = settings || { platformName: 'Fleet Management', logoUrl: '/logo.png' };
+    return sendSuccess(res, 200, data, 'Settings fetched successfully');
   } catch (error) {
     next(error);
   }

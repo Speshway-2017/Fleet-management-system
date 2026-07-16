@@ -2,9 +2,11 @@ import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
 import TermsModal from "@/components/common/TermsModal";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function LandingFooter() {
   const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const { platformSettings } = useSettings();
 
   const handleAction = (label) => {
     toast.success(`Action triggered: ${label}`);
@@ -16,7 +18,7 @@ export default function LandingFooter() {
         {/* Column 1: Brand Info */}
         <div className="space-y-4 lg:col-span-1">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Fleet Management Logo" className="h-9 w-auto object-contain bg-white rounded-lg p-1" />
+            <img src={platformSettings?.logoUrl || "/logo.png"} alt="Fleet Management Logo" className="h-9 w-auto object-contain bg-white rounded-lg p-1" />
           </div>
           <p className="text-xs text-gray-400 leading-relaxed">
             A next-generation fleet management platform designed to help businesses streamline operations, improve efficiency, and drive growth.

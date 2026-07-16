@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useSettings } from "@/context/SettingsContext";
 import toast from "react-hot-toast";
 import { managerApi } from "@/roles/manager/api/managerApi";
 import MilestoneReviewModal from "./MilestoneReviewModal";
@@ -79,6 +80,7 @@ const MANAGER_MOBILE_SIDEBAR_ITEMS = [
 
 export default function AppLayout() {
   const { user, role, logout } = useAuth();
+  const { platformSettings } = useSettings();
   const location = useLocation();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -169,13 +171,13 @@ export default function AppLayout() {
             <div className="flex items-center px-4 py-6 border-b border-[#1B1B1D]/50 shrink-0">
               <div className="flex items-center gap-2">
                 <img
-                  src="/logo.png"
+                  src={platformSettings?.logoUrl || "/logo.png"}
                   className="w-10 h-10 object-contain rounded-lg shrink-0"
                   alt="Fleet Management Logo"
                 />
                 <div className="border-l border-[#1B1B1D]/80 pl-[14px] py-1">
                   <h1 className="font-black text-white text-base tracking-wide leading-none whitespace-nowrap">
-                    Fleet Management
+                    {platformSettings?.platformName || "Fleet Management"}
                   </h1>
                   <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider mt-1.5 block">
                     {role === "admin" ? "Admin" : "Manager"}
@@ -250,13 +252,13 @@ export default function AppLayout() {
         <div className="flex items-center justify-center lg:justify-start lg:px-4 py-6 border-b border-[#1B1B1D]/50 shrink-0">
           <div className="flex items-center gap-2">
             <img
-              src="/logo.png"
+              src={platformSettings?.logoUrl || "/logo.png"}
               className="w-10 h-10 object-contain rounded-lg shrink-0"
               alt="Fleet Management Logo"
             />
             <div className="border-l border-[#1B1B1D]/80 pl-[14px] py-1 hidden lg:block">
               <h1 className="font-black text-white text-base tracking-wide leading-none whitespace-nowrap">
-                Fleet Management
+                {platformSettings?.platformName || "Fleet Management"}
               </h1>
               <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider mt-1.5 block">
                 {role === "admin" ? "Admin" : "Manager"}

@@ -62,7 +62,9 @@ function Dashboard() {
           setData(result);
         }
       } catch (error) {
-        toast.error("Failed to fetch dashboard data");
+        if (error?.response?.status !== 401) {
+          toast.error("Failed to fetch dashboard data");
+        }
         console.error(error);
       } finally {
         setLoading(false);

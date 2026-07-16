@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AdminProvider } from "@/roles/admin/context/AdminContext";
+import { SettingsProvider } from "@/context/SettingsContext";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
@@ -93,8 +94,9 @@ function PublicRoute({ children }) {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <SettingsProvider>
+      <AuthProvider>
+        <BrowserRouter>
         <ScrollToTop />
         <Toaster position="top-right" />
         <Routes>
@@ -204,5 +206,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </SettingsProvider>
   );
 }

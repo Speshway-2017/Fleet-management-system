@@ -444,7 +444,7 @@ export default function ContactRequests() {
                       <th className="px-6 py-4">Subject</th>
                       <th className="px-6 py-4">Date</th>
                       <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
+                      <th className="px-6 py-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs">
@@ -460,7 +460,7 @@ export default function ContactRequests() {
                           }`}
                         >
                         {/* Ticket ID */}
-                        <td className="px-6 py-4.5 font-bold text-slate-900 tracking-wide font-mono">
+                        <td className="px-6 py-4.5 font-bold text-slate-900 tracking-wide font-mono whitespace-nowrap">
                           {contact.ticketId || "N/A"}
                         </td>
                         {/* Requester Details */}
@@ -482,7 +482,7 @@ export default function ContactRequests() {
                           {contact.subject}
                         </td>
                         {/* Date */}
-                        <td className="px-6 py-4.5 text-slate-400 font-medium">
+                        <td className="px-6 py-4.5 text-slate-400 font-medium whitespace-nowrap">
                           {new Date(contact.createdAt).toLocaleDateString("en-US", {
                             year: 'numeric',
                             month: 'short',
@@ -496,7 +496,7 @@ export default function ContactRequests() {
                           </span>
                         </td>
                         {/* Actions */}
-                        <td className="px-6 py-4.5 text-right space-x-1 whitespace-nowrap">
+                        <td className="px-6 py-4.5 text-center space-x-1 whitespace-nowrap">
                           <button
                             onClick={() => openViewModal(contact)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-indigo-600 hover:text-white hover:bg-indigo-600 border border-indigo-200 rounded-lg transition-all cursor-pointer"

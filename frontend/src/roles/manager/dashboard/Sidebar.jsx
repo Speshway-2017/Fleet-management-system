@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useSettings } from "@/context/SettingsContext";
 import {
   LayoutDashboard,
   Truck,
@@ -36,6 +37,7 @@ const MENU_ITEMS = [
 
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
   const location = useLocation();
+  const { platformSettings } = useSettings();
 
   const handleMenuClick = (e, item) => {
     if (!item.isRealRoute) {
@@ -51,9 +53,9 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
       {/* Brand Header */}
       <div className="flex items-center justify-between px-4 py-6 border-b border-[#1B1B1D]/50 shrink-0">
         <div className="flex items-center gap-2">
-          <img src="/logo.png" className="w-10 h-10 object-contain rounded-lg shrink-0" alt="Logo" />
+          <img src={platformSettings?.logoUrl || "/logo.png"} className="w-10 h-10 object-contain rounded-lg shrink-0" alt="Logo" />
           <div className="border-l border-[#1B1B1D]/80 pl-[14px] py-1">
-            <h1 className="font-poppins font-black text-white text-base tracking-wide leading-none whitespace-nowrap">Fleet Management</h1>
+            <h1 className="font-poppins font-black text-white text-base tracking-wide leading-none whitespace-nowrap">{platformSettings?.platformName || "Fleet Management"}</h1>
             <span className="text-[10px] text-[#64748B] font-bold font-poppins uppercase tracking-wider mt-1.5 block">Manager</span>
           </div>
         </div>
