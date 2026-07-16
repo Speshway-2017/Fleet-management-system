@@ -224,7 +224,7 @@ export default function AddVehiclePage() {
       </div>
 
           {/* Main Form Container */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-8 max-w-4xl">
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-8 max-w-7xl">
             <form onSubmit={handleSaveVehicle} className="space-y-8">
               {/* SECTION 1: Basic Information */}
               <div>

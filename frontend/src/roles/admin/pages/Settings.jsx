@@ -102,6 +102,7 @@ export default function Settings() {
               </Link>
               <Link to="/admin/settings/reviews" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
                 Reviews
+              </Link>
               <Link to="/admin/settings/blogs" className="px-5 py-2 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-full transition-colors">
                 Blogs
               </Link>

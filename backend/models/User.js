@@ -12,6 +12,8 @@ const userSchema = new mongoose.Schema(
     },
     phone: { type: String, default: '' },
     profileImage: { type: String, default: '' },
+    jobTitle: { type: String, default: 'Fleet Manager' },
+    primaryHub: { type: String, default: '' },
     organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
     isActive: { type: Boolean, default: true },
     resetPasswordOtp: { type: String },

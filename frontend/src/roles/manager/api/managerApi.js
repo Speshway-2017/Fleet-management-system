@@ -218,4 +218,12 @@ export const managerApi = {
   maybeLater: async (milestone) => {
     return await axiosClient.post("/manager/reviews/maybe-later", { milestone });
   },
+
+  getProfile: async () => {
+    return await axiosClient.get("/auth/profile");
+  },
+
+  updateProfile: async (profileData) => {
+    return await axiosClient.put("/auth/profile", profileData);
+  },
 };

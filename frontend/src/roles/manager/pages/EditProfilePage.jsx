@@ -14,6 +14,15 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
+import { vehicleApi } from "@/api/vehicleApi";
+
+const getImageUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  const host = apiBase.replace(/\/api\/?$/, "");
+  return `${host}${url}`;
+};
 
 export default function EditProfilePage() {
   const { user } = useAuth();
@@ -25,6 +34,7 @@ export default function EditProfilePage() {
   const [phone, setPhone] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [primaryHub, setPrimaryHub] = useState("");
+  const [profileImage, setProfileImage] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -40,6 +50,7 @@ export default function EditProfilePage() {
           setPhone(data.phone || "");
           setJobTitle(data.jobTitle || "");
           setPrimaryHub(data.primaryHub || "");
+          setProfileImage(data.profileImage || "");
         }
       } catch (err) {
         console.error("Failed to load profile details", err);
@@ -64,7 +75,8 @@ export default function EditProfilePage() {
         email,
         phone,
         jobTitle,
-        primaryHub
+        primaryHub,
+        profileImage
       });
       
       // Update local storage user credentials mapping
@@ -81,6 +93,38 @@ export default function EditProfilePage() {
     }
   };
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Only JPG, JPEG, PNG images allowed.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image too large. Max 5MB allowed.");
+      return;
+    }
+
+    const uploadToast = toast.loading("Uploading image...");
+    try {
+      const response = await vehicleApi.uploadDocument(file);
+      const data = response.data?.data || response.data;
+      if (data?.url) {
+        setProfileImage(data.url);
+        toast.success("Profile image uploaded successfully!", { id: uploadToast });
+      } else {
+        toast.error("Upload failed", { id: uploadToast });
+      }
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.message || err.message || "Failed to upload image.";
+      toast.error(errMsg, { id: uploadToast });
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 lg:p-8 space-y-6 flex items-center justify-center min-h-[300px]">
@@ -94,12 +138,6 @@ export default function EditProfilePage() {
       <Breadcrumb />
       {/* HEADER */}
       <div className="flex items-center gap-4 border-b border-[#E7EAF0] pb-6">
-        <button
-          onClick={() => navigate("/manager/profile")}
-          className="p-2.5 bg-white border border-[#E7EAF0] rounded-xl text-[#64748B] hover:bg-gray-50 shadow-sm cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
         <div>
           <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
             Edit Profile
@@ -115,12 +153,26 @@ export default function EditProfilePage() {
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col items-center text-center">
             <div className="relative">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#B45A0A] to-amber-500 flex items-center justify-center text-white text-3xl font-black shadow-sm shrink-0 select-none">
-                {fullName.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2)}
-              </div>
-              <div className="absolute bottom-0 right-0 p-1.5 bg-[#B45A0A] text-white rounded-full border-2 border-white shadow">
+              {profileImage ? (
+                <img
+                  src={getImageUrl(profileImage)}
+                  alt={fullName}
+                  className="w-24 h-24 rounded-full object-cover shadow-sm shrink-0 border border-gray-150"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#B45A0A] to-amber-500 flex items-center justify-center text-white text-3xl font-black shadow-sm shrink-0 select-none">
+                  {fullName.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2)}
+                </div>
+              )}
+              <label className="absolute bottom-0 right-0 p-1.5 bg-[#B45A0A] text-white rounded-full border-2 border-white shadow cursor-pointer hover:bg-[#9A4D08] transition-colors">
                 <Camera className="w-3.5 h-3.5" />
-              </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </label>
             </div>
 
             <h3 className="font-poppins font-black text-base text-gray-900 mt-4 leading-none">
