@@ -9,6 +9,7 @@ import {
 } from '../services/auth.service.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { logAction } from '../services/audit.service.js';
+import User from '../models/User.js';
 
 export const login = async (req, res, next) => {
   try {
@@ -52,6 +53,33 @@ export const getProfile = async (req, res, next) => {
   } catch (error) {
     if (error.message === 'User not found') {
       return sendError(res, 404, error.message);
+    }
+    next(error);
+  }
+};
+
+export const updateProfile = async (req, res, next) => {
+  try {
+    const { name, email, phone, profileImage, jobTitle, primaryHub } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user) return sendError(res, 404, 'User not found');
+
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (phone !== undefined) user.phone = phone;
+    if (profileImage !== undefined) user.profileImage = profileImage;
+    if (jobTitle !== undefined) user.jobTitle = jobTitle;
+    if (primaryHub !== undefined) user.primaryHub = primaryHub;
+
+    await user.save();
+
+    const updated = user.toObject();
+    delete updated.password;
+
+    return sendSuccess(res, 200, updated, 'Profile updated successfully');
+  } catch (error) {
+    if (error.code === 11000) {
+      return sendError(res, 409, 'Email address is already in use');
     }
     next(error);
   }

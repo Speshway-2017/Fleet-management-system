@@ -139,6 +139,7 @@ export default function App() {
               <Route path="/admin/settings/profile" element={<ProfileSettings />} />
               <Route path="/admin/settings/blogs" element={<SettingsBlogs />} />
               <Route path="/admin/settings/about" element={<SettingsAbout />} />
+              <Route path="/admin/settings/reviews" element={<ReviewsSettings />} />
               <Route path="/admin/notifications" element={<NotificationList />} />
               <Route path="/admin/notifications/:id" element={<NotificationDetails />} />
               <Route path="/admin/subscription-plans" element={<SubscriptionRequests />} />

@@ -158,17 +158,11 @@ export default function NotificationDetailsPage() {
   const locationLabel = getLocationLabel(notification.type);
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto font-nunito">
+    <div className="p-6 lg:p-8 space-y-6 w-full font-nunito">
       <Breadcrumb />
       
       {/* Top Header */}
       <div className="flex items-center gap-4 border-b border-gray-100 pb-4">
-        <button
-          onClick={handleBack}
-          className="p-2 border border-gray-250 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer text-gray-700 bg-white"
-        >
-          <Icon icon="mdi:arrow-left" className="w-5 h-5" />
-        </button>
         <div>
           <h1 className="text-xl font-poppins font-black text-gray-900 leading-none">Notification Details</h1>
           <p className="text-xs font-semibold text-gray-400 mt-1.5 font-poppins">ID: {notification._id || notification.id}</p>
@@ -284,95 +278,97 @@ export default function NotificationDetailsPage() {
         </div>
 
         {/* Right Column */}
-        <div className="lg:w-80 space-y-6">
-          {/* Vehicle Details */}
-          {notification.vehicle && (
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <h3 className="font-semibold text-gray-800 mb-4">Vehicle Details</h3>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <Icon icon="mdi:truck" className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-800">{notification.vehicle}</p>
-                    <p className="text-xs text-gray-500">{notification.vehicleModel || 'No Model'}</p>
-                  </div>
-                </div>
-                {notification.meta && (
-                  <div className="pt-3 border-t border-gray-200">
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-xs text-gray-500">Total Mileage</span>
-                      <span className="text-xs font-medium text-gray-800">{notification.meta?.totalMileage || "—"}</span>
+        {(notification.vehicle || notification.driver || (notification.recentAlerts && notification.recentAlerts.length > 0)) && (
+          <div className="lg:w-80 space-y-6">
+            {/* Vehicle Details */}
+            {notification.vehicle && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                <h3 className="font-semibold text-gray-800 mb-4">Vehicle Details</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <Icon icon="mdi:truck" className="w-8 h-8 text-gray-400" />
                     </div>
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-xs text-gray-500">Last Service</span>
-                      <span className="text-xs font-medium text-gray-800">{notification.meta?.lastService || "—"}</span>
-                    </div>
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-xs text-gray-500">Maintenance Health</span>
-                      <span className="text-xs font-medium text-amber-700">{notification.meta?.maintenanceHealth || "—"}</span>
+                    <div>
+                      <p className="font-semibold text-gray-800">{notification.vehicle}</p>
+                      <p className="text-xs text-gray-500">{notification.vehicleModel || 'No Model'}</p>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Driver Details */}
-          {notification.driver && (
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-800">Driver Details</h3>
-              </div>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-green-500 rounded-full flex items-center justify-center text-white font-bold">
-                    {notification.driver.avatar || notification.driver.name.split(" ").map(w => w[0]).join("")}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-800">{notification.driver.name}</p>
-                    <p className="text-xs text-gray-500">Emp ID: {notification.driver.empId}</p>
-                  </div>
+                  {notification.meta && (
+                    <div className="pt-3 border-t border-gray-200">
+                      <div className="flex items-center justify-between py-2">
+                        <span className="text-xs text-gray-500">Total Mileage</span>
+                        <span className="text-xs font-medium text-gray-800">{notification.meta?.totalMileage || "—"}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-2">
+                        <span className="text-xs text-gray-500">Last Service</span>
+                        <span className="text-xs font-medium text-gray-800">{notification.meta?.lastService || "—"}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-2">
+                        <span className="text-xs text-gray-500">Maintenance Health</span>
+                        <span className="text-xs font-medium text-amber-700">{notification.meta?.maintenanceHealth || "—"}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                
-                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-200">
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Daily Drive Time</p>
-                    <p className="text-lg font-bold text-gray-800">{notification.driver.driveTime || "—"}</p>
-                  </div>
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Safety Score</p>
-                    <p className="text-lg font-bold text-amber-700">{notification.driver.safetyScore || "—"}</p>
-                  </div>
+              </div>
+            )}
+
+            {/* Driver Details */}
+            {notification.driver && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-800">Driver Details</h3>
                 </div>
-
-                <button 
-                  onClick={() => setIsChatOpen(true)}
-                  className="w-full py-2 border border-amber-700 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-50 transition-colors cursor-pointer bg-transparent"
-                >
-                  <Icon icon="mdi:message-text-outline" className="w-4 h-4 inline mr-1" />
-                  Message Driver
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Recent Alerts */}
-          {notification.recentAlerts && notification.recentAlerts.length > 0 && (
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <h3 className="font-semibold text-gray-800 mb-4">Recent Alerts for {notification.vehicle}</h3>
-              <div className="space-y-3">
-                {notification.recentAlerts.map((alert, i) => (
-                  <div key={i} className={`p-3 ${i < notification.recentAlerts.length - 1 ? "border-b border-gray-100" : ""}`}>
-                    <p className="text-sm font-medium text-gray-800 mb-1">{alert.title}</p>
-                    <p className="text-xs text-gray-500">{alert.info}</p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-green-500 rounded-full flex items-center justify-center text-white font-bold">
+                      {notification.driver.avatar || notification.driver.name.split(" ").map(w => w[0]).join("")}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800">{notification.driver.name}</p>
+                      <p className="text-xs text-gray-500">Emp ID: {notification.driver.empId}</p>
+                    </div>
                   </div>
-                ))}
+                  
+                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-200">
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Daily Drive Time</p>
+                      <p className="text-lg font-bold text-gray-800">{notification.driver.driveTime || "—"}</p>
+                    </div>
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Safety Score</p>
+                      <p className="text-lg font-bold text-amber-700">{notification.driver.safetyScore || "—"}</p>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => setIsChatOpen(true)}
+                    className="w-full py-2 border border-amber-700 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-50 transition-colors cursor-pointer bg-transparent"
+                  >
+                    <Icon icon="mdi:message-text-outline" className="w-4 h-4 inline mr-1" />
+                    Message Driver
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+
+            {/* Recent Alerts */}
+            {notification.recentAlerts && notification.recentAlerts.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                <h3 className="font-semibold text-gray-800 mb-4">Recent Alerts for {notification.vehicle}</h3>
+                <div className="space-y-3">
+                  {notification.recentAlerts.map((alert, i) => (
+                    <div key={i} className={`p-3 ${i < notification.recentAlerts.length - 1 ? "border-b border-gray-100" : ""}`}>
+                      <p className="text-sm font-medium text-gray-800 mb-1">{alert.title}</p>
+                      <p className="text-xs text-gray-500">{alert.info}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <DriverChatDrawer 
