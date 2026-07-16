@@ -113,6 +113,39 @@ export const getDashboard = async (req, res, next) => {
       totalEarnings = `₹${earningsSum.toLocaleString('en-IN')}`;
     }
 
+    // 7. Check for subscription expiry warning (<= 10 days) and create in-app notification
+    if (req.user.subscriptionStatus === 'ACTIVE' && req.user.subscriptionExpiry) {
+      const expiry = new Date(req.user.subscriptionExpiry);
+      const now = new Date();
+      const diffTime = expiry.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 0 && diffDays <= 10) {
+        // Check if alert already exists for this expiry date
+        const existingNotification = await Notification.findOne({
+          recipient: managerId,
+          type: 'warning',
+          'metadata.expiryDate': req.user.subscriptionExpiry
+        });
+
+        if (!existingNotification) {
+          const io = req.app.get('socketio') || (req.app.locals ? req.app.locals.io : null);
+          await createAndEmitNotification({
+            io,
+            recipient: managerId,
+            type: 'warning',
+            title: 'Subscription Expiring Soon',
+            message: `Your subscription will expire in ${diffDays} days on ${expiry.toLocaleDateString('en-IN')}. Please renew to prevent service disruption.`,
+            priority: 'high',
+            metadata: {
+              expiryDate: req.user.subscriptionExpiry,
+              daysRemaining: diffDays
+            }
+          });
+        }
+      }
+    }
+
     return sendSuccess(res, 200, {
       totalVehicles,
       activeVehicles,
