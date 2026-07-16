@@ -98,6 +98,11 @@ export const submitRequest = async (req, res, next) => {
       return sendError(res, 400, 'Manager cannot submit duplicate pending requests.');
     }
 
+    // Check if manager already has an active plan
+    if (req.user.subscriptionStatus === 'ACTIVE') {
+      return sendError(res, 400, 'Manager already has an active subscription plan.');
+    }
+
     const request = new SubscriptionRequest({
       manager: req.user._id,
       plan: planId,

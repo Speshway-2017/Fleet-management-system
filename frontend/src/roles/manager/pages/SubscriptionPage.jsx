@@ -88,185 +88,162 @@ export default function SubscriptionPage() {
       <Breadcrumb />
       
       {/* Page Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8 mt-2">
+        <div className="max-w-xl">
           <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Subscription</h1>
-          <p className="text-[18px] text-[#64748B] mt-[12px]">Manage your plan, request upgrades, and view expiry details.</p>
+          <p className="text-[16px] text-[#64748B] mt-3 leading-relaxed">Manage your plan, request upgrades, and view expiry details.</p>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-        {/* Left Side: Current Subscription Card */}
-        <div className="lg:col-span-1 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6 flex flex-col justify-between h-[380px]">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-[#FFF3E8] text-[#B45A0A] shrink-0">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </span>
-              <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Current Subscription</h3>
-            </div>
-
-            <div className="space-y-4 pt-2">
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Plan Name</span>
-                <span className="text-sm font-extrabold text-[#1B2430]">
-                  {user?.subscriptionPlan && typeof user.subscriptionPlan === 'object' 
-                    ? user.subscriptionPlan.name 
-                    : plans.find(p => p._id === user?.subscriptionPlan)?.name || "None"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Status</span>
-                <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wide uppercase ${
-                  user?.subscriptionStatus === "ACTIVE" 
-                    ? "bg-green-100 text-green-700 border border-green-200" 
-                    : user?.subscriptionStatus === "EXPIRED"
-                      ? "bg-red-100 text-red-700 border border-red-200"
-                      : "bg-gray-100 text-gray-700 border border-gray-200"
-                }`}>
-                  {user?.subscriptionStatus || "INACTIVE"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Expiry Date</span>
-                <span className="text-sm font-bold text-gray-700">
-                  {user?.subscriptionExpiry 
-                    ? new Date(user.subscriptionExpiry).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })
-                    : "--"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Days Remaining</span>
-                <span className={`text-base font-black ${
-                  getDaysRemaining() !== "--" && getDaysRemaining() <= 7 ? "text-red-600 animate-pulse" : "text-gray-800"
-                }`}>
-                  {getDaysRemaining()}
-                </span>
-              </div>
-            </div>
+        {/* Current Subscription Card (Top Right) */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 w-full md:w-auto min-w-[300px] shrink-0 flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-[#FFF3E8] text-[#B45A0A] shrink-0">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
           </div>
-
-          {/* Pending request banner */}
-          {pendingRequest && (
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-              <p className="text-[10px] text-blue-700 font-bold uppercase tracking-wider mb-1">Request Pending Approval</p>
-              <p className="text-[11px] text-blue-600 font-medium leading-relaxed">
-                You requested <strong>{pendingRequest.plan?.name}</strong>. The request is awaiting review.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Right Side: Available Plans Grid */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <h3 className="font-poppins font-bold text-[#1B2430] text-[16px] mb-6 flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-[#FFF3E8] text-[#B45A0A] shrink-0">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">Current Plan</div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="font-poppins font-bold text-[#1B2430] text-sm truncate">
+                {user?.subscriptionPlan && typeof user.subscriptionPlan === 'object' 
+                  ? user.subscriptionPlan.name 
+                  : plans.find(p => p._id === user?.subscriptionPlan)?.name || "None"}
               </span>
-              Choose a Subscription Plan
-            </h3>
-
-            {loading ? (
-              <div className="flex justify-center items-center py-16">
-                <div className="animate-spin rounded-full h-8 w-8 border-4 border-secondary border-t-transparent" />
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold tracking-wide uppercase ${
+                user?.subscriptionStatus === "ACTIVE" 
+                  ? "bg-green-100 text-green-700 border border-green-200" 
+                  : "bg-red-100 text-red-700 border border-red-200"
+              }`}>
+                {user?.subscriptionStatus || "INACTIVE"}
+              </span>
+            </div>
+            {user?.subscriptionStatus === "ACTIVE" && user?.subscriptionExpiry && (
+              <div className="text-[11px] text-gray-500 font-medium mt-1">
+                Expires: <span className="font-bold text-gray-700">{new Date(user.subscriptionExpiry).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}</span> ({getDaysRemaining()} days left)
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {plans.map((plan) => {
-                  const isCurrent = user?.subscriptionPlan === plan._id;
-                  const isRequested = pendingRequest?.plan?._id === plan._id;
-                  
-                  return (
-                    <div 
-                      key={plan._id}
-                      className={`p-6 rounded-xl border relative flex flex-col justify-between ${
-                        isCurrent 
-                          ? "border-green-500 bg-green-50/10" 
-                          : isRequested
-                            ? "border-blue-400 bg-blue-50/10"
-                            : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      {isCurrent && (
-                        <span className="absolute top-3 right-3 px-2 py-0.5 rounded bg-green-500 text-white text-[8px] font-bold uppercase tracking-wider">
-                          Active Plan
-                        </span>
-                      )}
-                      {isRequested && (
-                        <span className="absolute top-3 right-3 px-2 py-0.5 rounded bg-blue-500 text-white text-[8px] font-bold uppercase tracking-wider">
-                          Pending
-                        </span>
-                      )}
-
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="font-poppins font-bold text-gray-900 text-sm">{plan.name}</h4>
-                          <p className="text-[11px] text-gray-500 mt-1 min-h-[30px] font-medium leading-relaxed">{plan.description}</p>
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-xl font-black text-gray-900">₹{plan.price}</span>
-                          <span className="text-[10px] text-gray-400 font-bold">/ month</span>
-                        </div>
-                        <div className="text-[10px] text-[#A14000] font-bold bg-[#FFDBCC]/40 px-2 py-1 rounded inline-block">
-                          Duration: {plan.duration} Days
-                        </div>
-                        <ul className="space-y-2 pt-2 border-t border-gray-100">
-                          <li className="flex items-center gap-2 text-[10px] text-gray-700 font-bold">
-                            <span className="text-green-500 font-bold">✓</span>
-                            <span>Max Vehicles: {plan.maxVehicles >= 9999 ? "Unlimited" : plan.maxVehicles}</span>
-                          </li>
-                          <li className="flex items-center gap-2 text-[10px] text-gray-700 font-bold">
-                            <span className="text-green-500 font-bold">✓</span>
-                            <span>Max Drivers: {plan.maxDrivers >= 9999 ? "Unlimited" : plan.maxDrivers}</span>
-                          </li>
-                          <li className="flex items-center gap-2 text-[10px] text-gray-700 font-bold">
-                            <span className="text-green-500 font-bold">✓</span>
-                            <span>Max Trips: {plan.maxTrips >= 9999 ? "Unlimited" : plan.maxTrips}</span>
-                          </li>
-                          {plan.features.slice(0, 3).map((feat, idx) => (
-                            <li key={idx} className="flex items-center gap-2 text-[10px] text-gray-600 font-medium">
-                              <svg className="h-3.5 w-3.5 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span>{feat}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <button
-                        onClick={() => handleRequestSubscription(plan._id)}
-                        disabled={!!pendingRequest || isCurrent || requestingPlanId === plan._id}
-                        className={`w-full mt-6 py-2.5 rounded-lg text-xs font-bold transition-all active:scale-[0.98] cursor-pointer text-center ${
-                          isCurrent
-                            ? "bg-green-600 text-white opacity-90 cursor-default"
-                            : isRequested
-                              ? "bg-blue-600 text-white opacity-90 cursor-default"
-                              : pendingRequest
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-[#B45A0A] text-white hover:bg-[#9A4D08] shadow-sm shadow-[#B45A0A]/20"
-                        }`}
-                      >
-                        {requestingPlanId === plan._id 
-                          ? "Submitting..." 
-                          : isCurrent 
-                            ? "Currently Active" 
-                            : isRequested 
-                              ? "Request Submitted" 
-                              : "Choose Plan"}
-                      </button>
-                    </div>
-                  );
-                })}
+            )}
+            {pendingRequest && (
+              <div className="text-[11px] text-blue-600 font-semibold mt-1 flex items-center gap-1.5 bg-blue-50/50 px-2 py-0.5 rounded border border-blue-100/50 w-max">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                <span>Pending Request: <strong className="font-bold">{pendingRequest.plan?.name}</strong></span>
               </div>
             )}
           </div>
         </div>
+      </div>
+
+      {/* Available Plans */}
+      <div className="w-full space-y-6 mb-10">
+        <div className="flex items-center justify-between">
+          <h2 className="font-poppins font-bold text-[#1E293B] text-[20px] flex items-center gap-2">
+            <span className="p-2 rounded-xl bg-[#FFF3E8] text-[#B45A0A] shrink-0">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            </span>
+            Choose a Subscription Plan
+          </h2>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center items-center py-16">
+            <div className="animate-spin rounded-full h-8 w-8 border-4 border-secondary border-t-transparent" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {plans.map((plan) => {
+              const userPlanId = user?.subscriptionPlan && typeof user.subscriptionPlan === 'object'
+                ? user.subscriptionPlan._id
+                : user?.subscriptionPlan;
+              const isCurrent = userPlanId === plan._id;
+              const isRequested = pendingRequest?.plan?._id === plan._id;
+              const hasActivePlan = user?.subscriptionStatus === "ACTIVE";
+              const isDisableChoose = hasActivePlan && !isCurrent;
+              
+              return (
+                <div 
+                  key={plan._id}
+                  className={`p-6 rounded-2xl border bg-white shadow-sm relative flex flex-col justify-between transition-all duration-200 hover:-translate-y-1 hover:shadow-md ${
+                    isCurrent 
+                      ? "border-green-500 ring-2 ring-green-500/20" 
+                      : isRequested
+                        ? "border-blue-400 ring-2 ring-blue-500/20"
+                        : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  {isCurrent && (
+                    <span className="absolute top-3 right-3 px-2 py-0.5 rounded bg-green-500 text-white text-[8px] font-bold uppercase tracking-wider">
+                      Active Plan
+                    </span>
+                  )}
+                  {isRequested && (
+                    <span className="absolute top-3 right-3 px-2 py-0.5 rounded bg-blue-500 text-white text-[8px] font-bold uppercase tracking-wider">
+                      Pending
+                    </span>
+                  )}
+
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-poppins font-bold text-gray-900 text-base">{plan.name}</h4>
+                      <p className="text-[11px] text-gray-500 mt-1 min-h-[30px] font-medium leading-relaxed">{plan.description}</p>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-gray-900">₹{plan.price}</span>
+                      <span className="text-xs text-gray-400 font-bold">/ month</span>
+                    </div>
+                    <div className="text-[10px] text-[#A14000] font-bold bg-[#FFDBCC]/40 px-2 py-1 rounded inline-block">
+                      Duration: {plan.duration} Days
+                    </div>
+                    <ul className="space-y-2.5 pt-3.5 border-t border-gray-100">
+                      <li className="flex items-center gap-2 text-xs text-gray-700 font-bold">
+                        <span className="text-green-500 font-bold">✓</span>
+                        <span>Max Vehicles: {plan.maxVehicles >= 9999 ? "Unlimited" : plan.maxVehicles}</span>
+                      </li>
+                      <li className="flex items-center gap-2 text-xs text-gray-700 font-bold">
+                        <span className="text-green-500 font-bold">✓</span>
+                        <span>Max Drivers: {plan.maxDrivers >= 9999 ? "Unlimited" : plan.maxDrivers}</span>
+                      </li>
+                      <li className="flex items-center gap-2 text-xs text-gray-700 font-bold">
+                        <span className="text-green-500 font-bold">✓</span>
+                        <span>Max Trips: {plan.maxTrips >= 9999 ? "Unlimited" : plan.maxTrips}</span>
+                      </li>
+                      {plan.features.slice(0, 3).map((feat, idx) => (
+                        <li key={idx} className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                          <svg className="h-3.5 w-3.5 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <button
+                    onClick={() => handleRequestSubscription(plan._id)}
+                    disabled={!!pendingRequest || isCurrent || requestingPlanId === plan._id || isDisableChoose}
+                    className={`w-full mt-6 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] cursor-pointer text-center ${
+                      isCurrent
+                        ? "bg-green-600 text-white opacity-90 cursor-default"
+                        : isRequested
+                          ? "bg-blue-600 text-white opacity-90 cursor-default"
+                          : (pendingRequest || isDisableChoose)
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            : "bg-[#B45A0A] text-white hover:bg-[#9A4D08] shadow-sm shadow-[#B45A0A]/20"
+                    }`}
+                  >
+                    {requestingPlanId === plan._id 
+                      ? "Submitting..." 
+                      : isCurrent 
+                        ? "Currently Active" 
+                        : isRequested 
+                          ? "Request Submitted" 
+                          : "Choose Plan"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

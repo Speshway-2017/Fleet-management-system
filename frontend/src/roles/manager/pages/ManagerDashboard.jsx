@@ -208,6 +208,28 @@ export default function ManagerDashboard() {
         </div>
       )}
 
+      {user?.subscriptionStatus === 'ACTIVE' && getDaysRemaining() !== '--' && getDaysRemaining() <= 10 && (
+        <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-2xl flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-orange-100 text-orange-850 shrink-0">
+              <Icon icon="material-symbols:warning-outline" className="w-5 h-5 text-orange-800" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-extrabold text-orange-950 font-poppins">Subscription Warning: Expiring Soon</p>
+              <p className="text-[11px] text-orange-850 font-medium font-poppins mt-0.5">
+                Your subscription will expire in {getDaysRemaining()} day{getDaysRemaining() !== 1 ? 's' : ''} on {new Date(user.subscriptionExpiry).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}. Please renew to prevent any service interruption.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => navigate("/manager/subscription")}
+            className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer whitespace-nowrap"
+          >
+            Renew Plan
+          </button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
