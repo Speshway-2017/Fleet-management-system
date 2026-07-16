@@ -795,7 +795,7 @@ export default function VehicleManagement() {
                       Insurance Expiry {sortField === "insuranceExpiry" && (sortDirection === "asc" ? "▲" : "▼")}
                     </th>
                     <th className="py-4 px-6 whitespace-nowrap">Last Service</th>
-                    <th className="py-4 px-6 text-right whitespace-nowrap">Actions</th>
+                    <th className="py-4 px-6 text-center whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E7EAF0]/60">
@@ -875,8 +875,8 @@ export default function VehicleManagement() {
                         </td>
 
                         {/* Actions */}
-                        <td className="py-4 px-6 text-right select-none whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1">
+                        <td className="py-4 px-6 text-center select-none whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
                             {/* View Details */}
                             <button
                               onClick={() => navigate(`/manager/vehicle-details/${v._id}`)}

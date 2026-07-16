@@ -408,7 +408,7 @@ Status:          PAID & VERIFIED
                   <th className="py-4 px-6">Qty (Liters)</th>
                   <th className="py-4 px-6">Fuel Cost</th>
                   <th className="py-4 px-6">Approval Status</th>
-                  <th className="py-4 px-6 text-right">Action</th>
+                  <th className="py-4 px-6 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E7EAF0]/60">
@@ -487,8 +487,8 @@ Status:          PAID & VERIFIED
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-6 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-2">
+                        <td className="py-4 px-6 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-2">
                           {l.status === "anomaly" ? (
                             <button
                               onClick={() => handleResolveAnomaly(l)}

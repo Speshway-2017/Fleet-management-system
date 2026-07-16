@@ -575,7 +575,7 @@ For support, contact: maintenance@fleetmgmt.com
                 <th className="py-4 px-6">Service Type</th>
                 <th className="py-4 px-6">Scheduled Date</th>
                 <th className="py-4 px-6">Status</th>
-                <th className="py-4 px-6 text-right">Actions</th>
+                <th className="py-4 px-6 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7EAF0]/60">
