@@ -18,7 +18,7 @@ import {
 export default function NewAdminSidebar({ activeItem = "dashboard" }) {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const { isSidebarOpen, setIsSidebarOpen } = useAdmin();
+  const { isSidebarOpen, setIsSidebarOpen, platformSettings } = useAdmin();
   
   const navItems = [
     { id: "dashboard", label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
@@ -53,8 +53,8 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
       {/* Logo Area */}
       <div className="p-6 pb-4 border-b border-[#2a3241]/50">
         <div className="flex items-center gap-3 mb-1">
-          <img src="/logo.png" alt="Logo" className="w-9 h-9 rounded-full bg-white p-1" />
-          <span className="font-bold text-white text-lg tracking-tight">Fleet Management</span>
+          <img src={platformSettings?.logoUrl || "/logo.png"} alt="Logo" className="w-9 h-9 rounded-full bg-white p-1" />
+          <span className="font-bold text-white text-lg tracking-tight">{platformSettings?.platformName || "Fleet Management"}</span>
         </div>
         <div className="text-[11px] text-slate-400 pl-12 font-medium">Super Admin</div>
       </div>

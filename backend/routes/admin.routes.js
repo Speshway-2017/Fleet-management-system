@@ -70,7 +70,7 @@ router.delete('/fleet-managers/:id',   ...adminAuth, deleteManager);
 
 // ── Settings ───────────────────────────────────────────────────────────────
 router.get('/settings',  ...adminAuth, getSettings);
-router.put('/settings',  ...adminAuth, updateSettingsValidator, updateSettings);
+router.put('/settings',  ...adminAuth, memoryUpload.single('logo'), updateSettingsValidator, updateSettings);
 router.get('/blogs',     ...adminAuth, listBlogsAdmin);
 router.post('/blogs',    ...adminAuth, createBlogAdmin);
 router.put('/blogs/:id', ...adminAuth, updateBlogAdmin);

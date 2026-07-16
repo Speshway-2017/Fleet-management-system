@@ -1,10 +1,12 @@
 import { NavLink, useNavigate, Outlet, useLocation } from "react-router-dom";
 import { ShieldCheck, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function AuthLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { platformSettings } = useSettings();
 
   return (
     <div className="h-screen w-full flex flex-col lg:flex-row bg-[#F8FAFC] font-sans text-[#1E293B] relative overflow-y-auto lg:overflow-hidden">
@@ -22,9 +24,9 @@ export default function AuthLayout() {
         {/* Top Header: Logo + Title */}
         <div className="relative z-10">
           <NavLink to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
-            <img src="/logo.png" alt="Fleet Management Logo" className="h-10 [@media(max-height:850px)]:h-8 w-auto object-contain bg-white/95 rounded-xl p-1 shadow-sm" />
+            <img src={platformSettings?.logoUrl || "/logo.png"} alt="Fleet Management Logo" className="h-10 [@media(max-height:850px)]:h-8 w-auto object-contain bg-white/95 rounded-xl p-1 shadow-sm" />
             <span className="font-display font-black text-white text-lg [@media(max-height:850px)]:text-base tracking-wide">
-              Fleet Management
+              {platformSettings?.platformName || "Fleet Management"}
             </span>
           </NavLink>
         </div>

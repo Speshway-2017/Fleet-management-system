@@ -648,7 +648,14 @@ export const getSettings = async (_req, res, next) => {
 
 export const updateSettings = async (req, res, next) => {
   try {
-    const settings = await updateSettingsData(req.body);
+    const updateData = { ...req.body };
+
+    if (req.file) {
+      const uploadResult = await uploadImageToCloudinary(req.file.buffer, 'fleet_management/settings');
+      updateData.logoUrl = uploadResult.secure_url;
+    }
+
+    const settings = await updateSettingsData(updateData);
     
     await createNotificationInRepo({
       title: 'Settings Updated',

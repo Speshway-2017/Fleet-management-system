@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const settingsSchema = new mongoose.Schema(
   {
     companyName: { type: String, default: 'Fleet HQ' },
-    companyLogo: { type: String, default: '/logo.png' },
+    logoUrl: { type: String, default: '/logo.png' },
     platformName: { type: String, default: 'FleetManagement' },
     supportEmail: { type: String, default: 'support@fleetmanagement.io' },
     supportPhone: { type: String, default: '+1 (555) 000-0000' },

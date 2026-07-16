@@ -114,6 +114,22 @@ export function AdminProvider({ children }) {
     }
   };
 
+  // ── Platform Settings ──────────────────────────────────────────────────────
+  const [platformSettings, setPlatformSettings] = useState({ platformName: "Fleet Management", logoUrl: "/logo.png" });
+
+  const fetchPlatformSettings = async () => {
+    try {
+      const response = await adminApi.getSettings();
+      const data = response.data?.data || response.data || {};
+      setPlatformSettings({ 
+        platformName: data.platformName || "Fleet Management", 
+        logoUrl: data.logoUrl || "/logo.png" 
+      });
+    } catch (error) {
+      console.warn("Failed to fetch platform settings:", error?.response?.status);
+    }
+  };
+
   // ── Socket.IO ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isAuthenticated && user?.role === "admin") {
@@ -177,6 +193,7 @@ export function AdminProvider({ children }) {
     fetchFleetManagers();
     fetchNotifications();
     fetchAdminProfile();
+    fetchPlatformSettings();
   }, []);
 
   // ── Organization helpers ──────────────────────────────────────────────────
@@ -220,6 +237,9 @@ export function AdminProvider({ children }) {
 
       adminProfile,
       setAdminProfile,
+
+      platformSettings,
+      fetchPlatformSettings,
     }}>
       {children}
     </AdminContext.Provider>

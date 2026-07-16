@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Upload } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
+import { useAdmin } from "@/roles/admin/context/AdminContext";
+import { useSettings } from "@/context/SettingsContext";
 
 import toast from "react-hot-toast";
 import { adminApi } from "@/api/adminApi";
@@ -16,6 +18,9 @@ export default function Settings() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  const { fetchPlatformSettings: fetchAdminPlatformSettings } = useAdmin();
+  const { fetchPlatformSettings: fetchGlobalPlatformSettings } = useSettings();
 
   const loadSettings = async () => {
     try {
@@ -62,6 +67,8 @@ export default function Settings() {
       }
       toast.success("Settings saved successfully!");
       await loadSettings();
+      await fetchAdminPlatformSettings();
+      await fetchGlobalPlatformSettings();
     } catch (error) {
       toast.error("Failed to save settings");
     } finally {

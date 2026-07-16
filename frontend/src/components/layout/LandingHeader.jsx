@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function LandingHeader() {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
+  const { platformSettings } = useSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const mobileNavLinkClass = ({ isActive }) => {
@@ -17,9 +19,9 @@ export default function LandingHeader() {
     <header className="bg-white border-b border-border-custom px-4 sm:px-6 md:px-8 h-20 flex items-center justify-between sticky top-0 z-30">
       <div className="flex items-center gap-3">
         <NavLink to="/" className="flex items-center gap-3">
-          <img src="/logo.png" alt="Fleet Management Logo" className="h-10 w-auto object-contain" />
+          <img src={platformSettings?.logoUrl || "/logo.png"} alt="Fleet Management Logo" className="h-10 w-auto object-contain" />
           <span className="font-display font-black text-[#0B1B3D] text-lg tracking-wide">
-            Fleet Management
+            {platformSettings?.platformName || "Fleet Management"}
           </span>
         </NavLink>
       </div>
