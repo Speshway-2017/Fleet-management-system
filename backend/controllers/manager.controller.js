@@ -558,6 +558,13 @@ export const deleteDriver = async (req, res, next) => {
     if (!driver) {
       return sendError(res, 404, 'Driver not found');
     }
+    await logActivity({
+      title: 'Driver Deleted',
+      description: `Driver ${driver.name} was deleted.`,
+      activityType: 'DRIVER_ASSIGNED',
+      user: req.user,
+      assignedManager: req.user._id
+    });
     return sendSuccess(res, 200, null, 'Driver deleted');
   } catch (error) {
     next(error);
@@ -764,6 +771,14 @@ export const createTrip = async (req, res, next) => {
     });
     await invoice.save();
 
+    await logActivity({
+      title: 'Trip Dispatched',
+      description: `Trip ${trip.tripNumber} was dispatched from ${trip.startLocation} to ${trip.endLocation} with vehicle ${trip.vehiclePlate} and driver ${trip.driverName}.`,
+      activityType: 'TRIP_DISPATCHED',
+      user: req.user,
+      assignedManager: req.user._id
+    });
+
     return sendSuccess(res, 201, trip, 'Trip created and invoice generated successfully');
   } catch (error) {
     if (error.code === 11000) {
@@ -892,6 +907,29 @@ export const updateTrip = async (req, res, next) => {
     }
 
     const finalTrip = await Trip.findById(tripId).populate('vehicle').populate('driver');
+
+    if (newStatus && newStatus !== existingTrip.status) {
+      let title = `Trip ${newStatus}`;
+      let description = `Trip ${finalTrip.tripNumber} status was changed to ${newStatus}.`;
+      let activityType = newStatus === 'Completed' ? 'TRIP_COMPLETED' : 'TRIP_DISPATCHED';
+
+      await logActivity({
+        title,
+        description,
+        activityType,
+        user: req.user,
+        assignedManager: req.user._id
+      });
+    } else {
+      await logActivity({
+        title: 'Trip Details Updated',
+        description: `Trip ${finalTrip.tripNumber} details were updated.`,
+        activityType: 'TRIP_DISPATCHED',
+        user: req.user,
+        assignedManager: req.user._id
+      });
+    }
+
     return sendSuccess(res, 200, finalTrip, 'Trip updated');
   } catch (error) {
     next(error);
@@ -927,6 +965,13 @@ export const deleteTrip = async (req, res, next) => {
     }
 
     await deleteTripInRepo(tripId);
+    await logActivity({
+      title: 'Trip Deleted',
+      description: `Trip ${trip.tripNumber} was deleted.`,
+      activityType: 'TRIP_DISPATCHED',
+      user: req.user,
+      assignedManager: req.user._id
+    });
     return sendSuccess(res, 200, null, 'Trip deleted successfully');
   } catch (error) {
     next(error);
@@ -1467,30 +1512,53 @@ export const getLiveTracking = async (req, res, next) => {
     const managerId = req.user._id;
     // Only vehicles belonging to the logged-in manager
     const vehicles = await Vehicle.find({ assignedManager: managerId }).populate('assignedDriver').sort({ createdAt: -1 });
-    // Only trips belonging to the logged-in manager
-    const trips = await Trip.find({
-      assignedManager: managerId,
-      status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip', 'Ready to Dispatch'] }
-    }).populate('vehicle').populate('driver');
 
-    const trackingData = vehicles.map(v => {
-      const activeTrip = trips.find(t => t.vehicle && String(t.vehicle._id || t.vehicle) === String(v._id));
+    const trackingData = await Promise.all(vehicles.map(async (v) => {
+      // Find the most recent trip for this vehicle (active, completed, etc.)
+      const recentTrip = await Trip.findOne({ vehicle: v._id })
+        .sort({ createdAt: -1 })
+        .populate('driver');
 
+      let activeTrip = null;
       let assignmentStatus = "Available";
-      if (activeTrip) {
-        if (['Scheduled', 'Assigned', 'Ready to Dispatch'].includes(activeTrip.status)) {
+
+      // If the most recent trip is active/ongoing, set it as the activeTrip
+      if (recentTrip && ['Scheduled', 'Assigned', 'In Progress', 'On Transit', 'Delayed', 'On Trip', 'Ready to Dispatch'].includes(recentTrip.status)) {
+        activeTrip = recentTrip;
+        if (['Scheduled', 'Assigned', 'Ready to Dispatch'].includes(recentTrip.status)) {
           assignmentStatus = "Assigned";
-        } else if (['In Progress', 'On Trip', 'On Transit', 'Delayed'].includes(activeTrip.status)) {
+        } else {
           assignmentStatus = "On Trip";
         }
-      } else if (v.currentStatus === "Maintenance") {
-        assignmentStatus = "Maintenance";
-      } else if (v.currentStatus === "Inactive") {
-        assignmentStatus = "Inactive";
-      } else if (v.currentStatus === "Assigned") {
-        assignmentStatus = "Assigned";
-      } else if (v.currentStatus === "On Trip") {
-        assignmentStatus = "On Trip";
+      } else {
+        // Fallback to vehicle's current status if no active trip
+        if (v.currentStatus === "Maintenance" || v.currentStatus === "Under Maintenance") {
+          assignmentStatus = "Maintenance";
+        } else if (v.currentStatus === "Inactive" || v.currentStatus === "Out of Service") {
+          assignmentStatus = "Inactive";
+        } else if (v.currentStatus === "Assigned") {
+          assignmentStatus = "Assigned";
+        } else if (v.currentStatus === "On Trip") {
+          assignmentStatus = "On Trip";
+        }
+      }
+
+      // Determine currentLocation based on recent trip
+      let currentLocation = v.currentLocation || v.branch || 'Pune';
+      if (recentTrip) {
+        if (recentTrip.status === 'Completed') {
+          currentLocation = recentTrip.endLocation;
+        } else if (['In Progress', 'On Transit', 'On Trip', 'Delayed'].includes(recentTrip.status)) {
+          currentLocation = recentTrip.endLocation;
+        } else if (['Scheduled', 'Assigned', 'Ready to Dispatch'].includes(recentTrip.status)) {
+          currentLocation = recentTrip.startLocation;
+        }
+      }
+
+      // Save updated currentLocation back to vehicle in DB if it has changed
+      if (v.currentLocation !== currentLocation) {
+        v.currentLocation = currentLocation;
+        await v.save();
       }
 
       const driverName = v.assignedDriver?.fullName || (activeTrip ? (activeTrip.driver?.fullName || activeTrip.driverName) : "Unassigned");
@@ -1524,9 +1592,10 @@ export const getLiveTracking = async (req, res, next) => {
           driverName: driverName,
           driverPhone: driverPhone
         } : null,
+        currentLocation,
         assignmentStatus
       };
-    });
+    }));
 
     return sendSuccess(res, 200, trackingData, 'Live tracking data fetched');
   } catch (error) {

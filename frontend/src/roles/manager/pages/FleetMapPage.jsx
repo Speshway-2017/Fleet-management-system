@@ -95,13 +95,17 @@ export default function FleetMapPage() {
       status = "ASSIGNED";
     }
 
-    const startLocationName = activeTrip ? activeTrip.startLocation : "Pune";
-    const endLocationName = activeTrip ? activeTrip.endLocation : "Pune";
+    const startLocationName = activeTrip ? activeTrip.startLocation : (v.currentLocation || "Pune");
+    const endLocationName = activeTrip ? activeTrip.endLocation : (v.currentLocation || "Pune");
     const startCoords = getCoordinates(startLocationName);
     const endCoords = getCoordinates(endLocationName);
 
-    const offset = (index * 0.007);
-    const idleCoords = [18.5204 + offset * Math.sin(index), 73.8567 + offset * Math.cos(index)];
+    const offset = (index * 0.003);
+    const baseCoords = getCoordinates(v.currentLocation || "Pune");
+    const idleCoords = [
+      baseCoords[0] + offset * Math.sin(index),
+      baseCoords[1] + offset * Math.cos(index)
+    ];
     
     const transitCoords = [
       (startCoords[0] + endCoords[0]) / 2,
@@ -132,7 +136,7 @@ export default function FleetMapPage() {
       temperature: activeTrip ? "24 °C" : "21 °C",
       speed: activeTrip ? "65 km/h" : "0 km/h",
       fuelLevel: v.fuelCapacity ? `${Math.round(v.fuelCapacity * 0.85)} L` : "N/A",
-      currentLocation: activeTrip ? `En route to ${activeTrip.endLocation}` : "At Depot / Idle",
+      currentLocation: activeTrip ? `En route to ${activeTrip.endLocation}` : `At ${v.currentLocation || "Depot / Idle"}`,
       lastUpdated: v.updatedAt ? new Date(v.updatedAt).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' }) : "N/A",
       routeStart: startLocationName,
       routeEnd: endLocationName,
@@ -166,6 +170,7 @@ export default function FleetMapPage() {
   // Map DOM references
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const lastCenteredVehicleIdRef = useRef("");
   const markersGroupRef = useRef(null);
   const routesGroupRef = useRef(null);
   const trafficGroupRef = useRef(null);
@@ -282,8 +287,11 @@ export default function FleetMapPage() {
         opacity: 0.8
       }).addTo(routesGroupRef.current);
 
-      // Pan & zoom map to fit selected vehicle route bounds
-      map.setView(selectedVehicle.coords, 13);
+      // Pan & zoom map to fit selected vehicle route bounds only when selection changes
+      if (lastCenteredVehicleIdRef.current !== selectedVehicleId) {
+        map.setView(selectedVehicle.coords, 13);
+        lastCenteredVehicleIdRef.current = selectedVehicleId;
+      }
     }
 
     // 3. Draw simulated traffic lines if Traffic ON
@@ -479,7 +487,7 @@ export default function FleetMapPage() {
               <div className="grid grid-cols-2 gap-3 shrink-0">
 
                 {/* Engine status */}
-                <div className="bg-white border border-[#E7EAF0] rounded-xl p-3 flex flex-col space-y-1">
+                <div className="bg-white border border-[#E7EAF0] rounded-xl p-3 flex flex-col space-y-1 col-span-2">
                   <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Engine</span>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <div className={`w-2 h-2 rounded-full ${selectedVehicle.engineStatus === "Running" ? "bg-emerald-500 animate-pulse" : "bg-gray-400"}`} />
@@ -497,12 +505,6 @@ export default function FleetMapPage() {
                 <div className="bg-white border border-[#E7EAF0] rounded-xl p-3 flex flex-col space-y-1">
                   <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Speed</span>
                   <span className="text-xs font-bold text-[#1E293B] mt-0.5">{selectedVehicle.speed}</span>
-                </div>
-
-                {/* Fuel Level Box */}
-                <div className="bg-white border border-[#E7EAF0] rounded-xl p-3 flex flex-col space-y-1">
-                  <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Fuel Level</span>
-                  <span className="text-xs font-bold text-[#1E293B] mt-0.5">{selectedVehicle.fuelLevel}</span>
                 </div>
 
               </div>

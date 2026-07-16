@@ -21,6 +21,21 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import { useAuth } from "@/context/AuthContext";
 import { managerApi } from "../api/managerApi";
 
+const CITIES_SUGGESTIONS = [
+  "Ahmedabad",
+  "Bengaluru",
+  "Chennai",
+  "Delhi",
+  "Hyderabad",
+  "Jaipur",
+  "Kolkata",
+  "Mumbai",
+  "Pune",
+  "Surat",
+  "Vijayawada",
+  "Visakhapatnam"
+];
+
 export default function CreateTripPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -53,6 +68,39 @@ export default function CreateTripPage() {
 
   const [departureError, setDepartureError] = useState("");
   const [etaError, setEtaError] = useState("");
+
+  const [startSuggestions, setStartSuggestions] = useState([]);
+  const [showStartSuggestions, setShowStartSuggestions] = useState(false);
+  const [endSuggestions, setEndSuggestions] = useState([]);
+  const [showEndSuggestions, setShowEndSuggestions] = useState(false);
+
+  const handleStartLocationChange = (val) => {
+    setStartLocation(val);
+    if (val.trim().length > 0) {
+      const filtered = CITIES_SUGGESTIONS.filter(c =>
+        c.toLowerCase().includes(val.toLowerCase())
+      );
+      setStartSuggestions(filtered);
+      setShowStartSuggestions(true);
+    } else {
+      setStartSuggestions([]);
+      setShowStartSuggestions(false);
+    }
+  };
+
+  const handleEndLocationChange = (val) => {
+    setEndLocation(val);
+    if (val.trim().length > 0) {
+      const filtered = CITIES_SUGGESTIONS.filter(c =>
+        c.toLowerCase().includes(val.toLowerCase())
+      );
+      setEndSuggestions(filtered);
+      setShowEndSuggestions(true);
+    } else {
+      setEndSuggestions([]);
+      setShowEndSuggestions(false);
+    }
+  };
 
   const getCurrentDateTimeString = () => {
     const now = new Date();
@@ -146,7 +194,10 @@ export default function CreateTripPage() {
     const fetchResources = async () => {
       setLoading(true);
       try {
-        const vRes = await managerApi.getAvailableVehicles({ location: startLocation });
+        const [vRes, dRes] = await Promise.all([
+          managerApi.getAvailableVehicles({ location: startLocation }),
+          managerApi.getAvailableDrivers({ location: startLocation })
+        ]);
         const vehiclesData = (vRes.data?.data || vRes.data || []).map(v => ({
           ...v,
           id: v._id,
@@ -154,7 +205,13 @@ export default function CreateTripPage() {
           plateNumber: v.vehicleNumber,
           status: v.currentStatus
         }));
-        setDrivers([]);
+        const driversData = (dRes.data?.data || dRes.data || []).map(d => ({
+          ...d,
+          id: d._id,
+          name: d.fullName,
+          status: d.driverStatus === 'AVAILABLE' ? 'Available' : d.driverStatus
+        }));
+        setDrivers(driversData);
         setVehicles(vehiclesData);
 
         // Auto-clear selection if it is not in the new filtered location list
@@ -351,43 +408,91 @@ export default function CreateTripPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Start Location */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Start Location *
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                  <input
-                    type="text"
-                    placeholder="e.g. Mumbai, MH"
-                    value={startLocation}
-                    onChange={(e) => setStartLocation(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* End Location */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Destination *
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                  <input
-                    type="text"
-                    placeholder="e.g. Pune, MH"
-                    value={endLocation}
-                    onChange={(e) => setEndLocation(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               {/* Start Location */}
+               <div>
+                 <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                   Start Location *
+                 </label>
+                 <div className="relative">
+                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                   <input
+                     type="text"
+                     placeholder="e.g. Mumbai, MH"
+                     value={startLocation}
+                     onChange={(e) => handleStartLocationChange(e.target.value)}
+                     onFocus={() => {
+                       if (startLocation.trim().length > 0) {
+                         setShowStartSuggestions(true);
+                       }
+                     }}
+                     onBlur={() => {
+                       setTimeout(() => setShowStartSuggestions(false), 200);
+                     }}
+                     className="w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                     required
+                   />
+                   {showStartSuggestions && startSuggestions.length > 0 && (
+                     <div className="absolute left-0 right-0 mt-1 bg-white border border-[#E7EAF0] rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto py-1">
+                       {startSuggestions.map((city) => (
+                         <div
+                           key={city}
+                           onMouseDown={() => {
+                             setStartLocation(city);
+                             setShowStartSuggestions(false);
+                           }}
+                           className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#B45A0A] text-sm text-gray-700 font-medium cursor-pointer transition-colors"
+                         >
+                           {city}
+                         </div>
+                       ))}
+                     </div>
+                   )}
+                 </div>
+               </div>
+ 
+               {/* End Location */}
+               <div>
+                 <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                   Destination *
+                 </label>
+                 <div className="relative">
+                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                   <input
+                     type="text"
+                     placeholder="e.g. Pune, MH"
+                     value={endLocation}
+                     onChange={(e) => handleEndLocationChange(e.target.value)}
+                     onFocus={() => {
+                       if (endLocation.trim().length > 0) {
+                         setShowEndSuggestions(true);
+                       }
+                     }}
+                     onBlur={() => {
+                       setTimeout(() => setShowEndSuggestions(false), 200);
+                     }}
+                     className="w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                     required
+                   />
+                   {showEndSuggestions && endSuggestions.length > 0 && (
+                     <div className="absolute left-0 right-0 mt-1 bg-white border border-[#E7EAF0] rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto py-1">
+                       {endSuggestions.map((city) => (
+                         <div
+                           key={city}
+                           onMouseDown={() => {
+                             setEndLocation(city);
+                             setShowEndSuggestions(false);
+                           }}
+                           className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#B45A0A] text-sm text-gray-700 font-medium cursor-pointer transition-colors"
+                         >
+                           {city}
+                         </div>
+                       ))}
+                     </div>
+                   )}
+                 </div>
+               </div>
+             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Departure Time */}

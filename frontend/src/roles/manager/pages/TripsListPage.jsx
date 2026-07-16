@@ -405,7 +405,7 @@ export default function TripsListPage() {
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
       <Breadcrumb />
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#E7EAF0] pb-6">
+      <div className="flex items-center justify-between border-b border-[#E7EAF0] pb-6">
         <div>
           <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
             Trips List
@@ -414,13 +414,6 @@ export default function TripsListPage() {
             Complete database of all registered trip dispatches
           </p>
         </div>
-        <button
-          onClick={() => navigate("/manager/trips")}
-          className="flex items-center gap-2 px-4.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-gray-50 transition-all cursor-pointer shadow-xs"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Dashboard
-        </button>
       </div>
 
       {/* Search Bar with Filter Fields */}

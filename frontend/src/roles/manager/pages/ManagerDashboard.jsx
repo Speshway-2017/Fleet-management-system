@@ -484,6 +484,10 @@ export default function ManagerDashboard() {
                   return { icon: "material-symbols:local-gas-station-outline", bg: "bg-orange-50 text-orange-600 border-orange-100" };
                 case "DOCUMENT_UPLOADED":
                   return { icon: "material-symbols:upload-file-outline", bg: "bg-teal-50 text-teal-600 border-teal-100" };
+                case "TRIP_DISPATCHED":
+                  return { icon: "material-symbols:route-outline", bg: "bg-blue-50 text-blue-600 border-blue-100" };
+                case "TRIP_COMPLETED":
+                  return { icon: "material-symbols:check-circle-outline", bg: "bg-emerald-50 text-emerald-600 border-emerald-100" };
                 default:
                   return { icon: "material-symbols:info-outline", bg: "bg-gray-50 text-gray-600 border-gray-100" };
               }
