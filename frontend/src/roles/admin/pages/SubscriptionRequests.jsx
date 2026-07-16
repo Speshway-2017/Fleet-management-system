@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
@@ -7,7 +7,18 @@ import axiosClient from "@/api/axiosClient";
 import { Check, X, Clock, Calendar, ShieldCheck, Mail, Building2, Plus, Edit2, Trash2 } from "lucide-react";
 
 export default function SubscriptionRequests() {
-  const [activeTab, setActiveTab] = useState("requests"); // "requests" or "plans"
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(
+    location.pathname.includes("subscription-plans") ? "plans" : "requests"
+  );
+
+  useEffect(() => {
+    if (location.pathname.includes("subscription-plans")) {
+      setActiveTab("plans");
+    } else {
+      setActiveTab("requests");
+    }
+  }, [location.pathname]);
 
   // ── Requests State ────────────────────────────────────────────────────────
   const [requests, setRequests] = useState([]);

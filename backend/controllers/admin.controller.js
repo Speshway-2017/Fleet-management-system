@@ -59,6 +59,7 @@ export const listOrganizations = async (_req, res, next) => {
       return {
         id: org._id.toString(),
         name: org.name,
+        logoUrl: org.logoUrl,
         email: org.email,
         phone: org.phone,
         industry: org.industry,
@@ -139,6 +140,7 @@ export const getOrganizationDetails = async (req, res, next) => {
     const formattedOrg = {
       id: org._id.toString(),
       name: org.name,
+      logoUrl: org.logoUrl,
       email: org.email,
       phone: org.phone,
       industry: org.industry,
@@ -178,8 +180,15 @@ export const createOrganization = async (req, res, next) => {
       return sendError(res, 400, 'Name, industry, and email are required');
     }
 
-    // 1. Create Organization
-    const org = await createOrgInRepo({ name, industry, email, phone, address, city, state, country, plan, status: status || 'Pending' });
+    // 1. Upload Logo if provided
+    let logoUrl = '';
+    if (req.file) {
+      const uploadResult = await uploadImageToCloudinary(req.file.buffer, 'fleet_management/organizations');
+      logoUrl = uploadResult.secure_url;
+    }
+
+    // 2. Create Organization
+    const org = await createOrgInRepo({ name, industry, email, phone, address, city, state, country, plan, status: status || 'Pending', logoUrl });
 
     let createdManagerIds = [];
     let createdManagersList = [];
@@ -275,7 +284,12 @@ export const updateOrganization = async (req, res, next) => {
     const oldOrg = await getOrganizationById(id);
     if (!oldOrg) return sendError(res, 404, 'Organization not found');
 
-    const updatedOrg = await updateOrganizationById(id, req.body);
+    let updateData = { ...req.body };
+    if (req.file) {
+      const uploadResult = await uploadImageToCloudinary(req.file.buffer, 'fleet_management/organizations');
+      updateData.logoUrl = uploadResult.secure_url;
+    }
+    const updatedOrg = await updateOrganizationById(id, updateData);
     
     // Check status activation/deactivation
     let statusMsg = '';

@@ -21,10 +21,12 @@ export default function AddOrganization() {
   const [managerErrors, setManagerErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logoPreview, setLogoPreview] = useState(null);
+  const [logoFile, setLogoFile] = useState(null);
 
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setLogoFile(file);
       const url = URL.createObjectURL(file);
       setLogoPreview(url);
     }
@@ -92,13 +94,18 @@ export default function AddOrganization() {
 
     setIsSubmitting(true);
     
-    // Construct payload
-    const payload = {
-      name: form.name, industry: form.industry, email: form.email, phone: form.phone,
-      address: form.address, city: form.city, state: form.state, country: form.country,
-      plan: form.plan, status: form.status,
+    let payload = {
+      ...form,
       managers: managers.map(m => ({ name: m.name, email: m.email, phone: m.phone, password: m.password }))
     };
+    
+    if (logoFile) {
+      const formData = new FormData();
+      Object.entries(form).forEach(([k, v]) => formData.append(k, v));
+      formData.append('managers', JSON.stringify(payload.managers));
+      formData.append('logo', logoFile);
+      payload = formData;
+    }
     
     try {
       await adminApi.createOrganization(payload);

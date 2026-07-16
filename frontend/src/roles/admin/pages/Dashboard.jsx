@@ -11,7 +11,8 @@ import {
   Plus,
   TrendingUp,
   Users,
-  BarChart3
+  BarChart3,
+  CreditCard
 } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
@@ -386,13 +387,13 @@ function Dashboard() {
                   </div>
                 </Link>
                 
-                <Link to="/admin/fleet-managers/add" className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
+                <Link to="/admin/subscription-plans" className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
                   <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                    <Users className="w-4 h-4" />
+                    <CreditCard className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="font-bold text-slate-200 text-[13px]">Invite Fleet Manager</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">Assign a new manager to an org</div>
+                    <div className="font-bold text-slate-200 text-[13px]">View Subscription Plans</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">Manage subscription plans</div>
                   </div>
                 </Link>
                 

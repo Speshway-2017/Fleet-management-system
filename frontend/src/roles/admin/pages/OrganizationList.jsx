@@ -156,8 +156,14 @@ export default function OrganizationList() {
                     <tr key={org.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="py-4 px-6 whitespace-nowrap text-left">
                         <div className="flex items-center justify-start gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">
-                            {org.name.substring(0, 2).toUpperCase()}
+                          <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
+                            {org.logoUrl ? (
+                              <img src={org.logoUrl} alt={org.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-sm font-bold text-slate-500">
+                                {org.name.substring(0, 2).toUpperCase()}
+                              </span>
+                            )}
                           </div>
                           <span className="text-sm font-semibold text-slate-800">{org.name}</span>
                         </div>

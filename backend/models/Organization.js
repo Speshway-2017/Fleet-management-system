@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const organizationSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
+    logoUrl: { type: String, default: '' },
     industry: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
     phone: { type: String, default: '' },
