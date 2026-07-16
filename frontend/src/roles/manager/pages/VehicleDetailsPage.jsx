@@ -6,8 +6,8 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { useAuth } from "@/context/AuthContext";
 import { vehicleApi } from "@/api/vehicleApi";
-import { driverApi } from "@/api/driverApi";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { managerApi } from "../api/managerApi";
@@ -43,6 +43,8 @@ const getDocumentUrl = (path) => {
 export default function VehicleDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
+  const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const gpsMapRef = useRef(null);
@@ -54,7 +56,6 @@ export default function VehicleDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [previewDocument, setPreviewDocument] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [driversList, setDriversList] = useState([]);
 
   // Tab & sub-sections state
   const [activeTab, setActiveTab] = useState("info");
@@ -276,23 +277,6 @@ export default function VehicleDetailsPage() {
     return () => clearTimeout(timer);
   }, [activeTab, selectedTrip]);
 
-  // Load drivers when assign modal opens
-  useEffect(() => {
-    if (showAssignModal) {
-      const fetchDriversList = async () => {
-        try {
-          const res = await driverApi.list();
-          setDriversList(res.data?.data ?? []);
-        } catch (err) {
-          console.error("Failed to load drivers:", err);
-        }
-      };
-      fetchDriversList();
-    }
-  }, [showAssignModal]);
-
-
-
   const handleDelete = async () => {
     try {
       setIsDeletingVehicle(true);
@@ -335,24 +319,6 @@ export default function VehicleDetailsPage() {
     } finally {
       setIsDeletingVehicle(false);
       setShowDeleteConfirm(false);
-    }
-  };
-
-  const handleAssignDriver = async (driverId) => {
-    try {
-      const vehicleId = vehicle._id || vehicle.id;
-      const payload = {
-        assignedDriver: driverId === "Unassigned" ? "Unassigned" : driverId
-      };
-      await vehicleApi.update(vehicleId, payload);
-      toast.success("Driver assigned successfully!");
-
-      // Refresh vehicle details
-      const res = await vehicleApi.getById(id);
-      setVehicle(normaliseVehicle(res.data?.data));
-      setShowAssignModal(false);
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to assign driver.");
     }
   };
 
@@ -409,15 +375,7 @@ export default function VehicleDetailsPage() {
               </div>
               <div>
                 <p className="text-xs text-[#64748B] font-bold uppercase">Driver</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <p className="text-sm font-bold text-[#1E293B]">{vehicle.driver}</p>
-                  <button
-                    onClick={() => setShowAssignModal(true)}
-                    className="text-xs text-[#B45A0A] hover:underline font-bold cursor-pointer"
-                  >
-                    {vehicle.driver === "Unassigned" ? "(Assign)" : "(Change)"}
-                  </button>
-                </div>
+                <p className="text-sm font-bold text-[#1E293B] mt-2">N/A</p>
               </div>
             </div>
           </div>
@@ -426,14 +384,18 @@ export default function VehicleDetailsPage() {
           <div className="flex items-center gap-2 md:ml-auto">
             <button
               onClick={() => navigate(`/manager/vehicle-edit/${vehicle._id}`)}
-              className="px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer"
+              disabled={isViewOnly}
+              title={isViewOnly ? "This feature is available after activating a subscription." : "Edit Vehicle"}
+              className={`px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <Edit2 className="w-4 h-4" />
               EDIT
             </button>
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="px-4 py-2.5 border border-red-300 hover:bg-red-50 rounded-lg text-sm font-bold text-red-600 transition-all flex items-center gap-2 cursor-pointer"
+              disabled={isViewOnly}
+              title={isViewOnly ? "This feature is available after activating a subscription." : "Delete Vehicle"}
+              className={`px-4 py-2.5 border border-red-300 hover:bg-red-50 rounded-lg text-sm font-bold text-red-600 transition-all flex items-center gap-2 cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <Trash2 className="w-4 h-4" />
               DELETE
@@ -446,7 +408,6 @@ export default function VehicleDetailsPage() {
       <div className="flex border-b border-[#E7EAF0] mb-6 overflow-x-auto whitespace-nowrap bg-white p-2 rounded-xl shadow-sm">
         {[
           { id: "info", label: "Vehicle Information" },
-          { id: "driver", label: "Driver Assignment" },
           { id: "service", label: "Service History" },
           { id: "gps", label: "GPS Tracking History" }
         ].map(tab => (
@@ -673,82 +634,7 @@ export default function VehicleDetailsPage() {
         </div>
       )}
 
-      {activeTab === "driver" && (
-        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm">
-          <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
-            Driver Assignment
-          </h3>
-          {vehicle.assignedDriver && typeof vehicle.assignedDriver === 'object' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-[#E7EAF0]">
-                  <div className="bg-[#FDF3EC] p-3 rounded-lg">
-                    <UserPlus className="w-6 h-6 text-[#B45A0A]" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#1E293B]">{vehicle.assignedDriver.fullName}</h4>
-                    <p className="text-[10px] text-[#64748B] mt-0.5">Driver Status: <span className="font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">{vehicle.assignedDriver.driverStatus}</span></p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-xs space-y-1">
-                  <div>
-                    <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">Driver ID</p>
-                    <p className="font-semibold text-[#1E293B] mt-1 font-poppins">{vehicle.assignedDriver._id}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">Phone Number</p>
-                    <p className="font-semibold text-[#1E293B] mt-1">{vehicle.assignedDriver.phoneNumber}</p>
-                  </div>
-                  <div className="col-span-2 border-t border-[#E7EAF0]/60 pt-3">
-                    <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">Email Address</p>
-                    <p className="font-semibold text-[#1E293B] mt-1 truncate">{vehicle.assignedDriver.email}</p>
-                  </div>
-                  <div className="border-t border-[#E7EAF0]/60 pt-3">
-                    <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">License Number</p>
-                    <p className="font-semibold text-[#1E293B] mt-1 font-poppins">{vehicle.assignedDriver.licenseNumber}</p>
-                  </div>
-                  <div className="border-t border-[#E7EAF0]/60 pt-3">
-                    <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">License Type</p>
-                    <p className="font-semibold text-[#1E293B] mt-1">{vehicle.assignedDriver.licenseType}</p>
-                  </div>
-                  <div className="col-span-2 border-t border-[#E7EAF0]/60 pt-3">
-                    <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">Assignment Date</p>
-                    <p className="font-semibold text-[#1E293B] mt-1">
-                      {new Date(vehicle.assignedDriver.updatedAt || vehicle.updatedAt).toLocaleDateString("en-IN")}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2 pt-4 border-t border-[#E7EAF0]/60">
-                  <button
-                    onClick={() => setShowAssignModal(true)}
-                    className="px-4.5 py-2 bg-[#B45A0A] hover:bg-[#9A4D08] text-white text-xs font-bold rounded-lg cursor-pointer transition-colors shadow-sm"
-                  >
-                    Change Driver
-                  </button>
-                  <button
-                    onClick={() => handleAssignDriver("Unassigned")}
-                    className="px-4.5 py-2 border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold rounded-lg cursor-pointer transition-colors shadow-sm"
-                  >
-                    Remove Assignment
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-12 max-w-sm mx-auto select-none">
-              <UserMinus className="w-12 h-12 text-[#94A3B8] mx-auto mb-3 opacity-50" />
-              <h4 className="font-bold text-sm text-[#1E293B] mb-1">No Driver Assigned</h4>
-              <p className="text-xs text-[#64748B] mb-6">This vehicle currently has no driver allocated. Assign a driver to update its routing availability.</p>
-              <button
-                onClick={() => setShowAssignModal(true)}
-                className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white text-xs font-bold rounded-xl cursor-pointer transition-colors shadow-md shadow-[#B45A0A]/10"
-              >
-                Assign Driver
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+
 
       {activeTab === "service" && (
         <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-6">
@@ -1107,80 +993,7 @@ export default function VehicleDetailsPage() {
         </div>
       )}
 
-      {/* Assign Driver Modal */}
-      {showAssignModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 border border-[#E7EAF0] relative">
-            <button
-              onClick={() => setShowAssignModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
 
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-xl font-bold font-poppins text-[#1E293B]">Assign Driver</h3>
-                <p className="text-xs text-[#64748B] mt-1 font-medium">
-                  Select a driver from the active roster to assign to this vehicle ({vehicle.plateNumber}).
-                </p>
-              </div>
-
-              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                {/* Unassign option */}
-                <div 
-                  onClick={() => handleAssignDriver("Unassigned")}
-                  className="p-3 bg-red-50 hover:bg-red-100/70 border border-red-100 rounded-xl flex items-center justify-between cursor-pointer transition-colors"
-                >
-                  <div>
-                    <p className="font-bold text-xs text-red-700">Leave Unassigned</p>
-                    <span className="text-[10px] text-red-500 font-medium">Remove current driver from this vehicle</span>
-                  </div>
-                </div>
-
-                 {driversList.map(d => (
-                  <div 
-                    key={d._id}
-                    onClick={() => handleAssignDriver(d._id)}
-                    className={`p-3 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
-                      d.assignedVehicle === vehicle.plateNumber
-                        ? "bg-indigo-50/50 border-indigo-200"
-                        : "bg-white hover:bg-gray-50 border-[#E7EAF0]"
-                    }`}
-                  >
-                    <div>
-                      <p className="font-bold text-xs text-[#1E293B]">{d.fullName}</p>
-                      <span className="text-[10px] text-[#64748B] block mt-0.5">DL: {d.licenseNumber} ({d.licenseType})</span>
-                    </div>
-                    {d.assignedVehicle && d.assignedVehicle !== "Unassigned" && d.assignedVehicle !== vehicle.plateNumber ? (
-                      <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
-                        {d.assignedVehicle}
-                      </span>
-                    ) : d.assignedVehicle === vehicle.plateNumber ? (
-                      <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
-                        Currently Assigned
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
-                        Available
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E7EAF0]">
-                <button
-                  onClick={() => setShowAssignModal(false)}
-                  className="px-4.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-semibold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Maintenance Details Modal */}
       {selectedMaintenance && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">

@@ -48,6 +48,12 @@ export default function NotificationDetailsPage() {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
 
+  const coords = notification?.coords || [18.7508, 73.4218];
+  const isSubscriptionNotification = 
+    notification?.type === "subscription_request" || 
+    notification?.type === "SUBSCRIPTION_REQUEST" ||
+    (notification?.title && notification.title.toLowerCase().includes("subscription"));
+
   useEffect(() => {
     const fetchNotification = async () => {
       try {
@@ -71,14 +77,12 @@ export default function NotificationDetailsPage() {
   }, [id, navigate]);
 
   useEffect(() => {
-    if (loading || !notification || !mapRef.current) return;
+    if (loading || !notification || !mapRef.current || isSubscriptionNotification) return;
 
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
       mapInstanceRef.current = null;
     }
-
-    const coords = notification.coords || [18.7508, 73.4218];
 
     const map = L.map(mapRef.current, {
       zoomControl: false
@@ -243,38 +247,40 @@ export default function NotificationDetailsPage() {
           </div>
 
           {/* Location */}
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                <Icon icon="mdi:map-marker-radius" className="w-5 h-5 text-amber-700" />
-                {locationLabel}
-              </h3>
-              <span className="text-sm text-gray-500">{notification.locationName}</span>
-            </div>
-            <div className="relative h-80 bg-gray-100">
-              <div ref={mapRef} className="absolute inset-0 z-0 w-full h-full" />
-              <div className="absolute right-4 top-4 flex flex-col gap-2 z-[400]">
-                <button
-                  onClick={() => mapInstanceRef.current?.zoomIn()}
-                  className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-pointer"
-                >
-                  <Icon icon="mdi:plus" className="w-5 h-5 text-gray-700" />
-                </button>
-                <button
-                  onClick={() => mapInstanceRef.current?.zoomOut()}
-                  className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-pointer"
-                >
-                  <Icon icon="mdi:minus" className="w-5 h-5 text-gray-700" />
-                </button>
-                <button
-                  onClick={() => mapInstanceRef.current?.setView(coords, 12)}
-                  className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-pointer"
-                >
-                  <Icon icon="mdi:target-variant" className="w-5 h-5 text-gray-700" />
-                </button>
+          {!isSubscriptionNotification && (
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                  <Icon icon="mdi:map-marker-radius" className="w-5 h-5 text-amber-700" />
+                  {locationLabel}
+                </h3>
+                <span className="text-sm text-gray-500">{notification.locationName}</span>
+              </div>
+              <div className="relative h-80 bg-gray-100">
+                <div ref={mapRef} className="absolute inset-0 z-0 w-full h-full" />
+                <div className="absolute right-4 top-4 flex flex-col gap-2 z-[400]">
+                  <button
+                    onClick={() => mapInstanceRef.current?.zoomIn()}
+                    className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-pointer"
+                  >
+                    <Icon icon="mdi:plus" className="w-5 h-5 text-gray-700" />
+                  </button>
+                  <button
+                    onClick={() => mapInstanceRef.current?.zoomOut()}
+                    className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-pointer"
+                  >
+                    <Icon icon="mdi:minus" className="w-5 h-5 text-gray-700" />
+                  </button>
+                  <button
+                    onClick={() => mapInstanceRef.current?.setView(coords, 12)}
+                    className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-pointer"
+                  >
+                    <Icon icon="mdi:target-variant" className="w-5 h-5 text-gray-700" />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Right Column */}

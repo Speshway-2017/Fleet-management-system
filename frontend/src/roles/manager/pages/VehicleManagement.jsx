@@ -33,7 +33,6 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { vehicleApi } from "@/api/vehicleApi";
-import { driverApi } from "@/api/driverApi";
 import { managerApi } from "../api/managerApi";
 
 export default function VehicleManagement() {
@@ -50,9 +49,7 @@ export default function VehicleManagement() {
     manufacturer: v.brand || "",
     plateNumber:  v.vehicleNumber || "",
     type:         v.vehicleType || 'Truck',
-    driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
-      ? v.assignedDriver.fullName
-      : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
+    driver:       'N/A',
     fuelLevel:    v.fuelCapacity ? Math.round((v.odometer % v.fuelCapacity) || 50) : 50,
     fastagBalance:v.fastagBalance ?? 0,
     branch:       v.branch       || 'Pune',
@@ -63,7 +60,6 @@ export default function VehicleManagement() {
 
   const [vehicles, setVehicles] = useState([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
-  const [drivers, setDrivers] = useState([]);
   const [activities, setActivities] = useState([]);
 
   // Filter States
@@ -78,18 +74,13 @@ export default function VehicleManagement() {
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 
 
-  // Fetch vehicles and drivers from backend on mount
+  // Fetch vehicles from backend on mount
   useEffect(() => {
-    const fetchVehiclesAndDrivers = async () => {
+    const fetchVehicles = async () => {
       try {
         setVehiclesLoading(true);
-        const [vehRes, drvRes] = await Promise.all([
-          vehicleApi.list(),
-          driverApi.list()
-        ]);
+        const vehRes = await vehicleApi.list();
         const rawVeh = vehRes.data?.data ?? [];
-        const rawDrv = drvRes.data?.data ?? [];
-        setDrivers(rawDrv);
         setVehicles(rawVeh.map(normaliseVehicle));
 
         // Fetch dynamic activities (recent notifications)
@@ -138,7 +129,7 @@ export default function VehicleManagement() {
         setVehiclesLoading(false);
       }
     };
-    fetchVehiclesAndDrivers();
+    fetchVehicles();
   }, []);
 
   // Sorting
@@ -155,7 +146,6 @@ export default function VehicleManagement() {
     manufacturer: "",
     plateNumber: "",
     type: "Truck",
-    driver: "Unassigned",
     status: "Available",
     fuelLevel: 50,
     fastagBalance: 1000,
@@ -186,8 +176,7 @@ export default function VehicleManagement() {
     const matchesSearch =
       v.name.toLowerCase().includes(query) ||
       v.manufacturer.toLowerCase().includes(query) ||
-      v.plateNumber.toLowerCase().includes(query) ||
-      (v.driver && v.driver.toLowerCase().includes(query));
+      v.plateNumber.toLowerCase().includes(query);
 
     const matchesStatus = statusFilter === "All Statuses" || v.status === statusFilter;
     const matchesType = typeFilter === "All Types" || v.type === typeFilter;
@@ -330,19 +319,9 @@ export default function VehicleManagement() {
   const openEditModal = (vehicle) => {
     setSelectedVehicle(vehicle);
     setFormData({
-      ...vehicle,
-      assignedDriver: vehicle.assignedDriver?._id || vehicle.assignedDriver || "Unassigned"
+      ...vehicle
     });
     setModalType("edit");
-  };
-
-  const openAssignModal = (vehicle) => {
-    setSelectedVehicle(vehicle);
-    setFormData({
-      ...vehicle,
-      assignedDriver: vehicle.assignedDriver?._id || vehicle.assignedDriver || "Unassigned"
-    });
-    setModalType("assign");
   };
 
   const openDetailsModal = (vehicle) => {
@@ -430,28 +409,15 @@ export default function VehicleManagement() {
           fuelCapacity:       Number(formData.fuelCapacity) || 0,
           fastagBalance:      Number(formData.fastagBalance) || 0,
           currentStatus:      formData.status || "Available",
-          assignedDriver:     formData.assignedDriver === "Unassigned" ? "Unassigned" : formData.assignedDriver,
         };
         const res = await vehicleApi.update(vehicleId, payload);
         
-        // Fetch fresh vehicles list to make sure we get populated driver details
+        // Fetch fresh vehicles list
         const listRes = await vehicleApi.list();
         const rawVeh = listRes.data?.data ?? [];
         setVehicles(rawVeh.map(normaliseVehicle));
         
         toast.success("Vehicle updated successfully!");
-      } else if (modalType === "assign") {
-        const payload = {
-          assignedDriver: formData.assignedDriver === "Unassigned" ? "Unassigned" : formData.assignedDriver
-        };
-        await vehicleApi.update(vehicleId, payload);
-
-        // Fetch fresh vehicles list to make sure we get populated driver details
-        const listRes = await vehicleApi.list();
-        const rawVeh = listRes.data?.data ?? [];
-        setVehicles(rawVeh.map(normaliseVehicle));
-
-        toast.success("Driver assigned successfully!");
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to save changes.");
@@ -819,9 +785,6 @@ export default function VehicleManagement() {
                     <th className="py-4 px-6 cursor-pointer hover:bg-gray-100/50 transition-colors whitespace-nowrap" onClick={() => handleSort("type")}>
                       Type {sortField === "type" && (sortDirection === "asc" ? "▲" : "▼")}
                     </th>
-                    <th className="py-4 px-6 cursor-pointer hover:bg-gray-100/50 transition-colors whitespace-nowrap" onClick={() => handleSort("driver")}>
-                      Assigned Driver {sortField === "driver" && (sortDirection === "asc" ? "▲" : "▼")}
-                    </th>
                     <th className="py-4 px-6 cursor-pointer hover:bg-gray-100/50 transition-colors whitespace-nowrap" onClick={() => handleSort("status")}>
                       Current Status {sortField === "status" && (sortDirection === "asc" ? "▲" : "▼")}
                     </th>
@@ -838,7 +801,7 @@ export default function VehicleManagement() {
                 <tbody className="divide-y divide-[#E7EAF0]/60">
                   {filteredVehicles.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-gray-400 font-medium font-nunito">
+                      <td colSpan={8} className="py-12 text-center text-gray-400 font-medium font-nunito">
                         No vehicles found matching the selected filters.
                       </td>
                     </tr>
@@ -866,18 +829,6 @@ export default function VehicleManagement() {
                         {/* Type */}
                         <td className="py-4 px-6 font-medium text-xs text-[#64748B] whitespace-nowrap">
                           {v.type}
-                        </td>
-
-                        {/* Driver */}
-                        <td className="py-4 px-6 whitespace-nowrap">
-                          {v.driver === "Unassigned" ? (
-                            <span className="text-[#EF4444] font-bold text-xs bg-red-50 px-2.5 py-1 rounded-lg border border-red-100 flex items-center w-max gap-1 whitespace-nowrap">
-                              <AlertCircle className="w-3 h-3" />
-                              Unassigned
-                            </span>
-                          ) : (
-                            <span className="text-[#1E293B] font-medium text-xs">{v.driver}</span>
-                          )}
                         </td>
 
                         {/* Status */}
@@ -1306,20 +1257,7 @@ export default function VehicleManagement() {
                     </select>
                   </div>
 
-                  {/* Driver */}
-                  <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Assigned Driver</label>
-                    <select
-                      value={formData.assignedDriver || "Unassigned"}
-                      onChange={(e) => setFormData({ ...formData, assignedDriver: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
-                    >
-                      <option value="Unassigned">Unassigned</option>
-                      {drivers.map((d) => (
-                        <option key={d._id} value={d._id}>{d.fullName}</option>
-                      ))}
-                    </select>
-                  </div>
+
 
                   {/* Status */}
                   <div>
@@ -1461,59 +1399,7 @@ export default function VehicleManagement() {
               </form>
             )}
 
-            {/* --- ASSIGN DRIVER QUICK MODAL --- */}
-            {modalType === "assign" && (
-              <form onSubmit={handleSaveVehicle} className="space-y-6">
-                <div>
-                  <h3 className="text-xl font-bold font-poppins text-[#1E293B]">
-                    Assign Driver to Vehicle
-                  </h3>
-                  <p className="text-xs text-[#64748B] mt-1">
-                    Select a driver from the roster list. Only available drivers should be scheduled.
-                  </p>
-                </div>
 
-                <div className="p-4 bg-[#F5F7FB] border border-[#E7EAF0] rounded-xl flex items-center gap-3 select-none">
-                  <div className="bg-[#FDF3EC] text-[#B45A0A] p-2 rounded-lg border border-[#FDF3EC]/50 shrink-0">
-                    <Truck className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-xs text-[#1E293B] font-poppins">{selectedVehicle?.name}</p>
-                    <span className="text-[10px] text-[#64748B] font-semibold tracking-wider block mt-0.5">{selectedVehicle?.plateNumber}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Select Driver</label>
-                  <select
-                    value={formData.assignedDriver || "Unassigned"}
-                    onChange={(e) => setFormData({ ...formData, assignedDriver: e.target.value })}
-                    className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
-                  >
-                    <option value="Unassigned">Unassigned</option>
-                    {drivers.map((d) => (
-                      <option key={d._id} value={d._id}>{d.fullName}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E7EAF0]">
-                  <button
-                    type="button"
-                    onClick={() => { setModalType(null); setSelectedVehicle(null); }}
-                    className="px-4.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-semibold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer"
-                  >
-                    Assign Driver
-                  </button>
-                </div>
-              </form>
-            )}
 
             {/* --- DELETE CONFIRMATION MODAL --- */}
             {modalType === "delete" && (

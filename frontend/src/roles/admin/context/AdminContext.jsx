@@ -3,6 +3,7 @@ import { adminApi } from "@/api/adminApi";
 import { getSocket, disconnectSocket } from "@/api/socket";
 import { useAuth } from "@/context/AuthContext";
 import { formatIFDWithTime, formatIFD } from "@/utils/dateUtils";
+import { toast } from "react-hot-toast";
 
 const AdminContext = createContext();
 
@@ -106,7 +107,7 @@ export function AdminProvider({ children }) {
     try {
       const response = await adminApi.getProfile();
       const data = response.data?.data || response.data || {};
-      setAdminProfile({ name: data.name || "", avatarUrl: data.avatarUrl || "" });
+      setAdminProfile({ name: data.name || "", avatarUrl: data.profileImage || data.avatarUrl || "" });
     } catch (error) {
       // Non-critical — silently ignore if profile endpoint fails
       console.warn("Failed to fetch admin profile:", error?.response?.status);
@@ -127,6 +128,19 @@ export function AdminProvider({ children }) {
       // Listen for events
       socket.on("notification:new", (notification) => {
         setNotifications(prev => [mapNotification(notification), ...prev]);
+        
+        if (notification.type === "CONTACT_REQUEST") {
+          const name = notification.metadata?.name || "A visitor";
+          const subject = notification.metadata?.subject || "Contact Request";
+          
+          toast.success(
+            <div className="flex flex-col">
+              <span className="font-extrabold text-slate-800 text-[13px]">New Contact Request</span>
+              <span className="text-[11px] text-slate-500 font-semibold mt-0.5">{name} submitted a {subject}.</span>
+            </div>,
+            { duration: 5000 }
+          );
+        }
       });
 
       socket.on("notification:read", (notification) => {

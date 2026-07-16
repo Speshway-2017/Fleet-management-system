@@ -25,6 +25,7 @@ export const updateVehicle = async (id, data) =>
 export const deleteVehicle = async (id) =>
   Vehicle.findByIdAndDelete(id);
 
+
 // Drivers
 export const getDrivers = async (filter = {}) =>
   Driver.find(filter).sort({ createdAt: -1 });
@@ -43,13 +44,14 @@ export const updateDriver = async (id, data) =>
 export const deleteDriver = async (id) =>
   Driver.findByIdAndDelete(id);
 
+
 // Trips
 export const getTrips = async (filter = {}) => {
   return Trip.find(filter).sort({ createdAt: -1 });
 };
 
 export const getTripById = async (id) => {
-  return Trip.findById(id).populate('driver').populate('vehicle');
+  return Trip.findById(id).populate('vehicle');
 };
 
 export const createTrip = async (data) => {

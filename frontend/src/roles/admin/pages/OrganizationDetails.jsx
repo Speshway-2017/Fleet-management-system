@@ -262,26 +262,26 @@ export default function OrganizationDetails() {
           {/* Statistics */}
           <div className="mb-6">
             <h3 className="font-bold text-slate-800 text-sm mb-4">Statistics</h3>
-            <div className="bg-white rounded-xl p-8 border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between divide-y md:divide-y-0 md:divide-x divide-slate-100">
+            <div className="bg-white rounded-xl p-6 md:p-8 border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-y-6 md:gap-0 md:divide-x divide-slate-100">
               
-              <div className="flex flex-col items-center justify-center p-4 w-full">
-                <span className="text-3xl font-black text-slate-800 mb-1">{org.stats?.totalFleetManagers ?? org.managers ?? 0}</span>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fleet Managers</span>
+              <div className="flex flex-col items-center justify-center p-2 md:p-4 w-full text-center">
+                <span className="text-2xl md:text-3xl font-black text-slate-800 mb-1">{org.stats?.totalFleetManagers ?? org.managers ?? 0}</span>
+                <span className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fleet Managers</span>
               </div>
               
-              <div className="flex flex-col items-center justify-center p-4 w-full">
-                <span className="text-3xl font-black text-slate-800 mb-1">{org.stats?.totalVehicles ?? 0}</span>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Registered Vehicles</span>
+              <div className="flex flex-col items-center justify-center p-2 md:p-4 w-full text-center">
+                <span className="text-2xl md:text-3xl font-black text-slate-800 mb-1">{org.stats?.totalVehicles ?? 0}</span>
+                <span className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Registered Vehicles</span>
               </div>
               
-              <div className="flex flex-col items-center justify-center p-4 w-full">
-                <span className="text-3xl font-black text-slate-800 mb-1">{org.stats?.totalActiveTrips ?? 0}</span>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Trips</span>
+              <div className="flex flex-col items-center justify-center p-2 md:p-4 w-full text-center">
+                <span className="text-2xl md:text-3xl font-black text-slate-800 mb-1">{org.stats?.totalActiveTrips ?? 0}</span>
+                <span className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Trips</span>
               </div>
               
-              <div className="flex flex-col items-center justify-center p-4 w-full">
-                <span className="text-3xl font-black text-slate-800 mb-1">₹{(org.stats?.totalRevenue ?? 0).toLocaleString('en-IN')}</span>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Revenue</span>
+              <div className="flex flex-col items-center justify-center p-2 md:p-4 w-full text-center">
+                <span className="text-2xl md:text-3xl font-black text-slate-800 mb-1">₹{(org.stats?.totalRevenue ?? 0).toLocaleString('en-IN')}</span>
+                <span className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Revenue</span>
               </div>
 
             </div>
@@ -297,7 +297,8 @@ export default function OrganizationDetails() {
               </button>
             </div>
             
-            <div className="overflow-x-auto no-scrollbar">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto no-scrollbar">
               <table className="w-full text-center border-collapse min-w-[800px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
@@ -357,6 +358,54 @@ export default function OrganizationDetails() {
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden flex flex-col p-4 gap-4 bg-slate-50/50">
+              {orgManagers.length > 0 ? (
+                orgManagers.map(m => (
+                <div key={m.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-500 shrink-0">
+                        {m.initials}
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800">{m.name}</div>
+                        <div className="text-xs text-slate-500">{m.email}</div>
+                        {m.phone && <div className="text-xs text-slate-400">{m.phone}</div>}
+                      </div>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide ${m.status === "Active" ? "text-green-600 bg-green-50" : "text-slate-500 bg-slate-100"}`}>{m.status}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Role</span>
+                      <span className="text-sm font-medium text-slate-700">Fleet Manager</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Vehicles Managed</span>
+                      <span className="text-sm font-medium text-slate-700">{m.stats?.activeTripsCount ?? 0}</span>
+                    </div>
+                    <div className="flex flex-col col-span-2 mt-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Revenue Generated</span>
+                      <span className="text-sm font-medium text-slate-700">₹{(m.stats?.totalRevenue ?? 0).toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-4 mt-3 pt-3 border-t border-slate-100">
+                    <button onClick={() => openEditModal(m)} className="text-slate-400 hover:text-[#A14000] transition-colors" title="Edit">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDeleteManager(m.id)} className="text-slate-400 hover:text-red-500 transition-colors" title="Delete">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))) : (
+                <div className="text-center text-slate-500 py-8 text-sm">No fleet managers assigned to this organization.</div>
+              )}
             </div>
           </div>
 

@@ -12,6 +12,13 @@ axiosClient.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  if (config.data instanceof FormData) {
+    if (config.headers && typeof config.headers.delete === 'function') {
+      config.headers.delete('Content-Type');
+    } else {
+      delete config.headers['Content-Type'];
+    }
+  }
   return config;
 });
 
@@ -25,7 +32,9 @@ axiosClient.interceptors.response.use(
       sessionStorage.removeItem("token");
       sessionStorage.removeItem("user");
       sessionStorage.removeItem("authToken");
-      window.location.href = "/login";
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   },

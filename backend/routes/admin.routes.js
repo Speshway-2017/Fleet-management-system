@@ -22,9 +22,16 @@ import {
   markAllNotificationsRead,
   deleteNotification,
   updateAdminProfile,
+  listBlogsAdmin,
+  createBlogAdmin,
+  updateBlogAdmin,
+  deleteBlogAdmin,
+  getAboutAdmin,
+  updateAboutAdmin,
 } from '../controllers/admin.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
+import memoryUpload from '../middleware/memoryUpload.middleware.js';
 import {
   createOrganizationValidator,
   updateOrganizationValidator,
@@ -64,6 +71,12 @@ router.delete('/fleet-managers/:id',   ...adminAuth, deleteManager);
 // ── Settings ───────────────────────────────────────────────────────────────
 router.get('/settings',  ...adminAuth, getSettings);
 router.put('/settings',  ...adminAuth, updateSettingsValidator, updateSettings);
+router.get('/blogs',     ...adminAuth, listBlogsAdmin);
+router.post('/blogs',    ...adminAuth, createBlogAdmin);
+router.put('/blogs/:id', ...adminAuth, updateBlogAdmin);
+router.delete('/blogs/:id', ...adminAuth, deleteBlogAdmin);
+router.get('/about',     ...adminAuth, getAboutAdmin);
+router.put('/about',     ...adminAuth, updateAboutAdmin);
 
 // ── Analytics ──────────────────────────────────────────────────────────────
 router.get('/analytics', ...adminAuth, getAnalytics);
@@ -91,7 +104,7 @@ router.delete('/contacts/:id',           ...adminAuth, deleteContactRequest);
 
 // ── Profile ────────────────────────────────────────────────────────────────
 router.get('/profile',  ...adminAuth, getAdminProfile);
-router.put('/profile',  ...adminAuth, updateAdminProfile);
+router.put('/profile',  ...adminAuth, memoryUpload.single('profileImage'), updateAdminProfile);
 
 // ── Milestone Reviews ──────────────────────────────────────────────────────
 router.get('/reviews',  ...adminAuth, getReviews);

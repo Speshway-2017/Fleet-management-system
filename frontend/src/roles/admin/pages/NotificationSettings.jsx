@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import toast from "react-hot-toast";
@@ -113,22 +112,26 @@ export default function NotificationSettings() {
           
           {/* Header Area with Tabs and Button */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-            {/* Tabs */}
-            <div className="flex sm:inline-flex w-full sm:w-auto items-center p-1 bg-white border border-slate-200 rounded-full shadow-sm">
-              <Link to="/admin/settings" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
+            <div className="flex sm:inline-flex w-full sm:w-auto items-center p-1 bg-white border border-slate-200 rounded-full shadow-sm overflow-x-auto whitespace-nowrap">
+              <Link to="/admin/settings" className="px-5 py-2 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-full transition-colors">
                 General
               </Link>
-              <Link to="/admin/settings/security" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
+              <Link to="/admin/settings/security" className="px-5 py-2 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-full transition-colors">
                 Security
               </Link>
-              <Link to="/admin/settings/notifications" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 bg-[#0f172a] text-white text-[10px] sm:text-sm font-bold rounded-full shadow-sm transition-colors truncate">
+              <Link to="/admin/settings/notifications" className="px-5 py-2 bg-[#0f172a] text-white text-xs font-bold rounded-full shadow-sm transition-colors">
                 Notifications
               </Link>
-              <Link to="/admin/settings/profile" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
+              <Link to="/admin/settings/profile" className="px-5 py-2 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-full transition-colors">
                 Profile
               </Link>
               <Link to="/admin/settings/reviews" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
                 Reviews
+              <Link to="/admin/settings/blogs" className="px-5 py-2 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-full transition-colors">
+                Blogs
+              </Link>
+              <Link to="/admin/settings/about" className="px-5 py-2 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-full transition-colors">
+                About
               </Link>
             </div>
 
@@ -167,13 +170,15 @@ export default function NotificationSettings() {
                     <p className="text-[13px] text-slate-500 font-medium">Receive email for important events</p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <button 
+                    <div 
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => { e.stopPropagation(); setEmailNotifications(!emailNotifications); }}
-                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${emailNotifications ? 'bg-green-500' : 'bg-slate-200'}`}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 cursor-pointer ${emailNotifications ? 'bg-green-500' : 'bg-slate-200'}`}
+                      style={{ minWidth: '44px', height: '24px', padding: 0, margin: 0 }}
                     >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${emailNotifications ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                    </button>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === 'email' ? 'rotate-180' : ''}`} />
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${emailNotifications ? 'translate-x-5' : 'translate-x-0.5'}`} style={{ minWidth: '20px', height: '20px' }} />
+                    </div>
                   </div>
                 </div>
                 <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'email' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -195,13 +200,15 @@ export default function NotificationSettings() {
                     <p className="text-[13px] text-slate-500 font-medium">Critical system health notifications</p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <button 
+                    <div 
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => { e.stopPropagation(); setSystemAlerts(!systemAlerts); }}
-                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${systemAlerts ? 'bg-green-500' : 'bg-slate-200'}`}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 cursor-pointer ${systemAlerts ? 'bg-green-500' : 'bg-slate-200'}`}
+                      style={{ minWidth: '44px', height: '24px', padding: 0, margin: 0 }}
                     >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${systemAlerts ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                    </button>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === 'system' ? 'rotate-180' : ''}`} />
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${systemAlerts ? 'translate-x-5' : 'translate-x-0.5'}`} style={{ minWidth: '20px', height: '20px' }} />
+                    </div>
                   </div>
                 </div>
                 <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'system' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -231,13 +238,15 @@ export default function NotificationSettings() {
                     <p className="text-[13px] text-slate-500 font-medium">Scheduled maintenance notifications</p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <button 
+                    <div 
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => { e.stopPropagation(); setMaintenanceAlerts(!maintenanceAlerts); }}
-                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${maintenanceAlerts ? 'bg-green-500' : 'bg-slate-200'}`}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 cursor-pointer ${maintenanceAlerts ? 'bg-green-500' : 'bg-slate-200'}`}
+                      style={{ minWidth: '44px', height: '24px', padding: 0, margin: 0 }}
                     >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${maintenanceAlerts ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                    </button>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === 'maintenance' ? 'rotate-180' : ''}`} />
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${maintenanceAlerts ? 'translate-x-5' : 'translate-x-0.5'}`} style={{ minWidth: '20px', height: '20px' }} />
+                    </div>
                   </div>
                 </div>
                 <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'maintenance' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -265,13 +274,15 @@ export default function NotificationSettings() {
                     <p className="text-[13px] text-slate-500 font-medium">When fleet managers accept invites</p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <button 
+                    <div 
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => { e.stopPropagation(); setInviteNotifications(!inviteNotifications); }}
-                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${inviteNotifications ? 'bg-green-500' : 'bg-slate-200'}`}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 cursor-pointer ${inviteNotifications ? 'bg-green-500' : 'bg-slate-200'}`}
+                      style={{ minWidth: '44px', height: '24px', padding: 0, margin: 0 }}
                     >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${inviteNotifications ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                    </button>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === 'invite' ? 'rotate-180' : ''}`} />
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${inviteNotifications ? 'translate-x-5' : 'translate-x-0.5'}`} style={{ minWidth: '20px', height: '20px' }} />
+                    </div>
                   </div>
                 </div>
                 <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'invite' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -299,13 +310,15 @@ export default function NotificationSettings() {
                     <p className="text-[13px] text-slate-500 font-medium">Summary report every Monday morning</p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <button 
+                    <div 
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => { e.stopPropagation(); setWeeklyReports(!weeklyReports); }}
-                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${weeklyReports ? 'bg-green-500' : 'bg-slate-200'}`}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 cursor-pointer ${weeklyReports ? 'bg-green-500' : 'bg-slate-200'}`}
+                      style={{ minWidth: '44px', height: '24px', padding: 0, margin: 0 }}
                     >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${weeklyReports ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                    </button>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === 'weekly' ? 'rotate-180' : ''}`} />
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${weeklyReports ? 'translate-x-5' : 'translate-x-0.5'}`} style={{ minWidth: '20px', height: '20px' }} />
+                    </div>
                   </div>
                 </div>
                 <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'weekly' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -334,13 +347,15 @@ export default function NotificationSettings() {
                     <p className="text-[13px] text-slate-500 font-medium">When a new organization registers</p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <button 
+                    <div 
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => { e.stopPropagation(); setNewOrganizationAlerts(!newOrganizationAlerts); }}
-                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 ${newOrganizationAlerts ? 'bg-green-500' : 'bg-slate-200'}`}
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center shrink-0 cursor-pointer ${newOrganizationAlerts ? 'bg-green-500' : 'bg-slate-200'}`}
+                      style={{ minWidth: '44px', height: '24px', padding: 0, margin: 0 }}
                     >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${newOrganizationAlerts ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                    </button>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeCard === 'new_org' ? 'rotate-180' : ''}`} />
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${newOrganizationAlerts ? 'translate-x-5' : 'translate-x-0.5'}`} style={{ minWidth: '20px', height: '20px' }} />
+                    </div>
                   </div>
                 </div>
                 <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'new_org' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>

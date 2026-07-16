@@ -4,9 +4,11 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import { Icon } from "@iconify/react";
 import { managerApi } from "../api/managerApi";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { useAuth } from "@/context/AuthContext";
 
 export default function ManagerDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [vehicles, setVehicles] = useState([]);
   const [dbStats, setDbStats] = useState(null);
@@ -14,6 +16,15 @@ export default function ManagerDashboard() {
   const [maintenance, setMaintenance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activities, setActivities] = useState([]);
+
+  const getDaysRemaining = () => {
+    if (user?.subscriptionStatus !== "ACTIVE" || !user?.subscriptionExpiry) return "--";
+    const expiry = new Date(user.subscriptionExpiry);
+    const now = new Date();
+    const diffTime = expiry.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  };
 
   const formatTotalEarnings = (val) => {
     if (val === null || val === undefined) return "₹0";
@@ -155,6 +166,48 @@ export default function ManagerDashboard() {
   return (
     <div className="w-full px-6 md:px-8 py-8 overflow-x-hidden">
       <Breadcrumb />
+
+      {/* Subscription Warnings */}
+      {user?.subscriptionStatus === 'INACTIVE' && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0">
+              <Icon icon="material-symbols:warning-outline" className="w-5 h-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-extrabold text-amber-900 font-poppins">Subscription Status: INACTIVE (View-Only Mode)</p>
+              <p className="text-[11px] text-amber-700 font-medium font-poppins mt-0.5">Your subscription is currently inactive. You have view-only access. Please choose a subscription plan to unlock all platform features.</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => navigate("/manager/subscription")}
+            className="px-4 py-2 bg-[#B45A0A] hover:bg-[#9A4D08] text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer whitespace-nowrap"
+          >
+            Choose Plan
+          </button>
+        </div>
+      )}
+
+      {user?.subscriptionStatus === 'EXPIRED' && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-red-100 text-red-800 shrink-0">
+              <Icon icon="material-symbols:gpp-bad-outline" className="w-5 h-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-extrabold text-red-900 font-poppins">Subscription Status: EXPIRED (View-Only Mode)</p>
+              <p className="text-[11px] text-red-700 font-medium font-poppins mt-0.5">Your subscription has expired. Please renew your subscription.</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => navigate("/manager/subscription")}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer whitespace-nowrap"
+          >
+            Renew Plan
+          </button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -499,8 +552,8 @@ export default function ManagerDashboard() {
           })()}
         </div>
 
-        {/* Row 2: 1 Column Layout (Upcoming Renewals) */}
-        <div className="grid grid-cols-1 gap-6">
+        {/* Row 2: 2 Column Layout (Upcoming Renewals & Subscription Information) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Upcoming Renewals */}
           {(() => {
             const renewals = [];
@@ -586,6 +639,60 @@ export default function ManagerDashboard() {
               </div>
             );
           })()}
+
+          {/* Subscription Information Card */}
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col h-[380px] justify-between p-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Icon icon="material-symbols:credit-card-outline" className="w-5 h-5 text-[#C65D0E]" />
+                <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Subscription Information</h3>
+              </div>
+
+              <div className="space-y-4 pt-2">
+                <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
+                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider font-poppins">Current Plan</span>
+                  <span className="text-xs font-black text-gray-900 font-poppins">
+                    {user?.subscriptionPlan && typeof user.subscriptionPlan === 'object' 
+                      ? user.subscriptionPlan.name 
+                      : (user?.subscriptionPlan ? "Active Plan" : "None")}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
+                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider font-poppins">Status</span>
+                  <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold font-poppins uppercase tracking-wider ${
+                    user?.subscriptionStatus === 'ACTIVE' 
+                      ? 'bg-green-100 text-green-700' 
+                      : user?.subscriptionStatus === 'EXPIRED'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-gray-100 text-gray-700'
+                  }`}>
+                    {user?.subscriptionStatus || "Inactive"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
+                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider font-poppins">Expiry Date</span>
+                  <span className="text-xs font-bold text-gray-700 font-poppins">
+                    {user?.subscriptionExpiry 
+                      ? new Date(user.subscriptionExpiry).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })
+                      : "--"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2.5">
+                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider font-poppins">Days Remaining</span>
+                  <span className="text-xs font-extrabold text-gray-800 font-poppins">
+                    {getDaysRemaining()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigate("/manager/subscription")}
+              className="w-full py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer text-center"
+            >
+              {user?.subscriptionStatus === "ACTIVE" ? "Manage Subscription" : "Choose Plan"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

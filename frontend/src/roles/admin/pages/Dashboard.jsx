@@ -331,7 +331,19 @@ function Dashboard() {
                       return (
                         <tr 
                           key={act.id || act._id || i} 
-                          onClick={() => navigate(`/admin/notifications/${act.id || act._id || i}`)}
+                          onClick={() => {
+                            if (
+                              act.type === "subscription_request" || 
+                              act.type === "SUBSCRIPTION_REQUEST" ||
+                              (act.title && act.title.toLowerCase().includes("subscription"))
+                            ) {
+                              navigate("/admin/subscription-requests");
+                            } else if (act.type === "CONTACT_REQUEST" && act.referenceId) {
+                              navigate(`/admin/contact-requests?id=${act.referenceId}`);
+                            } else {
+                              navigate(`/admin/notifications/${act.id || act._id || i}`);
+                            }
+                          }}
                           className="hover:bg-slate-50/50 transition-colors cursor-pointer"
                         >
                           <td className="py-4 px-6 text-slate-500 font-medium text-[12px] whitespace-nowrap">{act.time || formatTime(act.createdAt)}</td>

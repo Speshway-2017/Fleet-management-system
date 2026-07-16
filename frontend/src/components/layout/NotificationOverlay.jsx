@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Check, CheckCircle2, AlertTriangle, AlertCircle, Activity } from "lucide-react";
+import { Bell, Check, CheckCircle2, AlertTriangle, AlertCircle, Activity, Mail } from "lucide-react";
 import { useAdmin } from "@/roles/admin/context/AdminContext";
 
 export default function NotificationOverlay({ isOpen, onClose }) {
@@ -35,6 +35,7 @@ export default function NotificationOverlay({ isOpen, onClose }) {
       case "warning": return { icon: AlertTriangle, bg: "bg-amber-50", text: "text-amber-500" };
       case "danger": return { icon: AlertCircle, bg: "bg-red-50", text: "text-red-500" };
       case "system": return { icon: Activity, bg: "bg-blue-50", text: "text-blue-500" };
+      case "CONTACT_REQUEST": return { icon: Mail, bg: "bg-blue-50", text: "text-[#b45309]" };
       default: return { icon: Bell, bg: "bg-slate-50", text: "text-slate-500" };
     }
   };
@@ -46,10 +47,20 @@ export default function NotificationOverlay({ isOpen, onClose }) {
     return true;
   });
 
-  const handleNotificationClick = (id) => {
-    markAsRead(id);
+  const handleNotificationClick = (notification) => {
+    markAsRead(notification.id);
     onClose();
-    navigate(`/admin/notifications/${id}`);
+    if (notification.type === "CONTACT_REQUEST" && notification.referenceId) {
+      navigate(`/admin/contact-requests?id=${notification.referenceId}`);
+    } else if (
+      notification.type === "subscription_request" || 
+      notification.type === "SUBSCRIPTION_REQUEST" ||
+      (notification.title && notification.title.toLowerCase().includes("subscription"))
+    ) {
+      navigate(`/admin/subscription-requests`);
+    } else {
+      navigate(`/admin/notifications/${notification.id}`);
+    }
   };
 
   return (
@@ -109,7 +120,7 @@ export default function NotificationOverlay({ isOpen, onClose }) {
             return (
               <div 
                 key={notification.id}
-                onClick={() => handleNotificationClick(notification.id)}
+                onClick={() => handleNotificationClick(notification)}
                 className={`flex items-start gap-3 p-4 hover:bg-slate-50 transition-colors cursor-pointer relative ${notification.unread ? 'bg-white' : 'bg-slate-50/50 opacity-75'}`}
               >
                 {notification.unread && (

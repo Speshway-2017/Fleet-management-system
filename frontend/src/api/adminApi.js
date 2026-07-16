@@ -189,5 +189,25 @@ export const adminApi = {
   },
   toggleReviewPublic: async (id, showPublic) => {
     return axiosClient.patch(`/admin/reviews/${id}/public`, { showPublic });
+  // Blogs Management
+  getBlogs: async () => {
+    return axiosClient.get('/admin/blogs');
+  },
+  createBlog: async (data) => {
+    return axiosClient.post('/admin/blogs', data);
+  },
+  updateBlog: async (id, data) => {
+    return axiosClient.put(`/admin/blogs/${id}`, data);
+  },
+  deleteBlog: async (id) => {
+    return axiosClient.delete(`/admin/blogs/${id}`);
+  },
+
+  // About Management
+  getAbout: async () => {
+    return axiosClient.get('/admin/about');
+  },
+  updateAbout: async (data) => {
+    return axiosClient.put('/admin/about', data);
   }
 };

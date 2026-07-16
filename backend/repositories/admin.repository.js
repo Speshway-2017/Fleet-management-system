@@ -69,7 +69,7 @@ export const getTodayRevenueAggregate = async () => {
 };
 
 export const getRecentTrips = async (limit = 5) => {
-  return Trip.find().sort({ createdAt: -1 }).limit(limit).populate('vehicle', 'vehicleNumber model').populate('driver', 'name');
+  return Trip.find().sort({ createdAt: -1 }).limit(limit).populate('vehicle', 'vehicleNumber model');
 };
 
 export const getRecentNotifications = async (limit = 5) => {

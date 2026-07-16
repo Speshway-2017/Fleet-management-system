@@ -9,7 +9,7 @@ const vehicleSchema = new mongoose.Schema(
     brand:              { type: String, trim: true },
     model:              { type: String, trim: true },
     manufactureYear:    { type: Number },
-    assignedDriver:     { type: mongoose.Schema.Types.ObjectId, ref: 'Driver' },
+    assignedDriver:     { type: mongoose.Schema.Types.ObjectId },
     currentStatus: {
       type: String,
       enum: ['Available', 'Assigned', 'On Trip', 'Under Maintenance', 'Out of Service'],

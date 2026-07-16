@@ -1,24 +1,17 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { ArrowLeft, Upload, Check, X, FileText, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Upload, Check, X, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { useAuth } from "@/context/AuthContext";
 import { identifyDocumentType } from "../utils/documentParser";
 import { vehicleApi } from "@/api/vehicleApi";
 import { managerApi } from "../api/managerApi";
-import { driverApi } from "@/api/driverApi";
-
-// Defined at module level so useCallback never captures a stale reference
-const DUPLICATE_FIELDS = {
-  plateNumber:        'vehicleNumber',
-  registrationNumber: 'registrationNumber',
-  chassisNumber:      'chassisNumber',
-};
-
 
 export default function AddVehiclePage() {
   const navigate = useNavigate();
-  const [drivers, setDrivers] = useState([]);
+  const { user } = useAuth();
+  const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
 
   const [formData, setFormData] = useState({
     // Basic Information
@@ -84,50 +77,7 @@ export default function AddVehiclePage() {
     permit: "",
     roadTax: ""
   });
-  const [formErrors, setFormErrors] = useState({});
-  const [duplicateErrors, setDuplicateErrors] = useState({});
-  const [validatingFields, setValidatingFields] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Debounce timers (one per field)
-  const debounceTimers = useRef({});
-
-  const checkFieldDuplicate = useCallback(async (formField, value) => {
-    const backendField = DUPLICATE_FIELDS[formField];
-    console.log('[DuplicateCheck] called:', formField, '->', backendField, '| value:', value);
-    if (!backendField || !value || String(value).trim() === '') {
-      setDuplicateErrors(prev => ({ ...prev, [formField]: '' }));
-      return;
-    }
-    setValidatingFields(prev => ({ ...prev, [formField]: true }));
-    try {
-      const trimmedValue = value.trim();
-      console.log('[DuplicateCheck] Sending API request: field=', backendField, 'value=', trimmedValue);
-      const res = await vehicleApi.checkDuplicate(backendField, trimmedValue);
-      console.log('[DuplicateCheck] API response:', res.data);
-      const isDuplicate = res.data?.data?.isDuplicate;
-      setDuplicateErrors(prev => ({
-        ...prev,
-        [formField]: isDuplicate ? 'Already exists.' : '',
-      }));
-    } catch (err) {
-      console.warn('[DuplicateCheck] API error:', err?.response?.status, err?.response?.data?.message || err?.message);
-    } finally {
-      setValidatingFields(prev => ({ ...prev, [formField]: false }));
-    }
-  }, []);
-
-  useEffect(() => {
-    const loadDrivers = async () => {
-      try {
-        const res = await driverApi.list();
-        setDrivers(res.data?.data || []);
-      } catch (err) {
-        console.error("Failed to load drivers:", err);
-      }
-    };
-    loadDrivers();
-  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -135,50 +85,7 @@ export default function AddVehiclePage() {
       ...prev,
       [name]: value
     }));
-
-    if (name === "chassisNumber") {
-      const trimmed = value.trim();
-      if (trimmed.length === 17) {
-        setFormErrors(prev => ({ ...prev, chassisNumber: "" }));
-      } else {
-        setFormErrors(prev => ({ ...prev, chassisNumber: "Please enter exactly 17 characters." }));
-      }
-    } else {
-      setFormErrors(prev => ({ ...prev, [name]: "" }));
-    }
-
-    // Real-time duplicate check: debounced 600ms
-    if (name in DUPLICATE_FIELDS) {
-      console.log('[DuplicateCheck] onChange fired for:', name, '| value:', value);
-      // Clear previous error immediately while typing
-      setDuplicateErrors(prev => ({ ...prev, [name]: '' }));
-      // Cancel any pending debounce for this field
-      if (debounceTimers.current[name]) {
-        clearTimeout(debounceTimers.current[name]);
-      }
-      // Skip check if empty
-      if (!value || String(value).trim() === '') return;
-      debounceTimers.current[name] = setTimeout(() => {
-        console.log('[DuplicateCheck] Debounce fired for:', name);
-        checkFieldDuplicate(name, value);
-      }, 600);
-    }
   };
-
-  const handleDuplicateBlur = (e) => {
-    const { name, value } = e.target;
-    if (!(name in DUPLICATE_FIELDS)) return;
-    // Cancel debounce and check immediately on blur
-    if (debounceTimers.current[name]) {
-      clearTimeout(debounceTimers.current[name]);
-      delete debounceTimers.current[name];
-    }
-    if (value && String(value).trim() !== '') {
-      checkFieldDuplicate(name, value);
-    }
-  };
-
-  const hasDuplicateErrors = Object.values(duplicateErrors).some(Boolean);
 
   const handleSingleFileUpload = async (key, file) => {
     if (!file) return;
@@ -202,7 +109,7 @@ export default function AddVehiclePage() {
 
     setUploadingDocs(prev => ({ ...prev, [key]: true }));
     try {
-      const response = await driverApi.uploadDocument(file);
+      const response = await vehicleApi.uploadDocument(file);
       const data = response.data?.data || response.data;
       
       setVehicleDocs(prev => ({
@@ -239,13 +146,6 @@ export default function AddVehiclePage() {
 
     if (!formData.manufacturer || !formData.model || !formData.plateNumber) {
       toast.error("Please fill in all required fields");
-      return;
-    }
-
-    const trimmedChassis = (formData.chassisNumber || "").trim();
-    if (trimmedChassis.length !== 17) {
-      setFormErrors(prev => ({ ...prev, chassisNumber: "Please enter exactly 17 characters." }));
-      toast.error("Please enter exactly 17 characters.");
       return;
     }
 
@@ -293,17 +193,10 @@ export default function AddVehiclePage() {
       if (!err.response) {
         toast.error("Unable to connect to the server. Please try again.");
       } else {
-        const msg = err.response?.data?.message || "";
+        const msg = err.response?.data?.message;
         const status = err.response?.status;
         if (status === 409) {
           toast.error(msg || "A vehicle with this plate number already exists.");
-          if (msg.toLowerCase().includes("registration plate")) {
-            setFormErrors(prev => ({ ...prev, plateNumber: msg }));
-          } else if (msg.toLowerCase().includes("registration number")) {
-            setFormErrors(prev => ({ ...prev, registrationNumber: msg }));
-          } else if (msg.toLowerCase().includes("chassis number")) {
-            setFormErrors(prev => ({ ...prev, chassisNumber: msg }));
-          }
         } else if (status === 400) {
           toast.error(msg || "Please fill in all required fields.");
         } else {
@@ -331,7 +224,7 @@ export default function AddVehiclePage() {
       </div>
 
           {/* Main Form Container */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-8 max-w-7xl">
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-8 max-w-4xl">
             <form onSubmit={handleSaveVehicle} className="space-y-8">
               {/* SECTION 1: Basic Information */}
               <div>
@@ -380,30 +273,15 @@ export default function AddVehiclePage() {
                   </div>
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Registration Plate *</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        name="plateNumber"
-                        placeholder="e.g. MH 12 AB 5678"
-                        value={formData.plateNumber}
-                        onChange={handleInputChange}
-                        onBlur={handleDuplicateBlur}
-                        required
-                        className={`w-full px-3.5 py-2.5 border ${
-                          formErrors.plateNumber || duplicateErrors.plateNumber
-                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                            : 'border-[#E7EAF0] focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20'
-                        } uppercase bg-white text-[#1E293B] rounded-xl text-sm focus:outline-none`}
-                      />
-                      {validatingFields.plateNumber && (
-                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B45A0A] animate-spin" />
-                      )}
-                    </div>
-                    {(formErrors.plateNumber || duplicateErrors.plateNumber) && (
-                      <p className="text-xs text-red-600 font-semibold mt-1">
-                        {formErrors.plateNumber || duplicateErrors.plateNumber}
-                      </p>
-                    )}
+                    <input
+                      type="text"
+                      name="plateNumber"
+                      placeholder="e.g. MH 12 AB 5678"
+                      value={formData.plateNumber}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 uppercase bg-white text-[#1E293B]"
+                    />
                   </div>
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Vehicle Type</label>
@@ -436,32 +314,15 @@ export default function AddVehiclePage() {
                   </div>
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Chassis Number</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        name="chassisNumber"
-                        placeholder="e.g. 17-digit Chassis No."
-                        value={formData.chassisNumber}
-                        onChange={handleInputChange}
-                        onBlur={handleDuplicateBlur}
-                        maxLength={17}
-                        className={`w-full px-3.5 py-2.5 border ${
-                          formErrors.chassisNumber || duplicateErrors.chassisNumber
-                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                            : 'border-[#E7EAF0] focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20'
-                        } rounded-xl text-sm focus:outline-none bg-white text-[#1E293B]`}
-                      />
-                      {validatingFields.chassisNumber && (
-                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B45A0A] animate-spin" />
-                      )}
-                    </div>
-                    {(formErrors.chassisNumber || duplicateErrors.chassisNumber) ? (
-                      <p className="text-xs text-red-600 font-semibold mt-1">
-                        {formErrors.chassisNumber || duplicateErrors.chassisNumber}
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-gray-500 mt-1 font-medium">Enter exactly 17 characters.</p>
-                    )}
+                    <input
+                      type="text"
+                      name="chassisNumber"
+                      placeholder="e.g. 17-digit Chassis No."
+                      value={formData.chassisNumber}
+                      onChange={handleInputChange}
+                      maxLength={17}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                    />
                   </div>
                 </div>
               </div>
@@ -477,29 +338,14 @@ export default function AddVehiclePage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Registration No.</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        name="registrationNumber"
-                        placeholder="e.g. MH-01-AB-2023"
-                        value={formData.registrationNumber}
-                        onChange={handleInputChange}
-                        onBlur={handleDuplicateBlur}
-                        className={`w-full px-3.5 py-2.5 border ${
-                          formErrors.registrationNumber || duplicateErrors.registrationNumber
-                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                            : 'border-[#E7EAF0] focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20'
-                        } uppercase bg-white text-[#1E293B] rounded-xl text-sm focus:outline-none`}
-                      />
-                      {validatingFields.registrationNumber && (
-                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B45A0A] animate-spin" />
-                      )}
-                    </div>
-                    {(formErrors.registrationNumber || duplicateErrors.registrationNumber) && (
-                      <p className="text-xs text-red-600 font-semibold mt-1">
-                        {formErrors.registrationNumber || duplicateErrors.registrationNumber}
-                      </p>
-                    )}
+                    <input
+                      type="text"
+                      name="registrationNumber"
+                      placeholder="e.g. MH-01-AB-2023"
+                      value={formData.registrationNumber}
+                      onChange={handleInputChange}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 uppercase bg-white text-[#1E293B]"
+                    />
                   </div>
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">State</label>
@@ -827,8 +673,9 @@ export default function AddVehiclePage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isProcessing || hasDuplicateErrors}
-                  className="px-8 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                  disabled={isProcessing || isViewOnly}
+                  title={isViewOnly ? "This feature is available after activating a subscription." : "Save Vehicle"}
+                  className={`px-8 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer disabled:opacity-50 flex items-center gap-2 ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   {isProcessing ? (
                     <>

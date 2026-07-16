@@ -18,11 +18,13 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
-
+import { useAuth } from "@/context/AuthContext";
 import { managerApi } from "../api/managerApi";
 
 export default function CreateTripPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
 
   // Lists loaded from backend
   const [drivers, setDrivers] = useState([]);
@@ -144,17 +146,7 @@ export default function CreateTripPage() {
     const fetchResources = async () => {
       setLoading(true);
       try {
-        const [dRes, vRes] = await Promise.all([
-          managerApi.getAvailableDrivers({ location: startLocation }),
-          managerApi.getAvailableVehicles({ location: startLocation })
-        ]);
-        const driversData = (dRes.data?.data || dRes.data || []).map(d => ({
-          ...d,
-          id: d._id,
-          name: d.fullName,
-          phone: d.phoneNumber,
-          status: d.driverStatus === "AVAILABLE" ? "Available" : d.driverStatus === "ON_TRIP" ? "On Trip" : d.driverStatus
-        }));
+        const vRes = await managerApi.getAvailableVehicles({ location: startLocation });
         const vehiclesData = (vRes.data?.data || vRes.data || []).map(v => ({
           ...v,
           id: v._id,
@@ -162,7 +154,7 @@ export default function CreateTripPage() {
           plateNumber: v.vehicleNumber,
           status: v.currentStatus
         }));
-        setDrivers(driversData);
+        setDrivers([]);
         setVehicles(vehiclesData);
 
         // Auto-clear selection if it is not in the new filtered location list
@@ -230,23 +222,19 @@ export default function CreateTripPage() {
       return;
     }
 
-    if (!selectedDriverId) {
-      toast.error("Please select a driver from Driver Assignment");
-      return;
-    }
     if (!selectedVehicleId) {
       toast.error("Please select a vehicle from Asset Allocation");
       return;
     }
 
-    const driver = drivers.find(d => String(d.id) === String(selectedDriverId));
+    const driver = selectedDriverId ? drivers.find(d => String(d.id) === String(selectedDriverId)) : null;
     const vehicle = vehicles.find(v => String(v.id) === String(selectedVehicleId));
 
     if (!vehicle) {
       toast.error("Selected vehicle is not from the selected Start Location or is no longer available.");
       return;
     }
-    if (!driver) {
+    if (selectedDriverId && !driver) {
       toast.error("Selected driver is not from the selected Start Location or is no longer available.");
       return;
     }
@@ -255,9 +243,9 @@ export default function CreateTripPage() {
       await managerApi.createTrip({
         tripNumber,
         vehicle: vehicle._id,
-        driver: driver._id,
-        driverName: driver.name,
-        driverPhone: driver.phone,
+        driver: driver ? driver._id : undefined,
+        driverName: driver ? driver.name : "",
+        driverPhone: driver ? driver.phone : "",
         vehicleName: vehicle.name,
         vehiclePlate: vehicle.plateNumber,
         startLocation,

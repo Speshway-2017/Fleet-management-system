@@ -18,6 +18,14 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'User not found' });
     }
 
+    // Dynamic subscription check
+    if (user.role === 'FLEET_MANAGER') {
+      if (user.subscriptionStatus === 'ACTIVE' && user.subscriptionExpiry && new Date() > new Date(user.subscriptionExpiry)) {
+        user.subscriptionStatus = 'EXPIRED';
+        await user.save();
+      }
+    }
+
     req.user = user;
     next();
   } catch (error) {

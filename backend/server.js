@@ -12,6 +12,7 @@ dotenv.config({ path: path.join(__dirname, '.env') }); // must be first — load
 import { validateEnv } from './config/env.validate.js';
 import app from './app.js';
 import { connectDB } from './config/db.config.js';
+import { seedPlans } from './utils/seedPlans.js';
 import cloudinary from './config/cloudinary.config.js';
 import http from 'http';
 import { Server } from 'socket.io';
@@ -24,6 +25,7 @@ const PORT = process.env.PORT || 5002;
 const startServer = async () => {
   // 2. Connect to MongoDB Atlas
   await connectDB();
+  await seedPlans();
 
   // 3. Verify Cloudinary config loaded correctly
   const { cloud_name } = cloudinary.config();
