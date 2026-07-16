@@ -445,7 +445,7 @@ export default function TripsManagementPage() {
 
   const finalFilteredTrips = getFilteredTrips();
 
-  const currentRows = finalFilteredTrips.slice(0, 5);
+  const currentRows = finalFilteredTrips.slice(0, 10);
 
   const getStatusBadge = (status) => {
     switch (status) {
