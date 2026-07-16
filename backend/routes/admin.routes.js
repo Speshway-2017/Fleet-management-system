@@ -54,11 +54,18 @@ const adminAuth = [protect, authorizeRoles('SUPER_ADMIN')];
 // ── Dashboard ──────────────────────────────────────────────────────────────
 router.get('/dashboard', ...adminAuth, getDashboard);
 
+const parseManagers = (req, res, next) => {
+  if (req.body.managers && typeof req.body.managers === 'string') {
+    try { req.body.managers = JSON.parse(req.body.managers); } catch(e) {}
+  }
+  next();
+};
+
 // ── Organizations ──────────────────────────────────────────────────────────
 router.get('/organizations',       ...adminAuth, listOrganizations);
 router.get('/organizations/:id',   ...adminAuth, getOrganizationDetails);
-router.post('/organizations',      ...adminAuth, createOrganizationValidator, createOrganization);
-router.put('/organizations/:id',   ...adminAuth, updateOrganizationValidator, updateOrganization);
+router.post('/organizations',      ...adminAuth, memoryUpload.single('logo'), parseManagers, createOrganizationValidator, createOrganization);
+router.put('/organizations/:id',   ...adminAuth, memoryUpload.single('logo'), updateOrganizationValidator, updateOrganization);
 router.delete('/organizations/:id',...adminAuth, deleteOrganization);
 
 // ── Fleet Managers ─────────────────────────────────────────────────────────

@@ -18,10 +18,7 @@ import OrganizationList from "@/roles/admin/pages/OrganizationList";
 import AddOrganization from "@/roles/admin/pages/AddOrganization";
 import OrganizationDetails from "@/roles/admin/pages/OrganizationDetails";
 import EditOrganization from "@/roles/admin/pages/EditOrganization";
-import FleetManagerList from "@/roles/admin/pages/FleetManagerList";
-import AddFleetManager from "@/roles/admin/pages/AddFleetManager";
-import ManagerDetails from "@/roles/admin/pages/ManagerDetails";
-import EditFleetManager from "@/roles/admin/pages/EditFleetManager";
+
 import Analytics from "@/roles/admin/pages/Analytics";
 import SystemHealth from "@/roles/admin/pages/SystemHealth";
 import AuditLogs from "@/roles/admin/pages/AuditLogs";
@@ -125,12 +122,7 @@ export default function App() {
               <Route path="/admin/organizations/edit" element={<EditOrganization />} />
               <Route path="/admin/organizations/edit/:id?" element={<EditOrganization />} />
               <Route path="/admin/organizations/details/:id?" element={<OrganizationDetails />} />
-              <Route path="/admin/fleet-managers" element={<FleetManagerList />} />
-              <Route path="/admin/fleet-managers/add" element={<AddFleetManager />} />
-              <Route path="/admin/fleet-managers/details" element={<ManagerDetails />} />
-              <Route path="/admin/fleet-managers/details/:id?" element={<ManagerDetails />} />
-              <Route path="/admin/fleet-managers/edit" element={<EditFleetManager />} />
-              <Route path="/admin/fleet-managers/edit/:id?" element={<EditFleetManager />} />
+
               <Route path="/admin/analytics" element={<Analytics />} />
               <Route path="/admin/contact-requests" element={<ContactRequests />} />
               <Route path="/admin/system-health" element={<SystemHealth />} />
