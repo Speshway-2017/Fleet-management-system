@@ -16,6 +16,10 @@ const userSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     resetPasswordOtp: { type: String },
     resetPasswordExpires: { type: Date },
+    subscriptionStatus: { type: String, enum: ['INACTIVE', 'ACTIVE', 'EXPIRED'], default: 'INACTIVE' },
+    subscriptionPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null },
+    subscriptionExpiry: { type: Date, default: null },
+    subscriptionRequestedPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null },
   },
   { timestamps: true }
 );

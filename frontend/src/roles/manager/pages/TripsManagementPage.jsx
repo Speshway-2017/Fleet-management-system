@@ -85,16 +85,12 @@ export default function TripsManagementPage() {
 
   const fetchResources = async () => {
     try {
-      const [dRes, vRes] = await Promise.all([
-        managerApi.getDrivers(),
-        managerApi.getVehicles()
-      ]);
-      const drivers = dRes.data?.data || dRes.data || [];
+      const vRes = await managerApi.getVehicles();
       const vehicles = vRes.data?.data || vRes.data || [];
-      setDriversList(drivers);
+      setDriversList([]);
       setVehiclesList(vehicles);
     } catch (err) {
-      console.error("Failed to fetch drivers or vehicles", err);
+      console.error("Failed to fetch vehicles", err);
     }
   };
 
@@ -112,16 +108,16 @@ export default function TripsManagementPage() {
 
   const handleCreateTrip = async (e) => {
     e.preventDefault();
-    if (!formData.driverId || !formData.vehicleId || !formData.startLocation || !formData.endLocation || !formData.departureTime || !formData.eta) {
+    if (!formData.vehicleId || !formData.startLocation || !formData.endLocation || !formData.departureTime || !formData.eta) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    const selectedDriver = driversList.find(d => String(d._id) === String(formData.driverId));
+    const selectedDriver = formData.driverId ? driversList.find(d => String(d._id) === String(formData.driverId)) : null;
     const selectedVehicle = vehiclesList.find(v => String(v._id) === String(formData.vehicleId));
 
-    if (!selectedDriver || !selectedVehicle) {
-      toast.error("Invalid driver or vehicle selected");
+    if (!selectedVehicle) {
+      toast.error("Invalid vehicle selected");
       return;
     }
 
@@ -130,9 +126,9 @@ export default function TripsManagementPage() {
       await managerApi.createTrip({
         tripNumber: tripNum,
         vehicle: selectedVehicle._id,
-        driver: selectedDriver._id,
-        driverName: selectedDriver.name || selectedDriver.fullName,
-        driverPhone: selectedDriver.phone || selectedDriver.phoneNumber,
+        driver: selectedDriver ? selectedDriver._id : undefined,
+        driverName: selectedDriver ? (selectedDriver.name || selectedDriver.fullName) : "",
+        driverPhone: selectedDriver ? (selectedDriver.phone || selectedDriver.phoneNumber) : "",
         vehicleName: selectedVehicle.name || selectedVehicle.vehicleName,
         vehiclePlate: selectedVehicle.plateNumber || selectedVehicle.vehicleNumber,
         startLocation: formData.startLocation,

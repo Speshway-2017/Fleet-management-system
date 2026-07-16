@@ -32,6 +32,8 @@ import User from '../models/User.js';
 import Organization from '../models/Organization.js';
 import PlatformIssue from '../models/PlatformIssue.js';
 import Notification from '../models/Notification.js';
+import Blog from '../models/Blog.js';
+import About from '../models/About.js';
 
 // Dashboard
 export const getDashboard = async (_req, res, next) => {
@@ -196,7 +198,11 @@ export const createOrganization = async (req, res, next) => {
               organization: org._id,
               role: "FLEET_MANAGER",
               status: "Active",
-              isActive: true
+              isActive: true,
+              subscriptionStatus: 'INACTIVE',
+              subscriptionPlan: null,
+              subscriptionExpiry: null,
+              subscriptionRequestedPlan: null
             });
             createdManagerIds.push(createdManager._id);
             createdManagersList.push(createdManager);
@@ -397,7 +403,11 @@ export const createManager = async (req, res, next) => {
       organization,
       role: "FLEET_MANAGER",
       status: "Active",
-      isActive: true
+      isActive: true,
+      subscriptionStatus: 'INACTIVE',
+      subscriptionPlan: null,
+      subscriptionExpiry: null,
+      subscriptionRequestedPlan: null
     });
 
     // Resolve Org Name for Notification
@@ -939,6 +949,81 @@ export const updateAdminProfile = async (req, res, next) => {
     if (error.code === 11000) {
       return sendError(res, 409, 'Email address is already in use');
     }
+    next(error);
+  }
+};
+
+// Blog Management
+export const listBlogsAdmin = async (req, res, next) => {
+  try {
+    const blogs = await Blog.find().sort({ createdAt: -1 });
+    return sendSuccess(res, 200, blogs, 'Blogs fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createBlogAdmin = async (req, res, next) => {
+  try {
+    const { title, category, summary, content, image, date, readTime } = req.body;
+    if (!title || !category || !summary || !content || !image || !date || !readTime) {
+      return sendError(res, 400, 'All fields are required');
+    }
+    const blog = new Blog({ title, category, summary, content, image, date, readTime });
+    await blog.save();
+    return sendSuccess(res, 201, blog, 'Blog created successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateBlogAdmin = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const blog = await Blog.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+    if (!blog) return sendError(res, 404, 'Blog not found');
+    return sendSuccess(res, 200, blog, 'Blog updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteBlogAdmin = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const blog = await Blog.findByIdAndDelete(id);
+    if (!blog) return sendError(res, 404, 'Blog not found');
+    return sendSuccess(res, 200, null, 'Blog deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// About Management
+export const getAboutAdmin = async (req, res, next) => {
+  try {
+    let about = await About.findOne();
+    if (!about) {
+      about = new About({ storyContent: [], missionContent: [], timeline: [] });
+      await about.save();
+    }
+    return sendSuccess(res, 200, about, 'About content fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateAboutAdmin = async (req, res, next) => {
+  try {
+    let about = await About.findOne();
+    if (!about) {
+      about = new About(req.body);
+    } else {
+      Object.assign(about, req.body);
+    }
+    await about.save();
+    return sendSuccess(res, 200, about, 'About content updated successfully');
+  } catch (error) {
     next(error);
   }
 };

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdmin } from "@/roles/admin/context/AdminContext";
 import { Link } from "react-router-dom";
 import {
@@ -36,6 +36,12 @@ function StatusBadge({ status }) {
 export default function FleetManagerList() {
   const [searchTerm, setSearchTerm] = useState("");
   const { fleetManagers, fetchFleetManagers } = useAdmin();
+
+  useEffect(() => {
+    if (fetchFleetManagers) {
+      fetchFleetManagers();
+    }
+  }, []);
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this fleet manager?")) return;

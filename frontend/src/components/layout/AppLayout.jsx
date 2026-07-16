@@ -41,6 +41,7 @@ const MENU_ITEMS = [
   { label: "Analytics", to: "/manager/analytics", icon: BarChart3 },
   { label: "Reports", to: "/manager/reports", icon: ClipboardList },
   { label: "Notifications", to: "/manager/notifications", icon: Bell },
+  { label: "Subscription", to: "/manager/subscription", icon: CreditCard },
   { label: "Settings", to: "/manager/settings", icon: Settings },
 ];
 

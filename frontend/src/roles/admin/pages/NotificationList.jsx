@@ -160,6 +160,12 @@ export default function NotificationList() {
                               markAsRead(notification.id);
                               if (notification.type === "CONTACT_REQUEST" && notification.referenceId) {
                                 navigate(`/admin/contact-requests?id=${notification.referenceId}`);
+                              } else if (
+                                notification.type === "subscription_request" || 
+                                notification.type === "SUBSCRIPTION_REQUEST" ||
+                                (notification.title && notification.title.toLowerCase().includes("subscription"))
+                              ) {
+                                navigate(`/admin/subscription-requests`);
                               } else {
                                 navigate(`/admin/notifications/${notification.id}`);
                               }

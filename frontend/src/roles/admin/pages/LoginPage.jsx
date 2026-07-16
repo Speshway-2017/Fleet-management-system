@@ -29,7 +29,12 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(role === "SUPER_ADMIN" || role === "admin" ? "/admin/dashboard" : "/manager", { replace: true });
+      const selectedPlanId = localStorage.getItem("selectedPlanId");
+      if (selectedPlanId && (role === "FLEET_MANAGER" || role === "manager")) {
+        navigate("/manager/subscription", { state: { selectedPlanId }, replace: true });
+      } else {
+        navigate(role === "SUPER_ADMIN" || role === "admin" ? "/admin/dashboard" : "/manager", { replace: true });
+      }
     }
   }, [isAuthenticated, role, navigate]);
 
@@ -85,7 +90,12 @@ export default function LoginPage() {
     try {
       const user = await login(form);
       toast.success(`Welcome back, ${user.name || "User"}!`);
-      navigate(user.role === "SUPER_ADMIN" || user.role === "admin" ? "/admin/dashboard" : "/manager");
+      const selectedPlanId = localStorage.getItem("selectedPlanId");
+      if (selectedPlanId && (user.role === "FLEET_MANAGER" || user.role === "manager")) {
+        navigate("/manager/subscription", { state: { selectedPlanId } });
+      } else {
+        navigate(user.role === "SUPER_ADMIN" || user.role === "admin" ? "/admin/dashboard" : "/manager");
+      }
     } catch (err) {
       const backendMessage = err.response?.data?.message;
       const displayMsg = backendMessage || "Invalid email or password.";
