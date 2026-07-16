@@ -531,7 +531,7 @@ export default function TripsListPage() {
                 <th className="py-4 px-6 whitespace-nowrap">Pickup Date</th>
                 <th className="py-4 px-6 whitespace-nowrap">Expected Arrival</th>
                 <th className="py-4 px-6 whitespace-nowrap">Distance</th>
-                <th className="py-4 px-6 text-right whitespace-nowrap">Actions</th>
+                <th className="py-4 px-6 text-center whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7EAF0]/60">
@@ -624,8 +624,8 @@ export default function TripsListPage() {
                     </td>
 
                     {/* Actions */}
-                    <td className="py-4 px-6 text-right select-none whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5">
+                        <td className="py-4 px-6 text-center select-none whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1.5">
                         {/* View */}
                         <button
                           onClick={() => navigate(`/manager/trip-details/${t.id}`)}
