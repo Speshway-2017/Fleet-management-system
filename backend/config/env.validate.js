@@ -26,5 +26,5 @@ export function validateEnv() {
     process.exit(1);
   }
 
-  console.log('✅  Environment variables validated successfully.');
+  // console.log('✅  Environment variables validated successfully.');
 }

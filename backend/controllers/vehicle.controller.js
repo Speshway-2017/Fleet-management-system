@@ -41,14 +41,34 @@ export const getAvailableVehicles = async (req, res, next) => {
       currentStatus: { $in: ['Available', 'Active'] }
     };
 
-    if (req.query.location) {
-      const cleanLoc = req.query.location.trim().split(/[\s,]+/)[0];
-      filter.branch = { $regex: new RegExp(cleanLoc, 'i') };
+    const cleanLoc = req.query.location ? req.query.location.trim().split(/[\s,]+/)[0].toLowerCase() : null;
+
+    if (cleanLoc) {
+      filter.$and = [
+        {
+          $or: [
+            { branch: { $regex: new RegExp(cleanLoc, 'i') } },
+            { currentLocation: { $regex: new RegExp(cleanLoc, 'i') } }
+          ]
+        }
+      ];
     }
 
-    const availableVehicles = await Vehicle.find(filter)
-      .populate('assignedDriver')
-      .sort({ createdAt: -1 });
+    const availableVehicles = await Vehicle.find(filter).populate('assignedDriver');
+
+    if (cleanLoc) {
+      availableVehicles.sort((a, b) => {
+        const aLoc = (a.currentLocation || a.branch || '').toLowerCase();
+        const bLoc = (b.currentLocation || b.branch || '').toLowerCase();
+        const aMatch = aLoc.includes(cleanLoc) || cleanLoc.includes(aLoc);
+        const bMatch = bLoc.includes(cleanLoc) || cleanLoc.includes(bLoc);
+        if (aMatch && !bMatch) return -1;
+        if (!aMatch && bMatch) return 1;
+        return 0;
+      });
+    } else {
+      availableVehicles.sort((a, b) => b.createdAt - a.createdAt);
+    }
 
     return sendSuccess(res, 200, availableVehicles, 'Available vehicles fetched successfully');
   } catch (error) {
@@ -67,7 +87,8 @@ export const getVehicle = async (req, res, next) => {
       return sendError(res, 404, 'Vehicle not found');
     }
     // Ownership check
-    if (String(vehicle.assignedManager) !== String(req.user._id)) {
+    const managerId = vehicle.assignedManager?._id || vehicle.assignedManager;
+    if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
     }
     return sendSuccess(res, 200, vehicle, 'Vehicle fetched successfully');
@@ -379,7 +400,8 @@ export const updateVehicle = async (req, res, next) => {
     }
 
     // Ownership check — only the owning manager can update
-    if (String(existingVehicle.assignedManager) !== String(req.user._id)) {
+    const managerId = existingVehicle.assignedManager?._id || existingVehicle.assignedManager;
+    if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
     }
 
@@ -438,7 +460,8 @@ export const deleteVehicle = async (req, res, next) => {
     if (!vehicle) {
       return sendError(res, 404, 'Vehicle not found');
     }
-    if (String(vehicle.assignedManager) !== String(req.user._id)) {
+    const managerId = vehicle.assignedManager?._id || vehicle.assignedManager;
+    if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
     }
     await deleteVehicleInRepo(req.params.id);

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
+import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { LayoutDashboard, Building2, ShieldCheck, Truck, Shield, Activity, Coins, Bell, Clock, MapPin, Users, Award, Route, Star, UserCheck, CheckCircle2, TrendingUp, TrendingDown, Zap, Headphones, Cog, Wifi, Database, Rocket } from "lucide-react";
 
@@ -8,6 +9,23 @@ export default function Home() {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [publicReviews, setPublicReviews] = useState([]);
+
+  useEffect(() => {
+    const fetchPublicReviews = async () => {
+      try {
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+        const res = await axios.get(`${apiBaseUrl}/public/reviews`);
+        const data = res.data?.data || res.data || [];
+        if (Array.isArray(data) && data.length > 0) {
+          setPublicReviews(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch public reviews:", err);
+      }
+    };
+    fetchPublicReviews();
+  }, []);
 
   const handleAction = (label) => {
     toast.success(`Action triggered: ${label}`);
@@ -744,65 +762,101 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white p-8 rounded-3xl border border-border-custom space-y-6 flex flex-col justify-between hover:shadow-md transition-shadow">
-              <div className="space-y-4">
-                <span className="text-[#A14000] text-4xl block leading-none font-serif">“</span>
-                <p className="text-xs text-body leading-relaxed font-medium">
-                  FleetManagement has transformed the way we manage our fleet. The platform is easy to use, reliable, and the support team is excellent.
-                </p>
-              </div>
-              <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                <img
-                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100"
-                  alt="Ravi Kumar"
-                  className="w-9 h-9 rounded-full object-cover"
-                />
-                <div>
-                  <h5 className="font-display font-bold text-xs text-[#0B1B3D]">Ravi Kumar</h5>
-                  <p className="text-[10px] text-gray-500">Operations Manager, TransLogix Solutions</p>
+            {publicReviews.length > 0 ? (
+              publicReviews.slice(0, 6).map((review) => (
+                <div key={review._id} className="bg-white p-8 rounded-3xl border border-border-custom space-y-6 flex flex-col justify-between hover:shadow-md transition-shadow">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#A14000] text-4xl block leading-none font-serif">“</span>
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-3.5 h-3.5 ${
+                              star <= review.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-body leading-relaxed font-medium">
+                      {review.reviewText}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                    <div className="w-9 h-9 rounded-full bg-orange-50 text-[#A14000] font-bold text-xs flex items-center justify-center border border-orange-100/40 shadow-sm uppercase">
+                      {review.managerName.charAt(0)}
+                    </div>
+                    <div>
+                      <h5 className="font-display font-bold text-xs text-[#0B1B3D]">{review.managerName}</h5>
+                      <p className="text-[10px] text-gray-500">Fleet Manager</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              ))
+            ) : (
+              <>
+                <div className="bg-white p-8 rounded-3xl border border-border-custom space-y-6 flex flex-col justify-between hover:shadow-md transition-shadow">
+                  <div className="space-y-4">
+                    <span className="text-[#A14000] text-4xl block leading-none font-serif">“</span>
+                    <p className="text-xs text-body leading-relaxed font-medium">
+                      FleetManagement has transformed the way we manage our fleet. The platform is easy to use, reliable, and the support team is excellent.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                    <img
+                      src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100"
+                      alt="Ravi Kumar"
+                      className="w-9 h-9 rounded-full object-cover"
+                    />
+                    <div>
+                      <h5 className="font-display font-bold text-xs text-[#0B1B3D]">Ravi Kumar</h5>
+                      <p className="text-[10px] text-gray-500">Operations Manager, TransLogix Solutions</p>
+                    </div>
+                  </div>
+                </div>
 
-            <div className="bg-white p-8 rounded-3xl border border-border-custom space-y-6 flex flex-col justify-between hover:shadow-md transition-shadow">
-              <div className="space-y-4">
-                <span className="text-[#A14000] text-4xl block leading-none font-serif">“</span>
-                <p className="text-xs text-body leading-relaxed font-medium">
-                  The real-time tracking and maintenance alerts have helped us reduce downtime significantly. Highly recommended for any transport business.
-                </p>
-              </div>
-              <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                <img
-                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100"
-                  alt="Sneha Patel"
-                  className="w-9 h-9 rounded-full object-cover"
-                />
-                <div>
-                  <h5 className="font-display font-bold text-xs text-[#0B1B3D]">Sneha Patel</h5>
-                  <p className="text-[10px] text-gray-500">Fleet Head, SpeedCargo Logistics</p>
+                <div className="bg-white p-8 rounded-3xl border border-border-custom space-y-6 flex flex-col justify-between hover:shadow-md transition-shadow">
+                  <div className="space-y-4">
+                    <span className="text-[#A14000] text-4xl block leading-none font-serif">“</span>
+                    <p className="text-xs text-body leading-relaxed font-medium">
+                      The real-time tracking and maintenance alerts have helped us reduce downtime significantly. Highly recommended for any transport business.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                    <img
+                      src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100"
+                      alt="Sneha Patel"
+                      className="w-9 h-9 rounded-full object-cover"
+                    />
+                    <div>
+                      <h5 className="font-display font-bold text-xs text-[#0B1B3D]">Sneha Patel</h5>
+                      <p className="text-[10px] text-gray-500">Fleet Head, SpeedCargo Logistics</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="bg-white p-8 rounded-3xl border border-border-custom space-y-6 flex flex-col justify-between hover:shadow-md transition-shadow">
-              <div className="space-y-4">
-                <span className="text-[#A14000] text-4xl block leading-none font-serif">“</span>
-                <p className="text-xs text-body leading-relaxed font-medium">
-                  Secure, scalable, and feature-rich platform that grows with our business. Best fleet management solution we've used.
-                </p>
-              </div>
-              <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                <img
-                  src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100"
-                  alt="Arjun Mehta"
-                  className="w-9 h-9 rounded-full object-cover"
-                />
-                <div>
-                  <h5 className="font-display font-bold text-xs text-[#0B1B3D]">Arjun Mehta</h5>
-                  <p className="text-[10px] text-gray-500">CTO, MovePress Pvt. Ltd.</p>
+                <div className="bg-white p-8 rounded-3xl border border-border-custom space-y-6 flex flex-col justify-between hover:shadow-md transition-shadow">
+                  <div className="space-y-4">
+                    <span className="text-[#A14000] text-4xl block leading-none font-serif">“</span>
+                    <p className="text-xs text-body leading-relaxed font-medium">
+                      Secure, scalable, and feature-rich platform that grows with our business. Best fleet management solution we've used.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                    <img
+                      src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100"
+                      alt="Arjun Mehta"
+                      className="w-9 h-9 rounded-full object-cover"
+                    />
+                    <div>
+                      <h5 className="font-display font-bold text-xs text-[#0B1B3D]">Arjun Mehta</h5>
+                      <p className="text-[10px] text-gray-500">CTO, MovePress Pvt. Ltd.</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </div>
       </section>

@@ -113,6 +113,9 @@ export default function SecuritySettings() {
               <Link to="/admin/settings/profile" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
                 Profile
               </Link>
+              <Link to="/admin/settings/reviews" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
+                Reviews
+              </Link>
             </div>
 
             <div className="flex flex-row items-stretch sm:items-center gap-3 shrink-0 w-full sm:w-auto">

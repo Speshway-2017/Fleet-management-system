@@ -44,6 +44,17 @@ app.use('/api/drivers', driverRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/contact', contactRoutes);
 
+app.get('/api/public/reviews', async (req, res, next) => {
+  try {
+    const Review = (await import('./models/Review.js')).default;
+    const { sendSuccess } = await import('./utils/response.js');
+    const reviews = await Review.find({ showPublic: true }).sort({ createdAt: -1 });
+    return sendSuccess(res, 200, reviews, 'Public reviews fetched');
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 

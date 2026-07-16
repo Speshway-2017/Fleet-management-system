@@ -93,6 +93,10 @@ router.delete('/contacts/:id',           ...adminAuth, deleteContactRequest);
 router.get('/profile',  ...adminAuth, getAdminProfile);
 router.put('/profile',  ...adminAuth, updateAdminProfile);
 
+// ── Milestone Reviews ──────────────────────────────────────────────────────
+router.get('/reviews',  ...adminAuth, getReviews);
+router.patch('/reviews/:id/public', ...adminAuth, toggleReviewPublic);
+
 export default router;
 
 // ── inline GET /profile controller (lightweight) ─────────────────────────
@@ -103,6 +107,36 @@ async function getAdminProfile(req, res, next) {
     const user = await User.findById(req.user._id).select('-password');
     if (!user) return sendError(res, 404, 'Admin user not found');
     return sendSuccess(res, 200, user, 'Profile fetched');
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ── inline GET /reviews controller (lightweight) ─────────────────────────
+async function getReviews(req, res, next) {
+  try {
+    const Review = (await import('../models/Review.js')).default;
+    const { sendSuccess } = await import('../utils/response.js');
+    const reviews = await Review.find().sort({ createdAt: -1 });
+    return sendSuccess(res, 200, reviews, 'Reviews fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ── inline PATCH /reviews/:id/public controller (lightweight) ─────────────
+async function toggleReviewPublic(req, res, next) {
+  try {
+    const Review = (await import('../models/Review.js')).default;
+    const { sendSuccess, sendError } = await import('../utils/response.js');
+    const { showPublic } = req.body;
+    const review = await Review.findByIdAndUpdate(
+      req.params.id,
+      { showPublic: !!showPublic },
+      { new: true }
+    );
+    if (!review) return sendError(res, 404, 'Review not found');
+    return sendSuccess(res, 200, review, 'Review visibility updated');
   } catch (error) {
     next(error);
   }
