@@ -25,7 +25,7 @@ const getImageUrl = (url) => {
 };
 
 export default function EditProfilePage() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
   // Form states
@@ -80,9 +80,13 @@ export default function EditProfilePage() {
       });
       
       // Update local storage user credentials mapping
-      const updatedUser = { ...user, name: fullName, email };
+      const updatedUser = { ...user, name: fullName, email, profileImage };
       sessionStorage.setItem("user", JSON.stringify(updatedUser));
       localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      if (refreshProfile) {
+        await refreshProfile().catch(err => console.error("refreshProfile failed", err));
+      }
 
       toast.success("Profile updated successfully in database!");
       navigate("/manager/profile");

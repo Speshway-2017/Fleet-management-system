@@ -6,6 +6,7 @@ import Maintenance from '../models/Maintenance.js';
 import Document from '../models/Document.js';
 import Report from '../models/Report.js';
 import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 
 // Vehicles
 export const getVehicles = async (filter = {}) =>
@@ -157,7 +158,21 @@ export const deleteReport = async (id) => {
 
 // Notifications
 export const getManagerNotifications = async (managerId) => {
-  return Notification.find({ $or: [{ recipient: managerId }, { recipientRole: 'FLEET_MANAGER' }] }).sort({ createdAt: -1 });
+  const user = await User.findById(managerId);
+  const organizationId = user ? user.organization : null;
+  return Notification.find({
+    $or: [
+      { recipient: managerId },
+      {
+        recipientRole: 'FLEET_MANAGER',
+        recipient: { $in: [null, undefined] },
+        $or: [
+          { organization: organizationId },
+          { organization: { $in: [null, undefined] } }
+        ]
+      }
+    ]
+  }).sort({ createdAt: -1 });
 };
 
 export const markManagerNotificationRead = async (id) => {
@@ -165,7 +180,25 @@ export const markManagerNotificationRead = async (id) => {
 };
 
 export const markAllManagerNotificationsRead = async (managerId) => {
-  return Notification.updateMany({ $or: [{ recipient: managerId }, { recipientRole: 'FLEET_MANAGER' }], isRead: false }, { isRead: true });
+  const user = await User.findById(managerId);
+  const organizationId = user ? user.organization : null;
+  return Notification.updateMany(
+    {
+      $or: [
+        { recipient: managerId },
+        {
+          recipientRole: 'FLEET_MANAGER',
+          recipient: { $in: [null, undefined] },
+          $or: [
+            { organization: organizationId },
+            { organization: { $in: [null, undefined] } }
+          ]
+        }
+      ],
+      isRead: false
+    },
+    { isRead: true }
+  );
 };
 
 export const deleteManagerNotification = async (id) => {

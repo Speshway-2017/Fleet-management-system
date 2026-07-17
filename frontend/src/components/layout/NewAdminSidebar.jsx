@@ -52,11 +52,13 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
       }`}>
       {/* Logo Area */}
       <div className="p-6 pb-4 border-b border-[#2a3241]/50">
-        <div className="flex items-center gap-3 mb-1">
-          <img src={platformSettings?.logoUrl || "/logo.png"} alt="Logo" className="w-9 h-9 rounded-full bg-white p-1" />
-          <span className="font-bold text-white text-lg tracking-tight">{platformSettings?.platformName || "Fleet Management"}</span>
+        <div className="flex items-center gap-2">
+          <img src={platformSettings?.logoUrl || "/logo.png"} className="w-10 h-10 object-contain rounded-lg shrink-0" alt="Logo" />
+          <div className="border-l border-[#2a3241]/80 pl-[14px] py-1">
+            <h1 className="font-poppins font-black text-white text-base tracking-wide leading-none whitespace-nowrap">{platformSettings?.platformName || "Fleet Management"}</h1>
+            <span className="text-[10px] text-[#64748B] font-bold font-poppins uppercase tracking-wider mt-1.5 block">Super Admin</span>
+          </div>
         </div>
-        <div className="text-[11px] text-slate-400 pl-12 font-medium">Super Admin</div>
       </div>
 
       {/* Navigation */}
