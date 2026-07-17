@@ -383,12 +383,8 @@ export default function CreateTripPage() {
   };
 
   const distance = calculateDistance(startLocation, endLocation) || 250;
-  const weight = Number(cargoWeight) || 800;
-
-  const estimatedRevenue = Math.round(distance * 52 + weight * 4.5);
-  const estimatedExpenses = Math.round(distance * 19.5 + (weight > 1000 ? 1200 : 600) + 1000);
-  const estimatedNet = estimatedRevenue - estimatedExpenses;
-  const marginPercent = estimatedRevenue > 0 ? Math.round((estimatedNet / estimatedRevenue) * 100) : 0;
+  const isWeightValid = cargoWeight !== null && cargoWeight !== undefined && cargoWeight.toString().trim() !== "";
+  const cargoWeightDisplay = isWeightValid ? `${cargoWeight} kg` : "--";
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
@@ -915,11 +911,11 @@ export default function CreateTripPage() {
 
         {/* Cost & Earnings Projection Card */}
         <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
-          <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Cost & Earnings Projection</h4>
+          <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Route Projections</h4>
           
           {!startLocation.trim() || !endLocation.trim() ? (
             <div className="p-4 bg-orange-50/30 rounded-xl border border-orange-100/50 text-center text-xs text-[#B45A0A] font-semibold font-poppins">
-              Enter both Start Location and Destination to view cost projections.
+              Enter both Start Location and Destination to view route projections.
             </div>
           ) : (
             <div className="space-y-4">
@@ -930,50 +926,8 @@ export default function CreateTripPage() {
                 </div>
                 <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
                   <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider font-poppins block">Cargo Weight</span>
-                  <span className="text-lg font-black text-[#1E293B] font-poppins mt-1 block">{weight} kg</span>
+                  <span className="text-lg font-black text-[#1E293B] font-poppins mt-1 block">{cargoWeightDisplay}</span>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                {/* Revenue */}
-                <div className="p-3 bg-emerald-50/50 border border-emerald-100/50 rounded-xl">
-                  <div className="flex items-center gap-1.5 text-emerald-600">
-                    <DollarSign className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-bold uppercase tracking-wider font-poppins">Est. Revenue</span>
-                  </div>
-                  <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{estimatedRevenue.toLocaleString('en-IN')}</span>
-                </div>
-
-                {/* Expenses */}
-                <div className="p-3 bg-red-50/50 border border-red-100/50 rounded-xl">
-                  <div className="flex items-center gap-1.5 text-red-500">
-                    <Activity className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-bold uppercase tracking-wider font-poppins">Est. Costs</span>
-                  </div>
-                  <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{estimatedExpenses.toLocaleString('en-IN')}</span>
-                </div>
-
-                {/* Net Profit */}
-                <div className="p-3 bg-amber-50/50 border border-[#FFF3E8] rounded-xl">
-                  <div className="flex items-center gap-1.5 text-[#B45A0A]">
-                    <Wallet className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-bold uppercase tracking-wider font-poppins">Net Earnings</span>
-                  </div>
-                  <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{estimatedNet.toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-3.5 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100/70 rounded-xl">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-white rounded-lg shadow-sm border border-orange-100 text-[#B45A0A]">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-[9px] text-[#64748B] font-bold uppercase tracking-wider block">Projected Profit Margin</span>
-                    <span className="text-xs text-[#B45A0A] font-black font-poppins">{marginPercent}% efficiency index</span>
-                  </div>
-                </div>
-                <span className="text-lg font-black text-[#B45A0A] font-poppins">{marginPercent}%</span>
               </div>
             </div>
           )}

@@ -111,6 +111,70 @@ const startServer = async () => {
       socket.join(`role:${role}`);
     });
 
+    socket.on('trip:status-update', async ({ tripId, status, actualDistance }) => {
+      try {
+        const Trip = (await import('./models/Trip.js')).default;
+        const Vehicle = (await import('./models/Vehicle.js')).default;
+        const Driver = (await import('./models/Driver.js')).default;
+
+        const existingTrip = await Trip.findById(tripId);
+        if (!existingTrip) return;
+
+        existingTrip.status = status;
+        if (status === 'In Progress') {
+          existingTrip.actualStartTime = new Date();
+        } else if (status === 'Completed') {
+          existingTrip.actualEndTime = new Date();
+          existingTrip.actualDistance = actualDistance || existingTrip.estimatedDistance;
+        }
+
+        await existingTrip.save();
+
+        const finalTrip = await Trip.findById(tripId).populate('vehicle').populate('driver');
+
+        // Update vehicle and driver status in DB
+        if (status === 'Completed' || status === 'Cancelled') {
+          if (finalTrip.vehicle) {
+            await Vehicle.findByIdAndUpdate(finalTrip.vehicle, {
+              currentStatus: 'Available',
+              assignedDriver: null,
+              branch: status === 'Completed' ? finalTrip.endLocation : undefined,
+              currentLocation: status === 'Completed' ? finalTrip.endLocation : undefined
+            });
+          }
+          if (finalTrip.driver) {
+            await Driver.findByIdAndUpdate(finalTrip.driver, {
+              driverStatus: 'AVAILABLE',
+              assignedVehicle: 'Unassigned',
+              driverLocation: status === 'Completed' ? finalTrip.endLocation : undefined,
+              currentLocation: status === 'Completed' ? finalTrip.endLocation : undefined
+            });
+          }
+        } else if (status === 'In Progress') {
+          if (finalTrip.vehicle) {
+            await Vehicle.findByIdAndUpdate(finalTrip.vehicle, {
+              currentStatus: 'On Trip',
+              assignedDriver: finalTrip.driver
+            });
+          }
+          if (finalTrip.driver) {
+            const veh = await Vehicle.findById(finalTrip.vehicle);
+            await Driver.findByIdAndUpdate(finalTrip.driver, {
+              driverStatus: 'ON_TRIP',
+              assignedVehicle: veh ? veh.vehicleNumber : 'Unassigned'
+            });
+          }
+        }
+
+        const managerId = finalTrip.assignedManager;
+        if (managerId) {
+          io.to(`manager:${managerId}`).emit('trip:status-updated', finalTrip);
+        }
+      } catch (err) {
+        console.error('Failed to update trip status via socket:', err);
+      }
+    });
+
     socket.on('disconnect', () => {
     });
   });
