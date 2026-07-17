@@ -24,6 +24,7 @@ export const loginUser = async ({ email, password, role }) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      profileImage: user.profileImage || "",
       subscriptionStatus: user.subscriptionStatus,
       subscriptionPlan: user.subscriptionPlan,
       subscriptionExpiry: user.subscriptionExpiry,

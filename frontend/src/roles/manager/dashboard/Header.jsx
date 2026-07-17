@@ -4,6 +4,14 @@ import { useAuth } from "@/context/AuthContext";
 import { Bell, Menu, User, LogOut, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
 
+const getImageUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  const host = apiBase.replace(/\/api\/?$/, "");
+  return `${host}${url}`;
+};
+
 export default function Header({ onMenuToggle, showMenuButton = true }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -74,7 +82,15 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
             className="flex items-center gap-3 p-1 hover:bg-gray-100 rounded-2xl focus:outline-none transition-colors"
           >
             <div className="w-9 h-9 rounded-full bg-[#B45A0A]/10 border border-[#B45A0A]/20 flex items-center justify-center overflow-hidden">
-              <User className="w-5 h-5 text-[#B45A0A]" />
+              {user?.profileImage ? (
+                <img
+                  src={getImageUrl(user.profileImage)}
+                  alt={user?.name || "Profile"}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-5 h-5 text-[#B45A0A]" />
+              )}
             </div>
             <div className="hidden sm:block text-left leading-tight pr-1">
               <p className="font-poppins font-semibold text-sm text-[#1B2430] leading-none">

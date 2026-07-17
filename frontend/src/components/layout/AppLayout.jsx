@@ -5,6 +5,14 @@ import { useSettings } from "@/context/SettingsContext";
 import toast from "react-hot-toast";
 import { managerApi } from "@/roles/manager/api/managerApi";
 import MilestoneReviewModal from "./MilestoneReviewModal";
+
+const getImageUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  const host = apiBase.replace(/\/api\/?$/, "");
+  return `${host}${url}`;
+};
 import {
   LayoutDashboard,
   Truck,
@@ -330,8 +338,16 @@ export default function AppLayout() {
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center gap-3 hover:bg-gray-50 p-1.5 rounded-xl transition-all cursor-pointer text-left border-none bg-transparent"
               >
-                <div className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center text-orange-600">
-                  <Users className="w-5 h-5" />
+                <div className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 overflow-hidden">
+                  {user?.profileImage ? (
+                    <img
+                      src={getImageUrl(user.profileImage)}
+                      alt={user?.name || "Profile"}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Users className="w-5 h-5" />
+                  )}
                 </div>
                 <div className="text-right hidden sm:block">
                   <p className="text-sm font-medium text-gray-800 leading-none">
