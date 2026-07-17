@@ -13,7 +13,12 @@ import {
   X,
   Download,
   Eye,
-  Calendar
+  Calendar,
+  Ticket,
+  DollarSign,
+  Activity,
+  Clock,
+  ShieldAlert
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -79,6 +84,8 @@ export default function MaintenanceManagementPage() {
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(13); // Default to July 13th
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [viewingInvoice, setViewingInvoice] = useState(null);
+
+
 
   // Helper to generate correct calendar day cells for July 2026
   const getCalendarDays = () => {
@@ -347,6 +354,14 @@ For support, contact: maintenance@fleetmgmt.com
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Schedule Service</span>
+          </button>
+
+          <button
+            onClick={() => navigate("/manager/maintenance/tickets")}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm border border-indigo-650"
+          >
+            <Ticket className="w-3.5 h-3.5" />
+            <span>View Tickets</span>
           </button>
         </div>
       </div>
@@ -964,6 +979,8 @@ For support, contact: maintenance@fleetmgmt.com
           </div>
         );
       })()}
+
+
     </div>
   );
 }

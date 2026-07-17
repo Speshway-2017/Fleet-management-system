@@ -66,6 +66,10 @@ import {
   updatePODStatus,
   getWeighbridgeSlipByTripId,
   updateWeighbridgeSlipStatus
+  getTripTolls,
+  createVehicleComplaint,
+  listVehicleComplaints,
+  updateVehicleComplaint
 } from '../controllers/manager.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
@@ -99,6 +103,7 @@ router.delete('/drivers/:id', ...auth, checkActiveSubscription, deleteDriver);
 router.get('/trips',        ...auth, listTrips);
 router.post('/trips',       ...auth, checkActiveSubscription, createTrip);
 router.get('/trips/:id',    ...auth, getTripDetails);
+router.get('/trips/:tripId/tolls', ...auth, getTripTolls);
 router.put('/trips/:id',    ...auth, checkActiveSubscription, updateTrip);
 router.delete('/trips/:id', ...auth, checkActiveSubscription, deleteTrip);
 
@@ -158,5 +163,9 @@ router.put('/pod/:id/status', ...auth, updatePODStatus);
 // Weighbridge Slip
 router.get('/weighbridge/trip/:tripId', ...auth, getWeighbridgeSlipByTripId);
 router.put('/weighbridge/:id/status', ...auth, updateWeighbridgeSlipStatus);
+// Vehicle Complaints (Simulated Driver Tickets)
+router.post('/vehicle-complaints',       ...auth, createVehicleComplaint);
+router.get('/vehicle-complaints',        ...auth, listVehicleComplaints);
+router.put('/vehicle-complaints/:id',    ...auth, updateVehicleComplaint);
 
 export default router;

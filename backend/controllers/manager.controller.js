@@ -58,6 +58,9 @@ import Review from '../models/Review.js';
 import ManagerMilestone from '../models/ManagerMilestone.js';
 import { logActivity } from '../utils/activityLogger.js';
 import { calculateDistance } from '../utils/distanceCalculator.js';
+import TollTransaction from '../models/TollTransaction.js';
+import { generateTollsForTrip } from '../utils/seedTolls.js';
+import VehicleComplaint from '../models/VehicleComplaint.js';
 
 export const getDashboard = async (req, res, next) => {
   try {
@@ -666,6 +669,25 @@ export const getTripDetails = async (req, res, next) => {
   }
 };
 
+export const getTripTolls = async (req, res, next) => {
+  try {
+    const tripId = req.params.tripId;
+    const trip = await getTripById(tripId);
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+    // Ownership check
+    if (String(trip.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: this trip belongs to another manager');
+    }
+
+    const tolls = await TollTransaction.find({ trip: tripId }).sort({ dateTime: 1 });
+    return sendSuccess(res, 200, tolls, 'Toll transactions fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const createTrip = async (req, res, next) => {
   try {
     const {
@@ -810,6 +832,13 @@ export const createTrip = async (req, res, next) => {
       createdBy: req.user._id
     });
     await invoice.save();
+
+    // Generate Toll Transactions for the new trip
+    try {
+      await generateTollsForTrip(trip);
+    } catch (tollErr) {
+      console.error('Failed to generate toll transactions for new trip:', tollErr);
+    }
 
     await logActivity({
       title: 'Trip Dispatched',
@@ -2308,6 +2337,92 @@ export const getWeighbridgeSlipByTripId = async (req, res, next) => {
       }
     }
     return sendSuccess(res, 200, slip, 'Weighbridge Slip retrieved successfully');
+
+export const createVehicleComplaint = async (req, res, next) => {
+  try {
+    const { tripId, issueType, severity, description } = req.body;
+    if (!tripId || !issueType || !severity || !description) {
+      return sendError(res, 400, 'Trip, issue type, severity, and description are required');
+    }
+
+    const trip = await Trip.findById(tripId).populate('vehicle').populate('driver');
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    // Generate custom Ticket ID: TKT-VEH-YYYYMMDD-XXXX
+    const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const count = await VehicleComplaint.countDocuments({ ticketId: { $regex: new RegExp('^TKT-VEH-' + todayStr) } });
+    const seq = String(count + 1).padStart(4, '0');
+    const ticketId = `TKT-VEH-${todayStr}-${seq}`;
+
+    const complaint = new VehicleComplaint({
+      ticketId,
+      trip: trip._id,
+      vehicle: trip.vehicle?._id || trip.vehicle,
+      vehiclePlate: trip.vehiclePlate,
+      driver: trip.driver?._id || trip.driver,
+      driverName: trip.driverName,
+      issueType,
+      severity,
+      description,
+      status: 'Open'
+    });
+
+    await complaint.save();
+
+    // Create and emit notification for manager
+    if (trip.assignedManager) {
+      await createAndEmitNotification({
+        io: req.io || (req.app && req.app.locals && req.app.locals.io),
+        recipient: trip.assignedManager,
+        recipientRole: 'FLEET_MANAGER',
+        type: 'alert',
+        title: `Vehicle Issue Ticket: ${ticketId}`,
+        message: `Driver ${trip.driverName || 'assigned driver'} reported a ${severity} issue with vehicle ${trip.vehiclePlate} (${issueType}). Description: ${description}`,
+        priority: severity === 'Critical' || severity === 'High' ? 'high' : 'normal',
+        metadata: {
+          ticketId,
+          vehiclePlate: trip.vehiclePlate,
+          driverName: trip.driverName,
+          issueType,
+          severity,
+          tripId: trip._id
+        },
+        referenceId: ticketId,
+        referenceType: 'VehicleComplaint'
+      });
+    }
+
+    await logActivity({
+      title: 'Vehicle Issue Reported',
+      description: `Driver ${trip.driverName} reported a ${severity} issue (${issueType}) for vehicle ${trip.vehiclePlate} under trip ${trip.tripNumber}. Ticket ID: ${ticketId}.`,
+      activityType: 'MAINTENANCE_LOGGED',
+      user: req.user,
+      assignedManager: req.user._id
+    });
+
+    return sendSuccess(res, 201, complaint, 'Vehicle complaint ticket submitted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const listVehicleComplaints = async (req, res, next) => {
+  try {
+    const { tripId } = req.query;
+    const filter = {};
+    if (tripId) {
+      filter.trip = tripId;
+    } else {
+      const managerId = req.user._id;
+      const trips = await Trip.find({ assignedManager: managerId }, '_id');
+      const tripIds = trips.map(t => t._id);
+      filter.trip = { $in: tripIds };
+    }
+
+    const complaints = await VehicleComplaint.find(filter).populate('driver', 'fullName').sort({ createdAt: -1 });
+    return sendSuccess(res, 200, complaints, 'Vehicle complaints retrieved successfully');
   } catch (error) {
     next(error);
   }
@@ -2326,6 +2441,40 @@ export const updateWeighbridgeSlipStatus = async (req, res, next) => {
     }
     await slip.save();
     return sendSuccess(res, 200, slip, `Weighbridge Slip ${status} successfully`);
+export const updateVehicleComplaint = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, estimatedCost, actualCost, notes } = req.body;
+
+    const complaint = await VehicleComplaint.findById(id);
+    if (!complaint) {
+      return sendError(res, 404, 'Vehicle complaint not found');
+    }
+
+    if (status !== undefined) {
+      complaint.status = status;
+      if (status === 'Resolved' || status === 'Closed') {
+        complaint.completionDate = new Date();
+      } else {
+        complaint.completionDate = undefined;
+      }
+    }
+    if (estimatedCost !== undefined) complaint.estimatedCost = Number(estimatedCost) || 0;
+    if (actualCost !== undefined) complaint.actualCost = Number(actualCost) || 0;
+    if (notes !== undefined) complaint.notes = notes;
+
+    await complaint.save();
+
+    // Log manager activity
+    await logActivity({
+      title: 'Vehicle Complaint Updated',
+      description: `Vehicle complaint ticket ${complaint.ticketId} updated to status ${complaint.status}.`,
+      activityType: 'MAINTENANCE_LOGGED',
+      user: req.user,
+      assignedManager: req.user._id
+    });
+
+    return sendSuccess(res, 200, complaint, 'Vehicle complaint updated successfully');
   } catch (error) {
     next(error);
   }
