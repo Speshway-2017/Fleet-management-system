@@ -38,6 +38,7 @@ export default function Breadcrumb() {
     "/manager/maintenance/upcoming": { label: "Upcoming Services", parent: "/manager/maintenance" },
     "/manager/maintenance/schedule": { label: "Schedule Service", parent: "/manager/maintenance" },
     "/manager/maintenance/details": { label: "Service Details", parent: "/manager/maintenance" },
+    "/manager/maintenance/tickets": { label: "Vehicle Issue Tickets", parent: "/manager/maintenance" },
     "/manager/profile": { label: "Profile" },
     "/manager/profile/edit": { label: "Edit Profile", parent: "/manager/profile" },
     "/manager/profile/reset-password": { label: "Reset Password", parent: "/manager/profile" },
