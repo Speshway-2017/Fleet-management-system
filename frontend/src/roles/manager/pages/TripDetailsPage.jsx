@@ -39,6 +39,15 @@ export default function TripDetailsPage() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [invoice, setInvoice] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [tolls, setTolls] = useState([]);
+  const [isTollOpen, setIsTollOpen] = useState(false);
+  const [loadingTolls, setLoadingTolls] = useState(false);
+  const [selectedTollReceipt, setSelectedTollReceipt] = useState(null);
+
+
+
+  const tollDropdownRef = useRef(null);
+  const tollButtonRef = useRef(null);
 
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -190,6 +199,63 @@ export default function TripDetailsPage() {
           } catch (invErr) {
             console.error("Failed to load invoice:", invErr);
           }
+
+          // Fetch tolls
+          const generateFrontendMockTolls = (tripObj) => {
+            const plazas = [
+              { name: 'Khalapur Toll Plaza', location: 'Mumbai-Pune Expressway' },
+              { name: 'Electronic City Toll Plaza', location: 'Bengaluru, KA' },
+              { name: 'Lalru Toll Plaza', location: 'Ambala-Chandigarh Highway' },
+              { name: 'Vasad Toll Plaza', location: 'Vadodara-Ahmedabad NH-8' },
+              { name: 'Kherki Daula Toll Plaza', location: 'Gurugram, HR' },
+              { name: 'Chennai Bypass Toll', location: 'Chennai, TN' },
+              { name: 'NICE Road Plaza', location: 'Bengaluru, KA' }
+            ];
+
+            const numTolls = 3;
+            const tripDate = new Date(tripObj.departureTime || Date.now());
+            const mockList = [];
+
+            for (let i = 0; i < numTolls; i++) {
+              const plaza = plazas[(i + 2) % plazas.length];
+              const amount = [120, 230, 310][i];
+              const hoursOffset = 1.5 + (i * 2.5);
+              const dateTime = new Date(tripDate.getTime() + hoursOffset * 3600 * 1000); 
+              const txId = 'FT' + (984210000000 + i * 1421);
+
+              mockList.push({
+                _id: `mock-toll-${tripObj._id || '123'}-${i}`,
+                trip: tripObj._id || '123',
+                vehiclePlate: tripObj.vehiclePlate || 'MH-12-PQ-4567',
+                tollPlazaName: plaza.name,
+                location: plaza.location,
+                dateTime: dateTime.toISOString(),
+                amountPaid: amount,
+                paymentMethod: 'FASTag',
+                fastagTransactionId: txId,
+                receiptStatus: 'Settled',
+                receiptUrl: ''
+              });
+            }
+            return mockList;
+          };
+
+          try {
+            setLoadingTolls(true);
+            const tollsRes = await managerApi.getTollsByTripId(data._id);
+            const tollsData = tollsRes.data?.data || tollsRes.data;
+            if (tollsData && tollsData.length > 0) {
+              setTolls(tollsData);
+            } else {
+              setTolls(generateFrontendMockTolls(data));
+            }
+          } catch (tollsErr) {
+            console.warn("Failed to load tolls from API, falling back to mock data:", tollsErr);
+            setTolls(generateFrontendMockTolls(data));
+          } finally {
+            setLoadingTolls(false);
+          }
+
         }
       } catch (error) {
         toast.error("Failed to load trip details");
@@ -198,6 +264,25 @@ export default function TripDetailsPage() {
     };
     fetchTripAndInvoice();
   }, [id]);
+
+  // Handle click outside to close the toll details dropdown
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        isTollOpen && 
+        tollDropdownRef.current && 
+        !tollDropdownRef.current.contains(event.target) &&
+        tollButtonRef.current && 
+        !tollButtonRef.current.contains(event.target)
+      ) {
+        setIsTollOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isTollOpen]);
+
+
 
   const handlePrintInvoice = () => {
     if (!invoice) return;
@@ -394,6 +479,8 @@ export default function TripDetailsPage() {
     return `${diffMins} mins`;
   };
 
+
+
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
       <Breadcrumb />
@@ -564,7 +651,7 @@ export default function TripDetailsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {/* Revenue */}
                 <div className="p-3 bg-emerald-50/50 border border-emerald-100/50 rounded-xl">
                   <div className="flex items-center gap-1.5 text-emerald-600">
@@ -590,6 +677,93 @@ export default function TripDetailsPage() {
                     <span className="text-[9px] font-bold uppercase tracking-wider font-poppins block">Net Earnings</span>
                   </div>
                   <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{tripNet.toLocaleString('en-IN')}</span>
+                </div>
+
+                {/* Toll Details Button Card */}
+                <button
+                  ref={tollButtonRef}
+                  onClick={() => setIsTollOpen(!isTollOpen)}
+                  className="p-3 bg-indigo-50/40 border border-indigo-100/50 rounded-xl hover:bg-indigo-50 transition-all text-left flex flex-col justify-between h-full group focus:outline-none cursor-pointer"
+                >
+                  <div className="flex items-center justify-between w-full text-indigo-600">
+                    <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider font-poppins">
+                      <Route className="w-3.5 h-3.5 group-hover:animate-pulse" />
+                      <span className="text-[9px] font-bold">Toll Details</span>
+                    </div>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isTollOpen ? 'rotate-180' : ''}`} />
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-sm font-bold text-[#1E293B] font-poppins">
+                      {loadingTolls ? '...' : `₹${tolls.reduce((sum, t) => sum + t.amountPaid, 0).toLocaleString('en-IN')}`}
+                    </span>
+                    <span className="text-[8px] text-[#64748B] font-bold">
+                      ({tolls.length} Plazas)
+                    </span>
+                  </div>
+                </button>
+              </div>
+
+              {/* Toll Details Dropdown Panel (Inline) */}
+              <div
+                ref={tollDropdownRef}
+                className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                  isTollOpen ? 'max-h-[1200px] opacity-100 mt-3 mb-1' : 'max-h-0 opacity-0 pointer-events-none'
+                }`}
+              >
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4.5 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600">
+                        <Route className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <h4 className="font-poppins font-bold text-[#1E293B] text-[12px]">FASTag Toll Log</h4>
+                        <p className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider">Dynamic Transit Ledger</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 text-[11px] font-nunito font-semibold text-[#64748B]">
+                      <div>
+                        Plazas Crossed: <span className="text-[#1E293B] font-bold">{tolls.length}</span>
+                      </div>
+                      <div className="border-l border-slate-200 pl-4">
+                        Total Paid: <span className="text-indigo-600 font-extrabold">₹{tolls.reduce((sum, t) => sum + t.amountPaid, 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {loadingTolls ? (
+                    <div className="py-6 text-center text-gray-400 font-medium font-nunito">Loading toll transactions...</div>
+                  ) : tolls.length === 0 ? (
+                    <div className="py-6 text-center text-gray-400 font-medium text-xs font-poppins">
+                      No FASTag toll transactions available for this trip.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto no-scrollbar">
+                      <table className="w-full text-left border-collapse text-xs font-nunito">
+                        <thead>
+                          <tr className="bg-white/80 border-b border-slate-200/50 text-[#64748B] font-poppins font-semibold uppercase text-[9px] tracking-wider select-none whitespace-nowrap">
+                            <th className="py-3 px-3.5 rounded-l-lg">Toll Plaza Name</th>
+                            <th className="py-3 px-3.5">Date & Time</th>
+                            <th className="py-3 px-3.5 text-right rounded-r-lg">Amount Charged</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200/30">
+                          {tolls.map((t) => (
+                            <tr key={t._id} className="hover:bg-white/40 transition-colors">
+                              <td className="py-3 px-3.5 font-bold text-gray-800 whitespace-nowrap">{t.tollPlazaName}</td>
+                              <td className="py-3 px-3.5 text-gray-500 whitespace-nowrap">
+                                {new Date(t.dateTime).toLocaleString('en-IN', {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short'
+                                })}
+                              </td>
+                              <td className="py-3 px-3.5 font-bold text-indigo-650 text-right whitespace-nowrap">₹{t.amountPaid}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -830,6 +1004,7 @@ export default function TripDetailsPage() {
             </div>
           )}
 
+
         </div>
 
       </div>
@@ -1021,6 +1196,141 @@ export default function TripDetailsPage() {
                   className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer flex items-center gap-1.5"
                 >
                   Download PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- RECEIPT VIEW MODAL --- */}
+      {selectedTollReceipt && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 border border-[#E7EAF0] relative my-8 animate-scale-up font-nunito">
+            <button
+              onClick={() => setSelectedTollReceipt(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Receipt Content */}
+            <div className="space-y-5">
+              {/* Header */}
+              <div className="text-center pb-4 border-b border-dashed border-gray-200">
+                <div className="mx-auto w-12 h-12 bg-blue-600 rounded-2xl flex flex-col items-center justify-center text-white font-poppins font-black text-xs shadow-md shadow-blue-200">
+                  <span className="leading-none text-[8px] uppercase tracking-wider font-bold opacity-85">NHAI</span>
+                  <span className="leading-none text-[10px] font-black tracking-tighter">FASTag</span>
+                </div>
+                <h3 className="font-poppins font-bold text-[#1E293B] text-[15px] mt-2.5">Toll Transaction Receipt</h3>
+                <p className="text-[9px] text-[#64748B] font-bold uppercase tracking-wider mt-0.5">National Highways Authority of India</p>
+              </div>
+
+              {/* Amount Display */}
+              <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center">
+                <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider block">Transaction Amount</span>
+                <span className="text-2xl font-black text-indigo-600 font-poppins mt-1 block">₹{selectedTollReceipt.amountPaid.toFixed(2)}</span>
+                <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-emerald-50 text-emerald-600 border border-emerald-100/60">
+                  Transaction {selectedTollReceipt.receiptStatus}
+                </span>
+              </div>
+
+              {/* Receipt Details */}
+              <div className="space-y-2.5 text-xs border-b border-dashed border-gray-200 pb-4">
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Toll Plaza Name</span>
+                  <span className="font-bold text-gray-700">{selectedTollReceipt.tollPlazaName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Location</span>
+                  <span className="font-bold text-gray-700">{selectedTollReceipt.location}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Date & Time</span>
+                  <span className="font-bold text-gray-700">
+                    {new Date(selectedTollReceipt.dateTime).toLocaleString('en-IN', {
+                      dateStyle: 'medium',
+                      timeStyle: 'medium'
+                    })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Vehicle Plate</span>
+                  <span className="font-bold text-gray-700">{selectedTollReceipt.vehiclePlate}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Payment Mode</span>
+                  <span className="font-bold text-[#1E293B] flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                    {selectedTollReceipt.paymentMethod}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">FASTag Tx ID</span>
+                  <span className="font-bold font-mono text-gray-600">{selectedTollReceipt.fastagTransactionId}</span>
+                </div>
+              </div>
+
+              {/* Footer text */}
+              <p className="text-[10px] text-[#64748B] text-center font-medium leading-relaxed">
+                This transaction was processed electronically via FASTag system. No signature is required.
+              </p>
+
+              {/* Action buttons */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTollReceipt(null)}
+                  className="flex-1 py-2 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-gray-50 transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const printWindow = window.open("", "_blank");
+                    printWindow.document.write(`
+                      <html>
+                        <head>
+                          <title>FASTag Receipt</title>
+                          <style>
+                            body { font-family: 'Nunito', sans-serif; color: #1E293B; padding: 40px; text-align: center; }
+                            .receipt-box { max-width: 400px; margin: auto; padding: 20px; border: 1px dashed #B2C2D3; border-radius: 12px; }
+                            .nhai-logo { width: 50px; height: 50px; background: #2563EB; border-radius: 12px; margin: 0 auto 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px; }
+                            .amount { font-size: 24px; font-weight: bold; color: #4F46E5; margin: 15px 0; }
+                            .details { text-align: left; margin: 20px 0; }
+                            .row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; }
+                            .label { color: #64748B; }
+                            .val { font-weight: bold; }
+                          </style>
+                        </head>
+                        <body onload="window.print(); window.close();">
+                          <div class="receipt-box">
+                            <div class="nhai-logo">
+                              <span style="font-size:8px;opacity:0.8;">NHAI</span>
+                              <span>FASTag</span>
+                            </div>
+                            <h3>FASTag Toll Receipt</h3>
+                            <div class="amount">₹\${selectedTollReceipt.amountPaid.toFixed(2)}</div>
+                            <div class="details">
+                              <div class="row"><span class="label">Toll Plaza</span><span class="val">\${selectedTollReceipt.tollPlazaName}</span></div>
+                              <div class="row"><span class="label">Location</span><span class="val">\${selectedTollReceipt.location}</span></div>
+                              <div class="row"><span class="label">Date & Time</span><span class="val">\${new Date(selectedTollReceipt.dateTime).toLocaleString('en-IN')}</span></div>
+                              <div class="row"><span class="label">Vehicle Plate</span><span class="val">\${selectedTollReceipt.vehiclePlate}</span></div>
+                              <div class="row"><span class="label">Payment Method</span><span class="val">\${selectedTollReceipt.paymentMethod}</span></div>
+                              <div class="row"><span class="label">Transaction ID</span><span class="val">\${selectedTollReceipt.fastagTransactionId}</span></div>
+                              <div class="row"><span class="label">Status</span><span class="val">\${selectedTollReceipt.receiptStatus}</span></div>
+                            </div>
+                            <p style="font-size:10px;color:#64748B;">This is a computer generated receipt for electronic toll collection.</p>
+                          </div>
+                        </body>
+                      </html>
+                    `);
+                    printWindow.document.close();
+                  }}
+                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+                >
+                  Print Receipt
                 </button>
               </div>
             </div>

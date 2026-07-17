@@ -61,6 +61,7 @@ import UpcomingServicesPage from "@/roles/manager/pages/UpcomingServicesPage";
 import ScheduleServicePage from "@/roles/manager/pages/ScheduleServicePage";
 import ServiceDetailsPage from "@/roles/manager/pages/ServiceDetailsPage";
 import TripDetailsPage from "@/roles/manager/pages/TripDetailsPage";
+import ViewTicketsPage from "@/roles/manager/pages/ViewTicketsPage";
 import ProfilePage from "@/roles/manager/pages/ProfilePage";
 import EditProfilePage from "@/roles/manager/pages/EditProfilePage";
 import ManagerResetPasswordPage from "@/roles/manager/pages/ManagerResetPasswordPage";
@@ -188,6 +189,7 @@ export default function App() {
               <Route path="/manager/maintenance/upcoming" element={<UpcomingServicesPage />} />
               <Route path="/manager/maintenance/schedule" element={<ScheduleServicePage />} />
               <Route path="/manager/maintenance/details/:id" element={<ServiceDetailsPage />} />
+              <Route path="/manager/maintenance/tickets" element={<ViewTicketsPage />} />
               <Route path="/manager/profile" element={<ProfilePage />} />
               <Route path="/manager/profile/edit" element={<EditProfilePage />} />
               <Route path="/manager/profile/reset-password" element={<ManagerResetPasswordPage />} />

@@ -61,7 +61,11 @@ import {
   getPendingMilestone,
   submitReview,
   maybeLater,
-  getEarnings
+  getEarnings,
+  getTripTolls,
+  createVehicleComplaint,
+  listVehicleComplaints,
+  updateVehicleComplaint
 } from '../controllers/manager.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
@@ -95,6 +99,7 @@ router.delete('/drivers/:id', ...auth, checkActiveSubscription, deleteDriver);
 router.get('/trips',        ...auth, listTrips);
 router.post('/trips',       ...auth, checkActiveSubscription, createTrip);
 router.get('/trips/:id',    ...auth, getTripDetails);
+router.get('/trips/:tripId/tolls', ...auth, getTripTolls);
 router.put('/trips/:id',    ...auth, checkActiveSubscription, updateTrip);
 router.delete('/trips/:id', ...auth, checkActiveSubscription, deleteTrip);
 
@@ -146,5 +151,10 @@ router.get('/invoices/trip/:tripId/print', ...auth, getInvoiceByTripId);
 router.get('/reviews/pending-milestone', ...auth, getPendingMilestone);
 router.post('/reviews',                  ...auth, submitReview);
 router.post('/reviews/maybe-later',      ...auth, maybeLater);
+
+// Vehicle Complaints (Simulated Driver Tickets)
+router.post('/vehicle-complaints',       ...auth, createVehicleComplaint);
+router.get('/vehicle-complaints',        ...auth, listVehicleComplaints);
+router.put('/vehicle-complaints/:id',    ...auth, updateVehicleComplaint);
 
 export default router;
