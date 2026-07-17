@@ -999,6 +999,15 @@ export const updateTrip = async (req, res, next) => {
       });
     }
 
+    // Emit real-time status update to manager room
+    const io = req.app.get('socketio') || (req.app.locals ? req.app.locals.io : null);
+    if (io) {
+      const managerId = finalTrip.assignedManager || (req.user && req.user._id);
+      if (managerId) {
+        io.to(`manager:${managerId}`).emit('trip:status-updated', finalTrip);
+      }
+    }
+
     return sendSuccess(res, 200, finalTrip, 'Trip updated');
   } catch (error) {
     next(error);

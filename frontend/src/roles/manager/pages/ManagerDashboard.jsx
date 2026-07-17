@@ -5,6 +5,7 @@ import { Icon } from "@iconify/react";
 import { managerApi } from "../api/managerApi";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { useAuth } from "@/context/AuthContext";
+import { getSocket } from "@/api/socket";
 
 export default function ManagerDashboard() {
   const navigate = useNavigate();
@@ -107,11 +108,26 @@ export default function ManagerDashboard() {
     };
     fetchAllData(true);
 
+    const socket = getSocket();
+    const handleTripStatusUpdated = () => {
+      fetchAllData(false);
+    };
+    const handleDriverStatusUpdated = () => {
+      fetchAllData(false);
+    };
+
+    socket.on("trip:status-updated", handleTripStatusUpdated);
+    socket.on("driver:status-updated", handleDriverStatusUpdated);
+
     const intervalId = setInterval(() => {
       fetchAllData(false);
     }, 5000);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      socket.off("trip:status-updated", handleTripStatusUpdated);
+      socket.off("driver:status-updated", handleDriverStatusUpdated);
+    };
   }, []);
 
 

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { getSocket } from "@/api/socket";
 
 
 import { managerApi } from "../api/managerApi";
@@ -221,6 +222,17 @@ export default function TripsManagementPage() {
 
   useEffect(() => {
     fetchTrips();
+
+    const socket = getSocket();
+    const handleTripStatusUpdated = () => {
+      fetchTrips();
+    };
+
+    socket.on("trip:status-updated", handleTripStatusUpdated);
+
+    return () => {
+      socket.off("trip:status-updated", handleTripStatusUpdated);
+    };
   }, []);
 
   const fetchResources = async () => {

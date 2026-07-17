@@ -36,6 +36,7 @@ import { managerApi } from "../api/managerApi";
 export default function TripDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [trip, setTrip] = useState(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -56,6 +57,10 @@ export default function TripDetailsPage() {
   const [isTollOpen, setIsTollOpen] = useState(false);
   const [loadingTolls, setLoadingTolls] = useState(false);
   const [selectedTollReceipt, setSelectedTollReceipt] = useState(null);
+  const [toll, setToll] = useState(null);
+  const [showTollModal, setShowTollModal] = useState(false);
+  const [tollRejectReason, setTollRejectReason] = useState("");
+  const [showTollRejectModal, setShowTollRejectModal] = useState(false);
 
 
 
@@ -195,112 +200,115 @@ export default function TripDetailsPage() {
   }, [trip]);
 
   // Load trip record & invoice
-  useEffect(() => {
-    const fetchTripAndInvoice = async () => {
-      try {
-        const response = await managerApi.getTripById(id);
-        const data = response.data?.data || response.data;
-        if (data) {
-          setTrip({ ...data, id: data.tripNumber });
-          
-          try {
-            const invRes = await managerApi.getInvoiceByTripId(data._id);
-            const invData = invRes.data?.data || invRes.data;
-            if (invData) {
-              setInvoice(invData);
+  const fetchTripAndInvoice = async () => {
+    try {
+      const response = await managerApi.getTripById(id);
+      const data = response.data?.data || response.data;
+      if (data) {
+        setTrip({ ...data, id: data.tripNumber });
+        
+        // Fetch invoice, POD, and weighbridge in parallel with error handling
+        Promise.allSettled([
+          (async () => {
+            try {
+              const invRes = await managerApi.getInvoiceByTripId(data._id);
+              const invData = invRes.data?.data || invRes.data;
+              if (invData) setInvoice(invData);
+            } catch (invErr) {
+              console.debug("Invoice not available for this trip");
             }
-          } catch (invErr) {
-            console.error("Failed to load invoice:", invErr);
+          })(),
+          (async () => {
+            try {
+              const podRes = await managerApi.getPODByTripId(data._id);
+              const podData = podRes.data?.data || podRes.data;
+              if (podData) setPod(podData);
+            } catch (podErr) {
+              console.debug("POD not available for this trip");
+            }
+          })(),
+          (async () => {
+            try {
+              const wbRes = await managerApi.getWeighbridgeSlipByTripId(data._id);
+              const wbData = wbRes.data?.data || wbRes.data;
+              if (wbData) setWeighbridge(wbData);
+            } catch (wbErr) {
+              console.debug("Weighbridge slip not available for this trip");
+            }
+          })()
+        ]).catch(err => {
+          console.debug("Error loading trip documents:", err);
+        });
+
+        // Fetch tolls
+        const generateFrontendMockTolls = (tripObj) => {
+          const plazas = [
+            { name: 'Khalapur Toll Plaza', location: 'Mumbai-Pune Expressway' },
+            { name: 'Electronic City Toll Plaza', location: 'Bengaluru, KA' },
+            { name: 'Lalru Toll Plaza', location: 'Ambala-Chandigarh Highway' },
+            { name: 'Vasad Toll Plaza', location: 'Vadodara-Ahmedabad NH-8' },
+            { name: 'Kherki Daula Toll Plaza', location: 'Gurugram, HR' },
+            { name: 'Chennai Bypass Toll', location: 'Chennai, TN' },
+            { name: 'NICE Road Plaza', location: 'Bengaluru, KA' }
+          ];
+
+          const numTolls = 3;
+          const tripDate = new Date(tripObj.departureTime || Date.now());
+          const mockList = [];
+
+          for (let i = 0; i < numTolls; i++) {
+            const plaza = plazas[(i + 2) % plazas.length];
+            const amount = [120, 230, 310][i];
+            const hoursOffset = 1.5 + (i * 2.5);
+            const dateTime = new Date(tripDate.getTime() + hoursOffset * 3600 * 1000); 
+            const txId = 'FT' + (984210000000 + i * 1421);
+
+            mockList.push({
+              _id: `mock-toll-${tripObj._id || '123'}-${i}`,
+              trip: tripObj._id || '123',
+              vehiclePlate: tripObj.vehiclePlate || 'MH-12-PQ-4567',
+              tollPlazaName: plaza.name,
+              location: plaza.location,
+              dateTime: dateTime.toISOString(),
+              amountPaid: amount,
+              paymentMethod: 'FASTag',
+              fastagTransactionId: txId,
+              receiptStatus: 'Settled',
+              receiptUrl: ''
+            });
           }
-          
-          try {
-            const podRes = await managerApi.getPODByTripId(data._id);
-            const podData = podRes.data?.data || podRes.data;
-            if (podData) {
-              setPod(podData);
-            }
-          } catch (podErr) {
-            console.error("Failed to load POD:", podErr);
-          }
+          return mockList;
+        };
 
-          try {
-            const wbRes = await managerApi.getWeighbridgeSlipByTripId(data._id);
-            const wbData = wbRes.data?.data || wbRes.data;
-            if (wbData) {
-              setWeighbridge(wbData);
-            }
-          } catch (wbErr) {
-            console.error("Failed to load weighbridge:", wbErr);
-          }
-
-          // Fetch tolls
-          const generateFrontendMockTolls = (tripObj) => {
-            const plazas = [
-              { name: 'Khalapur Toll Plaza', location: 'Mumbai-Pune Expressway' },
-              { name: 'Electronic City Toll Plaza', location: 'Bengaluru, KA' },
-              { name: 'Lalru Toll Plaza', location: 'Ambala-Chandigarh Highway' },
-              { name: 'Vasad Toll Plaza', location: 'Vadodara-Ahmedabad NH-8' },
-              { name: 'Kherki Daula Toll Plaza', location: 'Gurugram, HR' },
-              { name: 'Chennai Bypass Toll', location: 'Chennai, TN' },
-              { name: 'NICE Road Plaza', location: 'Bengaluru, KA' }
-            ];
-
-            const numTolls = 3;
-            const tripDate = new Date(tripObj.departureTime || Date.now());
-            const mockList = [];
-
-            for (let i = 0; i < numTolls; i++) {
-              const plaza = plazas[(i + 2) % plazas.length];
-              const amount = [120, 230, 310][i];
-              const hoursOffset = 1.5 + (i * 2.5);
-              const dateTime = new Date(tripDate.getTime() + hoursOffset * 3600 * 1000); 
-              const txId = 'FT' + (984210000000 + i * 1421);
-
-              mockList.push({
-                _id: `mock-toll-${tripObj._id || '123'}-${i}`,
-                trip: tripObj._id || '123',
-                vehiclePlate: tripObj.vehiclePlate || 'MH-12-PQ-4567',
-                tollPlazaName: plaza.name,
-                location: plaza.location,
-                dateTime: dateTime.toISOString(),
-                amountPaid: amount,
-                paymentMethod: 'FASTag',
-                fastagTransactionId: txId,
-                receiptStatus: 'Settled',
-                receiptUrl: ''
-              });
-            }
-            return mockList;
-          };
-
-          try {
-            setLoadingTolls(true);
-            const tollsRes = await managerApi.getTollsByTripId(data._id);
-            const tollsData = tollsRes.data?.data || tollsRes.data;
-            if (tollsData && tollsData.length > 0) {
-              setTolls(tollsData);
-            } else {
-              setTolls(generateFrontendMockTolls(data));
-            }
-          } catch (tollsErr) {
-            console.warn("Failed to load tolls from API, falling back to mock data:", tollsErr);
+        try {
+          setLoadingTolls(true);
+          const tollsRes = await managerApi.getTollsByTripId(data._id);
+          const tollsData = tollsRes.data?.data || tollsRes.data;
+          if (tollsData && tollsData.length > 0) {
+            setTolls(tollsData);
+          } else {
             setTolls(generateFrontendMockTolls(data));
-          } finally {
-            setLoadingTolls(false);
           }
-
+        } catch (tollsErr) {
+          console.debug("Tolls data unavailable, using mock data");
+          setTolls(generateFrontendMockTolls(data));
+        } finally {
+          setLoadingTolls(false);
         }
-      } catch (error) {
-        toast.error("Failed to load trip details");
-        console.error(error);
       }
-    };
+    } catch (error) {
+      toast.error("Failed to load trip details");
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
     fetchTripAndInvoice();
   }, [id]);
 
   // Listen for real-time POD uploads from driver
   useEffect(() => {
-    if (isAuthenticated && user?.role === "manager" && trip) {
+    if (user?.role === "manager" && trip) {
       const socket = getSocket();
       socket.emit("joinManagerRoom", user._id || user.id);
 
@@ -323,13 +331,22 @@ export default function TripDetailsPage() {
 
       socket.on("pod:uploaded", handlePodUploaded);
       socket.on("weighbridge:uploaded", handleWeighbridgeUploaded);
+      
+      const handleTripStatusUpdated = (updatedTrip) => {
+        if (String(updatedTrip._id) === String(trip._id) || String(updatedTrip.id) === String(trip.id)) {
+          fetchTripAndInvoice();
+          toast.success(`Trip status updated: ${updatedTrip.status}`);
+        }
+      };
+      socket.on("trip:status-updated", handleTripStatusUpdated);
 
       return () => {
         socket.off("pod:uploaded", handlePodUploaded);
         socket.off("weighbridge:uploaded", handleWeighbridgeUploaded);
+        socket.off("trip:status-updated", handleTripStatusUpdated);
       };
     }
-  }, [isAuthenticated, user, trip]);
+  }, [user, trip]);
   // Handle click outside to close the toll details dropdown
   useEffect(() => {
     function handleClickOutside(event) {
@@ -554,7 +571,8 @@ export default function TripDetailsPage() {
     ? (trip.actualDistance && trip.actualDistance !== 120 ? trip.actualDistance : (trip.estimatedDistance && trip.estimatedDistance !== 120 ? trip.estimatedDistance : totalDistance))
     : (trip.estimatedDistance && trip.estimatedDistance !== 120 ? trip.estimatedDistance : totalDistance);
 
-  const weightVal = Number(trip.cargoWeight) || 800;
+  const tripCargoWeight = trip.cargoWeight && trip.cargoWeight.toString().trim() ? Number(trip.cargoWeight) : null;
+  const weightVal = tripCargoWeight !== null ? tripCargoWeight : 0;
 
   const tripRevenue = Math.round(distanceVal * 52 + weightVal * 4.5);
   const tripExpenses = Math.round(distanceVal * 19.5 + (weightVal > 1000 ? 1200 : 600) + 1000);
@@ -787,150 +805,152 @@ export default function TripDetailsPage() {
           </div>
 
           {/* Cost & Earnings Projection Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
-            <h3 className="font-poppins font-bold text-[#1E293B] text-[14px] border-b border-gray-100 pb-3">Financial Cost & Earnings Summary</h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                  <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider font-poppins block">Distance</span>
-                  <span className="text-lg font-black text-[#1E293B] font-poppins mt-1 block">{distanceVal} KM</span>
-                </div>
-                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                  <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider font-poppins block">Cargo Weight</span>
-                  <span className="text-lg font-black text-[#1E293B] font-poppins mt-1 block">{weightVal} kg</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {/* Revenue */}
-                <div className="p-3 bg-emerald-50/50 border border-emerald-100/50 rounded-xl">
-                  <div className="flex items-center gap-1.5 text-emerald-600">
-                    <DollarSign className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-bold uppercase tracking-wider font-poppins block">Revenue</span>
+          {trip.status === 'Completed' && (
+            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
+              <h3 className="font-poppins font-bold text-[#1E293B] text-[14px] border-b border-gray-150 pb-3">Financial Cost & Earnings Summary</h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                    <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider font-poppins block">Distance</span>
+                    <span className="text-lg font-black text-[#1E293B] font-poppins mt-1 block">{distanceVal} KM</span>
                   </div>
-                  <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{tripRevenue.toLocaleString('en-IN')}</span>
-                </div>
-
-                {/* Expenses */}
-                <div className="p-3 bg-red-50/50 border border-red-100/50 rounded-xl">
-                  <div className="flex items-center gap-1.5 text-red-500">
-                    <Activity className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-bold uppercase tracking-wider font-poppins block">Costs</span>
+                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                    <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider font-poppins block">Cargo Weight</span>
+                    <span className="text-lg font-black text-[#1E293B] font-poppins mt-1 block">{tripCargoWeight !== null ? `${tripCargoWeight} kg` : "--"}</span>
                   </div>
-                  <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{tripExpenses.toLocaleString('en-IN')}</span>
                 </div>
 
-                {/* Net Profit */}
-                <div className="p-3 bg-amber-50/50 border border-[#FFF3E8] rounded-xl">
-                  <div className="flex items-center gap-1.5 text-[#B45A0A]">
-                    <Wallet className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-bold uppercase tracking-wider font-poppins block">Net Earnings</span>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {/* Revenue */}
+                  <div className="p-3 bg-emerald-50/50 border border-emerald-100/50 rounded-xl">
+                    <div className="flex items-center gap-1.5 text-emerald-600">
+                      <DollarSign className="w-3.5 h-3.5" />
+                      <span className="text-[9px] font-bold uppercase tracking-wider font-poppins block">Revenue</span>
+                    </div>
+                    <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{tripRevenue.toLocaleString('en-IN')}</span>
                   </div>
-                  <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{tripNet.toLocaleString('en-IN')}</span>
+
+                  {/* Expenses */}
+                  <div className="p-3 bg-red-50/50 border border-red-100/50 rounded-xl">
+                    <div className="flex items-center gap-1.5 text-red-500">
+                      <Activity className="w-3.5 h-3.5" />
+                      <span className="text-[9px] font-bold uppercase tracking-wider font-poppins block">Costs</span>
+                    </div>
+                    <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{tripExpenses.toLocaleString('en-IN')}</span>
+                  </div>
+
+                  {/* Net Profit */}
+                  <div className="p-3 bg-amber-50/50 border border-[#FFF3E8] rounded-xl">
+                    <div className="flex items-center gap-1.5 text-[#B45A0A]">
+                      <Wallet className="w-3.5 h-3.5" />
+                      <span className="text-[9px] font-bold uppercase tracking-wider font-poppins block">Net Earnings</span>
+                    </div>
+                    <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{tripNet.toLocaleString('en-IN')}</span>
+                  </div>
+
+                  {/* Toll Details Button Card */}
+                  <button
+                    ref={tollButtonRef}
+                    onClick={() => setIsTollOpen(!isTollOpen)}
+                    className="p-3 bg-indigo-50/40 border border-indigo-100/50 rounded-xl hover:bg-indigo-50 transition-all text-left flex flex-col justify-between h-full group focus:outline-none cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between w-full text-indigo-600">
+                      <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider font-poppins">
+                        <Route className="w-3.5 h-3.5 group-hover:animate-pulse" />
+                        <span className="text-[9px] font-bold">Toll Details</span>
+                      </div>
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isTollOpen ? 'rotate-180' : ''}`} />
+                    </div>
+                    <div className="mt-1 flex items-baseline gap-1.5">
+                      <span className="text-sm font-bold text-[#1E293B] font-poppins">
+                        {loadingTolls ? '...' : `₹${tolls.reduce((sum, t) => sum + t.amountPaid, 0).toLocaleString('en-IN')}`}
+                      </span>
+                      <span className="text-[8px] text-[#64748B] font-bold">
+                        ({tolls.length} Plazas)
+                      </span>
+                    </div>
+                  </button>
                 </div>
 
-                {/* Toll Details Button Card */}
-                <button
-                  ref={tollButtonRef}
-                  onClick={() => setIsTollOpen(!isTollOpen)}
-                  className="p-3 bg-indigo-50/40 border border-indigo-100/50 rounded-xl hover:bg-indigo-50 transition-all text-left flex flex-col justify-between h-full group focus:outline-none cursor-pointer"
+                {/* Toll Details Dropdown Panel (Inline) */}
+                <div
+                  ref={tollDropdownRef}
+                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                    isTollOpen ? 'max-h-[1200px] opacity-100 mt-3 mb-1' : 'max-h-0 opacity-0 pointer-events-none'
+                  }`}
                 >
-                  <div className="flex items-center justify-between w-full text-indigo-600">
-                    <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider font-poppins">
-                      <Route className="w-3.5 h-3.5 group-hover:animate-pulse" />
-                      <span className="text-[9px] font-bold">Toll Details</span>
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-4.5 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600">
+                          <Route className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <h4 className="font-poppins font-bold text-[#1E293B] text-[12px]">FASTag Toll Log</h4>
+                          <p className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider">Dynamic Transit Ledger</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 text-[11px] font-nunito font-semibold text-[#64748B]">
+                        <div>
+                          Plazas Crossed: <span className="text-[#1E293B] font-bold">{tolls.length}</span>
+                        </div>
+                        <div className="border-l border-slate-200 pl-4">
+                          Total Paid: <span className="text-indigo-600 font-extrabold">₹{tolls.reduce((sum, t) => sum + t.amountPaid, 0).toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
                     </div>
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isTollOpen ? 'rotate-180' : ''}`} />
-                  </div>
-                  <div className="mt-1 flex items-baseline gap-1.5">
-                    <span className="text-sm font-bold text-[#1E293B] font-poppins">
-                      {loadingTolls ? '...' : `₹${tolls.reduce((sum, t) => sum + t.amountPaid, 0).toLocaleString('en-IN')}`}
-                    </span>
-                    <span className="text-[8px] text-[#64748B] font-bold">
-                      ({tolls.length} Plazas)
-                    </span>
-                  </div>
-                </button>
-              </div>
 
-              {/* Toll Details Dropdown Panel (Inline) */}
-              <div
-                ref={tollDropdownRef}
-                className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                  isTollOpen ? 'max-h-[1200px] opacity-100 mt-3 mb-1' : 'max-h-0 opacity-0 pointer-events-none'
-                }`}
-              >
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4.5 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600">
-                        <Route className="w-3.5 h-3.5" />
+                    {loadingTolls ? (
+                      <div className="py-6 text-center text-gray-400 font-medium font-nunito">Loading toll transactions...</div>
+                    ) : tolls.length === 0 ? (
+                      <div className="py-6 text-center text-gray-400 font-medium text-xs font-poppins">
+                        No FASTag toll transactions available for this trip.
                       </div>
-                      <div>
-                        <h4 className="font-poppins font-bold text-[#1E293B] text-[12px]">FASTag Toll Log</h4>
-                        <p className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider">Dynamic Transit Ledger</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-4 text-[11px] font-nunito font-semibold text-[#64748B]">
-                      <div>
-                        Plazas Crossed: <span className="text-[#1E293B] font-bold">{tolls.length}</span>
-                      </div>
-                      <div className="border-l border-slate-200 pl-4">
-                        Total Paid: <span className="text-indigo-600 font-extrabold">₹{tolls.reduce((sum, t) => sum + t.amountPaid, 0).toLocaleString('en-IN')}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {loadingTolls ? (
-                    <div className="py-6 text-center text-gray-400 font-medium font-nunito">Loading toll transactions...</div>
-                  ) : tolls.length === 0 ? (
-                    <div className="py-6 text-center text-gray-400 font-medium text-xs font-poppins">
-                      No FASTag toll transactions available for this trip.
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto no-scrollbar">
-                      <table className="w-full text-left border-collapse text-xs font-nunito">
-                        <thead>
-                          <tr className="bg-white/80 border-b border-slate-200/50 text-[#64748B] font-poppins font-semibold uppercase text-[9px] tracking-wider select-none whitespace-nowrap">
-                            <th className="py-3 px-3.5 rounded-l-lg">Toll Plaza Name</th>
-                            <th className="py-3 px-3.5">Date & Time</th>
-                            <th className="py-3 px-3.5 text-right rounded-r-lg">Amount Charged</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200/30">
-                          {tolls.map((t) => (
-                            <tr key={t._id} className="hover:bg-white/40 transition-colors">
-                              <td className="py-3 px-3.5 font-bold text-gray-800 whitespace-nowrap">{t.tollPlazaName}</td>
-                              <td className="py-3 px-3.5 text-gray-500 whitespace-nowrap">
-                                {new Date(t.dateTime).toLocaleString('en-IN', {
-                                  dateStyle: 'medium',
-                                  timeStyle: 'short'
-                                })}
-                              </td>
-                              <td className="py-3 px-3.5 font-bold text-indigo-650 text-right whitespace-nowrap">₹{t.amountPaid}</td>
+                    ) : (
+                      <div className="overflow-x-auto no-scrollbar">
+                        <table className="w-full text-left border-collapse text-xs font-nunito">
+                          <thead>
+                            <tr className="bg-white/80 border-b border-slate-200/50 text-[#64748B] font-poppins font-semibold uppercase text-[9px] tracking-wider select-none whitespace-nowrap">
+                              <th className="py-3 px-3.5 rounded-l-lg">Toll Plaza Name</th>
+                              <th className="py-3 px-3.5">Date & Time</th>
+                              <th className="py-3 px-3.5 text-right rounded-r-lg">Amount Charged</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                          </thead>
+                          <tbody className="divide-y divide-slate-200/30">
+                            {tolls.map((t) => (
+                              <tr key={t._id} className="hover:bg-white/40 transition-colors">
+                                <td className="py-3 px-3.5 font-bold text-gray-800 whitespace-nowrap">{t.tollPlazaName}</td>
+                                <td className="py-3 px-3.5 text-gray-500 whitespace-nowrap">
+                                  {new Date(t.dateTime).toLocaleString('en-IN', {
+                                    dateStyle: 'medium',
+                                    timeStyle: 'short'
+                                  })}
+                                </td>
+                                <td className="py-3 px-3.5 font-bold text-indigo-650 text-right whitespace-nowrap">₹{t.amountPaid}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between p-3.5 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100/70 rounded-xl">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-white rounded-lg shadow-sm border border-orange-100 text-[#B45A0A]">
-                    <TrendingUp className="w-4 h-4" />
+                <div className="flex items-center justify-between p-3.5 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100/70 rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-white rounded-lg shadow-sm border border-orange-100 text-[#B45A0A]">
+                      <TrendingUp className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-[#64748B] font-bold uppercase tracking-wider block">Projected Profit Margin</span>
+                      <span className="text-xs text-[#B45A0A] font-black font-poppins">{tripMargin}% efficiency index</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[9px] text-[#64748B] font-bold uppercase tracking-wider block">Projected Profit Margin</span>
-                    <span className="text-xs text-[#B45A0A] font-black font-poppins">{tripMargin}% efficiency index</span>
-                  </div>
+                  <span className="text-lg font-black text-[#B45A0A] font-poppins">{tripMargin}%</span>
                 </div>
-                <span className="text-lg font-black text-[#B45A0A] font-poppins">{tripMargin}%</span>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Checkpoints Route Timeline */}
           <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">

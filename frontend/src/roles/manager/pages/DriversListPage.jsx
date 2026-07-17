@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { getSocket } from "@/api/socket";
 import { driverApi } from "@/api/driverApi";
 
 export default function DriversListPage() {
@@ -52,7 +53,23 @@ export default function DriversListPage() {
 
   useEffect(() => {
     fetchDrivers();
-  }, []);
+
+    const socket = getSocket();
+    const handleDriverStatusUpdated = () => {
+      fetchDrivers();
+    };
+    const handleTripStatusUpdated = () => {
+      fetchDrivers();
+    };
+
+    socket.on("driver:status-updated", handleDriverStatusUpdated);
+    socket.on("trip:status-updated", handleTripStatusUpdated);
+
+    return () => {
+      socket.off("driver:status-updated", handleDriverStatusUpdated);
+      socket.off("trip:status-updated", handleTripStatusUpdated);
+    };
+  }, [fetchDrivers]);
 
   // Reset to first page when filters change
   useEffect(() => {

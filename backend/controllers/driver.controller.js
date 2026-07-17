@@ -271,6 +271,16 @@ export const updateDriver = async (req, res, next) => {
     if (!driver) {
       return sendError(res, 404, 'Driver not found');
     }
+
+    // Emit real-time driver status update to manager room
+    const io = req.app.get('socketio') || (req.app.locals ? req.app.locals.io : null);
+    if (io) {
+      const managerId = driver.assignedManager || (req.user && req.user._id);
+      if (managerId) {
+        io.to(`manager:${managerId}`).emit('driver:status-updated', driver);
+      }
+    }
+
     return sendSuccess(res, 200, driver, 'Driver updated successfully');
   } catch (error) {
     if (error.code === 11000) {
