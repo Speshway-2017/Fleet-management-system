@@ -18,7 +18,12 @@ import {
   Mail,
   X,
   AlertTriangle,
-  Eye
+  Eye,
+  DollarSign,
+  Activity,
+  Wallet,
+  TrendingUp,
+  Percent
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -309,6 +314,17 @@ export default function TripDetailsPage() {
   const isDelayed = trip.status === "Delayed";
 
   const totalDistance = calculateDistance(trip.startLocation, trip.endLocation);
+  
+  const distanceVal = trip.status === "Completed" 
+    ? (trip.actualDistance && trip.actualDistance !== 120 ? trip.actualDistance : (trip.estimatedDistance && trip.estimatedDistance !== 120 ? trip.estimatedDistance : totalDistance))
+    : (trip.estimatedDistance && trip.estimatedDistance !== 120 ? trip.estimatedDistance : totalDistance);
+
+  const weightVal = Number(trip.cargoWeight) || 800;
+
+  const tripRevenue = Math.round(distanceVal * 52 + weightVal * 4.5);
+  const tripExpenses = Math.round(distanceVal * 19.5 + (weightVal > 1000 ? 1200 : 600) + 1000);
+  const tripNet = tripRevenue - tripExpenses;
+  const tripMargin = tripRevenue > 0 ? Math.round((tripNet / tripRevenue) * 100) : 0;
   const distanceTravelled = trip.status === "Scheduled" ? 0 : isCompleted ? totalDistance : Math.round(totalDistance * 0.56);
   const distancePercent = trip.status === "Scheduled" ? "0%" : isCompleted ? "100%" : "56%";
 
@@ -529,6 +545,65 @@ export default function TripDetailsPage() {
               <div className="space-y-1">
                 <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Trip Notes</span>
                 <p className="text-sm font-medium text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100">{trip.tripNotes || "No notes available for this dispatch"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Cost & Earnings Projection Card */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
+            <h3 className="font-poppins font-bold text-[#1E293B] text-[14px] border-b border-gray-100 pb-3">Financial Cost & Earnings Summary</h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                  <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider font-poppins block">Distance</span>
+                  <span className="text-lg font-black text-[#1E293B] font-poppins mt-1 block">{distanceVal} KM</span>
+                </div>
+                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                  <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider font-poppins block">Cargo Weight</span>
+                  <span className="text-lg font-black text-[#1E293B] font-poppins mt-1 block">{weightVal} kg</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {/* Revenue */}
+                <div className="p-3 bg-emerald-50/50 border border-emerald-100/50 rounded-xl">
+                  <div className="flex items-center gap-1.5 text-emerald-600">
+                    <DollarSign className="w-3.5 h-3.5" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider font-poppins block">Revenue</span>
+                  </div>
+                  <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{tripRevenue.toLocaleString('en-IN')}</span>
+                </div>
+
+                {/* Expenses */}
+                <div className="p-3 bg-red-50/50 border border-red-100/50 rounded-xl">
+                  <div className="flex items-center gap-1.5 text-red-500">
+                    <Activity className="w-3.5 h-3.5" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider font-poppins block">Costs</span>
+                  </div>
+                  <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{tripExpenses.toLocaleString('en-IN')}</span>
+                </div>
+
+                {/* Net Profit */}
+                <div className="p-3 bg-amber-50/50 border border-[#FFF3E8] rounded-xl">
+                  <div className="flex items-center gap-1.5 text-[#B45A0A]">
+                    <Wallet className="w-3.5 h-3.5" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider font-poppins block">Net Earnings</span>
+                  </div>
+                  <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{tripNet.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-3.5 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100/70 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-white rounded-lg shadow-sm border border-orange-100 text-[#B45A0A]">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-[#64748B] font-bold uppercase tracking-wider block">Projected Profit Margin</span>
+                    <span className="text-xs text-[#B45A0A] font-black font-poppins">{tripMargin}% efficiency index</span>
+                  </div>
+                </div>
+                <span className="text-lg font-black text-[#B45A0A] font-poppins">{tripMargin}%</span>
               </div>
             </div>
           </div>
