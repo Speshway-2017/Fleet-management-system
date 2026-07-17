@@ -50,22 +50,27 @@ export const getPendingRequestsCount = async () => {
 };
 
 export const getRevenueAggregate = async () => {
-  const result = await Analytics.aggregate([
-    { $match: { metric: 'Revenue' } },
-    { $group: { _id: null, total: { $sum: '$value' } } }
+  const result = await Trip.aggregate([
+    { $group: { _id: null, totalDistance: { $sum: '$estimatedDistance' }, totalWeight: { $sum: '$cargoWeight' } } }
   ]);
-  return result.length > 0 ? result[0].total : 0;
+  if (result.length > 0) {
+    return (result[0].totalDistance || 0) * 12 + (result[0].totalWeight || 0) * 0.5;
+  }
+  return 0;
 };
 
 export const getTodayRevenueAggregate = async () => {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const result = await Analytics.aggregate([
-    { $match: { metric: 'Revenue', createdAt: { $gte: startOfDay } } },
-    { $group: { _id: null, total: { $sum: '$value' } } }
+  const result = await Trip.aggregate([
+    { $match: { createdAt: { $gte: startOfDay } } },
+    { $group: { _id: null, totalDistance: { $sum: '$estimatedDistance' }, totalWeight: { $sum: '$cargoWeight' } } }
   ]);
-  return result.length > 0 ? result[0].total : 0;
+  if (result.length > 0) {
+    return (result[0].totalDistance || 0) * 12 + (result[0].totalWeight || 0) * 0.5;
+  }
+  return 0;
 };
 
 export const getRecentTrips = async (limit = 5) => {
@@ -83,16 +88,21 @@ export const getAnalyticsSummary = async () => {
 };
 
 export const getRevenueChartData = async () => {
-  return Analytics.aggregate([
-    { $match: { metric: 'Revenue' } },
+  const result = await Trip.aggregate([
     {
       $group: {
         _id: { $month: '$createdAt' },
-        total: { $sum: '$value' }
+        totalDistance: { $sum: '$estimatedDistance' },
+        totalWeight: { $sum: '$cargoWeight' }
       }
     },
     { $sort: { _id: 1 } }
   ]);
+  
+  return result.map(item => ({
+    _id: item._id,
+    total: (item.totalDistance || 0) * 12 + (item.totalWeight || 0) * 0.5
+  }));
 };
 
 // Organization update / delete

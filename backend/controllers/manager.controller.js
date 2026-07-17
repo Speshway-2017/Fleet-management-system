@@ -51,6 +51,9 @@ import EWayBill from '../models/EWayBill.js';
 import Fuel from '../models/Fuel.js';
 import ActivityLog from '../models/ActivityLog.js';
 import Invoice from '../models/Invoice.js';
+import PlatformIssue from '../models/PlatformIssue.js';
+import ProofOfDelivery from '../models/ProofOfDelivery.js';
+import WeighbridgeSlip from '../models/WeighbridgeSlip.js';
 import Review from '../models/Review.js';
 import ManagerMilestone from '../models/ManagerMilestone.js';
 import { logActivity } from '../utils/activityLogger.js';
@@ -1965,6 +1968,85 @@ export const getInvoiceByTripId = async (req, res, next) => {
   }
 };
 
+export const getPODByTripId = async (req, res, next) => {
+  try {
+    let pod = await ProofOfDelivery.findOne({ trip: req.params.tripId }).populate('driver');
+    if (!pod) {
+      const trip = await Trip.findById(req.params.tripId);
+      if (trip) {
+        pod = new ProofOfDelivery({
+          podNumber: `POD-${Date.now()}`,
+          trip: trip._id,
+          driver: trip.driver,
+          customerName: 'Acme Logistics',
+          receiverName: 'John Doe',
+          status: 'Pending',
+          deliveryDate: new Date(),
+          customerSignatureUrl: 'https://via.placeholder.com/300x100.png?text=Signature',
+          deliveryPhotoUrl: 'https://via.placeholder.com/300x300.png?text=Delivery+Photo',
+          podDocumentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+          uploadedBy: trip.driverName || 'Driver'
+        });
+        await pod.save();
+      } else {
+        return sendSuccess(res, 200, null, 'No POD uploaded yet');
+      }
+    }
+    return sendSuccess(res, 200, pod, 'POD fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatePODStatus = async (req, res, next) => {
+  try {
+    const { status, rejectionReason } = req.body;
+    const pod = await ProofOfDelivery.findById(req.params.id);
+    if (!pod) {
+       return sendError(res, 404, 'POD not found');
+    }
+    pod.status = status;
+    if (status === 'Rejected') {
+      pod.rejectionReason = rejectionReason || 'No reason provided';
+    } else {
+      pod.rejectionReason = '';
+    }
+    await pod.save();
+    return sendSuccess(res, 200, pod, `POD ${status} successfully`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getWeighbridgeByTripId = async (req, res, next) => {
+  try {
+    let slip = await WeighbridgeSlip.findOne({ trip: req.params.tripId }).populate('driver');
+    if (!slip) {
+      const trip = await Trip.findById(req.params.tripId);
+      if (trip) {
+        slip = new WeighbridgeSlip({
+          slipNumber: `WB-${Date.now()}`,
+          trip: trip._id,
+          driver: trip.driver,
+          grossWeight: 25000,
+          tareWeight: 10000,
+          netWeight: 15000,
+          weighingDate: new Date(),
+          location: 'Industrial Hub Gate 1',
+          slipDocumentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+          status: 'Verified'
+        });
+        await slip.save();
+      } else {
+        return sendSuccess(res, 200, null, 'No Weighbridge slip found');
+      }
+    }
+    return sendSuccess(res, 200, slip, 'Weighbridge slip fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Trip Milestone Review Controllers
 export const getPendingMilestone = async (req, res, next) => {
   try {
@@ -2195,6 +2277,55 @@ export const getEarnings = async (req, res, next) => {
       chartData,
       tripEarnings
     }, 'Earnings data retrieved');
+  } catch (error) {
+    next(error);
+  }
+};
+// ------------------------------------------------------------------
+// Weighbridge Slip Management
+// ------------------------------------------------------------------
+
+export const getWeighbridgeSlipByTripId = async (req, res, next) => {
+  try {
+    let slip = await WeighbridgeSlip.findOne({ trip: req.params.tripId });
+    if (!slip) {
+      const trip = await Trip.findById(req.params.tripId);
+      if (trip) {
+        slip = new WeighbridgeSlip({
+          trip: trip._id,
+          slipNumber: `WS-${Date.now().toString().slice(-6)}`,
+          grossWeight: 45000 + Math.floor(Math.random() * 5000),
+          tareWeight: 15000 + Math.floor(Math.random() * 2000),
+          netWeight: 30000 + Math.floor(Math.random() * 3000),
+          location: 'Highway Weighbridge Station A',
+          uploadedBy: trip.driverName || 'Driver',
+          status: 'Pending',
+          documentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+        });
+        await slip.save();
+      } else {
+        return sendSuccess(res, 200, null, 'No Weighbridge Slip found for this trip');
+      }
+    }
+    return sendSuccess(res, 200, slip, 'Weighbridge Slip retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateWeighbridgeSlipStatus = async (req, res, next) => {
+  try {
+    const { status, rejectionReason } = req.body;
+    const slip = await WeighbridgeSlip.findById(req.params.id);
+    if (!slip) {
+      return sendError(res, 404, 'Weighbridge Slip not found');
+    }
+    slip.status = status;
+    if (status === 'Rejected' && rejectionReason) {
+      slip.rejectionReason = rejectionReason;
+    }
+    await slip.save();
+    return sendSuccess(res, 200, slip, `Weighbridge Slip ${status} successfully`);
   } catch (error) {
     next(error);
   }

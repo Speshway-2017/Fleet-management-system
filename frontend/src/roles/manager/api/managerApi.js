@@ -226,4 +226,39 @@ export const managerApi = {
   updateProfile: async (profileData) => {
     return await axiosClient.put("/auth/profile", profileData);
   },
+
+  // Proof of Delivery
+  getPODByTripId: async (tripId) => {
+    return await axiosClient.get(`/manager/pod/trip/${tripId}`);
+  },
+
+  updatePODStatus: async (podId, statusData) => {
+    return await axiosClient.put(`/manager/pod/${podId}/status`, statusData);
+  },
+
+  simulateDriverUploadPOD: async (tripId) => {
+    return await axiosClient.post(`/manager/pod/trip/${tripId}/simulate-upload`);
+  },
+
+  // Weighbridge Slip
+  getWeighbridgeSlipByTripId: async (tripId) => {
+    return await axiosClient.get(`/manager/weighbridge/trip/${tripId}`);
+  },
+
+  updateWeighbridgeSlipStatus: async (id, statusData) => {
+    return await axiosClient.put(`/manager/weighbridge/${id}/status`, statusData);
+  },
+
+  simulateDriverUploadWeighbridgeSlip: async (tripId) => {
+    return await axiosClient.post(`/manager/weighbridge/trip/${tripId}/simulate-upload`);
+  },
+
+  // Toll Receipts
+  getTollReceiptsByTripId: async (tripId) => {
+    return await axiosClient.get(`/manager/toll/trip/${tripId}`);
+  },
+
+  updateTollReceiptsStatus: async (id, statusData) => {
+    return await axiosClient.put(`/manager/toll/${id}/status`, statusData);
+  },
 };
