@@ -60,7 +60,8 @@ import {
   // Milestone Reviews
   getPendingMilestone,
   submitReview,
-  maybeLater
+  maybeLater,
+  getEarnings
 } from '../controllers/manager.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
@@ -74,6 +75,7 @@ const auth = [protect, authorizeRoles('FLEET_MANAGER')];
 router.get('/dashboard',       ...auth, getDashboard);
 router.get('/live-tracking',   ...auth, getLiveTracking);
 router.get('/activities',      ...auth, listActivities);
+router.get('/earnings',        ...auth, getEarnings);
 
 // Vehicles
 router.get('/vehicles',        ...auth, listVehicles);

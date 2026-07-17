@@ -15,7 +15,8 @@ import {
   ClipboardList,
   Bell,
   Settings,
-  X
+  X,
+  Coins
 } from "lucide-react";
 import toast from "react-hot-toast";
 import "./manager.css";
@@ -29,6 +30,7 @@ const MENU_ITEMS = [
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel, isRealRoute: true },
   { label: "Maintenance", to: "/manager/maintenance", icon: Wrench, isRealRoute: true },
   { label: "Analytics", to: "/manager/analytics", icon: BarChart3, isRealRoute: true },
+  { label: "Earnings", to: "/manager/earnings", icon: Coins, isRealRoute: true },
   { label: "Reports", to: "/manager/reports", icon: ClipboardList, isRealRoute: true },
   { label: "Notifications", to: "/manager/notifications", icon: Bell, isRealRoute: true },
   { label: "Settings", to: "/manager/settings", icon: Settings, isRealRoute: true },

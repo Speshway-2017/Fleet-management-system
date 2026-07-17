@@ -82,6 +82,7 @@ import ContactRequests from "@/roles/admin/pages/ContactRequests";
 import Pricing from "@/roles/admin/pages/Pricing";
 import SubscriptionRequests from "@/roles/admin/pages/SubscriptionRequests";
 import SubscriptionPage from "@/roles/manager/pages/SubscriptionPage";
+import EarningsPage from "@/roles/manager/pages/EarningsPage";
 
 function PublicRoute({ children }) {
   const { isAuthenticated, role } = useAuth();
@@ -198,6 +199,7 @@ export default function App() {
               <Route path="/manager/profile/reset-password" element={<ManagerResetPasswordPage />} />
               <Route path="/manager/profile/2fa" element={<TwoFactorPage />} />
               <Route path="/manager/subscription" element={<SubscriptionPage />} />
+              <Route path="/manager/earnings" element={<EarningsPage />} />
             </Route>
           </Route>
 

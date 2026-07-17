@@ -43,6 +43,7 @@ import { sendSuccess, sendError } from '../utils/response.js';
 import { createAndEmitNotification } from '../utils/notification.js';
 import { processVehicleDocuments } from '../utils/documentHelper.js';
 import Trip from '../models/Trip.js';
+import { calculateTripFinance } from '../utils/earningsCalculator.js';
 import Driver from '../models/Driver.js';
 import Vehicle from '../models/Vehicle.js';
 import Notification from '../models/Notification.js';
@@ -98,9 +99,12 @@ export const getDashboard = async (req, res, next) => {
     const fuelSum = fuelDocs.reduce((acc, curr) => acc + (curr.amount || 0), 0);
     const fuelExpense = `₹${fuelSum.toLocaleString('en-IN')}`;
 
-    // 6. Total Earnings: sum up goodsValue from generated EWayBills
-    const ewayBills = await EWayBill.find({ assignedManager: managerId });
-    const earningsSum = ewayBills.reduce((acc, curr) => acc + (Number(curr.goodsValue) || 0), 0);
+    // 6. Total Earnings: sum up revenues from all trips to match earnings page
+    const trips = await Trip.find({ assignedManager: managerId });
+    const earningsSum = trips.reduce((acc, trip) => {
+      const { revenue } = calculateTripFinance(trip);
+      return acc + revenue;
+    }, 0);
     
     let totalEarnings = "";
     if (earningsSum >= 10000000) {
@@ -2093,6 +2097,71 @@ export const maybeLater = async (req, res, next) => {
     }
 
     return sendSuccess(res, 200, null, 'Milestone dismissed for now');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getEarnings = async (req, res, next) => {
+  try {
+    const managerId = req.user._id;
+    // Find all trips for this manager
+    const trips = await Trip.find({ assignedManager: managerId }).populate('vehicle').populate('driver').sort({ createdAt: -1 });
+    
+    let totalRevenue = 0;
+    let totalExpenses = 0;
+    let totalNetEarnings = 0;
+    
+    const tripEarnings = trips.map(trip => {
+      const { revenue, expenses, netEarnings, distance, weight } = calculateTripFinance(trip);
+      
+      totalRevenue += revenue;
+      totalExpenses += expenses;
+      totalNetEarnings += netEarnings;
+      
+      return {
+        tripId: trip._id,
+        tripNumber: trip.tripNumber,
+        vehicleName: trip.vehicleName || (trip.vehicle ? trip.vehicle.vehicleName : 'N/A'),
+        vehiclePlate: trip.vehiclePlate || (trip.vehicle ? trip.vehicle.vehicleNumber : 'N/A'),
+        driverName: trip.driverName || (trip.driver ? trip.driver.fullName : 'Unassigned'),
+        startLocation: trip.startLocation,
+        endLocation: trip.endLocation,
+        status: trip.status,
+        date: trip.createdAt,
+        distance,
+        cargoWeight: weight,
+        revenue,
+        expenses,
+        netEarnings
+      };
+    });
+    
+    // Group earnings by month for chart data
+    const monthlyStats = {};
+    tripEarnings.forEach(te => {
+      const date = new Date(te.date);
+      const monthYear = date.toLocaleString('en-IN', { month: 'short', year: '2-digit' });
+      if (!monthlyStats[monthYear]) {
+        monthlyStats[monthYear] = { month: monthYear, revenue: 0, expenses: 0, netEarnings: 0 };
+      }
+      monthlyStats[monthYear].revenue += te.revenue;
+      monthlyStats[monthYear].expenses += te.expenses;
+      monthlyStats[monthYear].netEarnings += te.netEarnings;
+    });
+    
+    const chartData = Object.values(monthlyStats).reverse();
+    
+    return sendSuccess(res, 200, {
+      stats: {
+        totalRevenue,
+        totalExpenses,
+        totalNetEarnings,
+        tripCount: trips.length
+      },
+      chartData,
+      tripEarnings
+    }, 'Earnings data retrieved');
   } catch (error) {
     next(error);
   }

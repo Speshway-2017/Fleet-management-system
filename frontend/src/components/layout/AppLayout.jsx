@@ -30,6 +30,7 @@ import {
   Menu,
   MoreHorizontal,
   Plus,
+  Coins
 } from "lucide-react";
 
 const MENU_ITEMS = [
@@ -41,6 +42,7 @@ const MENU_ITEMS = [
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel },
   { label: "Maintenance", to: "/manager/maintenance", icon: Wrench },
   { label: "Analytics", to: "/manager/analytics", icon: BarChart3 },
+  { label: "Earnings", to: "/manager/earnings", icon: Coins },
   { label: "Reports", to: "/manager/reports", icon: ClipboardList },
   { label: "Notifications", to: "/manager/notifications", icon: Bell },
   { label: "Subscription", to: "/manager/subscription", icon: CreditCard },
@@ -74,6 +76,7 @@ const MANAGER_MOBILE_SIDEBAR_ITEMS = [
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel },
   { label: "Maintenance", to: "/manager/maintenance", icon: Wrench },
   { label: "Analytics", to: "/manager/analytics", icon: BarChart3 },
+  { label: "Earnings", to: "/manager/earnings", icon: Coins },
   { label: "Reports", to: "/manager/reports", icon: ClipboardList },
 ];
 
