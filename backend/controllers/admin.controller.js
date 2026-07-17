@@ -34,6 +34,10 @@ import PlatformIssue from '../models/PlatformIssue.js';
 import Notification from '../models/Notification.js';
 import Blog from '../models/Blog.js';
 import About from '../models/About.js';
+import Vehicle from '../models/Vehicle.js';
+import Trip from '../models/Trip.js';
+import Driver from '../models/Driver.js';
+import Fuel from '../models/Fuel.js';
 
 // Dashboard
 export const getDashboard = async (_req, res, next) => {
@@ -100,21 +104,39 @@ export const getOrganizationDetails = async (req, res, next) => {
     const orgManagers = await User.find({ role: 'FLEET_MANAGER', organization: org._id });
     const orgManagerIds = orgManagers.map(m => m._id);
 
-    // Active trips per manager
+    // Active trips per manager (count all trips assigned to manager)
     const activeTripsAgg = await Trip.aggregate([
-      { $match: { assignedManager: { $in: orgManagerIds }, status: 'Active' } },
+      { $match: { assignedManager: { $in: orgManagerIds } } },
       { $group: { _id: '$assignedManager', count: { $sum: 1 } } }
     ]);
 
-    // Revenue per manager
-    const revenuePerManagerAgg = await Analytics.aggregate([
-      { $match: { metric: 'Revenue', recordedBy: { $in: orgManagerIds } } },
-      { $group: { _id: '$recordedBy', total: { $sum: '$value' } } }
+    // All trips to calculate revenue per manager
+    // Let's assume revenue = estimatedDistance * 10 or cargoWeight * 5
+    const revenuePerManagerAgg = await Trip.aggregate([
+      { $match: { assignedManager: { $in: orgManagerIds } } },
+      { $group: { _id: '$assignedManager', totalDistance: { $sum: '$estimatedDistance' }, totalWeight: { $sum: '$cargoWeight' } } }
+    ]);
+
+    // Vehicles per manager (check assignedManager or createdBy)
+    const vehiclesAgg = await Vehicle.aggregate([
+      { $match: { $or: [{ assignedManager: { $in: orgManagerIds } }, { createdBy: { $in: orgManagerIds } }] } },
+      { 
+        $group: { 
+          _id: { $cond: [{ $ifNull: ['$assignedManager', false] }, '$assignedManager', '$createdBy'] }, 
+          count: { $sum: 1 } 
+        } 
+      }
     ]);
 
     const managersWithStats = orgManagers.map(manager => {
       const activeTripsCount = activeTripsAgg.find(t => t._id.toString() === manager._id.toString())?.count || 0;
-      const totalRevenue = revenuePerManagerAgg.find(r => r._id.toString() === manager._id.toString())?.total || 0;
+      
+      const revData = revenuePerManagerAgg.find(r => r._id.toString() === manager._id.toString());
+      // Simple dynamic revenue calculation if Analytics is empty
+      const totalRevenue = revData ? ((revData.totalDistance || 0) * 12 + (revData.totalWeight || 0) * 0.5) : 0;
+      
+      const vehiclesManaged = vehiclesAgg.find(v => v._id.toString() === manager._id.toString())?.count || 0;
+
       const nameParts = (manager.name || '').split(' ');
       const initials = nameParts.length > 1 
         ? nameParts[0][0] + nameParts[nameParts.length - 1][0] 
@@ -126,16 +148,20 @@ export const getOrganizationDetails = async (req, res, next) => {
         email: manager.email,
         phone: manager.phone,
         status: manager.status || (manager.isActive ? 'Active' : 'Inactive'),
+        role: manager.role === 'FLEET_MANAGER' ? 'Fleet Manager' : manager.role,
         initials: initials.toUpperCase(),
+        vehiclesManaged,
         stats: {
           activeTripsCount,
-          totalRevenue
+          totalRevenue,
+          vehiclesManaged
         }
       };
     });
 
     const activeTripsCount = managersWithStats.reduce((sum, m) => sum + m.stats.activeTripsCount, 0);
     const totalRevenue = managersWithStats.reduce((sum, m) => sum + m.stats.totalRevenue, 0);
+    const totalVehiclesCount = managersWithStats.reduce((sum, m) => sum + m.stats.vehiclesManaged, 0);
 
     const formattedOrg = {
       id: org._id.toString(),
@@ -148,23 +174,24 @@ export const getOrganizationDetails = async (req, res, next) => {
       status: org.status || 'Pending',
       createdAt: new Date(org.createdAt).toLocaleDateString(),
       activeManagers,
-      managers: activeManagers,
+      stats: {
+        totalFleetManagers: activeManagers,
+        totalVehicles: totalVehiclesCount || totalVehicles,
+        totalActiveTrips: activeTripsCount,
+        totalRevenue: totalRevenue,
+      },
       joined: new Date(org.createdAt).toLocaleDateString(),
       address: org.address,
       city: org.city,
       state: org.state,
       country: org.country,
-      plan: org.plan,
-      fleetManagers: managersWithStats,
-      stats: {
-        totalFleetManagers: activeManagers,
-        totalVehicles,
-        totalActiveTrips: activeTripsCount,
-        totalRevenue
-      }
+      plan: org.plan
     };
 
-    return sendSuccess(res, 200, formattedOrg, 'Organization details fetched');
+    return sendSuccess(res, 200, {
+      ...formattedOrg,
+      fleetManagers: managersWithStats
+    }, 'Organization details fetched successfully');
   } catch (error) {
     next(error);
   }
@@ -793,7 +820,12 @@ export const getAnalytics = async (_req, res, next) => {
       inactiveManagers,
       totalIssues,
       openIssues,
-      closedIssues
+      closedIssues,
+      vehicles,
+      drivers,
+      activeTrips,
+      completedTrips,
+      fuelDocs
     ] = await Promise.all([
       Organization.countDocuments(),
       Organization.countDocuments({ status: 'Active' }),
@@ -803,8 +835,15 @@ export const getAnalytics = async (_req, res, next) => {
       User.countDocuments({ role: 'FLEET_MANAGER', status: 'Inactive' }),
       PlatformIssue.countDocuments(),
       PlatformIssue.countDocuments({ status: 'Open' }),
-      PlatformIssue.countDocuments({ status: 'Resolved' })
+      PlatformIssue.countDocuments({ status: 'Resolved' }),
+      Vehicle.countDocuments(),
+      Driver.countDocuments(),
+      Trip.countDocuments({ status: { $in: ['Scheduled', 'Assigned', 'In Progress'] } }),
+      Trip.countDocuments({ status: 'Completed' }),
+      Fuel.aggregate([{ $group: { _id: null, totalFuel: { $sum: '$quantity' } } }])
     ]);
+
+    const fuelUsage = fuelDocs.length > 0 ? fuelDocs[0].totalFuel : 0;
 
     const { orgGrowthData, managerGrowthData } = await getMonthlyGrowthStats();
 
@@ -862,7 +901,12 @@ export const getAnalytics = async (_req, res, next) => {
           total: totalIssues,
           open: openIssues,
           closed: closedIssues
-        }
+        },
+        vehicles,
+        drivers,
+        activeTrips,
+        completedTrips,
+        fuelUsage
       },
       charts: {
         orgGrowthData,

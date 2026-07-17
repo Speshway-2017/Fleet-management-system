@@ -62,6 +62,10 @@ import {
   submitReview,
   maybeLater,
   getEarnings,
+  getPODByTripId,
+  updatePODStatus,
+  getWeighbridgeSlipByTripId,
+  updateWeighbridgeSlipStatus
   getTripTolls,
   createVehicleComplaint,
   listVehicleComplaints,
@@ -152,6 +156,13 @@ router.get('/reviews/pending-milestone', ...auth, getPendingMilestone);
 router.post('/reviews',                  ...auth, submitReview);
 router.post('/reviews/maybe-later',      ...auth, maybeLater);
 
+// Proof of Delivery (POD)
+router.get('/pod/trip/:tripId', ...auth, getPODByTripId);
+router.put('/pod/:id/status', ...auth, updatePODStatus);
+
+// Weighbridge Slip
+router.get('/weighbridge/trip/:tripId', ...auth, getWeighbridgeSlipByTripId);
+router.put('/weighbridge/:id/status', ...auth, updateWeighbridgeSlipStatus);
 // Vehicle Complaints (Simulated Driver Tickets)
 router.post('/vehicle-complaints',       ...auth, createVehicleComplaint);
 router.get('/vehicle-complaints',        ...auth, listVehicleComplaints);

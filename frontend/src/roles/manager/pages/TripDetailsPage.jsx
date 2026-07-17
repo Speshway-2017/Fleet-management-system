@@ -28,6 +28,8 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import DriverChatDrawer from "@/components/common/DriverChatDrawer";
+import { getSocket } from "@/api/socket";
+import { useAuth } from "@/context/AuthContext";
 
 import { managerApi } from "../api/managerApi";
 
@@ -39,6 +41,17 @@ export default function TripDetailsPage() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [invoice, setInvoice] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [pod, setPod] = useState(null);
+  const [showPodModal, setShowPodModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  const [weighbridge, setWeighbridge] = useState(null);
+  const [showWeighbridgeModal, setShowWeighbridgeModal] = useState(false);
+  const [weighbridgeRejectReason, setWeighbridgeRejectReason] = useState("");
+  const [showWeighbridgeRejectModal, setShowWeighbridgeRejectModal] = useState(false);
+
   const [tolls, setTolls] = useState([]);
   const [isTollOpen, setIsTollOpen] = useState(false);
   const [loadingTolls, setLoadingTolls] = useState(false);
@@ -199,6 +212,26 @@ export default function TripDetailsPage() {
           } catch (invErr) {
             console.error("Failed to load invoice:", invErr);
           }
+          
+          try {
+            const podRes = await managerApi.getPODByTripId(data._id);
+            const podData = podRes.data?.data || podRes.data;
+            if (podData) {
+              setPod(podData);
+            }
+          } catch (podErr) {
+            console.error("Failed to load POD:", podErr);
+          }
+
+          try {
+            const wbRes = await managerApi.getWeighbridgeSlipByTripId(data._id);
+            const wbData = wbRes.data?.data || wbRes.data;
+            if (wbData) {
+              setWeighbridge(wbData);
+            }
+          } catch (wbErr) {
+            console.error("Failed to load weighbridge:", wbErr);
+          }
 
           // Fetch tolls
           const generateFrontendMockTolls = (tripObj) => {
@@ -265,6 +298,38 @@ export default function TripDetailsPage() {
     fetchTripAndInvoice();
   }, [id]);
 
+  // Listen for real-time POD uploads from driver
+  useEffect(() => {
+    if (isAuthenticated && user?.role === "manager" && trip) {
+      const socket = getSocket();
+      socket.emit("joinManagerRoom", user._id || user.id);
+
+      // Listen for pod upload event
+      const handlePodUploaded = (newPod) => {
+        // Only update if it's for the current trip
+        if (String(newPod.trip) === String(trip._id) || String(newPod.trip) === String(trip.id)) {
+          setPod(newPod);
+          toast.success("Driver uploaded Proof of Delivery!");
+        }
+      };
+
+      // Listen for weighbridge upload event
+      const handleWeighbridgeUploaded = (data) => {
+        if (String(data.tripId) === String(trip._id) || String(data.tripId) === String(trip.id)) {
+          setWeighbridge(data.slip);
+          toast.success("Driver uploaded Weighbridge Slip!");
+        }
+      };
+
+      socket.on("pod:uploaded", handlePodUploaded);
+      socket.on("weighbridge:uploaded", handleWeighbridgeUploaded);
+
+      return () => {
+        socket.off("pod:uploaded", handlePodUploaded);
+        socket.off("weighbridge:uploaded", handleWeighbridgeUploaded);
+      };
+    }
+  }, [isAuthenticated, user, trip]);
   // Handle click outside to close the toll details dropdown
   useEffect(() => {
     function handleClickOutside(event) {
@@ -377,6 +442,91 @@ export default function TripDetailsPage() {
   const handleDownloadInvoice = () => {
     handlePrintInvoice();
     toast.success("Preparing PDF download via print options");
+  };
+
+  const handlePODApprove = async () => {
+    try {
+      const response = await managerApi.updatePODStatus(pod._id, { status: "Approved" });
+      const updatedPod = response.data?.data || response.data;
+      setPod(updatedPod);
+      toast.success("POD Approved successfully");
+    } catch (error) {
+      toast.error("Failed to approve POD");
+    }
+  };
+
+  const handlePODReject = async () => {
+    if (!rejectReason.trim()) {
+      toast.error("Please provide a rejection reason");
+      return;
+    }
+    try {
+      const response = await managerApi.updatePODStatus(pod._id, { status: "Rejected", rejectionReason: rejectReason });
+      const updatedPod = response.data?.data || response.data;
+      setPod(updatedPod);
+      setShowRejectModal(false);
+      setRejectReason("");
+      toast.success("POD Rejected successfully");
+    } catch (error) {
+      toast.error("Failed to reject POD");
+    }
+  };
+
+
+  const handleWeighbridgeApprove = async () => {
+    try {
+      const response = await managerApi.updateWeighbridgeSlipStatus(weighbridge._id, { status: "Approved" });
+      const updatedData = response.data?.data || response.data;
+      setWeighbridge(updatedData);
+      toast.success("Weighbridge Slip Approved");
+    } catch (error) {
+      toast.error("Failed to approve Weighbridge Slip");
+    }
+  };
+
+  const handleWeighbridgeReject = async () => {
+    if (!weighbridgeRejectReason.trim()) {
+      toast.error("Please provide a rejection reason");
+      return;
+    }
+    try {
+      const response = await managerApi.updateWeighbridgeSlipStatus(weighbridge._id, { status: "Rejected", rejectionReason: weighbridgeRejectReason });
+      const updatedData = response.data?.data || response.data;
+      setWeighbridge(updatedData);
+      setShowWeighbridgeRejectModal(false);
+      setWeighbridgeRejectReason("");
+      toast.success("Weighbridge Slip Rejected");
+    } catch (error) {
+      toast.error("Failed to reject Weighbridge Slip");
+    }
+  };
+
+  const handleTollApprove = async () => {
+    try {
+      const response = await managerApi.updateTollReceiptsStatus(toll._id, { status: "Approved" });
+      const updatedData = response.data?.data || response.data;
+      setToll(updatedData);
+      toast.success("Toll Receipts Approved");
+    } catch (error) {
+      toast.error("Failed to approve Toll Receipts");
+    }
+  };
+
+  const handleTollReject = async () => {
+    if (!tollRejectReason.trim()) {
+      toast.error("Please provide a rejection reason");
+      return;
+    }
+    try {
+      const response = await managerApi.updateTollReceiptsStatus(toll._id, { status: "Rejected", rejectionReason: tollRejectReason });
+      const updatedData = response.data?.data || response.data;
+      setToll(updatedData);
+      setShowTollRejectModal(false);
+      setTollRejectReason("");
+      toast.success("Toll Receipts Rejected");
+    } catch (error) {
+      toast.error("Failed to reject Toll Receipts");
+    }
   };
 
   if (!trip) {
@@ -950,59 +1100,218 @@ export default function TripDetailsPage() {
             </button>
           </div>
 
-          {/* Trip Invoice Card */}
-          {invoice && (
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-[#E7EAF0]">
-                <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Trip Invoice</h4>
-                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md text-[9px] font-bold uppercase tracking-wider">
-                  Generated
-                </span>
-              </div>
-              
-              <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">Invoice Number</span>
-                  <span className="font-bold text-gray-700">{invoice.invoiceNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">Invoice Date</span>
-                  <span className="font-bold text-gray-700">
-                    {new Date(invoice.invoiceDate).toLocaleDateString("en-IN")}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">Created By</span>
-                  <span className="font-bold text-gray-700">{invoice.createdBy?.fullName || "Manager"}</span>
-                </div>
-              </div>
+          {/* Unified Trip Documents Card */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-6">
+            <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider border-b border-[#E7EAF0] pb-2">Trip Documents</h4>
 
-              <div className="grid grid-cols-3 gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowInvoiceModal(true)}
-                  className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  View
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDownloadInvoice}
-                  className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                >
-                  Download
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePrintInvoice}
-                  className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                >
-                  Print
-                </button>
-              </div>
+            {/* Trip Invoice Section */}
+            <div className="space-y-3">
+              <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Trip Invoice</h5>
+              {!invoice ? (
+                <p className="text-xs text-gray-500 font-medium italic">No Invoice generated yet.</p>
+              ) : (
+                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 font-medium">Status</span>
+                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md text-[9px] font-bold uppercase tracking-wider">
+                      Generated
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 font-medium">Invoice Number</span>
+                    <span className="font-bold text-gray-700">{invoice.invoiceNumber}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowInvoiceModal(true)}
+                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDownloadInvoice}
+                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    >
+                      Download
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handlePrintInvoice}
+                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    >
+                      Print
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Proof of Delivery Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Proof of Delivery (POD)</h5>
+              </div>
+              {!pod ? (
+                <p className="text-xs text-gray-500 font-medium italic">No Proof of Delivery uploaded yet.</p>
+              ) : (
+                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 font-medium">Status</span>
+                    <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
+                      pod.status === "Approved" ? "bg-emerald-50 text-emerald-700" :
+                      pod.status === "Rejected" ? "bg-red-50 text-red-600" :
+                      "bg-amber-50 text-[#B45A0A]"
+                    }`}>
+                      {pod.status || "Pending"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 font-medium">POD Number</span>
+                    <span className="font-bold text-gray-700">{pod.podNumber || "N/A"}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowPodModal(true)}
+                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer col-span-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (pod.podDocumentUrl) window.open(pod.podDocumentUrl, "_blank");
+                        else toast.error("No document available for download");
+                      }}
+                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer col-span-1"
+                    >
+                      Download
+                    </button>
+                  </div>
+                  {pod.status === 'Pending' && (
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={handlePODApprove}
+                        className="px-2.5 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-[10px] font-bold text-emerald-700 transition-colors cursor-pointer"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowRejectModal(true)}
+                        className="px-2.5 py-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-[10px] font-bold text-red-600 transition-colors cursor-pointer"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  )}
+                  {pod.status === 'Rejected' && pod.rejectionReason && (
+                    <div className="mt-2 p-2 bg-red-50 text-red-600 text-[10px] rounded-lg border border-red-100">
+                      <strong>Reason:</strong> {pod.rejectionReason}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Weighbridge Slip Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Weighbridge Slip</h5>
+              </div>
+              {!weighbridge ? (
+                <p className="text-xs text-gray-500 font-medium italic">No Weighbridge Slip uploaded yet.</p>
+              ) : (
+                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 font-medium">Status</span>
+                    <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
+                      weighbridge.status === "Approved" ? "bg-emerald-50 text-emerald-700" :
+                      weighbridge.status === "Rejected" ? "bg-red-50 text-red-600" :
+                      "bg-amber-50 text-[#B45A0A]"
+                    }`}>
+                      {weighbridge.status || "Pending"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 font-medium">Slip Number</span>
+                    <span className="font-bold text-gray-700">{weighbridge.slipNumber || "N/A"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 font-medium">Gross Weight</span>
+                    <span className="font-bold text-gray-700">{weighbridge.grossWeight} kg</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 font-medium">Tare Weight</span>
+                    <span className="font-bold text-gray-700">{weighbridge.tareWeight} kg</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 font-medium">Net Weight</span>
+                    <span className="font-bold text-gray-700">{weighbridge.netWeight} kg</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 font-medium">Location</span>
+                    <span className="font-bold text-gray-700">{weighbridge.location || "N/A"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 font-medium">Uploaded By</span>
+                    <span className="font-bold text-gray-700">{weighbridge.uploadedBy || "Driver"}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowWeighbridgeModal(true)}
+                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer col-span-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (weighbridge.documentUrl) window.open(weighbridge.documentUrl, "_blank");
+                        else toast.error("No document available for download");
+                      }}
+                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer col-span-1"
+                    >
+                      Download
+                    </button>
+                  </div>
+                  {(weighbridge.status === 'Pending' || weighbridge.status === 'Uploaded') && (
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleWeighbridgeApprove}
+                        className="px-2.5 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-[10px] font-bold text-emerald-700 transition-colors cursor-pointer"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowWeighbridgeRejectModal(true)}
+                        className="px-2.5 py-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-[10px] font-bold text-red-600 transition-colors cursor-pointer"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  )}
+                  {weighbridge.status === 'Rejected' && weighbridge.rejectionReason && (
+                    <div className="mt-2 p-2 bg-red-50 text-red-600 text-[10px] rounded-lg border border-red-100">
+                      <strong>Reason:</strong> {weighbridge.rejectionReason}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+
+
+          </div>
 
 
         </div>
@@ -1203,6 +1512,12 @@ export default function TripDetailsPage() {
         </div>
       )}
 
+      {/* --- POD VIEW MODAL --- */}
+      {showPodModal && pod && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl p-6 border border-[#E7EAF0] relative my-8 animate-scale-up">
+            <button
+              onClick={() => setShowPodModal(false)}
       {/* --- RECEIPT VIEW MODAL --- */}
       {selectedTollReceipt && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
@@ -1214,6 +1529,253 @@ export default function TripDetailsPage() {
               <X className="w-5 h-5" />
             </button>
 
+            <h3 className="text-xl font-bold font-poppins text-[#1E293B] mb-4">Proof of Delivery</h3>
+            <div className="space-y-4 text-sm text-[#64748B]">
+              {pod.customerSignatureUrl ? (
+                <div>
+                  <h4 className="font-bold text-[#1E293B]">Customer Signature Preview</h4>
+                  <img src={pod.customerSignatureUrl} alt="Customer Signature" className="mt-2 max-h-40 border border-gray-200 rounded-lg" />
+                </div>
+              ) : (
+                <p>No customer signature preview available.</p>
+              )}
+              {pod.deliveryPhotoUrl ? (
+                <div>
+                  <h4 className="font-bold text-[#1E293B]">Delivery Photo Preview</h4>
+                  <img src={pod.deliveryPhotoUrl} alt="Delivery Photo" className="mt-2 max-h-60 border border-gray-200 rounded-lg object-contain" />
+                </div>
+              ) : (
+                <p>No delivery photo available.</p>
+              )}
+              {pod.podDocumentUrl ? (
+                <div>
+                  <h4 className="font-bold text-[#1E293B]">POD Document</h4>
+                  <a href={pod.podDocumentUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline mt-1 inline-block">
+                    View POD Document (PDF/Image)
+                  </a>
+                </div>
+              ) : (
+                <p>No POD document uploaded.</p>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-4 mt-6 border-t border-[#E7EAF0]">
+              <button
+                onClick={() => setShowPodModal(false)}
+                className="px-4.5 py-2.5 bg-slate-900 hover:bg-black rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- REJECT REASON MODAL --- */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6 border border-[#E7EAF0] relative animate-scale-up">
+            <button
+              onClick={() => {
+                setShowRejectModal(false);
+                setRejectReason("");
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-bold font-poppins text-[#1E293B] mb-2 text-[#EF4444]">
+              Reject Proof of Delivery
+            </h3>
+            <p className="text-xs text-gray-500 mb-4">Please provide a reason for rejection.</p>
+            
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg p-3 text-sm mb-4 outline-none focus:border-[#B45A0A]"
+              placeholder="Enter rejection reason..."
+              rows={3}
+            />
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectReason("");
+                }}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePODReject}
+                className="px-4 py-2 bg-[#EF4444] hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors"
+              >
+                Submit Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- WEIGHBRIDGE VIEW MODAL --- */}
+      {showWeighbridgeModal && weighbridge && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl p-6 border border-[#E7EAF0] relative my-8 animate-scale-up">
+            <button
+              onClick={() => setShowWeighbridgeModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-xl font-bold font-poppins text-[#1E293B] mb-4">Weighbridge Slip</h3>
+            <div className="space-y-4 text-sm text-[#64748B]">
+              {weighbridge.documentUrl ? (
+                <div>
+                  <h4 className="font-bold text-[#1E293B]">Weighbridge Document</h4>
+                  <a href={weighbridge.documentUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline mt-1 inline-block">
+                    View Document (PDF/Image)
+                  </a>
+                </div>
+              ) : (
+                <p>No document available.</p>
+              )}
+            </div>
+            <div className="flex justify-end pt-4 mt-6 border-t border-[#E7EAF0]">
+              <button
+                onClick={() => setShowWeighbridgeModal(false)}
+                className="px-4.5 py-2.5 bg-slate-900 hover:bg-black rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- WEIGHBRIDGE REJECT REASON MODAL --- */}
+      {showWeighbridgeRejectModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6 border border-[#E7EAF0] relative animate-scale-up">
+            <button
+              onClick={() => {
+                setShowWeighbridgeRejectModal(false);
+                setWeighbridgeRejectReason("");
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg font-bold font-poppins text-[#1E293B] mb-2 text-[#EF4444]">
+              Reject Weighbridge Slip
+            </h3>
+            <textarea
+              value={weighbridgeRejectReason}
+              onChange={(e) => setWeighbridgeRejectReason(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg p-3 text-sm mb-4 outline-none focus:border-[#B45A0A]"
+              placeholder="Enter rejection reason..."
+              rows={3}
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowWeighbridgeRejectModal(false);
+                  setWeighbridgeRejectReason("");
+                }}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleWeighbridgeReject}
+                className="px-4 py-2 bg-[#EF4444] hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors"
+              >
+                Submit Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- TOLL RECEIPTS VIEW MODAL --- */}
+      {showTollModal && toll && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl p-6 border border-[#E7EAF0] relative my-8 animate-scale-up">
+            <button
+              onClick={() => setShowTollModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-xl font-bold font-poppins text-[#1E293B] mb-4">Toll Receipts</h3>
+            <div className="space-y-4 text-sm text-[#64748B]">
+              {toll.receipts && toll.receipts.length > 0 ? (
+                toll.receipts.map((receipt, idx) => (
+                  <div key={idx} className="p-3 border border-gray-100 rounded-xl">
+                    <p className="font-bold text-[#1E293B] mb-1">Receipt #{idx + 1}</p>
+                    <p>Amount: ${receipt.amount}</p>
+                    <p>Location: {receipt.location}</p>
+                    <a href={receipt.receiptUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline text-xs mt-1 inline-block">
+                      View Receipt
+                    </a>
+                  </div>
+                ))
+              ) : (
+                <p>No toll receipts details available.</p>
+              )}
+            </div>
+            <div className="flex justify-end pt-4 mt-6 border-t border-[#E7EAF0]">
+              <button
+                onClick={() => setShowTollModal(false)}
+                className="px-4.5 py-2.5 bg-slate-900 hover:bg-black rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- TOLL REJECT REASON MODAL --- */}
+      {showTollRejectModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6 border border-[#E7EAF0] relative animate-scale-up">
+            <button
+              onClick={() => {
+                setShowTollRejectModal(false);
+                setTollRejectReason("");
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg font-bold font-poppins text-[#1E293B] mb-2 text-[#EF4444]">
+              Reject Toll Receipts
+            </h3>
+            <textarea
+              value={tollRejectReason}
+              onChange={(e) => setTollRejectReason(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg p-3 text-sm mb-4 outline-none focus:border-[#B45A0A]"
+              placeholder="Enter rejection reason..."
+              rows={3}
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowTollRejectModal(false);
+                  setTollRejectReason("");
+                }}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTollReject}
+                className="px-4 py-2 bg-[#EF4444] hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors"
+              >
+                Submit Rejection
+              </button>
             {/* Receipt Content */}
             <div className="space-y-5">
               {/* Header */}
