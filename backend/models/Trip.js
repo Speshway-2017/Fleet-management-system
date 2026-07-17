@@ -4,7 +4,7 @@ const tripSchema = new mongoose.Schema(
   {
     tripNumber: { type: String, required: true, unique: true },
     vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
-    driver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver', required: true },
+    driver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver', required: false },
     driverName: { type: String, default: '' },
     driverPhone: { type: String, default: '' },
     vehicleName: { type: String, default: '' },

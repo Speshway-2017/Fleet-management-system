@@ -167,7 +167,7 @@ export default function DriversManagementPage() {
                 <th className="py-4 px-6 whitespace-nowrap">License Details</th>
                 <th className="py-4 px-6 whitespace-nowrap">Assigned Vehicle</th>
                 <th className="py-4 px-6 whitespace-nowrap">Status</th>
-                <th className="py-4 px-6 text-right whitespace-nowrap">Actions</th>
+                <th className="py-4 px-6 text-center whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7EAF0]/60">

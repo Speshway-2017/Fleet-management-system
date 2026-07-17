@@ -22,9 +22,16 @@ import {
   markAllNotificationsRead,
   deleteNotification,
   updateAdminProfile,
+  listBlogsAdmin,
+  createBlogAdmin,
+  updateBlogAdmin,
+  deleteBlogAdmin,
+  getAboutAdmin,
+  updateAboutAdmin,
 } from '../controllers/admin.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
+import memoryUpload from '../middleware/memoryUpload.middleware.js';
 import {
   createOrganizationValidator,
   updateOrganizationValidator,
@@ -47,11 +54,18 @@ const adminAuth = [protect, authorizeRoles('SUPER_ADMIN')];
 // ── Dashboard ──────────────────────────────────────────────────────────────
 router.get('/dashboard', ...adminAuth, getDashboard);
 
+const parseManagers = (req, res, next) => {
+  if (req.body.managers && typeof req.body.managers === 'string') {
+    try { req.body.managers = JSON.parse(req.body.managers); } catch(e) {}
+  }
+  next();
+};
+
 // ── Organizations ──────────────────────────────────────────────────────────
 router.get('/organizations',       ...adminAuth, listOrganizations);
 router.get('/organizations/:id',   ...adminAuth, getOrganizationDetails);
-router.post('/organizations',      ...adminAuth, createOrganizationValidator, createOrganization);
-router.put('/organizations/:id',   ...adminAuth, updateOrganizationValidator, updateOrganization);
+router.post('/organizations',      ...adminAuth, memoryUpload.single('logo'), parseManagers, createOrganizationValidator, createOrganization);
+router.put('/organizations/:id',   ...adminAuth, memoryUpload.single('logo'), updateOrganizationValidator, updateOrganization);
 router.delete('/organizations/:id',...adminAuth, deleteOrganization);
 
 // ── Fleet Managers ─────────────────────────────────────────────────────────
@@ -63,7 +77,13 @@ router.delete('/fleet-managers/:id',   ...adminAuth, deleteManager);
 
 // ── Settings ───────────────────────────────────────────────────────────────
 router.get('/settings',  ...adminAuth, getSettings);
-router.put('/settings',  ...adminAuth, updateSettingsValidator, updateSettings);
+router.put('/settings',  ...adminAuth, memoryUpload.single('logo'), updateSettingsValidator, updateSettings);
+router.get('/blogs',     ...adminAuth, listBlogsAdmin);
+router.post('/blogs',    ...adminAuth, createBlogAdmin);
+router.put('/blogs/:id', ...adminAuth, updateBlogAdmin);
+router.delete('/blogs/:id', ...adminAuth, deleteBlogAdmin);
+router.get('/about',     ...adminAuth, getAboutAdmin);
+router.put('/about',     ...adminAuth, updateAboutAdmin);
 
 // ── Analytics ──────────────────────────────────────────────────────────────
 router.get('/analytics', ...adminAuth, getAnalytics);
@@ -91,7 +111,11 @@ router.delete('/contacts/:id',           ...adminAuth, deleteContactRequest);
 
 // ── Profile ────────────────────────────────────────────────────────────────
 router.get('/profile',  ...adminAuth, getAdminProfile);
-router.put('/profile',  ...adminAuth, updateAdminProfile);
+router.put('/profile',  ...adminAuth, memoryUpload.single('profileImage'), updateAdminProfile);
+
+// ── Milestone Reviews ──────────────────────────────────────────────────────
+router.get('/reviews',  ...adminAuth, getReviews);
+router.patch('/reviews/:id/public', ...adminAuth, toggleReviewPublic);
 
 export default router;
 
@@ -103,6 +127,36 @@ async function getAdminProfile(req, res, next) {
     const user = await User.findById(req.user._id).select('-password');
     if (!user) return sendError(res, 404, 'Admin user not found');
     return sendSuccess(res, 200, user, 'Profile fetched');
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ── inline GET /reviews controller (lightweight) ─────────────────────────
+async function getReviews(req, res, next) {
+  try {
+    const Review = (await import('../models/Review.js')).default;
+    const { sendSuccess } = await import('../utils/response.js');
+    const reviews = await Review.find().sort({ createdAt: -1 });
+    return sendSuccess(res, 200, reviews, 'Reviews fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ── inline PATCH /reviews/:id/public controller (lightweight) ─────────────
+async function toggleReviewPublic(req, res, next) {
+  try {
+    const Review = (await import('../models/Review.js')).default;
+    const { sendSuccess, sendError } = await import('../utils/response.js');
+    const { showPublic } = req.body;
+    const review = await Review.findByIdAndUpdate(
+      req.params.id,
+      { showPublic: !!showPublic },
+      { new: true }
+    );
+    if (!review) return sendError(res, 404, 'Review not found');
+    return sendSuccess(res, 200, review, 'Review visibility updated');
   } catch (error) {
     next(error);
   }

@@ -82,12 +82,13 @@ export default function AddDriverPage() {
     driverStatus: "AVAILABLE",
     experience: "5 Years",
     joiningDate: new Date().toISOString().split("T")[0],
-    medicalFitnessStatus: "Fit",
+    medicalFitnessStatus: "✅ Fit",
     licenseDocument: "",
     employeeId: "",
     dob: "",
     gender: "Male",
     address: "",
+    driverLocation: "",
     licenseIssuingAuthority: "",
   });
 
@@ -107,6 +108,14 @@ export default function AddDriverPage() {
         const res = await driverApi.getById(id);
         const d = res.data?.data;
         if (!d) throw new Error("Not found");
+        const mapStatusToNew = (status) => {
+          if (!status) return "✅ Fit";
+          if (status.includes("Fit") && !status.includes("Unfit")) return "✅ Fit";
+          if (status.includes("Review") || status.includes("Pending")) return "⚠️ Under Medical Review";
+          if (status.includes("Unfit") || status.includes("Overdue")) return "❌ Unfit";
+          return status;
+        };
+
         setFormData({
           fullName: d.fullName || "",
           phoneNumber: d.phoneNumber || "",
@@ -117,12 +126,13 @@ export default function AddDriverPage() {
           driverStatus: d.driverStatus || "AVAILABLE",
           experience: d.experience || "",
           joiningDate: d.joiningDate ? d.joiningDate.split("T")[0] : "",
-          medicalFitnessStatus: d.medicalFitnessStatus || "Fit",
+          medicalFitnessStatus: mapStatusToNew(d.medicalFitnessStatus),
           licenseDocument: d.licenseDocument || "",
           employeeId: d.employeeId || "",
           dob: d.dob ? d.dob.split("T")[0] : "",
           gender: d.gender || "Male",
           address: d.address || "",
+          driverLocation: d.driverLocation || "",
           licenseIssuingAuthority: d.licenseIssuingAuthority || "",
         });
         const pErr = validateField("phoneNumber", d.phoneNumber || "");
@@ -232,7 +242,8 @@ export default function AddDriverPage() {
       !formData.licenseNumber ||
       !formData.dob ||
       !formData.gender ||
-      !formData.address
+      !formData.address ||
+      !formData.driverLocation
     ) {
       toast.error("Please fill in all required fields marked with *");
       return;
@@ -302,7 +313,7 @@ export default function AddDriverPage() {
       </div>
 
       {/* --- FORM CONTAINER --- */}
-      <form onSubmit={handleSubmit} className="max-w-4xl space-y-6">
+      <form onSubmit={handleSubmit} className="w-full space-y-6">
 
         {/* CARD 1: Personal Details */}
         <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4">
@@ -313,16 +324,18 @@ export default function AddDriverPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Employee ID */}
-            <div>
-              <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Employee ID</label>
-              <input
-                type="text"
-                readOnly
-                placeholder="Auto-generated on save"
-                value={formData.employeeId}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm bg-gray-50 text-gray-500 cursor-not-allowed outline-none"
-              />
-            </div>
+            {isEditMode && (
+              <div>
+                <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Employee ID</label>
+                <input
+                  type="text"
+                  readOnly
+                  placeholder="Auto-generated on save"
+                  value={formData.employeeId}
+                  className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm bg-gray-50 text-gray-500 cursor-not-allowed outline-none"
+                />
+              </div>
+            )}
 
             {/* Full Name */}
             <div>
@@ -411,6 +424,19 @@ export default function AddDriverPage() {
                 <option value="ON_TRIP">On Trip</option>
                 <option value="SUSPENDED">Suspended</option>
               </select>
+            </div>
+
+            {/* Current Location */}
+            <div>
+              <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Current Location (City/Branch) *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Pune, Hyderabad, Delhi"
+                value={formData.driverLocation}
+                onChange={(e) => setFormData({ ...formData, driverLocation: e.target.value })}
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+              />
             </div>
 
             {/* Address */}
@@ -651,9 +677,9 @@ export default function AddDriverPage() {
                 onChange={(e) => setFormData({ ...formData, medicalFitnessStatus: e.target.value })}
                 className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
               >
-                <option value="Fit">Fit</option>
-                <option value="Pending">Pending</option>
-                <option value="Overdue">Overdue</option>
+                <option value="✅ Fit">✅ Fit</option>
+                <option value="⚠️ Under Medical Review">⚠️ Under Medical Review</option>
+                <option value="❌ Unfit">❌ Unfit</option>
               </select>
             </div>
           </div>

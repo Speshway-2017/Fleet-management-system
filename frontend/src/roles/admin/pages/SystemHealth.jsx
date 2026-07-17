@@ -9,18 +9,18 @@ import toast from "react-hot-toast";
 // Helper Component for Status Cards
 function StatusCard({ title, value, status, statusColor, icon: Icon, iconColor, iconBg }) {
   return (
-    <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 h-full">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
-        <div className={`w-8 h-8 sm:w-12 sm:h-12 rounded-full ${iconBg} flex items-center justify-center shrink-0`}>
-          <Icon className={`w-4 h-4 sm:w-6 sm:h-6 ${iconColor}`} />
+    <div className="bg-white p-3 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 h-full hover:-translate-y-1 hover:shadow-md transition-all duration-300">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-5">
+        <div className={`w-7 h-7 sm:w-12 sm:h-12 rounded-full ${iconBg} flex items-center justify-center shrink-0`}>
+          <Icon className={`w-3.5 h-3.5 sm:w-6 sm:h-6 ${iconColor}`} />
         </div>
         <div>
-          <h3 className="text-[9px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-0.5 sm:mb-1 truncate">{title}</h3>
-          <div className="text-base sm:text-2xl font-extrabold text-slate-800 truncate">{value}</div>
+          <h3 className="text-[8px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-0.5 sm:mb-1 truncate">{title}</h3>
+          <div className="text-xs sm:text-base font-semibold text-slate-700 truncate">{value}</div>
         </div>
       </div>
       <div className="mt-1 sm:mt-0">
-        <span className={`text-[9px] sm:text-[11px] font-bold px-2 py-1 sm:px-3 sm:py-1.5 rounded-full tracking-wide ${statusColor} inline-block`}>
+        <span className={`text-[8px] sm:text-[11px] font-bold px-1.5 py-0.5 sm:px-3 sm:py-1.5 rounded-full tracking-wide ${statusColor} inline-block`}>
           {status}
         </span>
       </div>

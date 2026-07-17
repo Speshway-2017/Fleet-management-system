@@ -2,6 +2,7 @@ import express from 'express';
 import {
   changePassword,
   getProfile,
+  updateProfile,
   login,
   logout,
   registerAdmin,
@@ -18,16 +19,18 @@ import {
   verifyOtpValidator,
   resetPasswordValidator,
 } from '../middleware/auth.validator.js';
+import { loginRateLimiter, forgotPasswordRateLimiter } from '../middleware/rateLimit.middleware.js';
 
 const router = express.Router();
 
-router.post('/login', loginValidator, login);
+router.post('/login', loginRateLimiter, loginValidator, login);
 router.post('/logout', logout);
 router.get('/profile', protect, getProfile);
+router.put('/profile', protect, updateProfile);
 router.patch('/change-password', protect, changePasswordValidator, changePassword);
 router.post('/register-admin', registerAdminValidator, registerAdmin);
 
-router.post('/forgot-password', forgotPasswordValidator, forgotPassword);
+router.post('/forgot-password', forgotPasswordRateLimiter, forgotPasswordValidator, forgotPassword);
 router.post('/verify-otp', verifyOtpValidator, verifyOtp);
 router.post('/reset-password', resetPasswordValidator, resetPassword);
 

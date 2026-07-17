@@ -42,6 +42,8 @@ export default function EditOrganization() {
   });
   const [errors, setSErrors] = useState({});
   const [saving, setSaving]   = useState(false);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
 
   const org = id ? getOrganization(id) : null;
 
@@ -102,6 +104,16 @@ export default function EditOrganization() {
     setSErrors(prev => ({ ...prev, [name]: "" }));
   };
 
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setLogoPreview(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
@@ -115,7 +127,13 @@ export default function EditOrganization() {
 
     setSaving(true);
     try {
-      await adminApi.updateOrganization(id, form);
+      let payload = form;
+      if (logoFile) {
+        payload = new FormData();
+        Object.entries(form).forEach(([k, v]) => payload.append(k, v));
+        payload.append('logo', logoFile);
+      }
+      await adminApi.updateOrganization(id, payload);
       toast.success("Organization updated successfully!");
       if (fetchOrganizations) await fetchOrganizations();
       navigate("/admin/organizations");
@@ -178,13 +196,17 @@ export default function EditOrganization() {
           <div className="flex flex-col gap-2">
             <label className="text-sm font-bold text-slate-700">Organization Logo</label>
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center">
-                <span className="text-xs font-bold text-slate-400">LOGO</span>
+              <div className="w-16 h-16 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+                {(logoPreview || org?.logoUrl) ? (
+                  <img src={logoPreview || org?.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xs font-bold text-slate-400">LOGO</span>
+                )}
               </div>
               <label className="cursor-pointer px-4 py-2 border border-slate-200 bg-white text-slate-700 text-sm font-semibold rounded-lg shadow-sm hover:bg-slate-50 flex items-center gap-2">
                 <Upload className="w-4 h-4" />
                 Upload Logo
-                <input type="file" accept="image/*" className="hidden" />
+                <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
               </label>
             </div>
           </div>

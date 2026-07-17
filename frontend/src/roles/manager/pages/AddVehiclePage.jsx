@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Upload, Check, X, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { useAuth } from "@/context/AuthContext";
 import { identifyDocumentType } from "../utils/documentParser";
 import { vehicleApi } from "@/api/vehicleApi";
 import { managerApi } from "../api/managerApi";
 
 export default function AddVehiclePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
 
   const [formData, setFormData] = useState({
     // Basic Information
@@ -30,20 +33,50 @@ export default function AddVehiclePage() {
     transmissionType: "Manual",
     seatingCapacity: "2",
     engineCC: "",
+    fuelCapacity: "",
+    loadCapacity: "",
     
     // Insurance & Compliance (extracted from documents)
     insuranceExpiry: "",
+    rcExpiry: "",
+    pollutionExpiry: "",
+    permitExpiry: "",
+    fitnessExpiry: "",
     lastService: "",
     nextService: "",
     ownership: "Owned",
     availability: "Immediate",
     fastagBalance: "",
+    assignedDriver: "Unassigned",
     
     // Document Upload
     uploadedDocuments: []
   });
 
-  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [vehicleDocs, setVehicleDocs] = useState({
+    rc: null,
+    insurance: null,
+    puc: null,
+    fitness: null,
+    permit: null,
+    roadTax: null
+  });
+  const [uploadingDocs, setUploadingDocs] = useState({
+    rc: false,
+    insurance: false,
+    puc: false,
+    fitness: false,
+    permit: false,
+    roadTax: false
+  });
+  const [docErrors, setDocErrors] = useState({
+    rc: "",
+    insurance: "",
+    puc: "",
+    fitness: "",
+    permit: "",
+    roadTax: ""
+  });
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleInputChange = (e) => {
@@ -54,54 +87,58 @@ export default function AddVehiclePage() {
     }));
   };
 
-  const handleFileUpload = (e) => {
-    const files = e.target.files;
-    if (!files) return;
+  const handleSingleFileUpload = async (key, file) => {
+    if (!file) return;
 
-    const newFiles = [];
-    let validFileCount = 0;
+    setDocErrors(prev => ({ ...prev, [key]: "" }));
 
-    for (let file of files) {
-      // Validate file type
-      const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
-      if (!allowedTypes.includes(file.type)) {
-        toast.error(`Invalid format: ${file.name}. Only PDF, JPG, PNG allowed.`);
-        continue;
-      }
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
+    if (!allowedTypes.includes(file.type)) {
+      const errMsg = "Only PDF, JPG, PNG allowed.";
+      setDocErrors(prev => ({ ...prev, [key]: errMsg }));
+      toast.error(`Invalid format: ${file.name}. Only PDF, JPG, PNG allowed.`);
+      return;
+    }
 
-      // Validate file size
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`File too large: ${file.name}. Max 5MB allowed.`);
-        continue;
-      }
+    if (file.size > 5 * 1024 * 1024) {
+      const errMsg = "Max size is 5MB.";
+      setDocErrors(prev => ({ ...prev, [key]: errMsg }));
+      toast.error(`File too large: ${file.name}. Max 5MB allowed.`);
+      return;
+    }
 
-      validFileCount++;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const newFile = {
-          id: Math.random(),
-          name: file.name,
-          type: file.type,
-          size: (file.size / 1024).toFixed(2),
-          data: e.target.result,
-          originalFile: file
-        };
-        
-        setUploadedFiles((prev) => {
-          const updated = [...prev, newFile];
-          if (updated.length === validFileCount + (uploadedFiles.length || 0)) {
-            toast.success(`${file.name} uploaded successfully!`);
-          }
-          return updated;
-        });
-      };
-      reader.readAsDataURL(file);
-      newFiles.push(file);
+    setUploadingDocs(prev => ({ ...prev, [key]: true }));
+    try {
+      const response = await vehicleApi.uploadDocument(file);
+      const data = response.data?.data || response.data;
+      
+      setVehicleDocs(prev => ({
+        ...prev,
+        [key]: {
+          fileUrl: data.url,
+          originalName: data.originalName,
+          uploadDate: new Date(),
+          fileSize: file.size,
+          mimeType: file.type
+        }
+      }));
+      toast.success(`${file.name} uploaded successfully!`);
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.message || "Upload failed.";
+      setDocErrors(prev => ({ ...prev, [key]: errMsg }));
+      toast.error(errMsg);
+    } finally {
+      setUploadingDocs(prev => ({ ...prev, [key]: false }));
     }
   };
 
-  const removeFile = (fileId) => {
-    setUploadedFiles((prev) => prev.filter((file) => file.id !== fileId));
+  const handleRemoveFile = (key) => {
+    setVehicleDocs(prev => ({
+      ...prev,
+      [key]: null
+    }));
+    setDocErrors(prev => ({ ...prev, [key]: "" }));
   };
 
   const handleSaveVehicle = async (e) => {
@@ -114,45 +151,39 @@ export default function AddVehiclePage() {
 
     setIsProcessing(true);
     try {
-      // Map uploaded files to documents schema
-      const documents = uploadedFiles.map(file => {
-        const category = identifyDocumentType(file.name) || "Other";
-        return {
-          id: Math.random().toString(36).substring(2, 11),
-          name: file.name,
-          category: category,
-          documentNumber: "",
-          issueDate: new Date(),
-          uploadDate: new Date().toISOString().split('T')[0],
-          uploadedBy: "Manager",
-          status: "Valid",
-          fileData: file.data,
-          fileName: file.name,
-          fileSize: file.size,
-          fileType: file.type
-        };
-      });
-
       // Map frontend field names to backend field names matching the new MongoDB Vehicle schema
       const payload = {
         vehicleName:        `${formData.manufacturer} ${formData.model}`,
         vehicleNumber:      formData.plateNumber.toUpperCase(),
         registrationNumber: formData.registrationNumber,
-        vehicleType:        formData.vehicleType,
+        vehicleType:        formData.vehicleType || "Truck",
         brand:              formData.manufacturer,
         model:              formData.model,
         manufactureYear:    formData.year ? Number(formData.year) : undefined,
         currentStatus:      formData.availability === "Immediate" ? "Available" : "Inactive",
         fuelType:           formData.fuelType,
-        fuelCapacity:       0,
+        fuelCapacity:       formData.fuelCapacity ? Number(formData.fuelCapacity) : 0,
         fastagBalance:      formData.fastagBalance ? Number(formData.fastagBalance) : 0,
         insuranceExpiry:    formData.insuranceExpiry || undefined,
-        rcExpiry:           undefined,
-        pollutionExpiry:    undefined,
-        permitExpiry:       undefined,
+        rcExpiry:           formData.rcExpiry || undefined,
+        pollutionExpiry:    formData.pollutionExpiry || undefined,
+        permitExpiry:       formData.permitExpiry || undefined,
+        fitnessExpiry:      formData.fitnessExpiry || undefined,
         odometer:           0,
-        documents:          documents,
+        documents:          vehicleDocs,
         chassisNumber:      formData.chassisNumber,
+        engineCC:           formData.engineCC,
+        lastService:        formData.lastService || undefined,
+        nextService:        formData.nextService || undefined,
+        transmissionType:   formData.transmissionType || "Manual",
+        seatingCapacity:    formData.seatingCapacity || "2",
+        registrationState:  formData.registrationState,
+        registrationType:   formData.registrationType || "New",
+        availability:       formData.availability || "Immediate",
+        ownershipType:      formData.ownership || "Owned",
+        branch:             formData.branch,
+        loadCapacity:       formData.loadCapacity ? Number(formData.loadCapacity) : 0,
+        assignedDriver:     formData.assignedDriver === "Unassigned" ? undefined : formData.assignedDriver,
       };
 
       await vehicleApi.create(payload);
@@ -193,7 +224,7 @@ export default function AddVehiclePage() {
       </div>
 
           {/* Main Form Container */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-8 max-w-4xl">
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-8 max-w-7xl">
             <form onSubmit={handleSaveVehicle} className="space-y-8">
               {/* SECTION 1: Basic Information */}
               <div>
@@ -357,7 +388,7 @@ export default function AddVehiclePage() {
                 </div>
                 <p className="text-xs text-[#64748B] mb-4">Vehicle technical details</p>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Fuel Type</label>
                     <select
@@ -399,6 +430,9 @@ export default function AddVehiclePage() {
                       <option value="5">5+</option>
                     </select>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Engine (CC)</label>
                     <input
@@ -406,6 +440,29 @@ export default function AddVehiclePage() {
                       name="engineCC"
                       placeholder="e.g. 2500"
                       value={formData.engineCC}
+                      onChange={handleInputChange}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Fuel Capacity (L)</label>
+                    <input
+                      type="number"
+                      name="fuelCapacity"
+                      placeholder="e.g. 200"
+                      value={formData.fuelCapacity}
+                      onChange={handleInputChange}
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Load Cap. (Tons)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      name="loadCapacity"
+                      placeholder="e.g. 15.5"
+                      value={formData.loadCapacity}
                       onChange={handleInputChange}
                       className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
                     />
@@ -492,7 +549,11 @@ export default function AddVehiclePage() {
                     />
                   </div>
                 </div>
+
+
               </div>
+
+
 
               {/* SECTION 4: Document Upload */}
               <div className="border-t border-[#E7EAF0] pt-8">
@@ -500,60 +561,104 @@ export default function AddVehiclePage() {
                   <div className="w-6 h-6 bg-[#FDF3EC] border border-[#B45A0A] rounded flex items-center justify-center text-xs font-bold text-[#B45A0A]">4</div>
                   <h2 className="text-lg font-bold text-[#1E293B]">Document Upload</h2>
                 </div>
-                <p className="text-xs text-[#64748B] mb-4">Upload insurance, RC, and other vehicle documents</p>
+                <p className="text-xs text-[#64748B] mb-6">Manage all six required vehicle documents.</p>
 
-                {/* Upload Area */}
-                <label className="block border-2 border-dashed border-[#B45A0A] rounded-xl p-8 cursor-pointer hover:bg-[#FDF3EC] transition-colors group bg-white mb-4">
-                  <input
-                    type="file"
-                    multiple
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                  <div className="flex flex-col items-center justify-center text-center gap-3">
-                    <div className="bg-[#FDF3EC] p-4 rounded-xl group-hover:scale-110 transition-transform">
-                      <Upload className="w-8 h-8 text-[#B45A0A]" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-[#1E293B]">Upload Vehicle Documents</p>
-                      <p className="text-xs text-[#64748B] mt-1">Click to browse or drag & drop files</p>
-                      <p className="text-[10px] text-[#94A3B8] mt-2">PDF, JPG, PNG (Max 5MB each) - Insurance, RC, PUC, etc.</p>
-                    </div>
-                  </div>
-                </label>
+                {/* 6-Card Responsive Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {(() => {
+                    const docLabels = {
+                      rc: "RC (Registration Certificate)",
+                      insurance: "Insurance Certificate",
+                      puc: "Pollution Under Control (PUC)",
+                      fitness: "Fitness Certificate",
+                      permit: "Permit Document",
+                      roadTax: "Road Tax Receipt"
+                    };
 
-                {/* Uploaded Files List */}
-                {uploadedFiles.length > 0 && (
-                  <div className="space-y-4 mb-6">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Uploaded Files ({uploadedFiles.length})</p>
-                    </div>
+                    return Object.keys(docLabels).map((key) => {
+                      const doc = vehicleDocs[key];
+                      const isUploading = uploadingDocs[key];
+                      const error = docErrors[key];
+                      const label = docLabels[key];
 
-                    <div className="space-y-2">
-                      {uploadedFiles.map((file) => (
-                        <div key={file.id} className="flex items-center justify-between p-3 bg-[#F5F7FB] border border-[#E7EAF0] rounded-xl group hover:bg-gray-50">
-                          <div className="flex items-center gap-3 flex-1">
-                            <FileText className="w-5 h-5 text-[#B45A0A] flex-shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs font-bold text-[#1E293B] truncate">{file.name}</p>
-                              <p className="text-[10px] text-[#64748B]">{file.size} KB</p>
+                      return (
+                        <div key={key} className="bg-gray-50/50 border border-[#E7EAF0] rounded-2xl p-4 flex flex-col justify-between h-[135px] hover:border-[#B45A0A]/40 transition-colors">
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-[#1E293B] font-poppins">{label}</span>
+                              {doc && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 font-poppins bg-green-50 px-2 py-0.5 rounded-full">
+                                  <Check className="w-3 h-3" /> Uploaded
+                                </span>
+                              )}
                             </div>
+
+                            {error && (
+                              <p className="text-[10px] text-red-600 font-medium font-poppins mt-1">
+                                {error}
+                              </p>
+                            )}
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => removeFile(file.id)}
-                            className="ml-2 p-1.5 hover:bg-[#E7EAF0] rounded-lg transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
-                          >
-                            <X className="w-4 h-4 text-[#64748B]" />
-                          </button>
+
+                          <div className="flex-1 flex flex-col justify-center">
+                            {isUploading ? (
+                              <div className="flex flex-col items-center justify-center gap-1">
+                                <div className="w-5 h-5 border-2 border-[#B45A0A] border-t-transparent rounded-full animate-spin" />
+                                <span className="text-[10px] text-gray-500 font-medium">Uploading...</span>
+                              </div>
+                            ) : doc ? (
+                              <div className="bg-white border border-[#E7EAF0] rounded-xl p-2.5 flex items-center justify-between">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <FileText className="w-4 h-4 text-[#B45A0A] shrink-0" />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-semibold text-gray-700 truncate">{doc.originalName}</p>
+                                    <p className="text-[9px] text-gray-400">{(doc.fileSize / 1024).toFixed(1)} KB</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => window.open(doc.fileUrl, '_blank')}
+                                    className="p-1 hover:bg-[#F5F7FB] rounded text-[11px] font-bold text-[#B45A0A] cursor-pointer"
+                                  >
+                                    Preview
+                                  </button>
+                                  <label className="p-1 hover:bg-[#F5F7FB] rounded text-[11px] font-bold text-gray-600 cursor-pointer">
+                                    Replace
+                                    <input
+                                      type="file"
+                                      accept=".pdf,.jpg,.jpeg,.png"
+                                      onChange={(e) => handleSingleFileUpload(key, e.target.files[0])}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveFile(key)}
+                                    className="p-1 hover:bg-red-50 rounded text-[11px] font-bold text-red-600 cursor-pointer"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <label className="border border-dashed border-gray-300 hover:border-[#B45A0A] hover:bg-[#FDF3EC]/30 rounded-xl p-2 flex items-center justify-center gap-2 cursor-pointer transition-colors h-[50px]">
+                                <input
+                                  type="file"
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  onChange={(e) => handleSingleFileUpload(key, e.target.files[0])}
+                                  className="hidden"
+                                />
+                                <Upload className="w-4 h-4 text-gray-400" />
+                                <span className="text-xs font-bold text-[#1E293B]">Upload document (PDF, Image)</span>
+                              </label>
+                            )}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-
-
-                  </div>
-                )}
+                      );
+                    });
+                  })()}
+                </div>
               </div>
 
               {/* Form Actions */}
@@ -568,8 +673,9 @@ export default function AddVehiclePage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isProcessing}
-                  className="px-8 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                  disabled={isProcessing || isViewOnly}
+                  title={isViewOnly ? "This feature is available after activating a subscription." : "Save Vehicle"}
+                  className={`px-8 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer disabled:opacity-50 flex items-center gap-2 ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   {isProcessing ? (
                     <>

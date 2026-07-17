@@ -10,18 +10,20 @@ import {
   Settings,
   LogOut,
   MoreHorizontal,
-  MessageSquare
+  MessageSquare,
+  CreditCard,
+  ClipboardList
 } from "lucide-react";
 
 export default function NewAdminSidebar({ activeItem = "dashboard" }) {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const { isSidebarOpen, setIsSidebarOpen } = useAdmin();
+  const { isSidebarOpen, setIsSidebarOpen, platformSettings } = useAdmin();
   
   const navItems = [
     { id: "dashboard", label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
     { id: "organizations", label: "Organizations", to: "/admin/organizations", icon: Building2 },
-    { id: "fleet-managers", label: "Fleet Managers", to: "/admin/fleet-managers", icon: Users },
+    { id: "subscription-requests", label: "Subscriptions", to: "/admin/subscription-requests", icon: CreditCard },
     { id: "contact-requests", label: "Contact Requests", to: "/admin/contact-requests", icon: MessageSquare },
     { id: "analytics", label: "Analytics", to: "/admin/analytics", icon: BarChart3 },
     { id: "settings", label: "Settings", to: "/admin/settings", icon: Settings },
@@ -30,8 +32,7 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
   const bottomNavItems = [
     { id: "dashboard", label: "Home", to: "/admin/dashboard", icon: LayoutDashboard },
     { id: "organizations", label: "Orgs", to: "/admin/organizations", icon: Building2 },
-    { id: "fleet-managers", label: "Managers", to: "/admin/fleet-managers", icon: Users },
-    { id: "analytics", label: "Insights", to: "/admin/analytics", icon: BarChart3 },
+    { id: "subscription-requests", label: "Requests", to: "/admin/subscription-requests", icon: CreditCard },
     { id: "settings", label: "More", to: "/admin/settings", icon: MoreHorizontal },
   ];
 
@@ -52,8 +53,8 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
       {/* Logo Area */}
       <div className="p-6 pb-4 border-b border-[#2a3241]/50">
         <div className="flex items-center gap-3 mb-1">
-          <img src="/logo.png" alt="Logo" className="w-9 h-9 rounded-full bg-white p-1" />
-          <span className="font-bold text-white text-lg tracking-tight">Fleet Management</span>
+          <img src={platformSettings?.logoUrl || "/logo.png"} alt="Logo" className="w-9 h-9 rounded-full bg-white p-1" />
+          <span className="font-bold text-white text-lg tracking-tight">{platformSettings?.platformName || "Fleet Management"}</span>
         </div>
         <div className="text-[11px] text-slate-400 pl-12 font-medium">Super Admin</div>
       </div>

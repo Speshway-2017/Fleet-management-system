@@ -26,11 +26,14 @@ import {
 import { changeUserPassword } from '../services/auth.service.js';
 import { hashPassword } from '../utils/hashPassword.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { uploadImageToCloudinary } from '../utils/cloudinary.js';
 import sendEmail from '../utils/email.js';
 import User from '../models/User.js';
 import Organization from '../models/Organization.js';
 import PlatformIssue from '../models/PlatformIssue.js';
 import Notification from '../models/Notification.js';
+import Blog from '../models/Blog.js';
+import About from '../models/About.js';
 
 // Dashboard
 export const getDashboard = async (_req, res, next) => {
@@ -56,6 +59,7 @@ export const listOrganizations = async (_req, res, next) => {
       return {
         id: org._id.toString(),
         name: org.name,
+        logoUrl: org.logoUrl,
         email: org.email,
         phone: org.phone,
         industry: org.industry,
@@ -120,6 +124,7 @@ export const getOrganizationDetails = async (req, res, next) => {
         id: manager._id.toString(),
         name: manager.name,
         email: manager.email,
+        phone: manager.phone,
         status: manager.status || (manager.isActive ? 'Active' : 'Inactive'),
         initials: initials.toUpperCase(),
         stats: {
@@ -135,6 +140,7 @@ export const getOrganizationDetails = async (req, res, next) => {
     const formattedOrg = {
       id: org._id.toString(),
       name: org.name,
+      logoUrl: org.logoUrl,
       email: org.email,
       phone: org.phone,
       industry: org.industry,
@@ -166,7 +172,7 @@ export const getOrganizationDetails = async (req, res, next) => {
 
 export const createOrganization = async (req, res, next) => {
   try {
-    const { name, industry, email, phone, address, city, state, country, plan, status } = req.body;
+    const { name, industry, email, phone, address, city, state, country, plan, status, managers } = req.body;
 
     console.log('[DEBUG createOrganization] req.body:', req.body);
 
@@ -174,21 +180,88 @@ export const createOrganization = async (req, res, next) => {
       return sendError(res, 400, 'Name, industry, and email are required');
     }
 
-    const org = await createOrgInRepo({ name, industry, email, phone, address, city, state, country, plan, status: status || 'Pending' });
+    // 1. Upload Logo if provided
+    let logoUrl = '';
+    if (req.file) {
+      const uploadResult = await uploadImageToCloudinary(req.file.buffer, 'fleet_management/organizations');
+      logoUrl = uploadResult.secure_url;
+    }
 
-    // Store Admin Notification in MongoDB
+    // 2. Create Organization
+    const org = await createOrgInRepo({ name, industry, email, phone, address, city, state, country, plan, status: status || 'Pending', logoUrl });
+
+    let createdManagerIds = [];
+    let createdManagersList = [];
+
+    // 2. Create Fleet Managers if provided
+    if (managers && Array.isArray(managers) && managers.length > 0) {
+      for (const manager of managers) {
+        if (manager.name && manager.email && manager.password) {
+          try {
+            const hashedPassword = await hashPassword(manager.password);
+            const createdManager = await createManagerInRepo({
+              name: manager.name,
+              email: manager.email,
+              password: hashedPassword,
+              phone: manager.phone,
+              organization: org._id,
+              role: "FLEET_MANAGER",
+              status: "Active",
+              isActive: true,
+              subscriptionStatus: 'INACTIVE',
+              subscriptionPlan: null,
+              subscriptionExpiry: null,
+              subscriptionRequestedPlan: null
+            });
+            createdManagerIds.push(createdManager._id);
+            createdManagersList.push(createdManager);
+
+            // Try sending an email to the newly created manager
+            try {
+              await sendEmail({
+                email: createdManager.email,
+                subject: "Fleet Management - Account Created",
+                message: `Hello ${createdManager.name},\n\nYour Fleet Management account has been created successfully.\n\nLogin Credentials:\nEmail: ${createdManager.email}\nPassword: ${manager.password}\n\nPlease login and change your password after your first login.\n\nRegards,\nFleet Management Team`,
+              });
+            } catch (mailError) {
+              console.error('[WARNING] Failed to send welcome email:', mailError);
+            }
+          } catch (managerError) {
+            // Rollback organization and successfully created managers
+            for (const id of createdManagerIds) {
+              await deleteManagerById(id);
+            }
+            await deleteOrganizationById(org._id);
+            
+            if (managerError.code === 11000) {
+              return sendError(res, 400, `A user with the email '${manager.email}' already exists. Transaction rolled back.`);
+            }
+            throw managerError;
+          }
+        }
+      }
+    }
+
+    // 3. Store Admin Notification in MongoDB
     const notification = await createNotificationInRepo({
       title: 'Organization Registered',
       message: `Organization "${org.name}" has been onboarded successfully under "${org.plan || 'Standard'}" plan.`,
       type: 'success',
       recipientRole: 'SUPER_ADMIN',
-      createdBy: req.user?._id
+      createdBy: req.user?._id,
+      organization: org._id
     });
-    if (req.io) {
-      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
-    return sendSuccess(res, 201, org, 'Organization created');
+    const responseData = { ...org.toObject() };
+    if (createdManagersList.length > 0) {
+      responseData.fleetManagersCount = createdManagersList.length;
+    }
+
+    return sendSuccess(res, 201, responseData, 'Organization created');
   } catch (error) {
     console.error('[ERROR createOrganization] Failed with error:', error);
     if (error.name === 'ValidationError') {
@@ -211,7 +284,12 @@ export const updateOrganization = async (req, res, next) => {
     const oldOrg = await getOrganizationById(id);
     if (!oldOrg) return sendError(res, 404, 'Organization not found');
 
-    const updatedOrg = await updateOrganizationById(id, req.body);
+    let updateData = { ...req.body };
+    if (req.file) {
+      const uploadResult = await uploadImageToCloudinary(req.file.buffer, 'fleet_management/organizations');
+      updateData.logoUrl = uploadResult.secure_url;
+    }
+    const updatedOrg = await updateOrganizationById(id, updateData);
     
     // Check status activation/deactivation
     let statusMsg = '';
@@ -234,10 +312,12 @@ export const updateOrganization = async (req, res, next) => {
       message: `Organization "${updatedOrg.name}" details have been updated${statusMsg}.`,
       type: notificationType,
       recipientRole: 'SUPER_ADMIN',
-      createdBy: req.user?._id
+      createdBy: req.user?._id,
+      organization: updatedOrg._id
     });
-    if (req.io) {
-      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 200, updatedOrg, 'Organization updated successfully');
@@ -270,8 +350,9 @@ export const deleteOrganization = async (req, res, next) => {
       recipientRole: 'SUPER_ADMIN',
       createdBy: req.user?._id
     });
-    if (req.io) {
-      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 200, null, 'Organization deleted successfully');
@@ -336,7 +417,11 @@ export const createManager = async (req, res, next) => {
       organization,
       role: "FLEET_MANAGER",
       status: "Active",
-      isActive: true
+      isActive: true,
+      subscriptionStatus: 'INACTIVE',
+      subscriptionPlan: null,
+      subscriptionExpiry: null,
+      subscriptionRequestedPlan: null
     });
 
     // Resolve Org Name for Notification
@@ -352,29 +437,35 @@ export const createManager = async (req, res, next) => {
       message: `Fleet Manager "${manager.name}" has been created and assigned to "${orgName}".`,
       type: 'success',
       recipientRole: 'SUPER_ADMIN',
-      createdBy: req.user?._id
+      createdBy: req.user?._id,
+      organization: manager.organization
     });
-    if (req.io) {
-      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     // Send account email
-    await sendEmail({
-      email: manager.email,
-      subject: "Fleet Management - Account Created",
-      message: `Hello ${manager.name},
+    try {
+      await sendEmail({
+        email: manager.email,
+        subject: "Fleet Management - Account Created",
+        message: `Hello ${manager.name},
 
-Your Fleet Management account has been created successfully.
+  Your Fleet Management account has been created successfully.
 
-Login Credentials:
-Email: ${manager.email}
-Password: ${password}
+  Login Credentials:
+  Email: ${manager.email}
+  Password: ${password}
 
-Please login and change your password after your first login.
+  Please login and change your password after your first login.
 
-Regards,
-Fleet Management Team`,
-    });
+  Regards,
+  Fleet Management Team`,
+      });
+    } catch (mailError) {
+      console.error('[WARNING] Failed to send welcome email:', mailError);
+    }
 
     return sendSuccess(
       res,
@@ -446,10 +537,12 @@ export const updateManager = async (req, res, next) => {
       message: `Fleet Manager "${updatedManager.name}" details have been updated${statusMsg}.`,
       type: notificationType,
       recipientRole: 'SUPER_ADMIN',
-      createdBy: req.user?._id
+      createdBy: req.user?._id,
+      organization: updatedManager.organization
     });
-    if (req.io) {
-      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 200, updatedManager, 'Fleet manager updated successfully');
@@ -482,8 +575,9 @@ export const deleteManager = async (req, res, next) => {
       recipientRole: 'SUPER_ADMIN',
       createdBy: req.user?._id
     });
-    if (req.io) {
-      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 200, null, 'Fleet manager deleted successfully');
@@ -568,7 +662,14 @@ export const getSettings = async (_req, res, next) => {
 
 export const updateSettings = async (req, res, next) => {
   try {
-    const settings = await updateSettingsData(req.body);
+    const updateData = { ...req.body };
+
+    if (req.file) {
+      const uploadResult = await uploadImageToCloudinary(req.file.buffer, 'fleet_management/settings');
+      updateData.logoUrl = uploadResult.secure_url;
+    }
+
+    const settings = await updateSettingsData(updateData);
     
     await createNotificationInRepo({
       title: 'Settings Updated',
@@ -607,8 +708,9 @@ export const createIssue = async (req, res, next) => {
       recipientRole: 'SUPER_ADMIN',
       createdBy: req.user._id
     });
-    if (req.io) {
-      req.io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
     return sendSuccess(res, 201, issue, 'Platform issue raised successfully');
@@ -835,15 +937,21 @@ export const deleteNotification = async (req, res, next) => {
 // Profile Update
 export const updateAdminProfile = async (req, res, next) => {
   try {
-    const { firstName, lastName, email, phone, currentPassword, newPassword } = req.body;
+    const { name, email, phone, currentPassword, newPassword } = req.body;
     const user = await User.findById(req.user._id);
     if (!user) return sendError(res, 404, 'Admin user not found');
 
-    if (firstName || lastName) {
-      user.name = `${firstName || ''} ${lastName || ''}`.trim();
+    if (name) {
+      user.name = name;
     }
     if (email) user.email = email;
     if (phone !== undefined) user.phone = phone;
+
+    // Handle Profile Image Upload
+    if (req.file) {
+      const uploadResult = await uploadImageToCloudinary(req.file.buffer, 'fleet_management/profiles');
+      user.profileImage = uploadResult.secure_url;
+    }
 
     if (currentPassword && newPassword) {
       await changeUserPassword(user.email, currentPassword, newPassword);
@@ -862,6 +970,81 @@ export const updateAdminProfile = async (req, res, next) => {
     if (error.code === 11000) {
       return sendError(res, 409, 'Email address is already in use');
     }
+    next(error);
+  }
+};
+
+// Blog Management
+export const listBlogsAdmin = async (req, res, next) => {
+  try {
+    const blogs = await Blog.find().sort({ createdAt: -1 });
+    return sendSuccess(res, 200, blogs, 'Blogs fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createBlogAdmin = async (req, res, next) => {
+  try {
+    const { title, category, summary, content, image, date, readTime } = req.body;
+    if (!title || !category || !summary || !content || !image || !date || !readTime) {
+      return sendError(res, 400, 'All fields are required');
+    }
+    const blog = new Blog({ title, category, summary, content, image, date, readTime });
+    await blog.save();
+    return sendSuccess(res, 201, blog, 'Blog created successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateBlogAdmin = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const blog = await Blog.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+    if (!blog) return sendError(res, 404, 'Blog not found');
+    return sendSuccess(res, 200, blog, 'Blog updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteBlogAdmin = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const blog = await Blog.findByIdAndDelete(id);
+    if (!blog) return sendError(res, 404, 'Blog not found');
+    return sendSuccess(res, 200, null, 'Blog deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// About Management
+export const getAboutAdmin = async (req, res, next) => {
+  try {
+    let about = await About.findOne();
+    if (!about) {
+      about = new About({ storyContent: [], missionContent: [], timeline: [] });
+      await about.save();
+    }
+    return sendSuccess(res, 200, about, 'About content fetched');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateAboutAdmin = async (req, res, next) => {
+  try {
+    let about = await About.findOne();
+    if (!about) {
+      about = new About(req.body);
+    } else {
+      Object.assign(about, req.body);
+    }
+    await about.save();
+    return sendSuccess(res, 200, about, 'About content updated successfully');
+  } catch (error) {
     next(error);
   }
 };

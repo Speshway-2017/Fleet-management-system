@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Upload } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
+import { useAdmin } from "@/roles/admin/context/AdminContext";
+import { useSettings } from "@/context/SettingsContext";
 
 import toast from "react-hot-toast";
 import { adminApi } from "@/api/adminApi";
@@ -17,13 +19,16 @@ export default function Settings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  const { fetchPlatformSettings: fetchAdminPlatformSettings } = useAdmin();
+  const { fetchPlatformSettings: fetchGlobalPlatformSettings } = useSettings();
+
   const loadSettings = async () => {
     try {
       const response = await adminApi.getSettings();
       const settings = response.data?.data || response.data;
       if (settings) {
         setPlatformName(settings.platformName || "FleetCommand");
-        setTimezone(settings.timezone || "UTC");
+        setTimezone(settings.timezone || "IFD");
         setLanguage(settings.language || "English");
         setLogoUrl(settings.logoUrl || "/logo.png");
       }
@@ -62,6 +67,8 @@ export default function Settings() {
       }
       toast.success("Settings saved successfully!");
       await loadSettings();
+      await fetchAdminPlatformSettings();
+      await fetchGlobalPlatformSettings();
     } catch (error) {
       toast.error("Failed to save settings");
     } finally {
@@ -80,19 +87,27 @@ export default function Settings() {
           
           {/* Header Area with Tabs and Button */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-            {/* Tabs */}
-            <div className="flex sm:inline-flex w-full sm:w-auto items-center p-1 bg-white border border-slate-200 rounded-full shadow-sm">
-              <Link to="/admin/settings" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 bg-[#0f172a] text-white text-[10px] sm:text-sm font-bold rounded-full shadow-sm transition-colors truncate">
+            <div className="flex sm:inline-flex w-full sm:w-auto items-center p-1 bg-white border border-slate-200 rounded-full shadow-sm overflow-x-auto whitespace-nowrap">
+              <Link to="/admin/settings" className="px-5 py-2 bg-[#0f172a] text-white text-xs font-bold rounded-full shadow-sm transition-colors">
                 General
               </Link>
-              <Link to="/admin/settings/security" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
+              <Link to="/admin/settings/security" className="px-5 py-2 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-full transition-colors">
                 Security
               </Link>
-              <Link to="/admin/settings/notifications" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
+              <Link to="/admin/settings/notifications" className="px-5 py-2 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-full transition-colors">
                 Notifications
               </Link>
-              <Link to="/admin/settings/profile" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-slate-600 hover:text-slate-900 text-[10px] sm:text-sm font-bold rounded-full transition-colors truncate">
+              <Link to="/admin/settings/profile" className="px-5 py-2 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-full transition-colors">
                 Profile
+              </Link>
+              <Link to="/admin/settings/reviews" className="px-5 py-2 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-full transition-colors">
+                Reviews
+              </Link>
+              <Link to="/admin/settings/blogs" className="px-5 py-2 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-full transition-colors">
+                Blogs
+              </Link>
+              <Link to="/admin/settings/about" className="px-5 py-2 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-full transition-colors">
+                About
               </Link>
             </div>
 

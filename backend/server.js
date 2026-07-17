@@ -12,6 +12,7 @@ dotenv.config({ path: path.join(__dirname, '.env') }); // must be first — load
 import { validateEnv } from './config/env.validate.js';
 import app from './app.js';
 import { connectDB } from './config/db.config.js';
+import { seedPlans } from './utils/seedPlans.js';
 import cloudinary from './config/cloudinary.config.js';
 import http from 'http';
 import { Server } from 'socket.io';
@@ -24,6 +25,7 @@ const PORT = process.env.PORT || 5002;
 const startServer = async () => {
   // 2. Connect to MongoDB Atlas
   await connectDB();
+  await seedPlans();
 
   // 3. Verify Cloudinary config loaded correctly
   const { cloud_name } = cloudinary.config();
@@ -87,34 +89,27 @@ const startServer = async () => {
 
   // Socket.IO connection handler
   io.on('connection', (socket) => {
-    console.log(`✅ Socket connected: ${socket.id}`);
-
     // Join admin-specific room
     socket.on('joinAdminRoom', (adminId) => {
       socket.join(`admin:${adminId}`);
-      console.log(`📡 Admin ${adminId} joined room`);
     });
 
     // Join manager-specific room
     socket.on('joinManagerRoom', (managerId) => {
       socket.join(`manager:${managerId}`);
-      console.log(`📡 Manager ${managerId} joined room`);
     });
 
     // Join organization-specific room
     socket.on('joinOrganizationRoom', (organizationId) => {
       socket.join(`organization:${organizationId}`);
-      console.log(`📡 Organization ${organizationId} joined room`);
     });
 
     // Join role room (for SUPER_ADMIN or FLEET_MANAGER)
     socket.on('joinRoleRoom', (role) => {
       socket.join(`role:${role}`);
-      console.log(`📡 Joined role room: ${role}`);
     });
 
     socket.on('disconnect', () => {
-      console.log(`❌ Socket disconnected: ${socket.id}`);
     });
   });
 

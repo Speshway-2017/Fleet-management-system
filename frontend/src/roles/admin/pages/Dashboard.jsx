@@ -11,7 +11,8 @@ import {
   Plus,
   TrendingUp,
   Users,
-  BarChart3
+  BarChart3,
+  CreditCard
 } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
@@ -62,7 +63,9 @@ function Dashboard() {
           setData(result);
         }
       } catch (error) {
-        toast.error("Failed to fetch dashboard data");
+        if (error?.response?.status !== 401) {
+          toast.error("Failed to fetch dashboard data");
+        }
         console.error(error);
       } finally {
         setLoading(false);
@@ -91,8 +94,13 @@ function Dashboard() {
   ];
 
   // Transform data for bar chart
+  const activeManagers = statistics.activeFleetManagers || 0;
+  const totalManagers = statistics.fleetManagers || 0;
+  const inactiveManagers = Math.max(0, totalManagers - activeManagers);
+
   const fleetManagerData = [
-    { name: "Total", value: statistics.fleetManagers, fill: "#3b82f6" },
+    { name: "Active", value: activeManagers, fill: "#22c55e" },
+    { name: "Inactive", value: inactiveManagers, fill: "#ef4444" },
   ];
 
   // Helper to format time for recent activities
@@ -192,7 +200,7 @@ function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
             
             {/* Revenue Trend */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
               <div className="flex items-start justify-between mb-6">
                 <h3 className="font-bold text-slate-800 text-sm">Revenue Trend</h3>
                 <div className="text-right">
@@ -214,7 +222,7 @@ function Dashboard() {
             </div>
 
             {/* Org Status */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
               <div className="flex items-start justify-between mb-2">
                 <h3 className="font-bold text-slate-800 text-sm">Organization Status</h3>
                 <div className="text-right">
@@ -260,7 +268,7 @@ function Dashboard() {
             </div>
 
             {/* Fleet Manager Status */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
               <div className="flex items-start justify-between mb-6">
                 <h3 className="font-bold text-slate-800 text-sm">Fleet Manager Status</h3>
                 <div className="text-right">
@@ -291,7 +299,7 @@ function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             
             {/* Recent Activities */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
               <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
                 <h3 className="font-bold text-slate-800 text-sm">Recent Activities</h3>
                 <Link to="/admin/notifications" className="text-[12px] font-bold text-[#f97316] hover:text-[#ea580c] transition-colors">
@@ -326,7 +334,19 @@ function Dashboard() {
                       return (
                         <tr 
                           key={act.id || act._id || i} 
-                          onClick={() => navigate(`/admin/notifications/${act.id || act._id || i}`)}
+                          onClick={() => {
+                            if (
+                              act.type === "subscription_request" || 
+                              act.type === "SUBSCRIPTION_REQUEST" ||
+                              (act.title && act.title.toLowerCase().includes("subscription"))
+                            ) {
+                              navigate("/admin/subscription-requests");
+                            } else if (act.type === "CONTACT_REQUEST" && act.referenceId) {
+                              navigate(`/admin/contact-requests?id=${act.referenceId}`);
+                            } else {
+                              navigate(`/admin/notifications/${act.id || act._id || i}`);
+                            }
+                          }}
                           className="hover:bg-slate-50/50 transition-colors cursor-pointer"
                         >
                           <td className="py-4 px-6 text-slate-500 font-medium text-[12px] whitespace-nowrap">{act.time || formatTime(act.createdAt)}</td>
@@ -367,13 +387,13 @@ function Dashboard() {
                   </div>
                 </Link>
                 
-                <Link to="/admin/fleet-managers/add" className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
+                <Link to="/admin/subscription-plans" className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
                   <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                    <Users className="w-4 h-4" />
+                    <CreditCard className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="font-bold text-slate-200 text-[13px]">Invite Fleet Manager</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">Assign a new manager to an org</div>
+                    <div className="font-bold text-slate-200 text-[13px]">View Subscription Plans</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">Manage subscription plans</div>
                   </div>
                 </Link>
                 

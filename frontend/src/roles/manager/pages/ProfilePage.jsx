@@ -16,6 +16,14 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
 
+const getImageUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  const host = apiBase.replace(/\/api\/?$/, "");
+  return `${host}${url}`;
+};
+
 export default function ProfilePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -84,10 +92,18 @@ export default function ProfilePage() {
       <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col md:flex-row items-center md:items-start gap-6 shadow-sm relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 w-48 bg-orange-50/20 rounded-l-full pointer-events-none hidden lg:block" style={{ transform: "translateX(50px)" }} />
 
-        {/* Profile Avatar placeholder based on name initials */}
-        <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-[#B45A0A] to-amber-500 flex items-center justify-center text-white text-3xl font-black shadow-sm shrink-0 select-none">
-          {nameVal.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2)}
-        </div>
+        {/* Profile Avatar */}
+        {profile?.profileImage ? (
+          <img
+            src={getImageUrl(profile.profileImage)}
+            alt={nameVal}
+            className="w-24 h-24 rounded-lg object-cover shadow-sm shrink-0 border border-gray-150"
+          />
+        ) : (
+          <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-[#B45A0A] to-amber-500 flex items-center justify-center text-white text-3xl font-black shadow-sm shrink-0 select-none">
+            {nameVal.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2)}
+          </div>
+        )}
 
         {/* Text Area */}
         <div className="flex-1 text-center md:text-left space-y-3 z-10">

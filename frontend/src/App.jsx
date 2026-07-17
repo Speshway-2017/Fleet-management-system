@@ -2,9 +2,11 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AdminProvider } from "@/roles/admin/context/AdminContext";
+import { SettingsProvider } from "@/context/SettingsContext";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
+import AuthLayout from "@/components/layout/AuthLayout";
 import LoginPage from "@/roles/admin/pages/LoginPage";
 import ForgotPasswordPage from "@/roles/admin/pages/ForgotPasswordPage";
 import OtpVerificationPage from "@/roles/admin/pages/OtpVerificationPage";
@@ -16,10 +18,7 @@ import OrganizationList from "@/roles/admin/pages/OrganizationList";
 import AddOrganization from "@/roles/admin/pages/AddOrganization";
 import OrganizationDetails from "@/roles/admin/pages/OrganizationDetails";
 import EditOrganization from "@/roles/admin/pages/EditOrganization";
-import FleetManagerList from "@/roles/admin/pages/FleetManagerList";
-import AddFleetManager from "@/roles/admin/pages/AddFleetManager";
-import ManagerDetails from "@/roles/admin/pages/ManagerDetails";
-import EditFleetManager from "@/roles/admin/pages/EditFleetManager";
+
 import Analytics from "@/roles/admin/pages/Analytics";
 import SystemHealth from "@/roles/admin/pages/SystemHealth";
 import AuditLogs from "@/roles/admin/pages/AuditLogs";
@@ -27,6 +26,9 @@ import Settings from "@/roles/admin/pages/Settings";
 import SecuritySettings from "@/roles/admin/pages/SecuritySettings";
 import NotificationSettings from "@/roles/admin/pages/NotificationSettings";
 import ProfileSettings from "@/roles/admin/pages/ProfileSettings";
+import ReviewsSettings from "@/roles/admin/pages/ReviewsSettings";
+import SettingsBlogs from "@/roles/admin/pages/SettingsBlogs";
+import SettingsAbout from "@/roles/admin/pages/SettingsAbout";
 import NotificationList from "@/roles/admin/pages/NotificationList";
 import NotificationDetails from "@/roles/admin/pages/NotificationDetails";
 import UserManagement from "@/roles/admin/pages/UserManagement";
@@ -73,7 +75,12 @@ import About from "@/roles/admin/pages/About";
 import Contact from "@/roles/admin/pages/Contact";
 import Security from "@/roles/admin/pages/Security";
 import Features from "@/roles/admin/pages/Features";
+import Blogs from "@/roles/admin/pages/Blogs";
 import ContactRequests from "@/roles/admin/pages/ContactRequests";
+import Pricing from "@/roles/admin/pages/Pricing";
+import SubscriptionRequests from "@/roles/admin/pages/SubscriptionRequests";
+import SubscriptionPage from "@/roles/manager/pages/SubscriptionPage";
+import EarningsPage from "@/roles/manager/pages/EarningsPage";
 
 function PublicRoute({ children }) {
   const { isAuthenticated, role } = useAuth();
@@ -85,8 +92,9 @@ function PublicRoute({ children }) {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <SettingsProvider>
+      <AuthProvider>
+        <BrowserRouter>
         <ScrollToTop />
         <Toaster position="top-right" />
         <Routes>
@@ -96,41 +104,45 @@ export default function App() {
           <Route path="/features" element={<PublicRoute><Features /></PublicRoute>} />
           <Route path="/contact" element={<PublicRoute><Contact /></PublicRoute>} />
           <Route path="/security" element={<PublicRoute><Security /></PublicRoute>} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/otp-verification" element={<OtpVerificationPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/pricing" element={<PublicRoute><Pricing /></PublicRoute>} />
+          <Route path="/blogs" element={<PublicRoute><Blogs /></PublicRoute>} />
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/otp-verification" element={<OtpVerificationPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+          </Route>
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           <Route element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "admin"]} />}>
             <Route element={<AdminProvider><Outlet /></AdminProvider>}>
               <Route path="/admin/dashboard" element={<Dashboard />} />
-            <Route path="/admin/organizations" element={<OrganizationList />} />
-            <Route path="/admin/organizations/add" element={<AddOrganization />} />
-            <Route path="/admin/organizations/details" element={<OrganizationDetails />} />
-          <Route path="/admin/organizations/edit" element={<EditOrganization />} />
-          <Route path="/admin/organizations/edit/:id?" element={<EditOrganization />} />
-          <Route path="/admin/organizations/details/:id?" element={<OrganizationDetails />} />
-            <Route path="/admin/fleet-managers" element={<FleetManagerList />} />
-            <Route path="/admin/fleet-managers/add" element={<AddFleetManager />} />
-            <Route path="/admin/fleet-managers/details" element={<ManagerDetails />} />
-            <Route path="/admin/fleet-managers/details/:id?" element={<ManagerDetails />} />
-            <Route path="/admin/fleet-managers/edit" element={<EditFleetManager />} />
-            <Route path="/admin/fleet-managers/edit/:id?" element={<EditFleetManager />} />
-            <Route path="/admin/analytics" element={<Analytics />} />
-            <Route path="/admin/contact-requests" element={<ContactRequests />} />
-            <Route path="/admin/system-health" element={<SystemHealth />} />
-            <Route path="/admin/audit-logs" element={<AuditLogs />} />
-            <Route path="/admin/settings" element={<Settings />} />
-            <Route path="/admin/settings/security" element={<SecuritySettings />} />
-            <Route path="/admin/settings/notifications" element={<NotificationSettings />} />
-            <Route path="/admin/settings/profile" element={<ProfileSettings />} />
-            <Route path="/admin/notifications" element={<NotificationList />} />
-            <Route path="/admin/notifications/:id" element={<NotificationDetails />} />
-            <Route element={<AppLayout />}>
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/users" element={<UserManagement />} />
-            </Route>
+              <Route path="/admin/organizations" element={<OrganizationList />} />
+              <Route path="/admin/organizations/add" element={<AddOrganization />} />
+              <Route path="/admin/organizations/details" element={<OrganizationDetails />} />
+              <Route path="/admin/organizations/edit" element={<EditOrganization />} />
+              <Route path="/admin/organizations/edit/:id?" element={<EditOrganization />} />
+              <Route path="/admin/organizations/details/:id?" element={<OrganizationDetails />} />
+
+              <Route path="/admin/analytics" element={<Analytics />} />
+              <Route path="/admin/contact-requests" element={<ContactRequests />} />
+              <Route path="/admin/system-health" element={<SystemHealth />} />
+              <Route path="/admin/audit-logs" element={<AuditLogs />} />
+              <Route path="/admin/settings" element={<Settings />} />
+              <Route path="/admin/settings/security" element={<SecuritySettings />} />
+              <Route path="/admin/settings/notifications" element={<NotificationSettings />} />
+              <Route path="/admin/settings/profile" element={<ProfileSettings />} />
+              <Route path="/admin/settings/blogs" element={<SettingsBlogs />} />
+              <Route path="/admin/settings/about" element={<SettingsAbout />} />
+              <Route path="/admin/settings/reviews" element={<ReviewsSettings />} />
+              <Route path="/admin/notifications" element={<NotificationList />} />
+              <Route path="/admin/notifications/:id" element={<NotificationDetails />} />
+              <Route path="/admin/subscription-plans" element={<SubscriptionRequests />} />
+              <Route path="/admin/subscription-requests" element={<SubscriptionRequests />} />
+              <Route element={<AppLayout />}>
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/users" element={<UserManagement />} />
+              </Route>
             </Route>
           </Route>
 
@@ -147,24 +159,22 @@ export default function App() {
               {/* Placeholder routes for other sidebar items */}
               <Route path="/manager/vehicles" element={<div className="p-8"><h1 className="text-2xl font-bold">Vehicles Page</h1></div>} />
 
+              <Route path="/manager/drivers" element={<DriversManagementPage />} />
+              <Route path="/manager/drivers-list" element={<DriversListPage />} />
+              <Route path="/manager/driver-profile/:id" element={<DriverProfilePage />} />
+              <Route path="/manager/driver-assign-vehicle/:id" element={<AssignVehiclePage />} />
+              <Route path="/manager/add-driver" element={<AddDriverPage />} />
+              <Route path="/manager/edit-driver/:id" element={<AddDriverPage />} />
 
               <Route path="/manager/tracking" element={<div className="p-8"><h1 className="text-2xl font-bold">Live Tracking Page</h1></div>} />
 
-
-
               <Route path="/manager/settings" element={<SettingsPage />} />
-              <Route path="/manager/drivers" element={<DriversManagementPage />} />
-              <Route path="/manager/drivers-list" element={<DriversListPage />} />
               <Route path="/manager/trips" element={<TripsManagementPage />} />
               <Route path="/manager/trips-list" element={<TripsListPage />} />
               <Route path="/manager/create-trip" element={<CreateTripPage />} />
               <Route path="/manager/trip-details/:id" element={<TripDetailsPage />} />
               {/* <Route path="/manager/trips" element={<TripsManagementPage />} />
               <Route path="/manager/trips-list" element={<TripsListPage />} /> */}
-              <Route path="/manager/driver-profile/:id" element={<DriverProfilePage />} />
-              <Route path="/manager/driver-assign-vehicle/:id" element={<AssignVehiclePage />} />
-              <Route path="/manager/add-driver" element={<AddDriverPage />} />
-              <Route path="/manager/edit-driver/:id" element={<AddDriverPage />} />
 
               <Route path="/manager/fuel" element={<FuelManagementPage />} />
               <Route path="/manager/analytics" element={<AnalyticsPage />} />
@@ -182,6 +192,8 @@ export default function App() {
               <Route path="/manager/profile/edit" element={<EditProfilePage />} />
               <Route path="/manager/profile/reset-password" element={<ManagerResetPasswordPage />} />
               <Route path="/manager/profile/2fa" element={<TwoFactorPage />} />
+              <Route path="/manager/subscription" element={<SubscriptionPage />} />
+              <Route path="/manager/earnings" element={<EarningsPage />} />
             </Route>
           </Route>
 
@@ -189,5 +201,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </SettingsProvider>
   );
 }

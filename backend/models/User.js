@@ -12,10 +12,16 @@ const userSchema = new mongoose.Schema(
     },
     phone: { type: String, default: '' },
     profileImage: { type: String, default: '' },
+    jobTitle: { type: String, default: 'Fleet Manager' },
+    primaryHub: { type: String, default: '' },
     organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
     isActive: { type: Boolean, default: true },
     resetPasswordOtp: { type: String },
     resetPasswordExpires: { type: Date },
+    subscriptionStatus: { type: String, enum: ['INACTIVE', 'ACTIVE', 'EXPIRED'], default: 'INACTIVE' },
+    subscriptionPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null },
+    subscriptionExpiry: { type: Date, default: null },
+    subscriptionRequestedPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null },
   },
   { timestamps: true }
 );

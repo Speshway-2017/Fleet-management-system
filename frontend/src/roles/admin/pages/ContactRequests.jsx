@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { 
   Search, Mail, Phone, Calendar, Download, Trash2, 
   MessageSquare, Eye, X, Check, ArrowRight, CornerDownRight,
-  TrendingUp, HelpCircle
+  TrendingUp, HelpCircle, ChevronDown
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { adminApi } from "@/api/adminApi";
@@ -12,6 +13,9 @@ import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import KPICard from "@/components/common/KPICard";
 
 export default function ContactRequests() {
+  const location = useLocation();
+  const highlightId = new URLSearchParams(location.search).get("id");
+  
   const [contacts, setContacts] = useState([]);
   const [analytics, setAnalytics] = useState({
     summary: { total: 0, new: 0, pending: 0, resolved: 0 },
@@ -90,6 +94,15 @@ export default function ContactRequests() {
   useEffect(() => {
     fetchAnalytics();
   }, []);
+
+  useEffect(() => {
+    if (highlightId && contacts.length > 0) {
+      const matchingContact = contacts.find(c => c._id === highlightId);
+      if (matchingContact) {
+        openViewModal(matchingContact);
+      }
+    }
+  }, [contacts, highlightId]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -214,8 +227,10 @@ export default function ContactRequests() {
     <div className="min-h-screen bg-[#f8fafc] flex font-sans text-slate-700">
       <NewAdminSidebar activeItem="contact-requests" />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <NewAdminTopNav title="Contact Requests" />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden pt-[72px]">
+        <div className="fixed top-0 left-0 lg:left-[260px] right-0 z-30">
+          <NewAdminTopNav title="Contact Requests" />
+        </div>
 
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
           
@@ -320,32 +335,38 @@ export default function ContactRequests() {
                 {/* Status Filter */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Status</label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full text-xs font-medium rounded-xl border border-slate-200 px-4 py-3 bg-white focus:outline-none focus:border-indigo-500 cursor-pointer"
-                  >
-                    <option value="All">All Statuses</option>
-                    <option value="New">New</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Resolved">Resolved</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="appearance-none w-full text-xs font-medium rounded-xl border border-slate-200 px-4 py-3 bg-white focus:outline-none focus:border-indigo-500 cursor-pointer pr-10"
+                    >
+                      <option value="All">All Statuses</option>
+                      <option value="New">New</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Resolved">Resolved</option>
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
+                  </div>
                 </div>
 
                 {/* Subject Filter */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Subject</label>
-                  <select
-                    value={subjectFilter}
-                    onChange={(e) => setSubjectFilter(e.target.value)}
-                    className="w-full text-xs font-medium rounded-xl border border-slate-200 px-4 py-3 bg-white focus:outline-none focus:border-indigo-500 cursor-pointer"
-                  >
-                    <option value="All">All Subjects</option>
-                    <option value="Sales">Sales Inquiry</option>
-                    <option value="Demo">Request a Demo</option>
-                    <option value="Support">Technical Support</option>
-                    <option value="Partnership">Partnership</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={subjectFilter}
+                      onChange={(e) => setSubjectFilter(e.target.value)}
+                      className="appearance-none w-full text-xs font-medium rounded-xl border border-slate-200 px-4 py-3 bg-white focus:outline-none focus:border-indigo-500 cursor-pointer pr-10"
+                    >
+                      <option value="All">All Subjects</option>
+                      <option value="Sales">Sales Inquiry</option>
+                      <option value="Demo">Request a Demo</option>
+                      <option value="Support">Technical Support</option>
+                      <option value="Partnership">Partnership</option>
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
+                  </div>
                 </div>
               </div>
 
@@ -423,14 +444,23 @@ export default function ContactRequests() {
                       <th className="px-6 py-4">Subject</th>
                       <th className="px-6 py-4">Date</th>
                       <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
+                      <th className="px-6 py-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs">
-                    {contacts.map((contact) => (
-                      <tr key={contact._id} className="hover:bg-slate-50/50 transition-colors">
+                    {contacts.map((contact) => {
+                      const isHighlighted = contact._id === highlightId;
+                      return (
+                        <tr 
+                          key={contact._id} 
+                          className={`hover:bg-slate-50/50 transition-colors ${
+                            isHighlighted 
+                              ? "bg-amber-50 hover:bg-amber-100/70 border-l-4 border-[#A14000] font-semibold" 
+                              : ""
+                          }`}
+                        >
                         {/* Ticket ID */}
-                        <td className="px-6 py-4.5 font-bold text-slate-900 tracking-wide font-mono">
+                        <td className="px-6 py-4.5 font-bold text-slate-900 tracking-wide font-mono whitespace-nowrap">
                           {contact.ticketId || "N/A"}
                         </td>
                         {/* Requester Details */}
@@ -452,7 +482,7 @@ export default function ContactRequests() {
                           {contact.subject}
                         </td>
                         {/* Date */}
-                        <td className="px-6 py-4.5 text-slate-400 font-medium">
+                        <td className="px-6 py-4.5 text-slate-400 font-medium whitespace-nowrap">
                           {new Date(contact.createdAt).toLocaleDateString("en-US", {
                             year: 'numeric',
                             month: 'short',
@@ -466,7 +496,7 @@ export default function ContactRequests() {
                           </span>
                         </td>
                         {/* Actions */}
-                        <td className="px-6 py-4.5 text-right space-x-1 whitespace-nowrap">
+                        <td className="px-6 py-4.5 text-center space-x-1 whitespace-nowrap">
                           <button
                             onClick={() => openViewModal(contact)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-indigo-600 hover:text-white hover:bg-indigo-600 border border-indigo-200 rounded-lg transition-all cursor-pointer"
@@ -483,7 +513,8 @@ export default function ContactRequests() {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

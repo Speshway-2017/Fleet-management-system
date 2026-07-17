@@ -18,7 +18,9 @@ const activityLogSchema = new mongoose.Schema({
       'DRIVER_ASSIGNED',
       'MAINTENANCE_COMPLETED',
       'FUEL_ENTRY_ADDED',
-      'DOCUMENT_UPLOADED'
+      'DOCUMENT_UPLOADED',
+      'TRIP_DISPATCHED',
+      'TRIP_COMPLETED'
     ],
     required: true,
   },

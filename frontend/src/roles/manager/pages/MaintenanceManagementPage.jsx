@@ -455,7 +455,7 @@ For support, contact: maintenance@fleetmgmt.com
               {getCalendarDays().map((cell, idx) => {
                 const hasService = cell.isCurrentMonth && workOrders.some(w => {
                   const wDate = new Date(w.scheduledDate);
-                  return wDate.getFullYear() === 2026 && wDate.getMonth() === 6 && wDate.getDate() === cell.day;
+                  return wDate.getFullYear() === 2026 && wDate.getMonth() === 6 && wDate.getDate() === cell.day && w.status !== "Completed";
                 });
                 
                 const isSelected = cell.isCurrentMonth && cell.day === selectedCalendarDay;
@@ -575,7 +575,7 @@ For support, contact: maintenance@fleetmgmt.com
                 <th className="py-4 px-6">Service Type</th>
                 <th className="py-4 px-6">Scheduled Date</th>
                 <th className="py-4 px-6">Status</th>
-                <th className="py-4 px-6 text-right">Actions</th>
+                <th className="py-4 px-6 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7EAF0]/60">

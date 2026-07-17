@@ -143,49 +143,90 @@ export default function AuditLogs() {
               </div>
             </div>
 
-            {/* Table */}
-            <div className="flex-1 overflow-x-auto relative">
+            {/* Table Area */}
+            <div className="flex-1 relative">
               {loading && logs.length === 0 && (
                 <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center">
                   <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full"></div>
                 </div>
               )}
-              <table className="w-full text-left border-collapse min-w-[800px]">
-                <thead>
-                  <tr className="bg-slate-50/50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-0">
-                    <th className="py-4 px-6">Timestamp</th>
-                    <th className="py-4 px-6">User</th>
-                    <th className="py-4 px-6">Action</th>
-                    <th className="py-4 px-6">Organization</th>
-                    <th className="py-4 px-6">IP Address</th>
-                    <th className="py-4 px-6">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {!loading && logs.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-12 text-center text-slate-500 font-medium">
-                        {searchTerm ? `No audit logs found matching "${searchTerm}".` : "No audit logs have been recorded yet."}
-                      </td>
+              
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto w-full h-full">
+                <table className="w-full text-left border-collapse min-w-[800px]">
+                  <thead>
+                    <tr className="bg-slate-50/50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-0">
+                      <th className="py-4 px-6">Timestamp</th>
+                      <th className="py-4 px-6">User</th>
+                      <th className="py-4 px-6">Action</th>
+                      <th className="py-4 px-6">Organization</th>
+                      <th className="py-4 px-6">IP Address</th>
+                      <th className="py-4 px-6">Status</th>
                     </tr>
-                  ) : (
-                    logs.map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-50/50 transition-colors group text-[13px] font-medium text-slate-600">
-                        <td className="py-4 px-6 text-slate-500">{formatIFDWithTime(log.timestamp)}</td>
-                        <td className="py-4 px-6">{log.user}</td>
-                        <td className="py-4 px-6 text-slate-800">{log.action}</td>
-                        <td className="py-4 px-6">{log.organization}</td>
-                        <td className="py-4 px-6 text-slate-500">{log.ip}</td>
-                        <td className="py-4 px-6">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${getStatusColor(log.status)}`}>
-                            {log.status}
-                          </span>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {!loading && logs.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-500 font-medium">
+                          {searchTerm ? `No audit logs found matching "${searchTerm}".` : "No audit logs have been recorded yet."}
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      logs.map((log) => (
+                        <tr key={log.id} className="hover:bg-slate-50/50 transition-colors group text-[13px] font-medium text-slate-600">
+                          <td className="py-4 px-6 text-slate-500">{formatIFDWithTime(log.timestamp)}</td>
+                          <td className="py-4 px-6">{log.user}</td>
+                          <td className="py-4 px-6 text-slate-800">{log.action}</td>
+                          <td className="py-4 px-6">{log.organization}</td>
+                          <td className="py-4 px-6 text-slate-500">{log.ip}</td>
+                          <td className="py-4 px-6">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${getStatusColor(log.status)}`}>
+                              {log.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden flex flex-col p-4 gap-4 bg-slate-50/50 h-full overflow-y-auto">
+                {!loading && logs.length === 0 ? (
+                  <div className="py-12 text-center text-slate-500 font-medium text-sm">
+                    {searchTerm ? `No audit logs found matching "${searchTerm}".` : "No audit logs have been recorded yet."}
+                  </div>
+                ) : (
+                  logs.map((log) => (
+                    <div key={log.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="text-sm font-semibold text-slate-800">{log.action}</div>
+                          <div className="text-[10px] text-slate-400 font-medium mt-0.5">{formatIFDWithTime(log.timestamp)}</div>
+                        </div>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider shrink-0 ${getStatusColor(log.status)}`}>
+                          {log.status}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mt-1">
+                        <div className="flex flex-col">
+                          <span className="text-[9px] uppercase font-bold text-slate-400">User</span>
+                          <span className="text-xs font-medium text-slate-700">{log.user}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] uppercase font-bold text-slate-400">Organization</span>
+                          <span className="text-xs font-medium text-slate-700 truncate pr-2">{log.organization}</span>
+                        </div>
+                        <div className="flex flex-col col-span-2">
+                          <span className="text-[9px] uppercase font-bold text-slate-400">IP Address</span>
+                          <span className="text-xs font-medium text-slate-700">{log.ip}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
             
             {/* Pagination Controls */}

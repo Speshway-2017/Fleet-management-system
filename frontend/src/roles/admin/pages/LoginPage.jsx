@@ -7,26 +7,63 @@ import {
   Lock, 
   Eye, 
   EyeOff, 
-  ArrowRight, 
-  ShieldCheck, 
-  Zap
+  ArrowRight
 } from "lucide-react";
+import TermsModal from "@/components/common/TermsModal";
 
 export default function LoginPage() {
   const { login, loading, isAuthenticated, role } = useAuth();
   const navigate = useNavigate();
   const emailInputRef = useRef(null);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate(role === "SUPER_ADMIN" || role === "admin" ? "/admin/dashboard" : "/manager", { replace: true });
-    }
-  }, [isAuthenticated, role, navigate]);
+  const passwordInputRef = useRef(null);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  const [loginError, setLoginError] = useState(null);
+  const [isPasswordError, setIsPasswordError] = useState(false);
+  const timeoutRef = useRef(null);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const selectedPlanId = localStorage.getItem("selectedPlanId");
+      if (selectedPlanId && (role === "FLEET_MANAGER" || role === "manager")) {
+        navigate("/manager/subscription", { state: { selectedPlanId }, replace: true });
+      } else {
+        navigate(role === "SUPER_ADMIN" || role === "admin" ? "/admin/dashboard" : "/manager", { replace: true });
+      }
+    }
+  }, [isAuthenticated, role, navigate]);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleInputChange = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: null }));
+    }
+
+    if (loginError) {
+      setLoginError(null);
+    }
+    if (isPasswordError) {
+      setIsPasswordError(false);
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  };
 
   const validate = () => {
     const newErrors = {};
@@ -41,14 +78,40 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoginError(null);
+    setIsPasswordError(false);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
     if (!validate()) return;
 
     try {
       const user = await login(form);
       toast.success(`Welcome back, ${user.name || "User"}!`);
-      navigate(user.role === "SUPER_ADMIN" || user.role === "admin" ? "/admin/dashboard" : "/manager");
+      const selectedPlanId = localStorage.getItem("selectedPlanId");
+      if (selectedPlanId && (user.role === "FLEET_MANAGER" || user.role === "manager")) {
+        navigate("/manager/subscription", { state: { selectedPlanId } });
+      } else {
+        navigate(user.role === "SUPER_ADMIN" || user.role === "admin" ? "/admin/dashboard" : "/manager");
+      }
     } catch (err) {
-      toast.error(err.message || "Invalid email or password");
+      const backendMessage = err.response?.data?.message;
+      const displayMsg = backendMessage || "Invalid email or password.";
+      
+      setLoginError(displayMsg);
+      setIsPasswordError(true);
+      setForm(prev => ({ ...prev, password: "" }));
+      
+      setTimeout(() => {
+        passwordInputRef.current?.focus();
+      }, 50);
+
+      timeoutRef.current = setTimeout(() => {
+        setLoginError(null);
+        setIsPasswordError(false);
+      }, 5000);
     }
   };
 
@@ -59,137 +122,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#F8FAFC] font-sans text-[#1E293B] relative overflow-hidden">
-      
-      {/* ── LEFT PANEL (55% Width) ── */}
-      <div 
-        className="w-full lg:w-[55%] flex flex-col justify-between p-8 lg:p-14 relative overflow-hidden bg-cover bg-center min-h-[600px] lg:min-h-screen shrink-0"
-        style={{
-          backgroundImage: "url('/hero-bg.jpg')",
-        }}
-      >
-        {/* Soft, light white gradient overlay from the left edge so text remains readable while preserving the truck image */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent pointer-events-none z-0" />
-        
-        {/* Top Header: Logo + Title */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="bg-white rounded-2xl p-1.5 shadow-md border border-gray-100 flex items-center justify-center h-11 w-11 hover:scale-105 transition-transform duration-200">
-            <img src="/logo.png" alt="Fleet Management Logo" className="h-8 w-8 object-contain" />
-          </div>
-          <span className="font-display font-black text-[#0F2345] text-base tracking-wide">
-            Fleet Management
-          </span>
-        </div>
-
-        {/* Middle Hero details */}
-        <div className="relative z-10 space-y-7 max-w-xl my-auto py-12">
-          
-          <h1 className="font-display font-black text-[#0F2345] text-3xl sm:text-4xl md:text-5xl leading-[1.15] tracking-tight">
-            Fleet Management <br />
-            <span className="text-[#A14000]">System</span>
-          </h1>
-
-          <p className="text-sm text-[#1E293B] font-medium leading-relaxed max-w-lg">
-            Manage fleets, drivers, vehicles, routes and operations from one intelligent platform. 
-            Improve operational efficiency, monitor vehicle health in real time, reduce fuel costs, 
-            and secure your logistics operations with enterprise-grade technology.
-          </p>
-
-          {/* Features rows */}
-          <div className="space-y-4 pt-4">
-            
-            {/* Feature 1 */}
-            <div className="flex items-start gap-3">
-              <div className="h-9 w-9 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
-                <span className="text-lg">🚛</span>
-              </div>
-              <div>
-                <h4 className="font-display font-bold text-xs text-[#0F2345]">Real-Time Fleet Tracking</h4>
-                <p className="text-[11px] text-[#1E293B]/70 font-medium">Monitor vehicles live using GPS and telematics.</p>
-              </div>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="flex items-start gap-3">
-              <div className="h-9 w-9 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
-                <ShieldCheck className="h-4.5 w-4.5" />
-              </div>
-              <div>
-                <h4 className="font-display font-bold text-xs text-[#0F2345]">Enterprise Security</h4>
-                <p className="text-[11px] text-[#1E293B]/70 font-medium">Role-based authentication with secure access.</p>
-              </div>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="flex items-start gap-3">
-              <div className="h-9 w-9 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
-                <span className="text-lg">📊</span>
-              </div>
-              <div>
-                <h4 className="font-display font-bold text-xs text-[#0F2345]">Smart Analytics</h4>
-                <p className="text-[11px] text-[#1E293B]/70 font-medium">Generate reports and optimize operational performance.</p>
-              </div>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="flex items-start gap-3">
-              <div className="h-9 w-9 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
-                <Zap className="h-4.5 w-4.5" />
-              </div>
-              <div>
-                <h4 className="font-display font-bold text-xs text-[#0F2345]">Automated Operations</h4>
-                <p className="text-[11px] text-[#1E293B]/70 font-medium">Reduce manual work through workflow automation.</p>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Left panel CTA buttons: Login button removed as requested */}
-          <div className="flex items-center gap-4 pt-4">
-            <button
-              onClick={() => navigate("/contact")}
-              className="px-6 py-3 rounded-xl bg-white/80 border border-gray-300 hover:bg-white text-[#1E293B] font-bold text-xs shadow-sm hover:shadow-md active:scale-[0.98] transition-all cursor-pointer"
-            >
-              Learn More
-            </button>
-          </div>
-
-        </div>
-
-        {/* Bottom stats bar: Dark glassmorphic stats bar with four metrics */}
-        <div className="relative z-10 w-full mt-auto pt-6 border-t border-gray-300/30">
-          <div className="bg-[#0F2345]/85 backdrop-blur-md border border-white/10 rounded-2xl p-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-white shadow-xl">
-            
-            <div className="space-y-1 text-center md:text-left">
-              <div className="text-2xl font-black text-[#A14000] tracking-tight leading-none">500+</div>
-              <p className="text-[9px] font-bold text-gray-300 uppercase tracking-widest mt-1">Vehicles Managed</p>
-            </div>
-
-            <div className="space-y-1 text-center md:text-left">
-              <div className="text-2xl font-black text-[#A14000] tracking-tight leading-none">250+</div>
-              <p className="text-[9px] font-bold text-gray-300 uppercase tracking-widest mt-1">Enterprise Clients</p>
-            </div>
-
-            <div className="space-y-1 text-center md:text-left">
-              <div className="text-2xl font-black text-[#A14000] tracking-tight leading-none">1.2M+</div>
-              <p className="text-[9px] font-bold text-gray-300 uppercase tracking-widest mt-1">KM Tracked</p>
-            </div>
-
-            <div className="space-y-1 text-center md:text-left">
-              <div className="text-2xl font-black text-[#A14000] tracking-tight leading-none">99.9%</div>
-              <p className="text-[9px] font-bold text-gray-300 uppercase tracking-widest mt-1">Platform Uptime</p>
-            </div>
-
-          </div>
-        </div>
-
-      </div>
-
-      {/* ── RIGHT PANEL (45% Width) ── */}
-      <div className="w-full lg:w-[45%] flex items-center justify-center p-6 sm:p-12 md:p-16 bg-[#F8FAFC] min-h-screen">
-        
-        {/* Premium Glassmorphism Card */}
-        <div className="w-full max-w-[440px] bg-white/95 backdrop-blur-md border border-[#E5E7EB] rounded-[20px] p-6 sm:p-10 shadow-2xl relative z-10">
+    <>
+      {/* Premium Glassmorphism Card */}
+      <div className="w-full max-w-[440px] bg-white/95 backdrop-blur-md border border-[#E5E7EB] rounded-[20px] p-6 sm:p-10 shadow-2xl relative z-10 my-auto">
           
           {/* Back to Home Navigation Link */}
           <div className="mb-6">
@@ -204,7 +139,9 @@ export default function LoginPage() {
             </NavLink>
           </div>
 
-          {/* Logo block and company name removed from right side as requested */}
+
+
+          {/* Welcome heading */}
           <div className="flex flex-col items-start justify-start mb-8">
             <h2 className="font-display text-2xl font-black text-[#0F2345] tracking-tight">
               Welcome Back
@@ -213,6 +150,30 @@ export default function LoginPage() {
               Access your Fleet Management Dashboard securely.
             </p>
           </div>
+
+          {/* Error alert component */}
+          {loginError && (
+            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2.5 animate-fadeIn">
+              <span className="text-sm shrink-0">❌</span>
+              <div className="flex-1 font-medium leading-relaxed">
+                {loginError}
+              </div>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setLoginError(null);
+                  setIsPasswordError(false);
+                  if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                    timeoutRef.current = null;
+                  }
+                }}
+                className="text-red-400 hover:text-red-600 transition-colors cursor-pointer font-bold ml-1"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             
@@ -231,7 +192,7 @@ export default function LoginPage() {
                   ref={emailInputRef}
                   placeholder="name@organization.com"
                   value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
                   className={`w-full pl-11 pr-4 py-3 rounded-xl border text-xs text-[#1E293B] placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${
                     errors.email 
                       ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' 
@@ -254,11 +215,12 @@ export default function LoginPage() {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  ref={passwordInputRef}
                   placeholder="••••••••"
                   value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  onChange={(e) => handleInputChange("password", e.target.value)}
                   className={`w-full pl-11 pr-11 py-3 rounded-xl border text-xs text-[#1E293B] placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${
-                    errors.password 
+                    errors.password || isPasswordError
                       ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' 
                       : 'border-gray-200 focus:ring-[#A14000]/15 focus:border-[#A14000]'
                   }`}
@@ -341,13 +303,12 @@ export default function LoginPage() {
           {/* Footer inside card */}
           <div className="mt-8 text-center text-[10px] text-gray-400 font-semibold leading-relaxed">
             By logging in, you agree to our <br />
-            <a href="#" onClick={(e) => { e.preventDefault(); toast.success("Displaying Terms of Service..."); }} className="text-[#A14000] hover:underline">Terms of Service</a> & <a href="#" onClick={(e) => { e.preventDefault(); toast.success("Displaying Privacy Policy..."); }} className="text-[#A14000] hover:underline">Privacy Policy</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); setIsTermsOpen(true); }} className="text-[#A14000] hover:underline">Terms of Service</a> & <a href="#" onClick={(e) => { e.preventDefault(); setIsTermsOpen(true); }} className="text-[#A14000] hover:underline">Privacy Policy</a>
           </div>
 
         </div>
 
-      </div>
-
-    </div>
+      <TermsModal isOpen={isTermsOpen} onClose={() => setIsTermsOpen(false)} />
+    </>
   );
 }

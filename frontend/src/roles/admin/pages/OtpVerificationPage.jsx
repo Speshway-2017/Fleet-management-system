@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import AuthLayout from "@/components/layout/AuthLayout";
+import { useNavigate, useLocation, NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
 import { authApi } from "@/api/authApi";
 
@@ -19,6 +18,31 @@ export default function OtpVerificationPage() {
       navigate("/forgot-password");
     }
   }, [email, navigate]);
+
+  const [timer, setTimer] = useState(29);
+  const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (timer <= 0) return;
+    const interval = setInterval(() => {
+      setTimer((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timer]);
+
+  const handleResend = async () => {
+    if (timer > 0 || resending) return;
+    setResending(true);
+    try {
+      await authApi.forgotPassword(email);
+      toast.success("OTP resent successfully! Check the backend console.");
+      setTimer(29);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || "Failed to resend OTP.");
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleChange = (e, index) => {
     const value = e.target.value;
@@ -80,11 +104,23 @@ export default function OtpVerificationPage() {
   };
 
   return (
-    <AuthLayout
-      backLabel="Back to Login"
-      onBack={() => navigate("/login")}
-    >
-      {/* ── Heading ── */}
+    <>
+      <div className="w-full max-w-[440px] bg-white/95 backdrop-blur-md border border-[#E5E7EB] rounded-[20px] p-6 sm:p-10 shadow-2xl relative z-10">
+        
+        {/* Back to Login Navigation Link */}
+        <div className="mb-6">
+          <NavLink
+            to="/login"
+            className="group inline-flex items-center gap-2 px-4 py-1.5 text-[15px] md:text-[16px] font-display font-medium text-[#475569] hover:text-[#A14000] hover:bg-[#A14000]/5 rounded-full transition-all duration-[250ms] ease-in-out cursor-pointer -ml-4"
+          >
+            <span className="inline-block transform group-hover:-translate-x-1.5 transition-transform duration-[250ms] ease-in-out text-lg">
+              ←
+            </span>
+            <span>Back to Login</span>
+          </NavLink>
+        </div>
+
+        {/* ── Heading ── */}
       <h2 className="text-center font-display text-2xl font-bold text-gray-900 mb-3">
         Verify OTP
       </h2>
@@ -114,7 +150,7 @@ export default function OtpVerificationPage() {
           </div>
           {/* Timer */}
           <div className="text-center text-sm font-bold text-gray-700">
-            00:29
+            00:{timer < 10 ? `0${timer}` : timer}
           </div>
         </div>
 
@@ -133,12 +169,18 @@ export default function OtpVerificationPage() {
         Didn't receive the code?{" "}
         <button
           type="button"
-          onClick={() => toast.success("OTP resent successfully!")}
-          className="text-[#A14000] hover:text-[#7d3200] transition-colors"
+          onClick={handleResend}
+          disabled={timer > 0 || resending}
+          className={`font-bold transition-colors ${
+            timer > 0 || resending
+              ? "text-gray-400 cursor-not-allowed"
+              : "text-[#A14000] hover:text-[#7d3200] cursor-pointer"
+          }`}
         >
-          Resend
+          {resending ? "Resending..." : "Resend"}
         </button>
       </div>
-    </AuthLayout>
+      </div>
+    </>
   );
 }

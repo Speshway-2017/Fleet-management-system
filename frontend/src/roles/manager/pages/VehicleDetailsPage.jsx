@@ -6,8 +6,8 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { useAuth } from "@/context/AuthContext";
 import { vehicleApi } from "@/api/vehicleApi";
-import { driverApi } from "@/api/driverApi";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { managerApi } from "../api/managerApi";
@@ -33,9 +33,18 @@ const CITY_COORDINATES = {
   lucknow: [26.8467, 80.9462]
 };
 
+const getDocumentUrl = (path) => {
+  if (!path) return "";
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) return path;
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").replace("/api", "");
+  return `${baseUrl}${path}`;
+};
+
 export default function VehicleDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
+  const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const gpsMapRef = useRef(null);
@@ -47,7 +56,6 @@ export default function VehicleDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [previewDocument, setPreviewDocument] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [driversList, setDriversList] = useState([]);
 
   // Tab & sub-sections state
   const [activeTab, setActiveTab] = useState("info");
@@ -85,18 +93,31 @@ export default function VehicleDetailsPage() {
     return {
       ...v,
       id:           v._id,
-      name:         v.vehicleName || `${v.brand} ${v.model}`,
-      manufacturer: v.brand || "",
+      name:         v.vehicleName || (v.manufacturer ? `${v.manufacturer} ${v.model}` : (v.brand ? `${v.brand} ${v.model}` : v.model)),
+      manufacturer: v.manufacturer || v.brand || "",
       plateNumber:  v.vehicleNumber || "",
       type:         v.vehicleType || "Truck",
       driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
         ? v.assignedDriver.fullName
         : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
+      manager:      v.assignedManager && typeof v.assignedManager === 'object'
+        ? v.assignedManager.name || v.assignedManager.fullName || v.assignedManager.email
+        : (typeof v.assignedManager === 'string' ? v.assignedManager : 'N/A'),
+      createdByVal: v.createdBy && typeof v.createdBy === 'object'
+        ? v.createdBy.name || v.createdBy.fullName || v.createdBy.email
+        : (typeof v.createdBy === 'string' ? v.createdBy : 'N/A'),
+      updatedByVal: v.updatedBy && typeof v.updatedBy === 'object'
+        ? v.updatedBy.name || v.updatedBy.fullName || v.updatedBy.email
+        : (typeof v.updatedBy === 'string' ? v.updatedBy : 'N/A'),
       fuelLevel:    v.fuelCapacity ? Math.round((v.odometer % v.fuelCapacity) || 50) : 50,
       fastagBalance: v.fastagBalance ?? 0,
-      branch:       v.branch || "Pune",
+      branch:       v.branch || v.branchDepot || "Pune",
       dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
       status:       v.currentStatus || 'Available',
+      transmission: v.transmission || v.transmissionType || "Manual",
+      ownership:    v.ownership || v.ownershipType || "Owned",
+      lastService:  v.lastService || v.lastServiceDate || "",
+      nextService:  v.nextService || v.nextServiceDue || "",
     };
   };
 
@@ -256,23 +277,6 @@ export default function VehicleDetailsPage() {
     return () => clearTimeout(timer);
   }, [activeTab, selectedTrip]);
 
-  // Load drivers when assign modal opens
-  useEffect(() => {
-    if (showAssignModal) {
-      const fetchDriversList = async () => {
-        try {
-          const res = await driverApi.list();
-          setDriversList(res.data?.data ?? []);
-        } catch (err) {
-          console.error("Failed to load drivers:", err);
-        }
-      };
-      fetchDriversList();
-    }
-  }, [showAssignModal]);
-
-
-
   const handleDelete = async () => {
     try {
       setIsDeletingVehicle(true);
@@ -315,24 +319,6 @@ export default function VehicleDetailsPage() {
     } finally {
       setIsDeletingVehicle(false);
       setShowDeleteConfirm(false);
-    }
-  };
-
-  const handleAssignDriver = async (driverId) => {
-    try {
-      const vehicleId = vehicle._id || vehicle.id;
-      const payload = {
-        assignedDriver: driverId === "Unassigned" ? "Unassigned" : driverId
-      };
-      await vehicleApi.update(vehicleId, payload);
-      toast.success("Driver assigned successfully!");
-
-      // Refresh vehicle details
-      const res = await vehicleApi.getById(id);
-      setVehicle(normaliseVehicle(res.data?.data));
-      setShowAssignModal(false);
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to assign driver.");
     }
   };
 
@@ -389,15 +375,7 @@ export default function VehicleDetailsPage() {
               </div>
               <div>
                 <p className="text-xs text-[#64748B] font-bold uppercase">Driver</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <p className="text-sm font-bold text-[#1E293B]">{vehicle.driver}</p>
-                  <button
-                    onClick={() => setShowAssignModal(true)}
-                    className="text-xs text-[#B45A0A] hover:underline font-bold cursor-pointer"
-                  >
-                    {vehicle.driver === "Unassigned" ? "(Assign)" : "(Change)"}
-                  </button>
-                </div>
+                <p className="text-sm font-bold text-[#1E293B] mt-2">N/A</p>
               </div>
             </div>
           </div>
@@ -406,14 +384,18 @@ export default function VehicleDetailsPage() {
           <div className="flex items-center gap-2 md:ml-auto">
             <button
               onClick={() => navigate(`/manager/vehicle-edit/${vehicle._id}`)}
-              className="px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer"
+              disabled={isViewOnly}
+              title={isViewOnly ? "This feature is available after activating a subscription." : "Edit Vehicle"}
+              className={`px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <Edit2 className="w-4 h-4" />
               EDIT
             </button>
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="px-4 py-2.5 border border-red-300 hover:bg-red-50 rounded-lg text-sm font-bold text-red-600 transition-all flex items-center gap-2 cursor-pointer"
+              disabled={isViewOnly}
+              title={isViewOnly ? "This feature is available after activating a subscription." : "Delete Vehicle"}
+              className={`px-4 py-2.5 border border-red-300 hover:bg-red-50 rounded-lg text-sm font-bold text-red-600 transition-all flex items-center gap-2 cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <Trash2 className="w-4 h-4" />
               DELETE
@@ -426,7 +408,6 @@ export default function VehicleDetailsPage() {
       <div className="flex border-b border-[#E7EAF0] mb-6 overflow-x-auto whitespace-nowrap bg-white p-2 rounded-xl shadow-sm">
         {[
           { id: "info", label: "Vehicle Information" },
-          { id: "driver", label: "Driver Assignment" },
           { id: "service", label: "Service History" },
           { id: "gps", label: "GPS Tracking History" }
         ].map(tab => (
@@ -478,12 +459,17 @@ export default function VehicleDetailsPage() {
                 </div>
                 <div>
                   <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Ownership Type</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.ownershipType || "N/A"}</p>
+                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.ownership || vehicle.ownershipType || "N/A"}</p>
                 </div>
                 <div>
                   <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Branch / Location</p>
                   <p className="text-sm font-semibold text-[#1E293B]">{vehicle.branch}</p>
                 </div>
+                <div>
+                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Assigned Manager</p>
+                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.manager || "N/A"}</p>
+                </div>
+
               </div>
             </div>
 
@@ -499,7 +485,7 @@ export default function VehicleDetailsPage() {
                 </div>
                 <div>
                   <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Transmission</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.transmissionType || "Manual"}</p>
+                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.transmission || vehicle.transmissionType || "Manual"}</p>
                 </div>
                 <div>
                   <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Engine (CC)</p>
@@ -528,83 +514,7 @@ export default function VehicleDetailsPage() {
               </div>
             </div>
 
-            {/* Insurance Details */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
-              <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
-                Insurance Information
-              </h3>
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Insurance Provider</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.insuranceDetails?.provider || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Policy Number</p>
-                  <p className="text-sm font-semibold text-[#1E293B] font-poppins">{vehicle.insuranceDetails?.policyNumber || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Premium Amount</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.insuranceDetails?.premiumAmount ? `₹${vehicle.insuranceDetails.premiumAmount.toLocaleString("en-IN")}` : "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Start Date</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.insuranceDetails?.startDate ? new Date(vehicle.insuranceDetails.startDate).toLocaleDateString("en-IN") : "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Expiry Date</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.insuranceDetails?.expiryDate ? new Date(vehicle.insuranceDetails.expiryDate).toLocaleDateString("en-IN") : (vehicle.insuranceExpiry ? new Date(vehicle.insuranceExpiry).toLocaleDateString("en-IN") : "N/A")}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Remaining Validity</p>
-                  <p className="text-sm font-semibold">
-                    {(() => {
-                      const days = calculateRemainingDays(vehicle.insuranceDetails?.expiryDate || vehicle.insuranceExpiry);
-                      if (days === null) return "N/A";
-                      if (days < 0) return <span className="text-red-600 font-bold">Expired ({Math.abs(days)} days ago)</span>;
-                      if (days <= 30) return <span className="text-amber-600 font-semibold">{days} days remaining (Renewal Needed)</span>;
-                      return <span className="text-green-600 font-semibold">{days} days remaining</span>;
-                    })()}
-                  </p>
-                </div>
-              </div>
-            </div>
 
-            {/* Permit Details */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
-              <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
-                Permit Information
-              </h3>
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Permit Number</p>
-                  <p className="text-sm font-semibold text-[#1E293B] font-poppins">{vehicle.permitDetails?.permitNumber || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Permit Type</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.permitDetails?.permitType || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Issue Date</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.permitDetails?.issueDate ? new Date(vehicle.permitDetails.issueDate).toLocaleDateString("en-IN") : "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Expiry Date</p>
-                  <p className="text-sm font-semibold text-[#1E293B]">{vehicle.permitDetails?.expiryDate ? new Date(vehicle.permitDetails.expiryDate).toLocaleDateString("en-IN") : (vehicle.permitExpiry ? new Date(vehicle.permitExpiry).toLocaleDateString("en-IN") : "N/A")}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B] font-bold uppercase mb-1">Remaining Validity</p>
-                  <p className="text-sm font-semibold">
-                    {(() => {
-                      const days = calculateRemainingDays(vehicle.permitDetails?.expiryDate || vehicle.permitExpiry);
-                      if (days === null) return "N/A";
-                      if (days < 0) return <span className="text-red-600 font-bold">Expired ({Math.abs(days)} days ago)</span>;
-                      if (days <= 30) return <span className="text-amber-600 font-semibold">{days} days remaining (Renewal Needed)</span>;
-                      return <span className="text-green-600 font-semibold">{days} days remaining</span>;
-                    })()}
-                  </p>
-                </div>
-              </div>
-            </div>
 
             {/* Documents Section */}
             <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
@@ -623,14 +533,24 @@ export default function VehicleDetailsPage() {
                             <p className="text-[10px] text-[#64748B]">{doc.size} KB • {doc.uploadDate}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 ml-2">
+                        <div className="flex items-center gap-1 ml-2">
                           <button
-                            onClick={() => setPreviewDocument(doc)}
-                            className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                            onClick={() => setPreviewDocument({ name: doc.name, data: getDocumentUrl(doc.fileUrl || doc.data), type: doc.mimeType || doc.fileType || "application/pdf", size: doc.fileSize || doc.size, uploadDate: doc.uploadDate })}
+                            className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
                             title="View Document"
                           >
                             <Eye className="w-4 h-4 text-blue-600" />
                           </button>
+                          <a
+                            href={getDocumentUrl(doc.fileUrl || doc.data)}
+                            download={doc.name || "document"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 hover:bg-green-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                            title="Download Document"
+                          >
+                            <Download className="w-4 h-4 text-green-600" />
+                          </a>
                         </div>
                       </div>
                     ))
@@ -655,15 +575,23 @@ export default function VehicleDetailsPage() {
                                 <p className="text-[10px] text-[#64748B] truncate">{doc.originalName || "document"}</p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 ml-2">
-                              <a
-                                href={doc.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            <div className="flex items-center gap-1 ml-2">
+                              <button
+                                onClick={() => setPreviewDocument({ name: docLabels[key] || key, data: getDocumentUrl(doc.fileUrl), type: doc.mimeType || "application/pdf", size: doc.fileSize, uploadDate: new Date(doc.uploadDate).toLocaleDateString("en-IN") })}
                                 className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
                                 title="View Document"
                               >
                                 <Eye className="w-4 h-4 text-blue-600" />
+                              </button>
+                              <a
+                                href={getDocumentUrl(doc.fileUrl)}
+                                download={doc.originalName || `${key}_document`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 hover:bg-green-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                                title="Download Document"
+                              >
+                                <Download className="w-4 h-4 text-green-600" />
                               </a>
                             </div>
                           </div>
@@ -706,82 +634,7 @@ export default function VehicleDetailsPage() {
         </div>
       )}
 
-      {activeTab === "driver" && (
-        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm">
-          <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
-            Driver Assignment
-          </h3>
-          {vehicle.assignedDriver && typeof vehicle.assignedDriver === 'object' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-[#E7EAF0]">
-                  <div className="bg-[#FDF3EC] p-3 rounded-lg">
-                    <UserPlus className="w-6 h-6 text-[#B45A0A]" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#1E293B]">{vehicle.assignedDriver.fullName}</h4>
-                    <p className="text-[10px] text-[#64748B] mt-0.5">Driver Status: <span className="font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">{vehicle.assignedDriver.driverStatus}</span></p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-xs space-y-1">
-                  <div>
-                    <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">Driver ID</p>
-                    <p className="font-semibold text-[#1E293B] mt-1 font-poppins">{vehicle.assignedDriver._id}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">Phone Number</p>
-                    <p className="font-semibold text-[#1E293B] mt-1">{vehicle.assignedDriver.phoneNumber}</p>
-                  </div>
-                  <div className="col-span-2 border-t border-[#E7EAF0]/60 pt-3">
-                    <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">Email Address</p>
-                    <p className="font-semibold text-[#1E293B] mt-1 truncate">{vehicle.assignedDriver.email}</p>
-                  </div>
-                  <div className="border-t border-[#E7EAF0]/60 pt-3">
-                    <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">License Number</p>
-                    <p className="font-semibold text-[#1E293B] mt-1 font-poppins">{vehicle.assignedDriver.licenseNumber}</p>
-                  </div>
-                  <div className="border-t border-[#E7EAF0]/60 pt-3">
-                    <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">License Type</p>
-                    <p className="font-semibold text-[#1E293B] mt-1">{vehicle.assignedDriver.licenseType}</p>
-                  </div>
-                  <div className="col-span-2 border-t border-[#E7EAF0]/60 pt-3">
-                    <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">Assignment Date</p>
-                    <p className="font-semibold text-[#1E293B] mt-1">
-                      {new Date(vehicle.assignedDriver.updatedAt || vehicle.updatedAt).toLocaleDateString("en-IN")}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2 pt-4 border-t border-[#E7EAF0]/60">
-                  <button
-                    onClick={() => setShowAssignModal(true)}
-                    className="px-4.5 py-2 bg-[#B45A0A] hover:bg-[#9A4D08] text-white text-xs font-bold rounded-lg cursor-pointer transition-colors shadow-sm"
-                  >
-                    Change Driver
-                  </button>
-                  <button
-                    onClick={() => handleAssignDriver("Unassigned")}
-                    className="px-4.5 py-2 border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold rounded-lg cursor-pointer transition-colors shadow-sm"
-                  >
-                    Remove Assignment
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-12 max-w-sm mx-auto select-none">
-              <UserMinus className="w-12 h-12 text-[#94A3B8] mx-auto mb-3 opacity-50" />
-              <h4 className="font-bold text-sm text-[#1E293B] mb-1">No Driver Assigned</h4>
-              <p className="text-xs text-[#64748B] mb-6">This vehicle currently has no driver allocated. Assign a driver to update its routing availability.</p>
-              <button
-                onClick={() => setShowAssignModal(true)}
-                className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white text-xs font-bold rounded-xl cursor-pointer transition-colors shadow-md shadow-[#B45A0A]/10"
-              >
-                Assign Driver
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+
 
       {activeTab === "service" && (
         <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-6">
@@ -1140,80 +993,7 @@ export default function VehicleDetailsPage() {
         </div>
       )}
 
-      {/* Assign Driver Modal */}
-      {showAssignModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 border border-[#E7EAF0] relative">
-            <button
-              onClick={() => setShowAssignModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
 
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-xl font-bold font-poppins text-[#1E293B]">Assign Driver</h3>
-                <p className="text-xs text-[#64748B] mt-1 font-medium">
-                  Select a driver from the active roster to assign to this vehicle ({vehicle.plateNumber}).
-                </p>
-              </div>
-
-              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                {/* Unassign option */}
-                <div 
-                  onClick={() => handleAssignDriver("Unassigned")}
-                  className="p-3 bg-red-50 hover:bg-red-100/70 border border-red-100 rounded-xl flex items-center justify-between cursor-pointer transition-colors"
-                >
-                  <div>
-                    <p className="font-bold text-xs text-red-700">Leave Unassigned</p>
-                    <span className="text-[10px] text-red-500 font-medium">Remove current driver from this vehicle</span>
-                  </div>
-                </div>
-
-                 {driversList.map(d => (
-                  <div 
-                    key={d._id}
-                    onClick={() => handleAssignDriver(d._id)}
-                    className={`p-3 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
-                      d.assignedVehicle === vehicle.plateNumber
-                        ? "bg-indigo-50/50 border-indigo-200"
-                        : "bg-white hover:bg-gray-50 border-[#E7EAF0]"
-                    }`}
-                  >
-                    <div>
-                      <p className="font-bold text-xs text-[#1E293B]">{d.fullName}</p>
-                      <span className="text-[10px] text-[#64748B] block mt-0.5">DL: {d.licenseNumber} ({d.licenseType})</span>
-                    </div>
-                    {d.assignedVehicle && d.assignedVehicle !== "Unassigned" && d.assignedVehicle !== vehicle.plateNumber ? (
-                      <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
-                        {d.assignedVehicle}
-                      </span>
-                    ) : d.assignedVehicle === vehicle.plateNumber ? (
-                      <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
-                        Currently Assigned
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
-                        Available
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E7EAF0]">
-                <button
-                  onClick={() => setShowAssignModal(false)}
-                  className="px-4.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-semibold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Maintenance Details Modal */}
       {selectedMaintenance && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">

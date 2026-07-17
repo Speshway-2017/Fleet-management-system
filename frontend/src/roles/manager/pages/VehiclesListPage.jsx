@@ -3,6 +3,7 @@ import { ArrowLeft, Plus, Search, ChevronDown, Eye, Edit2, Trash2, FileText, Map
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { useAuth } from "@/context/AuthContext";
 import { vehicleApi } from "@/api/vehicleApi";
 import L from "leaflet";
 import { managerApi } from "../api/managerApi";
@@ -16,8 +17,31 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png"
 });
 
+const CITY_COORDINATES = {
+  mumbai: [19.0760, 72.8777],
+  pune: [18.5204, 73.8567],
+  bengaluru: [12.9716, 77.5946],
+  bangalore: [12.9716, 77.5946],
+  hyderabad: [17.3850, 78.4867],
+  delhi: [28.7041, 77.1025],
+  chennai: [13.0827, 80.2707],
+  kolhapur: [16.7050, 74.2433],
+  satara: [17.6805, 73.9918],
+  anantapur: [14.6819, 77.6006],
+  goa: [15.2993, 74.1240],
+  visakhapatnam: [17.6868, 83.2185],
+  vizag: [17.6868, 83.2185],
+  kolkata: [22.5726, 88.3639],
+  ahmedabad: [23.0225, 72.5714],
+  surat: [21.1702, 72.8311],
+  jaipur: [26.9124, 75.7873],
+  lucknow: [26.8467, 80.9462]
+};
+
 export default function VehiclesListPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
@@ -209,35 +233,33 @@ export default function VehiclesListPage() {
 
   // Get marker color based on status
   const getMarkerColor = (status) => {
-    switch (status) {
-      case "Available":
-        return "#22c55e"; // green
-      case "On Trip":
-        return "#f97316"; // orange
-      case "Maintenance":
-        return "#ef4444"; // red
-      case "Idle":
-        return "#6b7280"; // gray
-      default:
-        return "#6b7280";
-    }
+    const s = String(status || '').toLowerCase().trim();
+    if (s.includes('available')) return "#22c55e"; // green
+    if (s.includes('trip')) return "#f97316";      // orange
+    if (s.includes('assigned')) return "#f97316";   // orange / on trip
+    if (s.includes('maintenance')) return "#ef4444"; // red
+    return "#6b7280";                              // grey (Idle / Out of Service)
   };
 
-  // Get mock coordinates for vehicles
+  // Get coordinates for vehicles
   const getVehicleCoordinates = (branch, index) => {
-    const locations = {
-      "Pune": [18.5204, 73.8567],
-      "Mumbai": [19.076, 72.8777],
-      "Delhi": [28.7041, 77.1025],
-      "Bengaluru": [12.9716, 77.5946],
-      "Chennai": [13.0827, 80.2707]
-    };
-
-    const baseCoord = locations[branch] || [20.5937, 78.9629];
+    if (!branch) return [18.5204, 73.8567]; // default Pune
+    const norm = branch.toLowerCase().trim();
+    let baseCoord = null;
+    for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
+      if (norm.includes(key)) {
+        baseCoord = coords;
+        break;
+      }
+    }
+    if (!baseCoord) {
+      baseCoord = [18.5204, 73.8567]; // default Pune
+    }
     
-    // Add slight variation to coordinates for visualization
-    const offset = (index % 5) * 0.05;
-    return [baseCoord[0] + offset, baseCoord[1] + offset];
+    // Add slight variation to coordinates for visualization to avoid overlapping markers
+    const offset = (index % 5) * 0.02 - 0.04;
+    const offset2 = ((index + 2) % 5) * 0.02 - 0.04;
+    return [baseCoord[0] + offset, baseCoord[1] + offset2];
   };
 
   const getStatusColor = (status) => {
@@ -344,7 +366,9 @@ export default function VehiclesListPage() {
           </button>
           <button
             onClick={() => navigate("/manager/add-vehicle")}
-            className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 cursor-pointer"
+            disabled={isViewOnly}
+            title={isViewOnly ? "This feature is available after activating a subscription." : ""}
+            className={`px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             <Plus className="w-4.5 h-4.5" />
             <span>Add Vehicle</span>
@@ -665,8 +689,9 @@ export default function VehiclesListPage() {
                             </button>
                             <button
                               onClick={() => navigate(`/manager/vehicle-edit/${vehicle._id}`)}
-                              className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
-                              title="Edit"
+                              disabled={isViewOnly}
+                              title={isViewOnly ? "This feature is available after activating a subscription." : "Edit"}
+                              className={`p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
@@ -675,8 +700,9 @@ export default function VehiclesListPage() {
                                 setSelectedVehicle(vehicle);
                                 setDeleteModalOpen(true);
                               }}
-                              className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"
-                              title="Delete"
+                              disabled={isViewOnly}
+                              title={isViewOnly ? "This feature is available after activating a subscription." : "Delete"}
+                              className={`p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>

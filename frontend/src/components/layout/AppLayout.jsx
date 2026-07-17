@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useSettings } from "@/context/SettingsContext";
 import toast from "react-hot-toast";
+import { managerApi } from "@/roles/manager/api/managerApi";
+import MilestoneReviewModal from "./MilestoneReviewModal";
 import {
   LayoutDashboard,
   Truck,
@@ -28,6 +31,7 @@ import {
   Menu,
   MoreHorizontal,
   Plus,
+  Coins
 } from "lucide-react";
 
 const MENU_ITEMS = [
@@ -39,8 +43,10 @@ const MENU_ITEMS = [
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel },
   { label: "Maintenance", to: "/manager/maintenance", icon: Wrench },
   { label: "Analytics", to: "/manager/analytics", icon: BarChart3 },
+  { label: "Earnings", to: "/manager/earnings", icon: Coins },
   { label: "Reports", to: "/manager/reports", icon: ClipboardList },
   { label: "Notifications", to: "/manager/notifications", icon: Bell },
+  { label: "Subscription", to: "/manager/subscription", icon: CreditCard },
   { label: "Settings", to: "/manager/settings", icon: Settings },
 ];
 
@@ -71,11 +77,13 @@ const MANAGER_MOBILE_SIDEBAR_ITEMS = [
   { label: "Fuel Management", to: "/manager/fuel", icon: Fuel },
   { label: "Maintenance", to: "/manager/maintenance", icon: Wrench },
   { label: "Analytics", to: "/manager/analytics", icon: BarChart3 },
+  { label: "Earnings", to: "/manager/earnings", icon: Coins },
   { label: "Reports", to: "/manager/reports", icon: ClipboardList },
 ];
 
 export default function AppLayout() {
   const { user, role, logout } = useAuth();
+  const { platformSettings } = useSettings();
   const location = useLocation();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -103,6 +111,35 @@ export default function AppLayout() {
     }
   }, [mobileSidebarOpen]);
 
+  const [pendingMilestone, setPendingMilestone] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
+
+  const checkMilestone = async () => {
+    if (role !== "FLEET_MANAGER" && role !== "manager") return;
+    try {
+      const res = await managerApi.getPendingMilestone();
+      const data = res.data?.data !== undefined ? res.data.data : res.data;
+      if (data && data.milestone) {
+        setPendingMilestone(data);
+      } else {
+        setPendingMilestone(null);
+        setIsLocked(false);
+      }
+    } catch (err) {
+      console.error("Failed to check trip milestone status:", err);
+    }
+  };
+
+  useEffect(() => {
+    checkMilestone();
+  }, [location.pathname, role]);
+
+  useEffect(() => {
+    if (role !== "FLEET_MANAGER" && role !== "manager") return;
+    const interval = setInterval(checkMilestone, 15000);
+    return () => clearInterval(interval);
+  }, [role]);
+
   const handleLogoutRequest = () => {
     setProfileOpen(false);
     setMobileSidebarOpen(false);
@@ -120,7 +157,7 @@ export default function AppLayout() {
     <div className="h-screen bg-gray-50 flex overflow-hidden relative">
       {/* Mobile Sidebar Drawer */}
       {isMobile && mobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
+        <div className={`fixed inset-0 z-50 flex md:hidden ${isLocked ? "pointer-events-none filter blur-[3px] select-none" : ""}`}>
           <div
             className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 animate-fade"
             onClick={() => setMobileSidebarOpen(false)}
@@ -137,13 +174,13 @@ export default function AppLayout() {
             <div className="flex items-center px-4 py-6 border-b border-[#1B1B1D]/50 shrink-0">
               <div className="flex items-center gap-2">
                 <img
-                  src="/logo.png"
+                  src={platformSettings?.logoUrl || "/logo.png"}
                   className="w-10 h-10 object-contain rounded-lg shrink-0"
                   alt="Fleet Management Logo"
                 />
                 <div className="border-l border-[#1B1B1D]/80 pl-[14px] py-1">
                   <h1 className="font-black text-white text-base tracking-wide leading-none whitespace-nowrap">
-                    Fleet Management
+                    {platformSettings?.platformName || "Fleet Management"}
                   </h1>
                   <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider mt-1.5 block">
                     {role === "admin" ? "Admin" : "Manager"}
@@ -213,18 +250,18 @@ export default function AppLayout() {
       )}
 
       {/* Sidebar */}
-      <aside className="hidden md:flex w-20 lg:w-64 flex-col bg-[#0F0F10] text-gray-400 border-r border-[#1B1B1D]/50 shrink-0 sticky top-0 h-screen max-h-screen">
+      <aside className={`hidden md:flex w-20 lg:w-64 flex-col bg-[#0F0F10] text-gray-400 border-r border-[#1B1B1D]/50 shrink-0 sticky top-0 h-screen max-h-screen ${isLocked ? "pointer-events-none filter blur-[3px] select-none" : ""}`}>
         {/* Brand Header */}
         <div className="flex items-center justify-center lg:justify-start lg:px-4 py-6 border-b border-[#1B1B1D]/50 shrink-0">
           <div className="flex items-center gap-2">
             <img
-              src="/logo.png"
+              src={platformSettings?.logoUrl || "/logo.png"}
               className="w-10 h-10 object-contain rounded-lg shrink-0"
               alt="Fleet Management Logo"
             />
             <div className="border-l border-[#1B1B1D]/80 pl-[14px] py-1 hidden lg:block">
               <h1 className="font-black text-white text-base tracking-wide leading-none whitespace-nowrap">
-                Fleet Management
+                {platformSettings?.platformName || "Fleet Management"}
               </h1>
               <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider mt-1.5 block">
                 {role === "admin" ? "Admin" : "Manager"}
@@ -265,7 +302,7 @@ export default function AppLayout() {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={`flex-1 flex flex-col min-w-0 ${isLocked ? "pointer-events-none filter blur-[3px] select-none" : ""}`}>
         {/* Header */}
         <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between shadow-sm shrink-0">
           <div className="flex items-center gap-4">
@@ -471,7 +508,22 @@ export default function AppLayout() {
             </div>
           </div>
         )}
+
       </div>
+
+      {pendingMilestone && (
+        <MilestoneReviewModal
+          milestoneData={pendingMilestone}
+          onClose={(refresh) => {
+            setPendingMilestone(null);
+            setIsLocked(false);
+            if (refresh) {
+              checkMilestone();
+            }
+          }}
+          onLockStateChange={setIsLocked}
+        />
+      )}
     </div>
   );
 }

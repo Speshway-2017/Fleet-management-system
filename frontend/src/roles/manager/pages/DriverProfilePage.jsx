@@ -83,6 +83,7 @@ export default function DriverProfilePage() {
   const [trips, setTrips] = useState([]);
   const [loadingTrips, setLoadingTrips] = useState(true);
   const [tripsError, setTripsError] = useState("");
+  const [showAllTrips, setShowAllTrips] = useState(false);
 
   const fetchTrips = useCallback(async () => {
     try {
@@ -90,7 +91,11 @@ export default function DriverProfilePage() {
       setTripsError("");
       const res = await managerApi.getTrips({ driver: id });
       const fetchedTrips = res.data?.data ?? [];
-      const sorted = fetchedTrips.sort(
+      const driverTrips = fetchedTrips.filter(t => {
+        const tripDriverId = typeof t.driver === 'object' ? t.driver?._id : t.driver;
+        return String(tripDriverId) === String(id);
+      });
+      const sorted = driverTrips.sort(
         (a, b) => new Date(b.departureTime || b.createdAt) - new Date(a.departureTime || a.createdAt)
       );
       setTrips(sorted);
@@ -304,7 +309,11 @@ export default function DriverProfilePage() {
             </div>
             <div>
               <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Medical Fitness</span>
-              <p className="text-xl font-extrabold text-[#22C55E] mt-0.5 font-poppins">{driver.medicalFitnessStatus}</p>
+              <p className={`text-xl font-extrabold mt-0.5 font-poppins ${
+                String(driver.medicalFitnessStatus).includes("Unfit") ? "text-red-500" :
+                String(driver.medicalFitnessStatus).includes("Review") ? "text-amber-500" :
+                "text-emerald-600"
+              }`}>{driver.medicalFitnessStatus || "✅ Fit"}</p>
             </div>
           </div>
         </div>
@@ -408,8 +417,8 @@ export default function DriverProfilePage() {
               </div>
 
               <div>
-                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Terminal Branch</span>
-                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">Pune Hub Depot</span>
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Current Location</span>
+                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{driver.driverLocation || driver.branch || "Pune"}</span>
               </div>
             </div>
           </div>
@@ -448,20 +457,6 @@ export default function DriverProfilePage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    onClick={handleUnassignVehicle}
-                    className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition-all border border-red-100 cursor-pointer"
-                  >
-                    Unassign Vehicle
-                  </button>
-                  <button
-                    onClick={() => navigate(`/manager/driver-assign-vehicle/${driver._id}`)}
-                    className="w-full py-2 bg-white hover:bg-gray-50 text-[#64748B] hover:text-[#1E293B] rounded-xl text-xs font-bold transition-all border border-[#E7EAF0] cursor-pointer"
-                  >
-                    Change Vehicle
-                  </button>
-                </div>
               </div>
             ) : (
               <div className="py-8 text-center space-y-3">
@@ -494,14 +489,18 @@ export default function DriverProfilePage() {
                 <div className="text-center py-6 text-red-500 font-medium text-xs font-poppins">
                   {tripsError}
                 </div>
-              ) : trips.length === 0 ? (
+              ) : trips.length < 2 ? (
                 <div className="text-center py-8 text-[#64748B] font-medium text-xs font-nunito">
                   No trips assigned Yet
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {trips.map((trip) => (
-                    <div key={trip._id} className="flex items-center justify-between p-3.5 bg-gray-50/50 hover:bg-gray-50 border border-gray-100 rounded-xl transition-all">
+                  {(showAllTrips ? trips : trips.slice(0, 2)).map((trip) => (
+                    <div
+                      key={trip._id}
+                      onClick={() => navigate(`/manager/trip-details/${trip._id}`)}
+                      className="flex items-center justify-between p-3.5 bg-gray-50/50 hover:bg-gray-50 border border-gray-100 rounded-xl transition-all cursor-pointer hover:border-[#B45A0A]"
+                    >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-xs text-[#1E293B] font-poppins">{trip.tripNumber}</span>
@@ -531,6 +530,17 @@ export default function DriverProfilePage() {
                       </div>
                     </div>
                   ))}
+                  {trips.length > 2 && (
+                    <div className="pt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowAllTrips(!showAllTrips)}
+                        className="px-4 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer"
+                      >
+                        {showAllTrips ? "View Less" : "View More"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

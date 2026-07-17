@@ -1,143 +1,154 @@
-/**
- * AuthLayout — shared auth page shell
- * LEFT  : Fixed sticky panel with brand info, stats cards, and features bar
- * RIGHT : Scrollable form content
- */
-export default function AuthLayout({ children, backLabel, onBack }) {
-  return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-[#F8FAFC] font-sans relative">
+import { NavLink, useNavigate, Outlet, useLocation } from "react-router-dom";
+import { ShieldCheck, Zap } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useSettings } from "@/context/SettingsContext";
 
-      {/* ══ LEFT PANEL / MOBILE BACKGROUND ══ */}
-      <div
-        className="absolute inset-0 z-0 lg:relative lg:inset-auto lg:flex lg:w-[45%] lg:min-w-[460px] flex-shrink-0 lg:sticky lg:top-0 lg:h-screen flex flex-col justify-between overflow-hidden bg-cover bg-center px-8 py-8"
+export default function AuthLayout() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { platformSettings } = useSettings();
+
+  return (
+    <div className="h-screen w-full flex flex-col lg:flex-row bg-[#F8FAFC] font-sans text-[#1E293B] relative overflow-y-auto lg:overflow-hidden">
+      
+      {/* ── LEFT PANEL (50% Width) ── */}
+      <div 
+        className="fixed inset-0 z-0 lg:relative lg:inset-auto w-full lg:w-[50%] flex flex-col justify-between p-8 lg:px-14 lg:py-12 [@media(max-height:850px)]:lg:py-8 overflow-hidden bg-cover bg-center h-screen lg:min-h-0 shrink-0"
         style={{
-          backgroundImage:
-            "url('/hero-bg.jpg')",
+          backgroundImage: "url('/hero-bg.jpg')",
         }}
       >
-        {/* Translucent overlay for text legibility */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/80 to-black/60 pointer-events-none z-0" />
-
-        {/* ── TOP: Brand & Description Zone ── */}
-        <div className="relative z-10 space-y-6">
-          {/* Logo + brand */}
-          <div className="flex items-center gap-3">
-            <div className="bg-white rounded-full p-1 shadow-md border border-gray-100 flex items-center justify-center h-10 w-10">
-              <img src="/logo.png" alt="Fleet Management Logo" className="h-7 w-7 object-contain" />
-            </div>
-            <span className="font-display font-black text-gray-900 text-sm tracking-wide">
-              Fleet Management
+        {/* Soft dark overlay for text readability while maintaining high image clarity */}
+        <div className="absolute inset-0 bg-slate-900/40 pointer-events-none z-0" />
+        
+        {/* Top Header: Logo + Title */}
+        <div className="relative z-10">
+          <NavLink to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+            <img src={platformSettings?.logoUrl || "/logo.png"} alt="Fleet Management Logo" className="h-10 [@media(max-height:850px)]:h-8 w-auto object-contain bg-white/95 rounded-xl p-1 shadow-sm" />
+            <span className="font-display font-black text-white text-lg [@media(max-height:850px)]:text-base tracking-wide">
+              {platformSettings?.platformName || "Fleet Management"}
             </span>
-          </div>
+          </NavLink>
+        </div>
 
-          {/* Heading */}
-          <h1 className="font-display font-black text-[#0B1B3D] leading-tight tracking-tight text-3xl sm:text-4xl">
+        {/* Middle Hero details */}
+        <div className="relative z-10 space-y-7 [@media(max-height:850px)]:space-y-4 max-w-xl my-auto py-12 [@media(max-height:850px)]:py-6">
+          
+          <h1 className="font-display font-black text-white text-3xl sm:text-4xl md:text-5xl [@media(max-height:850px)]:md:text-4xl leading-[1.15] tracking-tight">
             Fleet Management <br />
             <span className="text-[#A14000]">System</span>
           </h1>
 
-          {/* Description */}
-          <p className="text-gray-600 font-medium leading-relaxed text-xs max-w-sm">
-            Manage your fleet operations efficiently with real-time telematics, driver performance tracking, and automated maintenance scheduling.
+          <p className="text-sm [@media(max-height:850px)]:text-xs text-slate-200 font-medium leading-relaxed max-w-lg">
+            Manage fleets, drivers, vehicles, centralized dashboard and operations from one intelligent platform. 
+            Improve operational efficiency, monitor vehicle health in real time, reduce operational costs, 
+            and secure your logistics operations with enterprise-grade technology.
           </p>
 
-          {/* Stats Badges */}
-          <div className="flex flex-col sm:flex-row gap-4 pt-2">
-            {/* Stat 1 */}
-            <div className="flex items-center gap-3.5 bg-white/90 backdrop-blur-sm border border-white/50 rounded-2xl p-3.5 shadow-sm min-w-[160px]">
-              <div className="h-9 w-9 rounded-xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center shadow-sm shrink-0">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
+          {/* Features rows */}
+          <div className="space-y-4 [@media(max-height:850px)]:space-y-2.5 pt-4 [@media(max-height:850px)]:pt-2">
+            
+            {/* Feature 1 */}
+            <div className="flex items-start gap-3">
+              <div className="h-9 w-9 [@media(max-height:850px)]:h-7 [@media(max-height:850px)]:w-7 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
+                <span className="text-lg [@media(max-height:850px)]:text-sm">🚛</span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-base font-black text-[#0B1B3D] leading-none">99.9%</span>
-                <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mt-0.5">Uptime</span>
+              <div>
+                <h4 className="font-display font-bold text-xs text-white">Real-Time Fleet Tracking</h4>
+                <p className="text-[11px] [@media(max-height:850px)]:text-[10px] text-slate-300 font-medium">Monitor vehicles live using GPS and telematics.</p>
               </div>
             </div>
 
-            {/* Stat 2 */}
-            <div className="flex items-center gap-3.5 bg-white/90 backdrop-blur-sm border border-white/50 rounded-2xl p-3.5 shadow-sm min-w-[160px]">
-              <div className="h-9 w-9 rounded-xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center shadow-sm shrink-0">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10M21 16v-4a2 2 0 00-2-2h-6M21 16H9m12 0h-2m-2 0h-5m-9 0H3" />
-                </svg>
+            {/* Feature 2 */}
+            <div className="flex items-start gap-3">
+              <div className="h-9 w-9 [@media(max-height:850px)]:h-7 [@media(max-height:850px)]:w-7 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
+                <ShieldCheck className="h-4.5 w-4.5 [@media(max-height:850px)]:h-3.5 [@media(max-height:850px)]:w-3.5" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-base font-black text-[#0B1B3D] leading-none">15k+</span>
-                <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mt-0.5">Vehicles</span>
+              <div>
+                <h4 className="font-display font-bold text-xs text-white">Enterprise Security</h4>
+                <p className="text-[11px] [@media(max-height:850px)]:text-[10px] text-slate-300 font-medium">Role-based authentication with secure access.</p>
               </div>
             </div>
+
+            {/* Feature 3 */}
+            <div className="flex items-start gap-3">
+              <div className="h-9 w-9 [@media(max-height:850px)]:h-7 [@media(max-height:850px)]:w-7 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
+                <span className="text-lg [@media(max-height:850px)]:text-sm">📊</span>
+              </div>
+              <div>
+                <h4 className="font-display font-bold text-xs text-white">Smart Analytics</h4>
+                <p className="text-[11px] [@media(max-height:850px)]:text-[10px] text-slate-300 font-medium">Generate reports and optimize operational performance.</p>
+              </div>
+            </div>
+
+            {/* Feature 4 */}
+            <div className="flex items-start gap-3">
+              <div className="h-9 w-9 [@media(max-height:850px)]:h-7 [@media(max-height:850px)]:w-7 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
+                <Zap className="h-4.5 w-4.5 [@media(max-height:850px)]:h-3.5 [@media(max-height:850px)]:w-3.5" />
+              </div>
+              <div>
+                <h4 className="font-display font-bold text-xs text-white">Automated Operations</h4>
+                <p className="text-[11px] [@media(max-height:850px)]:text-[10px] text-slate-300 font-medium">Reduce manual work through workflow automation.</p>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Left panel CTA buttons */}
+          <div className="flex items-center gap-4 pt-4 [@media(max-height:850px)]:pt-2">
+            <button
+              onClick={() => navigate("/contact")}
+              className="px-6 py-3 [@media(max-height:850px)]:px-4 [@media(max-height:850px)]:py-2 rounded-xl bg-white/80 border border-gray-300 hover:bg-white text-[#1E293B] font-bold text-xs shadow-sm hover:shadow-md active:scale-[0.98] transition-all cursor-pointer"
+            >
+              Learn More
+            </button>
+          </div>
+
+        </div>
+
+        {/* Bottom stats bar */}
+        <div className="relative z-10 w-full mt-auto pt-6 [@media(max-height:850px)]:pt-4 border-t border-gray-300/30">
+          <div className="bg-[#0F2345]/85 backdrop-blur-md border border-white/10 rounded-2xl p-6 [@media(max-height:850px)]:p-4 grid grid-cols-2 md:grid-cols-4 gap-6 [@media(max-height:850px)]:gap-4 text-white shadow-xl">
+            
+            <div className="space-y-1 text-center md:text-left">
+              <div className="text-2xl [@media(max-height:850px)]:text-xl font-black text-[#A14000] tracking-tight leading-none">500+</div>
+              <p className="text-[9px] [@media(max-height:850px)]:text-[8px] font-bold text-gray-300 uppercase tracking-widest mt-1">Vehicles Managed</p>
+            </div>
+
+            <div className="space-y-1 text-center md:text-left">
+              <div className="text-2xl [@media(max-height:850px)]:text-xl font-black text-[#A14000] tracking-tight leading-none">250+</div>
+              <p className="text-[9px] [@media(max-height:850px)]:text-[8px] font-bold text-gray-300 uppercase tracking-widest mt-1">Enterprise Clients</p>
+            </div>
+
+            <div className="space-y-1 text-center md:text-left">
+              <div className="text-2xl [@media(max-height:850px)]:text-xl font-black text-[#A14000] tracking-tight leading-none">1.2M+</div>
+              <p className="text-[9px] [@media(max-height:850px)]:text-[8px] font-bold text-gray-300 uppercase tracking-widest mt-1">KM Tracked</p>
+            </div>
+
+            <div className="space-y-1 text-center md:text-left">
+              <div className="text-2xl [@media(max-height:850px)]:text-xl font-black text-[#A14000] tracking-tight leading-none">99.9%</div>
+              <p className="text-[9px] [@media(max-height:850px)]:text-[8px] font-bold text-gray-300 uppercase tracking-widest mt-1">Platform Uptime</p>
+            </div>
+
           </div>
         </div>
 
-        {/* ── BOTTOM: Translucent Highlights Bar ── */}
-        <div className="relative z-10 w-full mt-auto">
-          <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-4 grid grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <div className="text-[#A14000]">
-                <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <h5 className="text-[10px] font-bold text-white tracking-wide">Secure & Reliable</h5>
-              <p className="text-[9px] text-gray-300 leading-tight">Enterprise-grade security to keep your data safe.</p>
-            </div>
-
-            <div className="space-y-1">
-              <div className="text-[#A14000]">
-                <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <h5 className="text-[10px] font-bold text-white tracking-wide">Real-time Insights</h5>
-              <p className="text-[9px] text-gray-300 leading-tight">Make faster, smarter decisions every day.</p>
-            </div>
-
-            <div className="space-y-1">
-              <div className="text-[#A14000]">
-                <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-              <h5 className="text-[10px] font-bold text-white tracking-wide">24/7 Support</h5>
-              <p className="text-[9px] text-gray-300 leading-tight">Our team is always here when you need us.</p>
-            </div>
-          </div>
-        </div>
       </div>
-      {/* ══ END LEFT PANEL ══ */}
 
-      {/* ══ RIGHT PANEL / MOBILE OVERLAY FORM ══ */}
-      <div className="relative z-10 flex-1 min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 py-10 bg-transparent lg:bg-[#F8FAFC] overflow-y-auto w-full">
-        {/* Form card */}
-        <div className="w-full max-w-[440px] bg-white border border-gray-200 lg:border-border-custom rounded-3xl px-6 sm:px-8 py-8 shadow-xl lg:shadow-sm">
-          {/* Back navigation (inside form) */}
-          {backLabel && onBack && (
-            <div className="mb-4">
-              <button
-                onClick={onBack}
-                className="flex items-center gap-2 text-xs font-bold text-[#A14000] hover:text-[#853500] transition-colors cursor-pointer"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                {backLabel}
-              </button>
-            </div>
-          )}
-
-          {/* Centered logo */}
-          <div className="flex justify-center mb-5">
-            <div className="bg-white rounded-full p-1.5 shadow-sm border border-gray-100 flex items-center justify-center h-14 w-14">
-              <img src="/logo.png" alt="Fleet Management Logo" className="h-10 w-10 object-contain" />
-            </div>
-          </div>
-
-          {/* Route-specific form */}
-          {children}
-        </div>
+      {/* ── RIGHT PANEL (50% Width) with AnimatePresence ── */}
+      <div className="w-full lg:w-[50%] flex flex-col items-center p-6 sm:p-12 md:p-16 py-10 lg:py-12 bg-transparent lg:bg-[#F8FAFC] min-h-screen lg:min-h-0 lg:h-screen lg:overflow-y-auto relative z-10 pointer-events-none lg:pointer-events-auto">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="w-full max-w-[440px] my-auto pointer-events-auto"
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </div>
 
     </div>
