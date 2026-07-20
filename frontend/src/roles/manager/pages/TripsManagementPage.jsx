@@ -196,9 +196,9 @@ export default function TripsManagementPage() {
 
 
 
-  const fetchTrips = async () => {
+  const fetchTrips = async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       const response = await managerApi.getTrips();
       const result = response.data?.data || response.data;
       if (Array.isArray(result)) {
@@ -212,15 +212,17 @@ export default function TripsManagementPage() {
         setTrips([]);
       }
     } catch (error) {
-      toast.error("Failed to load trips from database");
+      if (isInitial) toast.error("Failed to load trips from database");
       console.error(error);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTrips();
+    fetchTrips(true);
+    const interval = setInterval(() => fetchTrips(false), 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchResources = async () => {
@@ -401,7 +403,7 @@ export default function TripsManagementPage() {
   };
 
   // KPIs Calculations
-  const activeTripsCount = trips.filter(t => t.status === "On Transit").length;
+  const activeTripsCount = trips.filter(t => t.status === "In Progress" || t.status === "On Transit").length;
   const urgentTripsCount = trips.filter(t => t.status === "Delayed").length;
   const completedTripsCount = trips.filter(t => t.status === "Completed").length;
   // Compute on-time rate based on mock data

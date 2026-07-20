@@ -251,22 +251,50 @@ export default function CreateTripPage() {
       setLoading(true);
       try {
         const [vRes, dRes] = await Promise.all([
-          managerApi.getAvailableVehicles({ location: startLocation }),
-          managerApi.getAvailableDrivers({ location: startLocation })
+          managerApi.getVehicles(),
+          managerApi.getDrivers()
         ]);
-        const vehiclesData = (vRes.data?.data || vRes.data || []).map(v => ({
-          ...v,
-          id: v._id,
-          name: v.vehicleName,
-          plateNumber: v.vehicleNumber,
-          status: v.currentStatus
-        }));
-        const driversData = (dRes.data?.data || dRes.data || []).map(d => ({
-          ...d,
-          id: d._id,
-          name: d.fullName,
-          status: d.driverStatus === 'AVAILABLE' ? 'Available' : d.driverStatus
-        }));
+        
+        const allVehicles = vRes.data?.data || vRes.data || [];
+        const allDrivers = dRes.data?.data || dRes.data || [];
+
+        const cleanLoc = startLocation.trim().split(/[\s,]+/)[0].toLowerCase();
+
+        // Filter vehicles by location match in frontend
+        const filteredVehs = allVehicles.filter(v => {
+          const vBranch = (v.branch || "").toLowerCase();
+          const vLoc = (v.currentLocation || "").toLowerCase();
+          return vBranch.includes(cleanLoc) || vLoc.includes(cleanLoc) || cleanLoc.includes(vBranch) || cleanLoc.includes(vLoc);
+        });
+
+        // Filter drivers by location match in frontend
+        const filteredDrvs = allDrivers.filter(d => {
+          const dBranch = (d.branch || "").toLowerCase();
+          const dLoc = (d.currentLocation || d.driverLocation || "").toLowerCase();
+          return dBranch.includes(cleanLoc) || dLoc.includes(cleanLoc) || cleanLoc.includes(dBranch) || cleanLoc.includes(dLoc);
+        });
+
+        const vehiclesData = filteredVehs.map(v => {
+          const isAvailable = v.currentStatus === 'Available' || v.currentStatus === 'Active';
+          return {
+            ...v,
+            id: v._id,
+            name: v.vehicleName || `${v.brand} ${v.model}`,
+            plateNumber: v.vehicleNumber,
+            status: isAvailable ? 'Available' : 'Under Maintenance'
+          };
+        });
+
+        const driversData = filteredDrvs.map(d => {
+          const isAvailable = d.driverStatus === 'AVAILABLE';
+          return {
+            ...d,
+            id: d._id,
+            name: d.fullName,
+            status: isAvailable ? 'Available' : 'Not Available'
+          };
+        });
+
         setDrivers(driversData);
         setVehicles(vehiclesData);
 
@@ -715,11 +743,16 @@ export default function CreateTripPage() {
                 ).map(v => (
                   <div
                     key={v.id}
-                    onClick={() => setSelectedVehicleId(String(v.id))}
-                    className={`p-3.5 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
-                      String(selectedVehicleId) === String(v.id)
-                        ? "border-[#B45A0A] bg-orange-50/20 shadow-sm"
-                        : "border-[#E7EAF0] bg-white hover:bg-gray-50"
+                    onClick={() => {
+                      if (v.status === "Under Maintenance") return;
+                      setSelectedVehicleId(String(v.id));
+                    }}
+                    className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${
+                      v.status === "Under Maintenance"
+                        ? "border-[#E7EAF0] bg-gray-50/50 opacity-60 cursor-not-allowed"
+                        : String(selectedVehicleId) === String(v.id)
+                        ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
+                        : "border-[#E7EAF0] bg-white hover:bg-gray-50 cursor-pointer"
                     }`}
                   >
                     <div>
@@ -733,7 +766,7 @@ export default function CreateTripPage() {
                       <span className={`inline-block mt-2 px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
                         v.status === "Active" || v.status === "Available"
                           ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                          : "bg-amber-50 text-amber-600 border border-amber-100"
+                          : "bg-rose-50 text-rose-600 border border-rose-100"
                       }`}>
                         {v.status}
                       </span>
@@ -741,12 +774,15 @@ export default function CreateTripPage() {
                     
                     <button
                       type="button"
+                      disabled={v.status === "Under Maintenance"}
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedVehicleId(String(v.id));
                       }}
                       className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                        String(selectedVehicleId) === String(v.id)
+                        v.status === "Under Maintenance"
+                          ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
+                          : String(selectedVehicleId) === String(v.id)
                           ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
                           : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
                       }`}
@@ -805,14 +841,17 @@ export default function CreateTripPage() {
                           toast.error("This driver has an expired license and cannot be assigned.");
                           return;
                         }
+                        if (d.status === "Not Available") {
+                          return;
+                        }
                         setSelectedDriverId(String(d.id));
                       }}
-                      className={`p-3.5 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
-                        isExpired
+                      className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${
+                        (isExpired || d.status === "Not Available")
                           ? "border-red-150 bg-red-50/10 opacity-60 cursor-not-allowed"
                           : String(selectedDriverId) === String(d.id)
-                          ? "border-[#B45A0A] bg-orange-50/20 shadow-sm"
-                          : "border-[#E7EAF0] bg-white hover:bg-gray-50"
+                          ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
+                          : "border-[#E7EAF0] bg-white hover:bg-gray-50 cursor-pointer"
                       }`}
                     >
                       <div>
@@ -831,7 +870,7 @@ export default function CreateTripPage() {
                               ? "bg-red-50 text-red-600 border border-red-100"
                               : d.status === "Available"
                               ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                              : "bg-amber-50 text-amber-600 border border-amber-100"
+                              : "bg-rose-50 text-rose-600 border border-rose-100"
                           }`}>
                             {isExpired ? "Expired License" : d.status}
                           </span>
@@ -840,7 +879,7 @@ export default function CreateTripPage() {
                       
                       <button
                         type="button"
-                        disabled={isExpired}
+                        disabled={isExpired || d.status === "Not Available"}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (isExpired) {
@@ -850,8 +889,8 @@ export default function CreateTripPage() {
                           setSelectedDriverId(String(d.id));
                         }}
                         className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                          isExpired
-                            ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                          (isExpired || d.status === "Not Available")
+                            ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
                             : String(selectedDriverId) === String(d.id)
                             ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
                             : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"

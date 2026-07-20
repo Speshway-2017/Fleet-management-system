@@ -84,6 +84,10 @@ export default function VehiclesListPage() {
   const normaliseVehicle = (v) => {
     const insExp = v.insuranceDetails?.expiryDate || v.insuranceExpiry;
     const permExp = v.permitDetails?.expiryDate || v.permitExpiry;
+    let mappedStatus = v.currentStatus || 'Available';
+    if (mappedStatus === 'Under Maintenance') {
+      mappedStatus = 'Maintenance';
+    }
     return {
       ...v,
       id:           v._id,
@@ -98,7 +102,7 @@ export default function VehiclesListPage() {
       fastagBalance: v.fastagBalance ?? 0,
       branch:       v.branch || "Pune",
       dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
-      status:       v.currentStatus || 'Available',
+      status:       mappedStatus,
       chassisNumber: v.chassisNumber || "N/A",
       loadCapacity:  v.loadCapacity ?? 0,
       ownershipType: v.ownershipType || "Owned",
@@ -109,22 +113,24 @@ export default function VehiclesListPage() {
     };
   };
 
-  const fetchVehicles = async () => {
+  const fetchVehicles = async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       const res = await vehicleApi.list();
       const raw = res.data?.data ?? [];
       setVehicles(raw.map(normaliseVehicle));
     } catch (err) {
       console.error("Failed to fetch vehicles:", err);
-      toast.error("Failed to load vehicles from server.");
+      if (isInitial) toast.error("Failed to load vehicles from server.");
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchVehicles();
+    fetchVehicles(true);
+    const interval = setInterval(() => fetchVehicles(false), 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleSort = (field) => {
