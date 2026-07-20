@@ -2337,6 +2337,10 @@ export const getWeighbridgeSlipByTripId = async (req, res, next) => {
       }
     }
     return sendSuccess(res, 200, slip, 'Weighbridge Slip retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const createVehicleComplaint = async (req, res, next) => {
   try {
@@ -2441,6 +2445,11 @@ export const updateWeighbridgeSlipStatus = async (req, res, next) => {
     }
     await slip.save();
     return sendSuccess(res, 200, slip, `Weighbridge Slip ${status} successfully`);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateVehicleComplaint = async (req, res, next) => {
   try {
     const { id } = req.params;
