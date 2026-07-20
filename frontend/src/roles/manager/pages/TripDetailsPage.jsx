@@ -36,7 +36,7 @@ import { managerApi } from "../api/managerApi";
 export default function TripDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [trip, setTrip] = useState(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -61,8 +61,6 @@ export default function TripDetailsPage() {
   const [showTollModal, setShowTollModal] = useState(false);
   const [tollRejectReason, setTollRejectReason] = useState("");
   const [showTollRejectModal, setShowTollRejectModal] = useState(false);
-
-
 
   const tollDropdownRef = useRef(null);
   const tollButtonRef = useRef(null);
@@ -581,6 +579,10 @@ export default function TripDetailsPage() {
   const distanceTravelled = trip.status === "Scheduled" ? 0 : isCompleted ? totalDistance : Math.round(totalDistance * 0.56);
   const distancePercent = trip.status === "Scheduled" ? "0%" : isCompleted ? "100%" : "56%";
 
+  const isWeighbridgeApproved = weighbridge && weighbridge.status === "Approved";
+  const isPodApproved = pod && pod.status === "Approved";
+  const canCompleteTrip = isWeighbridgeApproved && isPodApproved;
+
   const handleUpdateStatus = async (newStatus) => {
     try {
       const response = await managerApi.updateTrip(trip._id, { status: newStatus });
@@ -588,7 +590,8 @@ export default function TripDetailsPage() {
       setTrip({ ...data, id: data.tripNumber });
       toast.success(`Trip status updated to ${newStatus}`);
     } catch (error) {
-      toast.error("Failed to update status");
+      const errMsg = error.response?.data?.message || "Failed to update status";
+      toast.error(errMsg);
       console.error(error);
     }
   };
@@ -680,7 +683,21 @@ export default function TripDetailsPage() {
           ) : trip.status === "In Progress" ? (
             <button
               onClick={() => handleUpdateStatus("Completed")}
-              className="flex-1 md:flex-none px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer text-center"
+              disabled={!canCompleteTrip}
+              className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md text-center ${
+                canCompleteTrip
+                  ? "bg-[#B45A0A] hover:bg-[#9A4D08] cursor-pointer"
+                  : "bg-gray-400 cursor-not-allowed opacity-60"
+              }`}
+              title={
+                !canCompleteTrip
+                  ? (!isWeighbridgeApproved && !isPodApproved)
+                    ? "Trip cannot be completed. Please approve both the Weighbridge and Proof of Delivery documents first."
+                    : !isWeighbridgeApproved
+                    ? "Trip cannot be completed. Please approve the Weighbridge document first."
+                    : "Trip cannot be completed. Please approve the Proof of Delivery document first."
+                  : ""
+              }
             >
               Complete Trip
             </button>
@@ -1185,7 +1202,7 @@ export default function TripDetailsPage() {
                       pod.status === "Rejected" ? "bg-red-50 text-red-600" :
                       "bg-amber-50 text-[#B45A0A]"
                     }`}>
-                      {pod.status || "Pending"}
+                      {pod.status === "Approved" ? "🟢 Approved" : pod.status === "Rejected" ? "🔴 Rejected" : "🟡 Pending"}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -1255,7 +1272,7 @@ export default function TripDetailsPage() {
                       weighbridge.status === "Rejected" ? "bg-red-50 text-red-600" :
                       "bg-amber-50 text-[#B45A0A]"
                     }`}>
-                      {weighbridge.status || "Pending"}
+                      {weighbridge.status === "Approved" ? "🟢 Approved" : weighbridge.status === "Rejected" ? "🔴 Rejected" : "🟡 Pending"}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -1922,6 +1939,141 @@ export default function TripDetailsPage() {
               >
                 Submit Rejection
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- RECEIPT VIEW MODAL --- */}
+      {selectedTollReceipt && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 border border-[#E7EAF0] relative my-8 animate-scale-up font-nunito">
+            <button
+              onClick={() => setSelectedTollReceipt(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Receipt Content */}
+            <div className="space-y-5">
+              {/* Header */}
+              <div className="text-center pb-4 border-b border-dashed border-gray-200">
+                <div className="mx-auto w-12 h-12 bg-blue-600 rounded-2xl flex flex-col items-center justify-center text-white font-poppins font-black text-xs shadow-md shadow-blue-200">
+                  <span className="leading-none text-[8px] uppercase tracking-wider font-bold opacity-85">NHAI</span>
+                  <span className="leading-none text-[10px] font-black tracking-tighter">FASTag</span>
+                </div>
+                <h3 className="font-poppins font-bold text-[#1E293B] text-[15px] mt-2.5">Toll Transaction Receipt</h3>
+                <p className="text-[9px] text-[#64748B] font-bold uppercase tracking-wider mt-0.5">National Highways Authority of India</p>
+              </div>
+
+              {/* Amount Display */}
+              <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center">
+                <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider block">Transaction Amount</span>
+                <span className="text-2xl font-black text-indigo-600 font-poppins mt-1 block">₹{selectedTollReceipt.amountPaid.toFixed(2)}</span>
+                <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-emerald-50 text-emerald-600 border border-emerald-100/60">
+                  Transaction {selectedTollReceipt.receiptStatus}
+                </span>
+              </div>
+
+              {/* Receipt Details */}
+              <div className="space-y-2.5 text-xs border-b border-dashed border-gray-200 pb-4">
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Toll Plaza Name</span>
+                  <span className="font-bold text-gray-700">{selectedTollReceipt.tollPlazaName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Location</span>
+                  <span className="font-bold text-gray-700">{selectedTollReceipt.location}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Date & Time</span>
+                  <span className="font-bold text-gray-700">
+                    {new Date(selectedTollReceipt.dateTime).toLocaleString('en-IN', {
+                      dateStyle: 'medium',
+                      timeStyle: 'medium'
+                    })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Vehicle Plate</span>
+                  <span className="font-bold text-gray-700">{selectedTollReceipt.vehiclePlate}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Payment Mode</span>
+                  <span className="font-bold text-[#1E293B] flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                    {selectedTollReceipt.paymentMethod}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">FASTag Tx ID</span>
+                  <span className="font-bold font-mono text-gray-600">{selectedTollReceipt.fastagTransactionId}</span>
+                </div>
+              </div>
+
+              {/* Footer text */}
+              <p className="text-[10px] text-[#64748B] text-center font-medium leading-relaxed">
+                This transaction was processed electronically via FASTag system. No signature is required.
+              </p>
+
+              {/* Action buttons */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTollReceipt(null)}
+                  className="flex-1 py-2 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-gray-50 transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const printWindow = window.open("", "_blank");
+                    printWindow.document.write(`
+                      <html>
+                        <head>
+                          <title>FASTag Receipt</title>
+                          <style>
+                            body { font-family: 'Nunito', sans-serif; color: #1E293B; padding: 40px; text-align: center; }
+                            .receipt-box { max-width: 400px; margin: auto; padding: 20px; border: 1px dashed #B2C2D3; border-radius: 12px; }
+                            .nhai-logo { width: 50px; height: 50px; background: #2563EB; border-radius: 12px; margin: 0 auto 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px; }
+                            .amount { font-size: 24px; font-weight: bold; color: #4F46E5; margin: 15px 0; }
+                            .details { text-align: left; margin: 20px 0; }
+                            .row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; }
+                            .label { color: #64748B; }
+                            .val { font-weight: bold; }
+                          </style>
+                        </head>
+                        <body onload="window.print(); window.close();">
+                          <div class="receipt-box">
+                            <div class="nhai-logo">
+                              <span style="font-size:8px;opacity:0.8;">NHAI</span>
+                              <span>FASTag</span>
+                            </div>
+                            <h3>FASTag Toll Receipt</h3>
+                            <div class="amount">₹\${selectedTollReceipt.amountPaid.toFixed(2)}</div>
+                            <div class="details">
+                              <div class="row"><span class="label">Toll Plaza</span><span class="val">\${selectedTollReceipt.tollPlazaName}</span></div>
+                              <div class="row"><span class="label">Location</span><span class="val">\${selectedTollReceipt.location}</span></div>
+                              <div class="row"><span class="label">Date & Time</span><span class="val">\${new Date(selectedTollReceipt.dateTime).toLocaleString('en-IN')}</span></div>
+                              <div class="row"><span class="label">Vehicle Plate</span><span class="val">\${selectedTollReceipt.vehiclePlate}</span></div>
+                              <div class="row"><span class="label">Payment Method</span><span class="val">\${selectedTollReceipt.paymentMethod}</span></div>
+                              <div class="row"><span class="label">Transaction ID</span><span class="val">\${selectedTollReceipt.fastagTransactionId}</span></div>
+                              <div class="row"><span class="label">Status</span><span class="val">\${selectedTollReceipt.receiptStatus}</span></div>
+                            </div>
+                            <p style="font-size:10px;color:#64748B;">This is a computer generated receipt for electronic toll collection.</p>
+                          </div>
+                        </body>
+                      </html>
+                    `);
+                    printWindow.document.close();
+                  }}
+                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+                >
+                  Print Receipt
+                </button>
+              </div>
             </div>
           </div>
         </div>

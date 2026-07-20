@@ -588,7 +588,7 @@ export default function ViewTicketsPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedTicket(null)}
-                    className="w-full py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer text-center"
+                    className="flex-1 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer text-center"
                   >
                     Close
                   </button>

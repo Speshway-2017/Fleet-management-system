@@ -85,9 +85,9 @@ export default function FuelManagementPage() {
     hasReceipt: true
   });
 
-  const fetchRecords = async () => {
+  const fetchRecords = async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       const response = await managerApi.getFuelRecords();
       const result = response.data?.data || response.data;
       if (Array.isArray(result)) {
@@ -109,10 +109,10 @@ export default function FuelManagementPage() {
         setLogs([]);
       }
     } catch (error) {
-      toast.error("Failed to load fuel records from database");
+      if (isInitial) toast.error("Failed to load fuel records from database");
       console.error(error);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
@@ -133,8 +133,13 @@ export default function FuelManagementPage() {
   };
 
   useEffect(() => {
-    fetchRecords();
+    fetchRecords(true);
     fetchVehicles();
+    const interval = setInterval(() => {
+      fetchRecords(false);
+      fetchVehicles();
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const filteredLogs = logs.filter(l => {

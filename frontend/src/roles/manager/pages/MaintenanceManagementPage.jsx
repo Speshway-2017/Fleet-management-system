@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Wrench,
@@ -67,11 +67,14 @@ export default function MaintenanceManagementPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [workOrders, setWorkOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [prefilledData, setPrefilledData] = useState(null);
   const [isDeletingId, setIsDeletingId] = useState(null);
   const [isUpdatingId, setIsUpdatingId] = useState(null);
+  const isUpdatingRef = useRef(false);
+  const isDeletingRef = useRef(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
   const [editFormData, setEditFormData] = useState({
@@ -107,8 +110,9 @@ export default function MaintenanceManagementPage() {
     return cells;
   };
 
-  const fetchWorkOrders = async () => {
+  const fetchWorkOrders = async (isInitial = false) => {
     try {
+      if (isInitial) setLoading(true);
       const response = await managerApi.getMaintenance();
       const result = response.data?.data || response.data;
       if (Array.isArray(result)) {
@@ -129,10 +133,10 @@ export default function MaintenanceManagementPage() {
         setWorkOrders([]);
       }
     } catch (error) {
-      toast.error("Failed to load work orders from database");
+      if (isInitial) toast.error("Failed to load work orders from database");
       console.error(error);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
@@ -153,11 +157,15 @@ export default function MaintenanceManagementPage() {
 
   // Load from database
   useEffect(() => {
-    fetchWorkOrders();
+    fetchWorkOrders(true);
+    const interval = setInterval(() => fetchWorkOrders(false), 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleStartService = async (orderId, e) => {
     e.stopPropagation();
+    if (isUpdatingRef.current) return;
+    isUpdatingRef.current = true;
     setIsUpdatingId(orderId);
     try {
       await managerApi.updateMaintenance(orderId, { status: "In Progress" });
@@ -166,16 +174,19 @@ export default function MaintenanceManagementPage() {
       );
       setWorkOrders(updated);
       toast.success("Service started at garage!");
-      await fetchWorkOrders();
+      fetchWorkOrders();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to start service.");
     } finally {
+      isUpdatingRef.current = false;
       setIsUpdatingId(null);
     }
   };
 
   const handleCompleteOrder = async (orderId, e) => {
     e.stopPropagation();
+    if (isUpdatingRef.current) return;
+    isUpdatingRef.current = true;
     setIsUpdatingId(orderId);
     try {
       await managerApi.updateMaintenance(orderId, { status: "Completed" });
@@ -184,25 +195,29 @@ export default function MaintenanceManagementPage() {
       );
       setWorkOrders(updated);
       toast.success("Maintenance work order completed successfully!");
-      await fetchWorkOrders();
+      fetchWorkOrders();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to complete order.");
     } finally {
+      isUpdatingRef.current = false;
       setIsUpdatingId(null);
     }
   };
 
   const handleDeleteOrder = async (orderId) => {
+    if (isDeletingRef.current) return;
+    isDeletingRef.current = true;
     setIsDeletingId(orderId);
     try {
       await managerApi.deleteMaintenance(orderId);
       const updated = workOrders.filter(w => w.id !== orderId);
       setWorkOrders(updated);
       toast.success("Work order deleted successfully");
-      await fetchWorkOrders();
+      fetchWorkOrders();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to delete work order.");
     } finally {
+      isDeletingRef.current = false;
       setIsDeletingId(null);
     }
   };

@@ -42,25 +42,31 @@ export default function VehicleManagement() {
    * Normalise a backend vehicle document to the shape this component expects.
    * Backend uses: _id, brand, vehicleNumber, currentStatus (Available/Active/etc.)
    */
-  const normaliseVehicle = (v) => ({
-    ...v,
-    id:           v._id,
-    name:         v.vehicleName || `${v.brand} ${v.model}`,
-    manufacturer: v.brand || "",
-    plateNumber:  v.vehicleNumber || "",
-    type:         v.vehicleType || 'Truck',
-    driver:       'N/A',
-    fuelLevel:    v.fuelCapacity ? Math.round((v.odometer % v.fuelCapacity) || 50) : 50,
-    fastagBalance:v.fastagBalance ?? 0,
-    branch:       v.branch       || 'Pune',
-    dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
-    // Map backend currentStatus to status
-    status:       v.currentStatus || 'Available',
-  });
+  const normaliseVehicle = (v) => {
+    let mappedStatus = v.currentStatus || 'Available';
+    if (mappedStatus === 'Under Maintenance') {
+      mappedStatus = 'Maintenance';
+    }
+    return {
+      ...v,
+      id:           v._id,
+      name:         v.vehicleName || `${v.brand} ${v.model}`,
+      manufacturer: v.brand || "",
+      plateNumber:  v.vehicleNumber || "",
+      type:         v.vehicleType || 'Truck',
+      driver:       'N/A',
+      fuelLevel:    v.fuelCapacity ? Math.round((v.odometer % v.fuelCapacity) || 50) : 50,
+      fastagBalance:v.fastagBalance ?? 0,
+      branch:       v.branch       || 'Pune',
+      dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
+      status:       mappedStatus,
+    };
+  };
 
   const [vehicles, setVehicles] = useState([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [activities, setActivities] = useState([]);
+  const [maintenance, setMaintenance] = useState([]);
 
   // Filter States
   const [search, setSearch] = useState("");
@@ -74,11 +80,11 @@ export default function VehicleManagement() {
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 
 
-  // Fetch vehicles from backend on mount
+  // Fetch vehicles from backend on mount and poll
   useEffect(() => {
-    const fetchVehicles = async () => {
+    const fetchVehicles = async (isInitial = false) => {
       try {
-        setVehiclesLoading(true);
+        if (isInitial) setVehiclesLoading(true);
         const vehRes = await vehicleApi.list();
         const rawVeh = vehRes.data?.data ?? [];
         setVehicles(rawVeh.map(normaliseVehicle));
@@ -122,14 +128,26 @@ export default function VehicleManagement() {
         } catch (notifErr) {
           console.error("Failed to fetch notification logs:", notifErr);
         }
+
+        // Fetch maintenance records
+        try {
+          const maintRes = await managerApi.getMaintenance();
+          const rawMaint = maintRes.data?.data || maintRes.data || [];
+          setMaintenance(rawMaint);
+        } catch (maintErr) {
+          console.error("Failed to fetch maintenance logs:", maintErr);
+        }
       } catch (err) {
         console.error('Failed to fetch data:', err);
-        toast.error('Failed to load vehicles from server.');
+        if (isInitial) toast.error('Failed to load vehicles from server.');
       } finally {
-        setVehiclesLoading(false);
+        if (isInitial) setVehiclesLoading(false);
       }
     };
-    fetchVehicles();
+
+    fetchVehicles(true);
+    const interval = setInterval(() => fetchVehicles(false), 5000);
+    return () => clearInterval(interval);
   }, []);
 
   // Sorting
@@ -205,6 +223,15 @@ export default function VehicleManagement() {
   const idleVehicles = vehicles.filter(v => v.status === "Idle").length;
   const maintVehicles = vehicles.filter(v => v.status === "Maintenance").length;
 
+  const overdueRepairsCount = maintenance.filter(m => {
+    if (m.status === "Completed") return false;
+    const due = new Date(m.scheduledDate);
+    const now = new Date();
+    due.setHours(0,0,0,0);
+    now.setHours(0,0,0,0);
+    return due < now;
+  }).length;
+
   // Chart Details (Usage & Status Distribution)
   // Generate dynamic monthly usage based on vehicle data
   const generateMonthlyUsage = () => {
@@ -252,7 +279,7 @@ export default function VehicleManagement() {
   const donutSegments = Object.entries(statusCounts).map(([status, count]) => {
     const value = count;
     const strokeLength = donutTotal > 0 ? (value / donutTotal) * circumference : 0;
-    const strokeOffset = circumference - currentOffset;
+    const strokeOffset = -currentOffset;
     currentOffset += strokeLength;
     return {
       status,
@@ -568,7 +595,7 @@ export default function VehicleManagement() {
           </div>
           <div className="mt-4 text-xs text-[#EF4444] font-semibold flex items-center gap-1">
             <AlertCircle className="w-3.5 h-3.5" />
-            <span>2 Overdue repairs</span>
+            <span>{overdueRepairsCount} Overdue repairs</span>
           </div>
         </div>
 

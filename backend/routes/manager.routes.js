@@ -65,7 +65,7 @@ import {
   getPODByTripId,
   updatePODStatus,
   getWeighbridgeSlipByTripId,
-  updateWeighbridgeSlipStatus
+  updateWeighbridgeSlipStatus,
   getTripTolls,
   createVehicleComplaint,
   listVehicleComplaints,
