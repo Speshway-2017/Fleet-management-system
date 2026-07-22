@@ -62,7 +62,35 @@ export const listDrivers = async (req, res, next) => {
       }
     }
 
-    // 5. Pagination & Sorting
+    // 5. Filter by Location (currentLocation, driverLocation, or branch)
+    const rawLoc = req.query.location || req.query.startLocation;
+    if (rawLoc && typeof rawLoc === 'string' && rawLoc.trim()) {
+      const cleanLoc = rawLoc.trim();
+      const firstWord = cleanLoc.split(/[\s,]+/)[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapedLoc = cleanLoc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const locRegex = new RegExp(`^\\s*${escapedLoc}\\s*$|${firstWord}`, 'i');
+
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { currentLocation: locRegex },
+          { driverLocation: locRegex },
+          { branch: locRegex }
+        ]
+      });
+    }
+
+    // 6. Exclude drivers on active trips if availableOnly is set
+    if (req.query.availableOnly === 'true' || req.query.available === 'true') {
+      const activeTrips = await Trip.find({
+        status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip'] }
+      });
+      const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
+      filter._id = { $nin: allocatedDriverIds };
+      filter.driverStatus = 'AVAILABLE';
+    }
+
+    // 7. Pagination & Sorting
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
@@ -116,28 +144,33 @@ export const getAvailableDrivers = async (req, res, next) => {
       ]
     };
 
-    const cleanLoc = req.query.location ? req.query.location.trim().split(/[\s,]+/)[0].toLowerCase() : null;
+    const rawLoc = req.query.location || req.query.startLocation;
+    if (rawLoc && typeof rawLoc === 'string' && rawLoc.trim()) {
+      const cleanLoc = rawLoc.trim();
+      const firstWord = cleanLoc.split(/[\s,]+/)[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapedLoc = cleanLoc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const locRegex = new RegExp(`^\\s*${escapedLoc}\\s*$|${firstWord}`, 'i');
 
-    if (cleanLoc) {
-      filter.$and = [
-        {
-          $or: [
-            { branch: { $regex: new RegExp(cleanLoc, 'i') } },
-            { driverLocation: { $regex: new RegExp(cleanLoc, 'i') } },
-            { currentLocation: { $regex: new RegExp(cleanLoc, 'i') } }
-          ]
-        }
-      ];
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { currentLocation: locRegex },
+          { driverLocation: locRegex },
+          { branch: locRegex }
+        ]
+      });
     }
 
     const availableDrivers = await Driver.find(filter);
 
-    if (cleanLoc) {
+    if (rawLoc && typeof rawLoc === 'string' && rawLoc.trim()) {
+      const cleanLoc = rawLoc.trim().toLowerCase();
+      const firstWord = cleanLoc.split(/[\s,]+/)[0];
       availableDrivers.sort((a, b) => {
         const aLoc = (a.currentLocation || a.driverLocation || a.branch || '').toLowerCase();
         const bLoc = (b.currentLocation || b.driverLocation || b.branch || '').toLowerCase();
-        const aMatch = aLoc.includes(cleanLoc) || cleanLoc.includes(aLoc);
-        const bMatch = bLoc.includes(cleanLoc) || cleanLoc.includes(bLoc);
+        const aMatch = aLoc.includes(firstWord) || firstWord.includes(aLoc);
+        const bMatch = bLoc.includes(firstWord) || firstWord.includes(bLoc);
         if (aMatch && !bMatch) return -1;
         if (!aMatch && bMatch) return 1;
         return 0;

@@ -40,8 +40,8 @@ export const managerApi = {
   },
 
   // Drivers
-  getDrivers: async () => {
-    return await axiosClient.get("/manager/drivers");
+  getDrivers: async (params) => {
+    return await axiosClient.get("/manager/drivers", { params });
   },
 
   getDriverById: async (id) => {
