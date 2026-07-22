@@ -5,6 +5,7 @@ import { Icon } from "@iconify/react";
 import { managerApi } from "../api/managerApi";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { useAuth } from "@/context/AuthContext";
+import { getSocket } from "@/api/socket";
 
 export default function ManagerDashboard() {
   const navigate = useNavigate();
@@ -66,17 +67,23 @@ export default function ManagerDashboard() {
     return `₹${num}`;
   };
 
-  const normaliseVehicle = (v) => ({
-    ...v,
-    id:           v._id,
-    name:         v.vehicleName || `${v.brand} ${v.model}`,
-    plateNumber:  v.vehicleNumber || "",
-    driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
-      ? v.assignedDriver.fullName
-      : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
-    branch:       v.branch       || 'Pune',
-    status:       v.currentStatus || 'Available',
-  });
+  const normaliseVehicle = (v) => {
+    let mappedStatus = v.currentStatus || 'Available';
+    if (mappedStatus === 'Under Maintenance') {
+      mappedStatus = 'Maintenance';
+    }
+    return {
+      ...v,
+      id:           v._id,
+      name:         v.vehicleName || `${v.brand} ${v.model}`,
+      plateNumber:  v.vehicleNumber || "",
+      driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
+        ? v.assignedDriver.fullName
+        : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
+      branch:       v.branch       || 'Pune',
+      status:       mappedStatus,
+    };
+  };
 
   useEffect(() => {
     const fetchAllData = async (isInitial = false) => {
@@ -107,11 +114,26 @@ export default function ManagerDashboard() {
     };
     fetchAllData(true);
 
+    const socket = getSocket();
+    const handleTripStatusUpdated = () => {
+      fetchAllData(false);
+    };
+    const handleDriverStatusUpdated = () => {
+      fetchAllData(false);
+    };
+
+    socket.on("trip:status-updated", handleTripStatusUpdated);
+    socket.on("driver:status-updated", handleDriverStatusUpdated);
+
     const intervalId = setInterval(() => {
       fetchAllData(false);
     }, 5000);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      socket.off("trip:status-updated", handleTripStatusUpdated);
+      socket.off("driver:status-updated", handleDriverStatusUpdated);
+    };
   }, []);
 
 
@@ -318,8 +340,8 @@ export default function ManagerDashboard() {
             const activeCount = vehicles.filter(v => v.status === "Active").length;
             const availableCount = vehicles.filter(v => v.status === "Available").length;
             const inServiceCount = vehicles.filter(v => v.status === "On Trip" || v.status === "Assigned").length;
-            const maintenanceCount = vehicles.filter(v => v.status === "Maintenance").length;
-            const outOfServiceCount = vehicles.filter(v => v.status === "Inactive" || v.status === "Idle").length;
+            const maintenanceCount = vehicles.filter(v => v.status === "Under Maintenance" || v.status === "Maintenance").length;
+            const outOfServiceCount = vehicles.filter(v => v.status === "Inactive" || v.status === "Idle" || v.status === "Out of Service").length;
 
             const chartData = [
               { name: "Active", value: activeCount, color: "#C65D0E" },

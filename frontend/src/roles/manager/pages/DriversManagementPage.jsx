@@ -20,19 +20,23 @@ export default function DriversManagementPage() {
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchDrivers = useCallback(async () => {
+  const fetchDrivers = useCallback(async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       const res = await driverApi.list();
       setDrivers(res.data?.data || []);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to load drivers.");
+      if (isInitial) toast.error(err.response?.data?.message || "Failed to load drivers.");
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchDrivers(); }, [fetchDrivers]);
+  useEffect(() => {
+    fetchDrivers(true);
+    const interval = setInterval(() => fetchDrivers(false), 5000);
+    return () => clearInterval(interval);
+  }, [fetchDrivers]);
 
   // KPIs
   const totalDrivers    = drivers.length;

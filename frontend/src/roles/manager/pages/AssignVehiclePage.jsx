@@ -28,26 +28,30 @@ export default function AssignVehiclePage() {
   const [typeFilter, setTypeFilter] = useState("All Types");
   const [assigningVehicleId, setAssigningVehicleId] = useState(null);
 
-  const normaliseVehicle = (v) => ({
-    ...v,
-    id:           v._id,
-    name:         `${v.brand} ${v.model}`,
-    manufacturer: v.brand,
-    plateNumber:  v.vehicleNumber,
-    type:         v.type         || 'Truck',
-    driver:       v.driver       || 'Unassigned',
-    fuelLevel:    v.fuelLevel    ?? 50,
-    fastagBalance:v.fastagBalance ?? 0,
-    branch:       v.branch       || '',
-    dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
-    status: {
-      ACTIVE:          'Available',
-      IDLE:            'Idle',
-      MAINTENANCE:     'Maintenance',
-      ON_TRIP:         'On Trip',
-      OUT_OF_SERVICE:  'Out of Service',
-    }[v.status] ?? v.status,
-  });
+  const normaliseVehicle = (v) => {
+    let mappedStatus = {
+      Available:       'Available',
+      Assigned:        'Assigned',
+      'On Trip':       'On Trip',
+      'Under Maintenance': 'Maintenance',
+      'Out of Service': 'Out of Service',
+    }[v.currentStatus] ?? v.currentStatus ?? 'Available';
+
+    return {
+      ...v,
+      id:           v._id,
+      name:         `${v.brand} ${v.model}`,
+      manufacturer: v.brand,
+      plateNumber:  v.vehicleNumber,
+      type:         v.type         || 'Truck',
+      driver:       v.driver       || 'Unassigned',
+      fuelLevel:    v.fuelLevel    ?? 50,
+      fastagBalance:v.fastagBalance ?? 0,
+      branch:       v.branch       || '',
+      dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
+      status:       mappedStatus,
+    };
+  };
 
   const fetchData = useCallback(async () => {
     try {

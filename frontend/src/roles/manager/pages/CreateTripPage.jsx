@@ -250,23 +250,63 @@ export default function CreateTripPage() {
     const fetchResources = async () => {
       setLoading(true);
       try {
+        const cleanLoc = startLocation.trim();
         const [vRes, dRes] = await Promise.all([
-          managerApi.getAvailableVehicles({ location: startLocation }),
-          managerApi.getAvailableDrivers({ location: startLocation })
+          managerApi.getAvailableVehicles({ location: cleanLoc }),
+          managerApi.getAvailableDrivers({ location: cleanLoc })
         ]);
-        const vehiclesData = (vRes.data?.data || vRes.data || []).map(v => ({
-          ...v,
-          id: v._id,
-          name: v.vehicleName,
-          plateNumber: v.vehicleNumber,
-          status: v.currentStatus
-        }));
-        const driversData = (dRes.data?.data || dRes.data || []).map(d => ({
-          ...d,
-          id: d._id,
-          name: d.fullName,
-          status: d.driverStatus === 'AVAILABLE' ? 'Available' : d.driverStatus
-        }));
+        
+        const allVehicles = vRes.data?.data || vRes.data || [];
+        const allDrivers = dRes.data?.data || dRes.data || [];
+
+        const normalize = (str) => (str || "").trim().toLowerCase();
+
+        const isLocationMatch = (driverLoc, targetLoc) => {
+          if (!driverLoc || !targetLoc) return false;
+          const normDriver = normalize(driverLoc);
+          const normTarget = normalize(targetLoc);
+          const targetFirstWord = normTarget.split(/[\s,]+/)[0];
+          const driverFirstWord = normDriver.split(/[\s,]+/)[0];
+          return (
+            normDriver === normTarget ||
+            normDriver.includes(targetFirstWord) ||
+            targetFirstWord.includes(driverFirstWord)
+          );
+        };
+
+        // Filter vehicles strictly by current location stored in database
+        const filteredVehs = allVehicles.filter(v => {
+          const vLoc = v.currentLocation || v.branch || "";
+          return isLocationMatch(vLoc, cleanLoc);
+        });
+
+        // Filter drivers strictly by current location stored in database
+        const filteredDrvs = allDrivers.filter(d => {
+          const dLoc = d.currentLocation || d.driverLocation || d.branch || "";
+          return isLocationMatch(dLoc, cleanLoc);
+        });
+
+        const vehiclesData = filteredVehs.map(v => {
+          const isAvailable = v.currentStatus === 'Available' || v.currentStatus === 'Active';
+          return {
+            ...v,
+            id: v._id,
+            name: v.vehicleName || `${v.brand} ${v.model}`,
+            plateNumber: v.vehicleNumber,
+            status: isAvailable ? 'Available' : 'Under Maintenance'
+          };
+        });
+
+        const driversData = filteredDrvs.map(d => {
+          const isAvailable = d.driverStatus === 'AVAILABLE';
+          return {
+            ...d,
+            id: d._id,
+            name: d.fullName,
+            status: isAvailable ? 'Available' : 'Not Available'
+          };
+        });
+
         setDrivers(driversData);
         setVehicles(vehiclesData);
 
@@ -293,7 +333,7 @@ export default function CreateTripPage() {
 
     const debounceFetch = setTimeout(() => {
       fetchResources();
-    }, 400);
+    }, 300);
 
     return () => clearTimeout(debounceFetch);
   }, [startLocation]);
@@ -383,12 +423,8 @@ export default function CreateTripPage() {
   };
 
   const distance = calculateDistance(startLocation, endLocation) || 250;
-  const weight = Number(cargoWeight) || 800;
-
-  const estimatedRevenue = Math.round(distance * 52 + weight * 4.5);
-  const estimatedExpenses = Math.round(distance * 19.5 + (weight > 1000 ? 1200 : 600) + 1000);
-  const estimatedNet = estimatedRevenue - estimatedExpenses;
-  const marginPercent = estimatedRevenue > 0 ? Math.round((estimatedNet / estimatedRevenue) * 100) : 0;
+  const isWeightValid = cargoWeight !== null && cargoWeight !== undefined && cargoWeight.toString().trim() !== "";
+  const cargoWeightDisplay = isWeightValid ? `${cargoWeight} kg` : "--";
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
@@ -715,11 +751,16 @@ export default function CreateTripPage() {
                 ).map(v => (
                   <div
                     key={v.id}
-                    onClick={() => setSelectedVehicleId(String(v.id))}
-                    className={`p-3.5 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
-                      String(selectedVehicleId) === String(v.id)
-                        ? "border-[#B45A0A] bg-orange-50/20 shadow-sm"
-                        : "border-[#E7EAF0] bg-white hover:bg-gray-50"
+                    onClick={() => {
+                      if (v.status === "Under Maintenance") return;
+                      setSelectedVehicleId(String(v.id));
+                    }}
+                    className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${
+                      v.status === "Under Maintenance"
+                        ? "border-[#E7EAF0] bg-gray-50/50 opacity-60 cursor-not-allowed"
+                        : String(selectedVehicleId) === String(v.id)
+                        ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
+                        : "border-[#E7EAF0] bg-white hover:bg-gray-50 cursor-pointer"
                     }`}
                   >
                     <div>
@@ -733,7 +774,7 @@ export default function CreateTripPage() {
                       <span className={`inline-block mt-2 px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
                         v.status === "Active" || v.status === "Available"
                           ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                          : "bg-amber-50 text-amber-600 border border-amber-100"
+                          : "bg-rose-50 text-rose-600 border border-rose-100"
                       }`}>
                         {v.status}
                       </span>
@@ -741,12 +782,15 @@ export default function CreateTripPage() {
                     
                     <button
                       type="button"
+                      disabled={v.status === "Under Maintenance"}
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedVehicleId(String(v.id));
                       }}
                       className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                        String(selectedVehicleId) === String(v.id)
+                        v.status === "Under Maintenance"
+                          ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
+                          : String(selectedVehicleId) === String(v.id)
                           ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
                           : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
                       }`}
@@ -790,7 +834,7 @@ export default function CreateTripPage() {
                 ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
                 : drivers
               ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center font-semibold">No available drivers found for the selected start location.</p>
+                <p className="text-xs text-gray-400 py-4 text-center font-semibold font-poppins">No drivers available in the selected location.</p>
               ) : (
                 (filterAvailableDrivers 
                   ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
@@ -805,14 +849,17 @@ export default function CreateTripPage() {
                           toast.error("This driver has an expired license and cannot be assigned.");
                           return;
                         }
+                        if (d.status === "Not Available") {
+                          return;
+                        }
                         setSelectedDriverId(String(d.id));
                       }}
-                      className={`p-3.5 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
-                        isExpired
+                      className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${
+                        (isExpired || d.status === "Not Available")
                           ? "border-red-150 bg-red-50/10 opacity-60 cursor-not-allowed"
                           : String(selectedDriverId) === String(d.id)
-                          ? "border-[#B45A0A] bg-orange-50/20 shadow-sm"
-                          : "border-[#E7EAF0] bg-white hover:bg-gray-50"
+                          ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
+                          : "border-[#E7EAF0] bg-white hover:bg-gray-50 cursor-pointer"
                       }`}
                     >
                       <div>
@@ -831,7 +878,7 @@ export default function CreateTripPage() {
                               ? "bg-red-50 text-red-600 border border-red-100"
                               : d.status === "Available"
                               ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                              : "bg-amber-50 text-amber-600 border border-amber-100"
+                              : "bg-rose-50 text-rose-600 border border-rose-100"
                           }`}>
                             {isExpired ? "Expired License" : d.status}
                           </span>
@@ -840,7 +887,7 @@ export default function CreateTripPage() {
                       
                       <button
                         type="button"
-                        disabled={isExpired}
+                        disabled={isExpired || d.status === "Not Available"}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (isExpired) {
@@ -850,8 +897,8 @@ export default function CreateTripPage() {
                           setSelectedDriverId(String(d.id));
                         }}
                         className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                          isExpired
-                            ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                          (isExpired || d.status === "Not Available")
+                            ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
                             : String(selectedDriverId) === String(d.id)
                             ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
                             : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
@@ -915,11 +962,11 @@ export default function CreateTripPage() {
 
         {/* Cost & Earnings Projection Card */}
         <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
-          <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Cost & Earnings Projection</h4>
+          <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Route Projections</h4>
           
           {!startLocation.trim() || !endLocation.trim() ? (
             <div className="p-4 bg-orange-50/30 rounded-xl border border-orange-100/50 text-center text-xs text-[#B45A0A] font-semibold font-poppins">
-              Enter both Start Location and Destination to view cost projections.
+              Enter both Start Location and Destination to view route projections.
             </div>
           ) : (
             <div className="space-y-4">
@@ -930,50 +977,8 @@ export default function CreateTripPage() {
                 </div>
                 <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
                   <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider font-poppins block">Cargo Weight</span>
-                  <span className="text-lg font-black text-[#1E293B] font-poppins mt-1 block">{weight} kg</span>
+                  <span className="text-lg font-black text-[#1E293B] font-poppins mt-1 block">{cargoWeightDisplay}</span>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                {/* Revenue */}
-                <div className="p-3 bg-emerald-50/50 border border-emerald-100/50 rounded-xl">
-                  <div className="flex items-center gap-1.5 text-emerald-600">
-                    <DollarSign className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-bold uppercase tracking-wider font-poppins">Est. Revenue</span>
-                  </div>
-                  <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{estimatedRevenue.toLocaleString('en-IN')}</span>
-                </div>
-
-                {/* Expenses */}
-                <div className="p-3 bg-red-50/50 border border-red-100/50 rounded-xl">
-                  <div className="flex items-center gap-1.5 text-red-500">
-                    <Activity className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-bold uppercase tracking-wider font-poppins">Est. Costs</span>
-                  </div>
-                  <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{estimatedExpenses.toLocaleString('en-IN')}</span>
-                </div>
-
-                {/* Net Profit */}
-                <div className="p-3 bg-amber-50/50 border border-[#FFF3E8] rounded-xl">
-                  <div className="flex items-center gap-1.5 text-[#B45A0A]">
-                    <Wallet className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-bold uppercase tracking-wider font-poppins">Net Earnings</span>
-                  </div>
-                  <span className="text-sm font-bold text-[#1E293B] font-poppins mt-1 block">₹{estimatedNet.toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-3.5 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100/70 rounded-xl">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-white rounded-lg shadow-sm border border-orange-100 text-[#B45A0A]">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-[9px] text-[#64748B] font-bold uppercase tracking-wider block">Projected Profit Margin</span>
-                    <span className="text-xs text-[#B45A0A] font-black font-poppins">{marginPercent}% efficiency index</span>
-                  </div>
-                </div>
-                <span className="text-lg font-black text-[#B45A0A] font-poppins">{marginPercent}%</span>
               </div>
             </div>
           )}

@@ -63,8 +63,6 @@ export const seedTolls = async () => {
         seededCount += created.length;
       }
       console.log(`✅ ${seededCount} Toll transactions seeded successfully across ${trips.length} trips!`);
-    } else {
-      console.log(`ℹ️ Toll transactions already exist (${count} records). Skipping seeding.`);
     }
   } catch (error) {
     console.error('Error seeding toll transactions:', error);

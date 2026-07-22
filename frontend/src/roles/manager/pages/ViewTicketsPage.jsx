@@ -468,23 +468,6 @@ export default function ViewTicketsPage() {
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedTicket(t);
-                              setModalMode("edit");
-                              setEditingTicketData({
-                                status: t.status,
-                                estimatedCost: t.estimatedCost,
-                                actualCost: t.actualCost,
-                                notes: t.notes || ""
-                              });
-                            }}
-                            className="p-1.5 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg active:scale-95 transition-all cursor-pointer"
-                            title="Edit Ticket"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -604,23 +587,8 @@ export default function ViewTicketsPage() {
                 <div className="flex gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      setModalMode("edit");
-                      setEditingTicketData({
-                        status: selectedTicket.status,
-                        estimatedCost: selectedTicket.estimatedCost,
-                        actualCost: selectedTicket.actualCost,
-                        notes: selectedTicket.notes || ""
-                      });
-                    }}
-                    className="flex-1 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer text-center"
-                  >
-                    Edit Ticket
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setSelectedTicket(null)}
-                    className="flex-1 py-2.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer text-center"
+                    className="flex-1 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer text-center"
                   >
                     Close
                   </button>

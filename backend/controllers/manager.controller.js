@@ -68,27 +68,27 @@ export const getDashboard = async (req, res, next) => {
 
     // 1. Fetch total and active vehicles
     const totalVehicles = await Vehicle.countDocuments({ assignedManager: managerId });
-    const activeVehicles = await Vehicle.countDocuments({ 
-      assignedManager: managerId, 
-      currentStatus: { $in: ['Active', 'On Trip'] } 
+    const activeVehicles = await Vehicle.countDocuments({
+      assignedManager: managerId,
+      currentStatus: { $in: ['Active', 'On Trip'] }
     });
 
     // 2. Trips Today (scheduled, on transit, delayed)
-    const tripsToday = await Trip.countDocuments({ 
-      assignedManager: managerId, 
-      status: { $in: ['Scheduled', 'On Transit', 'Delayed'] } 
+    const tripsToday = await Trip.countDocuments({
+      assignedManager: managerId,
+      status: { $in: ['Scheduled', 'On Transit', 'Delayed'] }
     });
 
     // 3. Vehicles under repair
-    const underRepair = await Vehicle.countDocuments({ 
-      assignedManager: managerId, 
-      currentStatus: 'Maintenance' 
+    const underRepair = await Vehicle.countDocuments({
+      assignedManager: managerId,
+      currentStatus: 'Maintenance'
     });
 
     // 4. Drivers available
-    const driversAvailable = await Driver.countDocuments({ 
-      assignedManager: managerId, 
-      driverStatus: 'AVAILABLE' 
+    const driversAvailable = await Driver.countDocuments({
+      assignedManager: managerId,
+      driverStatus: 'AVAILABLE'
     });
 
     // 5. Fuel Expense: sum up amounts from Fuel records
@@ -96,11 +96,11 @@ export const getDashboard = async (req, res, next) => {
     const managerVehicles = await Vehicle.find({ assignedManager: managerId }, '_id');
     const vehicleIds = managerVehicles.map(v => v._id);
 
-    const fuelDocs = await Fuel.find({ 
+    const fuelDocs = await Fuel.find({
       $or: [
-        { vehicle: { $in: vehicleIds } }, 
+        { vehicle: { $in: vehicleIds } },
         { recordedBy: managerId }
-      ] 
+      ]
     });
     const fuelSum = fuelDocs.reduce((acc, curr) => acc + (curr.amount || 0), 0);
     const fuelExpense = `₹${fuelSum.toLocaleString('en-IN')}`;
@@ -111,7 +111,7 @@ export const getDashboard = async (req, res, next) => {
       const { revenue } = calculateTripFinance(trip);
       return acc + revenue;
     }, 0);
-    
+
     let totalEarnings = "";
     if (earningsSum >= 10000000) {
       const shortNum = (earningsSum / 10000000).toFixed(1);
@@ -242,7 +242,7 @@ export const createVehicle = async (req, res, next) => {
       branchDepot,
     } = req.body;
 
-     const resolvedVehicleNumber = vehicleNumber || req.body.vehicleNumber;
+    const resolvedVehicleNumber = vehicleNumber || req.body.vehicleNumber;
     if (!resolvedVehicleNumber) {
       return sendError(res, 400, 'Vehicle number is required');
     }
@@ -414,7 +414,7 @@ export const updateVehicle = async (req, res, next) => {
     if (updateData.documents) {
       updateData.documents = await processVehicleDocuments(updateData.documents, req.user);
     }
-    
+
     if (updateData.manufacturer !== undefined || updateData.brand !== undefined) {
       updateData.brand = updateData.manufacturer || updateData.brand;
       updateData.manufacturer = updateData.brand;
@@ -440,7 +440,7 @@ export const updateVehicle = async (req, res, next) => {
       updateData.nextServiceDue = updateData.nextService;
     }
     updateData.updatedBy = req.user?._id;
-    
+
     const vehicle = await updateVehicleInRepo(req.params.id, updateData);
     await logActivity({
       title: 'Vehicle Updated',
@@ -625,7 +625,7 @@ export const listTrips = async (req, res, next) => {
       filter.driver = req.query.driver;
     }
     const trips = await getTrips(filter);
-    
+
     // Map over trips and dynamically replace default/120 KM distances
     const processedTrips = trips.map(t => {
       const tripObj = t.toObject ? t.toObject() : t;
@@ -999,6 +999,15 @@ export const updateTrip = async (req, res, next) => {
       });
     }
 
+    // Emit real-time status update to manager room
+    const io = req.app.get('socketio') || (req.app.locals ? req.app.locals.io : null);
+    if (io) {
+      const managerId = finalTrip.assignedManager || (req.user && req.user._id);
+      if (managerId) {
+        io.to(`manager:${managerId}`).emit('trip:status-updated', finalTrip);
+      }
+    }
+
     return sendSuccess(res, 200, finalTrip, 'Trip updated');
   } catch (error) {
     next(error);
@@ -1099,7 +1108,7 @@ export const updateFuelRecord = async (req, res, next) => {
     const allowedKeys = ['status', 'resolutionComment', 'approvalStatus', 'rejectionReason', 'billStatus'];
     const updates = Object.keys(req.body);
     const isValidUpdate = updates.every(key => allowedKeys.includes(key));
-    
+
     if (!isValidUpdate) {
       return sendError(res, 403, 'Managers are not authorized to edit driver fuel logs.');
     }
@@ -1256,7 +1265,7 @@ export const deleteMaintenance = async (req, res, next) => {
 export const listDocuments = async (req, res, next) => {
   try {
     const documents = await getDocuments({ uploadedBy: req.user._id });
-    
+
     // Calculate dynamic status for each document on fetch
     const enriched = documents.map(d => {
       const doc = d.toObject ? d.toObject() : d;
@@ -1266,10 +1275,10 @@ export const listDocuments = async (req, res, next) => {
           const now = new Date();
           expDate.setHours(0, 0, 0, 0);
           now.setHours(0, 0, 0, 0);
-          
+
           const diffTime = expDate.getTime() - now.getTime();
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          
+
           if (diffDays < 0) {
             doc.status = "Expired";
           } else if (diffDays <= 30) {
@@ -1298,7 +1307,7 @@ export const getDocumentDetails = async (req, res, next) => {
     if (String(document.uploadedBy) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this document belongs to another manager');
     }
-    
+
     const doc = document.toObject ? document.toObject() : document;
     if (doc.expiry) {
       const expDate = new Date(doc.expiry);
@@ -1306,10 +1315,10 @@ export const getDocumentDetails = async (req, res, next) => {
         const now = new Date();
         expDate.setHours(0, 0, 0, 0);
         now.setHours(0, 0, 0, 0);
-        
+
         const diffTime = expDate.getTime() - now.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays < 0) {
           doc.status = "Expired";
         } else if (diffDays <= 30) {
@@ -1353,10 +1362,10 @@ export const createDocument = async (req, res, next) => {
         const now = new Date();
         expDate.setHours(0, 0, 0, 0);
         now.setHours(0, 0, 0, 0);
-        
+
         const diffTime = expDate.getTime() - now.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays < 0) {
           computedStatus = 'Expired';
         } else if (diffDays <= 30) {
@@ -1412,10 +1421,10 @@ export const updateDocument = async (req, res, next) => {
         const now = new Date();
         expDate.setHours(0, 0, 0, 0);
         now.setHours(0, 0, 0, 0);
-        
+
         const diffTime = expDate.getTime() - now.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays < 0) {
           updateData.status = 'Expired';
         } else if (diffDays <= 30) {
@@ -1438,10 +1447,10 @@ export const updateDocument = async (req, res, next) => {
         const now = new Date();
         expDate.setHours(0, 0, 0, 0);
         now.setHours(0, 0, 0, 0);
-        
+
         const diffTime = expDate.getTime() - now.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays < 0) {
           doc.status = "Expired";
         } else if (diffDays <= 30) {
@@ -1825,12 +1834,12 @@ export const markNotificationRead = async (req, res, next) => {
   try {
     const notification = await markManagerNotificationRead(req.params.id);
     if (!notification) return sendError(res, 404, 'Notification not found');
-    
+
     // Emit notification:read event
     if (req.io) {
       req.io.to(`manager:${req.user._id}`).emit('notification:read', notification);
     }
-    
+
     return sendSuccess(res, 200, notification, 'Notification marked as read');
   } catch (error) {
     next(error);
@@ -1857,12 +1866,12 @@ export const extendEWayBill = async (req, res, next) => {
 export const markAllNotificationsRead = async (req, res, next) => {
   try {
     await markAllManagerNotificationsRead(req.user._id);
-    
+
     // Emit notification:update event
     if (req.io) {
       req.io.to(`manager:${req.user._id}`).emit('notification:update', { allRead: true });
     }
-    
+
     return sendSuccess(res, 200, null, 'All notifications marked as read');
   } catch (error) {
     next(error);
@@ -1904,12 +1913,12 @@ export const deleteNotification = async (req, res, next) => {
   try {
     const notification = await deleteManagerNotification(req.params.id);
     if (!notification) return sendError(res, 404, 'Notification not found');
-    
+
     // Emit notification:delete event
     if (req.io) {
       req.io.to(`manager:${req.user._id}`).emit('notification:delete', { id: req.params.id });
     }
-    
+
     return sendSuccess(res, 200, null, 'Notification deleted');
   } catch (error) {
     next(error);
@@ -2032,7 +2041,7 @@ export const updatePODStatus = async (req, res, next) => {
     const { status, rejectionReason } = req.body;
     const pod = await ProofOfDelivery.findById(req.params.id);
     if (!pod) {
-       return sendError(res, 404, 'POD not found');
+      return sendError(res, 404, 'POD not found');
     }
     pod.status = status;
     if (status === 'Rejected') {
@@ -2101,7 +2110,7 @@ export const getPendingMilestone = async (req, res, next) => {
     for (const M of milestones) {
       const mState = milestoneDoc.tripMilestones[String(M)];
       if (!mState) continue;
-      
+
       if (mState.reviewSubmitted) {
         continue;
       }
@@ -2127,7 +2136,7 @@ export const getPendingMilestone = async (req, res, next) => {
         // Skip
       } else {
         const isMandatory = isPhase3;
-        
+
         // Skip optional phases if they were already triggered for this exact trip count
         if (!isMandatory && mState.lastTripTriggered === completedTrips) {
           continue;
@@ -2251,18 +2260,18 @@ export const getEarnings = async (req, res, next) => {
     const managerId = req.user._id;
     // Find all trips for this manager
     const trips = await Trip.find({ assignedManager: managerId }).populate('vehicle').populate('driver').sort({ createdAt: -1 });
-    
+
     let totalRevenue = 0;
     let totalExpenses = 0;
     let totalNetEarnings = 0;
-    
+
     const tripEarnings = trips.map(trip => {
       const { revenue, expenses, netEarnings, distance, weight } = calculateTripFinance(trip);
-      
+
       totalRevenue += revenue;
       totalExpenses += expenses;
       totalNetEarnings += netEarnings;
-      
+
       return {
         tripId: trip._id,
         tripNumber: trip.tripNumber,
@@ -2280,7 +2289,7 @@ export const getEarnings = async (req, res, next) => {
         netEarnings
       };
     });
-    
+
     // Group earnings by month for chart data
     const monthlyStats = {};
     tripEarnings.forEach(te => {
@@ -2293,9 +2302,9 @@ export const getEarnings = async (req, res, next) => {
       monthlyStats[monthYear].expenses += te.expenses;
       monthlyStats[monthYear].netEarnings += te.netEarnings;
     });
-    
+
     const chartData = Object.values(monthlyStats).reverse();
-    
+
     return sendSuccess(res, 200, {
       stats: {
         totalRevenue,
