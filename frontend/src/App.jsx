@@ -84,11 +84,33 @@ import SubscriptionPage from "@/roles/manager/pages/SubscriptionPage";
 import EarningsPage from "@/roles/manager/pages/EarningsPage";
 
 function PublicRoute({ children }) {
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthenticated, role, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin h-8 w-8 border-4 border-[#A14000] border-t-transparent rounded-full" />
+      </div>
+    );
+  }
   if (isAuthenticated) {
     return <Navigate to={role === "SUPER_ADMIN" || role === "admin" ? "/admin/dashboard" : "/manager"} replace />;
   }
   return children;
+}
+
+function RootRedirect() {
+  const { isAuthenticated, role, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin h-8 w-8 border-4 border-[#A14000] border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+  if (isAuthenticated) {
+    return <Navigate to={role === "SUPER_ADMIN" || role === "admin" ? "/admin/dashboard" : "/manager"} replace />;
+  }
+  return <Navigate to="/login" replace />;
 }
 
 export default function App() {
@@ -99,7 +121,7 @@ export default function App() {
         <ScrollToTop />
         <Toaster position="top-right" />
         <Routes>
-          <Route path="/" element={<PublicRoute><Home /></PublicRoute>} />
+          <Route path="/" element={<RootRedirect />} />
           <Route path="/performance" element={<PublicRoute><Performance /></PublicRoute>} />
           <Route path="/about" element={<PublicRoute><About /></PublicRoute>} />
           <Route path="/features" element={<PublicRoute><Features /></PublicRoute>} />
@@ -108,7 +130,7 @@ export default function App() {
           <Route path="/pricing" element={<PublicRoute><Pricing /></PublicRoute>} />
           <Route path="/blogs" element={<PublicRoute><Blogs /></PublicRoute>} />
           <Route element={<AuthLayout />}>
-            <Route path="/login" element={<LoginPage />} />
+            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/otp-verification" element={<OtpVerificationPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />

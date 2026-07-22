@@ -12,7 +12,11 @@ const axiosInstance = axios.create({
 // Request Interceptor: Inject Token
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token =
+      sessionStorage.getItem("token") ||
+      localStorage.getItem("token") ||
+      sessionStorage.getItem("authToken") ||
+      localStorage.getItem("authToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -32,6 +36,10 @@ axiosInstance.interceptors.response.use(
     if (response?.status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      localStorage.removeItem("authToken");
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("user");
+      sessionStorage.removeItem("authToken");
       if (!window.location.pathname.includes("/login")) {
         window.location.href = "/login";
       }

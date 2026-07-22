@@ -21,7 +21,7 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const [loginError, setLoginError] = useState(null);
   const [isPasswordError, setIsPasswordError] = useState(false);
@@ -39,6 +39,7 @@ export default function LoginPage() {
   }, [isAuthenticated, role, navigate]);
 
   useEffect(() => {
+    setForm({ email: "", password: "" });
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
@@ -88,7 +89,7 @@ export default function LoginPage() {
     if (!validate()) return;
 
     try {
-      const user = await login(form);
+      const user = await login(form, rememberMe);
       toast.success(`Welcome back, ${user.name || "User"}!`);
       const selectedPlanId = localStorage.getItem("selectedPlanId");
       if (selectedPlanId && (user.role === "FLEET_MANAGER" || user.role === "manager")) {
@@ -175,7 +176,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
             
             {/* Email field */}
             <div className="space-y-2">
@@ -189,6 +190,7 @@ export default function LoginPage() {
                 <input
                   id="email" 
                   type="email" 
+                  autoComplete="off"
                   ref={emailInputRef}
                   placeholder="name@organization.com"
                   value={form.email}
@@ -215,6 +217,7 @@ export default function LoginPage() {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
                   ref={passwordInputRef}
                   placeholder="••••••••"
                   value={form.password}
