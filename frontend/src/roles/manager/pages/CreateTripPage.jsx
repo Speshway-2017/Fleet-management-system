@@ -250,28 +250,40 @@ export default function CreateTripPage() {
     const fetchResources = async () => {
       setLoading(true);
       try {
+        const cleanLoc = startLocation.trim();
         const [vRes, dRes] = await Promise.all([
-          managerApi.getVehicles(),
-          managerApi.getDrivers()
+          managerApi.getAvailableVehicles({ location: cleanLoc }),
+          managerApi.getAvailableDrivers({ location: cleanLoc })
         ]);
         
         const allVehicles = vRes.data?.data || vRes.data || [];
         const allDrivers = dRes.data?.data || dRes.data || [];
 
-        const cleanLoc = startLocation.trim().split(/[\s,]+/)[0].toLowerCase();
+        const normalize = (str) => (str || "").trim().toLowerCase();
 
-        // Filter vehicles by location match in frontend
+        const isLocationMatch = (driverLoc, targetLoc) => {
+          if (!driverLoc || !targetLoc) return false;
+          const normDriver = normalize(driverLoc);
+          const normTarget = normalize(targetLoc);
+          const targetFirstWord = normTarget.split(/[\s,]+/)[0];
+          const driverFirstWord = normDriver.split(/[\s,]+/)[0];
+          return (
+            normDriver === normTarget ||
+            normDriver.includes(targetFirstWord) ||
+            targetFirstWord.includes(driverFirstWord)
+          );
+        };
+
+        // Filter vehicles strictly by current location stored in database
         const filteredVehs = allVehicles.filter(v => {
-          const vBranch = (v.branch || "").toLowerCase();
-          const vLoc = (v.currentLocation || "").toLowerCase();
-          return vBranch.includes(cleanLoc) || vLoc.includes(cleanLoc) || cleanLoc.includes(vBranch) || cleanLoc.includes(vLoc);
+          const vLoc = v.currentLocation || v.branch || "";
+          return isLocationMatch(vLoc, cleanLoc);
         });
 
-        // Filter drivers by location match in frontend
+        // Filter drivers strictly by current location stored in database
         const filteredDrvs = allDrivers.filter(d => {
-          const dBranch = (d.branch || "").toLowerCase();
-          const dLoc = (d.currentLocation || d.driverLocation || "").toLowerCase();
-          return dBranch.includes(cleanLoc) || dLoc.includes(cleanLoc) || cleanLoc.includes(dBranch) || cleanLoc.includes(dLoc);
+          const dLoc = d.currentLocation || d.driverLocation || d.branch || "";
+          return isLocationMatch(dLoc, cleanLoc);
         });
 
         const vehiclesData = filteredVehs.map(v => {
@@ -321,7 +333,7 @@ export default function CreateTripPage() {
 
     const debounceFetch = setTimeout(() => {
       fetchResources();
-    }, 400);
+    }, 300);
 
     return () => clearTimeout(debounceFetch);
   }, [startLocation]);
@@ -822,7 +834,7 @@ export default function CreateTripPage() {
                 ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
                 : drivers
               ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center font-semibold">No available drivers found for the selected start location.</p>
+                <p className="text-xs text-gray-400 py-4 text-center font-semibold font-poppins">No drivers available in the selected location.</p>
               ) : (
                 (filterAvailableDrivers 
                   ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
