@@ -121,7 +121,7 @@ export default function App() {
         <ScrollToTop />
         <Toaster position="top-right" />
         <Routes>
-          <Route path="/" element={<RootRedirect />} />
+          <Route path="/" element={<PublicRoute><Home /></PublicRoute>} />
           <Route path="/performance" element={<PublicRoute><Performance /></PublicRoute>} />
           <Route path="/about" element={<PublicRoute><About /></PublicRoute>} />
           <Route path="/features" element={<PublicRoute><Features /></PublicRoute>} />
