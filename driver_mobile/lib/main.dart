@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'theme/app_colors.dart';
+import 'theme/app_theme.dart';
+import 'screens/auth/login_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -7,116 +11,330 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'Fleet Driver Mobile',
+      theme: AppTheme.lightTheme,
+      debugShowCheckedModeBanner: false,
+      home: const LoginScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class DesignSystemShowcaseScreen extends StatefulWidget {
+  const DesignSystemShowcaseScreen({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<DesignSystemShowcaseScreen> createState() => _DesignSystemShowcaseScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen> {
+  int _currentNavIndex = 0;
+  final _formKey = GlobalKey<FormState>();
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Text('Fleet Driver Mobile'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_none),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () {},
+          ),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('You have pushed the button this many times:'),
+            // Header Section
             Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+              'Design System',
+              style: Theme.of(context).textTheme.displayLarge,
             ),
+            const SizedBox(height: 4),
+            Text(
+              'Material 3 design system for the driver application.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const Divider(height: 32, color: AppColors.divider),
+
+            // Typography Showcase
+            _buildSectionHeader('TYPOGRAPHY SCALE'),
+            _buildTypographyRow(context, 'Heading 1', 'Poppins Bold 28', Theme.of(context).textTheme.displayLarge!),
+            _buildTypographyRow(context, 'Heading 2', 'Poppins SemiBold 24', Theme.of(context).textTheme.displayMedium!),
+            _buildTypographyRow(context, 'Heading 3', 'Poppins Medium 20', Theme.of(context).textTheme.displaySmall!),
+            _buildTypographyRow(context, 'Body Large', 'Nunito 16', Theme.of(context).textTheme.bodyLarge!),
+            _buildTypographyRow(context, 'Body Medium', 'Nunito 14', Theme.of(context).textTheme.bodyMedium!),
+            _buildTypographyRow(context, 'Caption', 'Nunito 12', Theme.of(context).textTheme.bodySmall!),
+            
+            const Divider(height: 32, color: AppColors.divider),
+
+            // Buttons & CTAs Showcase
+            _buildSectionHeader('BUTTONS & ACTIONS'),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                ElevatedButton(
+                  onPressed: () {},
+                  child: const Text('Primary Button'),
+                ),
+                FilledButton(
+                  onPressed: () {},
+                  child: const Text('Primary CTA (Orange)'),
+                ),
+                OutlinedButton(
+                  onPressed: () {},
+                  child: const Text('Outlined Button'),
+                ),
+                TextButton(
+                  onPressed: () {},
+                  child: const Text('Text Action'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.directions_run),
+              label: const Text('Start Active Trip'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 54),
+              ),
+            ),
+
+            const Divider(height: 32, color: AppColors.divider),
+
+            // Status Badges
+            _buildSectionHeader('STATUS CHIPS & BADGES'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildStatusChip('Completed', AppColors.success),
+                _buildStatusChip('Pending', AppColors.warning),
+                _buildStatusChip('Low Fuel', AppColors.error),
+                _buildStatusChip('On Route', AppColors.info),
+              ],
+            ),
+
+            const Divider(height: 32, color: AppColors.divider),
+
+            // Cards Showcase
+            _buildSectionHeader('CARDS & UTILITIES'),
+            
+            // Trip Card (Success State)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                // Using 8dp grid spacing
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Trip ID #92841',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        _buildStatusChip('Completed', AppColors.success),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(context, Icons.location_on_outlined, 'Origin: Portland Warehouse A'),
+                    const SizedBox(height: 8),
+                    _buildInfoRow(context, Icons.flag_outlined, 'Destination: Seattle Logistics Hub'),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Driver: Marcus Vance', style: Theme.of(context).textTheme.bodyMedium),
+                        Text('Distance: 174 miles', style: Theme.of(context).textTheme.bodySmall),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Active Warning Card
+            Card(
+              color: AppColors.surface,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 24),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Vehicle Alert',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: AppColors.error,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tire pressure warning triggered in rear-left tire. Please stop at the next service depot.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const Divider(height: 32, color: AppColors.divider),
+
+            // Forms & Inputs
+            _buildSectionHeader('INPUT FIELDS & FORMS'),
+            Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: 'Driver License Number',
+                      hintText: 'Enter your 8-digit license',
+                      prefixIcon: Icon(Icons.badge_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Security PIN',
+                      hintText: 'Enter access code',
+                      prefixIcon: Icon(Icons.lock_outline),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 48), // Spacing before the bottom of the scroll view
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentNavIndex,
+        onTap: (index) {
+          setState(() {
+            _currentNavIndex = index;
+          });
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_outlined),
+            activeIcon: Icon(Icons.dashboard),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.local_shipping_outlined),
+            activeIcon: Icon(Icons.local_shipping),
+            label: 'Trips',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            activeIcon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
+        ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {},
+        tooltip: 'Emergency Call',
+        child: const Icon(Icons.phone_in_talk),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Text(
+        title,
+        style: GoogleFonts.poppins(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textSecondary,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypographyRow(BuildContext context, String label, String fontDetails, TextStyle style) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: Theme.of(context).textTheme.titleSmall),
+                Text(fontDetails, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textDisabled)),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 7,
+            child: Text(
+              'Fleet Navy',
+              style: style,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withAlpha(30),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withAlpha(76), width: 1),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.nunito(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(BuildContext context, IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.textSecondary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+      ],
     );
   }
 }
