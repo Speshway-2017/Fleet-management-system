@@ -84,8 +84,8 @@ import SubscriptionPage from "@/roles/manager/pages/SubscriptionPage";
 import EarningsPage from "@/roles/manager/pages/EarningsPage";
 
 function PublicRoute({ children }) {
-  const { isAuthenticated, role, loading } = useAuth();
-  if (loading) {
+  const { isAuthenticated, role, initializing } = useAuth();
+  if (initializing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin h-8 w-8 border-4 border-[#A14000] border-t-transparent rounded-full" />
@@ -99,8 +99,8 @@ function PublicRoute({ children }) {
 }
 
 function RootRedirect() {
-  const { isAuthenticated, role, loading } = useAuth();
-  if (loading) {
+  const { isAuthenticated, role, initializing } = useAuth();
+  if (initializing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin h-8 w-8 border-4 border-[#A14000] border-t-transparent rounded-full" />

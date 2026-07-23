@@ -7,10 +7,10 @@ import crypto from 'crypto'; // We can use crypto to hash OTP before storing, or
 
 export const loginUser = async ({ email, password, role }) => {
   const user = await findUserByEmail(email);
-  if (!user) throw new Error('Invalid credentials');
+  if (!user) throw new Error('No account found with this email');
 
   const isPasswordValid = await comparePassword(password, user.password);
-  if (!isPasswordValid) throw new Error('Invalid credentials');
+  if (!isPasswordValid) throw new Error('Incorrect password');
 
   if (role && user.role !== role) {
     throw new Error('Role mismatch');

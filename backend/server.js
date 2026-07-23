@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, '.env') }); // must be first — loads .env before any other import reads process.env
 
-// Server setup (port 5002, final)
+// Server setup (port 5000, final)
 
 import { validateEnv } from './config/env.validate.js';
 import app from './app.js';
@@ -22,7 +22,7 @@ import { Server } from 'socket.io';
 // 1. Validate all required env vars — exits with clear message if any are missing
 validateEnv();
 
-const PORT = process.env.PORT || 5002;
+const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   // 2. Connect to MongoDB Atlas

@@ -56,6 +56,7 @@ export function AuthProvider({ children }) {
   });
 
   const [loading, setLoading] = useState(true);
+  const [initializing, setInitializing] = useState(true);
 
   // Sync user profile on mount
   useEffect(() => {
@@ -81,6 +82,7 @@ export function AuthProvider({ children }) {
         setUser(null);
       }
       setLoading(false);
+      setInitializing(false);
     };
     syncProfile();
   }, []);
@@ -179,6 +181,9 @@ export function AuthProvider({ children }) {
 
       setUser(normalizedUser);
       return normalizedUser;
+    } catch (error) {
+      console.log("LOGIN ERROR:", error.response?.data);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -200,6 +205,7 @@ export function AuthProvider({ children }) {
     role:            user?.role ?? null,
     isAuthenticated: !!user && !!getStoredToken(),
     loading,
+    initializing,
     login,
     logout,
     refreshProfile,
