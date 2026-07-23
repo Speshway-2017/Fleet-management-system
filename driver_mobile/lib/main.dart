@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/dashboard_screen.dart';
 
 void main() {
   runApp(const MyApp());
