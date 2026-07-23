@@ -26,7 +26,7 @@ const createRateLimiter = (windowMs, max, message) => {
 // Login API Limit: 5 requests per 15 minutes
 export const loginRateLimiter = createRateLimiter(
   15 * 60 * 1000,
-  5,
+  10,
   "Too many login attempts. Please try again after 15 minutes."
 );
 

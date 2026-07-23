@@ -22,7 +22,7 @@ export const login = async (req, res, next) => {
     });
     return sendSuccess(res, 200, data, 'Login successful');
   } catch (error) {
-    if (error.message === 'Invalid credentials' || error.message === 'Role mismatch') {
+    if (error.message === 'No account found with this email' || error.message === 'Incorrect password' || error.message === 'Role mismatch') {
       await logAction({
         user: req.body.email || 'Unknown',
         action: 'Failed Login Attempt',
