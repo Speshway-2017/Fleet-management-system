@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:driver_mobile/main.dart';
 import 'package:driver_mobile/screens/vehicle_overview_screen.dart';
 import 'package:driver_mobile/screens/vehicle_documents_screen.dart';
+import 'package:driver_mobile/screens/vehicle_details_screen.dart';
 
 void main() {
   testWidgets('Complete Authentication Navigation Flow Smoke Test', (
@@ -174,5 +175,123 @@ void main() {
     expect(find.text('Expiring Soon'), findsOneWidget);
     expect(find.text('View'), findsNWidgets(6));
     expect(find.text('Download'), findsNWidgets(6));
+  });
+
+  testWidgets('Profile Screen Navigation, Details, and Logout Confirmation', (WidgetTester tester) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const MyApp());
+
+    // Enter credentials to log in
+    await tester.enterText(find.byType(TextFormField).at(0), 'manager@fleetpro.com');
+    await tester.enterText(find.byType(TextFormField).at(1), '1234456');
+    await tester.pump();
+    await tester.tap(find.text('LOGIN'));
+    await tester.pumpAndSettle();
+
+    // Verify Dashboard is displayed
+    expect(find.text('Good Morning, Satya'), findsOneWidget);
+
+    // Tap Profile Navigation Tab
+    await tester.tap(find.byIcon(Icons.account_circle_outlined));
+    await tester.pumpAndSettle();
+
+    // Verify Profile Screen elements are loaded
+    expect(find.text('Alex Johnson'), findsOneWidget);
+    expect(find.text('SENIOR DRIVER'), findsOneWidget);
+    expect(find.text('Member since 2020'), findsOneWidget);
+    expect(find.text('Personal Information'), findsOneWidget);
+    expect(find.text("Driver's License Details"), findsOneWidget);
+
+    // Verify logout option is visible
+    expect(find.text('Logout'), findsOneWidget);
+
+    // Tap Logout to show dialog
+    await tester.ensureVisible(find.text('Logout'));
+    await tester.tap(find.text('Logout'));
+    await tester.pumpAndSettle();
+
+    // Verify Logout Dialog is displayed
+    expect(find.text('Confirm Logout'), findsOneWidget);
+    expect(find.text('Cancel'), findsOneWidget);
+
+    // Tap Cancel to dismiss dialog
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('Confirm Logout'), findsNothing);
+
+    // Tap Logout again
+    await tester.ensureVisible(find.text('Logout'));
+    await tester.tap(find.text('Logout'));
+    await tester.pumpAndSettle();
+
+    // Tap Logout on dialog to log out
+    await tester.tap(find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.text('Logout'),
+    ));
+    await tester.pumpAndSettle();
+
+    // Verify we are redirected back to Login Screen
+    expect(find.text('Welcome back'), findsOneWidget);
+  });
+
+  testWidgets('Edit Profile Screen Validation and Submission Flow', (WidgetTester tester) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const MyApp());
+
+    // Enter credentials to log in
+    await tester.enterText(find.byType(TextFormField).at(0), 'manager@fleetpro.com');
+    await tester.enterText(find.byType(TextFormField).at(1), '1234456');
+    await tester.pump();
+    await tester.tap(find.text('LOGIN'));
+    await tester.pumpAndSettle();
+
+    // Tap Profile Navigation Tab
+    await tester.tap(find.byIcon(Icons.account_circle_outlined));
+    await tester.pumpAndSettle();
+
+    // Tap Edit Profile button
+    await tester.ensureVisible(find.text('Edit Profile'));
+    await tester.tap(find.text('Edit Profile'));
+    await tester.pumpAndSettle();
+
+    // Verify Edit Profile Screen elements are loaded and pre-filled
+    expect(find.text('Driver ID: FF-9821'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Alex Johnson'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'KF-402-DELTA'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'alex.j@fleetflow.com'), findsOneWidget);
+
+    // Test form validation: clear name field and click Save Changes
+    await tester.enterText(find.byType(TextFormField).at(0), '');
+    await tester.pump();
+    await tester.ensureVisible(find.text('Save Changes'));
+    await tester.tap(find.text('Save Changes'));
+    await tester.pumpAndSettle();
+
+    // Verify validation error
+    expect(find.text('Full Name is required'), findsOneWidget);
+
+    // Test Cancel button: click Cancel and verify we return to Profile Screen
+    await tester.ensureVisible(find.text('Cancel'));
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text("Driver's License Details"), findsOneWidget);
+
+    // Tap Edit Profile button again
+    await tester.ensureVisible(find.text('Edit Profile'));
+    await tester.tap(find.text('Edit Profile'));
+    await tester.pumpAndSettle();
+
+    // Modify name and email, and tap Save Changes
+    await tester.enterText(find.byType(TextFormField).at(0), 'Satya Nadella');
+    await tester.enterText(find.byType(TextFormField).at(3), 'satya@microsoft.com');
+    await tester.pump();
+    await tester.ensureVisible(find.text('Save Changes'));
+    await tester.tap(find.text('Save Changes'));
+    await tester.pumpAndSettle();
+
+    // Verify success snackbar is shown and we return to Profile Screen
+    expect(find.text('Profile updated successfully!'), findsOneWidget);
+    expect(find.text("Driver's License Details"), findsOneWidget);
   });
 }
