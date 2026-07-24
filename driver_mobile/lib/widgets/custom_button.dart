@@ -33,14 +33,6 @@ class CustomButton extends StatelessWidget {
             isLight: isElevated,
             color: isElevated ? AppColors.background : AppColors.primary,
           )
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (icon != null) ...[icon!, const SizedBox(width: 8.0)],
-              Text(text),
-            ],
-          );
         : (icon == null
             ? Text(
                 text,
