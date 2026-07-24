@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/vehicle_overview/quick_info_card.dart';
 import '../widgets/vehicle_overview/vehicle_action_tile.dart';
 import '../widgets/vehicle_overview/vehicle_info_card.dart';
+import 'vehicle_details_screen.dart';
 import 'vehicle_documents_screen.dart';
 
 /// Driver Module - Vehicle Overview Screen
@@ -102,7 +103,20 @@ class VehicleOverviewScreen extends StatelessWidget {
               VehicleActionTile(
                 icon: Icons.info_outline_rounded,
                 title: 'Vehicle Details',
-                onTap: () => _showActionFeedback(context, 'Vehicle Details'),
+                onTap: () {
+                  debugPrint('Vehicle Details tile tapped');
+                  try {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const VehicleDetailsScreen(),
+                      ),
+                    );
+                  } catch (e, stackTrace) {
+                    debugPrint('Error navigating to VehicleDetailsScreen: $e');
+                    debugPrint(stackTrace.toString());
+                  }
+                },
               ),
               VehicleActionTile(
                 icon: Icons.bar_chart_rounded,
@@ -127,16 +141,6 @@ class VehicleOverviewScreen extends StatelessWidget {
                     ),
                   );
                 },
-              ),
-              VehicleActionTile(
-                icon: Icons.route_outlined,
-                title: 'Assigned Trips',
-                onTap: () => _showActionFeedback(context, 'Assigned Trips'),
-              ),
-              VehicleActionTile(
-                icon: Icons.report_problem_outlined,
-                title: 'Report Vehicle Issue',
-                onTap: () => _showActionFeedback(context, 'Report Vehicle Issue'),
               ),
 
               const SizedBox(height: 24.0),
