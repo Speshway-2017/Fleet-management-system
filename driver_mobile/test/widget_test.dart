@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:driver_mobile/main.dart';
 import 'package:driver_mobile/screens/vehicle_overview_screen.dart';
 import 'package:driver_mobile/screens/vehicle_documents_screen.dart';
+import 'package:driver_mobile/screens/vehicle_details_screen.dart';
 
 void main() {
   testWidgets('Complete Authentication Navigation Flow Smoke Test', (
@@ -174,5 +175,48 @@ void main() {
     expect(find.text('Expiring Soon'), findsOneWidget);
     expect(find.text('View'), findsNWidgets(6));
     expect(find.text('Download'), findsNWidgets(6));
+  });
+
+  testWidgets('Vehicle Details Screen rendering and spec cards test', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: VehicleDetailsScreen(),
+      ),
+    );
+
+    // 1. Verify App Bar & Title
+    expect(find.text('Vehicle Details'), findsOneWidget);
+
+    // 2. Verify Basic Information Card 1
+    expect(find.text('Basic Information'), findsOneWidget);
+    expect(find.text('TS09AB4589'), findsOneWidget);
+    expect(find.text('Reg: TS09AB4589'), findsOneWidget);
+    expect(find.text('Heavy Duty Truck'), findsOneWidget);
+    expect(find.text('Tata Motors'), findsOneWidget);
+    expect(find.text('Prima 5530.S'), findsOneWidget);
+    expect(find.text('2023'), findsOneWidget);
+    expect(find.text('20 Tons'), findsNWidgets(2));
+    expect(find.text('36 Tons'), findsNWidgets(2));
+
+    // 3. Verify Operational Status Card 2
+    expect(find.text('Vehicle Status'), findsOneWidget);
+    expect(find.text('Active'), findsOneWidget);
+    expect(find.text('Updated Today • 10:30 AM'), findsOneWidget);
+    expect(find.text('TRP-9921'), findsOneWidget);
+    expect(find.text('Assigned'), findsOneWidget);
+    expect(find.text('Hyderabad, Telangana'), findsOneWidget);
+
+    // 4. Verify Driver Information Card 3
+    expect(find.text('Driver Information'), findsOneWidget);
+    expect(find.text('Sai Kumar'), findsOneWidget);
+    expect(find.text('EMP-1025'), findsOneWidget);
+    expect(find.text('+91 9876543210'), findsOneWidget);
+    expect(find.text('TS0920210012456'), findsOneWidget);
+
+    // 5. Verify Technical Specifications Card 4
+    expect(find.text('Technical Specifications'), findsOneWidget);
+    expect(find.text('ENG-7721'), findsOneWidget);
+    expect(find.text('CHS-1102'), findsOneWidget);
+    expect(find.text('45,230 km'), findsOneWidget);
   });
 }
