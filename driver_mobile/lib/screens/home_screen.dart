@@ -12,12 +12,18 @@ import 'active_trips_screen.dart';
 import 'upcoming_trips_screen.dart';
 import 'upcoming_trip_details_screen.dart';
 import 'completed_trips_screen.dart';
+import 'vehicle_overview_screen.dart';
+import 'vehicle_maintenance_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isSmallScreen = screenWidth < 375;
+    final double cardPadding = isSmallScreen ? 12.0 : 16.0;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: CustomAppBar(
@@ -308,18 +314,21 @@ class HomeScreen extends StatelessWidget {
                     // Stats Card
                     Expanded(
                       child: CustomCard(
-                        color: AppColors.primaryVariant,
+                        color: const Color(0xFF0D1C2E),
+                        borderRadius: 18.0,
                         borderSide: BorderSide.none,
-                        padding: const EdgeInsets.all(AppSpacing.md),
+                        padding: EdgeInsets.all(cardPadding),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const WindingRouteIcon(size: 28),
-                            AppSpacing.verticalSm,
+                            SizedBox(height: isSmallScreen ? 12.0 : 16.0),
                             _buildStatRow(
                               context,
                               'ACTIVE',
                               '01',
+                              isBold: false,
+                              isSmallScreen: isSmallScreen,
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -334,6 +343,8 @@ class HomeScreen extends StatelessWidget {
                               context,
                               'UPCOMING',
                               '04',
+                              isBold: false,
+                              isSmallScreen: isSmallScreen,
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -348,6 +359,8 @@ class HomeScreen extends StatelessWidget {
                               context,
                               'COMPLETED',
                               '128',
+                              isBold: true,
+                              isSmallScreen: isSmallScreen,
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -359,20 +372,20 @@ class HomeScreen extends StatelessWidget {
                               },
                             ),
                             const Spacer(),
+                            const SizedBox(height: 12.0),
                             Theme(
                               data: Theme.of(context).copyWith(
                                 elevatedButtonTheme: ElevatedButtonThemeData(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.secondary,
                                     foregroundColor: AppColors.background,
-                                    minimumSize: const Size.fromHeight(40),
+                                    minimumSize: Size.fromHeight(isSmallScreen ? 38 : 44),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadius.sm,
-                                      ),
+                                      borderRadius: BorderRadius.circular(12.0),
                                     ),
-                                    textStyle: const TextStyle(
-                                      fontSize: 12,
+                                    elevation: 0,
+                                    textStyle: TextStyle(
+                                      fontSize: isSmallScreen ? 13 : 15,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -389,7 +402,7 @@ class HomeScreen extends StatelessWidget {
                                   );
                                 },
                                 type: CustomButtonType.elevated,
-                                height: 40,
+                                height: isSmallScreen ? 38 : 44,
                               ),
                             ),
                           ],
@@ -411,7 +424,13 @@ class HomeScreen extends StatelessWidget {
                         },
                         behavior: HitTestBehavior.opaque,
                         child: CustomCard(
-                          padding: const EdgeInsets.all(AppSpacing.md),
+                          color: const Color(0xFFF7F9FC),
+                          borderRadius: 18.0,
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE4E8EF),
+                            width: 1.5,
+                          ),
+                          padding: EdgeInsets.all(cardPadding),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -424,39 +443,41 @@ class HomeScreen extends StatelessWidget {
                                       'Active Trip',
                                       overflow: TextOverflow.ellipsis,
                                       maxLines: 1,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                            color: AppColors.secondaryText,
-                                            fontWeight: FontWeight.w500,
-                                          ),
+                                      style: TextStyle(
+                                        color: AppColors.secondaryText,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: isSmallScreen ? 13.0 : 15.0,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  const Icon(
+                                  Icon(
                                     Icons.gps_fixed,
                                     color: AppColors.secondary,
-                                    size: 18,
+                                    size: isSmallScreen ? 18.0 : 22.0,
                                   ),
                                 ],
                               ),
-                              AppSpacing.verticalMd,
+                              SizedBox(height: isSmallScreen ? 12.0 : 16.0),
                               Text(
                                 '#TRP-9921',
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.primaryText,
-                                    ),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryText,
+                                  fontSize: isSmallScreen ? 18.0 : 22.0,
+                                ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 'ETA: 14:30 PM',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: AppColors.secondaryText),
+                                style: TextStyle(
+                                  color: AppColors.secondaryText,
+                                  fontSize: isSmallScreen ? 11.0 : 13.0,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                               const Spacer(),
+                              const SizedBox(height: 12.0),
                               Row(
                                 children: [
                                   Expanded(
@@ -464,25 +485,25 @@ class HomeScreen extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(
                                         AppRadius.round,
                                       ),
-                                      child: const LinearProgressIndicator(
+                                      child: LinearProgressIndicator(
                                         value: 0.65,
-                                        minHeight: 6,
-                                        backgroundColor: AppColors.divider,
+                                        minHeight: isSmallScreen ? 6.0 : 8.0,
+                                        backgroundColor: const Color(0xFFEBF0F6),
                                         valueColor:
-                                            AlwaysStoppedAnimation<Color>(
+                                            const AlwaysStoppedAnimation<Color>(
                                               AppColors.secondary,
                                             ),
                                       ),
                                     ),
                                   ),
-                                  AppSpacing.horizontalSm,
+                                  SizedBox(width: isSmallScreen ? 8.0 : 12.0),
                                   Text(
                                     '65%',
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: AppColors.primaryText,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                    style: TextStyle(
+                                      color: AppColors.primaryText,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: isSmallScreen ? 13.0 : 15.0,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -514,9 +535,11 @@ class HomeScreen extends StatelessWidget {
                           Icons.local_shipping_outlined,
                           'Vehicle',
                           onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Vehicle details coming soon'),
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const VehicleOverviewScreen(),
                               ),
                             );
                           },
@@ -726,9 +749,11 @@ class HomeScreen extends StatelessWidget {
                 time: '1h ago',
                 isUnread: false,
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Maintenance logs coming soon'),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const VehicleMaintenanceScreen(),
                     ),
                   );
                 },
@@ -744,23 +769,28 @@ class HomeScreen extends StatelessWidget {
     BuildContext context,
     String label,
     String value, {
+    required bool isBold,
+    required bool isSmallScreen,
     VoidCallback? onTap,
   }) {
+    final double labelFontSize = isSmallScreen ? 10.0 : 12.0;
+    final double valueFontSize = isSmallScreen ? 12.0 : 14.0;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.xs),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6.0),
+        padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 4.0 : 6.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+                style: TextStyle(
+                  color: isBold ? Colors.white : Colors.white.withValues(alpha: 0.6),
+                  fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+                  fontSize: labelFontSize,
                   letterSpacing: 0.5,
                 ),
               ),
@@ -768,10 +798,10 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+              style: TextStyle(
+                color: isBold ? Colors.white : Colors.white.withValues(alpha: 0.6),
+                fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+                fontSize: valueFontSize,
               ),
             ),
           ],
