@@ -5,6 +5,7 @@ import '../constants/app_radius.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_card.dart';
+import 'vehicle_overview_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -105,7 +106,14 @@ class DashboardScreen extends StatelessWidget {
                           ),
                           child: CustomButton(
                             text: 'View Details',
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const VehicleOverviewScreen(),
+                                ),
+                              );
+                            },
                             type: CustomButtonType.elevated,
                             width: 100,
                             height: 32,

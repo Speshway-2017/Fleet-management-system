@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:driver_mobile/main.dart';
+import 'package:driver_mobile/screens/vehicle_overview_screen.dart';
 
 void main() {
-  testWidgets('Complete Authentication Navigation Flow Smoke Test', (WidgetTester tester) async {
+  testWidgets('Complete Authentication Navigation Flow Smoke Test', (
+    WidgetTester tester,
+  ) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp());
 
@@ -26,7 +29,10 @@ void main() {
 
     // 5. Verify OTP Verification Screen is loaded
     expect(find.text('OTP Verification'), findsOneWidget);
-    expect(find.text('Verify OTP'), findsNWidgets(2)); // "Verify OTP" header + "Verify OTP" button
+    expect(
+      find.text('Verify OTP'),
+      findsNWidgets(2),
+    ); // "Verify OTP" header + "Verify OTP" button
 
     // 6. Fill in the 6 digit OTP fields
     for (int i = 0; i < 6; i++) {
@@ -54,7 +60,9 @@ void main() {
     expect(find.text('Welcome back'), findsOneWidget);
   });
 
-  testWidgets('Reset Password Screen submission and validation', (WidgetTester tester) async {
+  testWidgets('Reset Password Screen submission and validation', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp());
 
     // Navigate to Forgot Password
@@ -91,7 +99,10 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify the button is enabled (onPressed is not null)
-    final resetButtonFinder = find.widgetWithText(ElevatedButton, 'Reset Password');
+    final resetButtonFinder = find.widgetWithText(
+      ElevatedButton,
+      'Reset Password',
+    );
     final resetButtonWidget = tester.widget<ElevatedButton>(resetButtonFinder);
     expect(resetButtonWidget.onPressed, isNotNull);
 
@@ -102,5 +113,31 @@ void main() {
 
     // Verify we are back on the Login Screen
     expect(find.text('Welcome back'), findsOneWidget);
+  });
+
+  testWidgets('Vehicle Overview Screen rendering and action tiles test', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: VehicleOverviewScreen(),
+      ),
+    );
+
+    // 1. Verify App Bar Title
+    expect(find.text('Vehicle Overview'), findsOneWidget);
+
+    // 2. Verify Vehicle Info & Metrics
+    expect(find.text('BT-990'), findsOneWidget);
+    expect(find.text('Medium Van • ABC-1234'), findsOneWidget);
+    expect(find.text('Diesel'), findsOneWidget);
+    expect(find.text('82%'), findsOneWidget);
+    expect(find.text('94%'), findsOneWidget);
+    expect(find.text('OK'), findsOneWidget);
+
+    // 3. Verify Section Header & Action Items
+    expect(find.text('Actions & Details'), findsOneWidget);
+    expect(find.text('Vehicle Details'), findsOneWidget);
+    expect(find.text('Vehicle Status'), findsOneWidget);
+    expect(find.text('Maintenance Alerts'), findsOneWidget);
+    expect(find.text('1 CRITICAL'), findsOneWidget);
   });
 }

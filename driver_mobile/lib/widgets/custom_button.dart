@@ -37,10 +37,7 @@ class CustomButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (icon != null) ...[
-                icon!,
-                const SizedBox(width: 8.0),
-              ],
+              if (icon != null) ...[icon!, const SizedBox(width: 8.0)],
               Text(text),
             ],
           );
@@ -53,7 +50,9 @@ class CustomButton extends StatelessWidget {
         button = ElevatedButton(
           onPressed: activeOnPressed,
           style: height != null
-              ? ElevatedButton.styleFrom(minimumSize: Size(width ?? double.infinity, height!))
+              ? ElevatedButton.styleFrom(
+                  minimumSize: Size(width ?? double.infinity, height!),
+                )
               : null,
           child: label,
         );
@@ -62,7 +61,9 @@ class CustomButton extends StatelessWidget {
         button = OutlinedButton(
           onPressed: activeOnPressed,
           style: height != null
-              ? OutlinedButton.styleFrom(minimumSize: Size(width ?? double.infinity, height!))
+              ? OutlinedButton.styleFrom(
+                  minimumSize: Size(width ?? double.infinity, height!),
+                )
               : null,
           child: label,
         );
@@ -71,7 +72,9 @@ class CustomButton extends StatelessWidget {
         button = TextButton(
           onPressed: activeOnPressed,
           style: height != null
-              ? TextButton.styleFrom(minimumSize: Size(width ?? double.infinity, height!))
+              ? TextButton.styleFrom(
+                  minimumSize: Size(width ?? double.infinity, height!),
+                )
               : null,
           child: label,
         );
@@ -79,10 +82,7 @@ class CustomButton extends StatelessWidget {
     }
 
     if (width != null) {
-      return SizedBox(
-        width: width,
-        child: button,
-      );
+      return SizedBox(width: width, child: button);
     }
     return button;
   }
