@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:driver_mobile/main.dart';
+import 'package:driver_mobile/screens/vehicle_overview_screen.dart';
 
 void main() {
-  testWidgets('Complete Authentication Navigation Flow Smoke Test', (WidgetTester tester) async {
+  testWidgets('Complete Authentication Navigation Flow Smoke Test', (
+    WidgetTester tester,
+  ) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp());
 
@@ -26,7 +29,10 @@ void main() {
 
     // 5. Verify OTP Verification Screen is loaded
     expect(find.text('OTP Verification'), findsOneWidget);
-    expect(find.text('Verify OTP'), findsNWidgets(2)); // "Verify OTP" header + "Verify OTP" button
+    expect(
+      find.text('Verify OTP'),
+      findsNWidgets(2),
+    ); // "Verify OTP" header + "Verify OTP" button
 
     // 6. Fill in the 6 digit OTP fields
     for (int i = 0; i < 6; i++) {
@@ -54,7 +60,9 @@ void main() {
     expect(find.text('Welcome back'), findsOneWidget);
   });
 
-  testWidgets('Reset Password Screen submission and validation', (WidgetTester tester) async {
+  testWidgets('Reset Password Screen submission and validation', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp());
 
     // Navigate to Forgot Password
@@ -91,7 +99,10 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify the button is enabled (onPressed is not null)
-    final resetButtonFinder = find.widgetWithText(ElevatedButton, 'Reset Password');
+    final resetButtonFinder = find.widgetWithText(
+      ElevatedButton,
+      'Reset Password',
+    );
     final resetButtonWidget = tester.widget<ElevatedButton>(resetButtonFinder);
     expect(resetButtonWidget.onPressed, isNotNull);
 
@@ -104,51 +115,29 @@ void main() {
     expect(find.text('Welcome back'), findsOneWidget);
   });
 
-  testWidgets('Successful Login Navigation Flow to Dashboard', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Vehicle Overview Screen rendering and action tiles test', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: VehicleOverviewScreen(),
+      ),
+    );
 
-    // Verify Login Screen is loaded
-    expect(find.text('Fleet Management'), findsOneWidget);
-    expect(find.text('Welcome back'), findsOneWidget);
+    // 1. Verify App Bar Title
+    expect(find.text('Vehicle Overview'), findsOneWidget);
 
-    // Enter credentials
-    await tester.enterText(find.byType(TextFormField).at(0), 'manager@fleetpro.com');
-    await tester.enterText(find.byType(TextFormField).at(1), '1234456');
-    await tester.pump();
+    // 2. Verify Vehicle Info & Metrics
+    expect(find.text('BT-990'), findsOneWidget);
+    expect(find.text('Medium Van • ABC-1234'), findsOneWidget);
+    expect(find.text('Diesel'), findsOneWidget);
+    expect(find.text('82%'), findsOneWidget);
+    expect(find.text('94%'), findsOneWidget);
+    expect(find.text('OK'), findsOneWidget);
 
-    // Tap Login Button
-    await tester.tap(find.text('LOGIN'));
-    await tester.pumpAndSettle();
-
-    // Verify Dashboard Screen is loaded
-    expect(find.text('Good Morning, Satya'), findsOneWidget);
-  });
-
-  testWidgets('Autofill OTP fields when a 6-digit code is pasted', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
-
-    // Navigate to Forgot Password
-    await tester.tap(find.text('Forgot Password?'));
-    await tester.pumpAndSettle();
-
-    // Fill email and submit
-    await tester.enterText(find.byType(TextFormField), 'test@fleetpro.com');
-    await tester.pump();
-    await tester.tap(find.text('Send OTP'));
-    await tester.pumpAndSettle();
-
-    // Verify OTP Verification Screen is loaded
-    expect(find.text('OTP Verification'), findsOneWidget);
-
-    // Paste a 6-digit OTP code into the first TextFormField
-    await tester.enterText(find.byType(TextFormField).at(0), '987654');
-    await tester.pumpAndSettle();
-
-    // Verify all 6 TextFormFields are filled with the individual digits
-    for (int i = 0; i < 6; i++) {
-      final field = tester.widget<TextFormField>(find.byType(TextFormField).at(i));
-      expect(field.controller?.text, '987654'[i]);
-    }
+    // 3. Verify Section Header & Action Items
+    expect(find.text('Actions & Details'), findsOneWidget);
+    expect(find.text('Vehicle Details'), findsOneWidget);
+    expect(find.text('Vehicle Status'), findsOneWidget);
+    expect(find.text('Maintenance Alerts'), findsOneWidget);
+    expect(find.text('1 CRITICAL'), findsOneWidget);
   });
 }

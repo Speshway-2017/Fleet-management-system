@@ -32,7 +32,10 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Center(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 16.0,
+            ),
             child: Container(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
@@ -100,7 +103,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Form Card
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 28.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0,
+                      vertical: 28.0,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(16.0),
@@ -128,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        
+
                         // Email TextField
                         TextFormField(
                           controller: _emailController,
@@ -153,18 +159,30 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: AppColors.textSecondary,
                               size: 22,
                             ),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                              vertical: 16.0,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12.0),
-                              borderSide: const BorderSide(color: AppColors.divider, width: 1.0),
+                              borderSide: const BorderSide(
+                                color: AppColors.divider,
+                                width: 1.0,
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12.0),
-                              borderSide: const BorderSide(color: AppColors.divider, width: 1.0),
+                              borderSide: const BorderSide(
+                                color: AppColors.divider,
+                                width: 1.0,
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12.0),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                              borderSide: const BorderSide(
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
                             ),
                           ),
                         ),
@@ -219,18 +237,30 @@ class _LoginScreenState extends State<LoginScreen> {
                                 });
                               },
                             ),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                              vertical: 16.0,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12.0),
-                              borderSide: const BorderSide(color: AppColors.divider, width: 1.0),
+                              borderSide: const BorderSide(
+                                color: AppColors.divider,
+                                width: 1.0,
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12.0),
-                              borderSide: const BorderSide(color: AppColors.divider, width: 1.0),
+                              borderSide: const BorderSide(
+                                color: AppColors.divider,
+                                width: 1.0,
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12.0),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                              borderSide: const BorderSide(
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
                             ),
                           ),
                         ),
@@ -244,13 +274,17 @@ class _LoginScreenState extends State<LoginScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const ForgotPasswordScreen(),
+                                  builder: (context) =>
+                                      const ForgotPasswordScreen(),
                                 ),
                               );
                             },
                             borderRadius: BorderRadius.circular(4.0),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4.0,
+                                vertical: 4.0,
+                              ),
                               child: Text(
                                 'Forgot Password?',
                                 style: GoogleFonts.poppins(
@@ -306,7 +340,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                              ),
                               child: Text(
                                 'OR',
                                 style: GoogleFonts.poppins(
@@ -344,7 +380,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                           style: OutlinedButton.styleFrom(
                             backgroundColor: Colors.white,
-                            side: const BorderSide(color: AppColors.divider, width: 1.0),
+                            side: const BorderSide(
+                              color: AppColors.divider,
+                              width: 1.0,
+                            ),
                             minimumSize: const Size(double.infinity, 54),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12.0),
@@ -361,7 +400,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                   height: 20,
                                   width: 20,
                                   errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(Icons.g_mobiledata, color: AppColors.primary, size: 24);
+                                    return const Icon(
+                                      Icons.g_mobiledata,
+                                      color: AppColors.primary,
+                                      size: 24,
+                                    );
                                   },
                                 ),
                                 const SizedBox(width: 12),
