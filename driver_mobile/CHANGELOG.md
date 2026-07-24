@@ -2,6 +2,83 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.8.3] - 2026-07-24
+
+### Changed
+- **Circular Profile Photo**: Redesigned the driver's profile headshot container from a rounded square to a fully circular design on both `ProfileScreen` and `EditProfileScreen`.
+
+## [1.8.2] - 2026-07-24
+
+### Changed
+- **Trips Tab Icon**: Changed the Trips tab navigation icon in [main_navigation_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/main_navigation_screen.dart) to `Icons.route_outlined` / `Icons.route` to match the winding path with start and end pins from the mockup.
+
+## [1.8.1] - 2026-07-24
+
+### Removed
+- **Assigned Vehicle Fields**: Removed the vehicle details section and vehicle model field from `EditProfileScreen`.
+- **Emergency Contact Field**: Removed the emergency contact phone number field from the contact information section of `EditProfileScreen`.
+- **Top Nav Save Button**: Removed the orange "SAVE" button from the AppBar action items list of `EditProfileScreen` (leaving the company logo container on the right).
+
+## [1.8.0] - 2026-07-24
+
+### Added
+- **Edit Profile Screen**: Created the responsive, form-validated [EditProfileScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/edit_profile_screen.dart) featuring:
+  - Form sections for *Personal Information*, *Contact Information*, and *License Details*.
+  - Prefilled fields with standard validator logic and prefix icons.
+  - Custom camera overlay button to mock photo changes from Camera/Gallery.
+  - Embedded long and short custom Date pickers.
+  - Outlined and orange filled bottom action buttons.
+  - Integration with the Edit Profile tile on the Profile Screen.
+- **Edit Profile Widget Test**: Added a new widget test `Edit Profile Screen Validation and Submission Flow` in [widget_test.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/test/widget_test.dart) to verify prefilled text fields, validation errors, cancel flows, and submission workflows.
+
+## [1.7.1] - 2026-07-24
+
+### Removed
+- **Trip History Option**: Removed the "Trip History" option tile from the profile screen's Settings Options Card.
+
+### Changed
+- **Bottom Navigation Bar Selected Style**: Redesigned the selected tab in the bottom navigation bar to be a vertical column (icon on top, label below it) inside a rounded orange box, matching the second reference image.
+
+## [1.7.0] - 2026-07-24
+
+### Added
+- **Driver's License Details Accordion**: Created a new accordion in [profile_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/profile_screen.dart) displaying License Number (`555-0123-9876`), Class (`Class A (Commercial)`), Expiry Date (`Oct 12, 2026`), and Issuing State (`New york`).
+- **Profile Options Card**: Integrated Edit Profile, Help & Support, and Trip History as list tiles inside a single rounded Card with custom leading orange icons on peach circular backgrounds.
+- **Redesigned Logout Button**: Implemented a custom outlined button with red border, red text, and red exit icon located at the bottom of the Profile Options card.
+- **Header Fleet Logo**: Placed the white background rounded container with the fleet logo (`assets/logo.png`) directly to the left of the "FleetManagement" text in the Profile Screen AppBar.
+
+### Changed
+- **Bottom Navigation Bar Icons**: Replaced bottom navigation icons in [main_navigation_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/main_navigation_screen.dart) with:
+  - Home: `Icons.home_outlined` / `Icons.home`
+  - Trips: `Icons.route_outlined` / `Icons.route`
+  - Support: `Icons.headset_mic_outlined` / `Icons.headset_mic`
+  - Alerts: `Icons.notifications_none_rounded` / `Icons.notifications`
+  - Profile: `Icons.person_outline` / `Icons.person` (white inside orange pill container)
+
+## [1.6.2] - 2026-07-24
+
+### Changed
+- **Bottom Navigation Bar Style**: Replaced the custom horizontal pill bottom navigation bar layout in [main_navigation_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/main_navigation_screen.dart) with the vertical column-based selected tab layout originally used in the dashboard.
+
+## [1.6.1] - 2026-07-24
+
+### Fixed
+- **Duplicate Bottom Navigation Bar**: Removed the static, hardcoded bottom navigation bar inside [dashboard_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) Scaffold to resolve layout overlapping with the unified bottom navigation bar from [main_navigation_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/main_navigation_screen.dart).
+
+## [1.6.0] - 2026-07-24
+
+### Added
+- **My Profile Screen**: Created the responsive, pixel-perfect [ProfileScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/profile_screen.dart) featuring:
+  - Custom brand title/logo header bar.
+  - Driver headshot image card with soft shadows and a green active indicator dot.
+  - Name "Alex Johnson", verified badge "SENIOR DRIVER", and "Member since 2020".
+  - Three-column stats card row (Miles, Safety, and Years) using existing design tokens.
+  - Collapsible accordions for *Personal Information* (expanded by default) and *License & Vehicle Details*.
+  - Account action tiles (*Edit Profile*, *Change Password*, *Documents*, *Help & Support*, *Privacy Policy*, *About App*, and *Logout*).
+- **Interactive Logout Confirmation Dialog**: Configured the *Logout* setting tile to prompt a modal dialog asking the user to confirm logout, routing them back to the login screen upon confirmation.
+- **Main Navigation Container & Bottom Nav Bar**: Created [MainNavigationScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/main_navigation_screen.dart) to host application tabs and render a custom bottom navigation bar exactly matching the Figma design (selected pill button containing white icon and text, unselected gray icons).
+- **Profile Screen Integration Tests**: Added a new widget test `Profile Screen Navigation, Details, and Logout Confirmation` in [widget_test.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/test/widget_test.dart) verifying navigation switching, detail rendering, and full logout workflows.
+
 ## [1.5.2] - 2026-07-24
 
 ### Added
