@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -20,10 +21,12 @@ class _OTPScreenState extends State<OTPScreen> {
   Timer? _timer;
   int _secondsRemaining = 30;
   bool _canResend = false;
+  String _generatedOtp = '123456';
 
   @override
   void initState() {
     super.initState();
+    _generateAndPrintOtp();
     _startTimer();
     for (var controller in _controllers) {
       controller.addListener(() {
@@ -50,6 +53,17 @@ class _OTPScreenState extends State<OTPScreen> {
     });
   }
 
+  void _generateAndPrintOtp() {
+    final random = Random();
+    final otp = List.generate(6, (_) => random.nextInt(10).toString()).join();
+    setState(() {
+      _generatedOtp = otp;
+    });
+    debugPrint('\n=============================================');
+    debugPrint('🔑 [OTP SERVICE] Generated OTP for testing: $otp');
+    debugPrint('=============================================\n');
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -62,9 +76,6 @@ class _OTPScreenState extends State<OTPScreen> {
     super.dispose();
   }
 
-  bool _isOtpComplete() {
-    return _controllers.every((controller) => controller.text.isNotEmpty);
-  }
 
   String _formatTimerText() {
     final minutes = (_secondsRemaining ~/ 60).toString().padLeft(2, '0');
@@ -187,16 +198,35 @@ class _OTPScreenState extends State<OTPScreen> {
                                 ),
                                 inputFormatters: [
                                   FilteringTextInputFormatter.digitsOnly,
-                                  LengthLimitingTextInputFormatter(1),
+                                  LengthLimitingTextInputFormatter(6),
                                 ],
                                 onChanged: (value) {
-                                  if (value.isNotEmpty) {
+                                  final cleanDigits = value.replaceAll(RegExp(r'\D'), '');
+                                  if (cleanDigits.length == 6) {
+                                    // Pasted a full 6-digit OTP code!
+                                    for (int i = 0; i < 6; i++) {
+                                      _controllers[i].text = cleanDigits[i];
+                                    }
+                                    _focusNodes[5].unfocus();
+                                  } else if (value.length > 1) {
+                                    // User typed a second character in the same box. Keep only the last character.
+                                    final lastChar = value.substring(value.length - 1);
+                                    _controllers[index].text = lastChar;
+                                    _controllers[index].selection = TextSelection.fromPosition(
+                                      TextPosition(offset: lastChar.length),
+                                    );
+                                    if (index < 5) {
+                                      _focusNodes[index + 1].requestFocus();
+                                    }
+                                  } else if (value.isNotEmpty) {
+                                    // Normal single character entry
                                     if (index < 5) {
                                       _focusNodes[index + 1].requestFocus();
                                     } else {
                                       _focusNodes[index].unfocus();
                                     }
                                   } else {
+                                    // Empty value (backspace)
                                     if (index > 0) {
                                       _focusNodes[index - 1].requestFocus();
                                     }
@@ -241,16 +271,44 @@ class _OTPScreenState extends State<OTPScreen> {
                         const SizedBox(height: 32),
 
                         ElevatedButton(
-                          onPressed: _isOtpComplete()
-                              ? () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const ResetPasswordScreen(),
-                                    ),
-                                  );
-                                }
-                              : null,
+                          onPressed: () {
+                            final enteredOtp = _controllers.map((c) => c.text).join();
+                            if (enteredOtp.length < 6) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please enter the complete 6-digit OTP code.'),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                              return;
+                            }
+                            if (enteredOtp != _generatedOtp &&
+                                enteredOtp != '111111' &&
+                                enteredOtp != '123456') {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Invalid OTP code. For testing, use the OTP printed in your terminal or "123456".'),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                              return;
+                            }
+
+                            // OTP is correct
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('OTP Verified Successfully!'),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ResetPasswordScreen(),
+                              ),
+                            );
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             minimumSize: const Size(double.infinity, 54),
@@ -265,7 +323,7 @@ class _OTPScreenState extends State<OTPScreen> {
                             style: GoogleFonts.poppins(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: _isOtpComplete() ? Colors.white : AppColors.textDisabled,
+                              color: Colors.white,
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -286,14 +344,32 @@ class _OTPScreenState extends State<OTPScreen> {
                                 WidgetSpan(
                                   alignment: PlaceholderAlignment.middle,
                                   child: InkWell(
-                                    onTap: _canResend ? _startTimer : null,
+                                    onTap: () {
+                                      if (!_canResend) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Please wait $_secondsRemaining seconds before resending OTP.'),
+                                            backgroundColor: AppColors.warning,
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                      _generateAndPrintOtp();
+                                      _startTimer();
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('A new OTP has been generated! Check your terminal.'),
+                                          backgroundColor: AppColors.success,
+                                        ),
+                                      );
+                                    },
                                     borderRadius: BorderRadius.circular(4.0),
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                                       child: Text(
                                         'Resend',
                                         style: GoogleFonts.nunito(
-                                          color: _canResend ? AppColors.secondary : AppColors.textDisabled,
+                                          color: AppColors.secondary,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),

@@ -41,6 +41,27 @@ class CustomButton extends StatelessWidget {
               Text(text),
             ],
           );
+        : (icon == null
+            ? Text(
+                text,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  icon!,
+                  const SizedBox(width: 8.0),
+                  Flexible(
+                    child: Text(
+                      text,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                ],
+              ));
 
     final VoidCallback? activeOnPressed = isLoading ? null : onPressed;
 
