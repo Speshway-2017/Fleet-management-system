@@ -59,7 +59,7 @@ class RouteSheetScreen extends StatelessWidget {
 
               // 7. Footer Actions
               _buildFooterActions(context),
-              const SizedBox(height: 16),
+              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -555,58 +555,54 @@ class RouteSheetScreen extends StatelessWidget {
   Widget _buildFooterActions(BuildContext context) {
     return Column(
       children: [
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Downloading Route Sheet Document...')),
-              );
-            },
-            icon: const Icon(Icons.download_outlined, color: Colors.white, size: 20),
-            label: const Text(
-              'Download Route Sheet',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+        ElevatedButton.icon(
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Downloading Route Sheet Document...')),
+            );
+          },
+          icon: const Icon(Icons.download_outlined, color: Colors.white, size: 20),
+          label: const Text(
+            'Download Route Sheet',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            minimumSize: const Size(double.infinity, 48),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
           ),
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: OutlinedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Opening Share Dialog for Route Sheet...')),
-              );
-            },
-            icon: const Icon(Icons.share_outlined, color: AppColors.secondary, size: 20),
-            label: const Text(
-              'Share Route Details',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: AppColors.secondary,
-              ),
+        OutlinedButton.icon(
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Opening Share Dialog for Route Sheet...')),
+            );
+          },
+          icon: const Icon(Icons.share_outlined, color: AppColors.secondary, size: 20),
+          label: const Text(
+            'Share Route Details',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: AppColors.secondary,
             ),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.secondary, width: 1.5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
+          ),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppColors.secondary, width: 1.5),
+            minimumSize: const Size(double.infinity, 48),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
           ),
         ),

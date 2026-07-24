@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
-import '../constants/app_radius.dart';
 import 'home_screen.dart';
 import 'trips_screen.dart';
 
@@ -26,7 +25,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: IndexedStack(index: _selectedIndex, children: _screens),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _screens,
+      ),
       bottomNavigationBar: Container(
         color: AppColors.primary,
         child: SafeArea(
@@ -66,45 +68,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ) {
     final isSelected = _selectedIndex == index;
     return Expanded(
-      child: InkWell(
+      child: GestureDetector(
         onTap: () {
           setState(() {
             _selectedIndex = index;
           });
         },
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        child: Center(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
-            width: 68,
-            height: 48,
-            decoration: BoxDecoration(
-              color: isSelected ? AppColors.secondary : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  isSelected ? selectedIcon : unselectedIcon,
-                  color: isSelected ? AppColors.background : AppColors.secondaryText,
-                  size: 22,
+        child: Container(
+          color: Colors.transparent,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isSelected ? selectedIcon : unselectedIcon,
+                color: isSelected ? AppColors.secondary : Colors.white.withValues(alpha: 0.7),
+                size: 24,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? AppColors.secondary : Colors.white.withValues(alpha: 0.7),
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
-                if (isSelected) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: AppColors.background,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

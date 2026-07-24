@@ -696,58 +696,54 @@ class CompletedTripDetailsScreen extends StatelessWidget {
   Widget _buildFooterActions(BuildContext context) {
     return Column(
       children: [
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Downloading Completed Trip Report PDF...')),
-              );
-            },
-            icon: const Icon(Icons.download_outlined, color: Colors.white, size: 20),
-            label: const Text(
-              'Download Trip Report',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+        ElevatedButton.icon(
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Downloading Completed Trip Report PDF...')),
+            );
+          },
+          icon: const Icon(Icons.download_outlined, color: Colors.white, size: 20),
+          label: const Text(
+            'Download Trip Report',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            minimumSize: const Size(double.infinity, 48),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
           ),
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: OutlinedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Opening Share Dialog for Trip Report...')),
-              );
-            },
-            icon: const Icon(Icons.share_outlined, color: AppColors.secondary, size: 20),
-            label: const Text(
-              'Share Report',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: AppColors.secondary,
-              ),
+        OutlinedButton.icon(
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Opening Share Dialog for Trip Report...')),
+            );
+          },
+          icon: const Icon(Icons.share_outlined, color: AppColors.secondary, size: 20),
+          label: const Text(
+            'Share Report',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: AppColors.secondary,
             ),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.secondary, width: 1.5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
+          ),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppColors.secondary, width: 1.5),
+            minimumSize: const Size(double.infinity, 48),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
           ),
         ),

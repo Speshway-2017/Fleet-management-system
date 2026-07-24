@@ -515,62 +515,58 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
     return Column(
       children: [
         // Start Trip (Slate Blue color `#8E9CAE`)
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Upcoming trips can only be started at the scheduled reporting time.'),
-                ),
-              );
-            },
-            icon: const Icon(Icons.play_circle_outline, color: Colors.white, size: 20),
-            label: const Text(
-              'Start Trip',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+        ElevatedButton.icon(
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Upcoming trips can only be started at the scheduled reporting time.'),
               ),
+            );
+          },
+          icon: const Icon(Icons.play_circle_outline, color: Colors.white, size: 20),
+          label: const Text(
+            'Start Trip',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF8E9CAE), // Slate Blue matching the image
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF8E9CAE), // Slate Blue matching the image
+            elevation: 0,
+            minimumSize: const Size(double.infinity, 48),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
           ),
         ),
         const SizedBox(height: 12),
         // Contact Dispatcher (Orange outline)
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: OutlinedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Connecting to dispatcher support dialer...'),
-                ),
-              );
-            },
-            icon: const Icon(Icons.headset_mic_outlined, color: AppColors.secondary, size: 20),
-            label: const Text(
-              'Contact Dispatcher',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: AppColors.secondary,
+        OutlinedButton.icon(
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Connecting to dispatcher support dialer...'),
               ),
+            );
+          },
+          icon: const Icon(Icons.headset_mic_outlined, color: AppColors.secondary, size: 20),
+          label: const Text(
+            'Contact Dispatcher',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: AppColors.secondary,
             ),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.secondary, width: 1.5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
+          ),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppColors.secondary, width: 1.5),
+            minimumSize: const Size(double.infinity, 48),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
           ),
         ),
