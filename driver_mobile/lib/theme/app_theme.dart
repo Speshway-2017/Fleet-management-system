@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'app_colors.dart';
 
 /// Centralized Material Design 3 theme system for the Fleet Driver Mobile application.
+import '../constants/app_colors.dart';
 
 class AppTheme {
   AppTheme._();

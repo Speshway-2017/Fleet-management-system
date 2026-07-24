@@ -26,10 +26,12 @@ class DesignSystemShowcaseScreen extends StatefulWidget {
   const DesignSystemShowcaseScreen({super.key});
 
   @override
-  State<DesignSystemShowcaseScreen> createState() => _DesignSystemShowcaseScreenState();
+  State<DesignSystemShowcaseScreen> createState() =>
+      _DesignSystemShowcaseScreenState();
 }
 
-class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen> {
+class _DesignSystemShowcaseScreenState
+    extends State<DesignSystemShowcaseScreen> {
   int _currentNavIndex = 0;
   final _formKey = GlobalKey<FormState>();
 
@@ -68,13 +70,43 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
 
             // Typography Showcase
             _buildSectionHeader('TYPOGRAPHY SCALE'),
-            _buildTypographyRow(context, 'Heading 1', 'Poppins Bold 28', Theme.of(context).textTheme.displayLarge!),
-            _buildTypographyRow(context, 'Heading 2', 'Poppins SemiBold 24', Theme.of(context).textTheme.displayMedium!),
-            _buildTypographyRow(context, 'Heading 3', 'Poppins Medium 20', Theme.of(context).textTheme.displaySmall!),
-            _buildTypographyRow(context, 'Body Large', 'Nunito 16', Theme.of(context).textTheme.bodyLarge!),
-            _buildTypographyRow(context, 'Body Medium', 'Nunito 14', Theme.of(context).textTheme.bodyMedium!),
-            _buildTypographyRow(context, 'Caption', 'Nunito 12', Theme.of(context).textTheme.bodySmall!),
-            
+            _buildTypographyRow(
+              context,
+              'Heading 1',
+              'Poppins Bold 28',
+              Theme.of(context).textTheme.displayLarge!,
+            ),
+            _buildTypographyRow(
+              context,
+              'Heading 2',
+              'Poppins SemiBold 24',
+              Theme.of(context).textTheme.displayMedium!,
+            ),
+            _buildTypographyRow(
+              context,
+              'Heading 3',
+              'Poppins Medium 20',
+              Theme.of(context).textTheme.displaySmall!,
+            ),
+            _buildTypographyRow(
+              context,
+              'Body Large',
+              'Nunito 16',
+              Theme.of(context).textTheme.bodyLarge!,
+            ),
+            _buildTypographyRow(
+              context,
+              'Body Medium',
+              'Nunito 14',
+              Theme.of(context).textTheme.bodyMedium!,
+            ),
+            _buildTypographyRow(
+              context,
+              'Caption',
+              'Nunito 12',
+              Theme.of(context).textTheme.bodySmall!,
+            ),
+
             const Divider(height: 32, color: AppColors.divider),
 
             // Buttons & CTAs Showcase
@@ -95,10 +127,7 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
                   onPressed: () {},
                   child: const Text('Outlined Button'),
                 ),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text('Text Action'),
-                ),
+                TextButton(onPressed: () {}, child: const Text('Text Action')),
               ],
             ),
             const SizedBox(height: 16),
@@ -130,7 +159,7 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
 
             // Cards Showcase
             _buildSectionHeader('CARDS & UTILITIES'),
-            
+
             // Trip Card (Success State)
             Card(
               child: Padding(
@@ -150,15 +179,29 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
                       ],
                     ),
                     const SizedBox(height: 12),
-                    _buildInfoRow(context, Icons.location_on_outlined, 'Origin: Portland Warehouse A'),
+                    _buildInfoRow(
+                      context,
+                      Icons.location_on_outlined,
+                      'Origin: Portland Warehouse A',
+                    ),
                     const SizedBox(height: 8),
-                    _buildInfoRow(context, Icons.flag_outlined, 'Destination: Seattle Logistics Hub'),
+                    _buildInfoRow(
+                      context,
+                      Icons.flag_outlined,
+                      'Destination: Seattle Logistics Hub',
+                    ),
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Driver: Marcus Vance', style: Theme.of(context).textTheme.bodyMedium),
-                        Text('Distance: 174 miles', style: Theme.of(context).textTheme.bodySmall),
+                        Text(
+                          'Driver: Marcus Vance',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        Text(
+                          'Distance: 174 miles',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                       ],
                     ),
                   ],
@@ -176,14 +219,19 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 24),
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: AppColors.error,
+                          size: 24,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'Vehicle Alert',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: AppColors.error,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
                       ],
                     ),
@@ -224,7 +272,9 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
                 ],
               ),
             ),
-            const SizedBox(height: 48), // Spacing before the bottom of the scroll view
+            const SizedBox(
+              height: 48,
+            ), // Spacing before the bottom of the scroll view
           ],
         ),
       ),
@@ -276,7 +326,12 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
     );
   }
 
-  Widget _buildTypographyRow(BuildContext context, String label, String fontDetails, TextStyle style) {
+  Widget _buildTypographyRow(
+    BuildContext context,
+    String label,
+    String fontDetails,
+    TextStyle style,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -288,17 +343,16 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: Theme.of(context).textTheme.titleSmall),
-                Text(fontDetails, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textDisabled)),
+                Text(
+                  fontDetails,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textDisabled,
+                  ),
+                ),
               ],
             ),
           ),
-          Expanded(
-            flex: 7,
-            child: Text(
-              'Fleet Navy',
-              style: style,
-            ),
-          ),
+          Expanded(flex: 7, child: Text('Fleet Navy', style: style)),
         ],
       ),
     );
@@ -329,10 +383,7 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
         Icon(icon, size: 18, color: AppColors.textSecondary),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(
-            text,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
         ),
       ],
     );
