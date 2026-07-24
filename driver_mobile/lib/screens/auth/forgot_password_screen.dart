@@ -204,20 +204,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
                           // Send OTP Button
                           ElevatedButton(
-                            onPressed: _isInputNotEmpty()
-                                ? () {
-                                    if (_formKey.currentState!.validate()) {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => OTPScreen(
-                                            contactInfo: _inputController.text,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                : null,
+                            onPressed: () {
+                              if (_formKey.currentState!.validate()) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => OTPScreen(
+                                      contactInfo: _inputController.text.trim(),
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               minimumSize: const Size(double.infinity, 54),
@@ -236,7 +234,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                      style: GoogleFonts.poppins(
                                        fontSize: 16,
                                        fontWeight: FontWeight.bold,
-                                       color: _isInputNotEmpty() ? Colors.white : AppColors.textDisabled,
+                                       color: Colors.white,
                                        letterSpacing: 0.5,
                                      ),
                                    ),

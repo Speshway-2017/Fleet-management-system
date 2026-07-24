@@ -51,11 +51,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     super.dispose();
   }
 
-  bool _isFormValid() {
-    return _hasMinLength && _hasNumber && _hasSpecialChar && 
-           _confirmPasswordController.text.isNotEmpty &&
-           _passwordController.text == _confirmPasswordController.text;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -335,25 +330,41 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
                           // Reset Password Button
                           ElevatedButton(
-                            onPressed: _isFormValid()
-                                ? () {
-                                    if (_formKey.currentState!.validate()) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Password reset successfully! Please login with your new password.'),
-                                          backgroundColor: AppColors.success,
-                                        ),
-                                      );
-                                      Navigator.pushAndRemoveUntil(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => const LoginScreen(),
-                                        ),
-                                        (route) => false,
-                                      );
-                                    }
-                                  }
-                                : null,
+                            onPressed: () {
+                              if (!_hasMinLength || !_hasNumber || !_hasSpecialChar) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please ensure your new password meets all the password requirements.'),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                                return;
+                              }
+                              if (_passwordController.text != _confirmPasswordController.text) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Passwords do not match. Please verify.'),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                                return;
+                              }
+                              if (_formKey.currentState!.validate()) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Password reset successfully! Please login with your new password.'),
+                                    backgroundColor: AppColors.success,
+                                  ),
+                                );
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const LoginScreen(),
+                                  ),
+                                  (route) => false,
+                                );
+                              }
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               minimumSize: const Size(double.infinity, 54),
@@ -367,7 +378,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                               style: GoogleFonts.poppins(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: _isFormValid() ? Colors.white : AppColors.textDisabled,
+                                color: Colors.white,
                                 letterSpacing: 0.5,
                               ),
                             ),
