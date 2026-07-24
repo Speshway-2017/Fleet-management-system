@@ -107,10 +107,15 @@ class DashboardScreen extends StatelessWidget {
                           child: CustomButton(
                             text: 'View Details',
                             onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const VehicleOverviewScreen(),
+                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Opening Trip Details...'),
+                                  duration: const Duration(seconds: 2),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10.0),
+                                  ),
                                 ),
                               );
                             },
@@ -139,13 +144,16 @@ class DashboardScreen extends StatelessWidget {
                           size: 20,
                         ),
                         AppSpacing.horizontalSm,
-                        Text(
-                          'Heavy Duty - AX 452',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: AppColors.primaryText,
-                                fontWeight: FontWeight.w500,
-                              ),
+                        Flexible(
+                          child: Text(
+                            'Heavy Duty - AX 452',
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: AppColors.primaryText,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                          ),
                         ),
                         AppSpacing.horizontalSm,
                         Container(
@@ -163,7 +171,6 @@ class DashboardScreen extends StatelessWidget {
                                 ?.copyWith(
                                   color: AppColors.success,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 10,
                                 ),
                           ),
                         ),
@@ -448,6 +455,14 @@ class DashboardScreen extends StatelessWidget {
                           context,
                           Icons.local_shipping_outlined,
                           'Vehicle',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const VehicleOverviewScreen(),
+                              ),
+                            );
+                          },
                         ),
                       ),
                       AppSpacing.horizontalMd,
@@ -697,34 +712,55 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionItem(BuildContext context, IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16.0),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+  Widget _buildActionItem(
+    BuildContext context,
+    IconData icon,
+    String label, {
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          debugPrint("$label Quick Action Clicked");
+          if (onTap != null) {
+            onTap();
+          }
+        },
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.secondary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: AppColors.secondary, size: 24),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: AppColors.divider),
           ),
-          AppSpacing.verticalSm,
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppColors.primaryText,
-            ),
+          child: Column(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: AppColors.secondary, size: 24),
+              ),
+              AppSpacing.verticalSm,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primaryText,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
