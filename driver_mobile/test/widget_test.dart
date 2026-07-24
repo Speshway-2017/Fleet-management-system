@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:driver_mobile/main.dart';
 import 'package:driver_mobile/screens/vehicle_overview_screen.dart';
 import 'package:driver_mobile/screens/vehicle_documents_screen.dart';
-import 'package:driver_mobile/screens/vehicle_details_screen.dart';
 
 void main() {
   testWidgets('Complete Authentication Navigation Flow Smoke Test', (

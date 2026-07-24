@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 import 'home_screen.dart';
 import 'trips_screen.dart';
+import 'profile/profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -16,9 +18,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const TripsScreen(),
-    const Scaffold(body: Center(child: Text('Support Screen'))),
-    const Scaffold(body: Center(child: Text('Notifications Screen'))),
-    const Scaffold(body: Center(child: Text('Profile Screen'))),
+    const PlaceholderScreen(title: 'Support', icon: Icons.headset_mic_outlined),
+    const PlaceholderScreen(title: 'Alerts', icon: Icons.notifications_none_rounded),
+    const ProfileScreen(),
   ];
 
   @override
@@ -51,7 +53,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Icons.notifications_outlined,
                   'Alerts',
                 ),
-                _buildNavItem(4, Icons.person, Icons.person_outline, 'Profile'),
+                _buildNavItem(
+                  4,
+                  Icons.account_circle,
+                  Icons.account_circle_outlined,
+                  'Profile',
+                ),
               ],
             ),
           ),
@@ -100,3 +107,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 }
+
+class PlaceholderScreen extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  const PlaceholderScreen({super.key, required this.title, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text(
+          title,
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 72,
+              color: AppColors.textDisabled,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '$title Screen Placeholder',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This screen will display your fleet $title details.',
+              style: GoogleFonts.nunito(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
