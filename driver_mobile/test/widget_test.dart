@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:driver_mobile/main.dart';
 import 'package:driver_mobile/screens/vehicle_overview_screen.dart';
+import 'package:driver_mobile/screens/vehicle_documents_screen.dart';
 
 void main() {
   testWidgets('Complete Authentication Navigation Flow Smoke Test', (
@@ -125,13 +126,10 @@ void main() {
     // 1. Verify App Bar Title
     expect(find.text('Vehicle Overview'), findsOneWidget);
 
-    // 2. Verify Vehicle Info & Metrics
+    // 2. Verify Vehicle Info
     expect(find.text('BT-990'), findsOneWidget);
     expect(find.text('Medium Van • ABC-1234'), findsOneWidget);
     expect(find.text('Diesel'), findsOneWidget);
-    expect(find.text('82%'), findsOneWidget);
-    expect(find.text('94%'), findsOneWidget);
-    expect(find.text('OK'), findsOneWidget);
 
     // 3. Verify Section Header & Action Items
     expect(find.text('Actions & Details'), findsOneWidget);
@@ -139,5 +137,42 @@ void main() {
     expect(find.text('Vehicle Status'), findsOneWidget);
     expect(find.text('Maintenance Alerts'), findsOneWidget);
     expect(find.text('1 CRITICAL'), findsOneWidget);
+
+    // 4. Verify Quick Info Section & Card
+    expect(find.text('Quick Info'), findsOneWidget);
+    expect(find.text('Last Service'), findsOneWidget);
+    expect(find.text('Oct 12, 2023'), findsOneWidget);
+    expect(find.text('Next Service'), findsOneWidget);
+    expect(find.text('5,000 km'), findsOneWidget);
+    expect(find.text('Insurance Expiry'), findsOneWidget);
+    expect(find.text('Dec 20, 2023'), findsOneWidget);
+    expect(find.text('Permit Expiry'), findsOneWidget);
+    expect(find.text('Jan 15, 2024'), findsOneWidget);
+  });
+
+  testWidgets('Vehicle Documents Screen rendering and document list test', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: VehicleDocumentsScreen(),
+      ),
+    );
+
+    // 1. Verify App Bar & Header
+    expect(find.text('Vehicle Documents'), findsOneWidget);
+    expect(find.text('All Vehicle Documents'), findsOneWidget);
+
+    // 2. Verify Document Items
+    expect(find.text('Registration Certificate (RC)'), findsOneWidget);
+    expect(find.text('Insurance Certificate'), findsOneWidget);
+    expect(find.text('Pollution Under Control (PUC)'), findsOneWidget);
+    expect(find.text('Fitness Certificate'), findsOneWidget);
+    expect(find.text('Permit Document'), findsOneWidget);
+    expect(find.text('Road Tax Receipt'), findsOneWidget);
+
+    // 3. Verify Status Badges & Actions
+    expect(find.text('Valid'), findsNWidgets(5));
+    expect(find.text('Expiring Soon'), findsOneWidget);
+    expect(find.text('View'), findsNWidgets(6));
+    expect(find.text('Download'), findsNWidgets(6));
   });
 }

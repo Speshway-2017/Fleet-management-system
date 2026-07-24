@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/vehicle_overview/quick_info_card.dart';
 import '../widgets/vehicle_overview/vehicle_action_tile.dart';
 import '../widgets/vehicle_overview/vehicle_info_card.dart';
+import 'vehicle_documents_screen.dart';
 
 /// Driver Module - Vehicle Overview Screen
 /// 
@@ -96,7 +98,7 @@ class VehicleOverviewScreen extends StatelessWidget {
               ),
               const SizedBox(height: 14.0),
 
-              // 3. Action Cards List
+              // 3. Operational Action Cards List
               VehicleActionTile(
                 icon: Icons.info_outline_rounded,
                 title: 'Vehicle Details',
@@ -115,29 +117,16 @@ class VehicleOverviewScreen extends StatelessWidget {
                 onTap: () => _showActionFeedback(context, 'Maintenance Alerts'),
               ),
               VehicleActionTile(
-                icon: Icons.verified_user_outlined,
-                title: 'Insurance Details',
-                onTap: () => _showActionFeedback(context, 'Insurance Details'),
-              ),
-              VehicleActionTile(
-                icon: Icons.card_membership_rounded,
-                title: 'Registration Certificate (RC)',
-                onTap: () => _showActionFeedback(context, 'Registration Certificate (RC)'),
-              ),
-              VehicleActionTile(
-                icon: Icons.eco_outlined,
-                title: 'Pollution Certificate (PUC)',
-                onTap: () => _showActionFeedback(context, 'Pollution Certificate (PUC)'),
-              ),
-              VehicleActionTile(
-                icon: Icons.health_and_safety_outlined,
-                title: 'Fitness Certificate',
-                onTap: () => _showActionFeedback(context, 'Fitness Certificate'),
-              ),
-              VehicleActionTile(
                 icon: Icons.folder_open_outlined,
                 title: 'Vehicle Documents',
-                onTap: () => _showActionFeedback(context, 'Vehicle Documents'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const VehicleDocumentsScreen(),
+                    ),
+                  );
+                },
               ),
               VehicleActionTile(
                 icon: Icons.route_outlined,
@@ -150,7 +139,23 @@ class VehicleOverviewScreen extends StatelessWidget {
                 onTap: () => _showActionFeedback(context, 'Report Vehicle Issue'),
               ),
 
-              const SizedBox(height: 16.0),
+              const SizedBox(height: 24.0),
+
+              // 4. Quick Info Section Header
+              Text(
+                'Quick Info',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: textPrimary,
+                ),
+              ),
+              const SizedBox(height: 14.0),
+
+              // 5. Quick Info Dark Navy Card
+              const QuickInfoCard(),
+
+              const SizedBox(height: 24.0),
             ],
           ),
         ),
