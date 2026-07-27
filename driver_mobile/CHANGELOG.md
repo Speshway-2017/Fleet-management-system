@@ -2,6 +2,33 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.12.0] - 2026-07-27
+
+### Refactored
+- **Single Navigation Architecture Integration**:
+  - Restructured the navigation flow to use `MainNavigationScreen` as the sole bottom navigation container in the application.
+  - Converted `DashboardScreen` from a tab controller shell into the primary Home page, completely removing duplicate bottom navigation bar layouts and nested `IndexedStack`.
+  - Migrated all dashboard components, cards, quick actions, schedule timeline, and recent notification UI from `HomeScreen` into `DashboardScreen`.
+  - Replaced all references to `DashboardScreen.selectedTabNotifier` with `MainNavigationScreen.selectedTabNotifier` for unified programmatic tab switching (e.g. from Home's "View All" notifications button and the notification details back button).
+  - Updated `LoginScreen` to route to `MainNavigationScreen` instead of `DashboardScreen` upon successful login.
+  - Connected the `TripsScreen` module into the second tab (index 1) of `MainNavigationScreen` to replace the previous placeholder screen.
+  - Safely deleted the redundant `home_screen.dart` file and updated all imports across the codebase.
+
+## [1.11.1] - 2026-07-27
+
+### Fixed
+- **Dashboard Screen Merge Resolution**:
+  - Restored [dashboard_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) as the correct active navigation container after fixing merge conflicts.
+  - Removed misplaced Recent Notifications UI code and undefined method calls from `DashboardScreen`.
+  - Added a reactive `ValueNotifier` (`selectedTabNotifier`) to `DashboardScreen` and updated the active index inside `_DashboardScreenState` to listen to it.
+  - Reset `selectedTabNotifier.value = 0` inside `dispose` of `_DashboardScreenState` to prevent static state pollution across test runs.
+  - Replaced the Alerts placeholder screen inside the `DashboardScreen` tab stack with the actual [NotificationsScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/notifications/notifications_screen.dart).
+  - Restored `PlaceholderScreen`'s proper widget structure and `build` method.
+- **HomeScreen Integration**:
+  - Connected the "View All" button on the [home_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/home_screen.dart) to programmatically switch the active tab to Alerts (index 3) using `DashboardScreen.selectedTabNotifier`.
+- **NotificationDetailsScreen Integration**:
+  - Updated the back button handler on [notification_details_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/notifications/notification_details_screen.dart) to switch tab index 3 via `DashboardScreen.selectedTabNotifier` instead of the deprecated `MainNavigationScreen.selectedTabNotifier`.
+
 ## [1.11.0] - 2026-07-27
 
 ### Changed
