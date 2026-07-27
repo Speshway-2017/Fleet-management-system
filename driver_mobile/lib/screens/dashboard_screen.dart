@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
+import '../constants/app_spacing.dart';
+import '../constants/app_radius.dart';
+import '../widgets/custom_app_bar.dart';
+import '../widgets/custom_button.dart';
+import '../widgets/custom_card.dart';
+import 'vehicle_overview_screen.dart';
+import 'notifications/notifications_screen.dart';
+import 'notifications/notification_details_screen.dart';
+import 'main_navigation_screen.dart';
 import 'home_screen.dart';
 import 'trips_screen.dart';
 import 'profile/profile_screen.dart';
@@ -13,6 +22,8 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  bool get _isTripUnread => !NotificationsScreen.notifications.firstWhere((n) => n.id == '1').isRead;
+  bool get _isMaintenanceUnread => !NotificationsScreen.notifications.firstWhere((n) => n.id == '2').isRead;
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
@@ -59,8 +70,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Icons.account_circle_outlined,
                   'Profile',
                 ),
-              ],
-            ),
+              ),
+              AppSpacing.verticalLg,
+
+              // Recent Notifications Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Recent Notifications',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryText,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      MainNavigationScreen.selectedTabNotifier.value = 3;
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.secondary,
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text('View All'),
+                  ),
+                ],
+              ),
+              AppSpacing.verticalMd,
+              _buildNotificationCard(
+                context,
+                icon: Icons.assignment_turned_in_outlined,
+                iconBgColor: AppColors.secondary.withValues(alpha: 0.1),
+                iconColor: AppColors.secondary,
+                title: 'New Trip Assigned',
+                subtext: 'Scheduled for Oct 24, 06:00 AM',
+                time: '2m ago',
+                message: 'A new trip #TRP-9921 has been assigned to you. Please check your schedule and route details for more information.',
+                type: 'Route Update',
+                isUnread: _isTripUnread,
+                onTap: () {
+                  setState(() {
+                    NotificationsScreen.notifications.firstWhere((n) => n.id == '1').isRead = true;
+                  });
+                },
+              ),
+              _buildNotificationCard(
+                context,
+                icon: Icons.build_outlined,
+                iconBgColor: AppColors.divider.withValues(alpha: 0.5),
+                iconColor: AppColors.secondaryText,
+                title: 'Maintenance Reminder',
+                subtext: 'Next engine check due in 3 days',
+                time: '1h ago',
+                message: 'Your assigned vehicle is scheduled for a routine engine check-up in 3 days. Please coordinate with the fleet supervisor.',
+                type: 'Maintenance Alert',
+                isUnread: _isMaintenanceUnread,
+                onTap: () {
+                  setState(() {
+                    NotificationsScreen.notifications.firstWhere((n) => n.id == '2').isRead = true;
+                  });
+                },
+              ),
+            ],
           ),
         ),
       ),
@@ -113,47 +186,109 @@ class PlaceholderScreen extends StatelessWidget {
   final IconData icon;
   const PlaceholderScreen({super.key, required this.title, required this.icon});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text(
-          title,
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+  Widget _buildNotificationCard(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconBgColor,
+    required Color iconColor,
+    required String title,
+    required String subtext,
+    required String time,
+    required String message,
+    required String type,
+    bool isUnread = false,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => NotificationDetailsScreen(
+              title: title,
+              message: message,
+              time: time,
+              type: type,
+              icon: icon,
+              onOpened: onTap,
+              comingFromDashboard: true,
+            ),
           ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.divider),
         ),
-        backgroundColor: AppColors.primary,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              icon,
-              size: 72,
-              color: AppColors.textDisabled,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '$title Screen Placeholder',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+            // Icon Container
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
+              child: Icon(icon, color: iconColor, size: 20),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'This screen will display your fleet $title details.',
-              style: GoogleFonts.nunito(
-                fontSize: 14,
-                color: AppColors.textSecondary,
+            AppSpacing.horizontalMd,
+            // Text Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Text(
+                              title,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(
+                                    color: AppColors.primaryText,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                            if (isUnread) ...[
+                              AppSpacing.horizontalSm,
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.secondary,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      Text(
+                        time,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.secondaryText,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtext,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.secondaryText,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

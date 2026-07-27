@@ -3,8 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 import 'dashboard_screen.dart';
 import 'profile/profile_screen.dart';
+import 'notifications/notifications_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
+  static final ValueNotifier<int> selectedTabNotifier = ValueNotifier<int>(0);
+
   const MainNavigationScreen({super.key});
 
   @override
@@ -14,11 +17,41 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = MainNavigationScreen.selectedTabNotifier.value;
+    MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
+  }
+
+  @override
+  void dispose() {
+    MainNavigationScreen.selectedTabNotifier.removeListener(_onTabChanged);
+    MainNavigationScreen.selectedTabNotifier.value = 0;
+    // Reset mock notifications read status for consistent state
+    for (var item in NotificationsScreen.notifications) {
+      if (item.id == '1' || item.id == '2') {
+        item.isRead = false;
+      } else {
+        item.isRead = true;
+      }
+    }
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (mounted) {
+      setState(() {
+        _currentIndex = MainNavigationScreen.selectedTabNotifier.value;
+      });
+    }
+  }
+
   final List<Widget> _screens = [
     const DashboardScreen(),
     const PlaceholderScreen(title: 'Trips', icon: Icons.alt_route_outlined),
     const PlaceholderScreen(title: 'Messages', icon: Icons.chat_bubble_outline_rounded),
-    const PlaceholderScreen(title: 'Alerts', icon: Icons.notifications_none_rounded),
+    const NotificationsScreen(),
     const ProfileScreen(),
   ];
 
@@ -40,7 +73,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               _buildNavItem(0, Icons.home_outlined, Icons.home, 'Home'),
               _buildNavItem(1, Icons.route_outlined, Icons.route, 'Trips'),
               _buildNavItem(2, Icons.headset_mic_outlined, Icons.headset_mic, 'Support'),
-              _buildNavItem(3, Icons.notifications_none_rounded, Icons.notifications, 'Alerts'),
+              _buildNavItem(3, Icons.notifications_none_rounded, Icons.notifications, 'Notifications'),
               _buildNavItem(4, Icons.account_circle_outlined, Icons.account_circle, 'Profile'),
             ],
           ),
@@ -82,9 +115,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           size: 24,
         ),
         onPressed: () {
-          setState(() {
-            _currentIndex = index;
-          });
+          MainNavigationScreen.selectedTabNotifier.value = index;
         },
       );
     }
