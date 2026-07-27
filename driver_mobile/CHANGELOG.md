@@ -2,6 +2,38 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.14.0] - 2026-07-27
+
+### Changed
+- **Redesigned Dashboard Screen UI**:
+  - Implemented sleek dark navy top header greeting with a green online status indicator and a local high-quality driver avatar image (`driver_avatar.png`).
+  - Wrapped greeting row in `Expanded` and reduced title font size to `18` to resolve avatar row overflow.
+  - Added rounded curved sheet container body (`Color(0xFFF7F9FC)`) styling to standard modern proportions.
+  - Implemented dark navy Active Trip card displaying pickup/destination route stepper, ETA info, LIVE tag, 65% progress statistic container, linear progress bar, and orange details button.
+  - Resolved active trip card right overflow on narrow viewports by tuning columns flex ratio to `11` and `9`, reducing stats title to `18`, reducing pickup/destination labels to `11`, shrinking progress bar width to `80`, and reducing button padding to `8`.
+  - Redesigned Quick Actions row to support smooth horizontal scroll view.
+  - Unified Dashboard Overview statistics into a single white card container with four stats widgets (Active Trip, Upcoming, Completed, Total Trips).
+  - Streamlined Today's Schedule timeline nodes with active/inactive coloring.
+  - Refined Recent Notifications items with unread indicators and circle icons.
+- **Trips Screen Layout Updates**:
+  - Removed search icon from the AppBar actions list.
+  - Placed white rounded brand logo container in the AppBar actions to align with other screens.
+  - Added a search bar (`TextField` with search prefix icon and curved borders) at the top of the body container.
+- **Bottom Navigation Bar Updates**:
+  - Modified unselected tabs to show gray text labels below icons to match mockup design.
+  - Changed target tab label of index 3 from 'Notifications' to 'Alerts'.
+  - Added notification dot badge on the Alerts icon.
+
+## [1.13.0] - 2026-07-27
+
+### Added
+- **Schedule Management Integration**:
+  - Implemented `ScheduleScreen` (Image 1) featuring a calendar week header, Assigned Trips view, Day Summary widget, and current weather cards.
+  - Implemented `TodaysScheduleScreen` (Image 2) displaying real-time shipment progress status map integration, remaining stop timeline milestones, and stats cards.
+  - Implemented `AssignmentDetailsScreen` (Image 3) displaying specific trip assignments (e.g. #FL-771), map indicators, 4-metric overview grid, load details, and route progress nodes.
+  - Implemented `UpcomingScheduleScreen` (Image 4) showing 7-day schedule blocks, weekly distance/fuel stats, and deliverables counters.
+  - Linked new screens into `DashboardScreen` Quick Actions ("Schedule") and Today's Schedule ("View") buttons.
+
 ## [1.7.0] - 2026-07-27
 
 ### Added

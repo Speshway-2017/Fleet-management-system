@@ -22,9 +22,36 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Logo action widget with solid white background (the "left logo" style)
+    final logoWidget = Container(
+      width: 32,
+      height: 32,
+      margin: const EdgeInsets.only(right: 16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      padding: const EdgeInsets.all(4.0),
+      alignment: Alignment.center,
+      child: Image.asset(
+        'assets/logo.png',
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return const Icon(
+            Icons.local_shipping,
+            color: Color(0xFF0D1B2A),
+            size: 18,
+          );
+        },
+      ),
+    );
+
+    // If actions are provided, use them directly; otherwise, show the default logo
+    final List<Widget> combinedActions = actions != null ? actions! : [logoWidget];
+
     return AppBar(
       title: title ?? (titleText != null ? Text(titleText!) : null),
-      actions: actions,
+      actions: combinedActions,
       leading: leading,
       centerTitle: centerTitle,
       bottom: bottom,
