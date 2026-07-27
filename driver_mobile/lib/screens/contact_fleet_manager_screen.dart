@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'calling_fleet_manager_screen.dart';
+import 'message_fleet_manager_screen.dart';
 
 /// Driver Module - Contact Fleet Manager Screen (Indian Fleet Data Context)
 /// 
@@ -8,20 +10,6 @@ import 'package:google_fonts/google_fonts.dart';
 /// and recent activity timeline with authentic Indian fleet logistics data.
 class ContactFleetManagerScreen extends StatelessWidget {
   const ContactFleetManagerScreen({super.key});
-
-  void _showActionSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.0),
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,18 +106,11 @@ class ContactFleetManagerScreen extends StatelessWidget {
                                 color: primaryDark.withAlpha(20),
                                 border: Border.all(color: borderGray, width: 2),
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(32),
-                                child: Image.asset(
-                                  'assets/images/driver_avatar.jpg',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.person_rounded,
-                                      size: 40,
-                                      color: primaryDark,
-                                    );
-                                  },
+                              child: Center(
+                                child: Icon(
+                                  Icons.person_rounded,
+                                  size: 38,
+                                  color: primaryDark,
                                 ),
                               ),
                             ),
@@ -527,7 +508,14 @@ class ContactFleetManagerScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton.icon(
-                  onPressed: () => _showActionSnackBar(context, 'Calling Rajesh Sharma (+91 98765 43210)...'),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CallingFleetManagerScreen(),
+                      ),
+                    );
+                  },
                   icon: const Icon(Icons.phone_in_talk_rounded, size: 20),
                   label: const Text('Call Fleet Manager'),
                   style: ElevatedButton.styleFrom(
@@ -549,7 +537,14 @@ class ContactFleetManagerScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 50,
                 child: OutlinedButton.icon(
-                  onPressed: () => _showActionSnackBar(context, 'Opening message editor with Rajesh Sharma...'),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MessageFleetManagerScreen(),
+                      ),
+                    );
+                  },
                   icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
                   label: const Text('Send Message'),
                   style: OutlinedButton.styleFrom(
