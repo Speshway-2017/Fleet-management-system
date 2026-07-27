@@ -5,13 +5,26 @@ import '../constants/app_radius.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_card.dart';
+import '../widgets/winding_route_icon.dart';
+import 'trip_details_screen.dart';
+import 'trips_screen.dart';
+import 'active_trips_screen.dart';
+import 'upcoming_trips_screen.dart';
+import 'upcoming_trip_details_screen.dart';
+import 'completed_trips_screen.dart';
 import 'vehicle_overview_screen.dart';
+import 'vehicle_maintenance_screen.dart';
+import 'main_navigation_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isSmallScreen = screenWidth < 375;
+    final double cardPadding = isSmallScreen ? 12.0 : 16.0;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: CustomAppBar(
@@ -107,14 +120,11 @@ class DashboardScreen extends StatelessWidget {
                           child: CustomButton(
                             text: 'View Details',
                             onPressed: () {
-                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: const Text('Opening Trip Details...'),
-                                  duration: const Duration(seconds: 2),
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10.0),
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const TripDetailsScreen(
+                                    tripId: '#TRP-9921',
                                   ),
                                 ),
                               );
@@ -144,16 +154,13 @@ class DashboardScreen extends StatelessWidget {
                           size: 20,
                         ),
                         AppSpacing.horizontalSm,
-                        Flexible(
-                          child: Text(
-                            'Heavy Duty - AX 452',
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: AppColors.primaryText,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                          ),
+                        Text(
+                          'Heavy Duty - AX 452',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: AppColors.primaryText,
+                                fontWeight: FontWeight.w500,
+                              ),
                         ),
                         AppSpacing.horizontalSm,
                         Container(
@@ -171,6 +178,7 @@ class DashboardScreen extends StatelessWidget {
                                 ?.copyWith(
                                   color: AppColors.success,
                                   fontWeight: FontWeight.bold,
+                                  fontSize: 10,
                                 ),
                           ),
                         ),
@@ -307,39 +315,78 @@ class DashboardScreen extends StatelessWidget {
                     // Stats Card
                     Expanded(
                       child: CustomCard(
-                        color: AppColors.primaryVariant,
+                        color: const Color(0xFF0D1C2E),
+                        borderRadius: 18.0,
                         borderSide: BorderSide.none,
-                        padding: const EdgeInsets.all(AppSpacing.md),
+                        padding: EdgeInsets.all(cardPadding),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(
-                              Icons.alt_route,
-                              color: AppColors.secondary,
-                              size: 28,
+                            const WindingRouteIcon(size: 28),
+                            SizedBox(height: isSmallScreen ? 12.0 : 16.0),
+                            _buildStatRow(
+                              context,
+                              'ACTIVE',
+                              '01',
+                              isBold: false,
+                              isSmallScreen: isSmallScreen,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const ActiveTripsScreen(),
+                                  ),
+                                );
+                              },
                             ),
-                            AppSpacing.verticalSm,
-                            _buildStatRow(context, 'ACTIVE', '01'),
-                            const Divider(color: AppColors.primary, height: 12),
-                            _buildStatRow(context, 'UPCOMING', '04'),
-                            const Divider(color: AppColors.primary, height: 12),
-                            _buildStatRow(context, 'COMPLETED', '128'),
+                            _buildStatRow(
+                              context,
+                              'UPCOMING',
+                              '04',
+                              isBold: false,
+                              isSmallScreen: isSmallScreen,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const UpcomingTripsScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                            _buildStatRow(
+                              context,
+                              'COMPLETED',
+                              '128',
+                              isBold: true,
+                              isSmallScreen: isSmallScreen,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const CompletedTripsScreen(),
+                                  ),
+                                );
+                              },
+                            ),
                             const Spacer(),
-                            AppSpacing.verticalMd,
+                            const SizedBox(height: 12.0),
                             Theme(
                               data: Theme.of(context).copyWith(
                                 elevatedButtonTheme: ElevatedButtonThemeData(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.secondary,
                                     foregroundColor: AppColors.background,
-                                    minimumSize: const Size.fromHeight(36),
+                                    minimumSize: Size.fromHeight(isSmallScreen ? 38 : 44),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadius.sm,
-                                      ),
+                                      borderRadius: BorderRadius.circular(12.0),
                                     ),
-                                    textStyle: const TextStyle(
-                                      fontSize: 12,
+                                    elevation: 0,
+                                    textStyle: TextStyle(
+                                      fontSize: isSmallScreen ? 13 : 15,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -347,9 +394,16 @@ class DashboardScreen extends StatelessWidget {
                               ),
                               child: CustomButton(
                                 text: 'View Trips',
-                                onPressed: () {},
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const TripsScreen(),
+                                    ),
+                                  );
+                                },
                                 type: CustomButtonType.elevated,
-                                height: 36,
+                                height: isSmallScreen ? 38 : 44,
                               ),
                             ),
                           ],
@@ -360,75 +414,102 @@ class DashboardScreen extends StatelessWidget {
 
                     // Active Trip Progress Card
                     Expanded(
-                      child: CustomCard(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Active Trip',
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ActiveTripsScreen(),
+                            ),
+                          );
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: CustomCard(
+                          color: const Color(0xFFF7F9FC),
+                          borderRadius: 18.0,
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE4E8EF),
+                            width: 1.5,
+                          ),
+                          padding: EdgeInsets.all(cardPadding),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Active Trip',
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                      style: TextStyle(
                                         color: AppColors.secondaryText,
                                         fontWeight: FontWeight.w500,
-                                      ),
-                                ),
-                                const Icon(
-                                  Icons.gps_fixed,
-                                  color: AppColors.secondary,
-                                  size: 18,
-                                ),
-                              ],
-                            ),
-                            AppSpacing.verticalMd,
-                            Text(
-                              '#TRP-9921',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primaryText,
-                                  ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'ETA: 14:30 PM',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: AppColors.secondaryText),
-                            ),
-                            const Spacer(),
-                            AppSpacing.verticalLg,
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadius.round,
-                                    ),
-                                    child: const LinearProgressIndicator(
-                                      value: 0.65,
-                                      minHeight: 6,
-                                      backgroundColor: AppColors.divider,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        AppColors.secondary,
+                                        fontSize: isSmallScreen ? 13.0 : 15.0,
                                       ),
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.gps_fixed,
+                                    color: AppColors.secondary,
+                                    size: isSmallScreen ? 18.0 : 22.0,
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: isSmallScreen ? 12.0 : 16.0),
+                              Text(
+                                '#TRP-9921',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryText,
+                                  fontSize: isSmallScreen ? 18.0 : 22.0,
                                 ),
-                                AppSpacing.horizontalSm,
-                                Text(
-                                  '65%',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: AppColors.primaryText,
-                                        fontWeight: FontWeight.bold,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'ETA: 14:30 PM',
+                                style: TextStyle(
+                                  color: AppColors.secondaryText,
+                                  fontSize: isSmallScreen ? 11.0 : 13.0,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Spacer(),
+                              const SizedBox(height: 12.0),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadius.round,
                                       ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                      child: LinearProgressIndicator(
+                                        value: 0.65,
+                                        minHeight: isSmallScreen ? 6.0 : 8.0,
+                                        backgroundColor: const Color(0xFFEBF0F6),
+                                        valueColor:
+                                            const AlwaysStoppedAnimation<Color>(
+                                              AppColors.secondary,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: isSmallScreen ? 8.0 : 12.0),
+                                  Text(
+                                    '65%',
+                                    style: TextStyle(
+                                      color: AppColors.primaryText,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: isSmallScreen ? 13.0 : 15.0,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -459,7 +540,8 @@ class DashboardScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const VehicleOverviewScreen(),
+                                builder: (context) =>
+                                    const VehicleOverviewScreen(),
                               ),
                             );
                           },
@@ -471,6 +553,13 @@ class DashboardScreen extends StatelessWidget {
                           context,
                           Icons.local_gas_station_outlined,
                           'Fuel',
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Fuel logs coming soon'),
+                              ),
+                            );
+                          },
                         ),
                       ),
                       AppSpacing.horizontalMd,
@@ -479,6 +568,13 @@ class DashboardScreen extends StatelessWidget {
                           context,
                           Icons.warning_amber_rounded,
                           'Issue',
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Issue reporting coming soon'),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -491,6 +587,15 @@ class DashboardScreen extends StatelessWidget {
                           context,
                           Icons.calendar_month_outlined,
                           'Schedule',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const UpcomingTripsScreen(),
+                              ),
+                            );
+                          },
                         ),
                       ),
                       AppSpacing.horizontalMd,
@@ -499,6 +604,13 @@ class DashboardScreen extends StatelessWidget {
                           context,
                           Icons.settings_outlined,
                           'Settings',
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Settings coming soon'),
+                              ),
+                            );
+                          },
                         ),
                       ),
                       AppSpacing.horizontalMd,
@@ -507,6 +619,14 @@ class DashboardScreen extends StatelessWidget {
                           context,
                           Icons.local_shipping,
                           'Trips',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const TripsScreen(),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -527,7 +647,14 @@ class DashboardScreen extends StatelessWidget {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const UpcomingTripsScreen(),
+                        ),
+                      );
+                    },
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.secondary,
                       padding: EdgeInsets.zero,
@@ -583,7 +710,9 @@ class DashboardScreen extends StatelessWidget {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      MainNavigationScreen.selectedTabNotifier.value = 3;
+                    },
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.secondary,
                       padding: EdgeInsets.zero,
@@ -604,6 +733,15 @@ class DashboardScreen extends StatelessWidget {
                 subtext: 'Scheduled for Oct 24, 06:00 AM',
                 time: '2m ago',
                 isUnread: true,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const UpcomingTripDetailsScreen(tripId: '#TRP-8840'),
+                    ),
+                  );
+                },
               ),
               _buildNotificationCard(
                 context,
@@ -614,101 +752,65 @@ class DashboardScreen extends StatelessWidget {
                 subtext: 'Next engine check due in 3 days',
                 time: '1h ago',
                 isUnread: false,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const VehicleMaintenanceScreen(),
+                    ),
+                  );
+                },
               ),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        color: AppColors.primary,
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+    );
+  }
+
+  Widget _buildStatRow(
+    BuildContext context,
+    String label,
+    String value, {
+    required bool isBold,
+    required bool isSmallScreen,
+    VoidCallback? onTap,
+  }) {
+    final double labelFontSize = isSmallScreen ? 10.0 : 12.0;
+    final double valueFontSize = isSmallScreen ? 12.0 : 14.0;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.xs),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 4.0 : 6.0),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Home (Selected)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.secondary,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.home, color: AppColors.background, size: 22),
-                  SizedBox(height: 2),
-                  Text(
-                    'Home',
-                    style: TextStyle(
-                      color: AppColors.background,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isBold ? Colors.white : Colors.white.withValues(alpha: 0.6),
+                  fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+                  fontSize: labelFontSize,
+                  letterSpacing: 0.5,
+                ),
               ),
             ),
-            // Routes
-            IconButton(
-              icon: const Icon(
-                Icons.alt_route,
-                color: AppColors.secondaryText,
-                size: 24,
+            const SizedBox(width: 8),
+            Text(
+              value,
+              style: TextStyle(
+                color: isBold ? Colors.white : Colors.white.withValues(alpha: 0.6),
+                fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+                fontSize: valueFontSize,
               ),
-              onPressed: () {},
-            ),
-            // Shift
-            IconButton(
-              icon: const Icon(
-                Icons.assignment_ind_outlined,
-                color: AppColors.secondaryText,
-                size: 24,
-              ),
-              onPressed: () {},
-            ),
-            // Notifications
-            IconButton(
-              icon: const Icon(
-                Icons.notifications_outlined,
-                color: AppColors.secondaryText,
-                size: 24,
-              ),
-              onPressed: () {},
-            ),
-            // Profile
-            IconButton(
-              icon: const Icon(
-                Icons.person_outline,
-                color: AppColors.secondaryText,
-                size: 24,
-              ),
-              onPressed: () {},
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStatRow(BuildContext context, String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppColors.disabledText,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: AppColors.background,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
     );
   }
 
@@ -718,24 +820,17 @@ class DashboardScreen extends StatelessWidget {
     String label, {
     VoidCallback? onTap,
   }) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          debugPrint("$label Quick Action Clicked");
-          if (onTap != null) {
-            onTap();
-          }
-        },
+    return Ink(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Container(
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: AppColors.divider),
-          ),
           child: Column(
             children: [
               Container(
@@ -748,14 +843,11 @@ class DashboardScreen extends StatelessWidget {
                 child: Icon(icon, color: AppColors.secondary, size: 24),
               ),
               AppSpacing.verticalSm,
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primaryText,
-                  ),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primaryText,
                 ),
               ),
             ],
@@ -773,72 +865,82 @@ class DashboardScreen extends StatelessWidget {
     required bool isActive,
     required bool isLast,
   }) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Time label
-          SizedBox(
-            width: 75,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 2.0),
-              child: Text(
-                time,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.secondaryText,
-                  fontWeight: FontWeight.w500,
+    return Stack(
+      children: [
+        if (!isLast)
+          Positioned(
+            left: 88,
+            top: 10,
+            bottom: 0,
+            child: Container(
+              width: 2,
+              color: AppColors.divider,
+            ),
+          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Time label
+            SizedBox(
+              width: 75,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 2.0),
+                child: Text(
+                  time,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.secondaryText,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
-          ),
-          AppSpacing.horizontalSm,
-          // Connector line and indicator node
-          Column(
-            children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isActive ? AppColors.secondary : AppColors.background,
-                  border: Border.all(
-                    color: isActive ? AppColors.secondary : AppColors.divider,
-                    width: 2,
+            AppSpacing.horizontalSm,
+            // Connector line and indicator node
+            Column(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isActive ? AppColors.secondary : AppColors.background,
+                    border: Border.all(
+                      color: isActive ? AppColors.secondary : AppColors.divider,
+                      width: 2,
+                    ),
                   ),
                 ),
-              ),
-              if (!isLast)
-                Expanded(child: Container(width: 2, color: AppColors.divider)),
-            ],
-          ),
-          AppSpacing.horizontalMd,
-          // Content
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppColors.primaryText,
-                      fontWeight: FontWeight.bold,
+              ],
+            ),
+            AppSpacing.horizontalMd,
+            // Content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppColors.primaryText,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    location,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.secondaryText,
+                    const SizedBox(height: 2),
+                    Text(
+                      location,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.secondaryText,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -851,83 +953,93 @@ class DashboardScreen extends StatelessWidget {
     required String subtext,
     required String time,
     bool isUnread = false,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Icon Container
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          AppSpacing.horizontalMd,
-          // Text Details
-          Expanded(
-            child: Column(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Ink(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Row(
+                // Icon Container
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: iconBgColor,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 20),
+                ),
+                AppSpacing.horizontalMd,
+                // Text Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Text(
+                                  title,
+                                  style: Theme.of(context).textTheme.titleSmall
+                                      ?.copyWith(
+                                        color: AppColors.primaryText,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                                if (isUnread) ...[
+                                  AppSpacing.horizontalSm,
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppColors.secondary,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
                           Text(
-                            title,
-                            style: Theme.of(context).textTheme.titleSmall
+                            time,
+                            style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
-                                  color: AppColors.primaryText,
-                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.secondaryText,
+                                  fontSize: 10,
                                 ),
                           ),
-                          if (isUnread) ...[
-                            AppSpacing.horizontalSm,
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppColors.secondary,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
-                    ),
-                    Text(
-                      time,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.secondaryText,
-                        fontSize: 10,
+                      const SizedBox(height: 4),
+                      Text(
+                        subtext,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.secondaryText,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtext,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.secondaryText,
-                    fontSize: 12,
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
