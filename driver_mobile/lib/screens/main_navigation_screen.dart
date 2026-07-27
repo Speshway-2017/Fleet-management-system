@@ -66,7 +66,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
       bottomNavigationBar: Container(
         color: AppColors.primary,
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
         child: SafeArea(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -74,7 +74,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               _buildNavItem(0, Icons.home_outlined, Icons.home, 'Home'),
               _buildNavItem(1, Icons.route_outlined, Icons.route, 'Trips'),
               _buildNavItem(2, Icons.headset_mic_outlined, Icons.headset_mic, 'Support'),
-              _buildNavItem(3, Icons.notifications_none_rounded, Icons.notifications, 'Notifications'),
+              _buildNavItem(3, Icons.notifications_none_rounded, Icons.notifications, 'Alerts'),
               _buildNavItem(4, Icons.account_circle_outlined, Icons.account_circle, 'Profile'),
             ],
           ),
@@ -85,6 +85,35 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   Widget _buildNavItem(int index, IconData outlineIcon, IconData solidIcon, String label) {
     final bool isSelected = _currentIndex == index;
+
+    Widget iconWidget = Icon(
+      isSelected ? solidIcon : outlineIcon,
+      color: isSelected ? Colors.white : AppColors.textDisabled,
+      size: 24,
+    );
+
+    // If it's the Alerts tab (index 3), add a notification badge.
+    if (index == 3) {
+      iconWidget = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          iconWidget,
+          Positioned(
+            right: 0,
+            top: 0,
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: AppColors.secondary, // Fleet Orange
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     if (isSelected) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -95,7 +124,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(solidIcon, color: Colors.white, size: 24),
+            iconWidget,
             const SizedBox(height: 3),
             Text(
               label,
@@ -109,15 +138,29 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         ),
       );
     } else {
-      return IconButton(
-        icon: Icon(
-          outlineIcon,
-          color: AppColors.textDisabled,
-          size: 24,
-        ),
-        onPressed: () {
+      return InkWell(
+        onTap: () {
           MainNavigationScreen.selectedTabNotifier.value = index;
         },
+        borderRadius: BorderRadius.circular(12.0),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              iconWidget,
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  color: AppColors.textDisabled,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
   }
