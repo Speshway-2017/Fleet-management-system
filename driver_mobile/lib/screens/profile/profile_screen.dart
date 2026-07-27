@@ -4,25 +4,16 @@ import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../auth/login_screen.dart';
 import 'edit_profile_screen.dart';
+import 'help_support_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  void _showPlaceholderSnackBar(BuildContext context, String option) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$option is not implemented yet.'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.primary,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
   void _showLogoutDialog(BuildContext context) {
+    final outerContext = context;
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16.0),
@@ -44,7 +35,7 @@ class ProfileScreen extends StatelessWidget {
           actionsPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: Text(
                 'Cancel',
                 style: GoogleFonts.poppins(
@@ -55,8 +46,8 @@ class ProfileScreen extends StatelessWidget {
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(context); // Close dialog
-                ScaffoldMessenger.of(context).showSnackBar(
+                Navigator.pop(dialogContext); // Close dialog
+                ScaffoldMessenger.of(outerContext).showSnackBar(
                   const SnackBar(
                     content: Text('Logged out successfully.'),
                     backgroundColor: AppColors.success,
@@ -65,7 +56,7 @@ class ProfileScreen extends StatelessWidget {
                 );
                 // Redirect to Login Screen and clear navigation stack history
                 Navigator.pushAndRemoveUntil(
-                  context,
+                  outerContext,
                   MaterialPageRoute(
                     builder: (context) => const LoginScreen(),
                   ),
@@ -174,14 +165,26 @@ class ProfileScreen extends StatelessWidget {
                         ],
                       ),
                       child: ClipOval(
-                        child: Image.network(
-                          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=300&h=300',
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.person,
-                              size: 64,
-                              color: AppColors.textDisabled,
+                        child: ValueListenableBuilder<String>(
+                          valueListenable: ProfileState.profilePhotoUrlNotifier,
+                          builder: (context, photoUrl, child) {
+                            if (photoUrl.isEmpty) {
+                              return const Icon(
+                                Icons.person,
+                                size: 64,
+                                color: AppColors.textDisabled,
+                              );
+                            }
+                            return Image.network(
+                              photoUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.person,
+                                  size: 64,
+                                  color: AppColors.textDisabled,
+                                );
+                              },
                             );
                           },
                         ),
@@ -392,7 +395,14 @@ class ProfileScreen extends StatelessWidget {
                             context,
                             icon: Icons.help_outline,
                             title: 'Help & Support',
-                            onTap: () => _showPlaceholderSnackBar(context, 'Help & Support'),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const HelpSupportScreen(),
+                                ),
+                              );
+                            },
                           ),
                           const SizedBox(height: 12),
                           Padding(
@@ -587,4 +597,10 @@ class ProfileScreen extends StatelessWidget {
       onTap: onTap,
     );
   }
+}
+
+class ProfileState {
+  static final ValueNotifier<String> profilePhotoUrlNotifier = ValueNotifier<String>(
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=300&h=300',
+  );
 }

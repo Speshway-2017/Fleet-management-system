@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'notification_details_screen.dart';
+import '../main_navigation_screen.dart';
 
 class NotificationItem {
   final String id;
@@ -83,6 +84,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   List<NotificationItem> get _notifications => NotificationsScreen.notifications;
 
   int _selectedFilterIndex = 0; // 0: Total, 1: Read, 2: Unread
+
+  @override
+  void initState() {
+    super.initState();
+    MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
+  }
+
+  @override
+  void dispose() {
+    MainNavigationScreen.selectedTabNotifier.removeListener(_onTabChanged);
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (mounted && MainNavigationScreen.selectedTabNotifier.value == 3) {
+      setState(() {});
+    }
+  }
 
   void _markAllAsRead() {
     setState(() {
@@ -336,6 +355,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget _buildNotificationCard(NotificationItem item) {
     return GestureDetector(
       onTap: () {
+        _toggleReadStatus(item);
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -348,7 +368,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               onOpened: () => _toggleReadStatus(item),
             ),
           ),
-        );
+        ).then((_) {
+          if (mounted) {
+            setState(() {});
+          }
+        });
       },
       child: Container(
         padding: const EdgeInsets.all(16.0),

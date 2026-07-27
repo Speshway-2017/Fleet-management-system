@@ -2,6 +2,116 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.17.4] - 2026-07-27
+
+### Fixed
+- **Notification Read Status Updates**:
+  - Implemented immediate read status state updates upon tapping notification cards on both [notifications_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notifications_screen.dart) and [dashboard_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart).
+- **Layout Overflow in Details Screen**:
+  - Replaced `Row` with `Wrap` in [notification_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notification_details_screen.dart) for the category type and read status badges header, resolving horizontal layout overflows on narrow mobile screen width profiles.
+
+## [1.17.3] - 2026-07-27
+
+### Added
+- **Notification Details Screen Logo**:
+  - Added the white rounded Fleet logo container inside the top navigation bar's actions list on [notification_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notification_details_screen.dart) to maintain design consistency across sub-pages.
+
+## [1.17.2] - 2026-07-27
+
+### Changed
+- **AppBar Title Spacing Adjustment**:
+  - Exposed `titleSpacing` property in [custom_app_bar.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/widgets/custom_app_bar.dart) to allow adjusting spacing between leading button and title.
+  - Set `titleSpacing: 0.0` inside all app bars in [notification_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notification_details_screen.dart), [edit_profile_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/edit_profile_screen.dart), [help_support_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/help_support_screen.dart), [change_password_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/change_password_screen.dart), [notification_settings_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/notification_settings_screen.dart), [settings_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/settings_screen.dart), and [two_factor_auth_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/two_factor_auth_screen.dart).
+  - This successfully decreased the space between the back button and the title text on all Account, settings, and support sub-pages.
+
+## [1.17.1] - 2026-07-27
+
+### Added
+- **Settings Screen Help Center Navigation**:
+  - Connected the "Help Center" list tile on [settings_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/settings_screen.dart) to push-navigate to `HelpSupportScreen` via `Navigator.push`.
+- **Codebase Optimization**:
+  - Removed unused `_showPlaceholderSnackBar` helper method in `settings_screen.dart` to maintain a warning-free compilation build.
+
+## [1.17.0] - 2026-07-27
+
+### Added
+- **Flutter Help & Support Screen**:
+  - Implemented [help_support_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/help_support_screen.dart) matching the Figma mockup layout.
+  - Built forms for search help articles field with dynamic FAQ list filtering, common help category grid cards (App Basics, Vehicle Issues, Route Help, Payments), and Frequently Asked Questions expandable cards.
+  - Replaced list-based support resource menus with a dedicated deep navy "Still need help?" card container at the bottom, offering clean Chat (orange background) and Call Support (outlined white text) action buttons.
+  - Aligned categories grid card ratio (`childAspectRatio: 1.35`), border radii (`16.0`), border colors (`#EAECF0`), and customized deep orange-red icon colors (`#E05638`) to replicate the mockup visual details exactly.
+  - Retained the white rounded Fleet logo container inside the top navigation bar to maintain style consistency.
+- **Help & Support Navigation**:
+  - Connected the "Help & Support" list item action on [profile_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/profile_screen.dart) to push-navigate to `HelpSupportScreen` via `Navigator.push`.
+- **Codebase Optimization**:
+  - Cleaned up unused elements and removed unused `_showPlaceholderSnackBar` helper method in `profile_screen.dart` to maintain a warning-free compilation build.
+
+## [1.16.1] - 2026-07-27
+
+### Removed
+- **Settings Screen Cleanup**:
+  - Removed the "Data Usage" feature tile from the App Preferences section in [settings_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/settings_screen.dart).
+
+## [1.16.0] - 2026-07-27
+
+### Added
+- **Notification Settings Screen**:
+  - Implemented [notification_settings_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/notification_settings_screen.dart) exactly matching the mockup reference [Notification Settings.png](file:///c:/Users/user/Downloads/Fleet%20Management%20UI%20(1)/Notification%20Settings.png).
+  - Designed the visual layout including a header Preferences banner showing an adjustments icon and category titles for Route Alerts, Vehicle Maintenance, Safety & Performance, System Preferences, and Notification Channels.
+  - Added responsive switch cards with customized icon backgrounds for Route Changes, Traffic Warnings, Health Alerts, Fuel Level Warnings, Emergency Alerts, Trip Updates, Sound, Vibration, Push, Email, and SMS notifications.
+  - Added functional Save Changes and Reset to Default buttons with success confirmation SnackBars.
+  - Resolved switch state resets by binding toggles to a global static state container `NotificationSettingsState`. Preferences are now persisted dynamically and re-loaded seamlessly whenever settings are re-opened.
+- **Notification Settings Navigation**:
+  - Connected the "Notification Settings" list row action on [settings_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/settings_screen.dart) to push-navigate to `NotificationSettingsScreen` via `Navigator.push`.
+
+## [1.15.0] - 2026-07-27
+
+### Added
+- **Two-Factor Authentication Setup and Verification Screen**:
+  - Implemented [two_factor_auth_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/two_factor_auth_screen.dart) supporting settings step configuration (switch toggle, radio method selection for SMS/Email/App, prefilled phone, recovery codes generator, and info sections) and a pixel-perfect verification step matching reference [Two factor authorization.png](file:///c:/Users/user/Downloads/Fleet%20Management%20UI%20(1)/Two%20factor%20authorization.png) exactly.
+  - Designed the verification banner graphic using custom paint dashed rectangle and stacked phone/shield icons.
+  - Added 6-digit verification code text fields with automatic focus transfer, validation, success SnackBars, and Resend action callbacks.
+  - Fixed missing white Fleet logo in the configuration view's top navigation bar.
+  - Made the verification screen description dynamically adapt according to the selected 2FA method (SMS ending digits, Email address, or Authenticator app generator instructions).
+- **Two-Factor Authentication Navigation**:
+  - Connected the "Two-Factor Authentication" settings list row action on [settings_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/settings_screen.dart) to push-navigate to the new `TwoFactorAuthScreen` via `Navigator.push`.
+
+## [1.14.0] - 2026-07-27
+
+### Added
+- **Flutter Change Password Screen**:
+  - Implemented [change_password_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/change_password_screen.dart) exactly matching the mockup reference [Change Password.png](file:///c:/Users/user/Downloads/Fleet%20Management%20UI%20(1)/Change%20Password.png).
+  - Built forms for Current Password, New Password, and Confirm Password with integrated visible/obscure eye toggles.
+  - Implemented dynamic password requirements checklist validation: checking for at least 8 characters, one uppercase letter, and one special character with orange check circle indicator indicators.
+  - Added matching sub-header descriptions, back button navigation, and validation handlers redirecting with SnackBars.
+- **Change Password Navigation**:
+  - Connected the "Change Password" settings list row action on [settings_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/settings_screen.dart) to push-navigate to the new `ChangePasswordScreen` via `Navigator.push`.
+
+## [1.13.3] - 2026-07-27
+
+### Fixed
+- **Profile Photo Synchronization**:
+  - Replaced hardcoded profile image assets with a global `ProfileState.profilePhotoUrlNotifier` listener across [profile_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/profile_screen.dart) and [settings_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/settings_screen.dart).
+  - Configured [edit_profile_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/edit_profile_screen.dart) to write to this global notifier upon form submission, ensuring picture updates propagate dynamically and immediately to both screens.
+- **Logout Action Reliability**:
+  - Fixed BuildContext shadowing inside the Logout dialog in `profile_screen.dart` and `settings_screen.dart` by capturing the outer widget's `BuildContext` before launching the modal, preventing context dereferencing and routing issues.
+
+## [1.13.2] - 2026-07-27
+
+### Changed
+- **Settings Screen Collapsible Accordion Updates**:
+  - Removed "Privacy & Security" option from the Account & Security section.
+  - Converted **Privacy Policy**, **Terms of Service**, and **About App** items in the Legal & Support section to collapsible accordion rows. They now expand to display descriptive text inline rather than opening separate popups or triggers.
+
+## [1.13.1] - 2026-07-27
+
+### Fixed
+- **Settings Screen Mockup Alignment**:
+  - Aligned [settings_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/settings_screen.dart) layout with the full reference mockup image.
+  - Added Privacy Policy and Terms of Service options featuring external link trailing icons (`Icons.open_in_new`).
+  - Added Help Center option under Legal & Support.
+  - Updated About App trailing element to display the version string `v2.4.12` directly.
+  - Extracted Logout tile from the Legal & Support card to make it a standalone outlined button styled with red borders and light background at the bottom.
 ## [1.14.0] - 2026-07-27
 
 ### Changed
@@ -27,6 +137,32 @@ All notable changes to the Fleet Driver Mobile application will be documented in
 ## [1.13.0] - 2026-07-27
 
 ### Added
+- **Settings Screen Implementation**:
+  - Created [settings_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/settings_screen.dart) exactly matching the reference mockup [Settings.png](file:///c:/Users/user/Downloads/Fleet%20Management%20UI%20(1)/Settings.png).
+  - Designed the Profile card display showing driver name "Alex Johnson", designation "Driver", and a square-shaped avatar container with custom orange border.
+  - Implemented grouped settings sections (Account & Security, App Preferences, Notifications, Legal & Support) with internal dividers, custom icons, and chevron indicators.
+  - Integrated interactive features including: dynamic Language selector bottom sheet modal and a reactive Dark Mode toggle Switch.
+  - Added a Logout tile triggering the custom log out confirmation dialog which redirects to the login screen on confirmation.
+- **Settings Screen Integration**:
+  - Connected the "Settings" Quick Action card in [dashboard_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) to push-navigate to the new `SettingsScreen` via `Navigator.push`.
+
+## [1.12.2] - 2026-07-27
+
+### Fixed
+- **Notifications Screen Visual Refresh and Synchronization**:
+  - Registered a listener to `MainNavigationScreen.selectedTabNotifier` inside [notifications_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notifications_screen.dart) to force-refresh state and update unread statuses instantly when tab transitions back to Notifications (index 3).
+  - Appended a `.then()` pop-completion listener to `Navigator.push` inside `_buildNotificationCard` of `NotificationsScreen` to refresh the parent list widget reactively after returning from the notification details page.
+
+## [1.12.1] - 2026-07-27
+
+### Changed
+- **Dashboard Notification Card Navigation**:
+  - Converted [dashboard_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) into a `StatefulWidget` to dynamically access unread statuses from [NotificationsScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notifications_screen.dart) and trigger reactive state rebuilds when notifications are opened.
+  - Updated recent notification cards on the Dashboard page to navigate directly to [NotificationDetailsScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notification_details_screen.dart) instead of generic operational screen redirects.
+  - Linked unread badge indicator statuses and `onOpened` callback states for "New Trip Assigned" and "Maintenance Reminder" to mark them as read immediately in `NotificationsScreen.notifications`.
+  - Added a listener to `MainNavigationScreen.selectedTabNotifier` inside `DashboardScreen` and updated the push route completion `.then()` triggers to force a visual state refresh when switching back to the Home tab or when popping back from notification details, resolving notification synchronisation updates.
+  - Cleaned up unused imports in `dashboard_screen.dart`.
+
 - **Schedule Management Integration**:
   - Implemented `ScheduleScreen` (Image 1) featuring a calendar week header, Assigned Trips view, Day Summary widget, and current weather cards.
   - Implemented `TodaysScheduleScreen` (Image 2) displaying real-time shipment progress status map integration, remaining stop timeline milestones, and stats cards.

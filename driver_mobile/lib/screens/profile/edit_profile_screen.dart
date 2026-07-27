@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
+import 'profile_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -27,7 +28,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _issuingStateController = TextEditingController(text: 'New york');
   final _vehicleController = TextEditingController(text: 'Volvo FH16 (T-8842)');
 
-  String _profilePhotoUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=300&h=300';
+  String _profilePhotoUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _profilePhotoUrl = ProfileState.profilePhotoUrlNotifier.value;
+  }
 
   @override
   void dispose() {
@@ -169,6 +176,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   // Handle Save / Submit validation
   void _saveChanges() {
     if (_formKey.currentState!.validate()) {
+      ProfileState.profilePhotoUrlNotifier.value = _profilePhotoUrl;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile updated successfully!'),
@@ -186,6 +194,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       backgroundColor: Colors.white,
       appBar: CustomAppBar(
         centerTitle: false,
+        titleSpacing: 0.0,
         backgroundColor: AppColors.primary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
