@@ -2,6 +2,59 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.11.0] - 2026-07-27
+
+### Changed
+- **Notification Details Navigation Tweak**:
+  - Removed the "Back to Notifications" button from the body of [notification_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notification_details_screen.dart).
+  - Implemented a reactive `ValueNotifier` in [main_navigation_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/main_navigation_screen.dart) for programmatic tab changes.
+  - Updated the navbar back button on the details screen to programmatically switch the active tab to Notifications (index 3) and pop back, ensuring consistent navigation flow.
+  - Removed the back button from [notifications_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notifications_screen.dart) to make it consistent with tab layouts.
+  - Updated the Dashboard's "View All" button to transition tab index rather than push a new screen route, keeping the bottom nav bar visible.
+- **Notification Read Synchronization**:
+  - Shared the `notifications` list as a static member in [notifications_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notifications_screen.dart) to synchronize read/unread statuses in real-time across Dashboard and Notifications tabs.
+  - Added state resetting logic in the main navigation's `dispose` method to prevent static test pollution.
+  - Fixed the details screen type badge text and styling when navigating from the notifications tab.
+
+## [1.10.1] - 2026-07-24
+
+### Changed
+- **Folder Structure Refactoring**: Moved `notifications_screen.dart` from `lib/screens/profile/` to `lib/screens/notifications/` next to `notification_details_screen.dart` to consolidate all notifications components under a single feature folder. Updated all import paths across dashboard, navigation, and documentation screens.
+
+## [1.10.0] - 2026-07-24
+
+### Added
+- **Notification Details Screen**: Created [notification_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notification_details_screen.dart) displaying:
+  - Custom AppBar with back navigation and "Notification Details" title.
+  - Premium styled card enclosing the notification icon/category badge, title, timestamp, read status badge, and full message description.
+  - Active type-based styling for badges (e.g. error/warning/success/info matching red/orange/green/blue).
+- **Navigation Integration**: Connected notification cards on the Dashboard and Notifications list to push navigate to the details page, automatically marking the notification as read upon opening.
+- **Verification Tests**: Updated `test/widget_test.dart` to verify tapping notification cards opens the details page and displays the correct info.
+
+## [1.9.2] - 2026-07-24
+
+### Changed
+- **Dashboard View All Action**: Connected the "View All" text button in the dashboard's recent notifications header to push navigation to `NotificationsScreen` as a full-page route.
+- **Verification Tests**: Updated `test/widget_test.dart` to assert tapping View All, verifying the page transition, and successfully navigating back to the Dashboard.
+
+## [1.9.1] - 2026-07-24
+
+### Added
+- **Navigation Tabs**: Added filter tabs (**Total**, **Read**, **Unread**) directly below the top app bar in `NotificationsScreen`, complete with:
+  - Interactive pill background formatting (orange for selected, grey for unselected).
+  - Dynamic count badges displaying counts for each category.
+  - Active filtering logic showing/hiding notifications based on selected filter.
+
+## [1.9.0] - 2026-07-24
+
+### Added
+- **Notifications Screen**: Created [notifications_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notifications_screen.dart) displaying grouped list views of read and unread notification cards matching the design mockup:
+  - Supports Today and Yesterday groupings.
+  - Custom unread cards styled with white backgrounds, orange icons, and orange unread dot indicators.
+  - Custom read cards styled with shaded grey backgrounds (`AppColors.surface`), grey icons, and no unread dot.
+  - "Mark all as read" bulk state modifier and individual notification click modifiers.
+- **Integration**: Replaced the alerts placeholder screen in [main_navigation_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/main_navigation_screen.dart) with `NotificationsScreen`, and updated bottom nav selected bar label to "Notifications".
+
 ## [1.8.3] - 2026-07-24
 
 ### Changed

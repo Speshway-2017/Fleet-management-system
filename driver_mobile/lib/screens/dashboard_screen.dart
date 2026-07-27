@@ -6,9 +6,20 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_card.dart';
 import 'vehicle_overview_screen.dart';
+import 'notifications/notifications_screen.dart';
+import 'notifications/notification_details_screen.dart';
+import 'main_navigation_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  bool get _isTripUnread => !NotificationsScreen.notifications.firstWhere((n) => n.id == '1').isRead;
+  bool get _isMaintenanceUnread => !NotificationsScreen.notifications.firstWhere((n) => n.id == '2').isRead;
 
   @override
   Widget build(BuildContext context) {
@@ -583,7 +594,9 @@ class DashboardScreen extends StatelessWidget {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      MainNavigationScreen.selectedTabNotifier.value = 3;
+                    },
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.secondary,
                       padding: EdgeInsets.zero,
@@ -603,7 +616,14 @@ class DashboardScreen extends StatelessWidget {
                 title: 'New Trip Assigned',
                 subtext: 'Scheduled for Oct 24, 06:00 AM',
                 time: '2m ago',
-                isUnread: true,
+                message: 'A new trip #TRP-9921 has been assigned to you. Please check your schedule and route details for more information.',
+                type: 'Route Update',
+                isUnread: _isTripUnread,
+                onTap: () {
+                  setState(() {
+                    NotificationsScreen.notifications.firstWhere((n) => n.id == '1').isRead = true;
+                  });
+                },
               ),
               _buildNotificationCard(
                 context,
@@ -613,7 +633,14 @@ class DashboardScreen extends StatelessWidget {
                 title: 'Maintenance Reminder',
                 subtext: 'Next engine check due in 3 days',
                 time: '1h ago',
-                isUnread: false,
+                message: 'Your assigned vehicle is scheduled for a routine engine check-up in 3 days. Please coordinate with the fleet supervisor.',
+                type: 'Maintenance Alert',
+                isUnread: _isMaintenanceUnread,
+                onTap: () {
+                  setState(() {
+                    NotificationsScreen.notifications.firstWhere((n) => n.id == '2').isRead = true;
+                  });
+                },
               ),
             ],
           ),
@@ -782,84 +809,105 @@ class DashboardScreen extends StatelessWidget {
     required String title,
     required String subtext,
     required String time,
+    required String message,
+    required String type,
     bool isUnread = false,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Icon Container
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => NotificationDetailsScreen(
+              title: title,
+              message: message,
+              time: time,
+              type: type,
+              icon: icon,
+              onOpened: onTap,
+              comingFromDashboard: true,
             ),
-            child: Icon(icon, color: iconColor, size: 20),
           ),
-          AppSpacing.horizontalMd,
-          // Text Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Text(
-                            title,
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(
-                                  color: AppColors.primaryText,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          if (isUnread) ...[
-                            AppSpacing.horizontalSm,
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppColors.secondary,
-                              ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Icon Container
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            AppSpacing.horizontalMd,
+            // Text Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Text(
+                              title,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(
+                                    color: AppColors.primaryText,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
+                            if (isUnread) ...[
+                              AppSpacing.horizontalSm,
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.secondary,
+                                ),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                    Text(
-                      time,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.secondaryText,
-                        fontSize: 10,
+                      Text(
+                        time,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.secondaryText,
+                          fontSize: 10,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtext,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.secondaryText,
-                    fontSize: 12,
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    subtext,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.secondaryText,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
