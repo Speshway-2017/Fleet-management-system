@@ -4,6 +4,7 @@ import '../widgets/vehicle_overview/quick_info_card.dart';
 import '../widgets/vehicle_overview/vehicle_action_tile.dart';
 import '../widgets/vehicle_overview/vehicle_info_card.dart';
 import 'vehicle_documents_screen.dart';
+import 'vehicle_maintenance_screen.dart';
 
 /// Driver Module - Vehicle Overview Screen
 /// 
@@ -114,7 +115,14 @@ class VehicleOverviewScreen extends StatelessWidget {
                 title: 'Maintenance Alerts',
                 subtitle: '1 CRITICAL',
                 subtitleColor: const Color(0xFFEF4444),
-                onTap: () => _showActionFeedback(context, 'Maintenance Alerts'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const VehicleMaintenanceScreen(),
+                    ),
+                  );
+                },
               ),
               VehicleActionTile(
                 icon: Icons.folder_open_outlined,
@@ -127,16 +135,6 @@ class VehicleOverviewScreen extends StatelessWidget {
                     ),
                   );
                 },
-              ),
-              VehicleActionTile(
-                icon: Icons.route_outlined,
-                title: 'Assigned Trips',
-                onTap: () => _showActionFeedback(context, 'Assigned Trips'),
-              ),
-              VehicleActionTile(
-                icon: Icons.report_problem_outlined,
-                title: 'Report Vehicle Issue',
-                onTap: () => _showActionFeedback(context, 'Report Vehicle Issue'),
               ),
 
               const SizedBox(height: 24.0),
