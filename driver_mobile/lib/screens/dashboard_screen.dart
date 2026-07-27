@@ -569,11 +569,10 @@ class DashboardScreen extends StatelessWidget {
                           Icons.warning_amber_rounded,
                           'Issue',
                           onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Issue reporting coming soon'),
-                              ),
-                            );
+                            if (Navigator.canPop(context)) {
+                              Navigator.pop(context);
+                            }
+                            MainNavigationScreen.selectedTabNotifier.value = 2;
                           },
                         ),
                       ),
