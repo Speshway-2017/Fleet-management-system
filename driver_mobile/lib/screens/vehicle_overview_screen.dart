@@ -6,6 +6,7 @@ import '../widgets/vehicle_overview/vehicle_info_card.dart';
 import 'vehicle_details_screen.dart';
 import 'vehicle_documents_screen.dart';
 import 'vehicle_maintenance_screen.dart';
+import 'vehicle_status_screen.dart';
 
 /// Driver Module - Vehicle Overview Screen
 /// 
@@ -13,20 +14,6 @@ import 'vehicle_maintenance_screen.dart';
 /// and card layout from the Vehicle Overview reference specifications.
 class VehicleOverviewScreen extends StatelessWidget {
   const VehicleOverviewScreen({super.key});
-
-  void _showActionFeedback(BuildContext context, String actionName) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Opening $actionName...'),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.0),
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +109,20 @@ class VehicleOverviewScreen extends StatelessWidget {
               VehicleActionTile(
                 icon: Icons.bar_chart_rounded,
                 title: 'Vehicle Status',
-                onTap: () => _showActionFeedback(context, 'Vehicle Status'),
+                onTap: () {
+                  debugPrint('Vehicle Status tile tapped');
+                  try {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const VehicleStatusScreen(),
+                      ),
+                    );
+                  } catch (e, stackTrace) {
+                    debugPrint('Error navigating to VehicleStatusScreen: $e');
+                    debugPrint(stackTrace.toString());
+                  }
+                },
               ),
               VehicleActionTile(
                 icon: Icons.notifications_active_outlined,
