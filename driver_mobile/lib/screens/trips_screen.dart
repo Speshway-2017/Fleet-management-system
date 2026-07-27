@@ -25,9 +25,28 @@ class TripsScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: AppColors.background, size: 24),
-            onPressed: () {},
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              padding: const EdgeInsets.all(4.0),
+              child: Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(
+                    Icons.local_shipping,
+                    color: AppColors.primary,
+                    size: 18,
+                  );
+                },
+              ),
+            ),
           ),
         ],
       ),
@@ -36,7 +55,32 @@ class TripsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppSpacing.verticalMd,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search for trips...',
+                    hintStyle: const TextStyle(color: AppColors.secondaryText, fontSize: 14),
+                    prefixIcon: const Icon(Icons.search, color: AppColors.secondaryText, size: 20),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.secondary, width: 1),
+                    ),
+                  ),
+                ),
+              ),
+              AppSpacing.verticalSm,
 
               // Stats Row (screen fit)
               Padding(

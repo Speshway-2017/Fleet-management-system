@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
-import '../constants/app_spacing.dart';
-import '../constants/app_radius.dart';
-import '../widgets/custom_app_bar.dart';
-import '../widgets/custom_button.dart';
-import '../widgets/custom_card.dart';
-import '../widgets/winding_route_icon.dart';
 import 'trip_details_screen.dart';
 import 'trips_screen.dart';
 import 'active_trips_screen.dart';
@@ -16,6 +11,8 @@ import 'main_navigation_screen.dart';
 import 'notifications/notifications_screen.dart';
 import 'notifications/notification_details_screen.dart';
 import 'settings/settings_screen.dart';
+import 'schedule_screen.dart';
+import 'todays_schedule_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -48,380 +45,184 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final bool isSmallScreen = screenWidth < 375;
-    final double cardPadding = isSmallScreen ? 12.0 : 16.0;
-
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        title: Text(
-          'Home',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: AppColors.background,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          Container(
-            width: 38,
-            height: 38,
-            margin: const EdgeInsets.only(right: 16.0),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            padding: const EdgeInsets.all(4.0),
-            alignment: Alignment.center,
-            child: Image.asset('assets/logo.png', fit: BoxFit.contain),
-          ),
-        ],
-      ),
+      backgroundColor: const Color(0xFF091522), // Sleek Dark Navy
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Greeting Section
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header Section: Greeting + Driver Profile Info
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Good Morning, Satya',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primaryText,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Good Morning, Meghana 👋',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Monday, Oct 23, 2023',
+                          style: GoogleFonts.nunito(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF98A2B3),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  AppSpacing.verticalXs,
-                  Text(
-                    'Thursday, July 24, 2026',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.secondaryText,
-                    ),
+                  const SizedBox(width: 8),
+                  Stack(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24, width: 1.5),
+                        ),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/images/driver_avatar.png',
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 24,
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          width: 13,
+                          height: 13,
+                          decoration: BoxDecoration(
+                            color: AppColors.success, // Green online dot
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFF091522),
+                              width: 2.0,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              AppSpacing.verticalLg,
+            ),
+            const SizedBox(height: 8),
 
-              // Assigned Trip Card
-              CustomCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Main Curved Content Area
+            Expanded(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF7F9FC), // Modern Light Gray
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(32),
+                    topRight: Radius.circular(32),
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(32),
+                    topRight: Radius.circular(32),
+                  ),
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          'ASSIGNED TRIP',
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(
-                                color: AppColors.secondaryText,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        Theme(
-                          data: Theme.of(context).copyWith(
-                            elevatedButtonTheme: ElevatedButtonThemeData(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primaryVariant,
-                                foregroundColor: AppColors.background,
-                                minimumSize: const Size(100, 32),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppRadius.sm,
-                                  ),
-                                ),
-                                textStyle: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                          child: CustomButton(
-                            text: 'View Details',
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const TripDetailsScreen(
-                                    tripId: '#TRP-9921',
-                                  ),
-                                ),
-                              );
-                            },
-                            type: CustomButtonType.elevated,
-                            width: 100,
-                            height: 32,
-                          ),
-                        ),
-                      ],
-                    ),
-                    AppSpacing.verticalSm,
-                    Text(
-                      '#TRP-9921',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryText,
-                          ),
-                    ),
-                    AppSpacing.verticalSm,
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.local_shipping,
-                          color: AppColors.secondary,
-                          size: 20,
-                        ),
-                        AppSpacing.horizontalSm,
-                        Text(
-                          'Heavy Duty - AX 452',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: AppColors.primaryText,
-                                fontWeight: FontWeight.w500,
-                              ),
-                        ),
-                        AppSpacing.horizontalSm,
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.success.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(AppRadius.xs),
-                          ),
-                          child: Text(
-                            'ACTIVE',
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: AppColors.success,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 10,
-                                ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    AppSpacing.verticalLg,
+                        const SizedBox(height: 20),
 
-                    // Journey Timeline Path
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Column(
-                          children: [
-                            Container(
-                              width: 18,
-                              height: 18,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.info,
-                                  width: 2,
-                                ),
-                                color: AppColors.background,
-                              ),
-                              child: Center(
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: AppColors.info,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 2.0,
-                              ),
-                              child: Column(
-                                children: List.generate(
-                                  4,
-                                  (index) => Container(
-                                    width: 2,
-                                    height: 4,
-                                    margin: const EdgeInsets.symmetric(
-                                      vertical: 2.0,
-                                    ),
-                                    color: AppColors.divider,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const Icon(
-                              Icons.location_on,
-                              color: AppColors.error,
-                              size: 18,
-                            ),
-                          ],
-                        ),
-                        AppSpacing.horizontalMd,
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                        // 1. Active Trip Card
+                        _buildActiveTripCard(context),
+
+                        const SizedBox(height: 20),
+
+                        // 2. Quick Actions Header & Row
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'PICKUP',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: AppColors.secondaryText,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Port of Long Beach, CA',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                          color: AppColors.primaryText,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                  ),
-                                ],
+                              Text(
+                                'Quick Actions',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF1B2430),
+                                ),
                               ),
-                              AppSpacing.verticalLg,
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'DESTINATION',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: AppColors.secondaryText,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Distribution Center A-12, AZ',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                          color: AppColors.primaryText,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                  ),
-                                ],
+                              GestureDetector(
+                                onTap: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Edit actions coming soon'),
+                                    ),
+                                  );
+                                },
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.edit_outlined,
+                                      color: Color(0xFFFF6A00),
+                                      size: 14,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Edit',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFFFF6A00),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              AppSpacing.verticalMd,
+                        const SizedBox(height: 12),
+                        _buildQuickActionsRow(context),
 
-              // Middle Grid: Stats Card & Active Trip Card
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Stats Card
-                    Expanded(
-                      child: CustomCard(
-                        color: const Color(0xFF0D1C2E),
-                        borderRadius: 18.0,
-                        borderSide: BorderSide.none,
-                        padding: EdgeInsets.all(cardPadding),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const WindingRouteIcon(size: 28),
-                            SizedBox(height: isSmallScreen ? 12.0 : 16.0),
-                            _buildStatRow(
-                              context,
-                              'ACTIVE',
-                              '01',
-                              isBold: false,
-                              isSmallScreen: isSmallScreen,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const ActiveTripsScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                            _buildStatRow(
-                              context,
-                              'UPCOMING',
-                              '04',
-                              isBold: false,
-                              isSmallScreen: isSmallScreen,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const UpcomingTripsScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                            _buildStatRow(
-                              context,
-                              'COMPLETED',
-                              '128',
-                              isBold: true,
-                              isSmallScreen: isSmallScreen,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const CompletedTripsScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                            const Spacer(),
-                            const SizedBox(height: 12.0),
-                            Theme(
-                              data: Theme.of(context).copyWith(
-                                elevatedButtonTheme: ElevatedButtonThemeData(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.secondary,
-                                    foregroundColor: AppColors.background,
-                                    minimumSize: Size.fromHeight(isSmallScreen ? 38 : 44),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                    ),
-                                    elevation: 0,
-                                    textStyle: TextStyle(
-                                      fontSize: isSmallScreen ? 13 : 15,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                        const SizedBox(height: 24),
+
+                        // 3. Dashboard Overview Header & Stats Row
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Dashboard Overview',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF1B2430),
                                 ),
                               ),
-                              child: CustomButton(
-                                text: 'View Trips',
-                                onPressed: () {
+                              GestureDetector(
+                                onTap: () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -429,185 +230,298 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   );
                                 },
-                                type: CustomButtonType.elevated,
-                                height: isSmallScreen ? 38 : 44,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    AppSpacing.horizontalMd,
-
-                    // Active Trip Progress Card
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ActiveTripsScreen(),
-                            ),
-                          );
-                        },
-                        behavior: HitTestBehavior.opaque,
-                        child: CustomCard(
-                          color: const Color(0xFFF7F9FC),
-                          borderRadius: 18.0,
-                          borderSide: const BorderSide(
-                            color: Color(0xFFE4E8EF),
-                            width: 1.5,
-                          ),
-                          padding: EdgeInsets.all(cardPadding),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      'Active Trip',
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1,
-                                      style: TextStyle(
-                                        color: AppColors.secondaryText,
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: isSmallScreen ? 13.0 : 15.0,
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      'View Trips',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFFFF6A00),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    Icons.gps_fixed,
-                                    color: AppColors.secondary,
-                                    size: isSmallScreen ? 18.0 : 22.0,
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: isSmallScreen ? 12.0 : 16.0),
-                              Text(
-                                '#TRP-9921',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primaryText,
-                                  fontSize: isSmallScreen ? 18.0 : 22.0,
+                                    const Icon(
+                                      Icons.chevron_right,
+                                      color: Color(0xFFFF6A00),
+                                      size: 16,
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'ETA: 14:30 PM',
-                                style: TextStyle(
-                                  color: AppColors.secondaryText,
-                                  fontSize: isSmallScreen ? 11.0 : 13.0,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const Spacer(),
-                              const SizedBox(height: 12.0),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadius.round,
-                                      ),
-                                      child: LinearProgressIndicator(
-                                        value: 0.65,
-                                        minHeight: isSmallScreen ? 6.0 : 8.0,
-                                        backgroundColor: const Color(0xFFEBF0F6),
-                                        valueColor:
-                                            const AlwaysStoppedAnimation<Color>(
-                                              AppColors.secondary,
-                                            ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: isSmallScreen ? 8.0 : 12.0),
-                                  Text(
-                                    '65%',
-                                    style: TextStyle(
-                                      color: AppColors.primaryText,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: isSmallScreen ? 13.0 : 15.0,
-                                    ),
-                                  ),
-                                ],
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        _buildStatsOverview(context),
+
+                        const SizedBox(height: 24),
+
+                        // 4. Today's Schedule Header & Timeline Card
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Today's Schedule",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF1B2430),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const TodaysScheduleScreen(),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  'View All',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFFFF6A00),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildScheduleTimeline(context),
+
+                        const SizedBox(height: 24),
+
+                        // 5. Recent Notifications Header & Items
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Recent Notifications',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF1B2430),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  MainNavigationScreen.selectedTabNotifier.value = 3;
+                                },
+                                child: Text(
+                                  'View All',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFFFF6A00),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildRecentNotifications(context),
+
+                        const SizedBox(height: 32),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Active Trip Card Builder
+  Widget _buildActiveTripCard(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1E36), // Deep Navy Black
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F1E36).withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left side: Status + Trip Details + Route timeline
+          Expanded(
+            flex: 11,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFF6A00), // Fleet Orange dot
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'ACTIVE TRIP',
+                      style: GoogleFonts.poppins(
+                        color: const Color(0xFFFF6A00),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ],
                 ),
-              ),
-              AppSpacing.verticalLg,
-
-              // Quick Actions Section
-              Text(
-                'Quick Actions',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryText,
-                ),
-              ),
-              AppSpacing.verticalMd,
-              Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildActionItem(
-                          context,
-                          Icons.local_shipping_outlined,
-                          'Vehicle',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const VehicleOverviewScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      AppSpacing.horizontalMd,
-                      Expanded(
-                        child: _buildActionItem(
-                          context,
-                          Icons.local_gas_station_outlined,
-                          'Fuel',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Fuel logs coming soon'),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      AppSpacing.horizontalMd,
-                      Expanded(
-                        child: _buildActionItem(
-                          context,
-                          Icons.warning_amber_rounded,
-                          'Issue',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Issue reporting coming soon'),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 4),
+                Text(
+                  '#TRP-9921',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
                   ),
-                  AppSpacing.verticalMd,
-                  Row(
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF22C55E), // Live Pill
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'LIVE',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'ETA 14:30 PM',
+                      style: GoogleFonts.nunito(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                // Pickup and Destination timeline
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(
+                      children: [
+                        const Icon(
+                          Icons.radio_button_checked,
+                          color: Color(0xFF3B82F6), // Blue pickup dot
+                          size: 16,
+                        ),
+                        // Dotted timeline connector
+                        Container(
+                          width: 1.5,
+                          height: 36,
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          color: Colors.white30,
+                        ),
+                        const Icon(
+                          Icons.location_on,
+                          color: Color(0xFFEF4444), // Red destination marker
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'PICKUP',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white38,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          Text(
+                            'Port of Long Beach, CA',
+                            style: GoogleFonts.nunito(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 18),
+                          Text(
+                            'DESTINATION',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white38,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          Text(
+                            'Distribution Center A-12, AZ',
+                            style: GoogleFonts.nunito(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Right side: Progress Box + Progress line + CTA Button
+          Expanded(
+            flex: 9,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Progress statistic container
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: Column(
                     children: [
                       Expanded(
                         child: _buildActionItem(
@@ -639,115 +553,77 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             );
                           },
+                      Text(
+                        '65%',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
                         ),
                       ),
-                      AppSpacing.horizontalMd,
-                      Expanded(
-                        child: _buildActionItem(
-                          context,
-                          Icons.local_shipping,
-                          'Trips',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const TripsScreen(),
-                              ),
-                            );
-                          },
+                      Text(
+                        'Progress',
+                        style: GoogleFonts.nunito(
+                          color: Colors.white60,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-              AppSpacing.verticalLg,
-
-              // Today's Schedule Section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Today's Schedule",
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primaryText,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const UpcomingTripsScreen(),
-                        ),
-                      );
-                    },
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.secondary,
-                      padding: EdgeInsets.zero,
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text('View'),
-                  ),
-                ],
-              ),
-              AppSpacing.verticalMd,
-              CustomCard(
-                child: Column(
-                  children: [
-                    _buildScheduleItem(
-                      context,
-                      time: '08:00 AM',
-                      title: 'Warehouse Pickup',
-                      location: 'Industrial Area, Hub 7',
-                      isActive: true,
-                      isLast: false,
-                    ),
-                    _buildScheduleItem(
-                      context,
-                      time: '09:30 AM',
-                      title: 'Cargo Loading',
-                      location: 'Dock C, Section 22',
-                      isActive: false,
-                      isLast: false,
-                    ),
-                    _buildScheduleItem(
-                      context,
-                      time: '11:00 AM',
-                      title: 'Main Delivery',
-                      location: 'Logistics Center North',
-                      isActive: false,
-                      isLast: true,
-                    ),
-                  ],
                 ),
-              ),
-              AppSpacing.verticalLg,
+                const SizedBox(height: 18),
 
-              // Recent Notifications Section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Recent Notifications',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primaryText,
+                // Orange progress bar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: const SizedBox(
+                    width: 80,
+                    child: LinearProgressIndicator(
+                      value: 0.65,
+                      color: Color(0xFFFF6A00),
+                      backgroundColor: Colors.white12,
+                      minHeight: 6,
                     ),
                   ),
-                  TextButton(
-                    onPressed: () {
-                      MainNavigationScreen.selectedTabNotifier.value = 3;
-                    },
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.secondary,
-                      padding: EdgeInsets.zero,
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                const SizedBox(height: 24),
+
+                // View Details orange action button
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TripDetailsScreen(
+                          tripId: '#TRP-9921',
+                        ),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6A00),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.0),
                     ),
-                    child: const Text('View All'),
+                    elevation: 0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View Details',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right, size: 14),
+                    ],
                   ),
                 ],
               ),
@@ -828,90 +704,101 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildStatRow(
-    BuildContext context,
-    String label,
-    String value, {
-    required bool isBold,
-    required bool isSmallScreen,
-    VoidCallback? onTap,
-  }) {
-    final double labelFontSize = isSmallScreen ? 10.0 : 12.0;
-    final double valueFontSize = isSmallScreen ? 12.0 : 14.0;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.xs),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 4.0 : 6.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: isBold ? Colors.white : Colors.white.withValues(alpha: 0.6),
-                  fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
-                  fontSize: labelFontSize,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              value,
-              style: TextStyle(
-                color: isBold ? Colors.white : Colors.white.withValues(alpha: 0.6),
-                fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
-                fontSize: valueFontSize,
-              ),
-            ),
-          ],
-        ),
+  // Quick Actions Row Builder (Horizontal Scroll)
+  Widget _buildQuickActionsRow(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          _buildActionCard(context, Icons.local_shipping_outlined, 'Vehicle', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const VehicleOverviewScreen()),
+            );
+          }),
+          _buildActionCard(context, Icons.local_gas_station_outlined, 'Fuel', () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Fuel logs coming soon')),
+            );
+          }),
+          _buildActionCard(context, Icons.warning_amber_rounded, 'Issue', () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Issue reporting coming soon')),
+            );
+          }),
+          _buildActionCard(context, Icons.calendar_month_outlined, 'Schedule', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ScheduleScreen()),
+            );
+          }),
+          _buildActionCard(context, Icons.route_outlined, 'Trips', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const TripsScreen()),
+            );
+          }),
+          _buildActionCard(context, Icons.settings_outlined, 'Settings', () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Settings coming soon')),
+            );
+          }),
+        ],
       ),
     );
   }
 
-  Widget _buildActionItem(
+  Widget _buildActionCard(
     BuildContext context,
     IconData icon,
-    String label, {
-    VoidCallback? onTap,
-  }) {
-    return Ink(
+    String label,
+    VoidCallback onTap,
+  ) {
+    return Container(
+      width: 72,
+      margin: const EdgeInsets.only(right: 12, bottom: 4, top: 4),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.divider),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          padding: const EdgeInsets.symmetric(vertical: 12.0),
           child: Column(
             children: [
               Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.secondary.withValues(alpha: 0.1),
+                width: 38,
+                height: 38,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFF2EB), // Very Light Orange/Peach
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: AppColors.secondary, size: 24),
+                child: Icon(icon, color: const Color(0xFFFF6A00), size: 20),
               ),
-              AppSpacing.verticalSm,
+              const SizedBox(height: 8),
               Text(
                 label,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                style: GoogleFonts.poppins(
+                  fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.primaryText,
+                  color: const Color(0xFF1B2430),
                 ),
               ),
             ],
@@ -921,187 +808,347 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildScheduleItem(
+  // Stats Card Builder
+  Widget _buildStatsOverview(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          _buildStatItem(context, 'Active Trip', '01', Icons.local_shipping, const Color(0xFF3B82F6), const Color(0xFFEFF6FF), () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const ActiveTripsScreen()));
+          }),
+          _buildStatItem(context, 'Upcoming', '01', Icons.calendar_today, const Color(0xFF22C55E), const Color(0xFFF0FDF4), () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const UpcomingTripsScreen()));
+          }),
+          _buildStatItem(context, 'Completed', '04', Icons.check_circle_outline, const Color(0xFFFF6A00), const Color(0xFFFFF7ED), () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const CompletedTripsScreen()));
+          }),
+          _buildStatItem(context, 'Total Trips', '128', Icons.assignment_outlined, const Color(0xFF8B5CF6), const Color(0xFFF5F3FF), () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const TripsScreen()));
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+    Color iconColor,
+    Color bgColor,
+    VoidCallback onTap,
+  ) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: bgColor,
+              child: Icon(icon, color: iconColor, size: 18),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: const Color(0xFF1B2430),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: GoogleFonts.nunito(
+                color: const Color(0xFF667085),
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Timeline Schedule Builder
+  Widget _buildScheduleTimeline(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildTimelineRow(
+            context,
+            time: '08:00 AM',
+            title: 'Warehouse Pickup',
+            location: 'Industrial Area, Hub 7',
+            isColorActive: true,
+            isLineActive: true,
+            isLast: false,
+          ),
+          _buildTimelineRow(
+            context,
+            time: '09:30 AM',
+            title: 'Cargo Loading',
+            location: 'Dock C, Section 22',
+            isColorActive: false,
+            isLineActive: false,
+            isLast: false,
+          ),
+          _buildTimelineRow(
+            context,
+            time: '11:00 AM',
+            title: 'Main Delivery',
+            location: 'Logistics Center North',
+            isColorActive: false,
+            isLineActive: false,
+            isLast: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineRow(
     BuildContext context, {
     required String time,
     required String title,
     required String location,
-    required bool isActive,
+    required bool isColorActive,
+    required bool isLineActive,
     required bool isLast,
   }) {
-    return Stack(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!isLast)
-          Positioned(
-            left: 88,
-            top: 10,
-            bottom: 0,
-            child: Container(
-              width: 2,
-              color: AppColors.divider,
+        SizedBox(
+          width: 65,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 2.0),
+            child: Text(
+              time,
+              style: GoogleFonts.poppins(
+                color: const Color(0xFF667085),
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              ),
             ),
           ),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+        Column(
           children: [
-            // Time label
-            SizedBox(
-              width: 75,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 2.0),
-                child: Text(
-                  time,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.secondaryText,
-                    fontWeight: FontWeight.w500,
-                  ),
+            Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isColorActive ? const Color(0xFFFF6A00) : Colors.white,
+                border: Border.all(
+                  color: isColorActive ? const Color(0xFFFF6A00) : const Color(0xFFCBD5E1),
+                  width: 3,
                 ),
               ),
             ),
-            AppSpacing.horizontalSm,
-            // Connector line and indicator node
-            Column(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isActive ? AppColors.secondary : AppColors.background,
-                    border: Border.all(
-                      color: isActive ? AppColors.secondary : AppColors.divider,
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            AppSpacing.horizontalMd,
-            // Content
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppColors.primaryText,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      location,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.secondaryText,
-                      ),
-                    ),
-                  ],
-                ),
+            if (!isLast)
+              Container(
+                width: 2,
+                height: 40,
+                color: isLineActive ? const Color(0xFFFF6A00) : const Color(0xFFE2E8F0),
               ),
-            ),
           ],
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: const Color(0xFF1B2430),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                location,
+                style: GoogleFonts.nunito(
+                  color: const Color(0xFF667085),
+                  fontSize: 11,
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildNotificationCard(
+  // Recent Notifications Builder
+  Widget _buildRecentNotifications(BuildContext context) {
+    return Column(
+      children: [
+        _buildNotificationItem(
+          context,
+          icon: Icons.inventory_2_outlined,
+          iconBgColor: const Color(0xFFFFF2EB),
+          iconColor: const Color(0xFFFF6A00),
+          title: 'New Trip Assigned',
+          subtitle: 'Scheduled for Oct 24, 06:00 AM',
+          time: '2m ago',
+          isUnread: true,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const UpcomingTripDetailsScreen(tripId: '#TRP-8840'),
+              ),
+            );
+          },
+        ),
+        _buildNotificationItem(
+          context,
+          icon: Icons.construction_outlined,
+          iconBgColor: const Color(0xFFF1F5F9),
+          iconColor: const Color(0xFF667085),
+          title: 'Maintenance Reminder',
+          subtitle: 'Next engine check due in 3 days',
+          time: '1h ago',
+          isUnread: true,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const VehicleMaintenanceScreen(),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNotificationItem(
     BuildContext context, {
     required IconData icon,
     required Color iconBgColor,
     required Color iconColor,
     required String title,
-    required String subtext,
+    required String subtitle,
     required String time,
-    bool isUnread = false,
-    VoidCallback? onTap,
+    required bool isUnread,
+    required VoidCallback onTap,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Ink(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.divider),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Icon Container
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: iconBgColor,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                  ),
-                  child: Icon(icon, color: iconColor, size: 20),
+    return Container(
+      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  shape: BoxShape.circle,
                 ),
-                AppSpacing.horizontalMd,
-                // Text Details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Text(
-                                  title,
-                                  style: Theme.of(context).textTheme.titleSmall
-                                      ?.copyWith(
-                                        color: AppColors.primaryText,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                ),
-                                if (isUnread) ...[
-                                  AppSpacing.horizontalSm,
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: AppColors.secondary,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          Text(
-                            time,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: AppColors.secondaryText,
-                                  fontSize: 10,
-                                ),
-                          ),
-                        ],
+                child: Icon(icon, color: iconColor, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: const Color(0xFF1B2430),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtext,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.secondaryText,
-                          fontSize: 12,
-                        ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.nunito(
+                        color: const Color(0xFF667085),
+                        fontSize: 11,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    time,
+                    style: GoogleFonts.nunito(
+                      color: const Color(0xFF98A2B3),
+                      fontSize: 10,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  if (isUnread)
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFF6A00),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

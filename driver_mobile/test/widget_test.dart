@@ -188,7 +188,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify Dashboard is displayed
-    expect(find.text('Good Morning, Satya'), findsOneWidget);
+    expect(find.text('Good Morning, Meghana 👋'), findsOneWidget);
 
     // Tap Profile Navigation Tab
     await tester.tap(find.byIcon(Icons.account_circle_outlined));

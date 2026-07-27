@@ -130,18 +130,12 @@ class VehicleOverviewScreen extends StatelessWidget {
                 subtitle: '1 CRITICAL',
                 subtitleColor: const Color(0xFFEF4444),
                 onTap: () {
-                  debugPrint('Maintenance Alerts tile tapped');
-                  try {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const VehicleMaintenanceScreen(),
-                      ),
-                    );
-                  } catch (e, stackTrace) {
-                    debugPrint('Error navigating to VehicleMaintenanceScreen: $e');
-                    debugPrint(stackTrace.toString());
-                  }
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const VehicleMaintenanceScreen(),
+                    ),
+                  );
                 },
               ),
               VehicleActionTile(
