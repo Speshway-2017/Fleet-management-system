@@ -10,14 +10,41 @@ import 'trip_details_screen.dart';
 import 'trips_screen.dart';
 import 'active_trips_screen.dart';
 import 'upcoming_trips_screen.dart';
-import 'upcoming_trip_details_screen.dart';
 import 'completed_trips_screen.dart';
 import 'vehicle_overview_screen.dart';
-import 'vehicle_maintenance_screen.dart';
 import 'main_navigation_screen.dart';
+import 'notifications/notifications_screen.dart';
+import 'notifications/notification_details_screen.dart';
+import 'settings/settings_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  bool get _isTripUnread => !NotificationsScreen.notifications.firstWhere((n) => n.id == '1').isRead;
+  bool get _isMaintenanceUnread => !NotificationsScreen.notifications.firstWhere((n) => n.id == '2').isRead;
+
+  @override
+  void initState() {
+    super.initState();
+    MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
+  }
+
+  @override
+  void dispose() {
+    MainNavigationScreen.selectedTabNotifier.removeListener(_onTabChanged);
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (mounted && MainNavigationScreen.selectedTabNotifier.value == 0) {
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -605,9 +632,10 @@ class DashboardScreen extends StatelessWidget {
                           Icons.settings_outlined,
                           'Settings',
                           onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Settings coming soon'),
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SettingsScreen(),
                               ),
                             );
                           },
@@ -732,15 +760,33 @@ class DashboardScreen extends StatelessWidget {
                 title: 'New Trip Assigned',
                 subtext: 'Scheduled for Oct 24, 06:00 AM',
                 time: '2m ago',
-                isUnread: true,
+                isUnread: _isTripUnread,
                 onTap: () {
+                  setState(() {
+                    NotificationsScreen.notifications.firstWhere((n) => n.id == '1').isRead = true;
+                  });
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          const UpcomingTripDetailsScreen(tripId: '#TRP-8840'),
+                      builder: (context) => NotificationDetailsScreen(
+                        title: 'New Trip Assigned',
+                        message: 'A new trip #TRP-9921 has been assigned to you. Please check your schedule and route details for more information.',
+                        time: '2m ago',
+                        type: 'Route Update',
+                        icon: Icons.assignment_turned_in_outlined,
+                        onOpened: () {
+                          setState(() {
+                            NotificationsScreen.notifications.firstWhere((n) => n.id == '1').isRead = true;
+                          });
+                        },
+                        comingFromDashboard: true,
+                      ),
                     ),
-                  );
+                  ).then((_) {
+                    if (mounted) {
+                      setState(() {});
+                    }
+                  });
                 },
               ),
               _buildNotificationCard(
@@ -751,15 +797,33 @@ class DashboardScreen extends StatelessWidget {
                 title: 'Maintenance Reminder',
                 subtext: 'Next engine check due in 3 days',
                 time: '1h ago',
-                isUnread: false,
+                isUnread: _isMaintenanceUnread,
                 onTap: () {
+                  setState(() {
+                    NotificationsScreen.notifications.firstWhere((n) => n.id == '2').isRead = true;
+                  });
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          const VehicleMaintenanceScreen(),
+                      builder: (context) => NotificationDetailsScreen(
+                        title: 'Maintenance Reminder',
+                        message: 'Your assigned vehicle is scheduled for a routine engine check-up in 3 days. Please coordinate with the fleet supervisor.',
+                        time: '1h ago',
+                        type: 'Maintenance Alert',
+                        icon: Icons.build_outlined,
+                        onOpened: () {
+                          setState(() {
+                            NotificationsScreen.notifications.firstWhere((n) => n.id == '2').isRead = true;
+                          });
+                        },
+                        comingFromDashboard: true,
+                      ),
                     ),
-                  );
+                  ).then((_) {
+                    if (mounted) {
+                      setState(() {});
+                    }
+                  });
                 },
               ),
             ],
