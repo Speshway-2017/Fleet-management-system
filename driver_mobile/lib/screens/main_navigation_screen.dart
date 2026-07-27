@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 import 'dashboard_screen.dart';
 import 'trips_screen.dart';
+import 'support_history_screen.dart';
 import 'profile/profile_screen.dart';
 import 'notifications/notifications_screen.dart';
 
@@ -51,7 +52,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> _screens = [
     const DashboardScreen(),
     const TripsScreen(),
-    const PlaceholderScreen(title: 'Messages', icon: Icons.chat_bubble_outline_rounded),
+    const SupportHistoryScreen(),
     const NotificationsScreen(),
     const ProfileScreen(),
   ];
@@ -116,7 +117,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           size: 24,
         ),
         onPressed: () {
-          MainNavigationScreen.selectedTabNotifier.value = index;
+          if (_currentIndex != index) {
+            MainNavigationScreen.selectedTabNotifier.value = index;
+          }
         },
       );
     }
