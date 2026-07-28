@@ -2,6 +2,22 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.20.0] - 2026-07-28
+
+### Added & Integrated
+- **Full Fleet Management Backend & Driver App Multi-Phase Integration**:
+  - Implemented backend API controllers (`driverApi.controller.js`), routes (`driverApi.routes.js`), and JWT authentication middleware supporting all 10 Driver App integration phases.
+  - Added `POST /api/driver/login`, `POST /api/driver/logout`, and `GET /api/driver/profile` with password hashing (`bcrypt`), JWT token generation, and secure session persistence via `SharedPreferences`.
+  - Added `GET /api/driver/trips/current` and connected `DashboardScreen` active trip card dynamically.
+  - Added `GET /api/driver/dashboard` for live trip counter statistics (`activeTrips`, `upcomingTrips`, `completedTrips`).
+  - Added `GET /api/driver/notifications` for fetching live notifications.
+  - Added `PATCH /api/driver/trips/:id/status` and connected `UpdateTripStatusScreen` for real-time trip status workflow progression (`Accept Trip`, `Start Trip`, `Reach Pickup`, `Enroute`, `Delivered`, `Complete Trip`).
+  - Implemented `LocationTrackingService` sending 10-second periodic GPS updates via `POST /api/driver/location` during active trip execution.
+  - Added `GET /api/driver/documents` and `GET /api/driver/support` for dispatcher support contacts with phone, WhatsApp, and Email triggers (`url_launcher`).
+  - Added `POST /api/driver/pod` for Proof of Delivery (POD) photo capture and upload to Cloudinary & MongoDB.
+  - Added prominent console log outputs in backend controllers (`admin.controller.js` and `driver.controller.js`) printing email and plain text password whenever a new Driver or Fleet Manager is created.
+  - Configured `ApiService` with dynamic host resolution (PC Wi-Fi IP `10.86.34.1:5000` + USB reverse `127.0.0.1:5000` fallback) and added a **Server Settings Configuration Modal** on the Login screen, resolving physical Android device (`CPH2835`) network timeout errors.
+
 ## [1.19.0] - 2026-07-28
 
 ### Fixed & Enhanced

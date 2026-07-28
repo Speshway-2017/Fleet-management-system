@@ -12,10 +12,20 @@ export const protect = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.id).select('-password');
+    let user = await User.findById(decoded.id).select('-password');
 
     if (!user) {
-      return res.status(401).json({ success: false, message: 'User not found' });
+      const Driver = (await import('../models/Driver.js')).default;
+      const driverDoc = await Driver.findById(decoded.id).select('-password');
+      if (driverDoc) {
+        user = driverDoc.toObject();
+        user._id = driverDoc._id;
+        user.role = 'DRIVER';
+      }
+    }
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'User or Driver not found' });
     }
 
     // Dynamic subscription check
