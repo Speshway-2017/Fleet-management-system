@@ -73,7 +73,7 @@ class VehicleOverviewScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 1. Vehicle Information & Statistics Card
-              const VehicleInfoCard(),
+              const Hero(tag: 'vehicle_details_card', child: Material(type: MaterialType.transparency, child: VehicleInfoCard())),
               const SizedBox(height: 24.0),
 
               // 2. Actions & Details Section Header

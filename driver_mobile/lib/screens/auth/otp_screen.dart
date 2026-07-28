@@ -302,12 +302,12 @@ class _OTPScreenState extends State<OTPScreen> {
                               ),
                             );
 
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ResetPasswordScreen(),
-                              ),
-                            );
+                             Navigator.push(
+                               context,
+                               MaterialPageRoute(
+                                 builder: (context) => const ResetPasswordScreen(),
+                               ),
+                             );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,

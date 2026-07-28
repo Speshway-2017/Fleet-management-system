@@ -2,6 +2,23 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.15.1] - 2026-07-27
+
+### Fixed
+- **Route transitions issue**: Replaced custom `SlideRoute` and `SlideFadeRoute` transition animations with standard `MaterialPageRoute` transitions across all screens (`ForgotPasswordScreen`, `OTPScreen`, `DashboardScreen`, `NotificationsScreen`, `VehicleOverviewScreen`), resolving build errors caused by missing transition files.
+- **Syntax/Parsing errors**: Restored `vehicle_details_screen.dart` to a clean compile state by reverting accidental syntax brackets.
+- **Cleaned imports**: Removed unused imports of `route_transitions.dart` in `profile_screen.dart` and `completed_trip_details_screen.dart`.
+
+## [1.15.0] - 2026-07-27
+
+### Removed
+- **E-Way Bill & Route Sheet screens**: Removed `e_way_bill_screen.dart` and `route_sheet_screen.dart` files completely and removed navigation/listing references in `completed_trip_details_screen.dart`.
+- **Fuel Consumption Details**: Removed `FUEL CONSUMPTION` metric card and details from Today's Schedule Screen.
+
+### Changed
+- **Quick Actions Grid Layout**: Refactored the Quick Actions horizontal row in the Home Page (Dashboard) to a 3-column, 2-row GridView layout, and removed the "Edit" button from the header.
+- **Home Page Profile Navigation**: Wrapped the Appbar profile avatar image with a `GestureDetector` that switches the active tab to the Profile screen.
+
 ## [1.17.4] - 2026-07-27
 
 ### Fixed
