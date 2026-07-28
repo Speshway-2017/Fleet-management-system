@@ -9,10 +9,10 @@ import 'completed_trips_screen.dart';
 import 'vehicle_overview_screen.dart';
 import 'main_navigation_screen.dart';
 import 'notifications/notifications_screen.dart';
-import 'notifications/notification_details_screen.dart';
-import 'settings/settings_screen.dart';
 import 'schedule_screen.dart';
 import 'todays_schedule_screen.dart';
+import 'upcoming_trip_details_screen.dart';
+import 'vehicle_maintenance_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -523,36 +523,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   child: Column(
                     children: [
-                      Expanded(
-                        child: _buildActionItem(
-                          context,
-                          Icons.calendar_month_outlined,
-                          'Schedule',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const UpcomingTripsScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      AppSpacing.horizontalMd,
-                      Expanded(
-                        child: _buildActionItem(
-                          context,
-                          Icons.settings_outlined,
-                          'Settings',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const SettingsScreen(),
-                              ),
-                            );
-                          },
                       Text(
                         '65%',
                         style: GoogleFonts.poppins(
@@ -625,84 +595,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const Icon(Icons.chevron_right, size: 14),
                     ],
                   ),
-                ],
-              ),
-              AppSpacing.verticalMd,
-              _buildNotificationCard(
-                context,
-                icon: Icons.assignment_turned_in_outlined,
-                iconBgColor: AppColors.secondary.withValues(alpha: 0.1),
-                iconColor: AppColors.secondary,
-                title: 'New Trip Assigned',
-                subtext: 'Scheduled for Oct 24, 06:00 AM',
-                time: '2m ago',
-                isUnread: _isTripUnread,
-                onTap: () {
-                  setState(() {
-                    NotificationsScreen.notifications.firstWhere((n) => n.id == '1').isRead = true;
-                  });
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => NotificationDetailsScreen(
-                        title: 'New Trip Assigned',
-                        message: 'A new trip #TRP-9921 has been assigned to you. Please check your schedule and route details for more information.',
-                        time: '2m ago',
-                        type: 'Route Update',
-                        icon: Icons.assignment_turned_in_outlined,
-                        onOpened: () {
-                          setState(() {
-                            NotificationsScreen.notifications.firstWhere((n) => n.id == '1').isRead = true;
-                          });
-                        },
-                        comingFromDashboard: true,
-                      ),
-                    ),
-                  ).then((_) {
-                    if (mounted) {
-                      setState(() {});
-                    }
-                  });
-                },
-              ),
-              _buildNotificationCard(
-                context,
-                icon: Icons.build_outlined,
-                iconBgColor: AppColors.divider.withValues(alpha: 0.5),
-                iconColor: AppColors.secondaryText,
-                title: 'Maintenance Reminder',
-                subtext: 'Next engine check due in 3 days',
-                time: '1h ago',
-                isUnread: _isMaintenanceUnread,
-                onTap: () {
-                  setState(() {
-                    NotificationsScreen.notifications.firstWhere((n) => n.id == '2').isRead = true;
-                  });
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => NotificationDetailsScreen(
-                        title: 'Maintenance Reminder',
-                        message: 'Your assigned vehicle is scheduled for a routine engine check-up in 3 days. Please coordinate with the fleet supervisor.',
-                        time: '1h ago',
-                        type: 'Maintenance Alert',
-                        icon: Icons.build_outlined,
-                        onOpened: () {
-                          setState(() {
-                            NotificationsScreen.notifications.firstWhere((n) => n.id == '2').isRead = true;
-                          });
-                        },
-                        comingFromDashboard: true,
-                      ),
-                    ),
-                  ).then((_) {
-                    if (mounted) {
-                      setState(() {});
-                    }
-                  });
-                },
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1028,8 +923,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           title: 'New Trip Assigned',
           subtitle: 'Scheduled for Oct 24, 06:00 AM',
           time: '2m ago',
-          isUnread: true,
+          isUnread: _isTripUnread,
           onTap: () {
+            setState(() {
+              NotificationsScreen.notifications.firstWhere((n) => n.id == '1').isRead = true;
+            });
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -1046,8 +944,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           title: 'Maintenance Reminder',
           subtitle: 'Next engine check due in 3 days',
           time: '1h ago',
-          isUnread: true,
+          isUnread: _isMaintenanceUnread,
           onTap: () {
+            setState(() {
+              NotificationsScreen.notifications.firstWhere((n) => n.id == '2').isRead = true;
+            });
             Navigator.push(
               context,
               MaterialPageRoute(

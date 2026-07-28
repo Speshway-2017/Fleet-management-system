@@ -91,6 +91,7 @@ class ProfileScreen extends StatelessWidget {
       appBar: CustomAppBar(
         centerTitle: false,
         backgroundColor: AppColors.primary,
+        actions: const [],
         title: Row(
           children: [
             Container(

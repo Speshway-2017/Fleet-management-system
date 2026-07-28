@@ -134,39 +134,46 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         backgroundColor: primaryDark,
         elevation: 0,
         centerTitle: false,
-        title: Text(
-          'Support History',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Container(
-              width: 36,
-              height: 36,
+        actions: const [],
+        title: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8.0),
               ),
               padding: const EdgeInsets.all(4.0),
               child: Image.asset(
-                'assets/images/logo.png',
+                'assets/logo.png',
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.local_shipping_rounded,
-                    color: primaryDark,
-                    size: 20,
+                  return Image.asset(
+                    'assets/images/logo.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.local_shipping_rounded,
+                        color: primaryDark,
+                        size: 20,
+                      );
+                    },
                   );
                 },
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Text(
+              'Support History',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
