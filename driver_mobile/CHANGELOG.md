@@ -2,6 +2,25 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.17.7] - 2026-07-27
+
+### Changed
+- **Logo Alignment in Tab Pages**:
+  - Moved the brand logo container from the right-side `actions` list to the left-side `title` (inside a `Row` prefixing the page title text) on [trips_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/trips_screen.dart), [notifications_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notifications_screen.dart), and [support_history_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/support_history_screen.dart).
+
+## [1.17.6] - 2026-07-27
+
+### Fixed
+- **Profile Screen App Bar**:
+  - Removed duplicate right-side logo action in [profile_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/profile_screen.dart) by passing an empty actions list `actions: const []` to `CustomAppBar`.
+
+## [1.17.5] - 2026-07-27
+
+### Fixed
+- **Dashboard Screen Merge Repair**:
+  - Repaired syntax errors and merge conflicts in `_buildActiveTripCard` inside [dashboard_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) following branch fast-forward pulls.
+  - Added missing class imports (`upcoming_trip_details_screen.dart` and `vehicle_maintenance_screen.dart`).
+  - Cleared unused analyzer warnings by binding unread state variables to getters and marking notifications as read immediately inside recent notification card onTap callbacks.
 ## [1.15.1] - 2026-07-27
 
 ### Fixed

@@ -18,17 +18,10 @@ class TripsScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       appBar: CustomAppBar(
         centerTitle: false,
-        title: Text(
-          'Trips',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: AppColors.background,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Container(
+        actions: const [],
+        title: Row(
+          children: [
+            Container(
               width: 32,
               height: 32,
               decoration: BoxDecoration(
@@ -37,19 +30,33 @@ class TripsScreen extends StatelessWidget {
               ),
               padding: const EdgeInsets.all(4.0),
               child: Image.asset(
-                'assets/images/logo.png',
+                'assets/logo.png',
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.local_shipping,
-                    color: AppColors.primary,
-                    size: 18,
+                  return Image.asset(
+                    'assets/images/logo.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.local_shipping,
+                        color: AppColors.primary,
+                        size: 18,
+                      );
+                    },
                   );
                 },
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Text(
+              'Trips',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                color: AppColors.background,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(

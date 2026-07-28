@@ -222,38 +222,46 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       appBar: CustomAppBar(
         centerTitle: false,
         backgroundColor: AppColors.primary,
-        title: Text(
-          'Notifications',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+        actions: const [],
+        title: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              padding: const EdgeInsets.all(4.0),
+              child: Image.asset(
+                'assets/logo.png',
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Image.asset(
+                    'assets/images/logo.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.local_shipping,
+                        color: AppColors.primary,
+                        size: 18,
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Notifications',
+              style: GoogleFonts.poppins(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ],
         ),
-        actions: [
-          Container(
-            width: 32,
-            height: 32,
-            margin: const EdgeInsets.only(right: 16.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8.0),
-            ),
-            padding: const EdgeInsets.all(4.0),
-            alignment: Alignment.center,
-            child: Image.asset(
-              'assets/logo.png',
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(
-                  Icons.local_shipping,
-                  color: AppColors.primary,
-                  size: 18,
-                );
-              },
-            ),
-          ),
-        ],
       ),
       body: SafeArea(
         child: Column(
