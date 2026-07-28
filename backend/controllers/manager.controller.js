@@ -48,6 +48,8 @@ import Driver from '../models/Driver.js';
 import Vehicle from '../models/Vehicle.js';
 import Notification from '../models/Notification.js';
 import EWayBill from '../models/EWayBill.js';
+import TripChat from '../models/TripChat.js';
+import CallHistory from '../models/CallHistory.js';
 import Fuel from '../models/Fuel.js';
 import ActivityLog from '../models/ActivityLog.js';
 import Invoice from '../models/Invoice.js';
@@ -2497,3 +2499,219 @@ export const updateVehicleComplaint = async (req, res, next) => {
     next(error);
   }
 };
+
+// ── Trip-Based Communication Controllers ──────────────────────────────────────────────
+
+export const getTripChat = async (req, res, next) => {
+  try {
+    const { tripId } = req.params;
+    const trip = await Trip.findById(tripId).populate('driver');
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    // Access check: Ensure user owns or is assigned to trip
+    if (String(trip.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: trip belongs to another manager');
+    }
+
+    const messages = await TripChat.find({ tripId }).sort({ timestamp: 1 });
+
+    // Mark driver messages as read if manager requested
+    if (req.query.markRead === 'true') {
+      await TripChat.updateMany(
+        { tripId, senderRole: 'Driver', isRead: false },
+        { $set: { isRead: true, deliveryStatus: 'read' } }
+      );
+    }
+
+    return sendSuccess(res, 200, { trip, messages }, 'Trip chat retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const sendTripMessage = async (req, res, next) => {
+  try {
+    const { tripId } = req.params;
+    const { message, messageType } = req.body;
+
+    if (!message || !message.trim()) {
+      return sendError(res, 400, 'Message text is required');
+    }
+
+    const trip = await Trip.findById(tripId).populate('driver');
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    if (trip.status === 'Completed' || trip.status === 'Cancelled') {
+      return sendError(res, 400, `Cannot send messages for a ${trip.status} trip`);
+    }
+
+    const driverId = trip.driver?._id || trip.driver;
+    const managerId = req.user._id;
+
+    const chatMsg = await TripChat.create({
+      tripId: trip._id,
+      senderId: managerId,
+      receiverId: driverId || managerId,
+      senderRole: 'Manager',
+      senderName: req.user.name || req.user.fullName || 'Fleet Manager',
+      message: message.trim(),
+      messageType: messageType || 'text',
+      timestamp: new Date(),
+      isRead: false,
+      deliveryStatus: 'sent'
+    });
+
+    const io = req.app.get('socketio') || (req.app.locals ? req.app.locals.io : null);
+    if (io) {
+      // Emit to trip room
+      io.to(`trip:${trip._id}`).emit('chat:new-message', chatMsg);
+
+      // Emit notification to driver if driver ID exists
+      if (driverId) {
+        io.to(`driver:${driverId}`).emit('chat:new-message', chatMsg);
+      }
+    }
+
+    // Trigger notification to driver if helper available
+    if (driverId) {
+      await createAndEmitNotification({
+        userId: driverId,
+        userRole: 'Driver',
+        type: 'COMMUNICATION',
+        title: `New message from Manager (${trip.tripNumber})`,
+        message: `${req.user.name || 'Manager'}: ${message.trim().substring(0, 60)}`,
+        relatedId: trip._id,
+        relatedModel: 'Trip',
+        io
+      });
+    }
+
+    return sendSuccess(res, 201, chatMsg, 'Message sent successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markTripMessagesRead = async (req, res, next) => {
+  try {
+    const { tripId } = req.params;
+    const trip = await Trip.findById(tripId);
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    await TripChat.updateMany(
+      { tripId, senderRole: 'Driver', isRead: false },
+      { $set: { isRead: true, deliveryStatus: 'read' } }
+    );
+
+    const io = req.app.get('socketio') || (req.app.locals ? req.app.locals.io : null);
+    if (io) {
+      io.to(`trip:${tripId}`).emit('chat:messages-read', { tripId, readerRole: 'Manager' });
+    }
+
+    return sendSuccess(res, 200, { tripId }, 'Messages marked as read');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getTripCallHistory = async (req, res, next) => {
+  try {
+    const { tripId } = req.params;
+    const calls = await CallHistory.find({ tripId }).sort({ startedAt: -1 });
+    return sendSuccess(res, 200, calls, 'Call history retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const saveCallLog = async (req, res, next) => {
+  try {
+    const { tripId } = req.params;
+    const { callerRole, receiverId, duration, status, startedAt, endedAt } = req.body;
+
+    const trip = await Trip.findById(tripId).populate('driver');
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    const isManagerCaller = (callerRole || 'Manager') === 'Manager';
+    const callerId = isManagerCaller ? req.user._id : (trip.driver?._id || trip.driver);
+    const recId = receiverId || (isManagerCaller ? (trip.driver?._id || trip.driver) : req.user._id);
+
+    const callLog = await CallHistory.create({
+      tripId: trip._id,
+      callerId,
+      receiverId: recId,
+      callerRole: callerRole || 'Manager',
+      callerName: isManagerCaller ? (req.user.name || 'Manager') : (trip.driverName || 'Driver'),
+      receiverName: isManagerCaller ? (trip.driverName || 'Driver') : (req.user.name || 'Manager'),
+      startedAt: startedAt || new Date(),
+      endedAt: endedAt || new Date(),
+      duration: Number(duration) || 0,
+      status: status || 'completed'
+    });
+
+    // Also insert system message in chat
+    const sysMsg = await TripChat.create({
+      tripId: trip._id,
+      senderId: callerId,
+      receiverId: recId,
+      senderRole: 'System',
+      senderName: 'System',
+      message: `📞 ${callLog.callerName} initiated a call (${status}, duration: ${callLog.duration}s)`,
+      messageType: 'call_log',
+      timestamp: new Date(),
+      isRead: true,
+      deliveryStatus: 'read'
+    });
+
+    const io = req.app.get('socketio') || (req.app.locals ? req.app.locals.io : null);
+    if (io) {
+      io.to(`trip:${trip._id}`).emit('chat:new-message', sysMsg);
+      io.to(`trip:${trip._id}`).emit('call:logged', callLog);
+    }
+
+    return sendSuccess(res, 201, { callLog, sysMsg }, 'Call log saved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUnreadChatCounts = async (req, res, next) => {
+  try {
+    const trips = await Trip.find({ assignedManager: req.user._id }).select('_id');
+    const tripIds = trips.map(t => t._id);
+
+    const unreadStats = await TripChat.aggregate([
+      {
+        $match: {
+          tripId: { $in: tripIds },
+          senderRole: 'Driver',
+          isRead: false
+        }
+      },
+      {
+        $group: {
+          _id: '$tripId',
+          unreadCount: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const countsMap = {};
+    unreadStats.forEach(item => {
+      countsMap[item._id.toString()] = item.unreadCount;
+    });
+
+    return sendSuccess(res, 200, countsMap, 'Unread chat counts retrieved');
+  } catch (error) {
+    next(error);
+  }
+};
+

@@ -175,11 +175,21 @@ export default function NotificationsPage() {
   const handleNotificationClick = async (notif) => {
     try {
       await managerApi.markNotificationRead(notif._id || notif.id);
+      setNotifications(prev =>
+        prev.map(n => (n._id === notif._id || n.id === notif.id) ? { ...n, isRead: true } : n)
+      );
     } catch (err) {
       console.error("Failed to mark read", err);
     }
 
-    // Update active tab to match the category
+    if (notif.type === "COMMUNICATION" || notif.relatedModel === "Trip" || notif.title?.toLowerCase().includes("message")) {
+      const tripId = notif.relatedId || notif.tripId;
+      if (tripId) {
+        navigate(`/manager/trip-details/${tripId}?tab=communication`);
+        return;
+      }
+    }
+
     setActiveTab(mapTypeToTab(notif.type));
     navigate(`/manager/notifications/${notif._id || notif.id}`);
   };

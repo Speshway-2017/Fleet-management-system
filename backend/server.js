@@ -108,9 +108,37 @@ const startServer = async () => {
       socket.join(`organization:${organizationId}`);
     });
 
-    // Join role room (for SUPER_ADMIN or FLEET_MANAGER)
-    socket.on('joinRoleRoom', (role) => {
-      socket.join(`role:${role}`);
+    // Join driver-specific room
+    socket.on('joinDriverRoom', (driverId) => {
+      socket.join(`driver:${driverId}`);
+    });
+
+    // Join trip room
+    socket.on('joinTripRoom', (tripId) => {
+      socket.join(`trip:${tripId}`);
+    });
+
+    // Leave trip room
+    socket.on('leaveTripRoom', (tripId) => {
+      socket.leave(`trip:${tripId}`);
+    });
+
+    // Typing indicator
+    socket.on('chat:typing', ({ tripId, senderRole, isTyping }) => {
+      socket.to(`trip:${tripId}`).emit('chat:typing-status', { tripId, senderRole, isTyping });
+    });
+
+    // Call events
+    socket.on('call:initiate', ({ tripId, callerRole, callerName, receiverId }) => {
+      io.to(`trip:${tripId}`).emit('call:incoming', { tripId, callerRole, callerName, receiverId, timestamp: new Date() });
+      if (receiverId) {
+        io.to(`user:${receiverId}`).emit('call:incoming', { tripId, callerRole, callerName });
+        io.to(`driver:${receiverId}`).emit('call:incoming', { tripId, callerRole, callerName });
+      }
+    });
+
+    socket.on('call:end', ({ tripId, duration, status }) => {
+      io.to(`trip:${tripId}`).emit('call:ended', { tripId, duration, status });
     });
 
     socket.on('trip:status-update', async ({ tripId, status, actualDistance }) => {
