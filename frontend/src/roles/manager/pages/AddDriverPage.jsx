@@ -11,7 +11,8 @@ import {
   CheckCircle,
   FileText,
   Image,
-  AlertCircle
+  AlertCircle,
+  Copy
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -32,6 +33,7 @@ export default function AddDriverPage() {
   const navigate = useNavigate();
   const isEditMode = Boolean(id);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState(null);
   const [errors, setErrors] = useState({
     phoneNumber: "",
     licenseNumber: "",
@@ -266,21 +268,26 @@ export default function AddDriverPage() {
       if (isEditMode) {
         await driverApi.update(id, formData);
         toast.success("Driver profile updated successfully!");
+        navigate("/manager/drivers");
       } else {
-        await driverApi.create(formData);
-        toast.success("New driver registered successfully!");
+        const res = await driverApi.create(formData);
+        const empId = res.data?.employeeId || res.data?.data?.employeeId;
+        const tempPwd = res.data?.temporaryPassword || res.data?.data?.temporaryPassword;
+        
+        if (empId && tempPwd) {
+          setCreatedCredentials({
+            employeeId: empId,
+            temporaryPassword: tempPwd
+          });
+          toast.success("Driver created successfully!");
+        } else {
+          toast.success("New driver registered successfully!");
+          navigate("/manager/drivers");
+        }
       }
-      navigate("/manager/drivers");
     } catch (err) {
-      const status = err.response?.status;
       const msg = err.response?.data?.message;
-      if (status === 409) {
-        toast.error(msg || "A driver with this license number or email already exists.");
-      } else if (status === 400) {
-        toast.error(msg || "Please fill in all required fields.");
-      } else {
-        toast.error(msg || "Failed to save driver. Please try again.");
-      }
+      toast.error(msg || "Failed to save driver. Please check duplicate entries.");
     } finally {
       setIsSubmitting(false);
     }
@@ -715,6 +722,70 @@ export default function AddDriverPage() {
         </div>
 
       </form>
+
+      {/* --- DRIVER CREATED SUCCESSFUL CREDENTIALS MODAL --- */}
+      {createdCredentials && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-6 border border-[#E7EAF0]">
+            <div className="flex items-start justify-between border-b border-[#E7EAF0] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shadow-sm border border-emerald-100 text-lg">
+                  🎉
+                </div>
+                <div>
+                  <h3 className="font-poppins font-bold text-lg text-[#1E293B]">Driver Created Successfully</h3>
+                  <p className="text-xs text-[#64748B] font-medium">New operator identity registered</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-150 rounded-xl p-4 space-y-3 font-poppins">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] block">Employee ID</span>
+                <span className="text-xl font-black text-[#1E293B] block mt-0.5 tracking-wide">{createdCredentials.employeeId}</span>
+              </div>
+              <div className="border-t border-gray-200 pt-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] block">Temporary Password</span>
+                <span className="text-lg font-mono font-bold text-[#B45A0A] block mt-0.5 tracking-wider">{createdCredentials.temporaryPassword}</span>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 font-medium space-y-1">
+              <p className="text-xs text-amber-800 leading-relaxed font-sans font-semibold">
+                Please copy these credentials and share them securely with the Driver.
+              </p>
+              <p className="text-[11px] text-amber-700 leading-relaxed font-sans italic">
+                These credentials will only be shown once.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const copyText = `Employee ID:\n${createdCredentials.employeeId}\n\nTemporary Password:\n${createdCredentials.temporaryPassword}`;
+                  navigator.clipboard.writeText(copyText);
+                  toast.success("Credentials copied successfully.");
+                }}
+                className="flex-1 py-3 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#B45A0A]/20 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Copy className="w-4 h-4" />
+                Copy Credentials
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatedCredentials(null);
+                  navigate("/manager/drivers");
+                }}
+                className="px-5 py-3 bg-gray-100 hover:bg-gray-200 text-[#64748B] hover:text-[#1E293B] rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

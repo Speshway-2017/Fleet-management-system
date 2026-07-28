@@ -13,6 +13,8 @@ import Trip from '../models/Trip.js';
 import Driver from '../models/Driver.js';
 import Document from '../models/Document.js';
 import mongoose from 'mongoose';
+import { generateEmployeeId, generateTempPassword } from '../utils/driverAuthHelper.js';
+import { hashPassword } from '../utils/hashPassword.js';
 
 /**
  * List drivers belonging to the logged-in manager
@@ -211,75 +213,156 @@ export const getDriver = async (req, res, next) => {
  * POST /api/drivers
  */
 export const createDriver = async (req, res, next) => {
+  const driverName = req.body.fullName || `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim() || req.body.name || 'New Driver';
+  console.log(`\n==================================================`);
+  console.log(`Creating Driver...`);
+  console.log(`==================================================\n`);
+  console.log(`Driver Name:\n${driverName}\n`);
+
   try {
     const {
+      firstName,
+      lastName,
+      name,
       fullName,
       email,
+      phone,
       phoneNumber,
+      mobile,
       licenseNumber,
       licenseType,
       licenseExpiry,
       assignedVehicle,
+      status,
       driverStatus,
-      experience,
-      joiningDate,
-      medicalFitnessStatus,
-      profileImage,
-      licenseDocument,
-      employeeId,
       dob,
       gender,
+      experience,
+      joiningDate,
       address,
-      driverLocation,
-      licenseIssuingAuthority,
-      onTimeDeliveries,
-      attendancePercentage,
-      safetyRecord,
-      trafficViolations,
+      city,
+      state,
+      pincode,
+      documents,
+      licenseDocument
     } = req.body;
 
-    if (!fullName || !email || !phoneNumber || !licenseNumber) {
-      return sendError(res, 400, 'Full name, email, phone number, and license number are required');
+    const finalEmail = (email || '').trim().toLowerCase();
+    const finalPhone = (mobile || phoneNumber || phone || '').trim();
+    const finalLicense = (licenseNumber || '').trim();
+    const computedFullName = fullName || name || `${firstName || ''} ${lastName || ''}`.trim();
+
+    if (!computedFullName || !finalEmail || !finalPhone || !finalLicense) {
+      console.log(`Validation Failed: Name, email, mobile, and license number are required.`);
+      return sendError(res, 400, 'Name, email, mobile number, and license number are required');
     }
 
-    const driver = await createDriverRecord({
-      fullName,
-      email,
-      phoneNumber,
-      licenseNumber,
+    // 1. Check duplicate email
+    console.log(`Checking duplicate email...`);
+    const existingEmail = await Driver.findOne({ email: finalEmail });
+    if (existingEmail) {
+      console.log(`Duplicate Email Found\nEmail:\n${finalEmail}\nDriver creation aborted.`);
+      return sendError(res, 400, `Duplicate Email Found: A driver with email '${finalEmail}' already exists.`);
+    }
+    console.log(`✓ Email Available\n`);
+
+    // 2. Check duplicate mobile
+    console.log(`Checking duplicate mobile...`);
+    const existingMobile = await Driver.findOne({
+      $or: [{ phoneNumber: finalPhone }, { mobile: finalPhone }]
+    });
+    if (existingMobile) {
+      console.log(`Duplicate Mobile Number Found\nDriver creation aborted.`);
+      return sendError(res, 400, `Duplicate Mobile Number Found: A driver with mobile number '${finalPhone}' already exists.`);
+    }
+    console.log(`✓ Mobile Available\n`);
+
+    // 3. Check duplicate license
+    console.log(`Checking duplicate license...`);
+    const existingLicense = await Driver.findOne({ licenseNumber: finalLicense });
+    if (existingLicense) {
+      console.log(`Duplicate License Number Found\nDriver creation aborted.`);
+      return sendError(res, 400, `Duplicate License Number Found: A driver with license number '${finalLicense}' already exists.`);
+    }
+    console.log(`✓ License Available\n`);
+
+    // 4. Generate Employee ID
+    console.log(`Generating Employee ID...`);
+    const generatedEmpId = await generateEmployeeId();
+    console.log(`✓ ${generatedEmpId}\n`);
+
+    // 5. Generate Temporary Password
+    console.log(`Generating Temporary Password...`);
+    const temporaryPassword = generateTempPassword();
+    console.log(`✓ Generated Successfully\n`);
+
+    // 6. Hash Password
+    console.log(`Hashing Password...`);
+    const hashedPassword = await hashPassword(temporaryPassword);
+    console.log(`✓ Password Hashed Successfully\n`);
+
+    console.log(`Saving Driver...`);
+    const driver = await Driver.create({
+      firstName: firstName || '',
+      lastName: lastName || '',
+      fullName: computedFullName,
+      email: finalEmail,
+      phoneNumber: finalPhone,
+      mobile: finalPhone,
+      licenseNumber: finalLicense,
       licenseType: licenseType || 'HMV',
-      licenseExpiry: licenseExpiry || undefined,
+      licenseExpiry: licenseExpiry ? new Date(licenseExpiry) : undefined,
       assignedVehicle: assignedVehicle || 'Unassigned',
       driverStatus: driverStatus || 'AVAILABLE',
-      experience: experience || '',
-      joiningDate: joiningDate || undefined,
-      medicalFitnessStatus: medicalFitnessStatus || '✅ Fit',
-      profileImage: profileImage || '',
-      licenseDocument: licenseDocument || '',
-      assignedManager: req.user?._id,
-      employeeId: employeeId || undefined,
-      dob: dob || undefined,
+      accountStatus: 'Active',
+      status: status || 'Active',
+      employeeId: generatedEmpId,
+      password: hashedPassword,
+      mustChangePassword: true,
+      dob: dob ? new Date(dob) : undefined,
       gender: gender || 'Male',
+      experience: experience || '',
+      joiningDate: joiningDate ? new Date(joiningDate) : undefined,
       address: address || '',
-      driverLocation: driverLocation || '',
-      licenseIssuingAuthority: licenseIssuingAuthority || '',
-      onTimeDeliveries: onTimeDeliveries !== undefined ? Number(onTimeDeliveries) : 0,
-      attendancePercentage: attendancePercentage !== undefined ? Number(attendancePercentage) : 100,
-      safetyRecord: safetyRecord || 'Excellent',
-      trafficViolations: trafficViolations !== undefined ? Number(trafficViolations) : 0,
+      city: city || '',
+      state: state || '',
+      pincode: pincode || '',
+      documents: documents || {},
+      licenseDocument: licenseDocument || '',
+      assignedManager: req.user?._id
     });
+    console.log(`✓ Driver Saved Successfully\n`);
 
-    return sendSuccess(res, 201, driver, 'Driver created successfully');
+    console.log(`==================================================`);
+    console.log(`Driver Created Successfully`);
+    console.log(`==================================================\n`);
+    console.log(`Employee ID:\n${generatedEmpId}\n`);
+    console.log(`Temporary Password:\n${temporaryPassword}\n`);
+    console.log(`Status:\nActive\n`);
+    console.log(`Must Change Password:\ntrue\n`);
+    console.log(`==================================================\n`);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Driver created successfully.',
+      employeeId: generatedEmpId,
+      temporaryPassword,
+      driver: {
+        _id: driver._id,
+        fullName: driver.fullName,
+        email: driver.email,
+        phoneNumber: driver.phoneNumber,
+        licenseNumber: driver.licenseNumber,
+        employeeId: driver.employeeId,
+        status: driver.status,
+        accountStatus: driver.accountStatus,
+        mustChangePassword: driver.mustChangePassword
+      }
+    });
   } catch (error) {
+    console.error(`Driver Creation Failed:`, error);
     if (error.code === 11000) {
-      const field = Object.keys(error.keyValue)[0];
-      const message =
-        field === 'licenseNumber'
-          ? 'A driver with this license number already exists'
-          : field === 'employeeId'
-          ? 'A driver with this Employee ID already exists'
-          : 'A driver with this email already exists';
-      return sendError(res, 409, message);
+      return sendError(res, 400, 'A driver with this email, mobile number, or license number already exists');
     }
     next(error);
   }
