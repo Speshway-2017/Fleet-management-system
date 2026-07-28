@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'raise_ticket_screen.dart';
 import 'ticket_details_screen.dart';
+import 'calling_fleet_manager_screen.dart';
+import 'message_fleet_manager_screen.dart';
 
 /// Representation of a Support Ticket data item.
 class SupportTicketItem {
@@ -242,53 +244,85 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
 
               const SizedBox(height: 16.0),
 
-              // 2. Filter Chips Horizontal Scroll
-              SizedBox(
-                height: 36,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: _filters.length,
-                  separatorBuilder: (context, index) => const SizedBox(width: 8.0),
-                  itemBuilder: (context, index) {
-                    final isSelected = _selectedFilterIndex == index;
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedFilterIndex = index;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected ? primaryDark : Colors.white,
-                          borderRadius: BorderRadius.circular(20.0),
-                          border: Border.all(
-                            color: isSelected ? primaryDark : borderGray,
-                            width: 1.0,
-                          ),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: primaryDark.withAlpha(40),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Text(
-                          _filters[index],
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                            color: isSelected ? Colors.white : textPrimary,
-                          ),
-                        ),
+              // Filter Chips & Manager Action Buttons Row
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 36,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: _filters.length,
+                        separatorBuilder: (context, index) => const SizedBox(width: 8.0),
+                        itemBuilder: (context, index) {
+                          final isSelected = _selectedFilterIndex == index;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedFilterIndex = index;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected ? primaryDark : Colors.white,
+                                borderRadius: BorderRadius.circular(20.0),
+                                border: Border.all(
+                                  color: isSelected ? primaryDark : borderGray,
+                                  width: 1.0,
+                                ),
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: primaryDark.withAlpha(40),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Text(
+                                _filters[index],
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected ? Colors.white : textPrimary,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                  const SizedBox(width: 8.0),
+                  _buildHeaderActionButton(
+                    context,
+                    icon: Icons.phone_in_talk_rounded,
+                    label: 'Call',
+                    color: const Color(0xFF10B981),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const CallingFleetManagerScreen()),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 6.0),
+                  _buildHeaderActionButton(
+                    context,
+                    icon: Icons.chat_bubble_rounded,
+                    label: 'Message',
+                    color: primaryOrange,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const MessageFleetManagerScreen()),
+                      );
+                    },
+                  ),
+                ],
               ),
 
               const SizedBox(height: 20.0),
@@ -534,6 +568,45 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         ],
       ),
     ),
+    );
+  }
+
+  Widget _buildHeaderActionButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+        decoration: BoxDecoration(
+          color: color.withAlpha(25),
+          borderRadius: BorderRadius.circular(10.0),
+          border: Border.all(color: color.withAlpha(76), width: 1.0),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: color,
+              size: 16,
+            ),
+            const SizedBox(width: 6.0),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -35,6 +35,17 @@ All notable changes to the Fleet Driver Mobile application will be documented in
 ### Fixed
 - **Android Gradle Build & AAR Metadata Check**:
   - Updated `compileSdk` to `36` in [build.gradle.kts](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/android/app/build.gradle.kts) and added dynamic `compileSdkVersion(36)` configuration for all plugin subprojects in [build.gradle.kts](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/android/build.gradle.kts), resolving `checkDebugAarMetadata` dependency lifecycle build failures.
+## [1.17.8] - 2026-07-28
+
+### Added
+- **Support Screen Quick Actions**:
+  - Positioned the "Call" and "Message" action buttons on the same horizontal line as the filter chips (`All`, `Open`, `In Progress`, etc.) on [SupportHistoryScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/support_history_screen.dart) using a `Row` layout and `Expanded` list view, maintaining navigation to [CallingFleetManagerScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/calling_fleet_manager_screen.dart) and [MessageFleetManagerScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/message_fleet_manager_screen.dart) respectively.
+- **Dashboard Top Navigation Logo**:
+  - Embedded the branding logo container directly to the left of the greeting text within the top navigation header on [DashboardScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart), set to size 40x40 to match the height of the greeting text column.
+
+### Fixed
+- **Dashboard Settings Quick Action**:
+  - Connected the "Settings" quick action tile on [DashboardScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) to navigate to [SettingsScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/settings_screen.dart), replacing the placeholder "Settings coming soon" snackbar.
 
 ## [1.17.7] - 2026-07-27
 
