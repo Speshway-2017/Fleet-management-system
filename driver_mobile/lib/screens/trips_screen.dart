@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_spacing.dart';
 import '../constants/app_radius.dart';
@@ -62,6 +63,10 @@ class TripsScreen extends StatelessWidget {
                     hintText: 'Search for trips...',
                     hintStyle: const TextStyle(color: AppColors.secondaryText, fontSize: 14),
                     prefixIcon: const Icon(Icons.search, color: AppColors.secondaryText, size: 20),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.filter_list, color: AppColors.secondary, size: 20),
+                      onPressed: () => _showFilterBottomSheet(context),
+                    ),
                     filled: true,
                     fillColor: AppColors.surface,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -497,6 +502,181 @@ class TripsScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+  void _showFilterBottomSheet(BuildContext context) {
+    String selectedStatus = 'All';
+    String selectedTimeframe = 'All';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+      ),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Filter Trips',
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryText,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 20),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Trip Status',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: ['All', 'Active', 'Upcoming', 'Completed', 'Cancelled'].map((status) {
+                      final isSelected = selectedStatus == status;
+                      return ChoiceChip(
+                        label: Text(status),
+                        selected: isSelected,
+                        selectedColor: AppColors.secondary.withAlpha(50),
+                        checkmarkColor: AppColors.secondary,
+                        labelStyle: GoogleFonts.nunito(
+                          fontWeight: FontWeight.bold,
+                          color: isSelected ? AppColors.secondary : AppColors.secondaryText,
+                        ),
+                        onSelected: (bool selected) {
+                          if (selected) {
+                            setState(() {
+                              selectedStatus = status;
+                            });
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Timeframe',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: ['All', 'Today', 'This Week', 'This Month'].map((timeframe) {
+                      final isSelected = selectedTimeframe == timeframe;
+                      return ChoiceChip(
+                        label: Text(timeframe),
+                        selected: isSelected,
+                        selectedColor: AppColors.secondary.withAlpha(50),
+                        checkmarkColor: AppColors.secondary,
+                        labelStyle: GoogleFonts.nunito(
+                          fontWeight: FontWeight.bold,
+                          color: isSelected ? AppColors.secondary : AppColors.secondaryText,
+                        ),
+                        onSelected: (bool selected) {
+                          if (selected) {
+                            setState(() {
+                              selectedTimeframe = timeframe;
+                            });
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              selectedStatus = 'All';
+                              selectedTimeframe = 'All';
+                            });
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppColors.divider),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10.0),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14.0),
+                          ),
+                          child: Text(
+                            'Reset',
+                            style: GoogleFonts.poppins(
+                              color: AppColors.secondaryText,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Filters Applied: Status: $selectedStatus, Timeframe: $selectedTimeframe',
+                                ),
+                                backgroundColor: AppColors.success,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.secondary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10.0),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14.0),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            'Apply Filters',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
