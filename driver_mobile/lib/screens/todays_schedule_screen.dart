@@ -437,13 +437,6 @@ class TodaysScheduleScreen extends StatelessWidget {
               AppSpacing.verticalMd,
 
               // Stats row
-              _buildStatMetricCard(
-                label: 'FUEL CONSUMPTION',
-                value: '12.8 mpg',
-                tag: '+2.4% vs avg',
-                icon: Icons.calendar_today_outlined,
-              ),
-              AppSpacing.verticalSm,
 
               _buildStatMetricCard(
                 label: 'AVG. SPEED',

@@ -6,8 +6,6 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
 import 'invoice_screen.dart';
 import 'toll_fee_receipt_screen.dart';
-import 'e_way_bill_screen.dart';
-import 'route_sheet_screen.dart';
 
 class CompletedTripDetailsScreen extends StatelessWidget {
   final String tripId;
@@ -506,9 +504,7 @@ class CompletedTripDetailsScreen extends StatelessWidget {
   // 6. Documents List
   Widget _buildDocumentsCard(BuildContext context) {
     final docs = [
-      {'name': 'E-Way Bill', 'action': 'VIEW', 'isView': true},
       {'name': 'Invoice', 'action': 'VIEW', 'isView': true},
-      {'name': 'Route Sheet', 'action': 'VIEW', 'isView': true},
       {'name': 'Toll Fee Receipt', 'action': 'VIEW', 'isView': true},
     ];
 
@@ -550,14 +546,8 @@ class CompletedTripDetailsScreen extends StatelessWidget {
                   onTap: () {
                     Widget targetScreen;
                     switch (doc['name']) {
-                      case 'E-Way Bill':
-                        targetScreen = const EWayBillScreen();
-                        break;
                       case 'Invoice':
                         targetScreen = const InvoiceScreen();
-                        break;
-                      case 'Route Sheet':
-                        targetScreen = const RouteSheetScreen();
                         break;
                       case 'Toll Fee Receipt':
                         targetScreen = const TollFeeReceiptScreen();

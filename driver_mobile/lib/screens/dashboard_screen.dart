@@ -85,46 +85,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Stack(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white24, width: 1.5),
-                        ),
-                        child: ClipOval(
-                          child: Image.asset(
-                            'assets/images/driver_avatar.png',
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.person,
-                                color: Colors.white,
-                                size: 24,
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 13,
-                          height: 13,
+                  GestureDetector(
+                    onTap: () {
+                      MainNavigationScreen.selectedTabNotifier.value = 4;
+                    },
+                    child: Stack(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
                           decoration: BoxDecoration(
-                            color: AppColors.success, // Green online dot
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFF091522),
-                              width: 2.0,
+                            border: Border.all(color: Colors.white24, width: 1.5),
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/images/driver_avatar.png',
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 24,
+                                );
+                              },
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            width: 13,
+                            height: 13,
+                            decoration: BoxDecoration(
+                              color: AppColors.success, // Green online dot
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFF091522),
+                                width: 2.0,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -161,45 +166,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         // 2. Quick Actions Header & Row
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Quick Actions',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1B2430),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Edit actions coming soon'),
-                                    ),
-                                  );
-                                },
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.edit_outlined,
-                                      color: Color(0xFFFF6A00),
-                                      size: 14,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Edit',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: const Color(0xFFFF6A00),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            'Quick Actions',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1B2430),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -604,49 +577,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Quick Actions Row Builder (Horizontal Scroll)
+  // Quick Actions Grid Builder (3 columns, 2 rows)
   Widget _buildQuickActionsRow(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          _buildActionCard(context, Icons.local_shipping_outlined, 'Vehicle', () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const VehicleOverviewScreen()),
-            );
-          }),
-          _buildActionCard(context, Icons.local_gas_station_outlined, 'Fuel', () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Fuel logs coming soon')),
-            );
-          }),
-          _buildActionCard(context, Icons.warning_amber_rounded, 'Issue', () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Issue reporting coming soon')),
-            );
-          }),
-          _buildActionCard(context, Icons.calendar_month_outlined, 'Schedule', () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ScheduleScreen()),
-            );
-          }),
-          _buildActionCard(context, Icons.route_outlined, 'Trips', () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const TripsScreen()),
-            );
-          }),
-          _buildActionCard(context, Icons.settings_outlined, 'Settings', () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Settings coming soon')),
-            );
-          }),
-        ],
-      ),
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 3,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1.15,
+      children: [
+        _buildActionCard(context, Icons.local_shipping_outlined, 'Vehicle', () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const VehicleOverviewScreen()),
+          );
+        }),
+        _buildActionCard(context, Icons.local_gas_station_outlined, 'Fuel', () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Fuel logs coming soon')),
+          );
+        }),
+        _buildActionCard(context, Icons.warning_amber_rounded, 'Issue', () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Issue reporting coming soon')),
+          );
+        }),
+        _buildActionCard(context, Icons.calendar_month_outlined, 'Schedule', () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ScheduleScreen()),
+          );
+        }),
+        _buildActionCard(context, Icons.route_outlined, 'Trips', () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const TripsScreen()),
+          );
+        }),
+        _buildActionCard(context, Icons.settings_outlined, 'Settings', () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Settings coming soon')),
+          );
+        }),
+      ],
     );
   }
 
@@ -657,8 +632,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     VoidCallback onTap,
   ) {
     return Container(
-      width: 72,
-      margin: const EdgeInsets.only(right: 12, bottom: 4, top: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -675,19 +648,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12.0),
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: 36,
+                height: 36,
                 decoration: const BoxDecoration(
                   color: Color(0xFFFFF2EB), // Very Light Orange/Peach
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: const Color(0xFFFF6A00), size: 20),
+                child: Icon(icon, color: const Color(0xFFFF6A00), size: 18),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 label,
                 style: GoogleFonts.poppins(
