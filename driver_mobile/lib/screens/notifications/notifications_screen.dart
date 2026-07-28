@@ -125,80 +125,63 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildFilterBar() {
-    final int totalCount = _notifications.length;
-    final int readCount = _notifications.where((n) => n.isRead).length;
-    final int unreadCount = _notifications.where((n) => !n.isRead).length;
+    const primaryDark = Color(0xFF101C2C);
+    const borderGray = Color(0xFFE2E8F0);
+    const textPrimary = Color(0xFF1F2937);
+    const textSecondary = Color(0xFF6B7280);
+
+    final List<String> filterLabels = ['All', 'Read', 'Unread'];
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: AppColors.divider, width: 1.0),
-        ),
       ),
-      child: Row(
-        children: [
-          _buildFilterTab(0, 'Total', totalCount),
-          const SizedBox(width: 8),
-          _buildFilterTab(1, 'Read', readCount),
-          const SizedBox(width: 8),
-          _buildFilterTab(2, 'Unread', unreadCount),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterTab(int index, String label, int count) {
-    final bool isSelected = _selectedFilterIndex == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedFilterIndex = index;
-          });
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.secondary : AppColors.surface,
-            borderRadius: BorderRadius.circular(10.0),
-            border: Border.all(
-              color: isSelected ? AppColors.secondary : AppColors.divider,
-              width: 1.0,
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? Colors.white : AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      child: SizedBox(
+        height: 36,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          itemCount: filterLabels.length,
+          separatorBuilder: (context, index) => const SizedBox(width: 8.0),
+          itemBuilder: (context, index) {
+            final isSelected = _selectedFilterIndex == index;
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedFilterIndex = index;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.white.withAlpha(50) : AppColors.divider,
-                  borderRadius: BorderRadius.circular(6),
+                  color: isSelected ? primaryDark : Colors.white,
+                  borderRadius: BorderRadius.circular(20.0),
+                  border: Border.all(
+                    color: isSelected ? primaryDark : borderGray,
+                    width: 1.0,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: primaryDark.withAlpha(40),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                      ),
+                        ]
+                      : null,
                 ),
                 child: Text(
-                  count.toString(),
+                  filterLabels[index],
                   style: GoogleFonts.poppins(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: isSelected ? Colors.white : AppColors.textPrimary,
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? Colors.white : textPrimary,
                   ),
                 ),
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

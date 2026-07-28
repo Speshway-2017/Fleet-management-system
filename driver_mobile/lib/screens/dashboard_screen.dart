@@ -64,11 +64,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Row(
                       children: [
                         Container(
-                          width: 40,
-                          height: 40,
+                          width: 36,
+                          height: 36,
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(10.0),
+                            borderRadius: BorderRadius.circular(8.0),
                           ),
                           padding: const EdgeInsets.all(4.0),
                           child: Image.asset(
@@ -82,7 +82,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   return const Icon(
                                     Icons.local_shipping_rounded,
                                     color: Color(0xFF091522),
-                                    size: 24,
+                                    size: 20,
                                   );
                                 },
                               );
@@ -99,16 +99,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
-                                  fontSize: 18,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 2),
                               Text(
                                 'Monday, Oct 23, 2023',
                                 style: GoogleFonts.nunito(
-                                  fontSize: 13,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w500,
                                   color: const Color(0xFF98A2B3),
                                 ),
@@ -127,8 +127,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Stack(
                       children: [
                         Container(
-                          width: 48,
-                          height: 48,
+                          width: 36,
+                          height: 36,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white24, width: 1.5),
@@ -141,7 +141,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 return const Icon(
                                   Icons.person,
                                   color: Colors.white,
-                                  size: 24,
+                                  size: 18,
                                 );
                               },
                             ),
@@ -151,14 +151,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           bottom: 0,
                           right: 0,
                           child: Container(
-                            width: 13,
-                            height: 13,
+                            width: 10,
+                            height: 10,
                             decoration: BoxDecoration(
                               color: AppColors.success, // Green online dot
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: const Color(0xFF091522),
-                                width: 2.0,
+                                width: 1.5,
                               ),
                             ),
                           ),

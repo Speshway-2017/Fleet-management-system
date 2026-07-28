@@ -2,6 +2,23 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.17.9] - 2026-07-28
+
+### Changed
+- **Support Screen Layout Adjustments**:
+  - Removed the back button in [SupportHistoryScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/support_history_screen.dart) since it is hosted inside the main tab navigation view.
+  - Adjusted title spacing to `16.0` to keep the brand logo and title aligned.
+  - Relocated the "Call Manager" and "Message Manager" action buttons from the filter chips row to a new dedicated, premium 50/50 split horizontal Row directly below the Search Bar.
+  - Allowed the filter chips row to span full-width without crowding or truncation.
+- **Dashboard Navigation Header Styling**:
+  - Decreased the greeting text ("Good Morning, Meghana 👋") size from 18 to 15, and the date subtitle size from 13 to 11 on [DashboardScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart).
+  - Decreased the driver profile avatar container size from 48x48 to 36x36, and adjusted the online status indicator dot to 10x10 with a 1.5 border width.
+  - Decreased the brand logo container size from 40x40 to 36x36 to match the avatar profile container and keep the header section vertically and horizontally balanced.
+- **Notifications Screen Filter Styling**:
+  - Replaced the tab-like filter boxes on [NotificationsScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notifications_screen.dart) with pill-shaped horizontal chips ('All', 'Read', 'Unread') to match the design language of the support history page.
+- **Profile Screen Header Styling**:
+  - Changed the top navigation header title from 'FleetManagement' to 'Profile' in [ProfileScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/profile_screen.dart).
+
 ## [1.19.0] - 2026-07-28
 
 ### Fixed & Enhanced
