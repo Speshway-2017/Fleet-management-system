@@ -136,11 +136,8 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         backgroundColor: primaryDark,
         elevation: 0,
         centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        titleSpacing: 16.0,
+        automaticallyImplyLeading: false,
         title: Row(
           children: [
             Container(
@@ -242,87 +239,92 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                 ),
               ),
 
-              const SizedBox(height: 16.0),
+              const SizedBox(height: 12.0),
 
-              // Filter Chips & Manager Action Buttons Row
+              // Call & Message Quick Action Buttons Row
               Row(
                 children: [
                   Expanded(
-                    child: SizedBox(
-                      height: 36,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: _filters.length,
-                        separatorBuilder: (context, index) => const SizedBox(width: 8.0),
-                        itemBuilder: (context, index) {
-                          final isSelected = _selectedFilterIndex == index;
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedFilterIndex = index;
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: isSelected ? primaryDark : Colors.white,
-                                borderRadius: BorderRadius.circular(20.0),
-                                border: Border.all(
-                                  color: isSelected ? primaryDark : borderGray,
-                                  width: 1.0,
-                                ),
-                                boxShadow: isSelected
-                                    ? [
-                                        BoxShadow(
-                                          color: primaryDark.withAlpha(40),
-                                          blurRadius: 6,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: Text(
-                                _filters[index],
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                  color: isSelected ? Colors.white : textPrimary,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                    child: _buildBodyActionButton(
+                      context,
+                      icon: Icons.phone_in_talk_rounded,
+                      label: 'Call Manager',
+                      color: const Color(0xFF10B981),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const CallingFleetManagerScreen()),
+                        );
+                      },
                     ),
                   ),
-                  const SizedBox(width: 8.0),
-                  _buildHeaderActionButton(
-                    context,
-                    icon: Icons.phone_in_talk_rounded,
-                    label: 'Call',
-                    color: const Color(0xFF10B981),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const CallingFleetManagerScreen()),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 6.0),
-                  _buildHeaderActionButton(
-                    context,
-                    icon: Icons.chat_bubble_rounded,
-                    label: 'Message',
-                    color: primaryOrange,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const MessageFleetManagerScreen()),
-                      );
-                    },
+                  const SizedBox(width: 12.0),
+                  Expanded(
+                    child: _buildBodyActionButton(
+                      context,
+                      icon: Icons.chat_bubble_rounded,
+                      label: 'Message Manager',
+                      color: primaryOrange,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const MessageFleetManagerScreen()),
+                        );
+                      },
+                    ),
                   ),
                 ],
+              ),
+
+              const SizedBox(height: 16.0),
+
+              // Filter Chips Row
+              SizedBox(
+                height: 36,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: _filters.length,
+                  separatorBuilder: (context, index) => const SizedBox(width: 8.0),
+                  itemBuilder: (context, index) {
+                    final isSelected = _selectedFilterIndex == index;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedFilterIndex = index;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? primaryDark : Colors.white,
+                          borderRadius: BorderRadius.circular(20.0),
+                          border: Border.all(
+                            color: isSelected ? primaryDark : borderGray,
+                            width: 1.0,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: primaryDark.withAlpha(40),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Text(
+                          _filters[index],
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected ? Colors.white : textPrimary,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
 
               const SizedBox(height: 20.0),
@@ -571,7 +573,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
     );
   }
 
-  Widget _buildHeaderActionButton(
+  Widget _buildBodyActionButton(
     BuildContext context, {
     required IconData icon,
     required String label,
@@ -581,25 +583,25 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+        height: 44,
         decoration: BoxDecoration(
-          color: color.withAlpha(25),
-          borderRadius: BorderRadius.circular(10.0),
-          border: Border.all(color: color.withAlpha(76), width: 1.0),
+          color: color.withAlpha(20),
+          borderRadius: BorderRadius.circular(12.0),
+          border: Border.all(color: color.withAlpha(80), width: 1.2),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
               color: color,
-              size: 16,
+              size: 18,
             ),
-            const SizedBox(width: 6.0),
+            const SizedBox(width: 8.0),
             Text(
               label,
               style: GoogleFonts.poppins(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: color,
               ),
