@@ -2,6 +2,39 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.19.0] - 2026-07-28
+
+### Fixed & Enhanced
+- **Fixed Floating Bottom Navigation Bar Icons Movement & Full Viewport Docking**:
+  - Refactored `_buildNavItem` in [main_navigation_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/main_navigation_screen.dart) to wrap each bottom bar item in an `Expanded` widget inside `Row`.
+  - Fixed icon layout, widths, and paddings across selected and unselected states to guarantee 100% fixed icon positioning with zero horizontal or vertical movement when tabs are clicked.
+  - Docked the bottom navigation bar container firmly to the bottom edge of the viewport with explicit height calculation (`64.0 + MediaQuery.of(context).padding.bottom`) and top shadow, allowing full height display for all generated mobile screens (`DashboardScreen`, `ActiveTripsScreen`, `ProfileScreen`, `TripsScreen`, `SupportHistoryScreen`, `NotificationsScreen`).
+  - Added `INTERNET`, `ACCESS_FINE_LOCATION`, and `ACCESS_COARSE_LOCATION` permissions to [AndroidManifest.xml](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/android/app/src/main/AndroidManifest.xml) for mobile network & map rendering.
+
+- **Automated Live GPS Status Updates & Automatic POD / Weighbridge Enablement**:
+  - Streamlined trip status updates in [active_trips_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/active_trips_screen.dart) and [update_trip_status_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/update_trip_status_screen.dart) to rely automatically on Live GPS tracking instead of manual status switches/grids.
+  - Replaced manual status switch and manual status buttons with a prominent **Live GPS Status (Auto-Updated)** info banner displaying `Reached Customer Location` auto-detected status.
+  - Fixed `RenderFlex` right overflow by 139 pixels inside the status container by wrapping title and subtitle columns in `Expanded` widgets across narrow mobile viewports.
+  - Automatically enables and displays Proof of Delivery (POD) Slip and Weighbridge Slip upload boxes immediately upon reaching customer location via Live GPS.
+
+## [1.18.0] - 2026-07-28
+
+### Added
+- **POD & Weighbridge Slip Upload at Customer Location**:
+  - Added dedicated Proof of Delivery (POD) Slip upload box and Weighbridge Slip upload box with cargo weight entry field in [active_trips_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/active_trips_screen.dart) and [update_trip_status_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/update_trip_status_screen.dart).
+  - Integrated document and photo picking using `file_picker` with status indicators ("Uploaded", "Pending"), file size badges, and deletion/re-upload triggers.
+- **WhatsApp-Styled Media Attachment Drawer in Chat**:
+  - Implemented interactive WhatsApp-styled bottom sheet modal in [message_fleet_manager_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/message_fleet_manager_screen.dart) upon clicking attachment icon (`Icons.attach_file_rounded`).
+  - Added 6 circular options: Document, Camera, Gallery, Audio, Location, and Slips/POD.
+  - Dynamically appends outgoing media attachment bubbles to the live chat thread with thumbnail icons, file sizes, and timestamps.
+- **Real Maps Integration & Reroute Feature**:
+  - Created [live_tracking_map_widget.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/widgets/live_tracking_map_widget.dart) powered by `flutter_map` and OpenStreetMap raster tiles (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`).
+  - Rendered real-time driver vehicle marker with glowing accuracy radius, pickup & destination markers, and route polyline paths.
+  - Integrated interactive **Reroute** button that recalculates route trajectory, re-centers map view on driver's live GPS coordinates, and displays route updated notifications.
+
+### Fixed
+- **Android Gradle Build & AAR Metadata Check**:
+  - Updated `compileSdk` to `36` in [build.gradle.kts](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/android/app/build.gradle.kts) and added dynamic `compileSdkVersion(36)` configuration for all plugin subprojects in [build.gradle.kts](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/android/build.gradle.kts), resolving `checkDebugAarMetadata` dependency lifecycle build failures.
 ## [1.17.8] - 2026-07-28
 
 ### Added
@@ -33,6 +66,14 @@ All notable changes to the Fleet Driver Mobile application will be documented in
   - Repaired syntax errors and merge conflicts in `_buildActiveTripCard` inside [dashboard_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) following branch fast-forward pulls.
   - Added missing class imports (`upcoming_trip_details_screen.dart` and `vehicle_maintenance_screen.dart`).
   - Cleared unused analyzer warnings by binding unread state variables to getters and marking notifications as read immediately inside recent notification card onTap callbacks.
+
+### Fixed
+- **Dashboard Screen Syntax & Import Errors**:
+  - Restored malformed `_buildActiveTripCard` widget tree structure in [dashboard_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart).
+  - Added missing screen imports `upcoming_trip_details_screen.dart` and `vehicle_maintenance_screen.dart`, resolving `UpcomingTripDetailsScreen` and `VehicleMaintenanceScreen` class reference errors.
+  - Cleaned unused imports and unreferenced getters to ensure a 0-error, 0-warning compilation status under `flutter analyze`.
+
+>>>>>>> Stashed changes
 ## [1.15.1] - 2026-07-27
 
 ### Fixed
