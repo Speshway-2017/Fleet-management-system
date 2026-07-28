@@ -219,12 +219,7 @@ All notable changes to the Fleet Driver Mobile application will be documented in
   - Profile section: Large avatar with green status indicator dot, `Ramesh Kumar`, designation `Fleet Manager`, department `Operations Department`, and `Available` badge.
   - Active call status section: Timer `00:18`, `Calling...` state label, and bold Indian phone display `+91 98765 43210`.
   - Current Assignment card: `Trip ID: TRP-9901`, `Vehicle: MH12PQ8820`, `Route: Mumbai → Pune`.
-- **Ticket Details Screen**: Created [TicketDetailsScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/ticket_details_screen.dart) based on the reference design mockups:
-  - Dark Navy (`#101C2C`) header bar with ticket ID, issue category subtitle (`VEHICLE MAINTENANCE`), and company logo badge.
-  - Original Description card with timestamp (`05:30 AM`), problem text, and horizontal attachment thumbnails (`Engine_Check.jpg`, `Diag_Graph.png`, `Engine_Rpt.pdf`).
-  - Updates & Conversation vertical timeline with author roles (`Fleet Support - Rajesh Sharma`, `Driver - Satya Narayana`, `Mechanic - Ramesh Kumar`), timestamps, and status updates.
-  - Fixed bottom reply bar with attachment trigger icon, text field (`"Add a reply..."`), and circular primary Orange (`#FF7A1A`) send button.
-  - Connected ticket cards on [SupportHistoryScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/support_history_screen.dart) to push `TicketDetailsScreen`.
+- **AppBar Title Spacing Optimization**: Reduced the gap between the back arrow button `←` and screen title text across the Driver Mobile application (`FuelOverviewScreen`, `AddFuelEntryScreen`, `FuelHistoryScreen`, `FuelEntryDetailsScreen`, `SupportHistoryScreen`, `RaiseTicketScreen`, `TicketDetailsScreen`, `VehicleOverviewScreen`, `VehicleDocumentsScreen`) by configuring `titleSpacing: 0` for a sleek, compact, and balanced header design.
 
 ### Fixed
 - **Profile Avatar Asset 404**: Replaced missing `driver_avatar.jpg` asset file references in [CallingFleetManagerScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/calling_fleet_manager_screen.dart) and [ContactFleetManagerScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/contact_fleet_manager_screen.dart) with styled vector profile avatar containers to eliminate HTTP 404 console errors in Flutter Web.
