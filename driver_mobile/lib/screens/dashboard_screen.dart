@@ -14,6 +14,7 @@ import 'todays_schedule_screen.dart';
 import 'upcoming_trip_details_screen.dart';
 import 'vehicle_maintenance_screen.dart';
 import 'settings/settings_screen.dart';
+import 'fuel_overview_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -629,14 +630,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           );
         }),
         _buildActionCard(context, Icons.local_gas_station_outlined, 'Fuel', () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Fuel logs coming soon')),
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const FuelOverviewScreen()),
           );
         }),
         _buildActionCard(context, Icons.warning_amber_rounded, 'Issue', () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Issue reporting coming soon')),
-          );
+          MainNavigationScreen.selectedTabNotifier.value = 2;
         }),
         _buildActionCard(context, Icons.calendar_month_outlined, 'Schedule', () {
           Navigator.push(

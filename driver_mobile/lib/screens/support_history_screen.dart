@@ -136,7 +136,11 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         backgroundColor: primaryDark,
         elevation: 0,
         centerTitle: false,
-        actions: const [],
+        titleSpacing: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Row(
           children: [
             Container(
