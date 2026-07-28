@@ -23,59 +23,7 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { useAuth } from "@/context/AuthContext";
 import { managerApi } from "../api/managerApi";
-
-const CITY_COORDINATES = {
-  mumbai: [19.0760, 72.8777],
-  pune: [18.5204, 73.8567],
-  bengaluru: [12.9716, 77.5946],
-  bangalore: [12.9716, 77.5946],
-  hyderabad: [17.3850, 78.4867],
-  delhi: [28.7041, 77.1025],
-  chennai: [13.0827, 80.2707],
-  kolhapur: [16.7050, 74.2433],
-  satara: [17.6805, 73.9918],
-  anantapur: [14.6819, 77.6006],
-  goa: [15.2993, 74.1240],
-  visakhapatnam: [17.6868, 83.2185],
-  vizag: [17.6868, 83.2185],
-  kolkata: [22.5726, 88.3639],
-  ahmedabad: [23.0225, 72.5714],
-  surat: [21.1702, 72.8311],
-  jaipur: [26.9124, 75.7873],
-  lucknow: [26.8467, 80.9462],
-  manali: [32.2396, 77.1887]
-};
-
-const getCoordinates = (cityName) => {
-  if (!cityName) return [18.5204, 73.8567];
-  const norm = cityName.toLowerCase().trim();
-  for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
-    if (norm.includes(key)) return coords;
-  }
-  return [18.5204, 73.8567];
-};
-
-const calculateDistance = (startCity, endCity) => {
-  if (!startCity || !endCity) return 0;
-  const startCoords = getCoordinates(startCity);
-  const endCoords = getCoordinates(endCity);
-
-  if (startCoords[0] === 18.5204 && startCoords[1] === 73.8567 && 
-      endCoords[0] === 18.5204 && endCoords[1] === 73.8567) {
-    return 350;
-  }
-
-  const R = 6371;
-  const dLat = (endCoords[0] - startCoords[0]) * Math.PI / 180;
-  const dLon = (endCoords[1] - startCoords[1]) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(startCoords[0] * Math.PI / 180) * Math.cos(endCoords[0] * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const d = R * c;
-  return Math.round(d);
-};
+import { calculateDrivingRoute, calculateEtaFromDuration } from "../services/routingService";
 
 const CITIES_SUGGESTIONS = [
   "Ahmedabad",
@@ -129,6 +77,66 @@ export default function CreateTripPage() {
   const [showStartSuggestions, setShowStartSuggestions] = useState(false);
   const [endSuggestions, setEndSuggestions] = useState([]);
   const [showEndSuggestions, setShowEndSuggestions] = useState(false);
+
+  // Dynamic Routing State
+  const [routeInfo, setRouteInfo] = useState({
+    loading: false,
+    distanceKm: 0,
+    durationFormatted: "N/A",
+    durationHours: 0,
+    durationSeconds: 0,
+    errorMessage: "",
+    success: false
+  });
+
+  // Calculate driving route whenever startLocation or endLocation changes
+  useEffect(() => {
+    if (!startLocation.trim() || !endLocation.trim()) {
+      setRouteInfo({
+        loading: false,
+        distanceKm: 0,
+        durationFormatted: "N/A",
+        durationHours: 0,
+        durationSeconds: 0,
+        errorMessage: "",
+        success: false
+      });
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setRouteInfo(prev => ({ ...prev, loading: true, errorMessage: "" }));
+      const res = await calculateDrivingRoute(startLocation, endLocation);
+      if (res.success) {
+        setRouteInfo({
+          loading: false,
+          distanceKm: res.distanceKm,
+          durationFormatted: res.durationFormatted,
+          durationHours: res.durationHours,
+          durationSeconds: res.durationSeconds,
+          errorMessage: "",
+          success: true
+        });
+        if (res.durationSeconds > 0) {
+          const dep = departureTime || getCurrentDateTimeString();
+          const autoEta = calculateEtaFromDuration(dep, res.durationSeconds);
+          setEta(autoEta);
+        }
+      } else {
+        setRouteInfo({
+          loading: false,
+          distanceKm: 0,
+          durationFormatted: "N/A",
+          durationHours: 0,
+          durationSeconds: 0,
+          errorMessage: res.errorMessage || "Unable to calculate route between selected locations.",
+          success: false
+        });
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [startLocation, endLocation]);
 
   const handleStartLocationChange = (val) => {
     setStartLocation(val);
@@ -393,7 +401,7 @@ export default function CreateTripPage() {
     }
 
     try {
-      const distance = calculateDistance(startLocation, endLocation) || 250;
+      const distance = routeInfo.distanceKm || 0;
       await managerApi.createTrip({
         tripNumber,
         vehicle: vehicle._id,
@@ -422,7 +430,7 @@ export default function CreateTripPage() {
     }
   };
 
-  const distance = calculateDistance(startLocation, endLocation) || 250;
+  const distance = routeInfo.distanceKm || 0;
   const isWeightValid = cargoWeight !== null && cargoWeight !== undefined && cargoWeight.toString().trim() !== "";
   const cargoWeightDisplay = isWeightValid ? `${cargoWeight} kg` : "--";
 
@@ -967,6 +975,15 @@ export default function CreateTripPage() {
           {!startLocation.trim() || !endLocation.trim() ? (
             <div className="p-4 bg-orange-50/30 rounded-xl border border-orange-100/50 text-center text-xs text-[#B45A0A] font-semibold font-poppins">
               Enter both Start Location and Destination to view route projections.
+            </div>
+          ) : routeInfo.loading ? (
+            <div className="p-6 bg-slate-50 border border-slate-100 rounded-xl flex flex-col items-center justify-center">
+              <div className="w-5 h-5 border-2 border-[#B45A0A] border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-xs text-[#64748B] mt-2 font-semibold font-poppins">Calculating driving route distance & ETA...</p>
+            </div>
+          ) : routeInfo.errorMessage ? (
+            <div className="p-4 bg-red-50 rounded-xl border border-red-150 text-center text-xs text-red-600 font-semibold font-poppins">
+              {routeInfo.errorMessage}
             </div>
           ) : (
             <div className="space-y-4">

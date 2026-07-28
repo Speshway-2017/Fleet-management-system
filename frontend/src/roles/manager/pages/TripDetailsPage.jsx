@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -23,7 +23,9 @@ import {
   Activity,
   Wallet,
   TrendingUp,
-  Percent
+  Percent,
+  FileText,
+  MessageSquare
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -32,12 +34,35 @@ import { getSocket } from "@/api/socket";
 import { useAuth } from "@/context/AuthContext";
 
 import { managerApi } from "../api/managerApi";
+import TripCommunicationSection from "../components/TripCommunicationSection";
+import { calculateDrivingRoute } from "../services/routingService";
 
 export default function TripDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth();
   const [trip, setTrip] = useState(null);
+
+  const [activeTab, setActiveTab] = useState(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["overview", "timeline", "documents", "communication"].includes(tabParam.toLowerCase())) {
+      return tabParam.toLowerCase();
+    }
+    if (window.location.hash === "#communication") {
+      return "communication";
+    }
+    return "overview";
+  });
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["overview", "timeline", "documents", "communication"].includes(tabParam.toLowerCase())) {
+      setActiveTab(tabParam.toLowerCase());
+    } else if (window.location.hash === "#communication") {
+      setActiveTab("communication");
+    }
+  }, [searchParams, id]);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [invoice, setInvoice] = useState(null);
@@ -68,134 +93,110 @@ export default function TripDetailsPage() {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
 
-  // Coordinates dictionary for routing simulation
-  const CITY_COORDINATES = {
-    mumbai: [19.0760, 72.8777],
-    pune: [18.5204, 73.8567],
-    bengaluru: [12.9716, 77.5946],
-    bangalore: [12.9716, 77.5946],
-    hyderabad: [17.3850, 78.4867],
-    delhi: [28.7041, 77.1025],
-    chennai: [13.0827, 80.2707],
-    kolhapur: [16.7050, 74.2433],
-    satara: [17.6805, 73.9918],
-    anantapur: [14.6819, 77.6006],
-    goa: [15.2993, 74.1240],
-    visakhapatnam: [17.6868, 83.2185],
-    vizag: [17.6868, 83.2185],
-    kolkata: [22.5726, 88.3639],
-    ahmedabad: [23.0225, 72.5714],
-    surat: [21.1702, 72.8311],
-    jaipur: [26.9124, 75.7873],
-    lucknow: [26.8467, 80.9462],
-    manali: [32.2396, 77.1887]
-  };
-
-  const getCoordinates = (cityName) => {
-    if (!cityName) return [18.5204, 73.8567]; // default Pune
-    const norm = cityName.toLowerCase().trim();
-    for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
-      if (norm.includes(key)) return coords;
-    }
-    return [18.5204, 73.8567]; // default Pune
-  };
-
-  const calculateDistance = (startCity, endCity) => {
-    const startCoords = getCoordinates(startCity);
-    const endCoords = getCoordinates(endCity);
-
-    // If both resolve to default Pune, fallback to 350
-    if (startCoords[0] === 18.5204 && startCoords[1] === 73.8567 && 
-        endCoords[0] === 18.5204 && endCoords[1] === 73.8567) {
-      return 350;
-    }
-
-    const R = 6371; // Radius of the earth in km
-    const dLat = (endCoords[0] - startCoords[0]) * Math.PI / 180;
-    const dLon = (endCoords[1] - startCoords[1]) * Math.PI / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(startCoords[0] * Math.PI / 180) * Math.cos(endCoords[0] * Math.PI / 180) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const d = R * c; // Distance in km
-    return Math.round(d);
-  };
+  const [drivingInfo, setDrivingInfo] = useState(null);
 
   // Initialize Leaflet map
   useEffect(() => {
-    if (!trip || !mapRef.current) return;
-    
-    // Clear old map if exists
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.remove();
-      mapInstanceRef.current = null;
-    }
+    if (!trip || activeTab !== "overview") return;
 
-    const startCoords = getCoordinates(trip.startLocation);
-    const endCoords = getCoordinates(trip.endLocation);
+    let isMounted = true;
+    let map = null;
 
-    // Initialize map
-    const map = L.map(mapRef.current);
-    
-    // Set view to center or fit bounds
-    map.setView(startCoords, 8);
+    // Small delay to ensure DOM node mapRef.current is rendered
+    const timer = setTimeout(async () => {
+      if (!mapRef.current || !isMounted) return;
 
-    // Add OpenStreetMap tiles
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19
-    }).addTo(map);
+      // Clear old map instance if exists
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
 
-    // Start Marker
-    const startIcon = L.divIcon({
-      html: `<div class="bg-[#B45A0A] rounded-full w-6 h-6 flex items-center justify-center text-white shadow-lg border-2 border-white animate-pulse">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      </div>`,
-      className: "",
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
-    });
+      let res = { success: false };
+      try {
+        res = await calculateDrivingRoute(trip.startLocation, trip.endLocation);
+      } catch (err) {
+        console.error("Failed to calculate driving route for map:", err);
+      }
 
-    // Destination Marker
-    const endIcon = L.divIcon({
-      html: `<div class="bg-indigo-600 rounded-full w-6 h-6 flex items-center justify-center text-white shadow-lg border-2 border-white animate-pulse">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      </div>`,
-      className: "",
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
-    });
+      if (!isMounted || !mapRef.current) return;
 
-    L.marker(startCoords, { icon: startIcon }).bindPopup(`<strong>Start Location</strong><br/>${trip.startLocation}`).addTo(map);
-    L.marker(endCoords, { icon: endIcon }).bindPopup(`<strong>Destination</strong><br/>${trip.endLocation}`).addTo(map);
+      if (res && res.success) {
+        setDrivingInfo(res);
+      }
 
-    // Beautiful Polyline connecting them
-    const polyline = L.polyline([startCoords, endCoords], {
-      color: '#B45A0A',
-      weight: 4,
-      dashArray: '6, 8',
-      opacity: 0.8
-    }).addTo(map);
+      const startCoords = res.startCoords || [14.6819, 77.6006];
+      const endCoords = res.endCoords || [24.8170, 93.9368];
+      const pathCoords = (res.routeGeometry && res.routeGeometry.length > 0)
+        ? res.routeGeometry
+        : [startCoords, endCoords];
 
-    // Zoom to fit polyline path bounds
-    map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+      // Initialize Leaflet map instance
+      map = L.map(mapRef.current);
+      map.setView(startCoords, 8);
 
-    mapInstanceRef.current = map;
+      // Add OpenStreetMap tile layer
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+      }).addTo(map);
+
+      // Start Location Marker
+      const startIcon = L.divIcon({
+        html: `<div class="bg-[#B45A0A] rounded-full w-6 h-6 flex items-center justify-center text-white shadow-lg border-2 border-white animate-pulse">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>`,
+        className: "",
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+
+      // Destination Marker
+      const endIcon = L.divIcon({
+        html: `<div class="bg-indigo-600 rounded-full w-6 h-6 flex items-center justify-center text-white shadow-lg border-2 border-white animate-pulse">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>`,
+        className: "",
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+
+      L.marker(startCoords, { icon: startIcon }).bindPopup(`<strong>Start Location</strong><br/>${trip.startLocation}`).addTo(map);
+      L.marker(endCoords, { icon: endIcon }).bindPopup(`<strong>Destination</strong><br/>${trip.endLocation}`).addTo(map);
+
+      // Road Polyline connecting locations
+      const polyline = L.polyline(pathCoords, {
+        color: '#B45A0A',
+        weight: 4,
+        dashArray: '6, 8',
+        opacity: 0.8
+      }).addTo(map);
+
+      map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+
+      mapInstanceRef.current = map;
+
+      // Invalidate size to ensure Leaflet renders tiles inside flex/tab containers
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+      }, 200);
+    }, 100);
 
     return () => {
+      isMounted = false;
+      clearTimeout(timer);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
-  }, [trip]);
+  }, [trip, activeTab]);
 
   // Load trip record & invoice
   const fetchTripAndInvoice = async () => {
@@ -563,11 +564,11 @@ export default function TripDetailsPage() {
   const isCompleted = trip.status === "Completed";
   const isDelayed = trip.status === "Delayed";
 
-  const totalDistance = calculateDistance(trip.startLocation, trip.endLocation);
+  const totalDistance = drivingInfo?.distanceKm || ((trip.estimatedDistance && trip.estimatedDistance !== 120 && trip.estimatedDistance !== 584) ? trip.estimatedDistance : 350);
   
   const distanceVal = trip.status === "Completed" 
-    ? (trip.actualDistance && trip.actualDistance !== 120 ? trip.actualDistance : (trip.estimatedDistance && trip.estimatedDistance !== 120 ? trip.estimatedDistance : totalDistance))
-    : (trip.estimatedDistance && trip.estimatedDistance !== 120 ? trip.estimatedDistance : totalDistance);
+    ? (trip.actualDistance && trip.actualDistance !== 120 && trip.actualDistance !== 584 ? trip.actualDistance : (trip.estimatedDistance && trip.estimatedDistance !== 120 && trip.estimatedDistance !== 584 ? trip.estimatedDistance : totalDistance))
+    : (trip.estimatedDistance && trip.estimatedDistance !== 120 && trip.estimatedDistance !== 584 ? trip.estimatedDistance : totalDistance);
 
   const tripCargoWeight = trip.cargoWeight && trip.cargoWeight.toString().trim() ? Number(trip.cargoWeight) : null;
   const weightVal = tripCargoWeight !== null ? tripCargoWeight : 0;
@@ -714,7 +715,40 @@ export default function TripDetailsPage() {
         </div>
       </div>
 
-      {/* KPI statistics cards */}
+      {/* Top Tab Navigation Bar */}
+      <div className="bg-white rounded-2xl border border-[#E7EAF0] p-1.5 shadow-sm mt-6 flex items-center gap-1.5 font-poppins text-xs font-bold overflow-x-auto no-scrollbar">
+        {[
+          { id: "overview", label: "Overview", icon: Route },
+          { id: "timeline", label: "Timeline", icon: Clock },
+          { id: "documents", label: "Documents", icon: FileText },
+          { id: "communication", label: "Communication", icon: MessageSquare }
+        ].map((tabItem) => {
+          const Icon = tabItem.icon;
+          const isActive = activeTab === tabItem.id;
+          return (
+            <button
+              key={tabItem.id}
+              onClick={() => {
+                setActiveTab(tabItem.id);
+                setSearchParams({ tab: tabItem.id });
+              }}
+              className={`px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+                isActive
+                  ? "bg-[#B45A0A] text-white shadow-md shadow-[#B45A0A]/20"
+                  : "text-[#64748B] hover:text-[#1E293B] hover:bg-slate-50"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{tabItem.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab 1: Overview View */}
+      {activeTab === "overview" && (
+        <div className="space-y-6 mt-6">
+          {/* KPI statistics cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
         
         {/* Distance Stats */}
@@ -1136,10 +1170,90 @@ export default function TripDetailsPage() {
               View Fleet Diagnostics
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  )}
 
-          {/* Unified Trip Documents Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-6">
-            <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider border-b border-[#E7EAF0] pb-2">Trip Documents</h4>
+      {/* Tab 2: Timeline View */}
+      {activeTab === "timeline" && (
+        <div className="space-y-6 mt-6 max-w-4xl">
+          {/* Dispatch Status Progress Timeline */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
+            <h4 className="font-poppins font-bold text-[#1E293B] text-sm uppercase tracking-wider">Dispatch Progress Milestones</h4>
+            
+            <div className="space-y-4.5 pt-2">
+              {[
+                { label: "Scheduled", desc: "Trip is scheduled in the calendar", done: true },
+                { label: "Assigned", desc: "Driver & vehicle allocated", done: trip.status !== "Scheduled" },
+                { label: "In Progress", desc: "Transit active on route", done: trip.status === "In Progress" || trip.status === "Completed" },
+                { label: "Completed", desc: "Arrived at destination points", done: trip.status === "Completed" }
+              ].map((step, idx) => (
+                <div key={idx} className="flex items-start gap-4">
+                  <div className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center border text-xs font-bold font-poppins ${
+                    step.done
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-gray-400 border-gray-200"
+                  }`}>
+                    {idx + 1}
+                  </div>
+                  <div>
+                    <p className={`text-sm font-bold font-poppins ${step.done ? "text-[#1E293B]" : "text-gray-400"}`}>
+                      {step.label}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">{step.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Checkpoints Route Timeline */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
+            <h3 className="font-poppins font-bold text-[#1E293B] text-sm uppercase tracking-wider">Route Checkpoints & Activity Logs</h3>
+            
+            <div className="relative pl-6 border-l-2 border-dashed border-gray-200 ml-3 space-y-6 pt-2">
+              <div className="relative">
+                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-[#B45A0A] rounded-full border-4 border-orange-100 z-10"></div>
+                <div>
+                  <p className="text-xs font-bold text-[#1E293B] font-poppins">Dispatch Initialized</p>
+                  <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">
+                    Planned Departure: {formatDateTime(trip.departureTime)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-emerald-500 rounded-full border-4 border-emerald-100 z-10"></div>
+                <div>
+                  <p className="text-xs font-bold text-[#1E293B] font-poppins">Actual Start</p>
+                  <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">
+                    {trip.actualStartTime ? `Started at: ${formatDateTime(trip.actualStartTime)}` : "Waiting to start..."}
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-indigo-600 rounded-full border-4 border-indigo-100 z-10"></div>
+                <div>
+                  <p className="text-xs font-bold text-[#1E293B] font-poppins">Actual End</p>
+                  <span className="text-[10px] text-indigo-600 font-bold block mt-0.5">
+                    {trip.actualEndTime ? `Completed at: ${formatDateTime(trip.actualEndTime)}` : "Waiting for completion..."}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 3: Documents View */}
+      {activeTab === "documents" && (
+        <div className="space-y-6 mt-6 max-w-4xl">
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-6">
+            <h4 className="font-poppins font-bold text-sm text-[#1E293B] uppercase tracking-wider border-b border-[#E7EAF0] pb-3">
+              Trip Documents Ledger
+            </h4>
 
             {/* Trip Invoice Section */}
             <div className="space-y-3">
@@ -1147,10 +1261,10 @@ export default function TripDetailsPage() {
               {!invoice ? (
                 <p className="text-xs text-gray-500 font-medium italic">No Invoice generated yet.</p>
               ) : (
-                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+                <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl space-y-3 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 font-medium">Status</span>
-                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md text-[9px] font-bold uppercase tracking-wider">
+                    <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md text-[10px] font-bold uppercase tracking-wider">
                       Generated
                     </span>
                   </div>
@@ -1158,11 +1272,11 @@ export default function TripDetailsPage() {
                     <span className="text-gray-500 font-medium">Invoice Number</span>
                     <span className="font-bold text-gray-700">{invoice.invoiceNumber}</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 pt-2">
+                  <div className="grid grid-cols-3 gap-3 pt-2">
                     <button
                       type="button"
                       onClick={() => setShowInvoiceModal(true)}
-                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       View
@@ -1170,14 +1284,14 @@ export default function TripDetailsPage() {
                     <button
                       type="button"
                       onClick={handleDownloadInvoice}
-                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       Download
                     </button>
                     <button
                       type="button"
                       onClick={handlePrintInvoice}
-                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       Print
                     </button>
@@ -1187,17 +1301,15 @@ export default function TripDetailsPage() {
             </div>
 
             {/* Proof of Delivery Section */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Proof of Delivery (POD)</h5>
-              </div>
+            <div className="space-y-3 pt-4 border-t border-gray-100">
+              <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Proof of Delivery (POD)</h5>
               {!pod ? (
                 <p className="text-xs text-gray-500 font-medium italic">No Proof of Delivery uploaded yet.</p>
               ) : (
-                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+                <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl space-y-3 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 font-medium">Status</span>
-                    <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
+                    <span className={`font-bold px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider ${
                       pod.status === "Approved" ? "bg-emerald-50 text-emerald-700" :
                       pod.status === "Rejected" ? "bg-red-50 text-red-600" :
                       "bg-amber-50 text-[#B45A0A]"
@@ -1206,68 +1318,43 @@ export default function TripDetailsPage() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">POD Number</span>
-                    <span className="font-bold text-gray-700">{pod.podNumber || "N/A"}</span>
+                    <span className="text-gray-500 font-medium">Uploaded By</span>
+                    <span className="font-bold text-gray-700">{pod.uploadedBy || "Driver"}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 mt-2">
+                  <div className="grid grid-cols-2 gap-3 pt-2">
                     <button
                       type="button"
                       onClick={() => setShowPodModal(true)}
-                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer col-span-1"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Eye className="w-3.5 h-3.5" />
-                      View
+                      View Document
                     </button>
                     <button
                       type="button"
                       onClick={() => {
-                        if (pod.podDocumentUrl) window.open(pod.podDocumentUrl, "_blank");
-                        else toast.error("No document available for download");
+                        if (pod.documentUrl) window.open(pod.documentUrl, "_blank");
+                        else toast.error("No document file available");
                       }}
-                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer col-span-1"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      Download
+                      Download File
                     </button>
                   </div>
-                  {pod.status === 'Pending' && (
-                    <div className="grid grid-cols-2 gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={handlePODApprove}
-                        className="px-2.5 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-[10px] font-bold text-emerald-700 transition-colors cursor-pointer"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowRejectModal(true)}
-                        className="px-2.5 py-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-[10px] font-bold text-red-600 transition-colors cursor-pointer"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  )}
-                  {pod.status === 'Rejected' && pod.rejectionReason && (
-                    <div className="mt-2 p-2 bg-red-50 text-red-600 text-[10px] rounded-lg border border-red-100">
-                      <strong>Reason:</strong> {pod.rejectionReason}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
 
             {/* Weighbridge Slip Section */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Weighbridge Slip</h5>
-              </div>
+            <div className="space-y-3 pt-4 border-t border-gray-100">
+              <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Weighbridge Slip</h5>
               {!weighbridge ? (
                 <p className="text-xs text-gray-500 font-medium italic">No Weighbridge Slip uploaded yet.</p>
               ) : (
-                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+                <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl space-y-3 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 font-medium">Status</span>
-                    <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
+                    <span className={`font-bold px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider ${
                       weighbridge.status === "Approved" ? "bg-emerald-50 text-emerald-700" :
                       weighbridge.status === "Rejected" ? "bg-red-50 text-red-600" :
                       "bg-amber-50 text-[#B45A0A]"
@@ -1276,84 +1363,42 @@ export default function TripDetailsPage() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Slip Number</span>
-                    <span className="font-bold text-gray-700">{weighbridge.slipNumber || "N/A"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Gross Weight</span>
-                    <span className="font-bold text-gray-700">{weighbridge.grossWeight} kg</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Tare Weight</span>
-                    <span className="font-bold text-gray-700">{weighbridge.tareWeight} kg</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Net Weight</span>
-                    <span className="font-bold text-gray-700">{weighbridge.netWeight} kg</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Location</span>
-                    <span className="font-bold text-gray-700">{weighbridge.location || "N/A"}</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-gray-500 font-medium">Uploaded By</span>
                     <span className="font-bold text-gray-700">{weighbridge.uploadedBy || "Driver"}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 mt-2">
+                  <div className="grid grid-cols-2 gap-3 pt-2">
                     <button
                       type="button"
                       onClick={() => setShowWeighbridgeModal(true)}
-                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer col-span-1"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Eye className="w-3.5 h-3.5" />
-                      View
+                      View Document
                     </button>
                     <button
                       type="button"
                       onClick={() => {
                         if (weighbridge.documentUrl) window.open(weighbridge.documentUrl, "_blank");
-                        else toast.error("No document available for download");
+                        else toast.error("No document file available");
                       }}
-                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer col-span-1"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      Download
+                      Download File
                     </button>
                   </div>
-                  {(weighbridge.status === 'Pending' || weighbridge.status === 'Uploaded') && (
-                    <div className="grid grid-cols-2 gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={handleWeighbridgeApprove}
-                        className="px-2.5 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-[10px] font-bold text-emerald-700 transition-colors cursor-pointer"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowWeighbridgeRejectModal(true)}
-                        className="px-2.5 py-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-[10px] font-bold text-red-600 transition-colors cursor-pointer"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  )}
-                  {weighbridge.status === 'Rejected' && weighbridge.rejectionReason && (
-                    <div className="mt-2 p-2 bg-red-50 text-red-600 text-[10px] rounded-lg border border-red-100">
-                      <strong>Reason:</strong> {weighbridge.rejectionReason}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
-
-
-
           </div>
-
-
         </div>
+      )}
 
-      </div>
+      {/* Tab 4: Communication View */}
+      {activeTab === "communication" && (
+        <div className="mt-6">
+          <TripCommunicationSection trip={trip} />
+        </div>
+      )}
 
       {/* --- CANCEL DISPATCH CONFIRMATION MODAL --- */}
       {showCancelConfirm && (

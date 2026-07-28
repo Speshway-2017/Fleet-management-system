@@ -17,16 +17,35 @@ const CITY_COORDINATES = {
   surat: [21.1702, 72.8311],
   jaipur: [26.9124, 75.7873],
   lucknow: [26.8467, 80.9462],
-  manali: [32.2396, 77.1887]
+  manali: [32.2396, 77.1887],
+  imphal: [24.7991, 93.9364],
+  guwahati: [26.1445, 91.7362],
+  patna: [25.5941, 85.1376],
+  bhubaneswar: [20.2961, 85.8245],
+  bhopal: [23.2599, 77.4126],
+  indore: [22.7196, 75.8577],
+  nagpur: [21.1458, 79.0882],
+  coimbatore: [11.0168, 76.9558],
+  kochi: [9.9312, 76.2673],
+  thiruvananthapuram: [8.5241, 76.9366],
+  trivandrum: [8.5241, 76.9366],
+  chandigarh: [30.7333, 76.7794],
+  amritsar: [31.6340, 74.8723],
+  srinagar: [34.0837, 74.7973],
+  shimla: [31.1048, 77.1734],
+  dehradun: [30.3165, 78.0322],
+  ranchi: [23.3441, 85.3096],
+  raipur: [21.2514, 81.6296],
+  vijayawada: [16.5062, 80.6480]
 };
 
 const getCoordinates = (cityName) => {
-  if (!cityName) return [18.5204, 73.8567]; // default Pune
+  if (!cityName) return null;
   const norm = cityName.toLowerCase().trim();
   for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
     if (norm.includes(key)) return coords;
   }
-  return [18.5204, 73.8567]; // default Pune
+  return null;
 };
 
 export const calculateDistance = (startCity, endCity) => {
@@ -34,8 +53,7 @@ export const calculateDistance = (startCity, endCity) => {
   const startCoords = getCoordinates(startCity);
   const endCoords = getCoordinates(endCity);
 
-  if (startCoords[0] === 18.5204 && startCoords[1] === 73.8567 && 
-      endCoords[0] === 18.5204 && endCoords[1] === 73.8567) {
+  if (!startCoords || !endCoords) {
     return 350;
   }
 
@@ -47,6 +65,7 @@ export const calculateDistance = (startCity, endCity) => {
     Math.cos(startCoords[0] * Math.PI / 180) * Math.cos(endCoords[0] * Math.PI / 180) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const d = R * c;
-  return Math.round(d);
+  const straightKm = R * c;
+  // Apply ~1.3x multiplier for road driving distance estimate
+  return Math.round(straightKm * 1.3);
 };
