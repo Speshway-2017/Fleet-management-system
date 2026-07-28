@@ -16,6 +16,10 @@ import 'vehicle_maintenance_screen.dart';
 import 'settings/settings_screen.dart';
 import 'fuel_overview_screen.dart';
 
+import '../services/api_service.dart';
+import '../services/auth_service.dart';
+import '../services/location_service.dart';
+
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -27,10 +31,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool get _isTripUnread => NotificationsScreen.notifications.any((n) => n.id == '1' && !n.isRead);
   bool get _isMaintenanceUnread => NotificationsScreen.notifications.any((n) => n.id == '2' && !n.isRead);
 
+  Map<String, dynamic>? _driverProfile;
+  Map<String, dynamic>? _currentTrip;
+  Map<String, dynamic>? _dashboardData;
+
   @override
   void initState() {
     super.initState();
     MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    try {
+      final profile = await AuthService.fetchProfile();
+      final currentTripRes = await ApiService.get('/driver/trips/current');
+      final dashRes = await ApiService.get('/driver/dashboard');
+
+      if (mounted) {
+        setState(() {
+          _driverProfile = profile;
+          _currentTrip = currentTripRes['data'];
+          _dashboardData = dashRes['data'];
+        });
+
+        if (_currentTrip != null && _currentTrip!['tripId'] != null) {
+          LocationTrackingService.startTracking(tripId: _currentTrip!['tripId'].toString());
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading dashboard data: $e');
+    }
   }
 
   @override
@@ -95,7 +126,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Good Morning, Meghana 👋',
+                                'Good Morning, ${_driverProfile?['fullName'] ?? 'Driver'} 👋',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
@@ -106,7 +137,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Monday, Oct 23, 2023',
+                                '${_driverProfile?['vehicle'] ?? 'Vehicle AX-452'} • ID: ${_driverProfile?['driverId'] ?? 'EMP-1002'}',
                                 style: GoogleFonts.nunito(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
@@ -399,7 +430,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '#TRP-9921',
+                  _currentTrip?['tripNumber'] ?? '#TRP-9921',
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -416,7 +447,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        'LIVE',
+                        _currentTrip?['status']?.toUpperCase() ?? 'LIVE',
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontSize: 9,
@@ -426,7 +457,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'ETA 14:30 PM',
+                      _currentTrip?['eta'] != null ? 'ETA ${_currentTrip!['eta']}' : 'ETA 14:30 PM',
                       style: GoogleFonts.nunito(
                         color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 12,
@@ -476,7 +507,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           Text(
-                            'Port of Long Beach, CA',
+                            _currentTrip?['pickup'] ?? 'Port of Long Beach, CA',
                             style: GoogleFonts.nunito(
                               color: Colors.white,
                               fontSize: 11,
@@ -496,7 +527,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           Text(
-                            'Distribution Center A-12, AZ',
+                            _currentTrip?['destination'] ?? 'Distribution Center A-12, AZ',
                             style: GoogleFonts.nunito(
                               color: Colors.white,
                               fontSize: 11,
@@ -731,16 +762,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       child: Row(
         children: [
-          _buildStatItem(context, 'Active Trip', '01', Icons.local_shipping, const Color(0xFF3B82F6), const Color(0xFFEFF6FF), () {
+          _buildStatItem(context, 'Active Trip', _dashboardData?['activeTrips']?.toString().padLeft(2, '0') ?? '01', Icons.local_shipping, const Color(0xFF3B82F6), const Color(0xFFEFF6FF), () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const ActiveTripsScreen()));
           }),
-          _buildStatItem(context, 'Upcoming', '01', Icons.calendar_today, const Color(0xFF22C55E), const Color(0xFFF0FDF4), () {
+          _buildStatItem(context, 'Upcoming', _dashboardData?['upcomingTrips']?.toString().padLeft(2, '0') ?? '04', Icons.calendar_today, const Color(0xFF22C55E), const Color(0xFFF0FDF4), () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const UpcomingTripsScreen()));
           }),
-          _buildStatItem(context, 'Completed', '04', Icons.check_circle_outline, const Color(0xFFFF6A00), const Color(0xFFFFF7ED), () {
+          _buildStatItem(context, 'Completed', _dashboardData?['completedTrips']?.toString().padLeft(2, '0') ?? '128', Icons.check_circle_outline, const Color(0xFFFF6A00), const Color(0xFFFFF7ED), () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const CompletedTripsScreen()));
           }),
-          _buildStatItem(context, 'Total Trips', '128', Icons.assignment_outlined, const Color(0xFF8B5CF6), const Color(0xFFF5F3FF), () {
+          _buildStatItem(context, 'Total Trips', ((_dashboardData?['activeTrips'] ?? 1) + (_dashboardData?['upcomingTrips'] ?? 4) + (_dashboardData?['completedTrips'] ?? 128)).toString(), Icons.assignment_outlined, const Color(0xFF8B5CF6), const Color(0xFFF5F3FF), () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const TripsScreen()));
           }),
         ],

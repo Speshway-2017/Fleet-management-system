@@ -242,11 +242,14 @@ export const createDriver = async (req, res, next) => {
       return sendError(res, 400, 'Full name, email, phone number, and license number are required');
     }
 
+    const rawPassword = req.body.password || 'driver123';
+
     const driver = await createDriverRecord({
       fullName,
       email,
       phoneNumber,
       licenseNumber,
+      password: rawPassword,
       licenseType: licenseType || 'HMV',
       licenseExpiry: licenseExpiry || undefined,
       assignedVehicle: assignedVehicle || 'Unassigned',
@@ -268,6 +271,15 @@ export const createDriver = async (req, res, next) => {
       safetyRecord: safetyRecord || 'Excellent',
       trafficViolations: trafficViolations !== undefined ? Number(trafficViolations) : 0,
     });
+
+    console.log(`\n==================================================`);
+    console.log(`🔑 NEW DRIVER CREATED`);
+    console.log(`👤 Name:     ${driver.fullName}`);
+    console.log(`📧 Email:    ${driver.email}`);
+    console.log(`🔑 Password: ${rawPassword}`);
+    console.log(`📱 Phone:    ${driver.phoneNumber}`);
+    console.log(`🆔 Emp ID:   ${driver.employeeId || driver._id}`);
+    console.log(`==================================================\n`);
 
     return sendSuccess(res, 201, driver, 'Driver created successfully');
   } catch (error) {

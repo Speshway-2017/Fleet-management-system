@@ -42,6 +42,7 @@ const driverSchema = new mongoose.Schema(
     medicalFitnessStatus: { type: String, default: 'Fit' },
     tripsCompleted: { type: Number, default: 0 },
     incidentCount: { type: Number, default: 0 },
+    password: { type: String, select: false },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     branch: { type: String, default: 'Pune', trim: true },
     driverLocation: { type: String, default: '', trim: true },
@@ -64,6 +65,17 @@ driverSchema.post('init', function (doc) {
 });
 
 driverSchema.pre('save', async function (next) {
+  // Hash password if modified or newly added
+  if (this.isModified('password') && this.password) {
+    if (!this.password.startsWith('$2b$') && !this.password.startsWith('$2a$')) {
+      const { hashPassword } = await import('../utils/hashPassword.js');
+      this.password = await hashPassword(this.password);
+    }
+  } else if (!this.password && this.isNew) {
+    const { hashPassword } = await import('../utils/hashPassword.js');
+    this.password = await hashPassword('driver123');
+  }
+
   // Generate employeeId if not present
   if (!this.employeeId) {
     let unique = false;

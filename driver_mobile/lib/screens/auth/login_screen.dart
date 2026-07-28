@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
+import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import '../main_navigation_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -16,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -24,10 +27,102 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _showServerConfigDialog() async {
+    final currentUrl = await ApiService.getBaseUrl();
+    final urlController = TextEditingController(text: currentUrl);
+    bool isTesting = false;
+    String? testResultMsg;
+    bool? testResultSuccess;
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text('Backend Server Configuration', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Set host IP address (PC Wi-Fi IP e.g. 10.86.34.1:5000/api or 127.0.0.1:5000/api):', style: GoogleFonts.nunito(fontSize: 12.5)),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: urlController,
+                    decoration: const InputDecoration(
+                      labelText: 'Server URL',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.dns),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (testResultMsg != null)
+                    Text(
+                      testResultMsg!,
+                      style: TextStyle(
+                        color: testResultSuccess == true ? Colors.green : Colors.red,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isTesting ? null : () async {
+                    setDialogState(() {
+                      isTesting = true;
+                      testResultMsg = 'Testing connection...';
+                      testResultSuccess = null;
+                    });
+                    final ok = await ApiService.testConnection(urlController.text.trim());
+                    setDialogState(() {
+                      isTesting = false;
+                      testResultSuccess = ok;
+                      testResultMsg = ok ? '✅ Server connected!' : '❌ Unable to connect';
+                    });
+                  },
+                  child: isTesting ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Test Connection'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final navigator = Navigator.of(context);
+                    await ApiService.setBaseUrl(urlController.text.trim());
+                    navigator.pop();
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Server URL saved!'), backgroundColor: AppColors.success),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                  child: const Text('Save', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_input_component, color: AppColors.textSecondary),
+            tooltip: 'Server Connection Settings',
+            onPressed: _showServerConfigDialog,
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -300,14 +395,33 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         // Login Button
                         ElevatedButton(
-                          onPressed: () {
+                          onPressed: _isLoading ? null : () async {
                             if (_formKey.currentState!.validate()) {
-                               Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const MainNavigationScreen(),
-                                ),
-                              );
+                              setState(() => _isLoading = true);
+                              final navigator = Navigator.of(context);
+                              final messenger = ScaffoldMessenger.of(context);
+                              try {
+                                await AuthService.login(
+                                  _emailController.text.trim(),
+                                  _passwordController.text.trim(),
+                                );
+                                if (!mounted) return;
+                                navigator.pushReplacement(
+                                  MaterialPageRoute(
+                                    builder: (context) => const MainNavigationScreen(),
+                                  ),
+                                );
+                              } catch (e) {
+                                if (!mounted) return;
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text('Login failed: ${e.toString().replaceAll('Exception: ', '')}'),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                              } finally {
+                                if (mounted) setState(() => _isLoading = false);
+                              }
                             }
                           },
                           style: ElevatedButton.styleFrom(
@@ -318,15 +432,24 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             elevation: 0,
                           ),
-                          child: Text(
-                            'LOGIN',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(
+                                  'LOGIN',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
                         ),
                         const SizedBox(height: 24),
 

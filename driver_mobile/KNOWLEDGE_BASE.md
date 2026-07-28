@@ -17,6 +17,7 @@ The application is structured following clean coding principles and modularity. 
 | `lib/` | Main application Dart source code. |
 | `lib/screens/` | Screen-level widget containers. |
 | `lib/screens/auth/` | Authentication-related flows (Login, Forgot Password, etc.). |
+| `lib/services/` | Backend REST API integration, authentication, and location tracking services (`api_service.dart`, `auth_service.dart`, `location_service.dart`). |
 | `lib/theme/` | Centralized design system constants and MaterialApp theme settings. |
 | `test/` | Automated widget, integration, and unit tests. |
 
