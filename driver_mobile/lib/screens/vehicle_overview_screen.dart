@@ -27,6 +27,7 @@ class VehicleOverviewScreen extends StatelessWidget {
         backgroundColor: primaryDark,
         elevation: 0,
         centerTitle: false,
+        titleSpacing: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),

@@ -1,122 +1,98 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'raise_ticket_screen.dart';
-import 'ticket_details_screen.dart';
+import 'fuel_entry_details_screen.dart';
 
-/// Representation of a Support Ticket data item.
-class SupportTicketItem {
-  final String ticketId;
-  final String issueCategory;
-  final String vehicleNumber;
-  final String tripId;
-  final String priority;
+/// Representation of a Fuel Entry history item.
+class FuelHistoryItem {
+  final String id;
+  final String station;
+  final String dateTime;
+  final String quantity;
+  final String cost;
+  final String paymentMode;
   final String status;
-  final String raisedDate;
   final Color statusBg;
   final Color statusText;
 
-  const SupportTicketItem({
-    required this.ticketId,
-    required this.issueCategory,
-    required this.vehicleNumber,
-    required this.tripId,
-    required this.priority,
+  const FuelHistoryItem({
+    required this.id,
+    required this.station,
+    required this.dateTime,
+    required this.quantity,
+    required this.cost,
+    required this.paymentMode,
     required this.status,
-    required this.raisedDate,
     required this.statusBg,
     required this.statusText,
   });
 }
 
-/// Driver Module - Support History Screen
+/// Driver Module - Fuel History Screen
 /// 
 /// Replicates the Fleet Management design system with Dark Navy header (#101C2C),
-/// Orange primary CTA (#FF7A1A), search bar, filter chips (All, Open, In Progress,
-/// Resolved, Rejected), realistic Indian fleet issue ticket cards, and a Raise Ticket FAB.
-class SupportHistoryScreen extends StatefulWidget {
-  const SupportHistoryScreen({super.key});
+/// search bar, filter chips, and card list of submitted fuel entries.
+class FuelHistoryScreen extends StatefulWidget {
+  const FuelHistoryScreen({super.key});
 
   @override
-  State<SupportHistoryScreen> createState() => _SupportHistoryScreenState();
+  State<FuelHistoryScreen> createState() => _FuelHistoryScreenState();
 }
 
-class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
+class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
   int _selectedFilterIndex = 0;
-  final List<String> _filters = ['All', 'Open', 'In Progress', 'Resolved', 'Rejected'];
+  final List<String> _filters = ['All', 'Verified', 'Pending', 'Approved'];
 
-  static const List<SupportTicketItem> _allTickets = [
-    SupportTicketItem(
-      ticketId: 'TK-1024',
-      issueCategory: 'Engine Overheating',
-      vehicleNumber: 'TS09AB4589',
-      tripId: 'TRP-9901',
-      priority: 'High',
-      status: 'Open',
-      raisedDate: 'Oct 24, 2023',
-      statusBg: Color(0xFFFFEDD5),
-      statusText: Color(0xFFC2410C),
+  static const List<FuelHistoryItem> _allEntries = [
+    FuelHistoryItem(
+      id: 'FL-4089',
+      station: 'HP Fuel Station, Khalapur',
+      dateTime: 'Oct 24, 2023 • 10:30 AM',
+      quantity: '45.0 L (Diesel)',
+      cost: '₹ 4,250.00',
+      paymentMode: 'Fleet Card',
+      status: 'Verified',
+      statusBg: Color(0xFFDCFCE7),
+      statusText: Color(0xFF15803D),
     ),
-    SupportTicketItem(
-      ticketId: 'TK-1018',
-      issueCategory: 'Tyre Puncture',
-      vehicleNumber: 'MH12PQ8820',
-      tripId: 'TRP-9905',
-      priority: 'Medium',
-      status: 'In Progress',
-      raisedDate: 'Oct 22, 2023',
+    FuelHistoryItem(
+      id: 'FL-4022',
+      station: 'IOCL Terminal, Navi Mumbai',
+      dateTime: 'Oct 20, 2023 • 04:15 PM',
+      quantity: '50.0 L (Diesel)',
+      cost: '₹ 4,700.00',
+      paymentMode: 'Fleet Card',
+      status: 'Verified',
+      statusBg: Color(0xFFDCFCE7),
+      statusText: Color(0xFF15803D),
+    ),
+    FuelHistoryItem(
+      id: 'FL-3980',
+      station: 'BPCL Expressway Hub, Panvel',
+      dateTime: 'Oct 15, 2023 • 08:45 AM',
+      quantity: '40.0 L (Diesel)',
+      cost: '₹ 3,760.00',
+      paymentMode: 'Cash',
+      status: 'Approved',
       statusBg: Color(0xFFDBEAFE),
       statusText: Color(0xFF1D4ED8),
     ),
-    SupportTicketItem(
-      ticketId: 'TK-0998',
-      issueCategory: 'Brake Service Required',
-      vehicleNumber: 'KA02AB1456',
-      tripId: 'TRP-9882',
-      priority: 'High',
-      status: 'Resolved',
-      raisedDate: 'Oct 18, 2023',
-      statusBg: Color(0xFFDCFCE7),
-      statusText: Color(0xFF15803D),
-    ),
-    SupportTicketItem(
-      ticketId: 'TK-0991',
-      issueCategory: 'Battery Not Charging',
-      vehicleNumber: 'AP39CD2211',
-      tripId: 'TRP-9874',
-      priority: 'Low',
-      status: 'Resolved',
-      raisedDate: 'Oct 15, 2023',
-      statusBg: Color(0xFFDCFCE7),
-      statusText: Color(0xFF15803D),
-    ),
-    SupportTicketItem(
-      ticketId: 'TK-0985',
-      issueCategory: 'GPS Device Not Working',
-      vehicleNumber: 'TN22EF5544',
-      tripId: 'TRP-9851',
-      priority: 'Medium',
-      status: 'Rejected',
-      raisedDate: 'Oct 10, 2023',
-      statusBg: Color(0xFFFEE2E2),
-      statusText: Color(0xFFDC2626),
-    ),
-    SupportTicketItem(
-      ticketId: 'TK-0972',
-      issueCategory: 'Breakdown Assistance',
-      vehicleNumber: 'MH04JK7712',
-      tripId: 'TRP-9820',
-      priority: 'High',
-      status: 'Resolved',
-      raisedDate: 'Oct 05, 2023',
-      statusBg: Color(0xFFDCFCE7),
-      statusText: Color(0xFF15803D),
+    FuelHistoryItem(
+      id: 'FL-3912',
+      station: 'Reliance Petroleum, Lonavala',
+      dateTime: 'Oct 10, 2023 • 02:20 PM',
+      quantity: '38.0 L (Diesel)',
+      cost: '₹ 3,572.00',
+      paymentMode: 'UPI / Online',
+      status: 'Approved',
+      statusBg: Color(0xFFDBEAFE),
+      statusText: Color(0xFF1D4ED8),
     ),
   ];
 
-  List<SupportTicketItem> get _filteredTickets {
-    if (_selectedFilterIndex == 0) return _allTickets;
+  List<FuelHistoryItem> get _filteredEntries {
+    if (_selectedFilterIndex == 0) return _allEntries;
     final filterName = _filters[_selectedFilterIndex];
-    return _allTickets.where((t) => t.status == filterName).toList();
+    return _allEntries.where((e) => e.status == filterName).toList();
   }
 
   @override
@@ -126,7 +102,6 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
     const borderGray = Color(0xFFE2E8F0);
     const textPrimary = Color(0xFF1F2937);
     const textSecondary = Color(0xFF6B7280);
-    const primaryOrange = Color(0xFFFF7A1A);
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -139,45 +114,39 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
+        title: Text(
+          'Fuel History',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: Container(
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8.0),
               ),
               padding: const EdgeInsets.all(4.0),
               child: Image.asset(
-                'assets/logo.png',
+                'assets/images/logo.png',
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
-                  return Image.asset(
-                    'assets/images/logo.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.local_shipping_rounded,
-                        color: primaryDark,
-                        size: 20,
-                      );
-                    },
+                  return const Icon(
+                    Icons.local_shipping_rounded,
+                    color: primaryDark,
+                    size: 20,
                   );
                 },
               ),
             ),
-            const SizedBox(width: 12),
-            Text(
-              'Support History',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -186,17 +155,6 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Subtitle Banner Description
-              Text(
-                'Track and manage your vehicle issues and support requests.',
-                style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: textSecondary,
-                ),
-              ),
-              const SizedBox(height: 16.0),
-
               // 1. Search Bar
               Container(
                 height: 48,
@@ -225,7 +183,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                       child: TextField(
                         readOnly: true,
                         decoration: InputDecoration(
-                          hintText: 'Search Ticket ID or Issue...',
+                          hintText: 'Search Fuel Station or ID...',
                           hintStyle: GoogleFonts.poppins(
                             fontSize: 13.5,
                             color: textSecondary,
@@ -293,70 +251,38 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
 
               const SizedBox(height: 20.0),
 
-              // 3. Ticket List
+              // 3. Fuel History List
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: _filteredTickets.length,
+                itemCount: _filteredEntries.length,
                 separatorBuilder: (context, index) => const SizedBox(height: 14.0),
                 itemBuilder: (context, index) {
-                  final ticket = _filteredTickets[index];
-                  return _buildTicketCard(context, ticket);
+                  final entry = _filteredEntries[index];
+                  return _buildHistoryCard(context, entry);
                 },
               ),
 
-              const SizedBox(height: 80.0), // Padding for FAB space
+              const SizedBox(height: 24.0),
             ],
           ),
         ),
       ),
-
-      // 4. Circular (+) Floating Action Button
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const RaiseTicketScreen(),
-            ),
-          );
-        },
-        backgroundColor: primaryOrange,
-        elevation: 4,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
-      ),
     );
   }
 
-  Widget _buildTicketCard(BuildContext context, SupportTicketItem ticket) {
+  Widget _buildHistoryCard(BuildContext context, FuelHistoryItem entry) {
     const borderGray = Color(0xFFE2E8F0);
     const textPrimary = Color(0xFF1F2937);
     const textSecondary = Color(0xFF6B7280);
     const primaryOrange = Color(0xFFFF7A1A);
-
-    // Priority pill colors
-    Color priorityBg = const Color(0xFFFEF3C7);
-    Color priorityText = const Color(0xFFD97706);
-    if (ticket.priority == 'High') {
-      priorityBg = const Color(0xFFFEE2E2);
-      priorityText = const Color(0xFFDC2626);
-    } else if (ticket.priority == 'Low') {
-      priorityBg = const Color(0xFFE0F2FE);
-      priorityText = const Color(0xFF0284C7);
-    }
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => TicketDetailsScreen(
-              ticketId: ticket.ticketId,
-              category: ticket.issueCategory,
-              vehicleNumber: ticket.vehicleNumber,
-              raisedDate: ticket.raisedDate,
-            ),
+            builder: (context) => FuelEntryDetailsScreen(entry: entry),
           ),
         );
       },
@@ -377,14 +303,14 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row: Ticket ID & Status Badge
+          // Header Row: Station Name & Status Badge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '#${ticket.ticketId}',
+                '#${entry.id}',
                 style: GoogleFonts.poppins(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: primaryOrange,
                 ),
@@ -392,61 +318,46 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: ticket.statusBg,
+                  color: entry.statusBg,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  ticket.status,
+                  entry.status,
                   style: GoogleFonts.poppins(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: ticket.statusText,
+                    color: entry.statusText,
                   ),
                 ),
               ),
             ],
           ),
 
-          const SizedBox(height: 8.0),
+          const SizedBox(height: 6.0),
 
-          // Issue Title & Priority Tag
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  ticket.issueCategory,
-                  style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: textPrimary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8.0),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: priorityBg,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  ticket.priority,
-                  style: GoogleFonts.poppins(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    color: priorityText,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            entry.station,
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: textPrimary,
+            ),
+          ),
+          const SizedBox(height: 2.0),
+          Text(
+            entry.dateTime,
+            style: GoogleFonts.nunito(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: textSecondary,
+            ),
           ),
 
           const SizedBox(height: 12.0),
           const Divider(color: borderGray, height: 1.0),
           const SizedBox(height: 12.0),
 
-          // Details Grid (Vehicle, Trip, Date) & Chevron Arrow
+          // Details Grid (Quantity, Cost, Payment Mode)
           Row(
             children: [
               Expanded(
@@ -454,7 +365,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'VEHICLE',
+                      'QUANTITY',
                       style: GoogleFonts.poppins(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
@@ -464,7 +375,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                     ),
                     const SizedBox(height: 2.0),
                     Text(
-                      ticket.vehicleNumber,
+                      entry.quantity,
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -479,7 +390,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'TRIP ID',
+                      'TOTAL COST',
                       style: GoogleFonts.poppins(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
@@ -489,7 +400,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                     ),
                     const SizedBox(height: 2.0),
                     Text(
-                      ticket.tripId,
+                      entry.cost,
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -504,7 +415,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'RAISED DATE',
+                      'PAYMENT',
                       style: GoogleFonts.poppins(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
@@ -514,7 +425,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                     ),
                     const SizedBox(height: 2.0),
                     Text(
-                      ticket.raisedDate,
+                      entry.paymentMode,
                       style: GoogleFonts.nunito(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
@@ -524,16 +435,11 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: textSecondary,
-                size: 20,
-              ),
             ],
           ),
         ],
       ),
     ),
-    );
-  }
+  );
+}
 }
