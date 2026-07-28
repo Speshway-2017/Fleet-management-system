@@ -17,6 +17,7 @@ All notable changes to the Fleet Driver Mobile application will be documented in
   - Added `POST /api/driver/pod` for Proof of Delivery (POD) photo capture and upload to Cloudinary & MongoDB.
   - Added prominent console log outputs in backend controllers (`admin.controller.js` and `driver.controller.js`) printing email and plain text password whenever a new Driver or Fleet Manager is created.
   - Configured `ApiService` with dynamic host resolution (PC Wi-Fi IP `10.86.34.1:5000` + USB reverse `127.0.0.1:5000` fallback) and added a **Server Settings Configuration Modal** on the Login screen, resolving physical Android device (`CPH2835`) network timeout errors.
+  - Updated Express backend CORS middleware in `app.js` to dynamically allow Flutter Web origins (`http://localhost:*`, `http://127.0.0.1:*`, local network IPs), resolving CORS preflight blocked errors when running Flutter Web.
 
 ## [1.17.9] - 2026-07-28
 

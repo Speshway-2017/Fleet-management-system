@@ -128,7 +128,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     const primaryDark = Color(0xFF101C2C);
     const borderGray = Color(0xFFE2E8F0);
     const textPrimary = Color(0xFF1F2937);
-    const textSecondary = Color(0xFF6B7280);
 
     final List<String> filterLabels = ['All', 'Read', 'Unread'];
 

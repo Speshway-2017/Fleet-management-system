@@ -80,7 +80,7 @@ const startServer = async () => {
   // 5. Set up Socket.IO
   const io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:5173',
+      origin: (origin, callback) => callback(null, true),
       credentials: true,
     }
   });
@@ -186,9 +186,8 @@ const startServer = async () => {
 
   // 6. Start server
   server.listen(PORT, () => {
-    console.log(`🚀  Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-    console.log(`🌐  CORS allowed for: ${process.env.CLIENT_URL}`);
-    // printRoutes(app);
+    console.log(`🚀  Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+    console.log(`🌐  CORS allowed for: Frontend (localhost:5173), Flutter Web, and Mobile Clients`);
   });
 
   server.on('error', (err) => {
