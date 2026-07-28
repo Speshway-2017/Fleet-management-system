@@ -19,7 +19,7 @@ class UpdateTripStatusScreen extends StatefulWidget {
 
 class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
   // Currently selected status (default to 'En Route')
-  String _selectedStatus = 'En Route';
+  final String _selectedStatus = 'En Route';
 
   // Odometer and Remarks input controllers
   final TextEditingController _odometerController = TextEditingController();
@@ -40,33 +40,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
     super.dispose();
   }
 
-  // Action status definitions
-  final List<Map<String, dynamic>> _statusItems = [
-    {
-      'label': 'Reached Pickup',
-      'icon': Icons.location_on,
-    },
-    {
-      'label': 'Goods Loaded',
-      'icon': Icons.inventory_2_outlined,
-    },
-    {
-      'label': 'Trip Started',
-      'icon': Icons.local_shipping_outlined,
-    },
-    {
-      'label': 'En Route',
-      'icon': Icons.local_shipping,
-    },
-    {
-      'label': 'Reached Destination',
-      'icon': Icons.flag_outlined,
-    },
-    {
-      'label': 'Goods Unloaded',
-      'icon': Icons.outbox,
-    },
-  ];
+
 
   @override
   Widget build(BuildContext context) {
@@ -92,15 +66,8 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
               _buildTopSummaryCard(context),
               AppSpacing.verticalSm,
 
-              // 2. Select New Status Title
-              _buildSectionTitle('Select New Status'),
-
-              // 3. Status selection grid
-              _buildStatusGrid(context),
-              const SizedBox(height: 12),
-
-              // 4. Trip Completed full-width option
-              _buildTripCompletedOption(context),
+              // 2. Automatic Live GPS Tracking Status Banner (No manual handling required)
+              _buildAutoStatusBanner(context),
               AppSpacing.verticalSm,
 
               // 5. Current Location Card
@@ -118,6 +85,11 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
               // 8. Attach Photo Proof Section
               _buildSectionTitle('Attach Photo Proof'),
               _buildPhotoProofSection(context),
+              AppSpacing.verticalSm,
+
+              // 8b. Customer Delivery Slips (POD & Weighbridge)
+              _buildSectionTitle('Customer Slips (POD & Weighbridge)'),
+              _buildCustomerSlipsSection(context),
               AppSpacing.verticalSm,
 
               // 9. Final Checklist
@@ -233,107 +205,82 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
     );
   }
 
-  // 3. Status selection grid
-  Widget _buildStatusGrid(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _statusItems.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 2.1,
-      ),
-      itemBuilder: (context, index) {
-        final item = _statusItems[index];
-        final label = item['label'] as String;
-        final icon = item['icon'] as IconData;
-        final isSelected = _selectedStatus == label;
-
-        return InkWell(
-          onTap: () {
-            setState(() {
-              _selectedStatus = label;
-            });
-          },
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFFFF3E0) : AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(
-                color: isSelected ? AppColors.secondary : AppColors.divider,
-                width: isSelected ? 1.5 : 1.0,
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  color: AppColors.secondary,
-                  size: 20,
+  // 2. Automatic Live GPS Tracking Status Banner
+  Widget _buildAutoStatusBanner(BuildContext context) {
+    return CustomCard(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withAlpha(25),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.gps_fixed, color: AppColors.success, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Live GPS Status: Auto-Updated',
+                            style: TextStyle(
+                              color: AppColors.primaryText,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                          Text(
+                            'Reached Customer Location',
+                            style: TextStyle(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  label,
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withAlpha(30),
+                  borderRadius: BorderRadius.circular(AppRadius.round),
+                ),
+                child: const Text(
+                  'Auto-Managed',
                   style: TextStyle(
-                    color: AppColors.primaryText,
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: AppColors.success,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
                   ),
                 ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // 4. Trip Completed full-width option
-  Widget _buildTripCompletedOption(BuildContext context) {
-    final isSelected = _selectedStatus == 'Trip Completed';
-
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedStatus = 'Trip Completed';
-        });
-      },
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(vertical: 14.0),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFFF3E0) : AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(
-            color: isSelected ? AppColors.secondary : AppColors.divider,
-            width: isSelected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.check_circle_outline,
-              color: AppColors.secondary,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Trip Completed',
-              style: TextStyle(
-                color: AppColors.primaryText,
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Status updates automatically based on live vehicle GPS tracking. POD & Weighbridge slip uploads are enabled below upon reaching customer location.',
+            style: TextStyle(
+              color: AppColors.secondaryText,
+              fontSize: 11.5,
+              height: 1.4,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -586,6 +533,109 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                 ],
               ),
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 8b. Customer Delivery Slips (POD & Weighbridge)
+  Widget _buildCustomerSlipsSection(BuildContext context) {
+    return Column(
+      children: [
+        CustomCard(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.blue.withAlpha(25),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.assignment_turned_in_outlined, color: Colors.blue, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'POD Slip (Proof of Delivery)',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primaryText),
+                    ),
+                    Text(
+                      'Required at customer location',
+                      style: TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                    ),
+                  ],
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('POD Slip selected & attached!')),
+                  );
+                },
+                icon: const Icon(Icons.upload_file, size: 14),
+                label: const Text('POD', style: TextStyle(fontSize: 11)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.secondary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  elevation: 0,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        CustomCard(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.orange.withAlpha(25),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.scale_rounded, color: Colors.orange, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Weighbridge Slip',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primaryText),
+                    ),
+                    Text(
+                      'Cargo weight scale slip',
+                      style: TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                    ),
+                  ],
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Weighbridge Slip selected & attached!')),
+                  );
+                },
+                icon: const Icon(Icons.upload_file, size: 14),
+                label: const Text('Weighbridge', style: TextStyle(fontSize: 11)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.secondary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  elevation: 0,
+                ),
+              ),
+            ],
           ),
         ),
       ],

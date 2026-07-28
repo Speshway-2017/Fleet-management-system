@@ -23,8 +23,8 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  bool get _isTripUnread => !NotificationsScreen.notifications.firstWhere((n) => n.id == '1').isRead;
-  bool get _isMaintenanceUnread => !NotificationsScreen.notifications.firstWhere((n) => n.id == '2').isRead;
+  bool get _isTripUnread => NotificationsScreen.notifications.any((n) => n.id == '1' && !n.isRead);
+  bool get _isMaintenanceUnread => NotificationsScreen.notifications.any((n) => n.id == '2' && !n.isRead);
 
   @override
   void initState() {
