@@ -65,6 +65,7 @@ class _NotificationDetailsScreenState extends State<NotificationDetailsScreen> {
       appBar: CustomAppBar(
         backgroundColor: AppColors.primary,
         centerTitle: false,
+        titleSpacing: 0.0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
@@ -82,6 +83,29 @@ class _NotificationDetailsScreenState extends State<NotificationDetailsScreen> {
             color: Colors.white,
           ),
         ),
+        actions: [
+          Container(
+            width: 32,
+            height: 32,
+            margin: const EdgeInsets.only(right: 16.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8.0),
+            ),
+            padding: const EdgeInsets.all(4.0),
+            child: Image.asset(
+              'assets/logo.png',
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(
+                  Icons.local_shipping,
+                  color: AppColors.primary,
+                  size: 18,
+                );
+              },
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -131,7 +155,10 @@ class _NotificationDetailsScreenState extends State<NotificationDetailsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
+                                Wrap(
+                                  spacing: AppSpacing.sm,
+                                  runSpacing: AppSpacing.xs,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
                                     // Notification Type Badge
                                     Container(
@@ -152,7 +179,6 @@ class _NotificationDetailsScreenState extends State<NotificationDetailsScreen> {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: AppSpacing.sm),
                                     // Read Status Badge
                                     Container(
                                       padding: const EdgeInsets.symmetric(
