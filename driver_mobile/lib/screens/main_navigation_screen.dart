@@ -66,9 +66,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         children: _screens,
       ),
       bottomNavigationBar: Container(
-        color: AppColors.primary,
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+        height: 64.0 + MediaQuery.of(context).padding.bottom,
+        decoration: const BoxDecoration(
+          color: AppColors.primary,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 8,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4.0),
         child: SafeArea(
+          top: false,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -86,22 +97,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   Widget _buildNavItem(int index, IconData outlineIcon, IconData solidIcon, String label) {
     final bool isSelected = _currentIndex == index;
+    late final Widget iconWidget;
 
-    Widget iconWidget = Icon(
-      isSelected ? solidIcon : outlineIcon,
-      color: isSelected ? Colors.white : AppColors.textDisabled,
-      size: 24,
-    );
-
-    // If it's the Alerts tab (index 3), add a notification badge.
     if (index == 3) {
       iconWidget = Stack(
         clipBehavior: Clip.none,
         children: [
-          iconWidget,
+          Icon(
+            isSelected ? solidIcon : outlineIcon,
+            color: isSelected ? AppColors.secondary : AppColors.textDisabled,
+            size: 24,
+          ),
           Positioned(
-            right: 0,
-            top: 0,
+            right: -2,
+            top: -2,
             child: Container(
               width: 8,
               height: 8,
@@ -113,39 +122,23 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
         ],
       );
+    } else {
+      iconWidget = Icon(
+        isSelected ? solidIcon : outlineIcon,
+        color: isSelected ? AppColors.secondary : AppColors.textDisabled,
+        size: 24,
+      );
     }
 
-    if (isSelected) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.secondary,
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            iconWidget,
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      );
-    } else {
-      return InkWell(
+    return Expanded(
+      child: InkWell(
         onTap: () {
           MainNavigationScreen.selectedTabNotifier.value = index;
         },
         borderRadius: BorderRadius.circular(12.0),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6.0),
+          alignment: Alignment.center,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -154,16 +147,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               Text(
                 label,
                 style: GoogleFonts.poppins(
-                  color: AppColors.textDisabled,
+                  color: isSelected ? AppColors.secondary : AppColors.textDisabled,
                   fontSize: 10,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 ),
               ),
             ],
           ),
         ),
-      );
-    }
+      ),
+    );
   }
 }
 
