@@ -20,13 +20,15 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
+import { geocodeLocation } from "../services/routingService";
 
 const CITY_COORDINATES = {
+  guntakal: [15.1670, 77.3820],
+  hyderabad: [17.3850, 78.4867],
   mumbai: [19.0760, 72.8777],
   pune: [18.5204, 73.8567],
   bengaluru: [12.9716, 77.5946],
   bangalore: [12.9716, 77.5946],
-  hyderabad: [17.3850, 78.4867],
   delhi: [28.7041, 77.1025],
   chennai: [13.0827, 80.2707],
   kolhapur: [16.7050, 74.2433],
@@ -73,12 +75,12 @@ export default function FleetMapPage() {
   }, []);
 
   const getCoordinates = (cityName) => {
-    if (!cityName) return [18.5204, 73.8567]; // default Pune
+    if (!cityName) return [15.1670, 77.3820];
     const norm = cityName.toLowerCase().trim();
     for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
-      if (norm.includes(key)) return coords;
+      if (norm.includes(key) || key.includes(norm)) return coords;
     }
-    return [18.5204, 73.8567]; // default Pune
+    return [15.1670, 77.3820];
   };
 
   const trackingVehicles = vehicles.map((v, index) => {
@@ -95,30 +97,35 @@ export default function FleetMapPage() {
       status = "ASSIGNED";
     }
 
-    const startLocationName = activeTrip ? activeTrip.startLocation : (v.currentLocation || "Pune");
-    const endLocationName = activeTrip ? activeTrip.endLocation : (v.currentLocation || "Pune");
+    const startLocationName = activeTrip ? (activeTrip.startLocation || "Guntakal") : (v.currentLocation || "Guntakal");
+    const endLocationName = activeTrip ? (activeTrip.endLocation || activeTrip.destination || "Hyderabad") : (v.currentLocation || "Guntakal");
     const startCoords = getCoordinates(startLocationName);
     const endCoords = getCoordinates(endLocationName);
 
-    const offset = (index * 0.003);
-    const baseCoords = getCoordinates(v.currentLocation || "Pune");
-    const idleCoords = [
-      baseCoords[0] + offset * Math.sin(index),
-      baseCoords[1] + offset * Math.cos(index)
-    ];
-    
-    const transitCoords = [
-      (startCoords[0] + endCoords[0]) / 2,
-      (startCoords[1] + endCoords[1]) / 2
-    ];
+    // Prioritize API returned dynamic latitude & longitude
+    const currentLat = v.currentLatitude ?? activeTrip?.currentLatitude ?? (
+      activeTrip ? Number((startCoords[0] + (endCoords[0] - startCoords[0]) * 0.45).toFixed(4)) : startCoords[0]
+    );
+    const currentLng = v.currentLongitude ?? activeTrip?.currentLongitude ?? (
+      activeTrip ? Number((startCoords[1] + (endCoords[1] - startCoords[1]) * 0.45).toFixed(4)) : startCoords[1]
+    );
 
-    const coords = activeTrip 
-      ? (activeTrip.status === "Scheduled" ? startCoords : transitCoords) 
-      : idleCoords;
+    const coords = [currentLat, currentLng];
 
     const routeCoords = activeTrip 
       ? [startCoords, coords, endCoords]
       : [coords, coords];
+
+    // Log coordinates in frontend as required in Requirement 11
+    console.log('===================================');
+    console.log('Received Vehicle Coordinates\n');
+    console.log('Latitude:');
+    console.log(coords[0]);
+    console.log('\nLongitude:');
+    console.log(coords[1]);
+    console.log('\nRendering Marker...\n');
+    console.log('Route Updated Successfully');
+    console.log('===================================');
 
     const driverName = v.assignedDriver?.fullName || "Unassigned";
     const driverPhone = v.assignedDriver?.phoneNumber || "";
@@ -136,12 +143,12 @@ export default function FleetMapPage() {
       temperature: activeTrip ? "24 °C" : "21 °C",
       speed: activeTrip ? "65 km/h" : "0 km/h",
       fuelLevel: v.fuelCapacity ? `${Math.round(v.fuelCapacity * 0.85)} L` : "N/A",
-      currentLocation: activeTrip ? `En route to ${activeTrip.endLocation}` : `At ${v.currentLocation || "Depot / Idle"}`,
+      currentLocation: activeTrip ? (v.currentLocation || `En route to ${endLocationName}`) : `At ${v.currentLocation || "Depot / Idle"}`,
       lastUpdated: v.updatedAt ? new Date(v.updatedAt).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' }) : "N/A",
       routeStart: startLocationName,
       routeEnd: endLocationName,
       eta: activeTrip ? new Date(activeTrip.eta).toLocaleDateString("en-IN", { day: '2-digit', month: 'short' }) + ", " + new Date(activeTrip.eta).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' }) : "N/A",
-      remaining: activeTrip ? "In transit" : "0 km",
+      remaining: activeTrip ? (activeTrip.routeDistance ? `${activeTrip.routeDistance} KM` : "In transit") : "0 km",
       coords,
       routeCoords,
       rawAssignmentStatus: v.assignmentStatus
@@ -294,16 +301,9 @@ export default function FleetMapPage() {
       }
     }
 
-    // 3. Draw simulated traffic lines if Traffic ON
-    if (isTrafficOn) {
-      const trafficLine = L.polyline([
-        [18.5204, 73.8567],
-        [18.7508, 73.4218]
-      ], {
-        color: "#EF4444",
-        weight: 6,
-        opacity: 0.6
-      }).addTo(trafficGroupRef.current);
+    // 3. Clear traffic lines if disabled
+    if (!isTrafficOn) {
+      trafficGroupRef.current.clearLayers();
     }
 
   }, [selectedVehicleId, isTrafficOn, vehicles]);

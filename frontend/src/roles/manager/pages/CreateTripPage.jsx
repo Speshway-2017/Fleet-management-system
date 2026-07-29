@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -17,13 +17,19 @@ import {
   Search,
   DollarSign,
   Activity,
-  Wallet
+  Wallet,
+  Navigation,
+  Phone,
+  Building2,
+  Trash2,
+  Check
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { useAuth } from "@/context/AuthContext";
 import { managerApi } from "../api/managerApi";
 import { calculateDrivingRoute, calculateEtaFromDuration } from "../services/routingService";
+import { INDIAN_STATES, getCitiesForState } from "@/constants/indianStates";
 
 const CITIES_SUGGESTIONS = [
   "Ahmedabad",
@@ -39,6 +45,120 @@ const CITIES_SUGGESTIONS = [
   "Vijayawada",
   "Visakhapatnam"
 ];
+
+function SearchableSelect({
+  label,
+  required,
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select...",
+  error,
+  disabled = false
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredOptions = options.filter((opt) => {
+    const optName = typeof opt === "object" ? opt.name : opt;
+    return String(optName).toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  const handleSelect = (optVal) => {
+    const valStr = typeof optVal === "object" ? optVal.name : optVal;
+    onChange(valStr);
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium text-left flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 ${
+          disabled
+            ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+            : error
+            ? "border-red-300 focus:border-red-500 text-[#1E293B]"
+            : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+        }`}
+      >
+        <span className={value ? "text-[#1E293B] font-semibold font-poppins" : "text-gray-400 font-normal font-poppins"}>
+          {value || placeholder}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-[#64748B] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 mt-1.5 w-full bg-white border border-[#E7EAF0] rounded-xl shadow-lg overflow-hidden py-2 animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="px-2.5 pb-2 border-b border-[#E7EAF0]">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#94A3B8]" />
+              <input
+                type="text"
+                autoFocus
+                placeholder={`Search ${label.toLowerCase()}...`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-[#E7EAF0] rounded-lg text-xs focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-poppins"
+              />
+            </div>
+          </div>
+
+          <div className="max-h-48 overflow-y-auto custom-scrollbar py-1">
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-2.5 text-xs text-gray-400 text-center font-medium font-poppins">
+                No matching options found
+              </div>
+            ) : (
+              filteredOptions.map((opt, idx) => {
+                const optStr = typeof opt === "object" ? opt.name : opt;
+                const isSelected = value === optStr;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSelect(opt)}
+                    className={`w-full px-3.5 py-2 text-left text-xs flex items-center justify-between font-poppins transition-colors ${
+                      isSelected
+                        ? "bg-amber-50 text-[#B45A0A] font-bold"
+                        : "text-[#1E293B] hover:bg-gray-50 font-medium"
+                    }`}
+                  >
+                    <span>{optStr}</span>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-[#B45A0A]" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+          <span>•</span> {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function CreateTripPage() {
   const navigate = useNavigate();
@@ -77,6 +197,99 @@ export default function CreateTripPage() {
   const [showStartSuggestions, setShowStartSuggestions] = useState(false);
   const [endSuggestions, setEndSuggestions] = useState([]);
   const [showEndSuggestions, setShowEndSuggestions] = useState(false);
+
+  // Address States for Logistics & Invoice
+  const [pickupAddress, setPickupAddress] = useState({
+    companyName: "",
+    contactPerson: "",
+    mobile: "",
+    streetAddress: "",
+    area: "",
+    city: "",
+    state: "",
+    pincode: ""
+  });
+
+  const [deliveryAddress, setDeliveryAddress] = useState({
+    companyName: "",
+    contactPerson: "",
+    mobile: "",
+    streetAddress: "",
+    area: "",
+    city: "",
+    state: "",
+    pincode: ""
+  });
+
+  const [pickupErrors, setPickupErrors] = useState({});
+  const [deliveryErrors, setDeliveryErrors] = useState({});
+
+  const validateAddressField = (type, field, val) => {
+    let err = "";
+    if (field === 'companyName') {
+      if (!val || !val.trim()) err = "Company Name is required.";
+    } else if (field === 'contactPerson') {
+      if (!val || !val.trim()) err = "Contact Person is required.";
+    } else if (field === 'mobile') {
+      if (!val) err = "Mobile Number is required.";
+      else if (!/^\d{10}$/.test(val)) err = "Mobile number must be exactly 10 digits.";
+    } else if (field === 'streetAddress') {
+      if (!val || !val.trim()) err = "Street Address is required.";
+      else if (val.trim().length < 10) err = "Street Address must be at least 10 characters.";
+    } else if (field === 'city') {
+      if (!val || !val.trim()) err = "City is required.";
+    } else if (field === 'state') {
+      if (!val || !val.trim()) err = "State is required.";
+    } else if (field === 'pincode') {
+      if (!val) err = "Pincode is required.";
+      else if (!/^\d{6}$/.test(val)) err = "Pincode must be exactly 6 digits.";
+    }
+    return err;
+  };
+
+  const handleAddressChange = (type, field, val) => {
+    if (type === 'pickup') {
+      setPickupAddress(prev => ({ ...prev, [field]: val }));
+      const err = validateAddressField('pickup', field, val);
+      setPickupErrors(prev => ({ ...prev, [field]: err }));
+    } else {
+      setDeliveryAddress(prev => ({ ...prev, [field]: val }));
+      const err = validateAddressField('delivery', field, val);
+      setDeliveryErrors(prev => ({ ...prev, [field]: err }));
+    }
+  };
+
+  const handleUseCurrentBranch = () => {
+    const branchName = user?.branch || "Pune Central Hub";
+    const newAddress = {
+      companyName: user?.companyName || user?.fullName || "Speshway Logistics Pvt Ltd",
+      contactPerson: user?.fullName || user?.name || "Branch Manager",
+      mobile: (user?.mobile || user?.phone || "9876543210").replace(/\D/g, '').slice(0, 10),
+      streetAddress: user?.branchAddress || user?.address || "Plot 42, Central Freight Yard, Highway Zone",
+      area: user?.area || user?.branchArea || "Industrial Area",
+      city: startLocation || user?.city || user?.branch || "Pune",
+      state: user?.state || "Maharashtra",
+      pincode: user?.pincode || "411001"
+    };
+    setPickupAddress(newAddress);
+    setPickupErrors({});
+    toast.success("Pickup address populated from Current Branch.");
+  };
+
+  const handleClearDeliveryAddress = () => {
+    setDeliveryAddress({
+      companyName: "",
+      contactPerson: "",
+      mobile: "",
+      streetAddress: "",
+      area: "",
+      city: "",
+      state: "",
+      pincode: ""
+    });
+    setDeliveryErrors({});
+    toast.success("Delivery address cleared.");
+  };
 
   // Dynamic Routing State
   const [routeInfo, setRouteInfo] = useState({
@@ -388,6 +601,38 @@ export default function CreateTripPage() {
       return;
     }
 
+    // Pickup Address Validations (inline error updates)
+    const pErrs = {
+      companyName: validateAddressField('pickup', 'companyName', pickupAddress.companyName),
+      contactPerson: validateAddressField('pickup', 'contactPerson', pickupAddress.contactPerson),
+      mobile: validateAddressField('pickup', 'mobile', pickupAddress.mobile),
+      streetAddress: validateAddressField('pickup', 'streetAddress', pickupAddress.streetAddress),
+      city: validateAddressField('pickup', 'city', pickupAddress.city),
+      state: validateAddressField('pickup', 'state', pickupAddress.state),
+      pincode: validateAddressField('pickup', 'pincode', pickupAddress.pincode),
+    };
+    setPickupErrors(pErrs);
+
+    // Delivery Address Validations (inline error updates)
+    const dErrs = {
+      companyName: validateAddressField('delivery', 'companyName', deliveryAddress.companyName),
+      contactPerson: validateAddressField('delivery', 'contactPerson', deliveryAddress.contactPerson),
+      mobile: validateAddressField('delivery', 'mobile', deliveryAddress.mobile),
+      streetAddress: validateAddressField('delivery', 'streetAddress', deliveryAddress.streetAddress),
+      city: validateAddressField('delivery', 'city', deliveryAddress.city),
+      state: validateAddressField('delivery', 'state', deliveryAddress.state),
+      pincode: validateAddressField('delivery', 'pincode', deliveryAddress.pincode),
+    };
+    setDeliveryErrors(dErrs);
+
+    const hasPickupErr = Object.values(pErrs).some(Boolean);
+    const hasDeliveryErr = Object.values(dErrs).some(Boolean);
+
+    if (hasPickupErr || hasDeliveryErr) {
+      toast.error("Please fill in all required address fields accurately.");
+      return;
+    }
+
     const driver = selectedDriverId ? drivers.find(d => String(d.id) === String(selectedDriverId)) : null;
     const vehicle = vehicles.find(v => String(v.id) === String(selectedVehicleId));
 
@@ -412,6 +657,54 @@ export default function CreateTripPage() {
         vehiclePlate: vehicle.plateNumber,
         startLocation,
         endLocation,
+        pickupAddress: {
+          companyName: pickupAddress.companyName.trim(),
+          contactPerson: pickupAddress.contactPerson.trim(),
+          mobile: pickupAddress.mobile.trim(),
+          mobileNumber: pickupAddress.mobile.trim(),
+          streetAddress: pickupAddress.streetAddress.trim(),
+          area: pickupAddress.area?.trim() || "",
+          areaLocality: pickupAddress.area?.trim() || "",
+          city: pickupAddress.city.trim(),
+          state: pickupAddress.state.trim(),
+          pincode: pickupAddress.pincode.trim()
+        },
+        deliveryAddress: {
+          companyName: deliveryAddress.companyName.trim(),
+          contactPerson: deliveryAddress.contactPerson.trim(),
+          mobile: deliveryAddress.mobile.trim(),
+          mobileNumber: deliveryAddress.mobile.trim(),
+          streetAddress: deliveryAddress.streetAddress.trim(),
+          area: deliveryAddress.area?.trim() || "",
+          areaLocality: deliveryAddress.area?.trim() || "",
+          city: deliveryAddress.city.trim(),
+          state: deliveryAddress.state.trim(),
+          pincode: deliveryAddress.pincode.trim()
+        },
+        fromAddress: {
+          companyName: pickupAddress.companyName.trim(),
+          contactPerson: pickupAddress.contactPerson.trim(),
+          mobile: pickupAddress.mobile.trim(),
+          mobileNumber: pickupAddress.mobile.trim(),
+          streetAddress: pickupAddress.streetAddress.trim(),
+          area: pickupAddress.area?.trim() || "",
+          areaLocality: pickupAddress.area?.trim() || "",
+          city: pickupAddress.city.trim(),
+          state: pickupAddress.state.trim(),
+          pincode: pickupAddress.pincode.trim()
+        },
+        toAddress: {
+          companyName: deliveryAddress.companyName.trim(),
+          contactPerson: deliveryAddress.contactPerson.trim(),
+          mobile: deliveryAddress.mobile.trim(),
+          mobileNumber: deliveryAddress.mobile.trim(),
+          streetAddress: deliveryAddress.streetAddress.trim(),
+          area: deliveryAddress.area?.trim() || "",
+          areaLocality: deliveryAddress.area?.trim() || "",
+          city: deliveryAddress.city.trim(),
+          state: deliveryAddress.state.trim(),
+          pincode: deliveryAddress.pincode.trim()
+        },
         departureTime,
         eta,
         status,
@@ -483,39 +776,17 @@ export default function CreateTripPage() {
               <h3 className="font-poppins font-bold text-[#1E293B] text-[16px]">Trip Specifications</h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Trip ID */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Trip ID (Auto-generated)
-                </label>
-                <input
-                  type="text"
-                  value={tripNumber}
-                  disabled
-                  className="w-full px-3.5 py-2.5 h-[44px] bg-slate-50 border border-[#E7EAF0] rounded-xl text-sm text-[#64748B] font-medium focus:outline-none select-none"
-                />
-              </div>
-
-              {/* Status Selection */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Initial Trip Status *
-                </label>
-                <div className="relative">
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full pl-3.5 pr-8 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none cursor-pointer font-medium"
-                    required
-                  >
-                    <option value="Scheduled">Scheduled</option>
-                    <option value="On Transit">On Transit</option>
-                    <option value="Delayed">Delayed</option>
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
+            {/* Trip ID */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Trip ID (Auto-generated)
+              </label>
+              <input
+                type="text"
+                value={tripNumber}
+                disabled
+                className="w-full px-3.5 py-2.5 h-[44px] bg-slate-50 border border-[#E7EAF0] rounded-xl text-sm text-[#64748B] font-medium focus:outline-none select-none"
+              />
             </div>
 
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -720,6 +991,7 @@ export default function CreateTripPage() {
         {/* Right Column: Asset Allocation & Driver Assignment */}
         <div className="lg:col-span-5 space-y-6">
           
+
           {/* Asset Allocation Card */}
           <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0]">
@@ -923,6 +1195,369 @@ export default function CreateTripPage() {
 
         </div>
 
+      </div>
+
+      {/* Pickup & Delivery Address Cards (Full-Width Side by Side Row) */}
+      <div className="mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+          {/* Pickup Address Card */}
+          <div className="bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm flex flex-col justify-between space-y-4 h-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E7EAF0] gap-2">
+              <div>
+                <h2 className="text-base font-bold text-[#1E293B] font-poppins flex items-center gap-2">
+                  📍 Pickup Address
+                </h2>
+                <p className="text-xs text-[#64748B] font-medium mt-0.5 font-poppins">
+                  Sender / Loading Location Details
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleUseCurrentBranch}
+                className="text-xs font-bold text-[#B45A0A] bg-amber-50 hover:bg-amber-100/70 border border-amber-200/60 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs font-poppins shrink-0"
+              >
+                <Building2 className="w-3.5 h-3.5 text-[#B45A0A]" /> Use Current Branch
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Row 1: Company Name & Contact Person */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Company Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Company Name"
+                    value={pickupAddress.companyName}
+                    onChange={(e) => handleAddressChange('pickup', 'companyName', e.target.value)}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                      pickupErrors.companyName ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {pickupErrors.companyName && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {pickupErrors.companyName}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Contact Person <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Contact Person Name"
+                    value={pickupAddress.contactPerson}
+                    onChange={(e) => handleAddressChange('pickup', 'contactPerson', e.target.value)}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                      pickupErrors.contactPerson ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {pickupErrors.contactPerson && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {pickupErrors.contactPerson}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 2: Mobile Number & Street Address */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Mobile Number <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <div className="absolute left-3 flex items-center gap-1.5 text-[#64748B] pointer-events-none border-r border-[#E7EAF0] pr-2.5 h-6">
+                      <Phone className="w-3.5 h-3.5 text-[#B45A0A]" />
+                      <span className="text-xs font-bold text-[#1E293B] font-poppins">+91</span>
+                    </div>
+                    <input
+                      type="text"
+                      maxLength={10}
+                      placeholder="9876543210"
+                      value={pickupAddress.mobile}
+                      onChange={(e) => handleAddressChange('pickup', 'mobile', e.target.value.replace(/\D/g, ''))}
+                      className={`w-full pl-[72px] pr-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                        pickupErrors.mobile ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                      }`}
+                    />
+                  </div>
+                  {pickupErrors.mobile && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {pickupErrors.mobile}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Street Address <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Enter Complete Street Address"
+                    value={pickupAddress.streetAddress}
+                    onChange={(e) => handleAddressChange('pickup', 'streetAddress', e.target.value)}
+                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all resize-none font-poppins ${
+                      pickupErrors.streetAddress ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {pickupErrors.streetAddress && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {pickupErrors.streetAddress}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 3: Area / Locality & City */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Area / Locality
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Area or Locality"
+                    value={pickupAddress.area}
+                    onChange={(e) => handleAddressChange('pickup', 'area', e.target.value)}
+                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#B45A0A] focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins"
+                  />
+                </div>
+
+                <SearchableSelect
+                  label="City"
+                  required={true}
+                  value={pickupAddress.city}
+                  placeholder="Select City"
+                  options={getCitiesForState(pickupAddress.state)}
+                  onChange={(cityVal) => handleAddressChange('pickup', 'city', cityVal)}
+                  error={pickupErrors.city}
+                />
+              </div>
+
+              {/* Row 4: State & Pincode */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <SearchableSelect
+                  label="State"
+                  required={true}
+                  value={pickupAddress.state}
+                  placeholder="Select State"
+                  options={INDIAN_STATES.map(s => s.name)}
+                  onChange={(stateVal) => {
+                    handleAddressChange('pickup', 'state', stateVal);
+                    handleAddressChange('pickup', 'city', '');
+                  }}
+                  error={pickupErrors.state}
+                />
+
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Pincode <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="Enter Pincode"
+                    value={pickupAddress.pincode}
+                    onChange={(e) => handleAddressChange('pickup', 'pincode', e.target.value.replace(/\D/g, ''))}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                      pickupErrors.pincode ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {pickupErrors.pincode && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {pickupErrors.pincode}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Delivery Address Card */}
+          <div className="bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm flex flex-col justify-between space-y-4 h-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E7EAF0] gap-2">
+              <div>
+                <h2 className="text-base font-bold text-[#1E293B] font-poppins flex items-center gap-2">
+                  🚚 Delivery Address
+                </h2>
+                <p className="text-xs text-[#64748B] font-medium mt-0.5 font-poppins">
+                  Receiver / Unloading Location Details
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearDeliveryAddress}
+                className="text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100/70 border border-rose-200/60 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs font-poppins shrink-0"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-500" /> Clear Address
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Row 1: Company Name & Contact Person */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Company Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Company Name"
+                    value={deliveryAddress.companyName}
+                    onChange={(e) => handleAddressChange('delivery', 'companyName', e.target.value)}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                      deliveryErrors.companyName ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {deliveryErrors.companyName && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {deliveryErrors.companyName}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Contact Person <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Contact Person Name"
+                    value={deliveryAddress.contactPerson}
+                    onChange={(e) => handleAddressChange('delivery', 'contactPerson', e.target.value)}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                      deliveryErrors.contactPerson ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {deliveryErrors.contactPerson && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {deliveryErrors.contactPerson}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 2: Mobile Number & Street Address */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Mobile Number <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <div className="absolute left-3 flex items-center gap-1.5 text-[#64748B] pointer-events-none border-r border-[#E7EAF0] pr-2.5 h-6">
+                      <Phone className="w-3.5 h-3.5 text-[#B45A0A]" />
+                      <span className="text-xs font-bold text-[#1E293B] font-poppins">+91</span>
+                    </div>
+                    <input
+                      type="text"
+                      maxLength={10}
+                      placeholder="9876543210"
+                      value={deliveryAddress.mobile}
+                      onChange={(e) => handleAddressChange('delivery', 'mobile', e.target.value.replace(/\D/g, ''))}
+                      className={`w-full pl-[72px] pr-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                        deliveryErrors.mobile ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                      }`}
+                    />
+                  </div>
+                  {deliveryErrors.mobile && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {deliveryErrors.mobile}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Street Address <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Enter Complete Street Address"
+                    value={deliveryAddress.streetAddress}
+                    onChange={(e) => handleAddressChange('delivery', 'streetAddress', e.target.value)}
+                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all resize-none font-poppins ${
+                      deliveryErrors.streetAddress ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {deliveryErrors.streetAddress && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {deliveryErrors.streetAddress}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 3: Area / Locality & City */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Area / Locality
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Area or Locality"
+                    value={deliveryAddress.area}
+                    onChange={(e) => handleAddressChange('delivery', 'area', e.target.value)}
+                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#B45A0A] focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins"
+                  />
+                </div>
+
+                <SearchableSelect
+                  label="City"
+                  required={true}
+                  value={deliveryAddress.city}
+                  placeholder="Select City"
+                  options={getCitiesForState(deliveryAddress.state)}
+                  onChange={(cityVal) => handleAddressChange('delivery', 'city', cityVal)}
+                  error={deliveryErrors.city}
+                />
+              </div>
+
+              {/* Row 4: State & Pincode */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <SearchableSelect
+                  label="State"
+                  required={true}
+                  value={deliveryAddress.state}
+                  placeholder="Select State"
+                  options={INDIAN_STATES.map(s => s.name)}
+                  onChange={(stateVal) => {
+                    handleAddressChange('delivery', 'state', stateVal);
+                    handleAddressChange('delivery', 'city', '');
+                  }}
+                  error={deliveryErrors.state}
+                />
+
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Pincode <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="Enter Pincode"
+                    value={deliveryAddress.pincode}
+                    onChange={(e) => handleAddressChange('delivery', 'pincode', e.target.value.replace(/\D/g, ''))}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                      deliveryErrors.pincode ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {deliveryErrors.pincode && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {deliveryErrors.pincode}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Row containing Map and Cost Projections */}

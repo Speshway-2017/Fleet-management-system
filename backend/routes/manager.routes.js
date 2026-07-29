@@ -15,6 +15,7 @@ import {
   getDriverDetails,
   updateDriver,
   deleteDriver,
+  getDriverStats,
   // Trips
   listTrips,
   createTrip,
@@ -101,6 +102,8 @@ router.put('/vehicles/:id', ...auth, checkActiveSubscription, updateVehicle);
 router.delete('/vehicles/:id', ...auth, checkActiveSubscription, deleteVehicle);
 
 // Drivers
+router.get('/drivers/stats', ...auth, getDriverStats);
+router.get('/drivers/dashboard', ...auth, getDriverStats);
 router.get('/drivers', ...auth, listDrivers);
 router.post('/drivers', ...auth, checkActiveSubscription, createDriver);
 router.get('/drivers/:id', ...auth, getDriverDetails);

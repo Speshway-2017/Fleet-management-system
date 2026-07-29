@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import {
   getVehicles,
   getVehicleById,
@@ -7,9 +8,10 @@ import {
 } from '../repositories/vehicle.repository.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { processVehicleDocuments } from '../utils/documentHelper.js';
-import fs from 'fs';
+import { uploadBase64ImageToCloudinary, deleteImageFromCloudinary } from '../utils/cloudinary.js';
 import Trip from '../models/Trip.js';
 import Vehicle from '../models/Vehicle.js';
+import { logActivity } from '../utils/activityLogger.js';
 
 /**
  * List all vehicles belonging to the logged-in manager
@@ -190,8 +192,40 @@ export const createVehicle = async (req, res, next) => {
     const resolvedLastService = lastService || lastServiceDate || undefined;
     const resolvedNextService = nextService || nextServiceDue || undefined;
 
+    let finalVehicleImage = {
+      secure_url: '',
+      public_id: '',
+      originalName: ''
+    };
+
+    const targetVehicleName = vehicleName || (resolvedBrand ? `${resolvedBrand} ${model || ''}`.trim() : (model || vehicleNumber));
+
+    const imagePayload = req.body.vehicleImage || req.body.image;
+    if (imagePayload) {
+      if (typeof imagePayload === 'object' && imagePayload.secure_url) {
+        finalVehicleImage = {
+          secure_url: imagePayload.secure_url || '',
+          public_id: imagePayload.public_id || '',
+          originalName: imagePayload.originalName || 'vehicle_image'
+        };
+      } else if (typeof imagePayload === 'string' && imagePayload.startsWith('data:image')) {
+        console.log(`\n=================================`);
+        console.log(`Vehicle Image Upload Started\n`);
+        console.log(`Vehicle:\n${targetVehicleName}\n`);
+        console.log(`Uploading image to Cloudinary...`);
+        const uploaded = await uploadBase64ImageToCloudinary(imagePayload, 'vehicles', req.body.imageName || 'vehicle.png');
+        console.log(`✓ Upload Successful\n`);
+        console.log(`Cloudinary URL:\n${uploaded.secure_url}\n`);
+        finalVehicleImage = uploaded;
+      } else if (typeof imagePayload === 'string' && imagePayload.startsWith('http')) {
+        finalVehicleImage.secure_url = imagePayload;
+      }
+    }
+
+    console.log(`Saving vehicle...`);
+
     const vehicle = await createVehicleInRepo({
-      vehicleName: vehicleName || (resolvedBrand ? `${resolvedBrand} ${model}` : model),
+      vehicleName: targetVehicleName,
       vehicleNumber,
       registrationNumber: registrationNumber || vehicleNumber,
       vehicleType: vehicleType || 'Truck',
@@ -210,7 +244,8 @@ export const createVehicle = async (req, res, next) => {
       permitExpiry: permitExpiry || undefined,
       fitnessExpiry: fitnessExpiry || undefined,
       odometer: odometer !== undefined ? Number(odometer) : 0,
-      image: image || '',
+      image: finalVehicleImage.secure_url || (typeof image === 'string' ? image : ''),
+      vehicleImage: finalVehicleImage,
       assignedManager: req.user?._id,
       createdBy: req.user?._id,
       chassisNumber,
@@ -235,6 +270,20 @@ export const createVehicle = async (req, res, next) => {
       availability: availability || 'Immediate',
       branch: resolvedBranch,
       branchDepot: resolvedBranch,
+    });
+
+    console.log(`✓ Vehicle Saved Successfully\n=================================\n`);
+
+    await logActivity({
+      title: 'Vehicle Created',
+      description: `Vehicle ${vehicle.vehicleNumber} (${vehicle.vehicleName}) was registered.`,
+      activityType: 'VEHICLE_CREATED',
+      vehicleNumber: vehicle.vehicleNumber,
+      vehicleName: vehicle.vehicleName,
+      relatedModule: 'Vehicle',
+      relatedId: vehicle._id,
+      user: req.user,
+      assignedManager: req.user._id
     });
 
     return sendSuccess(res, 201, vehicle, 'Vehicle created successfully');
@@ -262,33 +311,72 @@ export const updateVehicle = async (req, res, next) => {
       updateData.chassisNumber = trimmedChassis;
     }
 
-    const conflictOr = [];
-    if (updateData.vehicleNumber) {
-      conflictOr.push({ vehicleNumber: updateData.vehicleNumber.toUpperCase() });
-    }
-    if (updateData.registrationNumber) {
-      conflictOr.push({ registrationNumber: updateData.registrationNumber.toUpperCase() });
-    }
-    if (updateData.chassisNumber) {
-      conflictOr.push({ chassisNumber: updateData.chassisNumber.trim() });
+    console.log(`\n=================================`);
+    console.log(`Updating Vehicle\n`);
+    console.log(`Vehicle ID:\n${vehicleId}\n`);
+
+    const excludeIdQuery = mongoose.Types.ObjectId.isValid(vehicleId)
+      ? new mongoose.Types.ObjectId(vehicleId)
+      : vehicleId;
+
+    // 1. Check duplicate chassis
+    if (updateData.chassisNumber && String(updateData.chassisNumber).trim() && String(updateData.chassisNumber).trim().toUpperCase() !== 'N/A') {
+      const trimmedChassis = String(updateData.chassisNumber).trim();
+      console.log(`Checking duplicate chassis...\n`);
+
+      const dupChassis = await Vehicle.findOne({
+        chassisNumber: trimmedChassis,
+        _id: { $ne: excludeIdQuery }
+      });
+
+      if (dupChassis && String(dupChassis._id) !== String(vehicleId)) {
+        console.log(`Duplicate chassis number found.\n`);
+        console.log(`Existing Vehicle ID:\n${dupChassis._id}\n`);
+        console.log(`Update aborted.\n`);
+        console.log(`=================================\n`);
+        return sendError(res, 409, 'A vehicle with this chassis number already exists');
+      }
+      console.log(`✓ Current vehicle ignored\n`);
     }
 
-    if (conflictOr.length > 0) {
-      const existingVehicle = await Vehicle.findOne({
-        _id: { $ne: vehicleId },
-        $or: conflictOr
+    // 2. Check duplicate registration number
+    if (updateData.registrationNumber && String(updateData.registrationNumber).trim() && String(updateData.registrationNumber).trim().toUpperCase() !== 'N/A') {
+      const trimmedRegNum = String(updateData.registrationNumber).trim().toUpperCase();
+      console.log(`Checking duplicate registration number...\n`);
+
+      const dupRegNum = await Vehicle.findOne({
+        registrationNumber: trimmedRegNum,
+        _id: { $ne: excludeIdQuery }
       });
-      if (existingVehicle) {
-        if (updateData.vehicleNumber && existingVehicle.vehicleNumber === updateData.vehicleNumber.toUpperCase()) {
-          return sendError(res, 409, 'A vehicle with this registration plate already exists');
-        }
-        if (updateData.registrationNumber && existingVehicle.registrationNumber === updateData.registrationNumber.toUpperCase()) {
-          return sendError(res, 409, 'A vehicle with this registration number already exists');
-        }
-        if (updateData.chassisNumber && existingVehicle.chassisNumber === updateData.chassisNumber.trim()) {
-          return sendError(res, 409, 'A vehicle with this chassis number already exists');
-        }
+
+      if (dupRegNum && String(dupRegNum._id) !== String(vehicleId)) {
+        console.log(`Duplicate registration number found.\n`);
+        console.log(`Existing Vehicle ID:\n${dupRegNum._id}\n`);
+        console.log(`Update aborted.\n`);
+        console.log(`=================================\n`);
+        return sendError(res, 409, 'A vehicle with this registration number already exists');
       }
+      console.log(`✓ No duplicate found\n`);
+    }
+
+    // 3. Check duplicate registration plate (vehicleNumber)
+    const targetPlate = (updateData.vehicleNumber || updateData.plateNumber || '').toString().trim().toUpperCase();
+    if (targetPlate && targetPlate !== 'N/A') {
+      console.log(`Checking duplicate registration plate...\n`);
+
+      const dupPlate = await Vehicle.findOne({
+        vehicleNumber: targetPlate,
+        _id: { $ne: excludeIdQuery }
+      });
+
+      if (dupPlate && String(dupPlate._id) !== String(vehicleId)) {
+        console.log(`Duplicate registration plate found.\n`);
+        console.log(`Existing Vehicle ID:\n${dupPlate._id}\n`);
+        console.log(`Update aborted.\n`);
+        console.log(`=================================\n`);
+        return sendError(res, 409, 'A vehicle with this registration plate already exists');
+      }
+      console.log(`✓ No duplicate found\n`);
     }
 
     if (updateData.documents) {
@@ -338,7 +426,78 @@ export const updateVehicle = async (req, res, next) => {
       return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
     }
 
+    // Handle Vehicle Image Replacement or Removal
+    if (updateData.vehicleImage !== undefined || updateData.image !== undefined || updateData.removeImage) {
+      const newImagePayload = updateData.vehicleImage || updateData.image;
+
+      if (updateData.removeImage || newImagePayload === null || newImagePayload === '' || (typeof newImagePayload === 'object' && !newImagePayload?.secure_url)) {
+        if (existingVehicle.vehicleImage?.public_id) {
+          console.log(`Deleting old Cloudinary vehicle image: ${existingVehicle.vehicleImage.public_id}`);
+          await deleteImageFromCloudinary(existingVehicle.vehicleImage.public_id);
+        }
+        updateData.vehicleImage = { secure_url: '', public_id: '', originalName: '' };
+        updateData.image = '';
+      } else if (typeof newImagePayload === 'string' && newImagePayload.startsWith('data:image')) {
+        if (existingVehicle.vehicleImage?.public_id) {
+          console.log(`Deleting old Cloudinary vehicle image: ${existingVehicle.vehicleImage.public_id}`);
+          await deleteImageFromCloudinary(existingVehicle.vehicleImage.public_id);
+        }
+        console.log(`Vehicle Image Replacement Started\n`);
+        console.log(`Vehicle:\n${existingVehicle.vehicleName || existingVehicle.vehicleNumber}\n`);
+        console.log(`Uploading new image to Cloudinary...`);
+        const uploaded = await uploadBase64ImageToCloudinary(newImagePayload, 'vehicles', updateData.imageName || 'vehicle.png');
+        console.log(`✓ Upload Successful\n`);
+        console.log(`Cloudinary URL:\n${uploaded.secure_url}\n`);
+        updateData.vehicleImage = uploaded;
+        updateData.image = uploaded.secure_url;
+      } else if (typeof newImagePayload === 'object' && newImagePayload?.secure_url) {
+        updateData.vehicleImage = newImagePayload;
+        updateData.image = newImagePayload.secure_url;
+      }
+    }
+
+    console.log(`Updating vehicle...\n`);
+    const prevStatus = existingVehicle.currentStatus;
     const vehicle = await updateVehicleInRepo(vehicleId, updateData);
+    console.log(`✓ Vehicle updated successfully\n`);
+    console.log(`=================================\n`);
+
+    let actType = 'VEHICLE_UPDATED';
+    let actTitle = 'Vehicle Updated';
+    let actDesc = `Vehicle ${vehicle.vehicleNumber} details were updated.`;
+
+    if (updateData.currentStatus && updateData.currentStatus !== prevStatus) {
+      actType = 'VEHICLE_STATUS_CHANGED';
+      actTitle = 'Vehicle Status Changed';
+      actDesc = `Vehicle ${vehicle.vehicleNumber} entered ${updateData.currentStatus}.`;
+    } else if (updateData.vehicleImage && updateData.vehicleImage.secure_url) {
+      actType = 'VEHICLE_IMAGE_UPDATED';
+      actTitle = 'Vehicle Image Updated';
+      actDesc = `Vehicle ${vehicle.vehicleNumber} image was updated.`;
+    } else if (updateData.assignedDriver !== undefined) {
+      if (updateData.assignedDriver === 'Unassigned' || !updateData.assignedDriver) {
+        actType = 'VEHICLE_UNASSIGNED';
+        actTitle = 'Vehicle Unassigned';
+        actDesc = `Vehicle ${vehicle.vehicleNumber} unassigned from Driver.`;
+      } else {
+        actType = 'VEHICLE_ASSIGNED';
+        actTitle = 'Vehicle Assigned';
+        actDesc = `Vehicle ${vehicle.vehicleNumber} assigned to Driver.`;
+      }
+    }
+
+    await logActivity({
+      title: actTitle,
+      description: actDesc,
+      activityType: actType,
+      vehicleNumber: vehicle.vehicleNumber,
+      vehicleName: vehicle.vehicleName,
+      relatedModule: 'Vehicle',
+      relatedId: vehicle._id,
+      user: req.user,
+      assignedManager: req.user._id
+    });
+
     return sendSuccess(res, 200, vehicle, 'Vehicle updated successfully');
   } catch (error) {
     if (error.code === 11000) {
@@ -397,7 +556,26 @@ export const deleteVehicle = async (req, res, next) => {
     if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
     }
+
+    if (vehicle.vehicleImage?.public_id) {
+      console.log(`Deleting vehicle image from Cloudinary for vehicle ${vehicle.vehicleNumber}: ${vehicle.vehicleImage.public_id}`);
+      await deleteImageFromCloudinary(vehicle.vehicleImage.public_id);
+    }
+
     await deleteVehicleInRepo(req.params.id);
+
+    await logActivity({
+      title: 'Vehicle Deleted',
+      description: `Vehicle ${vehicle.vehicleNumber} (${vehicle.vehicleName}) was deleted.`,
+      activityType: 'VEHICLE_DELETED',
+      vehicleNumber: vehicle.vehicleNumber,
+      vehicleName: vehicle.vehicleName,
+      relatedModule: 'Vehicle',
+      relatedId: vehicle._id,
+      user: req.user,
+      assignedManager: req.user._id
+    });
+
     return sendSuccess(res, 200, {}, 'Vehicle deleted successfully');
   } catch (error) {
     next(error);

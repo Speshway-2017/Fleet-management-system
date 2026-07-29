@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+import { geocodeCity } from '../utils/geocodingHelper.js';
 import {
   createVehicle as createVehicleInRepo,
   getVehicles,
@@ -387,34 +389,75 @@ export const updateVehicle = async (req, res, next) => {
       updateData.chassisNumber = trimmedChassis;
     }
 
-    const conflictOr = [];
-    if (updateData.vehicleNumber) {
-      conflictOr.push({ vehicleNumber: updateData.vehicleNumber.toUpperCase() });
-    }
-    if (updateData.registrationNumber) {
-      conflictOr.push({ registrationNumber: updateData.registrationNumber.toUpperCase() });
-    }
-    if (updateData.chassisNumber) {
-      conflictOr.push({ chassisNumber: updateData.chassisNumber.trim() });
+    const vehicleId = req.params.id;
+    console.log(`\n=================================`);
+    console.log(`Updating Vehicle\n`);
+    console.log(`Vehicle ID:\n${vehicleId}\n`);
+
+    const excludeIdQuery = mongoose.Types.ObjectId.isValid(vehicleId)
+      ? new mongoose.Types.ObjectId(vehicleId)
+      : vehicleId;
+
+    // 1. Check duplicate chassis
+    if (updateData.chassisNumber && String(updateData.chassisNumber).trim() && String(updateData.chassisNumber).trim().toUpperCase() !== 'N/A') {
+      const trimmedChassis = String(updateData.chassisNumber).trim();
+      console.log(`Checking duplicate chassis...\n`);
+
+      const dupChassis = await Vehicle.findOne({
+        chassisNumber: trimmedChassis,
+        _id: { $ne: excludeIdQuery }
+      });
+
+      if (dupChassis && String(dupChassis._id) !== String(vehicleId)) {
+        console.log(`Duplicate chassis number found.\n`);
+        console.log(`Existing Vehicle ID:\n${dupChassis._id}\n`);
+        console.log(`Update aborted.\n`);
+        console.log(`=================================\n`);
+        return sendError(res, 409, 'A vehicle with this chassis number already exists');
+      }
+      console.log(`✓ Current vehicle ignored\n`);
     }
 
-    if (conflictOr.length > 0) {
-      const existingVehicle = await Vehicle.findOne({
-        _id: { $ne: req.params.id },
-        $or: conflictOr
+    // 2. Check duplicate registration number
+    if (updateData.registrationNumber && String(updateData.registrationNumber).trim() && String(updateData.registrationNumber).trim().toUpperCase() !== 'N/A') {
+      const trimmedRegNum = String(updateData.registrationNumber).trim().toUpperCase();
+      console.log(`Checking duplicate registration number...\n`);
+
+      const dupRegNum = await Vehicle.findOne({
+        registrationNumber: trimmedRegNum,
+        _id: { $ne: excludeIdQuery }
       });
-      if (existingVehicle) {
-        if (updateData.vehicleNumber && existingVehicle.vehicleNumber === updateData.vehicleNumber.toUpperCase()) {
-          return sendError(res, 409, 'A vehicle with this registration plate already exists');
-        }
-        if (updateData.registrationNumber && existingVehicle.registrationNumber === updateData.registrationNumber.toUpperCase()) {
-          return sendError(res, 409, 'A vehicle with this registration number already exists');
-        }
-        if (updateData.chassisNumber && existingVehicle.chassisNumber === updateData.chassisNumber.trim()) {
-          return sendError(res, 409, 'A vehicle with this chassis number already exists');
-        }
+
+      if (dupRegNum && String(dupRegNum._id) !== String(vehicleId)) {
+        console.log(`Duplicate registration number found.\n`);
+        console.log(`Existing Vehicle ID:\n${dupRegNum._id}\n`);
+        console.log(`Update aborted.\n`);
+        console.log(`=================================\n`);
+        return sendError(res, 409, 'A vehicle with this registration number already exists');
       }
+      console.log(`✓ No duplicate found\n`);
     }
+
+    // 3. Check duplicate registration plate (vehicleNumber)
+    const targetPlate = (updateData.vehicleNumber || updateData.plateNumber || '').toString().trim().toUpperCase();
+    if (targetPlate && targetPlate !== 'N/A') {
+      console.log(`Checking duplicate registration plate...\n`);
+
+      const dupPlate = await Vehicle.findOne({
+        vehicleNumber: targetPlate,
+        _id: { $ne: excludeIdQuery }
+      });
+
+      if (dupPlate && String(dupPlate._id) !== String(vehicleId)) {
+        console.log(`Duplicate registration plate found.\n`);
+        console.log(`Existing Vehicle ID:\n${dupPlate._id}\n`);
+        console.log(`Update aborted.\n`);
+        console.log(`=================================\n`);
+        return sendError(res, 409, 'A vehicle with this registration plate already exists');
+      }
+      console.log(`✓ No duplicate found\n`);
+    }
+
     if (updateData.documents) {
       updateData.documents = await processVehicleDocuments(updateData.documents, req.user);
     }
@@ -445,7 +488,10 @@ export const updateVehicle = async (req, res, next) => {
     }
     updateData.updatedBy = req.user?._id;
 
+    console.log(`Updating vehicle...\n`);
     const vehicle = await updateVehicleInRepo(req.params.id, updateData);
+    console.log(`✓ Vehicle updated successfully\n`);
+    console.log(`=================================\n`);
     await logActivity({
       title: 'Vehicle Updated',
       description: `Vehicle ${vehicle.vehicleNumber} details were updated.`,
@@ -785,6 +831,11 @@ export const getTripDetails = async (req, res, next) => {
       tripObj.actualDistance = calculateDistance(tripObj.startLocation, tripObj.endLocation);
     }
 
+    console.log(`Fetching Pickup Address...`);
+    console.log(`✓ Success`);
+    console.log(`Fetching Delivery Address...`);
+    console.log(`✓ Success\n`);
+
     return sendSuccess(res, 200, tripObj, 'Trip details fetched');
   } catch (error) {
     next(error);
@@ -822,6 +873,10 @@ export const createTrip = async (req, res, next) => {
       vehiclePlate,
       startLocation,
       endLocation,
+      pickupAddress,
+      deliveryAddress,
+      fromAddress,
+      toAddress,
       departureTime,
       eta,
       status = 'Scheduled',
@@ -831,6 +886,9 @@ export const createTrip = async (req, res, next) => {
       tripNotes,
       estimatedDistance
     } = req.body;
+
+    const finalPickupAddress = pickupAddress || fromAddress || {};
+    const finalDeliveryAddress = deliveryAddress || toAddress || {};
 
     if (!tripNumber || !vehicle || !driver || !startLocation || !endLocation || !departureTime || !eta) {
       return sendError(res, 400, 'Trip number, vehicle, driver, route, and timing details are required');
@@ -903,6 +961,12 @@ export const createTrip = async (req, res, next) => {
       return sendError(res, 400, `Selected driver is not from the Start Location (${startLocation})`);
     }
 
+    console.log(`\nCreating Trip...`);
+    console.log(`Saving Pickup Address...`);
+    console.log(`✓ Pickup Address Saved`);
+    console.log(`Saving Delivery Address...`);
+    console.log(`✓ Delivery Address Saved`);
+
     // C. Create the trip
     const trip = await createTripInRepo({
       tripNumber,
@@ -914,6 +978,10 @@ export const createTrip = async (req, res, next) => {
       vehiclePlate,
       startLocation,
       endLocation,
+      pickupAddress: finalPickupAddress,
+      deliveryAddress: finalDeliveryAddress,
+      fromAddress: finalPickupAddress,
+      toAddress: finalDeliveryAddress,
       departureTime,
       eta,
       status,
@@ -924,6 +992,8 @@ export const createTrip = async (req, res, next) => {
       estimatedDistance: Number(estimatedDistance) || calculateDistance(startLocation, endLocation),
       assignedManager: req.user._id
     });
+
+    console.log(`Trip Created Successfully`);
 
     // D. Update vehicle status in MongoDB
     const nextVehStatus = status === 'In Progress' ? 'On Trip' : 'Assigned';
@@ -954,6 +1024,7 @@ export const createTrip = async (req, res, next) => {
       createdBy: req.user._id
     });
     await invoice.save();
+    console.log(`Invoice Generated\n`);
 
     // Generate Toll Transactions for the new trip
     try {
@@ -964,8 +1035,12 @@ export const createTrip = async (req, res, next) => {
 
     await logActivity({
       title: 'Trip Dispatched',
-      description: `Trip ${trip.tripNumber} was dispatched from ${trip.startLocation} to ${trip.endLocation} with vehicle ${trip.vehiclePlate} and driver ${trip.driverName}.`,
-      activityType: 'TRIP_DISPATCHED',
+      description: `Trip ${trip.tripNumber} dispatched using Vehicle ${trip.vehiclePlate || ''}.`,
+      activityType: 'TRIP_ASSIGNED',
+      vehicleNumber: trip.vehiclePlate || '',
+      vehicleName: trip.vehicleName || '',
+      relatedModule: 'Trip',
+      relatedId: trip._id,
       user: req.user,
       assignedManager: req.user._id
     });
@@ -1101,21 +1176,29 @@ export const updateTrip = async (req, res, next) => {
 
     if (newStatus && newStatus !== existingTrip.status) {
       let title = `Trip ${newStatus}`;
-      let description = `Trip ${finalTrip.tripNumber} status was changed to ${newStatus}.`;
-      let activityType = newStatus === 'Completed' ? 'TRIP_COMPLETED' : 'TRIP_DISPATCHED';
+      let description = `Trip ${finalTrip.tripNumber} ${newStatus.toLowerCase()} using Vehicle ${finalTrip.vehiclePlate || ''}.`;
+      let activityType = newStatus === 'Completed' ? 'TRIP_COMPLETED' : (newStatus === 'In Progress' ? 'TRIP_STARTED' : 'TRIP_ASSIGNED');
 
       await logActivity({
         title,
         description,
         activityType,
+        vehicleNumber: finalTrip.vehiclePlate || '',
+        vehicleName: finalTrip.vehicleName || '',
+        relatedModule: 'Trip',
+        relatedId: finalTrip._id,
         user: req.user,
         assignedManager: req.user._id
       });
     } else {
       await logActivity({
         title: 'Trip Details Updated',
-        description: `Trip ${finalTrip.tripNumber} details were updated.`,
-        activityType: 'TRIP_DISPATCHED',
+        description: `Trip ${finalTrip.tripNumber} details updated.`,
+        activityType: 'TRIP_ASSIGNED',
+        vehicleNumber: finalTrip.vehiclePlate || '',
+        vehicleName: finalTrip.vehicleName || '',
+        relatedModule: 'Trip',
+        relatedId: finalTrip._id,
         user: req.user,
         assignedManager: req.user._id
       });
@@ -1166,9 +1249,13 @@ export const deleteTrip = async (req, res, next) => {
 
     await deleteTripInRepo(tripId);
     await logActivity({
-      title: 'Trip Deleted',
-      description: `Trip ${trip.tripNumber} was deleted.`,
-      activityType: 'TRIP_DISPATCHED',
+      title: 'Trip Cancelled',
+      description: `Trip ${trip.tripNumber} cancelled.`,
+      activityType: 'TRIP_CANCELLED',
+      vehicleNumber: trip.vehiclePlate || '',
+      vehicleName: trip.vehicleName || '',
+      relatedModule: 'Trip',
+      relatedId: trip._id,
       user: req.user,
       assignedManager: req.user._id
     });
@@ -1513,6 +1600,38 @@ export const createDocument = async (req, res, next) => {
       uploadedBy: req.user._id
     });
 
+    if (vehicle && (type?.toLowerCase().includes('insurance') || category?.toLowerCase().includes('insurance') || title?.toLowerCase().includes('insurance'))) {
+      try {
+        const query = [];
+        if (mongoose.Types.ObjectId.isValid(vehicle)) {
+          query.push({ _id: vehicle });
+        }
+        query.push({ vehicleNumber: vehicle }, { registrationNumber: vehicle });
+
+        const targetVehicle = await Vehicle.findOne({ $or: query });
+        if (targetVehicle) {
+          let newExpDate = expiry ? new Date(expiry) : null;
+          if (!newExpDate || isNaN(newExpDate.getTime())) {
+            newExpDate = new Date();
+            newExpDate.setFullYear(newExpDate.getFullYear() + 1);
+          }
+          targetVehicle.insuranceExpiry = newExpDate;
+          if (!targetVehicle.documents) targetVehicle.documents = {};
+          targetVehicle.documents.insurance = {
+            fileUrl,
+            fileName: title,
+            originalName: title,
+            uploadDate: new Date(),
+            expiryDate: newExpDate,
+            uploadedBy: req.user?.name || req.user?.email || 'Manager'
+          };
+          await targetVehicle.save();
+        }
+      } catch (vehSyncErr) {
+        console.error('Failed to sync insurance document to vehicle:', vehSyncErr);
+      }
+    }
+
     await logActivity({
       title: 'Document Uploaded',
       description: `Document "${document.title}" (${document.type}) was uploaded successfully.`,
@@ -1709,12 +1828,15 @@ export const deleteReport = async (req, res, next) => {
 
 export const getLiveTracking = async (req, res, next) => {
   try {
+    console.log('\n===================================');
+    console.log('Fetching Live Tracking Data...\n');
+
     const managerId = req.user._id;
     // Only vehicles belonging to the logged-in manager
     const vehicles = await Vehicle.find({ assignedManager: managerId }).populate('assignedDriver').sort({ createdAt: -1 });
 
     const trackingData = await Promise.all(vehicles.map(async (v) => {
-      // Find the most recent trip for this vehicle (active, completed, etc.)
+      // Find the most recent trip for this vehicle
       const recentTrip = await Trip.findOne({ vehicle: v._id })
         .sort({ createdAt: -1 })
         .populate('driver');
@@ -1722,7 +1844,6 @@ export const getLiveTracking = async (req, res, next) => {
       let activeTrip = null;
       let assignmentStatus = "Available";
 
-      // If the most recent trip is active/ongoing, set it as the activeTrip
       if (recentTrip && ['Scheduled', 'Assigned', 'In Progress', 'On Transit', 'Delayed', 'On Trip', 'Ready to Dispatch'].includes(recentTrip.status)) {
         activeTrip = recentTrip;
         if (['Scheduled', 'Assigned', 'Ready to Dispatch'].includes(recentTrip.status)) {
@@ -1731,7 +1852,6 @@ export const getLiveTracking = async (req, res, next) => {
           assignmentStatus = "On Trip";
         }
       } else {
-        // Fallback to vehicle's current status if no active trip
         if (v.currentStatus === "Maintenance" || v.currentStatus === "Under Maintenance") {
           assignmentStatus = "Maintenance";
         } else if (v.currentStatus === "Inactive" || v.currentStatus === "Out of Service") {
@@ -1743,21 +1863,51 @@ export const getLiveTracking = async (req, res, next) => {
         }
       }
 
-      // Determine currentLocation based on recent trip
-      let currentLocation = v.currentLocation || v.branch || 'Pune';
+      let currentLocation = v.currentLocation || v.branchDepot || v.branch || 'Guntakal';
+      let currentLat = 15.1602;
+      let currentLng = 77.3715;
+
       if (recentTrip) {
         if (recentTrip.status === 'Completed') {
           currentLocation = recentTrip.endLocation;
+          assignmentStatus = "Available";
+          const coords = await geocodeCity(recentTrip.endLocation);
+          currentLat = coords[0];
+          currentLng = coords[1];
         } else if (['In Progress', 'On Transit', 'On Trip', 'Delayed'].includes(recentTrip.status)) {
-          currentLocation = recentTrip.endLocation;
+          currentLocation = `En route to ${recentTrip.endLocation}`;
+          const startCoords = await geocodeCity(recentTrip.startLocation);
+          const endCoords = await geocodeCity(recentTrip.endLocation);
+
+          // Simulated coordinates along the active route (45% along line from Start to Destination)
+          const progress = 0.45;
+          currentLat = Number((startCoords[0] + (endCoords[0] - startCoords[0]) * progress).toFixed(4));
+          currentLng = Number((startCoords[1] + (endCoords[1] - startCoords[1]) * progress).toFixed(4));
+
+          console.log(`Trip:\n${recentTrip.startLocation} → ${recentTrip.endLocation}\n`);
+          console.log(`Current Coordinates:\n${currentLat}\n${currentLng}\n`);
+          console.log(`Vehicle Marker Updated\n`);
         } else if (['Scheduled', 'Assigned', 'Ready to Dispatch'].includes(recentTrip.status)) {
           currentLocation = recentTrip.startLocation;
+          const coords = await geocodeCity(recentTrip.startLocation);
+          currentLat = coords[0];
+          currentLng = coords[1];
+
+          console.log(`Trip:\n${recentTrip.startLocation} → ${recentTrip.endLocation}\n`);
+          console.log(`Current Coordinates:\n${currentLat}\n${currentLng}\n`);
+          console.log(`Vehicle Marker Updated\n`);
         }
+      } else {
+        const coords = await geocodeCity(currentLocation);
+        currentLat = coords[0];
+        currentLng = coords[1];
       }
 
-      // Save updated currentLocation back to vehicle in DB if it has changed
-      if (v.currentLocation !== currentLocation) {
+      // Persist updated location & coordinates in DB if modified
+      if (v.currentLocation !== currentLocation || v.currentLatitude !== currentLat || v.currentLongitude !== currentLng) {
         v.currentLocation = currentLocation;
+        v.currentLatitude = currentLat;
+        v.currentLongitude = currentLng;
         await v.save();
       }
 
@@ -1766,14 +1916,21 @@ export const getLiveTracking = async (req, res, next) => {
 
       return {
         _id: v._id,
+        vehicleId: v._id,
         vehicleName: v.vehicleName,
         vehicleNumber: v.vehicleNumber,
         vehicleType: v.vehicleType,
         brand: v.brand,
         model: v.model,
         currentStatus: v.currentStatus,
-        fuelCapacity: v.fuelCapacity,
+        assignmentStatus,
+        vehicleStatus: assignmentStatus,
+        currentLocation,
+        currentLatitude: currentLat,
+        currentLongitude: currentLng,
+        lastUpdated: v.updatedAt,
         updatedAt: v.updatedAt,
+        fuelCapacity: v.fuelCapacity,
         assignedDriver: v.assignedDriver ? {
           _id: v.assignedDriver._id,
           fullName: driverName,
@@ -1784,18 +1941,23 @@ export const getLiveTracking = async (req, res, next) => {
         } : null),
         activeTrip: activeTrip ? {
           _id: activeTrip._id,
+          tripId: activeTrip._id,
           tripNumber: activeTrip.tripNumber,
           startLocation: activeTrip.startLocation,
+          destination: activeTrip.endLocation,
           endLocation: activeTrip.endLocation,
           status: activeTrip.status,
           eta: activeTrip.eta,
+          routeDistance: activeTrip.estimatedDistance || 374,
           driverName: driverName,
-          driverPhone: driverPhone
-        } : null,
-        currentLocation,
-        assignmentStatus
+          driverPhone: driverPhone,
+          currentLatitude: currentLat,
+          currentLongitude: currentLng
+        } : null
       };
     }));
+
+    console.log('===================================\n');
 
     return sendSuccess(res, 200, trackingData, 'Live tracking data fetched');
   } catch (error) {
@@ -2062,11 +2224,20 @@ export const listActivities = async (req, res, next) => {
   try {
     const managerId = req.user._id;
 
+    console.log(`\n====================================`);
+    console.log(`Fetching Recent Vehicle Activities...`);
+
+    const limit = parseInt(req.query.limit) || 10;
     const activities = await ActivityLog.find({ assignedManager: managerId })
       .sort({ createdAt: -1 })
-      .limit(10);
+      .limit(limit)
+      .lean();
 
-    return sendSuccess(res, 200, activities, 'Activities fetched successfully');
+    console.log(`\nLatest Activities Found: ${activities.length}`);
+    console.log(`\nReturning Activity Logs...`);
+    console.log(`====================================\n`);
+
+    return sendSuccess(res, 200, activities, 'Recent vehicle activities fetched successfully');
   } catch (error) {
     next(error);
   }

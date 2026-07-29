@@ -41,7 +41,7 @@ export default function DriversListPage() {
   const fetchDrivers = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await driverApi.list();
+      const res = await driverApi.list({ limit: 1000 });
       setDrivers(res.data?.data || []);
     } catch (err) {
       const msg = err.response?.data?.message;
