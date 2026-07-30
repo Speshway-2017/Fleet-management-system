@@ -150,6 +150,17 @@ const startServer = async () => {
         const existingTrip = await Trip.findById(tripId);
         if (!existingTrip) return;
 
+        if (status === 'Completed') {
+          const { processFastagDeduction } = await import('./services/fastag.service.js');
+          try {
+            await processFastagDeduction(tripId);
+          } catch (fastagErr) {
+            console.error('FASTag deduction failed via socket status-update:', fastagErr.message);
+            socket.emit('trip:status-update-error', { tripId, message: fastagErr.message });
+            return;
+          }
+        }
+
         existingTrip.status = status;
         if (status === 'In Progress') {
           existingTrip.actualStartTime = new Date();

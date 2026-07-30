@@ -698,7 +698,11 @@ export default function TripDetailsPage() {
       const response = await managerApi.updateTrip(trip._id, { status: newStatus });
       const data = response.data?.data || response.data;
       setTrip({ ...data, id: data.tripNumber });
-      toast.success(`Trip status updated to ${newStatus}`);
+      if (newStatus === "Completed") {
+        toast.success("Trip completed successfully. Fastag balance updated after deducting total toll charges.");
+      } else {
+        toast.success(`Trip status updated to ${newStatus}`);
+      }
     } catch (error) {
       const errMsg = error.response?.data?.message || "Failed to update status";
       toast.error(errMsg);
@@ -1364,6 +1368,14 @@ export default function TripDetailsPage() {
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[#64748B] font-medium font-poppins">Fuel Type</span>
                 <span className="font-bold text-gray-700 font-poppins">{trip.vehicle?.fuelType || "Diesel"}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[#64748B] font-medium font-poppins">FASTag Balance</span>
+                <span className={`font-bold font-poppins ${
+                  (trip.vehicle?.fastagBalance ?? 0) < 1000 ? 'text-rose-600' : 'text-emerald-600'
+                }`}>
+                  ₹{trip.vehicle?.fastagBalance?.toLocaleString("en-IN") ?? 0}
+                </span>
               </div>
             </div>
 

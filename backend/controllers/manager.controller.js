@@ -67,6 +67,7 @@ import { calculateDistance } from '../utils/distanceCalculator.js';
 import TollTransaction from '../models/TollTransaction.js';
 import { generateTollsForTrip } from '../utils/seedTolls.js';
 import VehicleComplaint from '../models/VehicleComplaint.js';
+import { processFastagDeduction } from '../services/fastag.service.js';
 
 export const getDashboard = async (req, res, next) => {
   try {
@@ -1109,6 +1110,14 @@ export const updateTrip = async (req, res, next) => {
     } else if (newStatus === 'Completed') {
       req.body.actualEndTime = new Date();
       req.body.actualDistance = req.body.actualDistance || existingTrip.estimatedDistance || calculateDistance(existingTrip.startLocation, existingTrip.endLocation);
+    }
+
+    if (newStatus === 'Completed') {
+      try {
+        await processFastagDeduction(tripId);
+      } catch (fastagErr) {
+        return sendError(res, 400, fastagErr.message);
+      }
     }
 
     const updatedTrip = await updateTripInRepo(tripId, req.body);

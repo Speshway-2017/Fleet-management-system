@@ -11,6 +11,7 @@ import { vehicleApi } from "@/api/vehicleApi";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { managerApi } from "../api/managerApi";
+import { getSocket } from "@/api/socket";
 
 const CITY_COORDINATES = {
   mumbai: [19.0760, 72.8777],
@@ -143,6 +144,33 @@ export default function VehicleDetailsPage() {
     };
     fetchVehicleDetails();
   }, [id, navigate]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (socket) {
+      const handleTripStatusUpdated = (updatedTrip) => {
+        if (updatedTrip && (String(updatedTrip.vehicle) === String(id) || (updatedTrip.vehicle && String(updatedTrip.vehicle._id) === String(id)))) {
+          const fetchVehicleDetails = async () => {
+            try {
+              const res = await vehicleApi.getById(id);
+              const found = res.data?.data;
+              if (found) {
+                setVehicle(normaliseVehicle(found));
+              }
+            } catch (err) {
+              console.error("Failed to reload vehicle details on trip completion:", err);
+            }
+          };
+          fetchVehicleDetails();
+        }
+      };
+
+      socket.on("trip:status-updated", handleTripStatusUpdated);
+      return () => {
+        socket.off("trip:status-updated", handleTripStatusUpdated);
+      };
+    }
+  }, [id]);
   const getCoordinates = (cityName) => {
     if (!cityName) return [18.5204, 73.8567]; // default Pune
     const norm = cityName.toLowerCase().trim();
