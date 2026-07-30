@@ -15,7 +15,6 @@ import {
   getDriverDetails,
   updateDriver,
   deleteDriver,
-  getDriverStats,
   // Trips
   listTrips,
   createTrip,
@@ -82,6 +81,7 @@ import {
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
 import { checkActiveSubscription } from '../middleware/subscription.middleware.js';
+import { getDriverStats } from '../controllers/driver.controller.js';
 
 const router = express.Router();
 

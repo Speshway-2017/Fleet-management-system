@@ -42,7 +42,8 @@ const tripSchema = new mongoose.Schema(
     actualStartTime: { type: Date },
     actualEndTime: { type: Date },
     estimatedDistance: { type: Number, default: 0 },
-    actualDistance: { type: Number, default: 0 }
+    actualDistance: { type: Number, default: 0 },
+    fastagDeducted: { type: Boolean, default: false }
   },
   { timestamps: true }
 );
