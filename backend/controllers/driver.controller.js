@@ -17,21 +17,75 @@ import { generateEmployeeId, generateTempPassword } from '../utils/driverAuthHel
 import { hashPassword } from '../utils/hashPassword.js';
 
 /**
+ * Fetch Driver Statistics
+ * GET /api/drivers/stats, GET /api/drivers/dashboard
+ */
+export const getDriverStats = async (req, res, next) => {
+  try {
+    const baseFilter = { isDeleted: { $ne: true } };
+    if (req.user && req.user._id) {
+      baseFilter.assignedManager = req.user._id;
+    }
+
+    const totalDrivers = await Driver.countDocuments(baseFilter);
+    const activeDrivers = await Driver.countDocuments({
+      ...baseFilter,
+      driverStatus: { $in: ['AVAILABLE', 'ON_TRIP', 'ASSIGNED'] }
+    });
+    const availableDrivers = await Driver.countDocuments({
+      ...baseFilter,
+      driverStatus: 'AVAILABLE'
+    });
+    const onTripDrivers = await Driver.countDocuments({
+      ...baseFilter,
+      driverStatus: 'ON_TRIP'
+    });
+    const suspendedDrivers = await Driver.countDocuments({
+      ...baseFilter,
+      driverStatus: 'SUSPENDED'
+    });
+
+    console.log('\nFetching Driver Statistics...');
+    console.log(`Total Drivers in MongoDB:\n${totalDrivers}\n`);
+    console.log(`Active Drivers:\n${activeDrivers}\n`);
+    console.log(`On Trip:\n${onTripDrivers}\n`);
+    console.log(`Suspended:\n${suspendedDrivers}\n`);
+    console.log('Returning dashboard statistics...\n');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Driver statistics fetched successfully',
+      data: {
+        totalDrivers,
+        activeDrivers,
+        availableDrivers,
+        onTripDrivers,
+        suspendedDrivers
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * List drivers belonging to the logged-in manager
  * GET /api/drivers
  */
 export const listDrivers = async (req, res, next) => {
   try {
-    // Always scope to the logged-in manager
-    const filter = { assignedManager: req.user._id };
+    // Always scope to the logged-in manager and exclude soft-deleted drivers only
+    const filter = { assignedManager: req.user._id, isDeleted: { $ne: true } };
 
-    // 1. Search by Name, Employee ID, or Phone
+    // 1. Search by Name, Employee ID, Phone, Email, or DL number
     if (req.query.search) {
       const searchRegex = new RegExp(req.query.search, 'i');
       filter.$or = [
         { fullName: searchRegex },
         { employeeId: searchRegex },
-        { phoneNumber: searchRegex }
+        { phoneNumber: searchRegex },
+        { email: searchRegex },
+        { licenseNumber: searchRegex }
       ];
     }
 
@@ -94,7 +148,10 @@ export const listDrivers = async (req, res, next) => {
 
     // 7. Pagination & Sorting
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    let limit = 1000;
+    if (req.query.limit) {
+      limit = req.query.limit === 'all' ? 10000 : parseInt(req.query.limit);
+    }
     const skip = (page - 1) * limit;
 
     const sortField = req.query.sortBy || 'createdAt';
@@ -107,10 +164,44 @@ export const listDrivers = async (req, res, next) => {
       .skip(skip)
       .limit(limit);
 
+    // Compute overall statistics using countDocuments()
+    const baseStatsFilter = { assignedManager: req.user._id, isDeleted: { $ne: true } };
+    const totalDriversInDB = await Driver.countDocuments(baseStatsFilter);
+    const activeDriversCount = await Driver.countDocuments({
+      ...baseStatsFilter,
+      driverStatus: { $in: ['AVAILABLE', 'ON_TRIP', 'ASSIGNED'] }
+    });
+    const availableDriversCount = await Driver.countDocuments({
+      ...baseStatsFilter,
+      driverStatus: 'AVAILABLE'
+    });
+    const onTripDriversCount = await Driver.countDocuments({
+      ...baseStatsFilter,
+      driverStatus: 'ON_TRIP'
+    });
+    const suspendedDriversCount = await Driver.countDocuments({
+      ...baseStatsFilter,
+      driverStatus: 'SUSPENDED'
+    });
+
+    console.log('\nFetching Driver Statistics...');
+    console.log(`Total Drivers in MongoDB:\n${totalDriversInDB}\n`);
+    console.log(`Active Drivers:\n${activeDriversCount}\n`);
+    console.log(`On Trip:\n${onTripDriversCount}\n`);
+    console.log(`Suspended:\n${suspendedDriversCount}\n`);
+    console.log('Returning dashboard statistics...\n');
+
     return res.status(200).json({
       success: true,
       message: 'Drivers fetched successfully',
       data: drivers,
+      stats: {
+        totalDrivers: totalDriversInDB,
+        activeDrivers: activeDriversCount,
+        availableDrivers: availableDriversCount,
+        onTripDrivers: onTripDriversCount,
+        suspendedDrivers: suspendedDriversCount
+      },
       pagination: {
         total,
         page,

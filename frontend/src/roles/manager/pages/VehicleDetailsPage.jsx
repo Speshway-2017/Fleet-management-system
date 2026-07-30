@@ -348,9 +348,17 @@ export default function VehicleDetailsPage() {
           {/* Left side - Vehicle Info */}
           <div className="flex-1">
             <div className="flex items-start gap-4 mb-6">
-              <div className="bg-[#FDF3EC] p-4 rounded-lg flex-shrink-0">
-                <FileText className="w-8 h-8 text-[#B45A0A]" />
-              </div>
+              {vehicle.vehicleImage?.secure_url || vehicle.image ? (
+                <img
+                  src={vehicle.vehicleImage?.secure_url || vehicle.image}
+                  alt={vehicle.name}
+                  className="w-20 h-20 rounded-xl object-cover border border-gray-200 shadow-sm shrink-0"
+                />
+              ) : (
+                <div className="bg-[#FDF3EC] p-4 rounded-xl border border-[#B45A0A]/20 flex items-center justify-center shrink-0">
+                  <FileText className="w-8 h-8 text-[#B45A0A]" />
+                </div>
+              )}
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <h2 className="text-2xl font-bold text-[#1E293B]">{vehicle.name}</h2>

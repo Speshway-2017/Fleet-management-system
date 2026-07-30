@@ -90,10 +90,37 @@ export default function TripDetailsPage() {
   const tollDropdownRef = useRef(null);
   const tollButtonRef = useRef(null);
 
+  const invoiceModalOverlayRef = useRef(null);
+  const invoiceModalContentRef = useRef(null);
+
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
 
   const [drivingInfo, setDrivingInfo] = useState(null);
+
+  // Reset Trip Invoice scroll position to top whenever modal opens
+  useEffect(() => {
+    if (showInvoiceModal && invoice) {
+      console.log("=====================================");
+      console.log("Opening Trip Invoice...");
+      console.log("Resetting Invoice Scroll Position...");
+
+      // Reset main window scroll position
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+
+      // Reset modal container scroll positions
+      if (invoiceModalOverlayRef.current) {
+        invoiceModalOverlayRef.current.scrollTop = 0;
+      }
+      if (invoiceModalContentRef.current) {
+        invoiceModalContentRef.current.scrollTop = 0;
+      }
+
+      console.log("Scroll Position: Top");
+      console.log("Invoice Ready");
+      console.log("=====================================");
+    }
+  }, [showInvoiceModal, invoice]);
 
   // Initialize Leaflet map
   useEffect(() => {
@@ -365,8 +392,43 @@ export default function TripDetailsPage() {
 
 
 
+  const getFormattedInvoiceAddress = (addrObj, defaultLocString = '') => {
+    const cleanLocation = (defaultLocString || '')
+      .replace(/\(?-?\d+\.\d+,\s*-?\d+\.\d+\)?/g, '')
+      .replace(/^\s*,\s*|\s*,\s*$/g, '')
+      .trim();
+
+    const parts = cleanLocation ? cleanLocation.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const fallbackCity = parts[0] || 'N/A';
+    const fallbackState = parts.length > 1 ? parts[1] : (parts[0] || 'N/A');
+
+    const companyName = addrObj?.companyName || (cleanLocation ? `${cleanLocation} Logistics Hub` : 'N/A');
+    const contactPerson = addrObj?.contactPerson || 'N/A';
+    const rawMobile = addrObj?.mobile || addrObj?.mobileNumber || '';
+    const mobile = rawMobile ? (rawMobile.startsWith('+91') ? rawMobile : `+91 ${rawMobile}`) : 'N/A';
+    const streetAddress = addrObj?.streetAddress || 'N/A';
+    const area = addrObj?.area || addrObj?.areaLocality || '';
+    const city = addrObj?.city || fallbackCity;
+    const state = addrObj?.state || fallbackState;
+    const pincode = addrObj?.pincode || '';
+
+    return {
+      companyName: companyName || 'N/A',
+      contactPerson: contactPerson || 'N/A',
+      mobile: mobile || 'N/A',
+      streetAddress: streetAddress || 'N/A',
+      area: area || '',
+      city: city || 'N/A',
+      state: state || 'N/A',
+      pincode: pincode || ''
+    };
+  };
+
   const handlePrintInvoice = () => {
     if (!invoice) return;
+    const fromAddr = getFormattedInvoiceAddress(trip.pickupAddress || trip.fromAddress, trip.startLocation);
+    const toAddr = getFormattedInvoiceAddress(trip.deliveryAddress || trip.toAddress, trip.endLocation);
+
     const printWindow = window.open("", "_blank");
     printWindow.document.write(`
       <html>
@@ -387,6 +449,11 @@ export default function TripDetailsPage() {
             .info-item { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #F1F5F9; }
             .info-label { color: #64748B; }
             .info-val { font-weight: bold; color: #1E293B; }
+            .address-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 20px; }
+            .address-box { background: #F8FAFC; border: 1px solid #E7EAF0; border-radius: 8px; padding: 16px; font-size: 12px; line-height: 1.6; }
+            .address-title { font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: bold; color: #B45A0A; text-transform: uppercase; border-bottom: 1px solid #E7EAF0; padding-bottom: 6px; margin-bottom: 10px; }
+            .field-label { color: #64748B; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-top: 6px; }
+            .field-val { font-weight: bold; color: #1E293B; margin-bottom: 4px; }
             .footer { margin-top: 40px; border-top: 1px solid #E7EAF0; padding-top: 20px; font-size: 11px; color: #64748B; text-align: center; }
           </style>
         </head>
@@ -415,14 +482,56 @@ export default function TripDetailsPage() {
 
             <div class="section-title">Trip Information</div>
             <div class="info-grid">
-              <div class="info-item"><span class="info-label">Pickup Location</span><span class="info-val">${trip.startLocation}</span></div>
-              <div class="info-item"><span class="info-label">Destination</span><span class="info-val">${trip.endLocation}</span></div>
               <div class="info-item"><span class="info-label">Departure Date & Time</span><span class="info-val">${formatDateTime(trip.departureTime)}</span></div>
               <div class="info-item"><span class="info-label">Estimated Arrival</span><span class="info-val">${formatDateTime(trip.eta)}</span></div>
               <div class="info-item"><span class="info-label">Distance (KM)</span><span class="info-val">${trip.status === "Completed" ? ((trip.actualDistance && trip.actualDistance !== 120) ? trip.actualDistance : ((trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance)) : ((trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance)} KM</span></div>
               <div class="info-item"><span class="info-label">Cargo Type</span><span class="info-val">${trip.cargoType || "General Cargo"}</span></div>
               <div class="info-item"><span class="info-label">Cargo Weight</span><span class="info-val">${trip.cargoWeight || 0} kg</span></div>
               <div class="info-item"><span class="info-label">Trip Notes</span><span class="info-val">${trip.tripNotes || "None"}</span></div>
+            </div>
+
+            <div class="address-grid">
+              <div class="address-box">
+                <div class="address-title">FROM ADDRESS</div>
+                <div style="font-weight: bold; color: #1E293B; font-size: 14px; margin-bottom: 6px;">${fromAddr.companyName}</div>
+                
+                <div class="field-label">Contact Person</div>
+                <div class="field-val">${fromAddr.contactPerson}</div>
+
+                <div class="field-label">Mobile</div>
+                <div class="field-val">${fromAddr.mobile}</div>
+
+                <div style="margin-top: 6px; color: #334155;">
+                  <div>${fromAddr.streetAddress}</div>
+                  ${fromAddr.area ? `<div>${fromAddr.area}</div>` : ''}
+                </div>
+
+                <div style="color: #1E293B; font-weight: bold; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #E2E8F0;">
+                  <div>${fromAddr.city}</div>
+                  <div>${fromAddr.state}${fromAddr.pincode ? ' - ' + fromAddr.pincode : ''}</div>
+                </div>
+              </div>
+
+              <div class="address-box">
+                <div class="address-title">TO ADDRESS</div>
+                <div style="font-weight: bold; color: #1E293B; font-size: 14px; margin-bottom: 6px;">${toAddr.companyName}</div>
+                
+                <div class="field-label">Contact Person</div>
+                <div class="field-val">${toAddr.contactPerson}</div>
+
+                <div class="field-label">Mobile</div>
+                <div class="field-val">${toAddr.mobile}</div>
+
+                <div style="margin-top: 6px; color: #334155;">
+                  <div>${toAddr.streetAddress}</div>
+                  ${toAddr.area ? `<div>${toAddr.area}</div>` : ''}
+                </div>
+
+                <div style="color: #1E293B; font-weight: bold; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #E2E8F0;">
+                  <div>${toAddr.city}</div>
+                  <div>${toAddr.state}${toAddr.pincode ? ' - ' + toAddr.pincode : ''}</div>
+                </div>
+              </div>
             </div>
 
             <div class="section-title">Vehicle Information</div>
@@ -855,6 +964,82 @@ export default function TripDetailsPage() {
             </div>
           </div>
 
+          {/* Pickup Address & Delivery Address Details Card */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4 font-nunito">
+            <h3 className="font-poppins font-bold text-[#1E293B] text-[14px] border-b border-gray-100 pb-3 flex items-center justify-between">
+              <span>Pickup & Delivery Address Details</span>
+              <span className="text-[10px] text-[#B45A0A] font-bold uppercase tracking-wider bg-amber-50 px-2.5 py-1 rounded-md border border-amber-100">Logistics Addresses</span>
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Pickup Address (From Address) */}
+              {(() => {
+                const from = getFormattedInvoiceAddress(trip.pickupAddress || trip.fromAddress, trip.startLocation);
+                return (
+                  <div className="bg-slate-50/80 p-5 rounded-xl border border-slate-200/80 space-y-2.5 text-xs">
+                    <h4 className="font-poppins font-bold text-[11px] text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-2">
+                      FROM ADDRESS
+                    </h4>
+                    <div className="font-bold text-slate-800 text-sm">{from.companyName}</div>
+
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact Person</div>
+                      <div className="font-bold text-slate-700 text-xs mt-0.5">{from.contactPerson}</div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mobile</div>
+                      <div className="font-bold text-slate-700 text-xs mt-0.5">{from.mobile}</div>
+                    </div>
+
+                    <div className="text-slate-700">
+                      <div>{from.streetAddress}</div>
+                      {from.area && <div>{from.area}</div>}
+                    </div>
+
+                    <div className="text-slate-800 font-bold pt-1.5 border-t border-slate-200/60">
+                      <div>{from.city}</div>
+                      <div>{from.state}{from.pincode ? ` - ${from.pincode}` : ''}</div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Delivery Address (To Address) */}
+              {(() => {
+                const to = getFormattedInvoiceAddress(trip.deliveryAddress || trip.toAddress, trip.endLocation);
+                return (
+                  <div className="bg-slate-50/80 p-5 rounded-xl border border-slate-200/80 space-y-2.5 text-xs">
+                    <h4 className="font-poppins font-bold text-[11px] text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-2">
+                      TO ADDRESS
+                    </h4>
+                    <div className="font-bold text-slate-800 text-sm">{to.companyName}</div>
+
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact Person</div>
+                      <div className="font-bold text-slate-700 text-xs mt-0.5">{to.contactPerson}</div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mobile</div>
+                      <div className="font-bold text-slate-700 text-xs mt-0.5">{to.mobile}</div>
+                    </div>
+
+                    <div className="text-slate-700">
+                      <div>{to.streetAddress}</div>
+                      {to.area && <div>{to.area}</div>}
+                    </div>
+
+                    <div className="text-slate-800 font-bold pt-1.5 border-t border-slate-200/60">
+                      <div>{to.city}</div>
+                      <div>{to.state}{to.pincode ? ` - ${to.pincode}` : ''}</div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
           {/* Cost & Earnings Projection Card */}
           {trip.status === 'Completed' && (
             <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
@@ -1135,6 +1320,26 @@ export default function TripDetailsPage() {
           <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
             <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Vehicle Details</h4>
             
+            <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
+              {trip.vehicle?.vehicleImage?.secure_url || trip.vehicle?.image ? (
+                <img
+                  src={trip.vehicle?.vehicleImage?.secure_url || trip.vehicle?.image}
+                  alt={trip.vehicleName}
+                  className="w-12 h-12 rounded-xl object-cover border border-gray-200 shadow-sm shrink-0"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-[#FDF3EC] border border-[#B45A0A]/20 flex items-center justify-center shrink-0">
+                  <Truck className="w-6 h-6 text-[#B45A0A]" />
+                </div>
+              )}
+              <div>
+                <h5 className="font-poppins font-bold text-[#1E293B] text-sm">{trip.vehicleName || "Unassigned"}</h5>
+                <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider block mt-0.5">
+                  {trip.vehiclePlate || "N/A"}
+                </span>
+              </div>
+            </div>
+
             <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[#64748B] font-medium font-poppins">Model</span>
@@ -1465,8 +1670,14 @@ export default function TripDetailsPage() {
       )}
       {/* --- INVOICE VIEW MODAL --- */}
       {showInvoiceModal && invoice && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl p-6 md:p-8 border border-[#E7EAF0] relative my-8 animate-scale-up">
+        <div 
+          ref={invoiceModalOverlayRef}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-6 md:pt-10 animate-fade-in overflow-y-auto"
+        >
+          <div 
+            ref={invoiceModalContentRef}
+            className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl p-6 md:p-8 border border-[#E7EAF0] relative my-4 md:my-6 animate-scale-up max-h-[85vh] overflow-y-auto"
+          >
             <button
               onClick={() => setShowInvoiceModal(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
@@ -1524,8 +1735,6 @@ export default function TripDetailsPage() {
                 <div className="space-y-3.5">
                   <h4 className="font-poppins font-bold text-[11px] text-[#64748B] uppercase tracking-wider border-b border-[#E7EAF0] pb-1.5">Trip Information</h4>
                   <div className="space-y-2 text-xs">
-                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Pickup Location</span><span className="font-bold text-gray-700">{trip.startLocation}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Destination</span><span className="font-bold text-gray-700">{trip.endLocation}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Departure Date & Time</span><span className="font-bold text-gray-700">{formatDateTime(trip.departureTime)}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Estimated Arrival</span><span className="font-bold text-gray-700">{formatDateTime(trip.eta)}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Distance</span><span className="font-bold text-gray-700">{trip.status === "Completed" ? ((trip.actualDistance && trip.actualDistance !== 120) ? trip.actualDistance : ((trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance)) : ((trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance)} KM</span></div>
@@ -1558,6 +1767,71 @@ export default function TripDetailsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* FROM ADDRESS & TO ADDRESS Two-Column Section */}
+              {(() => {
+                const fromAddr = getFormattedInvoiceAddress(trip.pickupAddress || trip.fromAddress, trip.startLocation);
+                const toAddr = getFormattedInvoiceAddress(trip.deliveryAddress || trip.toAddress, trip.endLocation);
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[#E7EAF0] font-nunito">
+                    {/* FROM ADDRESS */}
+                    <div className="bg-slate-50/80 p-4.5 rounded-xl border border-slate-200/80 space-y-2 text-xs">
+                      <h4 className="font-poppins font-bold text-[11px] text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-2 mb-2">
+                        FROM ADDRESS
+                      </h4>
+                      <div className="font-bold text-slate-800 text-sm mb-1">{fromAddr.companyName}</div>
+
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact Person</div>
+                        <div className="font-bold text-slate-700 text-xs mt-0.5">{fromAddr.contactPerson}</div>
+                      </div>
+
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mobile</div>
+                        <div className="font-bold text-slate-700 text-xs mt-0.5">{fromAddr.mobile}</div>
+                      </div>
+
+                      <div className="text-slate-700">
+                        <div>{fromAddr.streetAddress}</div>
+                        {fromAddr.area && <div>{fromAddr.area}</div>}
+                      </div>
+
+                      <div className="text-slate-800 font-bold pt-1.5 border-t border-slate-200/60">
+                        <div>{fromAddr.city}</div>
+                        <div>{fromAddr.state}{fromAddr.pincode ? ` - ${fromAddr.pincode}` : ''}</div>
+                      </div>
+                    </div>
+
+                    {/* TO ADDRESS */}
+                    <div className="bg-slate-50/80 p-4.5 rounded-xl border border-slate-200/80 space-y-2 text-xs">
+                      <h4 className="font-poppins font-bold text-[11px] text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-2 mb-2">
+                        TO ADDRESS
+                      </h4>
+                      <div className="font-bold text-slate-800 text-sm mb-1">{toAddr.companyName}</div>
+
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact Person</div>
+                        <div className="font-bold text-slate-700 text-xs mt-0.5">{toAddr.contactPerson}</div>
+                      </div>
+
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mobile</div>
+                        <div className="font-bold text-slate-700 text-xs mt-0.5">{toAddr.mobile}</div>
+                      </div>
+
+                      <div className="text-slate-700">
+                        <div>{toAddr.streetAddress}</div>
+                        {toAddr.area && <div>{toAddr.area}</div>}
+                      </div>
+
+                      <div className="text-slate-800 font-bold pt-1.5 border-t border-slate-200/60">
+                        <div>{toAddr.city}</div>
+                        <div>{toAddr.state}{toAddr.pincode ? ` - ${toAddr.pincode}` : ''}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Creator details */}
               <div className="pt-4 border-t border-[#E7EAF0] flex flex-col sm:flex-row justify-between text-[10px] text-[#64748B] font-semibold gap-2">

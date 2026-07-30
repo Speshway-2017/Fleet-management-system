@@ -20,11 +20,25 @@ export default function DriversManagementPage() {
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [stats, setStats] = useState(null);
+
   const fetchDrivers = useCallback(async (isInitial = false) => {
     try {
       if (isInitial) setLoading(true);
-      const res = await driverApi.list();
-      setDrivers(res.data?.data || []);
+      const res = await driverApi.list({ limit: 1000 });
+      const loadedDrivers = res.data?.data || [];
+      setDrivers(loadedDrivers);
+      if (res.data?.stats) {
+        setStats(res.data.stats);
+      } else {
+        const total = res.data?.pagination?.total ?? loadedDrivers.length;
+        setStats({
+          totalDrivers: total,
+          activeDrivers: loadedDrivers.filter(d => d.driverStatus === "AVAILABLE" || d.driverStatus === "ON_TRIP" || d.driverStatus === "ASSIGNED").length,
+          onTripDrivers: loadedDrivers.filter(d => d.driverStatus === "ON_TRIP").length,
+          suspendedDrivers: loadedDrivers.filter(d => d.driverStatus === "SUSPENDED").length,
+        });
+      }
     } catch (err) {
       if (isInitial) toast.error(err.response?.data?.message || "Failed to load drivers.");
     } finally {
@@ -38,11 +52,11 @@ export default function DriversManagementPage() {
     return () => clearInterval(interval);
   }, [fetchDrivers]);
 
-  // KPIs
-  const totalDrivers    = drivers.length;
-  const activeDrivers   = drivers.filter((d) => d.driverStatus === "AVAILABLE" || d.driverStatus === "ON_TRIP").length;
-  const onTripDrivers   = drivers.filter((d) => d.driverStatus === "ON_TRIP").length;
-  const suspendedDrivers = drivers.filter((d) => d.driverStatus === "SUSPENDED").length;
+  // KPIs using accurate Mongo countDocuments stats
+  const totalDrivers     = stats?.totalDrivers ?? drivers.length;
+  const activeDrivers    = stats?.activeDrivers ?? drivers.filter((d) => d.driverStatus === "AVAILABLE" || d.driverStatus === "ON_TRIP" || d.driverStatus === "ASSIGNED").length;
+  const onTripDrivers    = stats?.onTripDrivers ?? drivers.filter((d) => d.driverStatus === "ON_TRIP").length;
+  const suspendedDrivers = stats?.suspendedDrivers ?? drivers.filter((d) => d.driverStatus === "SUSPENDED").length;
 
   const handleDeleteDriver = async () => {
     if (!selectedDriver) return;

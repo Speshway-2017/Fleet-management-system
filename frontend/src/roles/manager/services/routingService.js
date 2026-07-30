@@ -12,6 +12,8 @@
 
 // Fallback coordinate lookup dictionary for known cities (lat, lon)
 const LOCAL_CITY_COORDINATES = {
+  guntakal: [15.1670, 77.3820],
+  hyderabad: [17.3850, 78.4867],
   mumbai: [19.0760, 72.8777],
   pune: [18.5204, 73.8567],
   bengaluru: [12.9716, 77.5946],

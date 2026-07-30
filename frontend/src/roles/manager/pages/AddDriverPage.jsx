@@ -419,19 +419,21 @@ export default function AddDriverPage() {
               </select>
             </div>
 
-            {/* Status Selection */}
-            <div>
-              <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Current Status</label>
-              <select
-                value={formData.driverStatus}
-                onChange={(e) => setFormData({ ...formData, driverStatus: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
-              >
-                <option value="AVAILABLE">Available</option>
-                <option value="ON_TRIP">On Trip</option>
-                <option value="SUSPENDED">Suspended</option>
-              </select>
-            </div>
+            {/* Status Selection - Only in Edit Mode */}
+            {isEditMode && (
+              <div>
+                <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Current Status</label>
+                <select
+                  value={formData.driverStatus}
+                  onChange={(e) => setFormData({ ...formData, driverStatus: e.target.value })}
+                  className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                >
+                  <option value="AVAILABLE">Available</option>
+                  <option value="ON_TRIP">On Trip</option>
+                  <option value="SUSPENDED">Suspended</option>
+                </select>
+              </div>
+            )}
 
             {/* Current Location */}
             <div>

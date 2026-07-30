@@ -33,4 +33,42 @@ export const uploadImageToCloudinary = (buffer, folder = 'fleet_management') => 
   });
 };
 
+/**
+ * Uploads a base64 image string directly to Cloudinary
+ * @param {String} base64Data - Base64 data string
+ * @param {String} folder - Destination folder in Cloudinary
+ * @param {String} originalName - Original filename
+ */
+export const uploadBase64ImageToCloudinary = async (base64Data, folder = 'vehicles', originalName = 'vehicle_image') => {
+  try {
+    const result = await cloudinary.uploader.upload(base64Data, {
+      folder,
+      resource_type: 'auto'
+    });
+    return {
+      secure_url: result.secure_url,
+      public_id: result.public_id,
+      originalName: originalName || 'vehicle_image'
+    };
+  } catch (error) {
+    console.error('Cloudinary base64 upload error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Deletes an image from Cloudinary by its public_id
+ * @param {String} publicId - Cloudinary public_id
+ */
+export const deleteImageFromCloudinary = async (publicId) => {
+  if (!publicId) return null;
+  try {
+    const result = await cloudinary.uploader.destroy(publicId);
+    return result;
+  } catch (error) {
+    console.error(`Error deleting image ${publicId} from Cloudinary:`, error);
+    return null;
+  }
+};
+
 export default cloudinary;

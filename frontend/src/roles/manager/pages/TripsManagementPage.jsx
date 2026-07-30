@@ -343,6 +343,8 @@ export default function TripsManagementPage() {
   const handleOpenEdit = (t) => {
     fetchResources();
     setEditingTrip(t);
+    const pAddr = t.pickupAddress || t.fromAddress || {};
+    const dAddr = t.deliveryAddress || t.toAddress || {};
     setFormData({
       driverId: t.driver?._id || t.driver || "",
       vehicleId: t.vehicle?._id || t.vehicle || "",
@@ -354,7 +356,27 @@ export default function TripsManagementPage() {
       description: t.description || "",
       cargoType: t.cargoType || "",
       cargoWeight: t.cargoWeight || "",
-      tripNotes: t.tripNotes || ""
+      tripNotes: t.tripNotes || "",
+      pickupAddress: {
+        companyName: pAddr.companyName || "",
+        contactPerson: pAddr.contactPerson || "",
+        mobile: pAddr.mobile || pAddr.mobileNumber || "",
+        streetAddress: pAddr.streetAddress || "",
+        area: pAddr.area || pAddr.areaLocality || "",
+        city: pAddr.city || "",
+        state: pAddr.state || "",
+        pincode: pAddr.pincode || ""
+      },
+      deliveryAddress: {
+        companyName: dAddr.companyName || "",
+        contactPerson: dAddr.contactPerson || "",
+        mobile: dAddr.mobile || dAddr.mobileNumber || "",
+        streetAddress: dAddr.streetAddress || "",
+        area: dAddr.area || dAddr.areaLocality || "",
+        city: dAddr.city || "",
+        state: dAddr.state || "",
+        pincode: dAddr.pincode || ""
+      }
     });
     setDepartureError("");
     setEtaError("");
@@ -380,7 +402,7 @@ export default function TripsManagementPage() {
     }
 
     try {
-      await managerApi.updateTrip(editingTrip.id, {
+      await managerApi.updateTrip(editingTrip._id || editingTrip.id, {
         startLocation: formData.startLocation,
         endLocation: formData.endLocation,
         departureTime: formData.departureTime,
@@ -389,6 +411,10 @@ export default function TripsManagementPage() {
         cargoType: formData.cargoType,
         cargoWeight: formData.cargoWeight ? Number(formData.cargoWeight) : undefined,
         tripNotes: formData.tripNotes,
+        pickupAddress: formData.pickupAddress,
+        deliveryAddress: formData.deliveryAddress,
+        fromAddress: formData.pickupAddress,
+        toAddress: formData.deliveryAddress,
         estimatedDistance: editRouteInfo.distanceKm || undefined
       });
       toast.success("Trip updated successfully");
@@ -999,6 +1025,228 @@ export default function TripsManagementPage() {
                     onChange={(e) => setFormData({ ...formData, tripNotes: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
                   />
+                </div>
+              </div>
+
+              {/* Pickup Address Edit Section */}
+              <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3 font-nunito">
+                <h4 className="font-poppins font-bold text-xs text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-1.5">
+                  Pickup Address (From Address)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Company Name</label>
+                    <input
+                      type="text"
+                      value={formData.pickupAddress?.companyName || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, companyName: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Contact Person</label>
+                    <input
+                      type="text"
+                      value={formData.pickupAddress?.contactPerson || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, contactPerson: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Mobile Number</label>
+                    <input
+                      type="text"
+                      maxLength={10}
+                      value={formData.pickupAddress?.mobile || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, mobile: e.target.value.replace(/\D/g, '') }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Street Address</label>
+                    <input
+                      type="text"
+                      value={formData.pickupAddress?.streetAddress || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, streetAddress: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Area / Locality</label>
+                    <input
+                      type="text"
+                      value={formData.pickupAddress?.area || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, area: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">City</label>
+                    <input
+                      type="text"
+                      value={formData.pickupAddress?.city || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, city: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">State</label>
+                    <input
+                      type="text"
+                      value={formData.pickupAddress?.state || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, state: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Pincode</label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={formData.pickupAddress?.pincode || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, pincode: e.target.value.replace(/\D/g, '') }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Delivery Address Edit Section */}
+              <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3 font-nunito">
+                <h4 className="font-poppins font-bold text-xs text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-1.5">
+                  Delivery Address (To Address)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Company Name</label>
+                    <input
+                      type="text"
+                      value={formData.deliveryAddress?.companyName || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, companyName: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Contact Person</label>
+                    <input
+                      type="text"
+                      value={formData.deliveryAddress?.contactPerson || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, contactPerson: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Mobile Number</label>
+                    <input
+                      type="text"
+                      maxLength={10}
+                      value={formData.deliveryAddress?.mobile || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, mobile: e.target.value.replace(/\D/g, '') }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Street Address</label>
+                    <input
+                      type="text"
+                      value={formData.deliveryAddress?.streetAddress || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, streetAddress: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Area / Locality</label>
+                    <input
+                      type="text"
+                      value={formData.deliveryAddress?.area || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, area: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">City</label>
+                    <input
+                      type="text"
+                      value={formData.deliveryAddress?.city || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, city: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">State</label>
+                    <input
+                      type="text"
+                      value={formData.deliveryAddress?.state || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, state: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Pincode</label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={formData.deliveryAddress?.pincode || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, pincode: e.target.value.replace(/\D/g, '') }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
                 </div>
               </div>
 
