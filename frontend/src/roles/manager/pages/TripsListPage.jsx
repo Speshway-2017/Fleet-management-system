@@ -624,8 +624,10 @@ export default function TripsListPage() {
                       {(() => {
                         const tripKey = t.id || t._id;
                         const dynamicDist = tripDistances[tripKey];
-                        const est = dynamicDist || ((t.estimatedDistance && t.estimatedDistance !== 120 && t.estimatedDistance !== 584) ? t.estimatedDistance : 0);
-                        const act = (t.actualDistance && t.actualDistance !== 120 && t.actualDistance !== 584) ? t.actualDistance : est;
+                        const est = (dynamicDist && dynamicDist < 4000)
+                          ? dynamicDist
+                          : ((t.estimatedDistance && t.estimatedDistance > 0 && t.estimatedDistance < 4000) ? t.estimatedDistance : 0);
+                        const act = (t.actualDistance && t.actualDistance > 0 && t.actualDistance < 4000) ? t.actualDistance : est;
                         const finalDist = t.status === "Completed" ? act : est;
                         return finalDist > 0 ? `${finalDist} KM` : "Calculating...";
                       })()}

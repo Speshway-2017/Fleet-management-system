@@ -1,3 +1,4 @@
+import { resolveLocationName, isCoordinateString } from '../utils/reverseGeocoder.js';
 import { geocodeCity, getDistanceKm, getRoadDistanceAndEta } from '../utils/geocodingHelper.js';
 import {
   getDrivers,
@@ -140,7 +141,7 @@ export const listDrivers = async (req, res, next) => {
     // 6. Exclude drivers on active trips if availableOnly is set
     if (req.query.availableOnly === 'true' || req.query.available === 'true') {
       const activeTrips = await Trip.find({
-        status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip'] }
+        status: { $nin: ['Completed', 'Cancelled'] }
       });
       const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
       filter._id = { $nin: allocatedDriverIds };
@@ -164,6 +165,16 @@ export const listDrivers = async (req, res, next) => {
       .sort(sort)
       .skip(skip)
       .limit(limit);
+
+    for (const d of drivers) {
+      const rawLoc = d.currentLocation || d.driverLocation;
+      if (isCoordinateString(rawLoc)) {
+        const resolvedName = await resolveLocationName(rawLoc, d.branch);
+        d.currentLocation = resolvedName;
+        d.driverLocation = resolvedName;
+        Driver.findByIdAndUpdate(d._id, { currentLocation: resolvedName, driverLocation: resolvedName }).catch(() => {});
+      }
+    }
 
     // Compute overall statistics using countDocuments()
     const baseStatsFilter = { assignedManager: req.user._id, isDeleted: { $ne: true } };
@@ -222,7 +233,7 @@ export const listDrivers = async (req, res, next) => {
 export const getAvailableDrivers = async (req, res, next) => {
   try {
     const activeTrips = await Trip.find({
-      status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip'] }
+      status: { $nin: ['Completed', 'Cancelled'] }
     });
 
     const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
@@ -237,6 +248,16 @@ export const getAvailableDrivers = async (req, res, next) => {
         { licenseExpiry: { $gte: new Date() } }
       ]
     });
+
+    for (const d of allAvailable) {
+      const rawLoc = d.currentLocation || d.driverLocation;
+      if (isCoordinateString(rawLoc)) {
+        const resolvedName = await resolveLocationName(rawLoc, d.branch);
+        d.currentLocation = resolvedName;
+        d.driverLocation = resolvedName;
+        Driver.findByIdAndUpdate(d._id, { currentLocation: resolvedName, driverLocation: resolvedName }).catch(() => {});
+      }
+    }
 
     const targetLoc = (req.query.location || req.query.startLocation || '').trim();
     if (!targetLoc) {
@@ -299,7 +320,11 @@ export const getAvailableDrivers = async (req, res, next) => {
     console.log(`No available Drivers found in ${targetLoc}. Searching nearest available Drivers...`);
     const nearbyDrivers = await Promise.all(
       nearbyRawDrivers.map(async (d) => {
-        const dLoc = getDriverEffectiveLocation(d) || 'Pune';
+        const rawEffective = getDriverEffectiveLocation(d);
+        const dLoc = await resolveLocationName(rawEffective || 'Pune', d.branch);
+        if (isCoordinateString(rawEffective)) {
+          Driver.findByIdAndUpdate(d._id, { currentLocation: dLoc, driverLocation: dLoc }).catch(() => {});
+        }
         const routeData = await getRoadDistanceAndEta(targetLoc, dLoc);
         const dObj = d.toObject ? d.toObject() : { ...d };
         return {

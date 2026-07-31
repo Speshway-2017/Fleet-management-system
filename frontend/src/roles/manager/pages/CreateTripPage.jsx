@@ -27,10 +27,13 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { formatDisplayLocation } from "@/utils/locationFormatter";
+import { formatEmployeeId } from "@/utils/employeeIdFormatter";
 import { useAuth } from "@/context/AuthContext";
 import { managerApi } from "../api/managerApi";
 import { calculateDrivingRoute, calculateEtaFromDuration } from "../services/routingService";
-import { INDIAN_STATES, getCitiesForState } from "@/constants/indianStates";
+import { INDIAN_STATES, getCitiesForState, getStateForCity } from "@/constants/indianStates";
+import { cleanCityName } from "@/utils/locationFormatter";
 
 const CITIES_SUGGESTIONS = [
   "Ahmedabad",
@@ -92,13 +95,12 @@ function SearchableSelect({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium text-left flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 ${
-          disabled
+        className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium text-left flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 ${disabled
             ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
             : error
-            ? "border-red-300 focus:border-red-500 text-[#1E293B]"
-            : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
-        }`}
+              ? "border-red-300 focus:border-red-500 text-[#1E293B]"
+              : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+          }`}
       >
         <span className={value ? "text-[#1E293B] font-semibold font-poppins" : "text-gray-400 font-normal font-poppins"}>
           {value || placeholder}
@@ -136,11 +138,10 @@ function SearchableSelect({
                     key={idx}
                     type="button"
                     onClick={() => handleSelect(opt)}
-                    className={`w-full px-3.5 py-2 text-left text-xs flex items-center justify-between font-poppins transition-colors ${
-                      isSelected
+                    className={`w-full px-3.5 py-2 text-left text-xs flex items-center justify-between font-poppins transition-colors ${isSelected
                         ? "bg-amber-50 text-[#B45A0A] font-bold"
                         : "text-[#1E293B] hover:bg-gray-50 font-medium"
-                    }`}
+                      }`}
                   >
                     <span>{optStr}</span>
                     {isSelected && <Check className="w-3.5 h-3.5 text-[#B45A0A]" />}
@@ -192,6 +193,27 @@ export default function CreateTripPage() {
   const [eta, setEta] = useState("");
   const [status, setStatus] = useState("Scheduled");
   const [description, setDescription] = useState("");
+
+  const normalizeCityName = (loc) => {
+    if (!loc || typeof loc !== 'string') return '';
+    return loc.trim().split(',')[0].trim().toLowerCase();
+  };
+
+  const isSameLocation = (start, end) => {
+    const normStart = normalizeCityName(start);
+    const normEnd = normalizeCityName(end);
+    return !!(normStart && normEnd && normStart === normEnd);
+  };
+
+  const isSameLocError = isSameLocation(startLocation, endLocation);
+
+  useEffect(() => {
+    if (isSameLocError) {
+      toast.error("Trip cannot be created because the pickup and destination locations are the same.", {
+        id: "same-location-warning"
+      });
+    }
+  }, [startLocation, endLocation, isSameLocError]);
 
   const [departureError, setDepartureError] = useState("");
   const [etaError, setEtaError] = useState("");
@@ -263,20 +285,38 @@ export default function CreateTripPage() {
   };
 
   const handleUseCurrentBranch = () => {
-    const branchName = user?.branch || "Pune Central Hub";
+    const rawCity = (startLocation.trim() || user?.city || user?.branch || "Pune").split(',')[0].trim();
+    const city = cleanCityName(rawCity) || "Pune";
+
+    let state = user?.state || "";
+    if (!state || !INDIAN_STATES.some(s => s.name.toLowerCase() === state.trim().toLowerCase())) {
+      state = getStateForCity(city) || "Maharashtra";
+    }
+
+    const pincodeMap = {
+      Hyderabad: "500001",
+      Pune: "411001",
+      Visakhapatnam: "530001",
+      Mumbai: "400001",
+      Bengaluru: "560001",
+      Chennai: "600001",
+      Delhi: "110001",
+      Tirupati: "517501"
+    };
+
     const newAddress = {
       companyName: user?.companyName || user?.fullName || "Speshway Logistics Pvt Ltd",
-      contactPerson: user?.fullName || user?.name || "Branch Manager",
+      contactPerson: user?.fullName || user?.name || "G Sai Kiran",
       mobile: (user?.mobile || user?.phone || "9876543210").replace(/\D/g, '').slice(0, 10),
       streetAddress: user?.branchAddress || user?.address || "Plot 42, Central Freight Yard, Highway Zone",
       area: user?.area || user?.branchArea || "Industrial Area",
-      city: startLocation || user?.city || user?.branch || "Pune",
-      state: user?.state || "Maharashtra",
-      pincode: user?.pincode || "411001"
+      state: state,
+      city: city,
+      pincode: user?.pincode || pincodeMap[city] || "411001"
     };
     setPickupAddress(newAddress);
     setPickupErrors({});
-    toast.success("Pickup address populated from Current Branch.");
+    toast.success(`Pickup address populated for ${city}, ${state}.`);
   };
 
   const handleClearDeliveryAddress = () => {
@@ -333,9 +373,8 @@ export default function CreateTripPage() {
           errorMessage: "",
           success: true
         });
-        if (res.durationSeconds > 0) {
-          const dep = departureTime || getCurrentDateTimeString();
-          const autoEta = calculateEtaFromDuration(dep, res.durationSeconds);
+        if (res.durationSeconds > 0 && departureTime) {
+          const autoEta = calculateEtaFromDuration(departureTime, res.durationSeconds);
           setEta(autoEta);
         }
       } else {
@@ -433,9 +472,13 @@ export default function CreateTripPage() {
 
   const handleDepartureTimeChange = (val) => {
     setDepartureTime(val);
-    
+
     let updatedEta = eta;
-    if (val && eta) {
+    if (val && routeInfo.durationSeconds > 0 && (!eta || new Date(val) >= new Date(eta))) {
+      const autoEta = calculateEtaFromDuration(val, routeInfo.durationSeconds);
+      setEta(autoEta);
+      updatedEta = autoEta;
+    } else if (val && eta) {
       const depDate = new Date(val);
       const etaDate = new Date(eta);
       if (depDate.getTime() >= etaDate.getTime()) {
@@ -479,16 +522,16 @@ export default function CreateTripPage() {
           managerApi.getAvailableVehicles({ location: cleanLoc }),
           managerApi.getAvailableDrivers({ location: cleanLoc })
         ]);
-        
+
         const vPayload = vRes.data?.data || vRes.data || {};
         const dPayload = dRes.data?.data || dRes.data || {};
 
-        const rawVehicles = Array.isArray(vPayload) 
-          ? vPayload 
+        const rawVehicles = Array.isArray(vPayload)
+          ? vPayload
           : (vPayload.vehicles || vPayload.nearbyVehicles || vPayload.localVehicles || []);
-        
-        const rawDrivers = Array.isArray(dPayload) 
-          ? dPayload 
+
+        const rawDrivers = Array.isArray(dPayload)
+          ? dPayload
           : (dPayload.drivers || dPayload.nearbyDrivers || dPayload.localDrivers || []);
 
         const isVehFallback = !!(vPayload.isNearbyFallback || vPayload.isNearbyVehiclesFallback);
@@ -508,7 +551,7 @@ export default function CreateTripPage() {
             isNearby: v.isNearby || isVehFallback,
             distanceKm: v.distanceKm,
             estimatedTravelTime: v.estimatedTravelTime,
-            currentLocation: v.currentLocation || v.branch || "Nearby"
+            currentLocation: formatDisplayLocation(v.currentLocation, v.branch || v.branchDepot)
           };
         });
 
@@ -518,17 +561,37 @@ export default function CreateTripPage() {
             ...d,
             id: d._id || d.id,
             name: d.fullName || d.name,
-            employeeId: d.employeeId || 'N/A',
+            employeeId: formatEmployeeId(d.employeeId),
             status: isAvailable ? 'Available' : (d.status || 'Not Available'),
             isNearby: d.isNearby || isDrvFallback,
             distanceKm: d.distanceKm,
             estimatedTravelTime: d.estimatedTravelTime,
-            currentLocation: d.currentLocation || d.driverLocation || d.branch || "Nearby"
+            currentLocation: formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch)
           };
         });
 
-        setDrivers(driversData);
-        setVehicles(vehiclesData);
+        const cleanStartCity = cleanLoc.split(',')[0].trim().toLowerCase();
+        
+        let finalVehicles = vehiclesData;
+        if (cleanStartCity && !isVehFallback) {
+          const matchedVehs = vehiclesData.filter(v => {
+            const vLoc = (v.currentLocation || v.branch || '').toLowerCase();
+            return vLoc.includes(cleanStartCity) || cleanStartCity.includes(vLoc.split(',')[0].trim());
+          });
+          if (matchedVehs.length > 0) finalVehicles = matchedVehs;
+        }
+
+        let finalDrivers = driversData;
+        if (cleanStartCity && !isDrvFallback) {
+          const matchedDrvs = driversData.filter(d => {
+            const dLoc = (d.currentLocation || d.branch || '').toLowerCase();
+            return dLoc.includes(cleanStartCity) || cleanStartCity.includes(dLoc.split(',')[0].trim());
+          });
+          if (matchedDrvs.length > 0) finalDrivers = matchedDrvs;
+        }
+
+        setDrivers(finalDrivers);
+        setVehicles(finalVehicles);
 
         // Auto-clear selection if it is not in the new filtered location list
         setSelectedDriverId(prev => {
@@ -558,6 +621,57 @@ export default function CreateTripPage() {
     return () => clearTimeout(debounceFetch);
   }, [startLocation]);
 
+  const handleVehicleSelection = (vehicle) => {
+    if (isSameLocError) {
+      toast.error("Trip cannot be created because the pickup and destination locations are the same.", {
+        id: "same-location-warning"
+      });
+      return;
+    }
+    if (vehicle.status === "Under Maintenance" || vehicle.currentStatus === "Under Maintenance") {
+      toast.error("This vehicle is under maintenance and cannot be allocated.");
+      return;
+    }
+    if (vehicle.currentStatus === "Assigned" || vehicle.currentStatus === "In Trip" || vehicle.currentStatus === "On Trip") {
+      toast.error("This Vehicle is already assigned to an active trip.");
+      return;
+    }
+    const vehicleIdStr = String(vehicle.id || vehicle._id);
+    if (String(selectedVehicleId) === vehicleIdStr) {
+      setSelectedVehicleId("");
+      toast.info(`Unallocated vehicle ${vehicle.name}`);
+    } else {
+      setSelectedVehicleId(vehicleIdStr);
+      toast.success(`Allocated vehicle ${vehicle.name}`);
+    }
+  };
+
+  const handleDriverSelection = (driver) => {
+    if (isSameLocError) {
+      toast.error("Trip cannot be created because the pickup and destination locations are the same.", {
+        id: "same-location-warning"
+      });
+      return;
+    }
+    const isExpired = driver.licenseExpiry && new Date(driver.licenseExpiry) < new Date();
+    if (isExpired) {
+      toast.error("This driver has an expired license and cannot be assigned.");
+      return;
+    }
+    if (driver.driverStatus === "ASSIGNED" || driver.driverStatus === "ON_TRIP" || driver.status === "Not Available") {
+      toast.error("This Driver is already assigned to an active trip.");
+      return;
+    }
+    const driverIdStr = String(driver.id || driver._id);
+    if (String(selectedDriverId) === driverIdStr) {
+      setSelectedDriverId("");
+      toast.info(`Unassigned driver ${driver.name}`);
+    } else {
+      setSelectedDriverId(driverIdStr);
+      toast.success(`Assigned driver ${driver.name}`);
+    }
+  };
+
   const handleDispatch = async (e) => {
     e.preventDefault();
 
@@ -575,8 +689,10 @@ export default function CreateTripPage() {
       toast.error("Destination is required.");
       return;
     }
-    if (startLocation.trim().toLowerCase() === endLocation.trim().toLowerCase()) {
-      toast.error("Pickup and Destination cannot be the same.");
+    if (isSameLocError || normalizeCityName(startLocation) === normalizeCityName(endLocation)) {
+      toast.error("Trip cannot be created because the pickup and destination locations are the same.", {
+        id: "same-location-warning"
+      });
       return;
     }
     if (!departureTime) {
@@ -585,6 +701,10 @@ export default function CreateTripPage() {
     }
     if (!eta) {
       toast.error("Estimated Arrival is required.");
+      return;
+    }
+    if (!cargoWeight || Number(cargoWeight) <= 0) {
+      toast.error("Cargo Weight (KG) is required.");
       return;
     }
 
@@ -648,8 +768,8 @@ export default function CreateTripPage() {
       const distance = routeInfo.distanceKm || 0;
       await managerApi.createTrip({
         tripNumber,
-        vehicle: vehicle._id,
-        driver: driver ? driver._id : undefined,
+        vehicle: vehicle._id || vehicle.id,
+        driver: driver ? (driver._id || driver.id) : undefined,
         driverName: driver ? driver.name : "",
         driverPhone: driver ? driver.phone : "",
         vehicleName: vehicle.name,
@@ -729,13 +849,14 @@ export default function CreateTripPage() {
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
       <Breadcrumb />
-      {/* Breadcrumbs & Title header */}
+      
+      {/* Title Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#E7EAF0] pb-6">
         <div>
-          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
-            Dispatch New Trip
+          <h1 className="font-poppins font-bold text-[28px] text-[#1E293B] leading-none">
+            Create Trip
           </h1>
-          <p className="text-[18px] text-[#64748B] mt-[12px] font-medium">
+          <p className="text-xs text-[#64748B] mt-2 font-medium font-poppins">
             Configure vehicle, route details, and driver assignment.
           </p>
         </div>
@@ -744,259 +865,235 @@ export default function CreateTripPage() {
           <button
             type="button"
             onClick={() => navigate("/manager/trips")}
-            className="flex-1 md:flex-none px-5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-gray-50 transition-all cursor-pointer text-center"
+            className="px-4 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-gray-50 transition-all cursor-pointer text-center flex items-center gap-1.5 shadow-2xs font-poppins"
           >
-            Cancel
-          </button>
-          <button
-            onClick={handleDispatch}
-            disabled={!!departureError || !!etaError || !departureTime || !eta}
-            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-md cursor-pointer text-center ${
-              (departureError || etaError || !departureTime || !eta)
-                ? "bg-gray-300 shadow-none cursor-not-allowed opacity-60"
-                : "bg-[#B45A0A] hover:bg-[#9A4D08] shadow-[#B45A0A]/20"
-            }`}
-          >
-            Dispatch Trip
+            <ArrowLeft className="w-4 h-4" /> Back to Trips
           </button>
         </div>
       </div>
 
-      {/* Form Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
-        
-        {/* Left Column: Trip Specifications */}
-        <div className="lg:col-span-7 space-y-6">
-          
-          {/* Trip Specifications Form Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-5">
-            <div className="flex items-center gap-2 pb-3 border-b border-[#E7EAF0]">
-              <Route className="w-5 h-5 text-[#B45A0A]" />
-              <h3 className="font-poppins font-bold text-[#1E293B] text-[16px]">Trip Specifications</h3>
-            </div>
+      <div className="space-y-6 mt-6">
 
-            {/* Trip ID */}
+        {/* 1. Trip Specifications Card (100% Width) */}
+        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-5 font-poppins">
+          <div className="flex items-center gap-2 pb-3 border-b border-[#E7EAF0]">
+            <Route className="w-5 h-5 text-[#B45A0A]" />
+            <h3 className="font-poppins font-bold text-[#1E293B] text-[16px]">Trip Specifications</h3>
+          </div>
+
+          {/* Row 1: Start Location | Destination (2-Column Grid) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Start Location */}
             <div>
               <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                Trip ID (Auto-generated)
+                Start Location <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                value={tripNumber}
-                disabled
-                className="w-full px-3.5 py-2.5 h-[44px] bg-slate-50 border border-[#E7EAF0] rounded-xl text-sm text-[#64748B] font-medium focus:outline-none select-none"
-              />
-            </div>
-
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {/* Start Location */}
-               <div>
-                 <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                   Start Location *
-                 </label>
-                 <div className="relative">
-                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                   <input
-                     type="text"
-                     placeholder="e.g. Mumbai, MH"
-                     value={startLocation}
-                     onChange={(e) => handleStartLocationChange(e.target.value)}
-                     onFocus={() => {
-                       if (startLocation.trim().length > 0) {
-                         setShowStartSuggestions(true);
-                       }
-                     }}
-                     onBlur={() => {
-                       setTimeout(() => setShowStartSuggestions(false), 200);
-                     }}
-                     className="w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
-                     required
-                   />
-                   {showStartSuggestions && startSuggestions.length > 0 && (
-                     <div className="absolute left-0 right-0 mt-1 bg-white border border-[#E7EAF0] rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto py-1">
-                       {startSuggestions.map((city) => (
-                         <div
-                           key={city}
-                           onMouseDown={() => {
-                             setStartLocation(city);
-                             setShowStartSuggestions(false);
-                           }}
-                           className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#B45A0A] text-sm text-gray-700 font-medium cursor-pointer transition-colors"
-                         >
-                           {city}
-                         </div>
-                       ))}
-                     </div>
-                   )}
-                 </div>
-               </div>
- 
-               {/* End Location */}
-               <div>
-                 <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                   Destination *
-                 </label>
-                 <div className="relative">
-                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                   <input
-                     type="text"
-                     placeholder="e.g. Pune, MH"
-                     value={endLocation}
-                     onChange={(e) => handleEndLocationChange(e.target.value)}
-                     onFocus={() => {
-                       if (endLocation.trim().length > 0) {
-                         setShowEndSuggestions(true);
-                       }
-                     }}
-                     onBlur={() => {
-                       setTimeout(() => setShowEndSuggestions(false), 200);
-                     }}
-                     className="w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
-                     required
-                   />
-                   {showEndSuggestions && endSuggestions.length > 0 && (
-                     <div className="absolute left-0 right-0 mt-1 bg-white border border-[#E7EAF0] rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto py-1">
-                       {endSuggestions.map((city) => (
-                         <div
-                           key={city}
-                           onMouseDown={() => {
-                             setEndLocation(city);
-                             setShowEndSuggestions(false);
-                           }}
-                           className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#B45A0A] text-sm text-gray-700 font-medium cursor-pointer transition-colors"
-                         >
-                           {city}
-                         </div>
-                       ))}
-                     </div>
-                   )}
-                 </div>
-               </div>
-             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Departure Time */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Departure Time *
-                </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                  <input
-                    type="datetime-local"
-                    value={departureTime}
-                    onChange={(e) => handleDepartureTimeChange(e.target.value)}
-                    onBlur={handleBlur}
-                    min={getCurrentDateTimeString()}
-                    className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium ${
-                      departureError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
-                    }`}
-                    required
-                  />
-                </div>
-                {departureError && (
-                  <p className="text-red-500 text-xs mt-1 font-semibold">{departureError}</p>
-                )}
-              </div>
-
-              {/* ETA */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Estimated Arrival (ETA) *
-                </label>
-                <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                  <input
-                    type="datetime-local"
-                    value={eta}
-                    onChange={(e) => handleEtaChange(e.target.value)}
-                    onBlur={handleBlur}
-                    min={getMinEtaString(departureTime)}
-                    className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium ${
-                      etaError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
-                    }`}
-                    required
-                  />
-                </div>
-                {etaError && (
-                  <p className="text-red-500 text-xs mt-1 font-semibold">{etaError}</p>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                <input
+                  type="text"
+                  placeholder="e.g. Pune, MH"
+                  value={startLocation}
+                  onChange={(e) => handleStartLocationChange(e.target.value)}
+                  onFocus={() => {
+                    if (startLocation.trim().length > 0) setShowStartSuggestions(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowStartSuggestions(false), 200)}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${
+                    isSameLocError
+                      ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
+                      : "border-[#E7EAF0] focus:border-[#B45A0A]"
+                  }`}
+                  required
+                />
+                {showStartSuggestions && startSuggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 mt-1 bg-white border border-[#E7EAF0] rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto py-1">
+                    {startSuggestions.map((city) => (
+                      <div
+                        key={city}
+                        onMouseDown={() => {
+                          setStartLocation(city);
+                          setShowStartSuggestions(false);
+                        }}
+                        className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#B45A0A] text-sm text-gray-700 font-medium cursor-pointer transition-colors font-poppins"
+                      >
+                        {city}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Cargo Type */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Cargo Type (Optional)
-                </label>
+            {/* Destination */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Destination <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Navigation className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
                 <input
                   type="text"
-                  placeholder="e.g. Perishable Goods, Electronics"
-                  value={cargoType}
-                  onChange={(e) => setCargoType(e.target.value)}
-                  className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  placeholder="e.g. Hyderabad, TS"
+                  value={endLocation}
+                  onChange={(e) => handleEndLocationChange(e.target.value)}
+                  onFocus={() => {
+                    if (endLocation.trim().length > 0) setShowEndSuggestions(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowEndSuggestions(false), 200)}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${
+                    isSameLocError
+                      ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
+                      : "border-[#E7EAF0] focus:border-[#B45A0A]"
+                  }`}
+                  required
                 />
+                {showEndSuggestions && endSuggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 mt-1 bg-white border border-[#E7EAF0] rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto py-1">
+                    {endSuggestions.map((city) => (
+                      <div
+                        key={city}
+                        onMouseDown={() => {
+                          setEndLocation(city);
+                          setShowEndSuggestions(false);
+                        }}
+                        className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#B45A0A] text-sm text-gray-700 font-medium cursor-pointer transition-colors font-poppins"
+                      >
+                        {city}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-
-              {/* Cargo Weight */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Cargo Weight (Optional, kg)
-                </label>
-                <input
-                  type="number"
-                  placeholder="e.g. 5000"
-                  value={cargoWeight}
-                  onChange={(e) => setCargoWeight(e.target.value)}
-                  className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Cargo Description */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Cargo / Description
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Express Deliveries"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
-                />
-              </div>
-
-              {/* Trip Notes */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Trip Notes (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Handle with care, route via tollway"
-                  value={tripNotes}
-                  onChange={(e) => setTripNotes(e.target.value)}
-                  className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
-                />
-              </div>
+              {isSameLocError && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1 font-poppins animate-in fade-in duration-150">
+                  <span>⚠️</span> Start Location and Destination cannot be the same. Please select a different destination.
+                </p>
+              )}
             </div>
           </div>
 
+          {/* Row 2: Required Specifications (Departure Time | Estimated Arrival | Cargo Weight) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Departure Time */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Departure Time <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                <input
+                  type="datetime-local"
+                  value={departureTime}
+                  onChange={(e) => handleDepartureTimeChange(e.target.value)}
+                  onBlur={handleBlur}
+                  min={getCurrentDateTimeString()}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins ${
+                    departureError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
+                  }`}
+                  required
+                />
+              </div>
+              {departureError && (
+                <p className="text-red-500 text-xs mt-1 font-semibold font-poppins">{departureError}</p>
+              )}
+            </div>
+
+            {/* Estimated Arrival (ETA) */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Estimated Arrival (ETA) <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                <input
+                  type="datetime-local"
+                  value={eta}
+                  onChange={(e) => handleEtaChange(e.target.value)}
+                  onBlur={handleBlur}
+                  min={getMinEtaString(departureTime)}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins ${
+                    etaError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
+                  }`}
+                  required
+                />
+              </div>
+              {etaError && (
+                <p className="text-red-500 text-xs mt-1 font-semibold font-poppins">{etaError}</p>
+              )}
+            </div>
+
+            {/* Cargo Weight (REQUIRED) */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Cargo Weight (KG) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                placeholder="e.g. 5000"
+                value={cargoWeight}
+                onChange={(e) => setCargoWeight(e.target.value)}
+                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Row 3: Optional Details (Cargo Type | Cargo Description | Trip Notes) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Cargo Type */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Cargo Type (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Perishable Goods, Electronics"
+                value={cargoType}
+                onChange={(e) => setCargoType(e.target.value)}
+                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins"
+              />
+            </div>
+
+            {/* Cargo Description */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Cargo / Description (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Express Deliveries"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins"
+              />
+            </div>
+
+            {/* Trip Notes */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Trip Notes (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Handle with care, route via tollway"
+                value={tripNotes}
+                onChange={(e) => setTripNotes(e.target.value)}
+                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins"
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Right Column: Asset Allocation & Driver Assignment */}
-        <div className="lg:col-span-5 space-y-6">
+        {/* 2. Asset Allocation & Driver Assignment (Side-by-Side 2-Column Grid, Fixed Height with Internal Scrollbar) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           
-
           {/* Asset Allocation Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0]">
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between space-y-4 font-poppins h-[420px]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0] shrink-0">
               <div className="flex items-center gap-2">
                 <Truck className="w-5 h-5 text-[#B45A0A]" />
-                <h3 className="font-poppins font-bold text-[#1E293B] text-[16px]">Asset Allocation</h3>
+                <h3 className="font-bold text-[#1E293B] text-[16px]">Asset Allocation</h3>
               </div>
               <button
                 type="button"
@@ -1008,23 +1105,23 @@ export default function CreateTripPage() {
             </div>
 
             {startLocation.trim() && isNearbyVehiclesFallback && (
-              <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 font-poppins">
+              <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0">
                 <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold block">No vehicles are available in {startLocation}.</span>
-                  <span className="text-[11px] text-amber-700 font-medium">Showing the nearest available vehicles sorted by distance.</span>
+                  <span className="font-bold block">No available Vehicles found in {startLocation}.</span>
+                  <span className="text-[11px] text-amber-700 font-medium">Showing the nearest available Vehicles.</span>
                 </div>
               </div>
             )}
 
-            <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
+            <div className="space-y-2.5 overflow-y-auto pr-1 custom-scrollbar flex-1">
               {!startLocation.trim() ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
                   <MapPin className="w-8 h-8 text-[#94A3B8] mb-2" />
                   <p className="text-xs text-gray-400 font-semibold font-poppins">Please select a Start Location to view available vehicles and drivers.</p>
                 </div>
               ) : loading ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
                   <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available vehicles...</p>
                 </div>
@@ -1032,7 +1129,7 @@ export default function CreateTripPage() {
                 ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
                 : vehicles
               ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center font-semibold">No available vehicles found for the selected start location.</p>
+                <p className="text-xs text-gray-400 py-8 text-center font-semibold">No available vehicles found for the selected start location.</p>
               ) : (
                 (filterAvailableVehicles 
                   ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
@@ -1056,16 +1153,14 @@ export default function CreateTripPage() {
                       <div className="flex items-center gap-2">
                         <p className="font-bold text-xs text-[#1E293B]">{v.name}</p>
                         {(v.isNearby || isNearbyVehiclesFallback) && (
-                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">
-                            Nearby
-                          </span>
+                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
                         )}
                       </div>
                       <span className="text-[10px] text-[#64748B] font-semibold block mt-0.5 uppercase">Reg: {v.plateNumber}</span>
                       <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
                         <span>Type: <strong className="text-[#1E293B]">{v.vehicleType || v.type || "Truck"}</strong></span>
                         <span>|</span>
-                        <span>Location: <strong className="text-[#1E293B]">{v.currentLocation || v.branch || "Nearby"}</strong></span>
+                        <span>Location: <strong className="text-[#1E293B]">{formatDisplayLocation(v.currentLocation, v.branch)}</strong></span>
                       </div>
                       {(v.isNearby || isNearbyVehiclesFallback || (v.distanceKm !== undefined && v.distanceKm > 0)) && (
                         <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
@@ -1090,7 +1185,7 @@ export default function CreateTripPage() {
                         e.stopPropagation();
                         handleVehicleSelection(v);
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                      className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
                         v.status === "Under Maintenance"
                           ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
                           : String(selectedVehicleId) === String(v.id)
@@ -1107,11 +1202,11 @@ export default function CreateTripPage() {
           </div>
 
           {/* Driver Assignment Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0]">
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between space-y-4 font-poppins h-[420px]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0] shrink-0">
               <div className="flex items-center gap-2">
                 <User className="w-5 h-5 text-[#B45A0A]" />
-                <h3 className="font-poppins font-bold text-[#1E293B] text-[16px]">Driver Assignment</h3>
+                <h3 className="font-bold text-[#1E293B] text-[16px]">Driver Assignment</h3>
               </div>
               <button
                 type="button"
@@ -1123,7 +1218,7 @@ export default function CreateTripPage() {
             </div>
 
             {startLocation.trim() && isNearbyDriversFallback && (
-              <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 font-poppins">
+              <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0">
                 <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold block">No drivers are available in {startLocation}.</span>
@@ -1132,14 +1227,14 @@ export default function CreateTripPage() {
               </div>
             )}
 
-            <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
+            <div className="space-y-2.5 overflow-y-auto pr-1 custom-scrollbar flex-1">
               {!startLocation.trim() ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
                   <User className="w-8 h-8 text-[#94A3B8] mb-2" />
                   <p className="text-xs text-gray-400 font-semibold font-poppins">Please select a Start Location to view available vehicles and drivers.</p>
                 </div>
               ) : loading ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
                   <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available drivers...</p>
                 </div>
@@ -1147,7 +1242,7 @@ export default function CreateTripPage() {
                 ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
                 : drivers
               ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center font-semibold font-poppins">No drivers available in the selected location.</p>
+                <p className="text-xs text-gray-400 py-8 text-center font-semibold font-poppins">No drivers available in the selected location.</p>
               ) : (
                 (filterAvailableDrivers 
                   ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
@@ -1162,9 +1257,7 @@ export default function CreateTripPage() {
                           toast.error("This driver has an expired license and cannot be assigned.");
                           return;
                         }
-                        if (d.status === "Not Available") {
-                          return;
-                        }
+                        if (d.status === "Not Available") return;
                         handleDriverSelection(d);
                       }}
                       className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${
@@ -1179,18 +1272,14 @@ export default function CreateTripPage() {
                         <div className="flex items-center gap-2">
                           <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
                           {(d.isNearby || isNearbyDriversFallback) && (
-                            <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">
-                              Nearby
-                            </span>
+                            <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
                           )}
                         </div>
-                        <span className="text-[10px] text-[#64748B] block mt-0.5 font-semibold">
-                          Emp ID: {d.employeeId || "N/A"}
-                        </span>
+                        <span className="text-[10px] text-[#64748B] block mt-0.5 font-semibold">Emp ID: {formatEmployeeId(d.employeeId)}</span>
                         <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
                           <span>Lic Validity: <strong className={isExpired ? "text-red-500" : "text-[#1E293B]"}>{d.licenseExpiry ? new Date(d.licenseExpiry).toLocaleDateString() : "Valid"}</strong></span>
                           <span>|</span>
-                          <span>Location: <strong className="text-[#1E293B]">{d.currentLocation || d.driverLocation || d.branch || "Nearby"}</strong></span>
+                          <span>Location: <strong className="text-[#1E293B]">{formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch)}</strong></span>
                         </div>
                         {(d.isNearby || isNearbyDriversFallback || (d.distanceKm !== undefined && d.distanceKm > 0)) && (
                           <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
@@ -1221,9 +1310,9 @@ export default function CreateTripPage() {
                             toast.error("This driver has an expired license and cannot be assigned.");
                             return;
                           }
-                          setSelectedDriverId(String(d.id));
+                          handleDriverSelection(d);
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                        className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
                           (isExpired || d.status === "Not Available")
                             ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
                             : String(selectedDriverId) === String(d.id)
@@ -1239,16 +1328,13 @@ export default function CreateTripPage() {
               )}
             </div>
           </div>
-
         </div>
 
-      </div>
-
-      {/* Pickup & Delivery Address Cards (Full-Width Side by Side Row) */}
-      <div className="mt-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+        {/* 3. Pickup & Delivery Address (Side-by-Side 2-Column Grid) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          
           {/* Pickup Address Card */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm flex flex-col justify-between space-y-4 h-full">
+          <div className="bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm space-y-4 font-poppins flex flex-col justify-between h-full">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E7EAF0] gap-2">
               <div>
                 <h2 className="text-base font-bold text-[#1E293B] font-poppins flex items-center gap-2">
@@ -1268,7 +1354,6 @@ export default function CreateTripPage() {
             </div>
 
             <div className="space-y-4">
-              {/* Row 1: Company Name & Contact Person */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
@@ -1311,7 +1396,6 @@ export default function CreateTripPage() {
                 </div>
               </div>
 
-              {/* Row 2: Mobile Number & Street Address */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
@@ -1361,33 +1445,6 @@ export default function CreateTripPage() {
                 </div>
               </div>
 
-              {/* Row 3: Area / Locality & City */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
-                    Area / Locality
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter Area or Locality"
-                    value={pickupAddress.area}
-                    onChange={(e) => handleAddressChange('pickup', 'area', e.target.value)}
-                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#B45A0A] focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins"
-                  />
-                </div>
-
-                <SearchableSelect
-                  label="City"
-                  required={true}
-                  value={pickupAddress.city}
-                  placeholder="Select City"
-                  options={getCitiesForState(pickupAddress.state)}
-                  onChange={(cityVal) => handleAddressChange('pickup', 'city', cityVal)}
-                  error={pickupErrors.city}
-                />
-              </div>
-
-              {/* Row 4: State & Pincode */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <SearchableSelect
                   label="State"
@@ -1401,6 +1458,32 @@ export default function CreateTripPage() {
                   }}
                   error={pickupErrors.state}
                 />
+
+                <SearchableSelect
+                  label="City"
+                  required={true}
+                  disabled={!pickupAddress.state}
+                  value={pickupAddress.city}
+                  placeholder={!pickupAddress.state ? "Select State First" : "Select City"}
+                  options={pickupAddress.state ? getCitiesForState(pickupAddress.state) : []}
+                  onChange={(cityVal) => handleAddressChange('pickup', 'city', cityVal)}
+                  error={pickupErrors.city}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Area / Locality
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Area or Locality"
+                    value={pickupAddress.area}
+                    onChange={(e) => handleAddressChange('pickup', 'area', e.target.value)}
+                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#B45A0A] focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins"
+                  />
+                </div>
 
                 <div>
                   <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
@@ -1427,7 +1510,7 @@ export default function CreateTripPage() {
           </div>
 
           {/* Delivery Address Card */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm flex flex-col justify-between space-y-4 h-full">
+          <div className="bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm space-y-4 font-poppins flex flex-col justify-between h-full">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E7EAF0] gap-2">
               <div>
                 <h2 className="text-base font-bold text-[#1E293B] font-poppins flex items-center gap-2">
@@ -1447,7 +1530,6 @@ export default function CreateTripPage() {
             </div>
 
             <div className="space-y-4">
-              {/* Row 1: Company Name & Contact Person */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
@@ -1490,7 +1572,6 @@ export default function CreateTripPage() {
                 </div>
               </div>
 
-              {/* Row 2: Mobile Number & Street Address */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
@@ -1540,33 +1621,6 @@ export default function CreateTripPage() {
                 </div>
               </div>
 
-              {/* Row 3: Area / Locality & City */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
-                    Area / Locality
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter Area or Locality"
-                    value={deliveryAddress.area}
-                    onChange={(e) => handleAddressChange('delivery', 'area', e.target.value)}
-                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#B45A0A] focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins"
-                  />
-                </div>
-
-                <SearchableSelect
-                  label="City"
-                  required={true}
-                  value={deliveryAddress.city}
-                  placeholder="Select City"
-                  options={getCitiesForState(deliveryAddress.state)}
-                  onChange={(cityVal) => handleAddressChange('delivery', 'city', cityVal)}
-                  error={deliveryErrors.city}
-                />
-              </div>
-
-              {/* Row 4: State & Pincode */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <SearchableSelect
                   label="State"
@@ -1580,6 +1634,32 @@ export default function CreateTripPage() {
                   }}
                   error={deliveryErrors.state}
                 />
+
+                <SearchableSelect
+                  label="City"
+                  required={true}
+                  disabled={!deliveryAddress.state}
+                  value={deliveryAddress.city}
+                  placeholder={!deliveryAddress.state ? "Select State First" : "Select City"}
+                  options={deliveryAddress.state ? getCitiesForState(deliveryAddress.state) : []}
+                  onChange={(cityVal) => handleAddressChange('delivery', 'city', cityVal)}
+                  error={deliveryErrors.city}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Area / Locality
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Area or Locality"
+                    value={deliveryAddress.area}
+                    onChange={(e) => handleAddressChange('delivery', 'area', e.target.value)}
+                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#B45A0A] focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins"
+                  />
+                </div>
 
                 <div>
                   <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
@@ -1604,84 +1684,32 @@ export default function CreateTripPage() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Row containing Map and Cost Projections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        {/* Map Diagnostics Viewport Card */}
-        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
-          <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Active Route Simulation Map</h4>
-          
-          <div className="relative h-[240px] bg-[#E8ECEF] border border-[#DCE2E6] rounded-xl overflow-hidden flex flex-col justify-between p-4">
-            {/* Mock Map Background Details */}
-            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#64748b_1.5px,transparent_1.5px)] [background-size:16px_16px]"></div>
-            
-            {/* Top Floating Badge */}
-            <div className="z-10 flex items-center justify-between">
-              <span className="px-2.5 py-1 bg-white border border-[#E7EAF0] rounded-lg text-[9px] font-bold text-[#B45A0A] flex items-center gap-1">
-                <Compass className="w-3 h-3 animate-spin" />
-                Active Diagnostics Routing
-              </span>
-              <span className="px-2.5 py-1 bg-emerald-50 text-[#22C55E] border border-emerald-100 rounded-lg text-[9px] font-bold">
-                Route Connected
-              </span>
-            </div>
-
-            {/* Route Dot representation */}
-            <div className="z-10 flex items-center justify-between max-w-[280px] mx-auto w-full relative pt-12">
-              <div className="absolute left-1 right-1 top-[56px] h-0.5 border-t-2 border-dashed border-[#B45A0A]"></div>
-              <div className="flex flex-col items-center">
-                <div className="w-4 h-4 bg-white border-4 border-[#B45A0A] rounded-full z-10"></div>
-                <span className="text-[10px] font-bold text-[#1E293B] mt-1.5">{startLocation || "Source Point"}</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="w-4 h-4 bg-[#B45A0A] rounded-full z-10"></div>
-                <span className="text-[10px] font-bold text-[#1E293B] mt-1.5">{endLocation || "Destination Point"}</span>
-              </div>
-            </div>
-
-            {/* Bottom traffic metrics */}
-            <div className="z-10 bg-white border border-[#E7EAF0] rounded-xl p-3 flex items-center justify-between text-[10px] font-semibold text-[#64748B] font-poppins">
-              <span>Simulation Live</span>
-              <span>Heavy Traffic Detected</span>
-              <span className="text-[#B45A0A] hover:underline cursor-pointer">Fit View Route</span>
-            </div>
-          </div>
         </div>
 
-        {/* Cost & Earnings Projection Card */}
-        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
-          <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Route Projections</h4>
-          
-          {!startLocation.trim() || !endLocation.trim() ? (
-            <div className="p-4 bg-orange-50/30 rounded-xl border border-orange-100/50 text-center text-xs text-[#B45A0A] font-semibold font-poppins">
-              Enter both Start Location and Destination to view route projections.
-            </div>
-          ) : routeInfo.loading ? (
-            <div className="p-6 bg-slate-50 border border-slate-100 rounded-xl flex flex-col items-center justify-center">
-              <div className="w-5 h-5 border-2 border-[#B45A0A] border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-xs text-[#64748B] mt-2 font-semibold font-poppins">Calculating driving route distance & ETA...</p>
-            </div>
-          ) : routeInfo.errorMessage ? (
-            <div className="p-4 bg-red-50 rounded-xl border border-red-150 text-center text-xs text-red-600 font-semibold font-poppins">
-              {routeInfo.errorMessage}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                  <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider font-poppins block">Route Distance</span>
-                  <span className="text-lg font-black text-[#1E293B] font-poppins mt-1 block">{distance} KM</span>
-                </div>
-                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                  <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider font-poppins block">Cargo Weight</span>
-                  <span className="text-lg font-black text-[#1E293B] font-poppins mt-1 block">{cargoWeightDisplay}</span>
-                </div>
-              </div>
-            </div>
-          )}
+        {/* 4. Bottom Action Bar (Cancel & Create Trip / Dispatch Trip) */}
+        <div className="flex items-center justify-end gap-4 pt-6 border-t border-[#E7EAF0]">
+          <button
+            type="button"
+            onClick={() => navigate("/manager/trips")}
+            className="px-6 py-3 bg-white border border-[#E7EAF0] rounded-xl text-sm font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-gray-50 transition-all cursor-pointer shadow-2xs font-poppins"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleDispatch}
+            disabled={!!departureError || !!etaError || !departureTime || !eta || !cargoWeight || isSameLocError}
+            className={`px-8 py-3 rounded-xl text-sm font-bold text-white transition-all shadow-md cursor-pointer flex items-center gap-2 font-poppins ${
+              (departureError || etaError || !departureTime || !eta || !cargoWeight || isSameLocError)
+                ? "bg-gray-300 shadow-none cursor-not-allowed opacity-60"
+                : "bg-[#B45A0A] hover:bg-[#9A4D08] shadow-[#B45A0A]/20"
+            }`}
+          >
+            <Navigation className="w-4 h-4" /> Create Trip
+          </button>
         </div>
+
       </div>
     </div>
   );
