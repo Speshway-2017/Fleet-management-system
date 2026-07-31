@@ -19,6 +19,8 @@ export const isCoordinates = (val) => {
   return /^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(val.trim());
 };
 
+export const isCoordinateString = isCoordinates;
+
 export const reverseGeocodeCoordinates = (lat, lng) => {
   const numLat = Number(lat);
   const numLng = Number(lng);
