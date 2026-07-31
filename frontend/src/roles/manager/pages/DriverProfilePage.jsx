@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { formatDisplayLocation } from "@/utils/locationFormatter";
+import { formatEmployeeId } from "@/utils/employeeIdFormatter";
 import { driverApi } from "@/api/driverApi";
 import { vehicleApi } from "@/api/vehicleApi";
 import { managerApi } from "../api/managerApi";
@@ -251,7 +253,7 @@ export default function DriverProfilePage() {
                   {getStatusLabel(driver.driverStatus)}
                 </span>
               </div>
-              <p className="text-sm text-[#64748B] mt-0.5 font-medium">{driver.email} • {driver.phoneNumber}</p>
+              <p className="text-sm text-[#64748B] mt-0.5 font-medium font-poppins"><strong className="text-[#1E293B]">{formatEmployeeId(driver.employeeId)}</strong> • {driver.email} • {driver.phoneNumber}</p>
             </div>
           </div>
         </div>
@@ -418,7 +420,7 @@ export default function DriverProfilePage() {
 
               <div>
                 <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Current Location</span>
-                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{driver.driverLocation || driver.branch || "Pune"}</span>
+                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{formatDisplayLocation(driver.driverLocation || driver.currentLocation, driver.branch)}</span>
               </div>
             </div>
           </div>

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { formatDisplayLocation } from "@/utils/locationFormatter";
 import { managerApi } from "../api/managerApi";
 import { geocodeLocation } from "../services/routingService";
 
@@ -143,7 +144,7 @@ export default function FleetMapPage() {
       temperature: activeTrip ? "24 °C" : "21 °C",
       speed: activeTrip ? "65 km/h" : "0 km/h",
       fuelLevel: v.fuelCapacity ? `${Math.round(v.fuelCapacity * 0.85)} L` : "N/A",
-      currentLocation: activeTrip ? (v.currentLocation || `En route to ${endLocationName}`) : `At ${v.currentLocation || "Depot / Idle"}`,
+      currentLocation: activeTrip ? (formatDisplayLocation(v.currentLocation, v.branch) !== "Unknown Location" ? formatDisplayLocation(v.currentLocation, v.branch) : `En route to ${endLocationName}`) : `At ${formatDisplayLocation(v.currentLocation, v.branch)}`,
       lastUpdated: v.updatedAt ? new Date(v.updatedAt).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' }) : "N/A",
       routeStart: startLocationName,
       routeEnd: endLocationName,
@@ -517,7 +518,7 @@ export default function FleetMapPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="font-semibold">Current Location:</span>
-                  <span className="font-bold text-[#1E293B]">{selectedVehicle.currentLocation}</span>
+                  <span className="font-bold text-[#1E293B]">{formatDisplayLocation(selectedVehicle.currentLocation, selectedVehicle.branch)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="font-semibold">Last Updated:</span>

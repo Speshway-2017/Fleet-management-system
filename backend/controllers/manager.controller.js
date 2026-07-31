@@ -796,14 +796,18 @@ export const listTrips = async (req, res, next) => {
     }
     const trips = await getTrips(filter);
 
-    // Map over trips and dynamically replace default/120 KM distances
+    // Map over trips and dynamically replace default/120/unrealistic KM distances
     const processedTrips = trips.map(t => {
       const tripObj = t.toObject ? t.toObject() : t;
-      if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120) {
-        tripObj.estimatedDistance = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+      const calculatedDist = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+      const isUnrealistic = tripObj.estimatedDistance > 4000 && calculatedDist < 3000;
+      
+      if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120 || tripObj.estimatedDistance === 584 || isUnrealistic) {
+        tripObj.estimatedDistance = calculatedDist;
+        Trip.findByIdAndUpdate(t._id, { estimatedDistance: calculatedDist }).catch(() => {});
       }
-      if (!tripObj.actualDistance || tripObj.actualDistance === 120) {
-        tripObj.actualDistance = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+      if (!tripObj.actualDistance || tripObj.actualDistance === 120 || tripObj.actualDistance === 584 || (tripObj.actualDistance > 4000 && calculatedDist < 3000)) {
+        tripObj.actualDistance = calculatedDist;
       }
       return tripObj;
     });
@@ -826,11 +830,15 @@ export const getTripDetails = async (req, res, next) => {
     }
 
     const tripObj = trip.toObject ? trip.toObject() : trip;
-    if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120) {
-      tripObj.estimatedDistance = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+    const calculatedDist = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+    const isUnrealistic = tripObj.estimatedDistance > 4000 && calculatedDist < 3000;
+
+    if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120 || tripObj.estimatedDistance === 584 || isUnrealistic) {
+      tripObj.estimatedDistance = calculatedDist;
+      Trip.findByIdAndUpdate(trip._id, { estimatedDistance: calculatedDist }).catch(() => {});
     }
-    if (!tripObj.actualDistance || tripObj.actualDistance === 120) {
-      tripObj.actualDistance = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+    if (!tripObj.actualDistance || tripObj.actualDistance === 120 || tripObj.actualDistance === 584 || (tripObj.actualDistance > 4000 && calculatedDist < 3000)) {
+      tripObj.actualDistance = calculatedDist;
     }
 
     console.log(`Fetching Pickup Address...`);
@@ -897,8 +905,10 @@ export const createTrip = async (req, res, next) => {
     }
 
     // Validation: Pickup and Destination cannot be the same
-    if (startLocation.trim().toLowerCase() === endLocation.trim().toLowerCase()) {
-      return sendError(res, 400, 'Pickup Location and Destination cannot be the same');
+    const normStart = startLocation.trim().split(',')[0].trim().toLowerCase();
+    const normEnd = endLocation.trim().split(',')[0].trim().toLowerCase();
+    if (normStart && normEnd && normStart === normEnd) {
+      return sendError(res, 400, 'Trip cannot be created because the pickup and destination locations are the same.');
     }
 
     // Validation: Departure Date cannot be in the past
@@ -925,10 +935,10 @@ export const createTrip = async (req, res, next) => {
 
     const activeTripsWithVehicle = await Trip.findOne({
       vehicle,
-      status: { $in: ['Scheduled', 'Assigned', 'In Progress'] }
+      status: { $nin: ['Completed', 'Cancelled'] }
     });
     if (activeTripsWithVehicle) {
-      return sendError(res, 400, 'This vehicle is already allocated to another active trip');
+      return sendError(res, 400, 'This Vehicle is already assigned to an active trip.');
     }
 
     // B. Verify driver license and availability in database
@@ -937,7 +947,7 @@ export const createTrip = async (req, res, next) => {
       return sendError(res, 404, 'Driver not found');
     }
     if (driverDoc.driverStatus !== 'AVAILABLE') {
-      return sendError(res, 400, 'Selected driver is no longer available');
+      return sendError(res, 400, 'This Driver is already assigned to an active trip.');
     }
     if (driverDoc.licenseExpiry && new Date(driverDoc.licenseExpiry) < currentDate) {
       return sendError(res, 400, 'Cannot assign driver with an expired license');
@@ -945,10 +955,10 @@ export const createTrip = async (req, res, next) => {
 
     const activeTripsWithDriver = await Trip.findOne({
       driver,
-      status: { $in: ['Scheduled', 'Assigned', 'In Progress'] }
+      status: { $nin: ['Completed', 'Cancelled'] }
     });
     if (activeTripsWithDriver) {
-      return sendError(res, 400, 'This driver is already allocated to another active trip');
+      return sendError(res, 400, 'This Driver is already assigned to an active trip.');
     }
 
     console.log(`\nCreating Trip...`);

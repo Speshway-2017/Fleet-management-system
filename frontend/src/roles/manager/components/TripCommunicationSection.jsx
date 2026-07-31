@@ -21,6 +21,7 @@ import toast from "react-hot-toast";
 import { getSocket } from "@/api/socket";
 import { useAuth } from "@/context/AuthContext";
 import { managerApi } from "../api/managerApi";
+import { formatEmployeeId } from "@/utils/employeeIdFormatter";
 
 export default function TripCommunicationSection({ trip }) {
   const { user } = useAuth();
@@ -50,7 +51,7 @@ export default function TripCommunicationSection({ trip }) {
   const isReadOnly = trip?.status === "Completed" || trip?.status === "Cancelled";
   const driverName = trip?.driverName || trip?.driver?.name || trip?.driver?.fullName || "Assigned Driver";
   const driverPhone = trip?.driverPhone || trip?.driver?.phone || trip?.driver?.phoneNumber || "N/A";
-  const driverEmpId = trip?.driver?.employeeId || trip?.driver?.driverId || "EMP-" + String(trip?.driver?._id || "").substring(0, 6).toUpperCase();
+  const driverEmpId = formatEmployeeId(trip?.driver?.employeeId || trip?.driver?.driverId);
   const vehicleNumber = trip?.vehiclePlate || trip?.vehicle?.registrationNumber || trip?.vehicleName || "N/A";
   const tripId = trip?._id;
 

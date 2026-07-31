@@ -1,14 +1,20 @@
 const CITY_COORDINATES = {
+  guntakal: [15.1670, 77.3820],
+  hyderabad: [17.3850, 78.4867],
   mumbai: [19.0760, 72.8777],
   pune: [18.5204, 73.8567],
   bengaluru: [12.9716, 77.5946],
   bangalore: [12.9716, 77.5946],
-  hyderabad: [17.3850, 78.4867],
   delhi: [28.7041, 77.1025],
+  newdelhi: [28.6139, 77.2090],
   chennai: [13.0827, 80.2707],
   kolhapur: [16.7050, 74.2433],
   satara: [17.6805, 73.9918],
+  nashik: [19.9975, 73.7898],
+  aurangabad: [19.8762, 75.3433],
+  solapur: [17.6599, 75.9064],
   anantapur: [14.6819, 77.6006],
+  anantapuram: [14.6819, 77.6006],
   goa: [15.2993, 74.1240],
   visakhapatnam: [17.6868, 83.2185],
   vizag: [17.6868, 83.2185],
@@ -36,14 +42,20 @@ const CITY_COORDINATES = {
   dehradun: [30.3165, 78.0322],
   ranchi: [23.3441, 85.3096],
   raipur: [21.2514, 81.6296],
-  vijayawada: [16.5062, 80.6480]
+  vijayawada: [16.5062, 80.6480],
+  kurnool: [15.8281, 78.0373],
+  guntur: [16.3067, 80.4365],
+  nellore: [14.4426, 79.9865],
+  kadapa: [14.4673, 78.8242],
+  tirupati: [13.6288, 79.4192],
+  warangal: [17.9689, 79.5941]
 };
 
 const getCoordinates = (cityName) => {
-  if (!cityName) return null;
-  const norm = cityName.toLowerCase().trim();
+  if (!cityName || typeof cityName !== 'string') return null;
+  const norm = cityName.toLowerCase().split(',')[0].trim();
   for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
-    if (norm.includes(key)) return coords;
+    if (norm === key || norm.includes(key) || key.includes(norm)) return coords;
   }
   return null;
 };
@@ -66,6 +78,9 @@ export const calculateDistance = (startCity, endCity) => {
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const straightKm = R * c;
-  // Apply ~1.3x multiplier for road driving distance estimate
-  return Math.round(straightKm * 1.3);
+
+  if (straightKm < 5) return 20;
+
+  // Apply ~1.14x multiplier for driving distance estimate over highways
+  return Math.round(straightKm * 1.14);
 };
