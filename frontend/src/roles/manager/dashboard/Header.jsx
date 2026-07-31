@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Bell, Menu, User, LogOut, ChevronDown, CheckCheck, ExternalLink } from "lucide-react";
+import UserProfileCard from "@/components/common/UserProfileCard";
 import toast from "react-hot-toast";
 import { getSocket } from "@/api/socket";
 import { managerApi } from "../api/managerApi";
@@ -171,6 +172,7 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
             onClick={() => {
               setNotifDropdownOpen(!notifDropdownOpen);
               setUserMenuOpen(false);
+              navigate("/manager/notifications");
             }}
             className="relative p-2.5 text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none transition-colors duration-150 cursor-pointer"
             title="Notifications"
@@ -250,10 +252,20 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
           )}
         </div>
 
-        {/* User Card */}
-        <div className="relative">
-          <button
-            onClick={() => {
+        {/* Reusable User Profile Card */}
+        <UserProfileCard
+          user={user}
+          roleLabel="Fleet Manager"
+          profilePath="/manager/profile"
+          settingsPath="/manager/settings"
+          supportPath="/manager/notifications"
+          onLogout={handleLogout}
+        />
+
+      </div>
+    </header>
+  );
+}
               setUserMenuOpen(!userMenuOpen);
               setNotifDropdownOpen(false);
             }}

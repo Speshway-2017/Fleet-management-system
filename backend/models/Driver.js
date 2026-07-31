@@ -18,9 +18,10 @@ const driverSchema = new mongoose.Schema(
     assignedVehicle: { type: String, default: 'Unassigned' },
     driverStatus: {
       type: String,
-      enum: ['AVAILABLE', 'ON_TRIP', 'ASSIGNED', 'SUSPENDED'],
+      enum: ['AVAILABLE', 'ON_TRIP', 'ASSIGNED', 'SUSPENDED', 'OFFLINE'],
       default: 'AVAILABLE',
     },
+    isOnline: { type: Boolean, default: true },
     employeeId: { type: String, unique: true, sparse: true },
     dob: { type: Date },
     gender: { type: String, enum: ['Male', 'Female', 'Other'], default: 'Male' },

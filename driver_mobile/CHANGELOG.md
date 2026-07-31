@@ -2,6 +2,21 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.39.0] - 2026-07-31
+
+### Fixed & Enhanced
+- **Corrected `driverApi` Import Path in `UserProfileCard.jsx`**:
+  - Updated import path from `@/roles/manager/api/driverApi` to `@/api/driverApi` in `frontend/src/components/common/UserProfileCard.jsx`.
+  - Resolved Vite dev server import resolution error (`Failed to resolve import "@/roles/manager/api/driverApi"`).
+
+## [1.38.0] - 2026-07-31
+
+### Fixed & Enhanced
+- **Shared React UserProfileCard Re-Creation**:
+  - Re-created `UserProfileCard` (`frontend/src/components/common/UserProfileCard.jsx`) supporting both Manager Workspace and Driver Dashboard user roles.
+  - Implemented 44x44px circular profile image avatar with dynamic online status dot, click-outside dropdown handling, and availability status toggle switch.
+  - Resolved Vite import resolution error (`Failed to resolve import "@/components/common/UserProfileCard"`).
+
 ## [1.28.0] - 2026-07-30
 
 ### Added & Enhanced

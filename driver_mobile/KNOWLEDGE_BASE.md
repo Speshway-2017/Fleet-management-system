@@ -227,3 +227,11 @@ The application connects to a Node.js/Express backend API for session operations
     - Backend WebSocket server ([server.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/server.js)) updated to register `joinDriverRoom` listeners.
     - Backend notification utility ([notification.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/utils/notification.js)) routes events to the `driver:${recipient}` room when a new trip or notification is created for a user with role `DRIVER`.
     - REST endpoint `/api/driver/trips/current` returns `startLocation` and `endLocation` fields to resolve key mismatches and correctly bind database properties to the client dashboard's active trip card.
+  - **ApiService & SocketService Architectural Methods**:
+    - Added `ApiService.initialize()`, `ApiService.onUnauthorized` callback hook, and `ApiService.put(endpoint, body)` in `api_service.dart`.
+    - Enhanced `_getHeaders()` with `FlutterSecureStorage` token reading and `SharedPreferences` fallback.
+    - Added `SocketService.connect([driverId])` helper in `socket_service.dart` and `isConnected` getter.
+    - Added `bool get isOnline => driverStatus != 'OFFLINE';` getter to `DriverModel` in `driver_model.dart`.
+    - Simplified `DriverProfileDropdown` widget (`driver_profile_dropdown.dart`) with 48x48px avatar, dynamic status dot (`#22C55E` / `#9CA3AF`), **My Profile**, **Availability Status Toggle Switch** (🟢 `Online` / ⚪ `Offline`), and **Logout** (`#DC2626`).
+    - Re-created `UserProfileCard` (`frontend/src/components/common/UserProfileCard.jsx`) supporting manager and driver roles with availability toggle (`@/api/driverApi`).
+    - Resolved merge conflicts across git branches and verified 0 analyzer errors.
