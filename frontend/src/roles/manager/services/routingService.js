@@ -337,3 +337,46 @@ export async function calculateDrivingRoute(startLocation, endLocation) {
     return fallbackResult;
   }
 }
+
+/**
+ * Calculate fallback distance synchronously using city coordinates lookup table
+ * @param {string} startCity 
+ * @param {string} endCity 
+ * @returns {number} Distance in KM
+ */
+export function calculateFallbackDistance(startCity, endCity) {
+  if (!startCity || !endCity) return 0;
+  const normStart = startCity.toLowerCase().split(',')[0].trim();
+  const normEnd = endCity.toLowerCase().split(',')[0].trim();
+
+  let startCoords = null;
+  let endCoords = null;
+
+  for (const [key, coords] of Object.entries(LOCAL_CITY_COORDINATES)) {
+    if (normStart === key || normStart.includes(key) || key.includes(normStart)) {
+      startCoords = coords;
+      break;
+    }
+  }
+  for (const [key, coords] of Object.entries(LOCAL_CITY_COORDINATES)) {
+    if (normEnd === key || normEnd.includes(key) || key.includes(normEnd)) {
+      endCoords = coords;
+      break;
+    }
+  }
+
+  if (!startCoords || !endCoords) return 350;
+
+  const R = 6371;
+  const dLat = (endCoords[0] - startCoords[0]) * Math.PI / 180;
+  const dLon = (endCoords[1] - startCoords[1]) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(startCoords[0] * Math.PI / 180) * Math.cos(endCoords[0] * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const straightKm = R * c;
+
+  if (straightKm < 5) return 20;
+  return Math.round(straightKm * 1.14);
+}

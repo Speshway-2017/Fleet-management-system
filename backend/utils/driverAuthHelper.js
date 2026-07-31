@@ -1,13 +1,13 @@
 import Driver from '../models/Driver.js';
 
 /**
- * Generates the next sequential unique Employee ID formatted as DRV-000001, DRV-000002...
+ * Generates the next sequential unique Employee ID formatted as EMP-000001, EMP-000002...
  */
 export const generateEmployeeId = async () => {
   try {
-    // Find highest DRV-XXXXXX employeeId
+    // Find highest EMP-XXXXXX employeeId
     const highestDriver = await Driver.findOne({
-      employeeId: { $regex: /^DRV-\d+$/i }
+      employeeId: { $regex: /^EMP-\d+$/i }
     })
       .sort({ employeeId: -1 })
       .select('employeeId')
@@ -15,7 +15,7 @@ export const generateEmployeeId = async () => {
 
     let nextNumber = 1;
     if (highestDriver && highestDriver.employeeId) {
-      const match = highestDriver.employeeId.match(/^DRV-(\d+)$/i);
+      const match = highestDriver.employeeId.match(/^EMP-(\d+)$/i);
       if (match && match[1]) {
         nextNumber = parseInt(match[1], 10) + 1;
       }
@@ -25,7 +25,7 @@ export const generateEmployeeId = async () => {
     let unique = false;
     let formattedId = '';
     while (!unique) {
-      formattedId = `DRV-${String(nextNumber).padStart(6, '0')}`;
+      formattedId = `EMP-${String(nextNumber).padStart(6, '0')}`;
       const existing = await Driver.findOne({ employeeId: formattedId });
       if (!existing) {
         unique = true;
@@ -37,8 +37,8 @@ export const generateEmployeeId = async () => {
     return formattedId;
   } catch (error) {
     console.error('Error generating Employee ID:', error);
-    // Fallback timestamp-based code if query fails
-    return `DRV-${Math.floor(100000 + Math.random() * 900000)}`;
+    // Fallback if query fails
+    return `EMP-${String(Math.floor(100000 + Math.random() * 900000)).padStart(6, '0')}`;
   }
 };
 

@@ -252,7 +252,7 @@ export default function DriverProfilePage() {
                   {getStatusLabel(driver.driverStatus)}
                 </span>
               </div>
-              <p className="text-sm text-[#64748B] mt-0.5 font-medium">{driver.email} • {driver.phoneNumber}</p>
+              <p className="text-sm text-[#64748B] mt-0.5 font-medium font-poppins"><strong className="text-[#1E293B]">{formatEmployeeId(driver.employeeId)}</strong> • {driver.email} • {driver.phoneNumber}</p>
             </div>
           </div>
         </div>

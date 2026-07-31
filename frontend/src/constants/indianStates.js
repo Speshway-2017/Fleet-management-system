@@ -78,10 +78,7 @@ export const STATE_CITIES_MAP = {
 
 export const getCitiesForState = (stateName) => {
   if (!stateName) {
-    // Return all unique major cities across India if state is not yet selected
-    const allCities = new Set();
-    Object.values(STATE_CITIES_MAP).forEach(list => list.forEach(c => allCities.add(c)));
-    return Array.from(allCities).sort();
+    return [];
   }
   
   // Match state by exact or partial name
@@ -93,8 +90,18 @@ export const getCitiesForState = (stateName) => {
     return STATE_CITIES_MAP[matchedKey];
   }
   
-  // Return all cities as fallback
-  const allCities = new Set();
-  Object.values(STATE_CITIES_MAP).forEach(list => list.forEach(c => allCities.add(c)));
-  return Array.from(allCities).sort();
+  return [];
+};
+
+export const getStateForCity = (cityName) => {
+  if (!cityName || typeof cityName !== 'string') return "";
+  const clean = cityName.trim().split(',')[0].trim().toLowerCase();
+  if (!clean) return "";
+
+  for (const [state, cities] of Object.entries(STATE_CITIES_MAP)) {
+    if (cities.some(c => c.toLowerCase() === clean || clean.includes(c.toLowerCase()) || c.toLowerCase().includes(clean))) {
+      return state;
+    }
+  }
+  return "";
 };

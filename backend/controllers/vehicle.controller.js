@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { resolveLocationName, isCoordinateString } from '../utils/reverseGeocoder.js';
 import { geocodeCity, getDistanceKm, getRoadDistanceAndEta } from '../utils/geocodingHelper.js';
 import {
   getVehicles,
@@ -21,6 +22,14 @@ import { logActivity } from '../utils/activityLogger.js';
 export const listVehicles = async (req, res, next) => {
   try {
     const vehicles = await getVehicles({ assignedManager: req.user._id });
+    for (const v of vehicles) {
+      const rawLoc = v.currentLocation;
+      if (isCoordinateString(rawLoc)) {
+        const resolvedName = await resolveLocationName(rawLoc, v.branch || v.branchDepot);
+        v.currentLocation = resolvedName;
+        Vehicle.findByIdAndUpdate(v._id, { currentLocation: resolvedName }).catch(() => {});
+      }
+    }
     return sendSuccess(res, 200, vehicles, 'Vehicles fetched successfully');
   } catch (error) {
     next(error);
@@ -34,7 +43,7 @@ export const listVehicles = async (req, res, next) => {
 export const getAvailableVehicles = async (req, res, next) => {
   try {
     const activeTrips = await Trip.find({
-      status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip'] }
+      status: { $nin: ['Completed', 'Cancelled'] }
     });
 
     const allocatedVehicleIds = activeTrips.map(t => t.vehicle).filter(Boolean);
@@ -44,6 +53,15 @@ export const getAvailableVehicles = async (req, res, next) => {
       _id: { $nin: allocatedVehicleIds },
       currentStatus: { $in: ['Available', 'Active'] }
     }).populate('assignedDriver');
+
+    for (const v of allAvailable) {
+      const rawLoc = v.currentLocation;
+      if (isCoordinateString(rawLoc)) {
+        const resolvedName = await resolveLocationName(rawLoc, v.branch || v.branchDepot);
+        v.currentLocation = resolvedName;
+        Vehicle.findByIdAndUpdate(v._id, { currentLocation: resolvedName }).catch(() => {});
+      }
+    }
 
     const targetLoc = (req.query.location || req.query.startLocation || '').trim();
     if (!targetLoc) {
@@ -101,7 +119,11 @@ export const getAvailableVehicles = async (req, res, next) => {
     console.log(`No available Vehicles found in ${targetLoc}. Searching nearest available Vehicles...`);
     const nearbyVehicles = await Promise.all(
       nearbyRawVehicles.map(async (v) => {
-        const vLoc = getVehicleEffectiveLocation(v) || 'Pune';
+        const rawEffective = getVehicleEffectiveLocation(v);
+        const vLoc = await resolveLocationName(rawEffective || 'Pune', v.branch || v.branchDepot);
+        if (isCoordinateString(rawEffective)) {
+          Vehicle.findByIdAndUpdate(v._id, { currentLocation: vLoc }).catch(() => {});
+        }
         const routeData = await getRoadDistanceAndEta(targetLoc, vLoc);
         const vObj = v.toObject ? v.toObject() : { ...v };
         return {

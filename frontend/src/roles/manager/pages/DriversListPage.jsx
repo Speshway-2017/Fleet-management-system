@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { formatEmployeeId } from "@/utils/employeeIdFormatter";
 import { getSocket } from "@/api/socket";
 import { driverApi } from "@/api/driverApi";
 
@@ -159,6 +160,7 @@ export default function DriversListPage() {
         (d.phoneNumber || "").includes(query) ||
         (d.email || "").toLowerCase().includes(query) ||
         (d.employeeId || "").toLowerCase().includes(query) ||
+        formatEmployeeId(d.employeeId).toLowerCase().includes(query) ||
         (d.licenseNumber || "").toLowerCase().includes(query);
 
       const matchesStatus = statusFilter === "All Statuses" || d.driverStatus === statusFilter;
@@ -386,7 +388,7 @@ export default function DriversListPage() {
                       </div>
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap text-xs font-bold text-[#1E293B] font-poppins">
-                      {d.employeeId || "—"}
+                      {formatEmployeeId(d.employeeId)}
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap text-xs text-[#1E293B] font-medium">
                       <div className="flex items-center gap-1.5">
