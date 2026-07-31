@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../services/socket_service.dart';
 import 'notification_details_screen.dart';
 import '../main_navigation_screen.dart';
+import '../../utils/date_formatter.dart';
 
 class NotificationItem {
   final String id;
@@ -29,6 +30,7 @@ class NotificationItem {
 
 class NotificationsScreen extends StatefulWidget {
   static List<NotificationItem> notifications = [];
+  static final ValueNotifier<int> unreadCountNotifier = ValueNotifier<int>(0);
 
   const NotificationsScreen({super.key});
 
@@ -44,6 +46,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
+    // Clear old session static data to prevent leaking/badge flicker
+    NotificationsScreen.notifications = [];
+    NotificationsScreen.unreadCountNotifier.value = 0;
+
     MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
     _fetchServerNotifications();
     SocketService.onEvent('notification:new', (_) {
@@ -62,8 +68,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               id: item['_id'] ?? item['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
               title: item['title'] ?? 'Fleet Notification',
               description: item['message'] ?? item['description'] ?? '',
-              timestamp: 'Just now',
-              category: 'TODAY',
+              timestamp: formatNotificationTime(item['createdAt']),
+              category: getNotificationCategory(item['createdAt']),
               isRead: item['isRead'] ?? false,
               icon: item['type'] == 'trip_assigned' ? Icons.assignment_ind_outlined : Icons.notifications_none_outlined,
             );
@@ -71,6 +77,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           if (mounted) {
             setState(() {
               NotificationsScreen.notifications = fetched;
+              NotificationsScreen.unreadCountNotifier.value = fetched.where((n) => !n.isRead).length;
+            });
+          }
+        } else {
+          if (mounted) {
+            setState(() {
+              NotificationsScreen.notifications = [];
+              NotificationsScreen.unreadCountNotifier.value = 0;
             });
           }
         }
@@ -95,6 +109,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       for (var item in _notifications) {
         item.isRead = true;
       }
+      NotificationsScreen.unreadCountNotifier.value = 0;
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -108,6 +123,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void _toggleReadStatus(NotificationItem item) {
     setState(() {
       item.isRead = true;
+      NotificationsScreen.unreadCountNotifier.value = _notifications.where((n) => !n.isRead).length;
     });
   }
 

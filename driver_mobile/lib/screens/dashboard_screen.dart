@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
+import '../utils/date_formatter.dart';
+import 'profile/profile_screen.dart';
 import 'trip_details_screen.dart';
 import 'trips_screen.dart';
 import 'active_trips_screen.dart';
@@ -17,6 +20,7 @@ import 'fuel_overview_screen.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/location_service.dart';
+import '../services/socket_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -35,6 +39,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
     _loadDashboardData();
+    
+    // Register socket listeners for instant updates
+    SocketService.onEvent('notification:new', _onSocketEvent);
+    SocketService.onEvent('trip:assigned', _onSocketEvent);
+    SocketService.onEvent('trip:status-updated', _onSocketEvent);
+  }
+
+  void _onSocketEvent(dynamic data) {
+    if (mounted) {
+      debugPrint('Dashboard refreshed via Socket event');
+      _loadDashboardData();
+    }
   }
 
   Future<void> _loadDashboardData() async {
@@ -44,6 +60,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final dashRes = await ApiService.get('/driver/dashboard');
 
       if (mounted) {
+        if (profile != null && profile['profileImage'] != null) {
+          final img = profile['profileImage'].toString();
+          if (img.isNotEmpty && img != ProfileState.profilePhotoUrlNotifier.value) {
+            ProfileState.profilePhotoUrlNotifier.value = img;
+          }
+        }
         setState(() {
           _driverProfile = profile;
           _currentTrip = currentTripRes['data'];
@@ -160,14 +182,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             border: Border.all(color: Colors.white24, width: 1.5),
                           ),
                           child: ClipOval(
-                            child: Image.asset(
-                              'assets/images/driver_avatar.png',
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(
-                                  Icons.person,
-                                  color: Colors.white,
-                                  size: 18,
+                            child: ValueListenableBuilder<String>(
+                              valueListenable: ProfileState.profilePhotoUrlNotifier,
+                              builder: (context, photoUrl, child) {
+                                if (photoUrl.isEmpty || photoUrl.contains('driver_avatar.png')) {
+                                  return Image.asset(
+                                    'assets/images/driver_avatar.png',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                        size: 18,
+                                      );
+                                    },
+                                  );
+                                }
+                                if (photoUrl.startsWith('data:image') && photoUrl.contains('base64,')) {
+                                  try {
+                                    final base64Content = photoUrl.split('base64,').last;
+                                    final bytes = base64Decode(base64Content);
+                                    return Image.memory(
+                                      bytes,
+                                      fit: BoxFit.cover,
+                                    );
+                                  } catch (_) {}
+                                }
+                                return Image.network(
+                                  photoUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Image.asset(
+                                      'assets/images/driver_avatar.png',
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return const Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: 18,
+                                        );
+                                      },
+                                    );
+                                  },
                                 );
                               },
                             ),
@@ -378,6 +434,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // Active Trip Card Builder
   Widget _buildActiveTripCard(BuildContext context) {
+    double progressVal = 0.0;
+    final status = _currentTrip?['status']?.toString().toLowerCase() ?? '';
+    if (status == 'completed') {
+      progressVal = 1.0;
+    } else if (status == 'in progress' || status == 'on transit' || status == 'enroute') {
+      final actual = double.tryParse(_currentTrip?['actualDistance']?.toString() ?? '') ?? 0.0;
+      final estimated = double.tryParse(_currentTrip?['estimatedDistance']?.toString() ?? '') ?? 0.0;
+      if (estimated > 0) {
+        progressVal = (actual / estimated).clamp(0.0, 1.0);
+        if (progressVal == 0.0) progressVal = 0.35; // Default middle-ground fallback for active trip if actual is 0
+      } else {
+        progressVal = 0.35;
+      }
+    } else if (status == 'accepted') {
+      progressVal = 0.0;
+    } else {
+      progressVal = 0.0;
+    }
+
+    final int progressPercent = (progressVal * 100).toInt();
+    final String progressText = '$progressPercent%';
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
@@ -460,7 +538,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         _currentTrip?['eta'] != null
                             ? 'ETA ${_currentTrip!['eta']}'
                             : (_currentTrip?['departureTime'] != null
-                                ? 'ETA ${_currentTrip!['departureTime']}'
+                                ? 'ETA ${formatIndianDateTime(_currentTrip!['departureTime'])}'
                                 : 'ETA 10:00 AM'),
                         style: GoogleFonts.nunito(
                           color: Colors.white.withValues(alpha: 0.7),
@@ -570,7 +648,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Column(
                     children: [
                       Text(
-                        '65%',
+                        progressText,
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -593,11 +671,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 // Orange progress bar
                 ClipRRect(
                   borderRadius: BorderRadius.circular(3),
-                  child: const SizedBox(
+                  child: SizedBox(
                     width: 70,
                     child: LinearProgressIndicator(
-                      value: 0.65,
-                      color: Color(0xFFFF6A00),
+                      value: progressVal,
+                      color: const Color(0xFFFF6A00),
                       backgroundColor: Colors.white12,
                       minHeight: 5,
                     ),
@@ -695,10 +773,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           );
         }),
         _buildActionCard(context, Icons.route_outlined, 'Trips', () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const TripsScreen()),
-          );
+          MainNavigationScreen.selectedTabNotifier.value = 1;
         }),
         _buildActionCard(context, Icons.settings_outlined, 'Settings', () {
           Navigator.push(
@@ -994,7 +1069,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             return {
               'title': item['title'] ?? 'Fleet Notification',
               'subtitle': item['message'] ?? item['description'] ?? '',
-              'time': 'Recent',
+              'time': formatNotificationTime(item['createdAt']),
               'isUnread': !(item['isRead'] ?? false),
               'icon': item['type'] == 'trip_assigned' ? Icons.inventory_2_outlined : Icons.notifications_none_outlined,
             };

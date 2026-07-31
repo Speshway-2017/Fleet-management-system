@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import 'calling_fleet_manager_screen.dart';
 
 /// Data representation of a Chat Message item.
@@ -39,71 +41,87 @@ class MessageFleetManagerScreen extends StatefulWidget {
 }
 
 class _MessageFleetManagerScreenState extends State<MessageFleetManagerScreen> {
-  final List<ChatMessageItem> _chatMessages = [
-    const ChatMessageItem(
-      sender: 'Rajesh Sharma',
-      message: "Good morning. Please complete today's delivery before 5:00 PM.",
-      timestamp: 'Today • 10:42 AM',
-      isOutgoing: false,
-    ),
-    const ChatMessageItem(
-      sender: 'Satya Narayana',
-      message: "I'm currently on the way to Pune.",
-      timestamp: 'Today • 10:44 AM',
-      isOutgoing: true,
-    ),
-    const ChatMessageItem(
-      sender: 'Rajesh Sharma',
-      message: 'Please upload the toll receipt after crossing Khalapur Toll Plaza.',
-      timestamp: 'Today • 10:45 AM',
-      isOutgoing: false,
-    ),
-    const ChatMessageItem(
-      sender: 'Satya Narayana',
-      message: "Sure, I'll upload it immediately.",
-      timestamp: 'Today • 10:46 AM',
-      isOutgoing: true,
-    ),
-    const ChatMessageItem(
-      sender: 'Satya Narayana',
-      message: '',
-      timestamp: 'Today • 10:47 AM',
-      isOutgoing: true,
-      attachmentName: 'Fuel_Receipt.jpg',
-      attachmentSize: '1.2 MB',
-      attachmentIcon: Icons.image_outlined,
-      attachmentIconBg: Color(0xFFFFEDD5),
-    ),
-    const ChatMessageItem(
-      sender: 'Satya Narayana',
-      message: '',
-      timestamp: 'Today • 10:48 AM',
-      isOutgoing: true,
-      attachmentName: 'Route_Sheet.pdf',
-      attachmentSize: '450 KB',
-      attachmentIcon: Icons.picture_as_pdf_outlined,
-      attachmentIconBg: Color(0xFFDBEAFE),
-    ),
-    const ChatMessageItem(
-      sender: 'Satya Narayana',
-      message: '',
-      timestamp: 'Today • 10:49 AM',
-      isOutgoing: true,
-      attachmentName: 'Delivery_Challan.pdf',
-      attachmentSize: '680 KB',
-      attachmentIcon: Icons.description_outlined,
-      attachmentIconBg: Color(0xFFFEE2E2),
-    ),
-    const ChatMessageItem(
-      sender: 'Rajesh Sharma',
-      message: 'Vehicle inspection is scheduled after trip completion.',
-      timestamp: 'Today • 10:50 AM',
-      isOutgoing: false,
-    ),
-  ];
+  late List<ChatMessageItem> _chatMessages;
+  String _managerName = 'G Sai Kiran';
+  String _driverName = 'Meghana';
 
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.driver != null) {
+      _driverName = auth.driver!.fullName.isNotEmpty ? auth.driver!.fullName : 'Meghana';
+      if (auth.driver!.manager != null) {
+        _managerName = auth.driver!.manager!.name.isNotEmpty ? auth.driver!.manager!.name : 'G Sai Kiran';
+      }
+    }
+
+    _chatMessages = [
+      ChatMessageItem(
+        sender: _managerName,
+        message: "Good morning. Please complete today's delivery before 5:00 PM.",
+        timestamp: 'Today • 10:42 AM',
+        isOutgoing: false,
+      ),
+      ChatMessageItem(
+        sender: _driverName,
+        message: "I'm currently on the way to Pune.",
+        timestamp: 'Today • 10:44 AM',
+        isOutgoing: true,
+      ),
+      ChatMessageItem(
+        sender: _managerName,
+        message: 'Please upload the toll receipt after crossing Khalapur Toll Plaza.',
+        timestamp: 'Today • 10:45 AM',
+        isOutgoing: false,
+      ),
+      ChatMessageItem(
+        sender: _driverName,
+        message: "Sure, I'll upload it immediately.",
+        timestamp: 'Today • 10:46 AM',
+        isOutgoing: true,
+      ),
+      ChatMessageItem(
+        sender: _driverName,
+        message: '',
+        timestamp: 'Today • 10:47 AM',
+        isOutgoing: true,
+        attachmentName: 'Fuel_Receipt.jpg',
+        attachmentSize: '1.2 MB',
+        attachmentIcon: Icons.image_outlined,
+        attachmentIconBg: const Color(0xFFFFEDD5),
+      ),
+      ChatMessageItem(
+        sender: _driverName,
+        message: '',
+        timestamp: 'Today • 10:48 AM',
+        isOutgoing: true,
+        attachmentName: 'Route_Sheet.pdf',
+        attachmentSize: '450 KB',
+        attachmentIcon: Icons.picture_as_pdf_outlined,
+        attachmentIconBg: const Color(0xFFDBEAFE),
+      ),
+      ChatMessageItem(
+        sender: _driverName,
+        message: '',
+        timestamp: 'Today • 10:49 AM',
+        isOutgoing: true,
+        attachmentName: 'Delivery_Challan.pdf',
+        attachmentSize: '680 KB',
+        attachmentIcon: Icons.description_outlined,
+        attachmentIconBg: const Color(0xFFFEE2E2),
+      ),
+      ChatMessageItem(
+        sender: _managerName,
+        message: 'Vehicle inspection is scheduled after trip completion.',
+        timestamp: 'Today • 10:50 AM',
+        isOutgoing: false,
+      ),
+    ];
+  }
 
   @override
   void dispose() {
@@ -125,7 +143,7 @@ class _MessageFleetManagerScreenState extends State<MessageFleetManagerScreen> {
     setState(() {
       _chatMessages.add(
         ChatMessageItem(
-          sender: 'Satya Narayana',
+          sender: _driverName,
           message: text,
           timestamp: timestamp,
           isOutgoing: true,
@@ -340,7 +358,7 @@ class _MessageFleetManagerScreenState extends State<MessageFleetManagerScreen> {
     setState(() {
       _chatMessages.add(
         ChatMessageItem(
-          sender: 'Satya Narayana',
+          sender: _driverName,
           message: '',
           timestamp: timestamp,
           isOutgoing: true,
@@ -365,7 +383,7 @@ class _MessageFleetManagerScreenState extends State<MessageFleetManagerScreen> {
     setState(() {
       _chatMessages.add(
         ChatMessageItem(
-          sender: 'Satya Narayana',
+          sender: _driverName,
           message: '📍 Shared Live Location: Khalapur Toll Plaza, NH-48 (18.8234, 73.2389)',
           timestamp: timestamp,
           isOutgoing: true,
@@ -491,7 +509,7 @@ class _MessageFleetManagerScreenState extends State<MessageFleetManagerScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Rajesh Sharma',
+                          _managerName,
                           style: GoogleFonts.poppins(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,

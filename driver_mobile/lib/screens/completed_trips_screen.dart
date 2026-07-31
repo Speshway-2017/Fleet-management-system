@@ -5,6 +5,7 @@ import '../constants/app_spacing.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
+import '../utils/date_formatter.dart';
 import 'completed_trip_details_screen.dart';
 
 class CompletedTripsScreen extends StatefulWidget {
@@ -123,7 +124,7 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
     final displayId = tripNumber.toString().startsWith('#') ? tripNumber.toString() : '#$tripNumber';
     final pickup = trip['pickup'] ?? trip['startLocation'] ?? 'Origin';
     final destination = trip['destination'] ?? trip['endLocation'] ?? 'Destination';
-    final date = trip['actualEndTime'] ?? trip['createdAt'] ?? 'Completed';
+    final date = formatIndianDateTime(trip['actualEndTime'] ?? trip['createdAt'] ?? 'Completed');
     final distance = trip['distance'] ?? '240 km';
     final duration = trip['duration'] ?? '3h 15m';
     final fuelUsed = trip['fuelUsed'] ?? '22.5 L';
@@ -139,7 +140,7 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
             children: [
               Expanded(
                 child: Text(
-                  date.toString().contains('T') ? date.toString().split('T')[0] : date.toString(),
+                  date,
                   style: const TextStyle(
                     color: AppColors.secondaryText,
                     fontSize: 11,
