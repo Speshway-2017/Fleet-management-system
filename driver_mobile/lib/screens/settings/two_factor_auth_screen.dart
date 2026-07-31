@@ -1,9 +1,12 @@
 // ignore_for_file: deprecated_member_use
+import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../providers/auth_provider.dart';
 
 class TwoFactorAuthScreen extends StatefulWidget {
   const TwoFactorAuthScreen({super.key});
@@ -17,14 +20,27 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
   bool _isVerificationStep = false;
 
   // Step 1: Settings variables
-  bool _is2faEnabled = true;
+  bool _is2faEnabled = false;
   String _selectedMethod = 'SMS'; // 'SMS', 'Email', 'Authenticator'
-  final _phoneController = TextEditingController(text: '+1 (555) 234-8901');
+  final _phoneController = TextEditingController();
   List<String> _recoveryCodes = [];
+  String? _expectedOtp;
 
   // Step 2: Verification variables
   final List<TextEditingController> _codeControllers = List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _codeFocusNodes = List.generate(6, (_) => FocusNode());
+
+  @override
+  void initState() {
+    super.initState();
+    final driver = Provider.of<AuthProvider>(context, listen: false).driver;
+    if (driver != null) {
+      _is2faEnabled = driver.twoFactorEnabled;
+      _selectedMethod = driver.twoFactorMethod.isNotEmpty ? driver.twoFactorMethod : 'SMS';
+      _phoneController.text = driver.twoFactorPhone.isNotEmpty ? driver.twoFactorPhone : driver.phoneNumber;
+      _recoveryCodes = List<String>.from(driver.recoveryCodes);
+    }
+  }
 
   @override
   void dispose() {
@@ -60,9 +76,9 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
     );
   }
 
-  void _saveSettings() {
+  Future<void> _saveSettings() async {
     if (_is2faEnabled) {
-      if (_phoneController.text.trim().isEmpty) {
+      if (_selectedMethod == 'SMS' && _phoneController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Please enter a valid phone number to enable 2FA.'),
@@ -72,24 +88,81 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
         );
         return;
       }
-      // Switch to Verification step (matching the reference image)
+      
+      // Generate OTP and print to terminal console
+      final random = Random();
+      final otp = List.generate(6, (_) => random.nextInt(10)).join();
       setState(() {
+        _expectedOtp = otp;
         _isVerificationStep = true;
       });
-    } else {
-      // Direct disable success
+
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final driver = auth.driver;
+      final target = _selectedMethod == 'SMS' 
+          ? _phoneController.text.trim()
+          : (_selectedMethod == 'Email' ? (driver?.email ?? 'driver email') : 'Authenticator');
+
+      debugPrint('\n======================================');
+      debugPrint('[2FA OTP] Verification code for $_selectedMethod ($target) is: $otp');
+      debugPrint('======================================\n');
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Two-factor authentication disabled.'),
+        SnackBar(
+          content: Text('Verification code ($otp) printed to the terminal console.'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
       );
-      Navigator.pop(context);
+    } else {
+      // Show loader
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+            ),
+          );
+        },
+      );
+
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final success = await auth.updateProfile({
+        'twoFactorEnabled': false,
+      });
+
+      if (mounted) {
+        Navigator.pop(context); // Pop loader
+      }
+
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Two-factor authentication disabled.'),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.pop(context);
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(auth.errorMessage ?? 'Failed to disable 2FA'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
     }
   }
 
-  void _verifyCode() {
+  Future<void> _verifyCode() async {
     final enteredCode = _codeControllers.map((c) => c.text).join();
     if (enteredCode.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -102,21 +175,100 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
       return;
     }
 
-    // Success Mock Validation
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Two-factor authentication configured successfully!'),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
+    if (_expectedOtp != null && enteredCode != _expectedOtp) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid verification code. Please check the terminal.'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Show loader
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+          ),
+        );
+      },
     );
-    Navigator.pop(context); // Return to settings screen
+
+    // If recoveryCodes are empty, let's auto generate some to store!
+    if (_recoveryCodes.isEmpty) {
+      _recoveryCodes = [
+        'TR2A-8B90-XP11',
+        'LK92-DF44-QP09',
+        'MM78-KK02-ZZ89',
+        'AA21-YY89-CC40',
+        'PP09-OO11-II22',
+        'UU77-YY66-TT55',
+        'RR44-EE33-WW22',
+        'QQ11-AA22-ZZ33',
+      ];
+    }
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await auth.updateProfile({
+      'twoFactorEnabled': true,
+      'twoFactorMethod': _selectedMethod,
+      'twoFactorPhone': _phoneController.text.trim(),
+      'recoveryCodes': _recoveryCodes,
+    });
+
+    if (mounted) {
+      Navigator.pop(context); // Pop loader
+    }
+
+    if (success) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Two-factor authentication configured successfully!'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.pop(context); // Return to settings screen
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(auth.errorMessage ?? 'Failed to configure 2FA'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _resendCode() {
+    final random = Random();
+    final otp = List.generate(6, (_) => random.nextInt(10)).join();
+    setState(() {
+      _expectedOtp = otp;
+    });
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final driver = auth.driver;
+    final target = _selectedMethod == 'SMS' 
+        ? _phoneController.text.trim()
+        : (_selectedMethod == 'Email' ? (driver?.email ?? 'driver email') : 'Authenticator');
+
+    debugPrint('\n======================================');
+    debugPrint('[2FA OTP RESEND] New verification code for $_selectedMethod ($target) is: $otp');
+    debugPrint('======================================\n');
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('A new 6-digit verification code has been sent.'),
+      SnackBar(
+        content: Text('A new verification code ($otp) has been printed to the terminal.'),
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
       ),
@@ -677,7 +829,6 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                       focusNode: _codeFocusNodes[index],
                       textAlign: TextAlign.center,
                       keyboardType: TextInputType.number,
-                      maxLength: 1,
                       style: GoogleFonts.poppins(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -702,6 +853,26 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                         ),
                       ),
                       onChanged: (value) {
+                        if (value.length > 1) {
+                          final cleanValue = value.replaceAll(RegExp(r'\D'), '');
+                          if (cleanValue.length >= 6) {
+                            for (int i = 0; i < 6; i++) {
+                              _codeControllers[i].text = cleanValue[i];
+                            }
+                            _codeFocusNodes[5].unfocus();
+                            return;
+                          } else {
+                            final lastChar = value.substring(value.length - 1);
+                            _codeControllers[index].text = lastChar;
+                            if (index < 5) {
+                              _codeFocusNodes[index + 1].requestFocus();
+                            } else {
+                              _codeFocusNodes[index].unfocus();
+                            }
+                            return;
+                          }
+                        }
+
                         if (value.isNotEmpty) {
                           if (index < 5) {
                             _codeFocusNodes[index + 1].requestFocus();

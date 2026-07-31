@@ -6,6 +6,7 @@ import 'trips_screen.dart';
 import 'support_history_screen.dart';
 import 'profile/profile_screen.dart';
 import 'notifications/notifications_screen.dart';
+import '../services/fcm_service.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   static final ValueNotifier<int> selectedTabNotifier = ValueNotifier<int>(0);
@@ -24,20 +25,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     super.initState();
     _currentIndex = MainNavigationScreen.selectedTabNotifier.value;
     MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
+    // Initialize Firebase Cloud Messaging when entering MainNavigationScreen
+    FcmService.initialize(context);
   }
 
   @override
   void dispose() {
     MainNavigationScreen.selectedTabNotifier.removeListener(_onTabChanged);
     MainNavigationScreen.selectedTabNotifier.value = 0;
-    // Reset mock notifications read status for consistent state
-    for (var item in NotificationsScreen.notifications) {
-      if (item.id == '1' || item.id == '2') {
-        item.isRead = false;
-      } else {
-        item.isRead = true;
-      }
-    }
     super.dispose();
   }
 

@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../providers/auth_provider.dart';
 import '../auth/login_screen.dart';
 import '../profile/profile_screen.dart';
 import '../profile/help_support_screen.dart';
@@ -19,6 +22,16 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDarkMode = false;
   String _selectedLanguage = 'English (US)';
+
+  @override
+  void initState() {
+    super.initState();
+    final driver = Provider.of<AuthProvider>(context, listen: false).driver;
+    if (driver != null) {
+      _isDarkMode = driver.isDarkMode;
+      _selectedLanguage = driver.language.isNotEmpty ? driver.language : 'English (US)';
+    }
+  }
 
   void _showLanguageSelector() {
     showModalBottomSheet(
@@ -54,18 +67,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: _selectedLanguage == lang ? AppColors.secondary : AppColors.textPrimary,
                       ),
                     ),
-                    onTap: () {
-                      setState(() {
-                        _selectedLanguage = lang;
-                      });
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Language changed to $lang.'),
-                          backgroundColor: AppColors.success,
-                          behavior: SnackBarBehavior.floating,
-                        ),
+                    onTap: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      final navigator = Navigator.of(context);
+                      navigator.pop(); // Close bottom sheet
+
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (BuildContext context) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+                            ),
+                          );
+                        },
                       );
+
+                      final auth = Provider.of<AuthProvider>(context, listen: false);
+                      final success = await auth.updateProfile({'language': lang});
+
+                      if (mounted) {
+                        navigator.pop(); // Close loading indicator
+                      }
+
+                      if (success) {
+                        setState(() {
+                          _selectedLanguage = lang;
+                        });
+                        if (mounted) {
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text('Language changed to $lang.'),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      } else {
+                        if (mounted) {
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(auth.errorMessage ?? 'Failed to update language.'),
+                              backgroundColor: AppColors.error,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      }
                     },
                   )),
             ],
@@ -111,8 +160,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(dialogContext); // Close dialog
+                final auth = Provider.of<AuthProvider>(outerContext, listen: false);
+                await auth.logout();
+                if (!outerContext.mounted) return;
                 ScaffoldMessenger.of(outerContext).showSnackBar(
                   const SnackBar(
                     content: Text('Logged out successfully.'),
@@ -227,6 +279,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               color: AppColors.textDisabled,
                             );
                           }
+                          if (photoUrl.startsWith('data:image') && photoUrl.contains('base64,')) {
+                            try {
+                              final base64Content = photoUrl.split('base64,').last;
+                              final bytes = base64Decode(base64Content);
+                              return Image.memory(
+                                bytes,
+                                fit: BoxFit.cover,
+                              );
+                            } catch (_) {}
+                          }
                           return Image.network(
                             photoUrl,
                             fit: BoxFit.cover,
@@ -336,17 +398,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     trailing: Switch.adaptive(
                       value: _isDarkMode,
                       activeTrackColor: AppColors.secondary,
-                      onChanged: (bool value) {
-                        setState(() {
-                          _isDarkMode = value;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Dark Mode ${value ? "enabled" : "disabled"}.'),
-                            backgroundColor: AppColors.primary,
-                            behavior: SnackBarBehavior.floating,
-                          ),
+                      onChanged: (bool value) async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final navigator = Navigator.of(context);
+
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (BuildContext context) {
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+                              ),
+                            );
+                          },
                         );
+
+                        final auth = Provider.of<AuthProvider>(context, listen: false);
+                        final success = await auth.updateProfile({'isDarkMode': value});
+
+                        if (mounted) {
+                          navigator.pop(); // Close loader
+                        }
+
+                        if (success) {
+                          setState(() {
+                            _isDarkMode = value;
+                          });
+                          if (mounted) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('Dark Mode ${value ? "enabled" : "disabled"}.'),
+                                backgroundColor: AppColors.success,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        } else {
+                          if (mounted) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(auth.errorMessage ?? 'Failed to update theme preference.'),
+                                backgroundColor: AppColors.error,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        }
                       },
                     ),
                   ),

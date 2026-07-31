@@ -3,9 +3,12 @@ import {
   loginDriver,
   logoutDriver,
   getDriverProfile,
+  updateDriverProfile,
   getCurrentTrip,
   getDriverDashboard,
   getDriverNotifications,
+  markDriverNotificationRead,
+  markAllDriverNotificationsRead,
   updateTripStatus,
   updateDriverLocation,
   getDriverDocuments,
@@ -26,9 +29,12 @@ router.post('/logout', logoutDriver);
 router.use(protect);
 
 router.get('/profile', getDriverProfile);
+router.put('/profile', updateDriverProfile);
 router.get('/trips/current', getCurrentTrip);
 router.get('/dashboard', getDriverDashboard);
 router.get('/notifications', getDriverNotifications);
+router.patch('/notifications/read-all', markAllDriverNotificationsRead);
+router.patch('/notifications/:id/read', markDriverNotificationRead);
 router.patch('/trips/:id/status', updateTripStatus);
 router.post('/location', updateDriverLocation);
 router.get('/documents', getDriverDocuments);
