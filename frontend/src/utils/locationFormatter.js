@@ -83,3 +83,6 @@ export const formatDisplayLocation = (locVal, fallbackVal = "") => {
 
   return cleanFallback || "Unknown Location";
 };
+
+export const cleanCityName = formatDisplayLocation;
+export const isCoordinateString = isCoordinates;
