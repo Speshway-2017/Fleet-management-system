@@ -89,6 +89,31 @@ export const managerApi = {
     return await axiosClient.get(`/manager/trips/${tripId}/tolls`);
   },
 
+  // Trip Communication
+  getTripChat: async (tripId, markRead = false) => {
+    return await axiosClient.get(`/manager/trips/${tripId}/chat`, { params: { markRead } });
+  },
+
+  sendTripMessage: async (tripId, messageData) => {
+    return await axiosClient.post(`/manager/trips/${tripId}/chat`, messageData);
+  },
+
+  markTripMessagesRead: async (tripId) => {
+    return await axiosClient.patch(`/manager/trips/${tripId}/chat/read`);
+  },
+
+  getTripCallHistory: async (tripId) => {
+    return await axiosClient.get(`/manager/trips/${tripId}/calls`);
+  },
+
+  saveTripCallLog: async (tripId, callData) => {
+    return await axiosClient.post(`/manager/trips/${tripId}/calls`, callData);
+  },
+
+  getUnreadChatCounts: async () => {
+    return await axiosClient.get("/manager/trips/unread-chat-counts");
+  },
+
   // Vehicle Complaints
   createVehicleComplaint: async (complaintData) => {
     return await axiosClient.post("/manager/vehicle-complaints", complaintData);

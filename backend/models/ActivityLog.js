@@ -9,6 +9,14 @@ const activityLogSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  vehicleNumber: {
+    type: String,
+    default: '',
+  },
+  vehicleName: {
+    type: String,
+    default: '',
+  },
   activityType: {
     type: String,
     enum: [
@@ -25,9 +33,18 @@ const activityLogSchema = new mongoose.Schema({
     ],
     required: true,
   },
+  relatedModule: {
+    type: String,
+    enum: ['Vehicle', 'Trip', 'Driver', 'Maintenance', 'Fuel', 'Document'],
+    default: 'Vehicle',
+  },
+  relatedId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+  },
   user: {
     type: String,
-    required: true,
+    default: 'Manager',
   },
   assignedManager: {
     type: mongoose.Schema.Types.ObjectId,

@@ -6,7 +6,7 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import { useAuth } from "@/context/AuthContext";
 import { identifyDocumentType } from "../utils/documentParser";
 import { vehicleApi } from "@/api/vehicleApi";
-import { managerApi } from "../api/managerApi";
+import { INDIAN_STATES } from "@/constants/indianStates";
 
 export default function AddVehiclePage() {
   const navigate = useNavigate();
@@ -141,11 +141,70 @@ export default function AddVehiclePage() {
     setDocErrors(prev => ({ ...prev, [key]: "" }));
   };
 
+  const [vehicleImage, setVehicleImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [imageName, setImageName] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleImageFile = (file) => {
+    if (!file) return;
+    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const ext = file.name.split('.').pop().toLowerCase();
+    const validExts = ["jpg", "jpeg", "png", "webp"];
+
+    if (!validTypes.includes(file.type) && !validExts.includes(ext)) {
+      toast.error("Unsupported file type. Please upload a JPG, JPEG, PNG, or WEBP image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size exceeded. Maximum allowed image size is 5 MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target.result;
+      setVehicleImage(base64);
+      setImagePreview(base64);
+      setImageName(file.name);
+      toast.success("Vehicle image selected successfully.");
+    };
+    reader.onerror = () => {
+      toast.error("Failed to upload image. Please try again.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleImageFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleImageSelect = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleImageFile(e.target.files[0]);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setVehicleImage(null);
+    setImagePreview("");
+    setImageName("");
+  };
+
   const handleSaveVehicle = async (e) => {
     e.preventDefault();
 
-    if (!formData.manufacturer || !formData.model || !formData.plateNumber) {
-      toast.error("Please fill in all required fields");
+    if (isViewOnly) {
+      toast.error("Your subscription is inactive. Adding vehicles is disabled.");
+      return;
+    }
+
+    if (!formData.chassisNumber || formData.chassisNumber.length !== 17) {
+      toast.error("Chassis Number must be exactly 17 characters.");
       return;
     }
 
@@ -184,6 +243,8 @@ export default function AddVehiclePage() {
         branch:             formData.branch,
         loadCapacity:       formData.loadCapacity ? Number(formData.loadCapacity) : 0,
         assignedDriver:     formData.assignedDriver === "Unassigned" ? undefined : formData.assignedDriver,
+        vehicleImage:       vehicleImage,
+        imageName:          imageName
       };
 
       await vehicleApi.create(payload);
@@ -226,6 +287,64 @@ export default function AddVehiclePage() {
           {/* Main Form Container */}
           <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-8 max-w-7xl">
             <form onSubmit={handleSaveVehicle} className="space-y-8">
+              {/* SECTION 0: Vehicle Image Upload */}
+              <div className="border-b border-[#E7EAF0] pb-6">
+                <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">
+                  Vehicle Image
+                </label>
+
+                {imagePreview ? (
+                  <div className="relative w-full max-w-md rounded-2xl border border-[#E7EAF0] p-4 bg-gray-50 flex items-center gap-4">
+                    <img
+                      src={imagePreview}
+                      alt="Vehicle Preview"
+                      className="w-24 h-24 object-cover rounded-xl border border-gray-200 shadow-sm"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-[#1E293B] truncate">{imageName || "Vehicle Image"}</p>
+                      <p className="text-xs text-emerald-600 font-semibold mt-1 flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" /> Ready for upload
+                      </p>
+                      <div className="flex items-center gap-2 mt-3">
+                        <label className="px-3 py-1.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white text-xs font-bold rounded-lg cursor-pointer transition-colors">
+                          Replace Image
+                          <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" onChange={handleImageSelect} />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-lg border border-rose-200 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={handleImageDrop}
+                    className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all max-w-xl ${
+                      isDragOver ? "border-[#B45A0A] bg-[#B45A0A]/5 scale-[0.99]" : "border-[#E7EAF0] bg-gray-50/50 hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-[#FDF3EC] border border-[#B45A0A]/20 text-[#B45A0A] flex items-center justify-center mx-auto mb-3">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <p className="text-sm font-bold text-[#1E293B]">
+                      Drag & Drop vehicle image here, or{" "}
+                      <label className="text-[#B45A0A] underline cursor-pointer hover:text-[#9A4D08]">
+                        Browse
+                        <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" onChange={handleImageSelect} />
+                      </label>
+                    </p>
+                    <p className="text-xs text-[#64748B] mt-1 font-medium">
+                      Accepted formats: JPG, JPEG, PNG, WEBP (Max: 5 MB)
+                    </p>
+                  </div>
+                )}
+              </div>
               {/* SECTION 1: Basic Information */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
@@ -351,17 +470,22 @@ export default function AddVehiclePage() {
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">State</label>
                     <select
                       name="registrationState"
-                      value={formData.registrationState}
+                      value={
+                        INDIAN_STATES.find(
+                          (s) =>
+                            s.code === formData.registrationState ||
+                            s.name.toLowerCase() === (formData.registrationState || "").toLowerCase()
+                        )?.code || formData.registrationState || ""
+                      }
                       onChange={handleInputChange}
                       className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
                     >
                       <option value="">Select State</option>
-                      <option value="MH">Maharashtra</option>
-                      <option value="KA">Karnataka</option>
-                      <option value="AP">Andhra Pradesh</option>
-                      <option value="TN">Tamil Nadu</option>
-                      <option value="DL">Delhi</option>
-                      <option value="GJ">Gujarat</option>
+                      {INDIAN_STATES.map((st) => (
+                        <option key={st.code} value={st.code}>
+                          {st.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -432,7 +556,7 @@ export default function AddVehiclePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Engine (CC)</label>
                     <input
@@ -467,76 +591,6 @@ export default function AddVehiclePage() {
                       className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
                     />
                   </div>
-                </div>
-              </div>
-
-              {/* SECTION 3B: Insurance & Compliance */}
-              <div className="border-t border-[#E7EAF0] pt-8">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-6 h-6 bg-[#FDF3EC] border border-[#B45A0A] rounded flex items-center justify-center text-xs font-bold text-[#B45A0A]">3B</div>
-                  <h2 className="text-lg font-bold text-[#1E293B]">Insurance & Compliance</h2>
-                </div>
-                <p className="text-xs text-[#64748B] mb-4">Document-related information auto-filled from uploaded files</p>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Insurance Expiry Date</label>
-                    <input
-                      type="date"
-                      name="insuranceExpiry"
-                      value={formData.insuranceExpiry || ""}
-                      onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Last Service Date</label>
-                    <input
-                      type="date"
-                      name="lastService"
-                      value={formData.lastService || ""}
-                      onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Next Service Due</label>
-                    <input
-                      type="date"
-                      name="nextService"
-                      value={formData.nextService || ""}
-                      onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                  <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Ownership</label>
-                    <select
-                      name="ownership"
-                      value={formData.ownership || "Owned"}
-                      onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
-                    >
-                      <option value="Owned">Owned</option>
-                      <option value="Financed">Financed</option>
-                      <option value="Leased">Leased</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Availability</label>
-                    <select
-                      name="availability"
-                      value={formData.availability || "Immediate"}
-                      onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
-                    >
-                      <option value="Immediate">Immediate</option>
-                      <option value="Scheduled">Scheduled</option>
-                    </select>
-                  </div>
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">FASTag Balance (INR)</label>
                     <input
@@ -549,8 +603,6 @@ export default function AddVehiclePage() {
                     />
                   </div>
                 </div>
-
-
               </div>
 
 

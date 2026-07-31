@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { useAuth } from "@/context/AuthContext";
 import { vehicleApi } from "@/api/vehicleApi";
+import { INDIAN_STATES } from "@/constants/indianStates";
 
 export default function VehicleEditPage() {
   const navigate = useNavigate();
@@ -40,6 +41,12 @@ export default function VehicleEditPage() {
     roadTax: ""
   });
 
+  const [vehicleImage, setVehicleImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [imageName, setImageName] = useState("");
+  const [removeImage, setRemoveImage] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+
   useEffect(() => {
     const loadVehicle = async () => {
       try {
@@ -48,6 +55,9 @@ export default function VehicleEditPage() {
         const found = vehRes.data?.data;
         if (found) {
           setVehicle(found);
+          const currentImgUrl = found.vehicleImage?.secure_url || found.image || "";
+          setImagePreview(currentImgUrl);
+          setImageName(found.vehicleImage?.originalName || (currentImgUrl ? "vehicle_image.png" : ""));
           setFormData({
             ...found,
             name: found.vehicleName || `${found.brand} ${found.model}`,
@@ -104,6 +114,58 @@ export default function VehicleEditPage() {
     };
     loadVehicle();
   }, [id, navigate]);
+
+  const handleImageFile = (file) => {
+    if (!file) return;
+    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const ext = file.name.split('.').pop().toLowerCase();
+    const validExts = ["jpg", "jpeg", "png", "webp"];
+
+    if (!validTypes.includes(file.type) && !validExts.includes(ext)) {
+      toast.error("Unsupported file type. Please upload a JPG, JPEG, PNG, or WEBP image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size exceeded. Maximum allowed image size is 5 MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target.result;
+      setVehicleImage(base64);
+      setImagePreview(base64);
+      setImageName(file.name);
+      setRemoveImage(false);
+      toast.success("New vehicle image selected.");
+    };
+    reader.onerror = () => {
+      toast.error("Failed to upload image. Please try again.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleImageFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleImageSelect = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleImageFile(e.target.files[0]);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setVehicleImage(null);
+    setImagePreview("");
+    setImageName("");
+    setRemoveImage(true);
+    toast.success("Image removed.");
+  };
 
   const handleSingleFileUpload = async (key, file) => {
     if (!file) return;
@@ -206,6 +268,9 @@ export default function VehicleEditPage() {
         lastService:        formData.lastService || undefined,
         nextService:        formData.nextService || undefined,
         documents:          vehicleDocs,
+        vehicleImage:       vehicleImage || (removeImage ? null : (vehicle.vehicleImage || vehicle.image)),
+        imageName:          imageName,
+        removeImage:        removeImage
       };
       await vehicleApi.update(id, payload);
       toast.success("Vehicle updated successfully!");
@@ -257,53 +322,44 @@ export default function VehicleEditPage() {
         <div className="bg-white rounded-xl border border-[#E7EAF0] p-4">
           <p className="text-xs text-[#64748B] font-bold uppercase mb-2">Insurance Expiry</p>
           <div className="flex items-start gap-3">
-            <div className="bg-green-100 p-2 rounded flex-shrink-0">
-              <Calendar className="w-5 h-5 text-green-600" />
+            <div className="bg-blue-50 p-2 rounded flex-shrink-0">
+              <Calendar className="w-5 h-5 text-blue-600" />
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-green-600">
-                {formData.insuranceExpiry ? new Date(formData.insuranceExpiry).toLocaleDateString("en-IN") : "N/A"}
-              </p>
-              <p className="text-xs text-[#64748B] mt-1">✓ Valid and Active</p>
+            <div>
+              <p className="text-sm font-bold text-[#1E293B]">{formData.insuranceExpiry || "N/A"}</p>
+              <p className="text-xs text-[#64748B] mt-1">Policy Active</p>
             </div>
           </div>
         </div>
 
-        {/* FASTag Card */}
+        {/* Fastag Card */}
         <div className="bg-white rounded-xl border border-[#E7EAF0] p-4">
-          <p className="text-xs text-[#64748B] font-bold uppercase mb-2">FASTag Balance</p>
+          <p className="text-xs text-[#64748B] font-bold uppercase mb-2">FASTAG BALANCE</p>
           <div className="flex items-start gap-3">
-            <div className="bg-blue-100 p-2 rounded flex-shrink-0">
-              <Zap className="w-5 h-5 text-blue-600" />
+            <div className="bg-emerald-50 p-2 rounded flex-shrink-0">
+              <Zap className="w-5 h-5 text-emerald-600" />
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-[#1E293B]">₹{formData.fastagBalance?.toLocaleString("en-IN") || "0"}</p>
-              <p className="text-xs text-[#64748B] mt-1">Balance Available</p>
+            <div>
+              <p className="text-sm font-bold text-[#1E293B]">₹{Number(formData.fastagBalance || 0).toLocaleString('en-IN')}</p>
+              <p className="text-xs text-emerald-600 font-semibold mt-1">Sufficient Balance</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Vehicle Plate Badge */}
-      <div className="bg-white rounded-xl border border-[#E7EAF0] p-4 mb-8">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
-            <div className="bg-[#FDF3EC] px-4 py-2 rounded-lg border-2 border-[#B45A0A]">
-              <p className="text-lg font-bold text-[#B45A0A] uppercase">{formData.plateNumber}</p>
+      {/* Main Container */}
+      <div className="bg-white rounded-xl border border-[#E7EAF0] p-6 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#E7EAF0]">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-bold text-[#1E293B]">{formData.name}</h2>
+              <span className="px-2.5 py-1 bg-gray-100 rounded text-xs font-bold text-[#64748B] uppercase">
+                {formData.plateNumber || formData.vehicleNumber}
+              </span>
             </div>
-            <div>
-              <p className="text-xs text-[#64748B] font-bold uppercase">Status</p>
-              <div className="flex items-center gap-2 mt-2">
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                  formData.status === "Available" ? "bg-green-100 text-green-700" :
-                  formData.status === "On Trip" ? "bg-orange-100 text-orange-700" :
-                  formData.status === "Maintenance" ? "bg-red-100 text-red-700" :
-                  "bg-gray-100 text-gray-700"
-                }`}>
-                  {formData.status}
-                </span>
-              </div>
-            </div>
+            <p className="text-xs text-[#64748B] mt-1">
+              Registered under {formData.branch || "Pune"} Depot
+            </p>
           </div>
           <div className="flex gap-2 ml-auto">
             <button
@@ -319,13 +375,7 @@ export default function VehicleEditPage() {
                 saving ||
                 isViewOnly ||
                 !formData.name ||
-                !formData.plateNumber ||
-                !vehicleDocs.rc ||
-                !vehicleDocs.insurance ||
-                !vehicleDocs.puc ||
-                !vehicleDocs.fitness ||
-                !vehicleDocs.permit ||
-                !vehicleDocs.roadTax
+                !formData.plateNumber
               }
               title={isViewOnly ? "This feature is available after activating a subscription." : "Save Changes"}
               className={`px-6 py-2 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
@@ -348,6 +398,65 @@ export default function VehicleEditPage() {
 
       {/* Form Content */}
       <form onSubmit={handleSave} className="space-y-6">
+        {/* Vehicle Image Upload Section */}
+        <div className="bg-white rounded-xl border border-[#E7EAF0] p-6">
+          <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-3">
+            Vehicle Image
+          </label>
+
+          {imagePreview ? (
+            <div className="relative w-full max-w-md rounded-2xl border border-[#E7EAF0] p-4 bg-gray-50 flex items-center gap-4">
+              <img
+                src={imagePreview}
+                alt="Vehicle Preview"
+                className="w-24 h-24 object-cover rounded-xl border border-gray-200 shadow-sm"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-[#1E293B] truncate">{imageName || "Vehicle Image"}</p>
+                <p className="text-xs text-emerald-600 font-semibold mt-1 flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" /> Image attached
+                </p>
+                <div className="flex items-center gap-2 mt-3">
+                  <label className="px-3 py-1.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white text-xs font-bold rounded-lg cursor-pointer transition-colors">
+                    Replace Image
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" onChange={handleImageSelect} />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-lg border border-rose-200 transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={handleImageDrop}
+              className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all max-w-xl ${
+                isDragOver ? "border-[#B45A0A] bg-[#B45A0A]/5 scale-[0.99]" : "border-[#E7EAF0] bg-gray-50/50 hover:bg-gray-50"
+              }`}
+            >
+              <div className="w-12 h-12 rounded-full bg-[#FDF3EC] border border-[#B45A0A]/20 text-[#B45A0A] flex items-center justify-center mx-auto mb-3">
+                <Upload className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-bold text-[#1E293B]">
+                Drag & Drop vehicle image here, or{" "}
+                <label className="text-[#B45A0A] underline cursor-pointer hover:text-[#9A4D08]">
+                  Browse
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" onChange={handleImageSelect} />
+                </label>
+              </p>
+              <p className="text-xs text-[#64748B] mt-1 font-medium">
+                Accepted formats: JPG, JPEG, PNG, WEBP (Max: 5 MB)
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column - General Information */}
@@ -494,17 +603,22 @@ export default function VehicleEditPage() {
                   <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">State</label>
                   <select
                     name="registrationState"
-                    value={formData.registrationState || ""}
+                    value={
+                      INDIAN_STATES.find(
+                        (s) =>
+                          s.code === formData.registrationState ||
+                          s.name.toLowerCase() === (formData.registrationState || "").toLowerCase()
+                      )?.code || formData.registrationState || ""
+                    }
                     onChange={handleChange}
                     className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-lg text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
                   >
                     <option value="">Select State</option>
-                    <option value="MH">Maharashtra</option>
-                    <option value="KA">Karnataka</option>
-                    <option value="AP">Andhra Pradesh</option>
-                    <option value="TN">Tamil Nadu</option>
-                    <option value="DL">Delhi</option>
-                    <option value="GJ">Gujarat</option>
+                    {INDIAN_STATES.map((st) => (
+                      <option key={st.code} value={st.code}>
+                        {st.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
