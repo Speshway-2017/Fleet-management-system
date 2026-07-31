@@ -840,6 +840,30 @@ export const createTrip = async (req, res, next) => {
       console.error('Failed to generate toll transactions for new trip:', tollErr);
     }
 
+    // G. Create and emit notification for the assigned Driver
+    try {
+      const io = req.app.get('socketio') || req.app.locals?.io;
+      await createAndEmitNotification({
+        io,
+        recipient: driver,
+        sender: req.user._id,
+        recipientRole: 'DRIVER',
+        senderRole: 'FLEET_MANAGER',
+        organization: driverDoc.organization || req.user.organization,
+        type: 'trip_assigned',
+        title: 'New Trip Assigned',
+        message: `You have been assigned a new trip: ${tripNumber} from ${startLocation} to ${endLocation}.`,
+        priority: 'high',
+        referenceId: trip._id,
+        referenceType: 'Trip'
+      });
+      if (driverDoc.fcmToken) {
+        console.log(`[FCM] Simulated push notification sent to FCM token ${driverDoc.fcmToken} for driver ${driverDoc.fullName}: "New Trip Assigned: Trip ${tripNumber}"`);
+      }
+    } catch (notifErr) {
+      console.error('Failed to send assignment notification to driver:', notifErr);
+    }
+
     await logActivity({
       title: 'Trip Dispatched',
       description: `Trip ${trip.tripNumber} was dispatched from ${trip.startLocation} to ${trip.endLocation} with vehicle ${trip.vehiclePlate} and driver ${trip.driverName}.`,
@@ -997,6 +1021,82 @@ export const updateTrip = async (req, res, next) => {
         user: req.user,
         assignedManager: req.user._id
       });
+    }
+
+    // Send notifications to the driver if changed or if status changed
+    try {
+      const ioInstance = req.app.get('socketio') || req.app.locals?.io;
+      
+      // If driver is changed
+      if (req.body.driver && String(req.body.driver) !== String(existingTrip.driver)) {
+        // Notify new driver
+        const newDriverDoc = await Driver.findById(req.body.driver);
+        if (newDriverDoc) {
+          await createAndEmitNotification({
+            io: ioInstance,
+            recipient: req.body.driver,
+            sender: req.user._id,
+            recipientRole: 'DRIVER',
+            senderRole: 'FLEET_MANAGER',
+            organization: newDriverDoc.organization || req.user.organization,
+            type: 'trip_assigned',
+            title: 'New Trip Assigned',
+            message: `You have been assigned a new trip: ${finalTrip.tripNumber} from ${finalTrip.startLocation} to ${finalTrip.endLocation}.`,
+            priority: 'high',
+            referenceId: finalTrip._id,
+            referenceType: 'Trip'
+          });
+          if (newDriverDoc.fcmToken) {
+            console.log(`[FCM] Simulated push notification sent to FCM token ${newDriverDoc.fcmToken}: "New Trip Assigned"`);
+          }
+        }
+
+        // Notify old driver
+        const oldDriverDoc = await Driver.findById(existingTrip.driver);
+        if (oldDriverDoc) {
+          await createAndEmitNotification({
+            io: ioInstance,
+            recipient: existingTrip.driver,
+            sender: req.user._id,
+            recipientRole: 'DRIVER',
+            senderRole: 'FLEET_MANAGER',
+            organization: oldDriverDoc.organization || req.user.organization,
+            type: 'trip_cancelled',
+            title: 'Trip Unassigned',
+            message: `You have been unassigned from trip ${finalTrip.tripNumber}.`,
+            priority: 'high',
+            referenceId: finalTrip._id,
+            referenceType: 'Trip'
+          });
+          if (oldDriverDoc.fcmToken) {
+            console.log(`[FCM] Simulated push notification sent to FCM token ${oldDriverDoc.fcmToken}: "Trip Unassigned"`);
+          }
+        }
+      } else if (newStatus && newStatus !== existingTrip.status && finalTrip.driver) {
+        // Status changed on existing driver
+        const currentDriverDoc = await Driver.findById(finalTrip.driver);
+        if (currentDriverDoc) {
+          await createAndEmitNotification({
+            io: ioInstance,
+            recipient: finalTrip.driver,
+            sender: req.user._id,
+            recipientRole: 'DRIVER',
+            senderRole: 'FLEET_MANAGER',
+            organization: currentDriverDoc.organization || req.user.organization,
+            type: 'trip_status_changed',
+            title: `Trip Status Updated`,
+            message: `Your trip ${finalTrip.tripNumber} status is now ${newStatus}.`,
+            priority: 'normal',
+            referenceId: finalTrip._id,
+            referenceType: 'Trip'
+          });
+          if (currentDriverDoc.fcmToken) {
+            console.log(`[FCM] Simulated push notification sent to FCM token ${currentDriverDoc.fcmToken}: "Trip Status Updated"`);
+          }
+        }
+      }
+    } catch (notifErr) {
+      console.error('Failed to send status update notification:', notifErr);
     }
 
     // Emit real-time status update to manager room

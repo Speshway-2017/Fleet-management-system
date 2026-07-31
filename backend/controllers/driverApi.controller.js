@@ -97,26 +97,119 @@ export const getDriverProfile = async (req, res, next) => {
 
     return sendSuccess(res, 200, {
       driverId: driver.employeeId || driver._id,
+      employeeId: driver.employeeId || '',
       fullName: driver.fullName,
       email: driver.email,
       phone: driver.phoneNumber,
       licenseNumber: driver.licenseNumber,
       licenseType: driver.licenseType,
+      licenseExpiry: driver.licenseExpiry || null,
       vehicle: driver.assignedVehicle || 'Unassigned',
       driverStatus: driver.driverStatus,
       profileImage: driver.profileImage || '',
+      address: driver.address || '',
+      branch: driver.branch || '',
+      experience: driver.experience || '',
+      joiningDate: driver.joiningDate || driver.createdAt,
+      dob: driver.dob || null,
       manager: driver.assignedManager ? {
         id: driver.assignedManager._id,
         name: driver.assignedManager.name,
         phone: driver.assignedManager.phone || '',
         email: driver.assignedManager.email || '',
       } : null,
-      organization: organizationName
+      organization: organizationName,
+      performanceScore: driver.performanceScore || 95,
+      tripsCompleted: driver.tripsCompleted || 0,
+      twoFactorEnabled: driver.twoFactorEnabled || false,
+      twoFactorMethod: driver.twoFactorMethod || 'SMS',
+      twoFactorPhone: driver.twoFactorPhone || '',
+      recoveryCodes: driver.recoveryCodes || [],
+      language: driver.language || 'English (US)',
+      isDarkMode: driver.isDarkMode || false,
+      notificationPreferences: driver.notificationPreferences || {
+        routeChanges: true,
+        trafficWarnings: true,
+        healthAlertes: true,
+        fuelWarnings: true,
+        emergencyAlerts: true,
+        tripUpdates: true,
+        sound: true,
+        vibration: true,
+        pushNotifications: true,
+        emailNotifications: false,
+        smsNotifications: true,
+      },
     }, 'Driver profile retrieved');
   } catch (error) {
     next(error);
   }
 };
+
+/**
+ * Update Driver Profile
+ * PUT /api/driver/profile
+ */
+export const updateDriverProfile = async (req, res, next) => {
+  try {
+    const driverId = req.user._id;
+    const allowedFields = [
+      'fullName',
+      'phoneNumber',
+      'phone',
+      'email',
+      'dob',
+      'address',
+      'licenseNumber',
+      'licenseType',
+      'licenseExpiry',
+      'profileImage',
+      'branch',
+      'twoFactorEnabled',
+      'twoFactorMethod',
+      'twoFactorPhone',
+      'recoveryCodes',
+      'language',
+      'isDarkMode',
+      'notificationPreferences',
+      'fcmToken'
+    ];
+    const updateData = {};
+    for (const key of allowedFields) {
+      if (req.body[key] !== undefined) {
+        if (key === 'phone') {
+          updateData['phoneNumber'] = req.body[key];
+        } else {
+          updateData[key] = req.body[key];
+        }
+      }
+    }
+
+    // If profileImage is a base64 string, upload to Cloudinary!
+    if (updateData.profileImage && updateData.profileImage.startsWith('data:image')) {
+      const uploadResult = await cloudinary.uploader.upload(updateData.profileImage, {
+        folder: 'driver_profiles',
+        resource_type: 'image'
+      });
+      updateData.profileImage = uploadResult.secure_url;
+    }
+
+    const updatedDriver = await Driver.findByIdAndUpdate(
+      driverId,
+      updateData,
+      { new: true, runValidators: true }
+    ).lean();
+
+    if (!updatedDriver) {
+      return sendError(res, 404, 'Driver profile not found');
+    }
+
+    return sendSuccess(res, 200, updatedDriver, 'Driver profile updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 /**
  * Get Current Active Trip for Driver
@@ -146,6 +239,8 @@ export const getCurrentTrip = async (req, res, next) => {
       tripNumber: currentTrip.tripNumber,
       pickup: currentTrip.startLocation,
       destination: currentTrip.endLocation,
+      startLocation: currentTrip.startLocation,
+      endLocation: currentTrip.endLocation,
       status: currentTrip.status,
       eta: currentTrip.eta,
       departureTime: currentTrip.departureTime,
@@ -223,6 +318,60 @@ export const getDriverNotifications = async (req, res, next) => {
     }).sort({ createdAt: -1 }).limit(20);
 
     return sendSuccess(res, 200, notifications, 'Notifications retrieved');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Mark a Notification as Read
+ * PATCH /api/driver/notifications/:id/read
+ */
+export const markDriverNotificationRead = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const driverId = req.user._id;
+    const notification = await Notification.findOneAndUpdate(
+      {
+        _id: id,
+        $or: [
+          { recipient: driverId },
+          { user: driverId },
+          { targetRole: 'DRIVER' }
+        ]
+      },
+      { isRead: true },
+      { new: true }
+    );
+
+    if (!notification) {
+      return sendError(res, 404, 'Notification not found or access denied');
+    }
+    return sendSuccess(res, 200, notification, 'Notification marked as read');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Mark All Notifications as Read
+ * PATCH /api/driver/notifications/read-all
+ */
+export const markAllDriverNotificationsRead = async (req, res, next) => {
+  try {
+    const driverId = req.user._id;
+    await Notification.updateMany(
+      {
+        isRead: false,
+        $or: [
+          { recipient: driverId },
+          { user: driverId },
+          { targetRole: 'DRIVER' }
+        ]
+      },
+      { isRead: true }
+    );
+    return sendSuccess(res, 200, null, 'All notifications marked as read');
   } catch (error) {
     next(error);
   }

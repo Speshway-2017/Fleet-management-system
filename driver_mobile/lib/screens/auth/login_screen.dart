@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../services/api_service.dart';
-import '../../services/auth_service.dart';
+import '../../providers/auth_provider.dart';
 import '../main_navigation_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -401,16 +402,26 @@ class _LoginScreenState extends State<LoginScreen> {
                               final navigator = Navigator.of(context);
                               final messenger = ScaffoldMessenger.of(context);
                               try {
-                                await AuthService.login(
+                                final auth = Provider.of<AuthProvider>(context, listen: false);
+                                final ok = await auth.login(
                                   _emailController.text.trim(),
                                   _passwordController.text.trim(),
                                 );
                                 if (!mounted) return;
-                                navigator.pushReplacement(
-                                  MaterialPageRoute(
-                                    builder: (context) => const MainNavigationScreen(),
-                                  ),
-                                );
+                                if (ok) {
+                                  navigator.pushReplacement(
+                                    MaterialPageRoute(
+                                      builder: (context) => const MainNavigationScreen(),
+                                    ),
+                                  );
+                                } else {
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text('Login failed: ${auth.errorMessage}'),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                }
                               } catch (e) {
                                 if (!mounted) return;
                                 messenger.showSnackBar(

@@ -1,6 +1,13 @@
 import User from '../models/User.js';
+import Driver from '../models/Driver.js';
 
-export const findUserByEmail = async (email) => User.findOne({ email });
+export const findUserByEmail = async (email) => {
+  let user = await User.findOne({ email });
+  if (!user) {
+    user = await Driver.findOne({ email }).select('+password');
+  }
+  return user;
+};
 
 export const createUser = async (userData) => {
   const user = new User(userData);

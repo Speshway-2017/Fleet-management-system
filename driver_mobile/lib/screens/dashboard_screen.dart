@@ -1,5 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import 'trip_details_screen.dart';
 import 'trips_screen.dart';
@@ -8,17 +11,18 @@ import 'upcoming_trips_screen.dart';
 import 'completed_trips_screen.dart';
 import 'vehicle_overview_screen.dart';
 import 'main_navigation_screen.dart';
-import 'notifications/notifications_screen.dart';
+import 'notifications/notification_details_screen.dart';
 import 'schedule_screen.dart';
 import 'todays_schedule_screen.dart';
-import 'upcoming_trip_details_screen.dart';
-import 'vehicle_maintenance_screen.dart';
 import 'settings/settings_screen.dart';
 import 'fuel_overview_screen.dart';
+import 'profile/profile_screen.dart';
+import '../providers/notification_provider.dart';
 
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/location_service.dart';
+import '../services/socket_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -28,18 +32,26 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  bool get _isTripUnread => NotificationsScreen.notifications.any((n) => n.id == '1' && !n.isRead);
-  bool get _isMaintenanceUnread => NotificationsScreen.notifications.any((n) => n.id == '2' && !n.isRead);
-
   Map<String, dynamic>? _driverProfile;
   Map<String, dynamic>? _currentTrip;
   Map<String, dynamic>? _dashboardData;
+  Timer? _pollingTimer;
+  final Set<String> _knownNotificationIds = {};
+  bool _isFirstLoad = true;
 
   @override
   void initState() {
     super.initState();
     MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
     _loadDashboardData();
+
+    // Set up polling timer every 10 seconds to sync dashboard dynamically
+    _pollingTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (mounted) {
+        _loadDashboardData();
+      }
+    });
+    SocketService.addNotificationListener(_onSocketNotification);
   }
 
   Future<void> _loadDashboardData() async {
@@ -55,6 +67,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _dashboardData = dashRes['data'];
         });
 
+        // Trigger loading of notifications state
+        final notifProvider = Provider.of<NotificationProvider>(context, listen: false);
+        await notifProvider.fetchNotifications();
+
+        // Check for new unread notifications and present alert
+        for (final notification in notifProvider.notifications) {
+          if (!notification.isRead && !_knownNotificationIds.contains(notification.id)) {
+            if (!_isFirstLoad && mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(notification.icon, color: Colors.white, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              notification.title,
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              notification.description,
+                              style: const TextStyle(color: Colors.white70, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: const Color(0xFFFF6A00),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 5),
+                  action: SnackBarAction(
+                    label: 'View',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      MainNavigationScreen.selectedTabNotifier.value = 3;
+                    },
+                  ),
+                ),
+              );
+            }
+            _knownNotificationIds.add(notification.id);
+          }
+        }
+        _isFirstLoad = false;
+
         if (_currentTrip != null && _currentTrip!['tripId'] != null) {
           LocationTrackingService.startTracking(tripId: _currentTrip!['tripId'].toString());
         }
@@ -66,13 +130,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   void dispose() {
+    _pollingTimer?.cancel();
     MainNavigationScreen.selectedTabNotifier.removeListener(_onTabChanged);
+    SocketService.removeNotificationListener(_onSocketNotification);
     super.dispose();
   }
 
   void _onTabChanged() {
     if (mounted && MainNavigationScreen.selectedTabNotifier.value == 0) {
       setState(() {});
+    }
+  }
+
+  void _onSocketNotification(Map<String, dynamic> notification) {
+    if (mounted) {
+      debugPrint('Dashboard reload triggered by socket notification');
+      _loadDashboardData();
     }
   }
 
@@ -165,14 +238,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             border: Border.all(color: Colors.white24, width: 1.5),
                           ),
                           child: ClipOval(
-                            child: Image.asset(
-                              'assets/images/driver_avatar.png',
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(
-                                  Icons.person,
-                                  color: Colors.white,
-                                  size: 18,
+                            child: ValueListenableBuilder<String>(
+                              valueListenable: ProfileState.profilePhotoUrlNotifier,
+                              builder: (context, photoUrl, child) {
+                                if (photoUrl.isEmpty) {
+                                  return const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 18,
+                                  );
+                                }
+                                if (photoUrl.startsWith('data:image') && photoUrl.contains('base64,')) {
+                                  try {
+                                    final base64Content = photoUrl.split('base64,').last;
+                                    final bytes = base64Decode(base64Content);
+                                    return Image.memory(
+                                      bytes,
+                                      fit: BoxFit.cover,
+                                    );
+                                  } catch (_) {}
+                                }
+                                return Image.network(
+                                  photoUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(
+                                      Icons.person,
+                                      color: Colors.white,
+                                      size: 18,
+                                    );
+                                  },
                                 );
                               },
                             ),
@@ -381,8 +476,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  double get _tripProgress {
+    if (_currentTrip == null) return 0.0;
+    final status = _currentTrip!['status']?.toString().toLowerCase() ?? '';
+    if (status == 'completed') return 1.0;
+    if (status == 'scheduled' || status == 'assigned') return 0.0;
+    
+    final est = double.tryParse(_currentTrip!['estimatedDistance']?.toString() ?? '') ?? 0.0;
+    final act = double.tryParse(_currentTrip!['actualDistance']?.toString() ?? '') ?? 0.0;
+    if (est > 0) {
+      final percentage = act / est;
+      return percentage.clamp(0.0, 1.0);
+    }
+    return 0.65; // Default progress fallback
+  }
+
   // Active Trip Card Builder
   Widget _buildActiveTripCard(BuildContext context) {
+    if (_currentTrip == null) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1E36), // Deep Navy Black
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.local_shipping_outlined, color: Colors.white54, size: 40),
+              const SizedBox(height: 12),
+              Text(
+                'No Active Trip Assigned',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'You will see details here once a trip starts.',
+                style: GoogleFonts.nunito(
+                  color: Colors.white60,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
@@ -430,7 +576,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _currentTrip?['tripNumber'] ?? '#TRP-9921',
+                  _currentTrip!['tripNumber'] ?? '',
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -447,7 +593,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        _currentTrip?['status']?.toUpperCase() ?? 'LIVE',
+                        _currentTrip!['status']?.toUpperCase() ?? 'LIVE',
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontSize: 9,
@@ -457,7 +603,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      _currentTrip?['eta'] != null ? 'ETA ${_currentTrip!['eta']}' : 'ETA 14:30 PM',
+                      _currentTrip!['eta'] != null ? 'ETA ${_currentTrip!['eta']}' : 'ETA 14:30 PM',
                       style: GoogleFonts.nunito(
                         color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 12,
@@ -507,7 +653,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           Text(
-                            _currentTrip?['pickup'] ?? 'Port of Long Beach, CA',
+                            _currentTrip!['startLocation'] ?? 'Port of Long Beach, CA',
                             style: GoogleFonts.nunito(
                               color: Colors.white,
                               fontSize: 11,
@@ -527,7 +673,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           Text(
-                            _currentTrip?['destination'] ?? 'Distribution Center A-12, AZ',
+                            _currentTrip!['endLocation'] ?? 'Distribution Center A-12, AZ',
                             style: GoogleFonts.nunito(
                               color: Colors.white,
                               fontSize: 11,
@@ -563,7 +709,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Column(
                     children: [
                       Text(
-                        '65%',
+                        '${(_tripProgress * 100).toInt()}%',
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -586,11 +732,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 // Orange progress bar
                 ClipRRect(
                   borderRadius: BorderRadius.circular(3),
-                  child: const SizedBox(
+                  child: SizedBox(
                     width: 80,
                     child: LinearProgressIndicator(
-                      value: 0.65,
-                      color: Color(0xFFFF6A00),
+                      value: _tripProgress,
+                      color: const Color(0xFFFF6A00),
                       backgroundColor: Colors.white12,
                       minHeight: 6,
                     ),
@@ -604,8 +750,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const TripDetailsScreen(
-                          tripId: '#TRP-9921',
+                        builder: (context) => TripDetailsScreen(
+                          tripId: _currentTrip!['tripId'] ?? _currentTrip!['_id'] ?? _currentTrip!['id'] ?? '',
                         ),
                       ),
                     );
@@ -825,6 +971,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // Timeline Schedule Builder
   Widget _buildScheduleTimeline(BuildContext context) {
+    final schedule = _dashboardData?['todaySchedule'] as List?;
+
+    if (schedule == null || schedule.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+        ),
+        child: Center(
+          child: Column(
+            children: [
+              const Icon(Icons.calendar_today_outlined, size: 40, color: Color(0xFF98A2B3)),
+              const SizedBox(height: 12),
+              Text(
+                'No schedule for today',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF667085),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
@@ -841,35 +1017,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       child: Column(
-        children: [
-          _buildTimelineRow(
+        children: List.generate(schedule.length, (index) {
+          final trip = schedule[index];
+          final isFirst = index == 0;
+          final isLast = index == schedule.length - 1;
+
+          return _buildTimelineRow(
             context,
-            time: '08:00 AM',
-            title: 'Warehouse Pickup',
-            location: 'Industrial Area, Hub 7',
-            isColorActive: true,
-            isLineActive: true,
-            isLast: false,
-          ),
-          _buildTimelineRow(
-            context,
-            time: '09:30 AM',
-            title: 'Cargo Loading',
-            location: 'Dock C, Section 22',
-            isColorActive: false,
-            isLineActive: false,
-            isLast: false,
-          ),
-          _buildTimelineRow(
-            context,
-            time: '11:00 AM',
-            title: 'Main Delivery',
-            location: 'Logistics Center North',
-            isColorActive: false,
-            isLineActive: false,
-            isLast: true,
-          ),
-        ],
+            time: trip['departureTime'] ?? '',
+            title: 'Trip ${trip['tripNumber'] ?? ''}',
+            location: '${trip['startLocation'] ?? ''} ➔ ${trip['endLocation'] ?? ''}',
+            isColorActive: isFirst,
+            isLineActive: isFirst,
+            isLast: isLast,
+          );
+        }),
       ),
     );
   }
@@ -953,51 +1115,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // Recent Notifications Builder
   Widget _buildRecentNotifications(BuildContext context) {
+    final provider = Provider.of<NotificationProvider>(context);
+    final list = provider.notifications.take(3).toList();
+
+    if (list.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+        ),
+        child: Center(
+          child: Column(
+            children: [
+              const Icon(Icons.notifications_none_outlined, size: 40, color: Color(0xFF98A2B3)),
+              const SizedBox(height: 12),
+              Text(
+                'No recent notifications',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF667085),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Column(
-      children: [
-        _buildNotificationItem(
+      children: list.map((item) {
+        final t = item.type.toLowerCase();
+        Color bgColor = const Color(0xFFF1F5F9);
+        Color iconColor = const Color(0xFF667085);
+        if (t.contains('route') || t.contains('trip')) {
+          bgColor = const Color(0xFFFFF2EB);
+          iconColor = const Color(0xFFFF6A00);
+        } else if (t.contains('maintenance') || t.contains('warning')) {
+          bgColor = const Color(0xFFFEF2F2);
+          iconColor = const Color(0xFFEF4444);
+        } else if (t.contains('achievement') || t.contains('success')) {
+          bgColor = const Color(0xFFF0FDF4);
+          iconColor = const Color(0xFF22C55E);
+        }
+
+        return _buildNotificationItem(
           context,
-          icon: Icons.inventory_2_outlined,
-          iconBgColor: const Color(0xFFFFF2EB),
-          iconColor: const Color(0xFFFF6A00),
-          title: 'New Trip Assigned',
-          subtitle: 'Scheduled for Oct 24, 06:00 AM',
-          time: '2m ago',
-          isUnread: _isTripUnread,
+          icon: item.icon,
+          iconBgColor: bgColor,
+          iconColor: iconColor,
+          title: item.title,
+          subtitle: item.description,
+          time: item.timestamp,
+          isUnread: !item.isRead,
           onTap: () {
-            setState(() {
-              NotificationsScreen.notifications.firstWhere((n) => n.id == '1').isRead = true;
-            });
+            provider.markAsRead(item.id);
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const UpcomingTripDetailsScreen(tripId: '#TRP-8840'),
+                builder: (context) => NotificationDetailsScreen(
+                  title: item.title,
+                  message: item.description,
+                  time: item.timestamp,
+                  type: item.type,
+                  icon: item.icon,
+                  onOpened: () => provider.markAsRead(item.id),
+                  comingFromDashboard: true,
+                ),
               ),
             );
           },
-        ),
-        _buildNotificationItem(
-          context,
-          icon: Icons.construction_outlined,
-          iconBgColor: const Color(0xFFF1F5F9),
-          iconColor: const Color(0xFF667085),
-          title: 'Maintenance Reminder',
-          subtitle: 'Next engine check due in 3 days',
-          time: '1h ago',
-          isUnread: _isMaintenanceUnread,
-          onTap: () {
-            setState(() {
-              NotificationsScreen.notifications.firstWhere((n) => n.id == '2').isRead = true;
-            });
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const VehicleMaintenanceScreen(),
-              ),
-            );
-          },
-        ),
-      ],
+        );
+      }).toList(),
     );
   }
 

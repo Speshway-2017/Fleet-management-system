@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../providers/auth_provider.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -27,43 +29,105 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   @override
   void initState() {
     super.initState();
-    _routeChanges = NotificationSettingsState.routeChanges;
-    _trafficWarnings = NotificationSettingsState.trafficWarnings;
-    _healthAlertes = NotificationSettingsState.healthAlertes;
-    _fuelWarnings = NotificationSettingsState.fuelWarnings;
-    _emergencyAlerts = NotificationSettingsState.emergencyAlerts;
-    _tripUpdates = NotificationSettingsState.tripUpdates;
-    _sound = NotificationSettingsState.sound;
-    _vibration = NotificationSettingsState.vibration;
-    _pushNotifications = NotificationSettingsState.pushNotifications;
-    _emailNotifications = NotificationSettingsState.emailNotifications;
-    _smsNotifications = NotificationSettingsState.smsNotifications;
+    final driver = Provider.of<AuthProvider>(context, listen: false).driver;
+    if (driver != null) {
+      _routeChanges = driver.routeChanges;
+      _trafficWarnings = driver.trafficWarnings;
+      _healthAlertes = driver.healthAlertes;
+      _fuelWarnings = driver.fuelWarnings;
+      _emergencyAlerts = driver.emergencyAlerts;
+      _tripUpdates = driver.tripUpdates;
+      _sound = driver.sound;
+      _vibration = driver.vibration;
+      _pushNotifications = driver.pushNotifications;
+      _emailNotifications = driver.emailNotifications;
+      _smsNotifications = driver.smsNotifications;
+    } else {
+      _routeChanges = NotificationSettingsState.routeChanges;
+      _trafficWarnings = NotificationSettingsState.trafficWarnings;
+      _healthAlertes = NotificationSettingsState.healthAlertes;
+      _fuelWarnings = NotificationSettingsState.fuelWarnings;
+      _emergencyAlerts = NotificationSettingsState.emergencyAlerts;
+      _tripUpdates = NotificationSettingsState.tripUpdates;
+      _sound = NotificationSettingsState.sound;
+      _vibration = NotificationSettingsState.vibration;
+      _pushNotifications = NotificationSettingsState.pushNotifications;
+      _emailNotifications = NotificationSettingsState.emailNotifications;
+      _smsNotifications = NotificationSettingsState.smsNotifications;
+    }
   }
 
-  void _saveChanges() {
-    NotificationSettingsState.routeChanges = _routeChanges;
-    NotificationSettingsState.trafficWarnings = _trafficWarnings;
-    NotificationSettingsState.healthAlertes = _healthAlertes;
-    NotificationSettingsState.fuelWarnings = _fuelWarnings;
-    NotificationSettingsState.emergencyAlerts = _emergencyAlerts;
-    NotificationSettingsState.tripUpdates = _tripUpdates;
-    NotificationSettingsState.sound = _sound;
-    NotificationSettingsState.vibration = _vibration;
-    NotificationSettingsState.pushNotifications = _pushNotifications;
-    NotificationSettingsState.emailNotifications = _emailNotifications;
-    NotificationSettingsState.smsNotifications = _smsNotifications;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Notification preferences saved successfully!'),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
+  Future<void> _saveChanges() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+          ),
+        );
+      },
     );
-    Navigator.pop(context); // Return to settings screen
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await auth.updateProfile({
+      'notificationPreferences': {
+        'routeChanges': _routeChanges,
+        'trafficWarnings': _trafficWarnings,
+        'healthAlertes': _healthAlertes,
+        'fuelWarnings': _fuelWarnings,
+        'emergencyAlerts': _emergencyAlerts,
+        'tripUpdates': _tripUpdates,
+        'sound': _sound,
+        'vibration': _vibration,
+        'pushNotifications': _pushNotifications,
+        'emailNotifications': _emailNotifications,
+        'smsNotifications': _smsNotifications,
+      }
+    });
+
+    if (mounted) {
+      Navigator.pop(context); // Pop loader
+    }
+
+    if (success) {
+      NotificationSettingsState.routeChanges = _routeChanges;
+      NotificationSettingsState.trafficWarnings = _trafficWarnings;
+      NotificationSettingsState.healthAlertes = _healthAlertes;
+      NotificationSettingsState.fuelWarnings = _fuelWarnings;
+      NotificationSettingsState.emergencyAlerts = _emergencyAlerts;
+      NotificationSettingsState.tripUpdates = _tripUpdates;
+      NotificationSettingsState.sound = _sound;
+      NotificationSettingsState.vibration = _vibration;
+      NotificationSettingsState.pushNotifications = _pushNotifications;
+      NotificationSettingsState.emailNotifications = _emailNotifications;
+      NotificationSettingsState.smsNotifications = _smsNotifications;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Notification preferences saved successfully!'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.pop(context); // Return to settings screen
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(auth.errorMessage ?? 'Failed to save changes'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
-  void _resetToDefault() {
+  Future<void> _resetToDefault() async {
     setState(() {
       _routeChanges = true;
       _trafficWarnings = true;
@@ -78,25 +142,72 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       _smsNotifications = true;
     });
 
-    NotificationSettingsState.routeChanges = true;
-    NotificationSettingsState.trafficWarnings = true;
-    NotificationSettingsState.healthAlertes = true;
-    NotificationSettingsState.fuelWarnings = true;
-    NotificationSettingsState.emergencyAlerts = true;
-    NotificationSettingsState.tripUpdates = true;
-    NotificationSettingsState.sound = true;
-    NotificationSettingsState.vibration = true;
-    NotificationSettingsState.pushNotifications = true;
-    NotificationSettingsState.emailNotifications = false;
-    NotificationSettingsState.smsNotifications = true;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Notification preferences reset to default.'),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+          ),
+        );
+      },
     );
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await auth.updateProfile({
+      'notificationPreferences': {
+        'routeChanges': true,
+        'trafficWarnings': true,
+        'healthAlertes': true,
+        'fuelWarnings': true,
+        'emergencyAlerts': true,
+        'tripUpdates': true,
+        'sound': true,
+        'vibration': true,
+        'pushNotifications': true,
+        'emailNotifications': false,
+        'smsNotifications': true,
+      }
+    });
+
+    if (mounted) {
+      Navigator.pop(context); // Pop loader
+    }
+
+    if (success) {
+      NotificationSettingsState.routeChanges = true;
+      NotificationSettingsState.trafficWarnings = true;
+      NotificationSettingsState.healthAlertes = true;
+      NotificationSettingsState.fuelWarnings = true;
+      NotificationSettingsState.emergencyAlerts = true;
+      NotificationSettingsState.tripUpdates = true;
+      NotificationSettingsState.sound = true;
+      NotificationSettingsState.vibration = true;
+      NotificationSettingsState.pushNotifications = true;
+      NotificationSettingsState.emailNotifications = false;
+      NotificationSettingsState.smsNotifications = true;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Notification preferences reset to default.'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(auth.errorMessage ?? 'Failed to reset preferences'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   @override

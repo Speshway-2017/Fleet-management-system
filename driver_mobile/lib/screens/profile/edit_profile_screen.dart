@@ -1,7 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../providers/auth_provider.dart';
 import 'profile_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -15,25 +19,50 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   
   // Text Controllers pre-filled with driver details
-  final _nameController = TextEditingController(text: 'Alex Johnson');
-  final _employeeIdController = TextEditingController(text: 'KF-402-DELTA');
-  final _emailController = TextEditingController(text: 'alex.j@fleetflow.com');
-  final _phoneController = TextEditingController(text: '+1 (555) 234-8901');
-  final _dobController = TextEditingController(text: 'October 12, 1988');
-  final _addressController = TextEditingController(text: '123 Main St, Portland, OR');
-  final _emergencyContactController = TextEditingController(text: '+1 (555) 987-6543');
-  final _licenseNumberController = TextEditingController(text: '555-0123-9876');
-  final _licenseClassController = TextEditingController(text: 'Class A (Commercial)');
-  final _expiryDateController = TextEditingController(text: 'Oct 12, 2026');
-  final _issuingStateController = TextEditingController(text: 'New york');
-  final _vehicleController = TextEditingController(text: 'Volvo FH16 (T-8842)');
+  final _nameController = TextEditingController();
+  final _employeeIdController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _dobController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _emergencyContactController = TextEditingController();
+  final _licenseNumberController = TextEditingController();
+  final _licenseClassController = TextEditingController();
+  final _expiryDateController = TextEditingController();
+  final _issuingStateController = TextEditingController();
+  final _vehicleController = TextEditingController();
 
   String _profilePhotoUrl = '';
+  DateTime? _selectedDob;
+  DateTime? _selectedLicenseExpiry;
 
   @override
   void initState() {
     super.initState();
     _profilePhotoUrl = ProfileState.profilePhotoUrlNotifier.value;
+
+    final driver = Provider.of<AuthProvider>(context, listen: false).driver;
+    if (driver != null) {
+      _nameController.text = driver.fullName;
+      _employeeIdController.text = driver.employeeId.isNotEmpty ? driver.employeeId : driver.id;
+      _emailController.text = driver.email;
+      _phoneController.text = driver.phoneNumber;
+      _addressController.text = driver.address;
+      _licenseNumberController.text = driver.licenseNumber;
+      _licenseClassController.text = driver.licenseType;
+      _issuingStateController.text = driver.branch;
+      _vehicleController.text = driver.assignedVehicle;
+
+      _selectedDob = DateTime.tryParse(driver.dob);
+      _selectedLicenseExpiry = DateTime.tryParse(driver.licenseExpiry);
+
+      if (_selectedDob != null) {
+        _dobController.text = _formatLongDate(_selectedDob!);
+      }
+      if (_selectedLicenseExpiry != null) {
+        _expiryDateController.text = _formatShortDate(_selectedLicenseExpiry!);
+      }
+    }
   }
 
   @override
@@ -92,7 +121,51 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (picked != null) {
       setState(() {
         controller.text = isShortFormat ? _formatShortDate(picked) : _formatLongDate(picked);
+        if (isShortFormat) {
+          _selectedLicenseExpiry = picked;
+        } else {
+          _selectedDob = picked;
+        }
       });
+    }
+  }
+
+  Future<void> _pickImageFromDevice() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        final bytes = file.bytes;
+        if (bytes != null) {
+          final base64String = base64Encode(bytes);
+          final extension = file.extension ?? 'jpg';
+          final dataUri = 'data:image/$extension;base64,$base64String';
+          
+          setState(() {
+            _profilePhotoUrl = dataUri;
+          });
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Image loaded from device. Click Save Changes to upload.'),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking image: $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -128,11 +201,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library, color: AppColors.secondary),
-                title: Text('Choose from Gallery', style: GoogleFonts.poppins()),
+                leading: const Icon(Icons.folder_open_rounded, color: AppColors.secondary),
+                title: Text('Upload from Device', style: GoogleFonts.poppins()),
                 onTap: () {
                   Navigator.pop(context);
-                  _mockPhotoChange('Gallery');
+                  _pickImageFromDevice();
                 },
               ),
               ListTile(
@@ -174,18 +247,104 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   // Handle Save / Submit validation
-  void _saveChanges() {
+  Future<void> _saveChanges() async {
     if (_formKey.currentState!.validate()) {
-      ProfileState.profilePhotoUrlNotifier.value = _profilePhotoUrl;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated successfully!'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+            ),
+          );
+        },
       );
-      Navigator.pop(context); // Return to Profile screen
+
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+
+      final payload = {
+        'fullName': _nameController.text.trim(),
+        'email': _emailController.text.trim().toLowerCase(),
+        'phone': _phoneController.text.trim(),
+        'address': _addressController.text.trim(),
+        'licenseNumber': _licenseNumberController.text.trim(),
+        'licenseType': _licenseClassController.text.trim(),
+        'profileImage': _profilePhotoUrl,
+        'branch': _issuingStateController.text.trim(),
+        if (_selectedDob != null) 'dob': _selectedDob!.toIso8601String(),
+        if (_selectedLicenseExpiry != null) 'licenseExpiry': _selectedLicenseExpiry!.toIso8601String(),
+      };
+
+      final success = await auth.updateProfile(payload);
+
+      if (mounted) {
+        Navigator.pop(context); // Close loading spinner
+      }
+
+      if (success) {
+        ProfileState.profilePhotoUrlNotifier.value = _profilePhotoUrl;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile updated successfully!'),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.pop(context); // Return to Profile screen
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(auth.errorMessage ?? 'Failed to update profile'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
     }
+  }
+
+  Widget _buildAvatarImage() {
+    if (_profilePhotoUrl.isEmpty) {
+      return const Icon(
+        Icons.person,
+        size: 64,
+        color: AppColors.textDisabled,
+      );
+    }
+    
+    if (_profilePhotoUrl.startsWith('data:image') && _profilePhotoUrl.contains('base64,')) {
+      try {
+        final base64Content = _profilePhotoUrl.split('base64,').last;
+        final bytes = base64Decode(base64Content);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+        );
+      } catch (e) {
+        return const Icon(
+          Icons.person,
+          size: 64,
+          color: AppColors.textDisabled,
+        );
+      }
+    }
+    
+    return Image.network(
+      _profilePhotoUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return const Icon(
+          Icons.person,
+          size: 64,
+          color: AppColors.textDisabled,
+        );
+      },
+    );
   }
 
   @override
@@ -236,6 +395,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: SafeArea(
         child: Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
@@ -261,23 +421,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ],
                         ),
                         child: ClipOval(
-                          child: _profilePhotoUrl.isNotEmpty
-                              ? Image.network(
-                                  _profilePhotoUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.person,
-                                      size: 64,
-                                      color: AppColors.textDisabled,
-                                    );
-                                  },
-                                )
-                              : const Icon(
-                                  Icons.person,
-                                  size: 64,
-                                  color: AppColors.textDisabled,
-                                ),
+                          child: _buildAvatarImage(),
                         ),
                       ),
                       Positioned(
@@ -446,12 +590,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 _buildInputField(
                   label: 'Issuing State',
                   controller: _issuingStateController,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Issuing State is required';
-                    }
-                    return null;
-                  },
                 ),
                 const SizedBox(height: 36),
 

@@ -1,79 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'notification_details_screen.dart';
 import '../main_navigation_screen.dart';
-
-class NotificationItem {
-  final String id;
-  final String title;
-  final String description;
-  final String timestamp;
-  final String category; // 'TODAY' or 'YESTERDAY'
-  bool isRead;
-  final IconData icon;
-
-  NotificationItem({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.timestamp,
-    required this.category,
-    required this.isRead,
-    required this.icon,
-  });
-}
+import '../../providers/notification_provider.dart';
+import '../../models/notification_model.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  static final List<NotificationItem> notifications = [
-    NotificationItem(
-      id: '1',
-      title: 'Route Update',
-      description: 'Your route to Chicago has been updated due to heavy traffic on I-90.',
-      timestamp: '2m ago',
-      category: 'TODAY',
-      isRead: false,
-      icon: Icons.local_shipping_outlined,
-    ),
-    NotificationItem(
-      id: '2',
-      title: 'Maintenance Alert',
-      description: 'Vehicle #402 requires immediate tire pressure check based on telematics...',
-      timestamp: '1h ago',
-      category: 'TODAY',
-      isRead: false,
-      icon: Icons.construction_outlined,
-    ),
-    NotificationItem(
-      id: '3',
-      title: 'Achievement Unlocked',
-      description: "You've reached a 500-mile streak with a perfect safety score! Check your profile for bonuses.",
-      timestamp: '4h ago',
-      category: 'TODAY',
-      isRead: true,
-      icon: Icons.star_outline_rounded,
-    ),
-    NotificationItem(
-      id: '4',
-      title: 'Weekly Report Available',
-      description: 'Your fleet performance report for the last week is now ready for review.',
-      timestamp: 'Yesterday',
-      category: 'YESTERDAY',
-      isRead: true,
-      icon: Icons.assignment_outlined,
-    ),
-    NotificationItem(
-      id: '5',
-      title: 'Security Alert',
-      description: 'A new login was detected for your account from a Chrome browser on Windows.',
-      timestamp: 'Yesterday',
-      category: 'YESTERDAY',
-      isRead: true,
-      icon: Icons.shield_outlined,
-    ),
-  ];
-
   const NotificationsScreen({super.key});
 
   @override
@@ -81,14 +16,17 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  List<NotificationItem> get _notifications => NotificationsScreen.notifications;
-
   int _selectedFilterIndex = 0; // 0: Total, 1: Read, 2: Unread
 
   @override
   void initState() {
     super.initState();
     MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<NotificationProvider>(context, listen: false).fetchNotifications();
+      }
+    });
   }
 
   @override
@@ -99,14 +37,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   void _onTabChanged() {
     if (mounted && MainNavigationScreen.selectedTabNotifier.value == 3) {
-      setState(() {});
+      Provider.of<NotificationProvider>(context, listen: false).fetchNotifications();
     }
   }
 
   void _markAllAsRead() {
-    setState(() {
-      for (var item in _notifications) {
-        item.isRead = true;
+    Provider.of<NotificationProvider>(context, listen: false).markAllAsRead().catchError((e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     });
     ScaffoldMessenger.of(context).showSnackBar(
@@ -118,10 +61,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  void _toggleReadStatus(NotificationItem item) {
-    setState(() {
-      item.isRead = true;
-    });
+  void _toggleReadStatus(NotificationModel item) {
+    Provider.of<NotificationProvider>(context, listen: false).markAsRead(item.id);
   }
 
   Widget _buildFilterBar() {
@@ -188,8 +129,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<NotificationProvider>(context);
+    final allNotifications = provider.notifications;
+    final isLoading = provider.isLoading;
+    final errorMessage = provider.errorMessage;
+
     // Filter notifications based on tab
-    final filteredNotifications = _notifications.where((n) {
+    final filteredNotifications = allNotifications.where((n) {
       if (_selectedFilterIndex == 0) return true;
       if (_selectedFilterIndex == 1) return n.isRead;
       return !n.isRead;
@@ -250,91 +196,134 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           children: [
             _buildFilterBar(),
             Expanded(
-              child: filteredNotifications.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.notifications_off_outlined,
-                            size: 64,
-                            color: AppColors.textDisabled,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _selectedFilterIndex == 0
-                                ? 'No Notifications Yet'
-                                : _selectedFilterIndex == 1
-                                    ? 'No Read Notifications'
-                                    : 'No Unread Notifications',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
+              child: isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                       ),
                     )
-                  : ListView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-                      children: [
-                        // TODAY SECTION
-                        if (todayNotifications.isNotEmpty) ...[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  : errorMessage != null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
+                              const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                              const SizedBox(height: 16),
                               Text(
-                                'TODAY',
-                                style: GoogleFonts.nunito(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
+                                errorMessage,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
                                   color: AppColors.textSecondary,
-                                  letterSpacing: 1.0,
                                 ),
                               ),
-                              if (_selectedFilterIndex != 1 && todayNotifications.any((n) => !n.isRead))
-                                GestureDetector(
-                                  onTap: _markAllAsRead,
-                                  child: Text(
-                                    'Mark all as read',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.secondary,
-                                    ),
-                                  ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () {
+                                  provider.fetchNotifications();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
                                 ),
+                                child: const Text('Retry', style: TextStyle(color: Colors.white)),
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          ...todayNotifications.map((item) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12.0),
-                                child: _buildNotificationCard(item),
-                              )),
-                          const SizedBox(height: 16),
-                        ],
+                        )
+                      : RefreshIndicator(
+                          onRefresh: provider.fetchNotifications,
+                          color: AppColors.primary,
+                          child: filteredNotifications.isEmpty
+                              ? ListView(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  children: [
+                                    SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                                    Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.notifications_off_outlined,
+                                            size: 64,
+                                            color: AppColors.textDisabled,
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            _selectedFilterIndex == 0
+                                                ? 'No Notifications Yet'
+                                                : _selectedFilterIndex == 1
+                                                    ? 'No Read Notifications'
+                                                    : 'No Unread Notifications',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : ListView(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                                  children: [
+                                    // TODAY SECTION
+                                    if (todayNotifications.isNotEmpty) ...[
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'TODAY',
+                                            style: GoogleFonts.nunito(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.textSecondary,
+                                              letterSpacing: 1.0,
+                                            ),
+                                          ),
+                                          if (_selectedFilterIndex != 1 && todayNotifications.any((n) => !n.isRead))
+                                            GestureDetector(
+                                              onTap: _markAllAsRead,
+                                              child: Text(
+                                                'Mark all as read',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.secondary,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      ...todayNotifications.map((item) => Padding(
+                                            padding: const EdgeInsets.only(bottom: 12.0),
+                                            child: _buildNotificationCard(item),
+                                          )),
+                                      const SizedBox(height: 16),
+                                    ],
 
-                        // YESTERDAY SECTION
-                        if (yesterdayNotifications.isNotEmpty) ...[
-                          Text(
-                            'YESTERDAY',
-                            style: GoogleFonts.nunito(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          ...yesterdayNotifications.map((item) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12.0),
-                                child: _buildNotificationCard(item),
-                              )),
-                        ],
-                      ],
-                    ),
+                                    // YESTERDAY SECTION
+                                    if (yesterdayNotifications.isNotEmpty) ...[
+                                      Text(
+                                        'YESTERDAY',
+                                        style: GoogleFonts.nunito(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textSecondary,
+                                          letterSpacing: 1.0,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      ...yesterdayNotifications.map((item) => Padding(
+                                            padding: const EdgeInsets.only(bottom: 12.0),
+                                            child: _buildNotificationCard(item),
+                                          )),
+                                    ],
+                                  ],
+                                ),
+                        ),
             ),
           ],
         ),
@@ -342,7 +331,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildNotificationCard(NotificationItem item) {
+  Widget _buildNotificationCard(NotificationModel item) {
     return GestureDetector(
       onTap: () {
         _toggleReadStatus(item);
@@ -353,16 +342,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               title: item.title,
               message: item.description,
               time: item.timestamp,
-              type: item.title,
+              type: item.type,
               icon: item.icon,
               onOpened: () => _toggleReadStatus(item),
             ),
           ),
-        ).then((_) {
-          if (mounted) {
-            setState(() {});
-          }
-        });
+        );
       },
       child: Container(
         padding: const EdgeInsets.all(16.0),

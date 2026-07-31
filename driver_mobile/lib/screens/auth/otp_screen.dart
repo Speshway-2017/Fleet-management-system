@@ -3,7 +3,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
+import '../../providers/auth_provider.dart';
 import 'reset_password_screen.dart';
 
 class OTPScreen extends StatefulWidget {
@@ -21,7 +23,7 @@ class _OTPScreenState extends State<OTPScreen> {
   Timer? _timer;
   int _secondsRemaining = 30;
   bool _canResend = false;
-  String _generatedOtp = '123456';
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -56,9 +58,6 @@ class _OTPScreenState extends State<OTPScreen> {
   void _generateAndPrintOtp() {
     final random = Random();
     final otp = List.generate(6, (_) => random.nextInt(10).toString()).join();
-    setState(() {
-      _generatedOtp = otp;
-    });
     debugPrint('\n=============================================');
     debugPrint('🔑 [OTP SERVICE] Generated OTP for testing: $otp');
     debugPrint('=============================================\n');
@@ -271,7 +270,7 @@ class _OTPScreenState extends State<OTPScreen> {
                         const SizedBox(height: 32),
 
                         ElevatedButton(
-                          onPressed: () {
+                          onPressed: _isLoading ? null : () async {
                             final enteredOtp = _controllers.map((c) => c.text).join();
                             if (enteredOtp.length < 6) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -282,32 +281,36 @@ class _OTPScreenState extends State<OTPScreen> {
                               );
                               return;
                             }
-                            if (enteredOtp != _generatedOtp &&
-                                enteredOtp != '111111' &&
-                                enteredOtp != '123456') {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                            
+                            setState(() => _isLoading = true);
+                            final auth = Provider.of<AuthProvider>(context, listen: false);
+                            final messenger = ScaffoldMessenger.of(context);
+                            final navigator = Navigator.of(context);
+
+                            final ok = await auth.verifyOtp(enteredOtp);
+                            if (!mounted) return;
+
+                            if (ok) {
+                              messenger.showSnackBar(
                                 const SnackBar(
-                                  content: Text('Invalid OTP code. For testing, use the OTP printed in your terminal or "123456".'),
+                                  content: Text('OTP Verified Successfully!'),
+                                  backgroundColor: AppColors.success,
+                                ),
+                              );
+                              navigator.push(
+                                MaterialPageRoute(
+                                  builder: (context) => const ResetPasswordScreen(),
+                                ),
+                              );
+                            } else {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(auth.errorMessage ?? 'Invalid OTP code. Please check and try again.'),
                                   backgroundColor: AppColors.error,
                                 ),
                               );
-                              return;
                             }
-
-                            // OTP is correct
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('OTP Verified Successfully!'),
-                                backgroundColor: AppColors.success,
-                              ),
-                            );
-
-                             Navigator.push(
-                               context,
-                               MaterialPageRoute(
-                                 builder: (context) => const ResetPasswordScreen(),
-                               ),
-                             );
+                            if (mounted) setState(() => _isLoading = false);
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
@@ -318,15 +321,24 @@ class _OTPScreenState extends State<OTPScreen> {
                             ),
                             elevation: 0,
                           ),
-                          child: Text(
-                            'Verify OTP',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(
+                                  'Verify OTP',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
                         ),
                         const SizedBox(height: 24),
 
@@ -344,7 +356,7 @@ class _OTPScreenState extends State<OTPScreen> {
                                 WidgetSpan(
                                   alignment: PlaceholderAlignment.middle,
                                   child: InkWell(
-                                    onTap: () {
+                                    onTap: () async {
                                       if (!_canResend) {
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(
@@ -354,14 +366,43 @@ class _OTPScreenState extends State<OTPScreen> {
                                         );
                                         return;
                                       }
-                                      _generateAndPrintOtp();
-                                      _startTimer();
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('A new OTP has been generated! Check your terminal.'),
-                                          backgroundColor: AppColors.success,
-                                        ),
-                                      );
+                                      
+                                      final auth = Provider.of<AuthProvider>(context, listen: false);
+                                      final messenger = ScaffoldMessenger.of(context);
+                                      
+                                      if (auth.forgotPasswordEmail != null) {
+                                        setState(() => _isLoading = true);
+                                        final ok = await auth.forgotPassword(auth.forgotPasswordEmail!);
+                                        if (mounted) setState(() => _isLoading = false);
+                                        if (!mounted) return;
+                                        
+                                        if (ok) {
+                                          _startTimer();
+                                          messenger.showSnackBar(
+                                            const SnackBar(
+                                              content: Text('A new OTP has been sent! Check your email or console.'),
+                                              backgroundColor: AppColors.success,
+                                            ),
+                                          );
+                                        } else {
+                                          messenger.showSnackBar(
+                                            SnackBar(
+                                              content: Text(auth.errorMessage ?? 'Failed to resend OTP.'),
+                                              backgroundColor: AppColors.error,
+                                            ),
+                                          );
+                                        }
+                                      } else {
+                                        // Fallback just in case email is not preserved
+                                        _generateAndPrintOtp();
+                                        _startTimer();
+                                        messenger.showSnackBar(
+                                          const SnackBar(
+                                            content: Text('A new test OTP has been generated! Check terminal.'),
+                                            backgroundColor: AppColors.success,
+                                          ),
+                                        );
+                                      }
                                     },
                                     borderRadius: BorderRadius.circular(4.0),
                                     child: Padding(

@@ -103,6 +103,11 @@ const startServer = async () => {
       socket.join(`manager:${managerId}`);
     });
 
+    // Join driver-specific room
+    socket.on('joinDriverRoom', (driverId) => {
+      socket.join(`driver:${driverId}`);
+    });
+
     // Join organization-specific room
     socket.on('joinOrganizationRoom', (organizationId) => {
       socket.join(`organization:${organizationId}`);
