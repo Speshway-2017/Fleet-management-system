@@ -1,81 +1,83 @@
 import 'package:flutter/foundation.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
 
 class SocketService {
-  static IO.Socket? _socket;
-  static final List<Function(Map<String, dynamic>)> _notificationListeners = [];
+  static io.Socket? _socket;
+  static bool _isConnected = false;
 
-  static bool get isConnected => _socket != null && _socket!.connected;
+  static bool get isConnected => _isConnected;
 
-  static Future<void> connect(String driverId) async {
-    if (_socket != null) {
-      disconnect();
-    }
+  static Future<void> initSocket({Function(dynamic data)? onTripStatusUpdated, Function(dynamic data)? onTripAssigned}) async {
+    if (_socket != null && _socket!.connected) return;
 
     try {
-      final apiUrl = await ApiService.getBaseUrl();
-      final socketUrl = apiUrl.replaceAll('/api', '');
+      final baseUrl = await ApiService.getBaseUrl();
+      // Remove /api suffix to get base server URL for socket
+      final serverUrl = baseUrl.replaceAll('/api', '');
 
-      debugPrint('Connecting to Socket.IO at $socketUrl for driver $driverId');
+      final prefs = await SharedPreferences.getInstance();
+      final driverId = prefs.getString('driver_id') ?? '';
+      final token = prefs.getString('jwt_token') ?? '';
 
-      _socket = IO.io(socketUrl, IO.OptionBuilder()
-        .setTransports(['websocket', 'polling'])
-        .enableForceNew()
-        .build());
+      _socket = io.io(
+        serverUrl,
+        io.OptionBuilder()
+            .setTransports(['websocket', 'polling'])
+            .disableAutoConnect()
+            .setAuth({'token': token})
+            .build(),
+      );
+
+      _socket!.connect();
 
       _socket!.onConnect((_) {
-        debugPrint('Socket.IO Connected successfully');
-        _socket!.emit('joinDriverRoom', driverId);
-      });
-
-      _socket!.onDisconnect((_) {
-        debugPrint('Socket.IO Disconnected');
-      });
-
-      _socket!.onConnectError((data) {
-        debugPrint('Socket.IO Connect Error: $data');
-      });
-
-      _socket!.onError((data) {
-        debugPrint('Socket.IO Error: $data');
-      });
-
-      // Listen for notifications
-      _socket!.on('notification:new', (data) {
-        debugPrint('Received new notification via socket: $data');
-        final Map<String, dynamic> notification = Map<String, dynamic>.from(data);
-        for (final listener in _notificationListeners) {
-          try {
-            listener(notification);
-          } catch (e) {
-            debugPrint('Error executing notification listener: $e');
-          }
+        debugPrint('🔌 Socket connected to server at $serverUrl');
+        _isConnected = true;
+        if (driverId.isNotEmpty) {
+          _socket!.emit('joinRoleRoom', 'DRIVER');
+          _socket!.emit('joinDriverRoom', driverId);
         }
       });
 
-      _socket!.connect();
+      _socket!.onDisconnect((_) {
+        debugPrint('🔌 Socket disconnected');
+        _isConnected = false;
+      });
+
+      if (onTripStatusUpdated != null) {
+        _socket!.on('trip:status-updated', (data) {
+          onTripStatusUpdated(data);
+        });
+      }
+
+      if (onTripAssigned != null) {
+        _socket!.on('trip:assigned', (data) {
+          onTripAssigned(data);
+        });
+      }
     } catch (e) {
-      debugPrint('Error setting up socket: $e');
+      debugPrint('Socket initialization error: $e');
+    }
+  }
+
+  static void onEvent(String event, Function(dynamic data) callback) {
+    if (_socket != null) {
+      _socket!.on(event, (data) => callback(data));
+    }
+  }
+
+  static void emitEvent(String event, dynamic data) {
+    if (_socket != null && _socket!.connected) {
+      _socket!.emit(event, data);
     }
   }
 
   static void disconnect() {
-    if (_socket != null) {
-      _socket!.disconnect();
-      _socket!.dispose();
-      _socket = null;
-      debugPrint('Socket.IO Disposed');
-    }
-  }
-
-  static void addNotificationListener(Function(Map<String, dynamic>) listener) {
-    if (!_notificationListeners.contains(listener)) {
-      _notificationListeners.add(listener);
-    }
-  }
-
-  static void removeNotificationListener(Function(Map<String, dynamic>) listener) {
-    _notificationListeners.remove(listener);
+    _socket?.disconnect();
+    _socket?.dispose();
+    _socket = null;
+    _isConnected = false;
   }
 }

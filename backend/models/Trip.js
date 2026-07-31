@@ -13,7 +13,7 @@ const tripSchema = new mongoose.Schema(
     endLocation: { type: String, required: true },
     departureTime: { type: String, required: true },
     eta: { type: String, required: true },
-    status: { type: String, enum: ['Scheduled', 'Assigned', 'In Progress', 'Completed', 'Cancelled'], default: 'Scheduled' },
+    status: { type: String, enum: ['Scheduled', 'Assigned', 'Accepted', 'Rejected', 'In Progress', 'Completed', 'Cancelled'], default: 'Assigned' },
     description: { type: String, default: '' },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     cargoType: { type: String, default: '' },
@@ -22,7 +22,12 @@ const tripSchema = new mongoose.Schema(
     actualStartTime: { type: Date },
     actualEndTime: { type: Date },
     estimatedDistance: { type: Number, default: 0 },
-    actualDistance: { type: Number, default: 0 }
+    actualDistance: { type: Number, default: 0 },
+    customerLocationReached: { type: Boolean, default: false },
+    customerLocationReachedAt: { type: Date },
+    podStatus: { type: String, enum: ['Not Uploaded', 'Uploaded', 'Pending', 'Approved', 'Rejected'], default: 'Not Uploaded' },
+    weighbridgeStatus: { type: String, enum: ['Not Uploaded', 'Uploaded', 'Pending', 'Approved', 'Rejected'], default: 'Not Uploaded' },
+    notified15MinBefore: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

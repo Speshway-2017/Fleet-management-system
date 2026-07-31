@@ -64,8 +64,10 @@ export default function FuelManagementPage() {
     }
   };
 
-  const handleViewBill = (url) => {
-    const fullUrl = url.startsWith("/uploads") ? `http://localhost:5000${url}` : url;
+  const handleViewBill = (log) => {
+    setSelectedLog(log);
+    const url = log?.receiptImage || log?.billUrl || "";
+    const fullUrl = url && url.startsWith("/uploads") ? `http://localhost:5000${url}` : url;
     setActiveBillUrl(fullUrl);
     setBillModalOpen(true);
   };
@@ -97,7 +99,9 @@ export default function FuelManagementPage() {
           vehicleId: l.vehicleId || (l.vehicle && l.vehicle.plateNumber) || "MH-12-AB-5678",
           vehicleName: l.vehicleName || (l.vehicle && l.vehicle.name) || "Fleet Vehicle",
           qty: `${l.liters} L`,
-          total: `₹${l.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+          total: `₹${(l.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+          receiptImage: l.receiptImage || l.billUrl || "",
+          billUrl: l.billUrl || l.receiptImage || "",
           timestamp: new Date(l.createdAt).toLocaleDateString("en-IN", {
             month: 'short',
             day: 'numeric',
@@ -405,14 +409,14 @@ Status:          PAID & VERIFIED
             <table className="w-full text-left border-collapse text-sm font-nunito">
               <thead>
                 <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
-                  <th className="py-4 px-6">Vehicle ID</th>
+                  <th className="py-4 px-6">Vehicle</th>
                   <th className="py-4 px-6">Driver</th>
-                  <th className="py-4 px-6">Trip ID</th>
-                  <th className="py-4 px-6">Fuel Date</th>
                   <th className="py-4 px-6">Fuel Station</th>
-                  <th className="py-4 px-6">Qty (Liters)</th>
-                  <th className="py-4 px-6">Fuel Cost</th>
+                  <th className="py-4 px-6">Amount</th>
+                  <th className="py-4 px-6">Liters</th>
+                  <th className="py-4 px-6">Date</th>
                   <th className="py-4 px-6">Approval Status</th>
+                  <th className="py-4 px-6 text-center">Receipt</th>
                   <th className="py-4 px-6 text-center">Action</th>
                 </tr>
               </thead>
@@ -420,7 +424,7 @@ Status:          PAID & VERIFIED
                 {filteredLogs.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="py-12 text-center text-gray-400 font-medium">
-                      No fuel logs found matching filters.
+                      No fuel records found.
                     </td>
                   </tr>
                 ) : (
@@ -430,7 +434,7 @@ Status:          PAID & VERIFIED
                       className={`hover:bg-[#F5F7FB]/50 transition-colors ${l.status === "anomaly" ? "bg-red-50/30" : ""
                         }`}
                     >
-                      {/* Vehicle ID cell */}
+                      {/* Vehicle */}
                       <td className="py-4 px-6 whitespace-nowrap">
                         <div className="flex items-center gap-2.5">
                           <div className={`w-1 h-8 rounded-full ${l.status === "anomaly"
@@ -452,29 +456,24 @@ Status:          PAID & VERIFIED
                         <span className="text-[10px] text-gray-500 block mt-0.5">{l.driverId || "—"}</span>
                       </td>
 
-                      {/* Trip ID */}
-                      <td className="py-4 px-6 text-xs font-semibold text-gray-700 whitespace-nowrap">
-                        {l.tripId || "—"}
-                      </td>
-
-                      {/* Timestamp */}
-                      <td className="py-4 px-6 text-xs text-gray-500 whitespace-nowrap">
-                        {l.timestamp}
-                      </td>
-
                       {/* Station */}
                       <td className="py-4 px-6 text-xs text-gray-700 whitespace-nowrap">
                         {l.fuelStation}
                       </td>
 
-                      {/* Quantity */}
+                      {/* Total Spend / Amount */}
+                      <td className="py-4 px-6 text-xs font-black text-gray-900 whitespace-nowrap">
+                        {l.total}
+                      </td>
+
+                      {/* Liters */}
                       <td className="py-4 px-6 text-xs font-black text-gray-900 whitespace-nowrap">
                         {l.qty}
                       </td>
 
-                      {/* Total Spend */}
-                      <td className="py-4 px-6 text-xs font-black text-gray-900 whitespace-nowrap">
-                        {l.total}
+                      {/* Date */}
+                      <td className="py-4 px-6 text-xs text-gray-500 whitespace-nowrap">
+                        {l.timestamp}
                       </td>
 
                       {/* Approval Status */}
@@ -491,51 +490,43 @@ Status:          PAID & VERIFIED
                         </span>
                       </td>
 
+                      {/* Receipt Column */}
+                      <td className="py-4 px-6 text-center whitespace-nowrap">
+                        <button
+                          onClick={() => handleViewBill(l)}
+                          className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                        >
+                          View
+                        </button>
+                      </td>
+
                       {/* Actions */}
-                        <td className="py-4 px-6 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-2">
-                          {l.status === "anomaly" ? (
-                            <button
-                              onClick={() => handleResolveAnomaly(l)}
-                              className="px-3.5 py-1.5 bg-red-500 hover:bg-red-700 text-white rounded-xl text-[10px] font-black shadow-sm transition-all active:scale-95 cursor-pointer"
-                            >
-                              Resolve
-                            </button>
-                          ) : l.status === "resolved" ? (
-                            <span className="text-green-600 text-xs font-bold flex items-center justify-end gap-1 select-none">
-                              <CheckCircle className="w-4 h-4" />
-                              Resolved
-                            </span>
-                          ) : (
-                            <div className="flex items-center gap-2">
+                      <td className="py-4 px-6 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-2">
+                          {(l.approvalStatus || "Pending") === "Pending" && (
+                            <>
                               <button
-                                onClick={() => handleViewBill(l.billUrl || "/uploads/fuel_bill_receipt.png")}
-                                className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                                onClick={() => handleApproveBill(l.id || l._id)}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm shadow-emerald-600/10"
                               >
-                                View Bill
+                                Approve
                               </button>
-                              
-                              {(l.approvalStatus || "Pending") === "Pending" && (
-                                <>
-                                  <button
-                                    onClick={() => handleApproveBill(l.id || l._id)}
-                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm shadow-emerald-600/10"
-                                  >
-                                    Approve
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setRejectRecord(l);
-                                      setRejectReason("");
-                                      setRejectModalOpen(true);
-                                    }}
-                                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm shadow-red-600/10"
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                              <button
+                                onClick={() => {
+                                  setRejectRecord(l);
+                                  setRejectReason("");
+                                  setRejectModalOpen(true);
+                                }}
+                                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm shadow-red-600/10"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          {(l.approvalStatus || "Pending") !== "Pending" && (
+                            <span className="text-xs text-gray-400 font-medium">
+                              {l.approvalStatus}
+                            </span>
                           )}
                         </div>
                       </td>
@@ -673,13 +664,13 @@ Status:          PAID & VERIFIED
       )}
 
       {/* Bill View Modal */}
-      {billModalOpen && activeBillUrl && (
-        <div className="fixed inset-0 bg-gray-800/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] select-none">
+      {billModalOpen && (
+        <div className="fixed inset-0 bg-gray-800/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] select-none font-poppins">
           <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl p-6 w-full max-w-lg flex flex-col space-y-4">
             <div className="flex items-center justify-between border-b border-gray-200 pb-3">
               <h4 className="font-bold text-sm text-gray-800 flex items-center gap-1.5 font-poppins">
                 <FileText className="w-4 h-4 text-amber-700" />
-                View Fuel Bill Document
+                View Receipt Image
               </h4>
               <button
                 onClick={() => setBillModalOpen(false)}
@@ -689,23 +680,49 @@ Status:          PAID & VERIFIED
               </button>
             </div>
 
-            <div className="bg-gray-50 p-2 rounded-xl border border-gray-100 flex justify-center items-center overflow-auto max-h-[70vh]">
-              {activeBillUrl.toLowerCase().endsWith(".pdf") ? (
-                <iframe src={activeBillUrl} className="w-full h-[50vh] border-0 rounded-xl" title="Fuel Bill PDF" />
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col justify-center items-center overflow-auto max-h-[70vh]">
+              {activeBillUrl ? (
+                activeBillUrl.toLowerCase().endsWith(".pdf") ? (
+                  <iframe src={activeBillUrl} className="w-full h-[50vh] border-0 rounded-xl" title="Fuel Bill PDF" />
+                ) : (
+                  <img src={activeBillUrl} alt="Receipt Image" className="max-w-full max-h-[50vh] object-contain rounded-lg shadow-sm" />
+                )
               ) : (
-                <img src={activeBillUrl} alt="Fuel Bill" className="max-w-full max-h-[50vh] object-contain rounded-lg shadow-sm" />
+                <div className="py-12 text-center text-gray-500 font-medium">
+                  No receipt uploaded.
+                </div>
               )}
             </div>
 
-            <div className="flex justify-end gap-2.5 pt-2 font-nunito">
-              <a
-                href={activeBillUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center cursor-pointer"
-              >
-                Open in New Tab
-              </a>
+            <div className="flex items-center justify-between pt-2 font-nunito">
+              <div className="flex items-center gap-2">
+                {selectedLog && (selectedLog.approvalStatus || "Pending") === "Pending" && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleApproveBill(selectedLog.id || selectedLog._id);
+                        setBillModalOpen(false);
+                      }}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRejectRecord(selectedLog);
+                        setRejectReason("");
+                        setBillModalOpen(false);
+                        setRejectModalOpen(true);
+                      }}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setBillModalOpen(false)}

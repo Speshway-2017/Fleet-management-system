@@ -15,7 +15,8 @@ import {
   Activity,
   Clock,
   ShieldAlert,
-  ArrowLeft
+  ArrowLeft,
+  Cpu
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -35,8 +36,397 @@ export default function ViewTicketsPage() {
     status: "Open",
     estimatedCost: 0,
     actualCost: 0,
-    notes: ""
+    notes: "",
+    mechanicName: "",
+    mechanicPhone: "",
+    mechanicLocation: "",
+    categoryData: {
+      assignedTechnicalTeam: "",
+      delayReason: "",
+      newEta: "",
+      customerInformed: false,
+      towVehicleRequired: false,
+      resolutionComment: ""
+    }
   });
+
+  const getCategoryKey = (issueTypeStr = '') => {
+    const s = issueTypeStr.toString().toLowerCase();
+    if (s.includes('fuel') || s.includes('payment') || s.includes('amount') || s.includes('receipt')) {
+      return 'fuel';
+    }
+    if (s.includes('gps') || s.includes('app') || s.includes('device') || s.includes('crash') || s.includes('technical')) {
+      return 'technical';
+    }
+    if (s.includes('delay') || s.includes('route') || s.includes('traffic') || s.includes('eta')) {
+      return 'delay';
+    }
+    if (s.includes('breakdown') || s.includes('tow') || s.includes('accident')) {
+      return 'breakdown';
+    }
+    return 'maintenance';
+  };
+
+  const renderDynamicCategoryForm = (ticket, data, setData) => {
+    if (!ticket) return null;
+    const catKey = getCategoryKey(ticket.issueType);
+
+    switch (catKey) {
+      case 'fuel':
+        return (
+          <div className="space-y-3 p-3.5 bg-amber-50/60 border border-amber-200/70 rounded-xl font-nunito">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-amber-600" />
+              <span className="text-xs font-bold text-amber-900 font-poppins">Fuel / Payment Issue Resolution</span>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                Quick Resolution Decision
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setData(prev => ({ ...prev, status: 'Resolved' }))}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    data.status === 'Resolved'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  ✓ Approve & Resolve
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setData(prev => ({ ...prev, status: 'Rejected' }))}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    data.status === 'Rejected'
+                      ? 'bg-red-600 text-white shadow-sm'
+                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  ✕ Reject Issue
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                Resolution Comment / Verification Details
+              </label>
+              <textarea
+                rows="3"
+                placeholder="e.g. Payment verified with fuel station vendor. Amount ₹2,500 credited successfully."
+                value={data.categoryData?.resolutionComment || data.notes}
+                onChange={(e) => setData(prev => ({
+                  ...prev,
+                  categoryData: { ...prev.categoryData, resolutionComment: e.target.value },
+                  notes: e.target.value
+                }))}
+                className="w-full p-2.5 bg-white border border-amber-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+              />
+            </div>
+          </div>
+        );
+
+      case 'technical':
+        return (
+          <div className="space-y-3 p-3.5 bg-indigo-50/60 border border-indigo-200/70 rounded-xl font-nunito">
+            <div className="flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-indigo-600" />
+              <span className="text-xs font-bold text-indigo-900 font-poppins">GPS / Technical Support Assignment</span>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                Assigned Technical Team / IT Specialist
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. IT Telematics Team / Rajesh Support"
+                value={data.categoryData?.assignedTechnicalTeam || ''}
+                onChange={(e) => setData(prev => ({
+                  ...prev,
+                  categoryData: { ...prev.categoryData, assignedTechnicalTeam: e.target.value }
+                }))}
+                className="w-full p-2 bg-white border border-indigo-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                Technical Resolution & Diagnosis Notes
+              </label>
+              <textarea
+                rows="3"
+                placeholder="e.g. GPS telemetry device reset remotely. App sync session restored."
+                value={data.categoryData?.resolutionComment || data.notes}
+                onChange={(e) => setData(prev => ({
+                  ...prev,
+                  categoryData: { ...prev.categoryData, resolutionComment: e.target.value },
+                  notes: e.target.value
+                }))}
+                className="w-full p-2.5 bg-white border border-indigo-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+              />
+            </div>
+          </div>
+        );
+
+      case 'delay':
+        return (
+          <div className="space-y-3 p-3.5 bg-purple-50/60 border border-purple-200/70 rounded-xl font-nunito">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-purple-600" />
+              <span className="text-xs font-bold text-purple-900 font-poppins">Delivery Delay & Route Management</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                  Delay Reason
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Traffic Congestion"
+                  value={data.categoryData?.delayReason || ''}
+                  onChange={(e) => setData(prev => ({
+                    ...prev,
+                    categoryData: { ...prev.categoryData, delayReason: e.target.value }
+                  }))}
+                  className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                  New Revised ETA
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Today, 06:30 PM"
+                  value={data.categoryData?.newEta || ''}
+                  onChange={(e) => setData(prev => ({
+                    ...prev,
+                    categoryData: { ...prev.categoryData, newEta: e.target.value }
+                  }))}
+                  className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="checkbox"
+                id="customerInformed"
+                checked={!!data.categoryData?.customerInformed}
+                onChange={(e) => setData(prev => ({
+                  ...prev,
+                  categoryData: { ...prev.categoryData, customerInformed: e.target.checked }
+                }))}
+                className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+              />
+              <label htmlFor="customerInformed" className="text-xs font-bold text-slate-700 cursor-pointer">
+                Customer Informed of Revised ETA
+              </label>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                Comments / Route Log
+              </label>
+              <textarea
+                rows="2"
+                placeholder="e.g. Customer notified by dispatcher of 2-hour toll congestion."
+                value={data.notes}
+                onChange={(e) => setData(prev => ({ ...prev, notes: e.target.value }))}
+                className="w-full p-2.5 bg-white border border-purple-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+              />
+            </div>
+          </div>
+        );
+
+      case 'breakdown':
+        return (
+          <div className="space-y-3 p-3.5 bg-red-50/60 border border-red-200/70 rounded-xl font-nunito">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-600" />
+              <span className="text-xs font-bold text-red-900 font-poppins">Emergency Breakdown & Towing Assistance</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="text"
+                placeholder="Mechanic Name"
+                value={data.mechanicName}
+                onChange={(e) => setData(prev => ({
+                  ...prev,
+                  mechanicName: e.target.value,
+                  status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
+                }))}
+                className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+              />
+              <input
+                type="text"
+                placeholder="Phone Number"
+                value={data.mechanicPhone}
+                onChange={(e) => setData(prev => ({
+                  ...prev,
+                  mechanicPhone: e.target.value,
+                  status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
+                }))}
+                className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                  Tow Vehicle Required?
+                </label>
+                <select
+                  value={data.categoryData?.towVehicleRequired ? 'Yes' : 'No'}
+                  onChange={(e) => setData(prev => ({
+                    ...prev,
+                    categoryData: { ...prev.categoryData, towVehicleRequired: e.target.value === 'Yes' }
+                  }))}
+                  className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
+                >
+                  <option value="No">No Towing Required</option>
+                  <option value="Yes">Yes - Dispatch Tow Truck</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                  Workshop / Location
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sri Ram Service Bay"
+                  value={data.mechanicLocation}
+                  onChange={(e) => setData(prev => ({ ...prev, mechanicLocation: e.target.value }))}
+                  className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Est. Repair Cost (₹)</label>
+                <input
+                  type="number"
+                  value={data.estimatedCost}
+                  onChange={(e) => setData(prev => ({ ...prev, estimatedCost: e.target.value }))}
+                  placeholder="0"
+                  className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Actual Repair Cost (₹)</label>
+                <input
+                  type="number"
+                  value={data.actualCost}
+                  onChange={(e) => setData(prev => ({ ...prev, actualCost: e.target.value }))}
+                  placeholder="0"
+                  className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Breakdown & Repair Notes</label>
+              <textarea
+                rows="2"
+                placeholder="Breakdown cause, towing details, parts replaced..."
+                value={data.notes}
+                onChange={(e) => setData(prev => ({ ...prev, notes: e.target.value }))}
+                className="w-full p-2.5 bg-white border border-red-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+              />
+            </div>
+          </div>
+        );
+
+      case 'maintenance':
+      default:
+        return (
+          <div className="space-y-3.5 p-3.5 bg-blue-50/50 border border-blue-100 rounded-xl font-nunito">
+            <div className="flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-blue-600" />
+              <span className="text-xs font-bold text-blue-900 font-poppins">Vehicle Maintenance & Offline Mechanic</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="text"
+                placeholder="Mechanic Name (e.g. Ramesh)"
+                value={data.mechanicName}
+                onChange={(e) => setData(prev => ({
+                  ...prev,
+                  mechanicName: e.target.value,
+                  status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
+                }))}
+                className="w-full p-2 bg-white border border-blue-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+              />
+              <input
+                type="text"
+                placeholder="Phone Number (e.g. 9876543210)"
+                value={data.mechanicPhone}
+                onChange={(e) => setData(prev => ({
+                  ...prev,
+                  mechanicPhone: e.target.value,
+                  status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
+                }))}
+                className="w-full p-2 bg-white border border-blue-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+              />
+            </div>
+
+            <input
+              type="text"
+              placeholder="Workshop / Location (e.g. Bay 4 / Near Highway Toll)"
+              value={data.mechanicLocation}
+              onChange={(e) => setData(prev => ({
+                ...prev,
+                mechanicLocation: e.target.value,
+                status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
+              }))}
+              className="w-full p-2 bg-white border border-blue-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+            />
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Est. Repair Cost (₹)</label>
+                <input
+                  type="number"
+                  value={data.estimatedCost}
+                  onChange={(e) => setData(prev => ({ ...prev, estimatedCost: e.target.value }))}
+                  placeholder="0"
+                  className="w-full p-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Actual Repair Cost (₹)</label>
+                <input
+                  type="number"
+                  value={data.actualCost}
+                  onChange={(e) => setData(prev => ({ ...prev, actualCost: e.target.value }))}
+                  placeholder="0"
+                  className="w-full p-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Maintenance Notes</label>
+              <textarea
+                value={data.notes}
+                onChange={(e) => setData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Mechanic diagnosis notes, part replacement details..."
+                rows="2"
+                className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-medium text-[#1E293B] placeholder-gray-400 focus:outline-none"
+              ></textarea>
+            </div>
+          </div>
+        );
+    }
+  };
 
   const fetchTickets = async () => {
     try {
@@ -189,7 +579,11 @@ export default function ViewTicketsPage() {
         status: editingTicketData.status,
         estimatedCost: Number(editingTicketData.estimatedCost) || 0,
         actualCost: Number(editingTicketData.actualCost) || 0,
-        notes: editingTicketData.notes
+        notes: editingTicketData.notes,
+        mechanicName: editingTicketData.mechanicName,
+        mechanicPhone: editingTicketData.mechanicPhone,
+        mechanicLocation: editingTicketData.mechanicLocation,
+        categoryData: editingTicketData.categoryData
       };
 
       if (String(selectedTicket._id).startsWith("mock-")) {
@@ -468,6 +862,34 @@ export default function ViewTicketsPage() {
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedTicket(t);
+                              setEditingTicketData({
+                                status: t.status || "Open",
+                                estimatedCost: t.estimatedCost || 0,
+                                actualCost: t.actualCost || 0,
+                                notes: t.notes || "",
+                                mechanicName: t.assignedMechanic?.name || "",
+                                mechanicPhone: t.assignedMechanic?.phone || "",
+                                mechanicLocation: t.assignedMechanic?.location || "",
+                                categoryData: {
+                                  assignedTechnicalTeam: t.categoryData?.assignedTechnicalTeam || "",
+                                  delayReason: t.categoryData?.delayReason || "",
+                                  newEta: t.categoryData?.newEta || "",
+                                  customerInformed: t.categoryData?.customerInformed || false,
+                                  towVehicleRequired: t.categoryData?.towVehicleRequired || false,
+                                  resolutionComment: t.categoryData?.resolutionComment || ""
+                                }
+                              });
+                              setModalMode("edit");
+                            }}
+                            className="p-1.5 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg active:scale-95 transition-all cursor-pointer"
+                            title="Assign Mechanic / Edit Ticket"
+                          >
+                            <Wrench className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -582,6 +1004,31 @@ export default function ViewTicketsPage() {
                       {selectedTicket.notes || "No maintenance notes added yet."}
                     </p>
                   </div>
+                  {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
+                    <div className="pt-2.5 border-t border-slate-200/50">
+                      <span className="text-slate-500 font-semibold block mb-1.5">Driver Uploaded Photos / Attachments:</span>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedTicket.attachments.map((att, idx) => (
+                          <a
+                            key={idx}
+                            href={att.url || att}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="group relative block w-24 h-24 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-sm hover:shadow transition-all"
+                          >
+                            <img
+                              src={att.url || att}
+                              alt={att.filename || `Attachment ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[11px] font-bold">
+                              Expand Photo 🔍
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3 pt-2">
@@ -622,46 +1069,26 @@ export default function ViewTicketsPage() {
                     className="w-full p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none"
                   >
                     <option value="Open">Open</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Resolved">Resolved</option>
+                    <option value="Mechanic Assigned">Mechanic Assigned</option>
+                    {['Mechanic Arrived', 'Repair In Progress', 'Repair Completed'].includes(editingTicketData.status) && (
+                      <option value={editingTicketData.status} disabled>
+                        Driver Stage: {editingTicketData.status} (Driver App)
+                      </option>
+                    )}
+                    <option value="Resolved">Resolved (Auto Active Vehicle)</option>
                     <option value="Closed">Closed</option>
+                    <option value="Rejected">Rejected</option>
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Est. Repair Cost (₹)</label>
-                    <input
-                      type="number"
-                      value={editingTicketData.estimatedCost}
-                      onChange={(e) => setEditingTicketData(prev => ({ ...prev, estimatedCost: e.target.value }))}
-                      placeholder="0"
-                      className="w-full p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Actual Repair Cost (₹)</label>
-                    <input
-                      type="number"
-                      value={editingTicketData.actualCost}
-                      onChange={(e) => setEditingTicketData(prev => ({ ...prev, actualCost: e.target.value }))}
-                      placeholder="0"
-                      disabled={editingTicketData.status !== 'Resolved' && editingTicketData.status !== 'Closed'}
-                      className="w-full p-2 bg-gray-50 disabled:bg-slate-100 disabled:text-slate-400 border border-gray-200 rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none"
-                    />
-                  </div>
-                </div>
+                {/* DYNAMIC CATEGORY-BASED FORM SECTION */}
+                {renderDynamicCategoryForm(selectedTicket, editingTicketData, setEditingTicketData)}
 
-                <div>
-                  <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Maintenance Notes</label>
-                  <textarea
-                    value={editingTicketData.notes}
-                    onChange={(e) => setEditingTicketData(prev => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Mechanic diagnosis notes, part replacement details..."
-                    rows="3"
-                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-[#1E293B] placeholder-gray-400 focus:outline-none"
-                  ></textarea>
-                </div>
+                {(editingTicketData.status === 'Resolved' || editingTicketData.status === 'Closed') && (
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] font-semibold text-emerald-800 flex items-center gap-2 font-nunito">
+                    <span>✨ Resolving ticket will set Vehicle Status to <strong>ACTIVE</strong> and send <strong>Continue Trip</strong> alert to driver!</span>
+                  </div>
+                )}
 
                 <div className="flex gap-3 pt-2">
                   <button

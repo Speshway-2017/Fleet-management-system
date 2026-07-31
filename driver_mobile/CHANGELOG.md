@@ -2,6 +2,107 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.28.0] - 2026-07-30
+
+### Added & Enhanced
+- **End-to-End Vehicle Ticket Repair Lifecycle & Dynamic Flow Matrix**:
+  - **Issue Flow Matrix Rules**: Integrated issue type rules matrix (`Low Air Pressure` & `Headlight`: `canContinueTrip: Yes`, `Vehicle.status: Active`; `Tyre Puncture`: `canContinueTrip: After Repair`, `Vehicle.status: Maintenance → Active`; `Engine/Brake/Accident`: `canContinueTrip: No`, `Vehicle.status: Maintenance → Active`).
+  - **Manager Offline Mechanic Assignment**: Added offline mechanic fields (`name`, `phone`, `location`) in Manager Dashboard (`ViewTicketsPage.jsx`) and `updateVehicleComplaint` controller, pushing timeline updates and sending real-time driver alerts (`"Mechanic Ramesh assigned to ticket TKT-VEH-..."`).
+  - **Driver Interactive Repair Stepper**: Redesigned `TicketDetailsScreen` (`ticket_details_screen.dart`) with a 5-stage progress bar (`Open` → `Assigned` → `Arrived` → `In Repair` → `Completed`), offline mechanic info card with direct call trigger (`url_launcher`), and driver status transition CTA buttons (`"Confirm Mechanic Arrived"`, `"Start Repair"`, `"Mark Repair Completed"`).
+  - **Driver Status Patch Endpoint**: Created `PATCH /api/driver/tickets/:id/status` (`updateDriverTicketStatus`) in `driverApi.controller.js` and `driverApi.routes.js`, enabling drivers to advance repair stages and log timeline history.
+  - **Auto Vehicle Status Transition & Continue Trip Alert**: When manager resolves a ticket (`status === 'Resolved'`), the backend automatically updates `Vehicle.status = 'Active'` and sends real-time `"Ticket Resolved - Continue Trip 🚚"` socket & push notifications to the driver.
+
+## [1.27.0] - 2026-07-30
+
+### Added & Enhanced
+- **Vehicle Issues Module with Image Upload & Manager Dashboard Flow**:
+  - **Mongoose Schema Update**: Added `attachments: [{ url: String, filename: String, uploadedAt: Date }]` to `VehicleComplaint.js` to store photo URLs uploaded by drivers.
+  - **Driver Ticket Endpoints**: Created `POST /api/driver/tickets` (with `memoryUpload.single('file')` Cloudinary upload), `GET /api/driver/tickets`, and `GET /api/driver/tickets/:id` in `driverApi.controller.js` and `driverApi.routes.js`. Auto-binds current active trip and assigned vehicle if omitted.
+  - **Real-Time Manager Notifications**: Integrated `createAndEmitNotification` upon ticket submission, creating an alert in MongoDB and broadcasting real-time socket alerts to the manager.
+  - **Driver App Camera & Gallery Photo Upload**: Updated `RaiseTicketScreen` (`raise_ticket_screen.dart`) to support camera/gallery image picking via `image_picker`, thumbnail preview, remove attachment action, form validation, and multipart submission to `ApiService.createDriverTicket(...)`.
+  - **Dynamic Driver Ticket History**: Bound `SupportHistoryScreen` (`support_history_screen.dart`) to `ApiService.getDriverTickets()`, rendering live ticket status badges (`Open`, `In Progress`, `Resolved`, `Closed`, `Rejected`), trip details, and auto-refresh on submission.
+  - **Interactive Ticket Details & Photo Preview**: Updated `TicketDetailsScreen` (`ticket_details_screen.dart`) to view real uploaded Cloudinary photo attachments with full-screen image preview modal and status update history.
+  - **Manager Dashboard Ticket Management**: Updated `ViewTicketsPage.jsx` (`/manager/maintenance/tickets`) and `listVehicleComplaints` controller to populate driver, vehicle, trip, and attachments. Managers can view uploaded driver photos, inspect issue details, update status, track estimated/actual repair costs, and add maintenance notes.
+
+## [1.26.0] - 2026-07-30
+
+### Added & Enhanced
+- **Fuel Receipt Upload, Manager Approval Workflow & Real Database Data Binding**:
+  - **Fuel Schema Update**: Updated `Fuel.js` Mongoose schema to remove `hasReceipt` and add `receiptImage: { type: String, default: "" }` storing Cloudinary URLs.
+  - **Driver Fuel APIs**: Added `POST /api/driver/fuel` (with `memoryUpload.single('file')` Cloudinary image upload) and `GET /api/driver/fuel` endpoints in `driverApi.controller.js` and `driverApi.routes.js`.
+  - **Driver Fuel Entry Screen**: Updated `AddFuelEntryScreen` (`add_fuel_entry_screen.dart`) to enable image selection via Camera or Gallery using `image_picker`, previewing attached receipt image, submitting via multipart `ApiService.createFuelEntry(...)`, and showing success modal with form reset.
+  - **Dual Field Cloudinary Synchronization**: Populated both `billUrl` and `receiptImage` in `Fuel.js` schema and `createDriverFuelEntry` controller so Manager web view and Driver mobile app both render Cloudinary receipt URLs without empty `billUrl` issues.
+  - **Manager Fuel Table & Receipt View Modal**: Updated `FuelManagementPage.jsx` to show columns for Vehicle, Driver, Fuel Station, Amount, Liters, Date, Approval Status, and a Receipt column with "View" button. Opening the receipt modal displays the uploaded Cloudinary receipt image (or "No receipt uploaded.") with direct Approve and Reject action buttons.
+  - **Approval & Rejection Workflow**: Implemented `handleApproveBill` (`approvalStatus = 'Approved'`) and `handleRejectBill` (`approvalStatus = 'Rejected'`, mandatory `rejectionReason`).
+  - **Driver Fuel History & Overview Screens**: Bound `FuelHistoryScreen` (`fuel_history_screen.dart`), `FuelOverviewScreen` (`fuel_overview_screen.dart`), and `FuelEntryDetailsScreen` (`fuel_entry_details_screen.dart`) to live MongoDB fuel data, displaying Cloudinary receipt thumbnails, status badges, and rejection reasons. Removed all dummy data.
+
+## [1.25.0] - 2026-07-30
+
+### Added & Enhanced
+- **Real Vehicle Backend Binding & Unassigned Vehicle State**:
+  - **Backend Endpoint**: Created `GET /api/driver/vehicle` endpoint in `driverApi.controller.js` (`getAssignedVehicle`) and `driverApi.routes.js`. Resolves driver's assigned vehicle from MongoDB (`Vehicle` collection) via `assignedDriver`, `assignedVehicle` string, or active trip vehicle.
+  - **Empty / Unassigned Vehicle Handling**: Built a clean "No Vehicle Assigned" view across all vehicle screens (`VehicleOverviewScreen`, `VehicleDetailsScreen`, `VehicleDocumentsScreen`, `VehicleMaintenanceScreen`, `VehicleStatusScreen`) when driver has no assigned vehicle.
+  - **Overview Screen Integration**: Refactored `VehicleOverviewScreen` (`vehicle_overview_screen.dart`) to dynamically fetch backend vehicle data on load and pull-to-refresh, binding `VehicleInfoCard` and `QuickInfoCard` with real values.
+  - **Details Screen Integration**: Bound `VehicleDetailsScreen` (`vehicle_details_screen.dart`) to real vehicle specs (Brand, Model, Mfg Year, Payload Capacity, Fuel Type, Odometer, Engine Number, Chassis Number, Driver info).
+  - **Documents Screen Integration**: Bound `VehicleDocumentsScreen` (`vehicle_documents_screen.dart`) to MongoDB vehicle documents (`documents` object) and expiry fields (`rcExpiry`, `insuranceExpiry`, `pollutionExpiry`, `fitnessExpiry`, `permitExpiry`), enabling live preview of uploaded Cloudinary document URLs.
+  - **Maintenance Screen Integration**: Refactored `VehicleMaintenanceScreen` (`vehicle_maintenance_screen.dart`) to dynamically fetch real Manager-created maintenance work orders from MongoDB via a new `GET /api/driver/maintenance` backend endpoint (`getDriverMaintenance`), displaying active alerts (`SCHEDULED`, `IN PROGRESS`, `OVERDUE`), service counts, and last completed service insights.
+  - **Status Screen Integration**: Bound `VehicleStatusScreen` (`vehicle_status_screen.dart`) to live telemetry, odometer, location, FASTag balance, and fuel capacity.
+  - **Removed All Dummy Vehicle Data**: Stripped out hardcoded vehicle number strings (`TS09AB4589`, `BT-990`, `ABC-1234`) across driver screens.
+
+## [1.24.0] - 2026-07-30
+
+### Added & Enhanced
+- **4-Stage POD & Weighbridge Verification Workflow**:
+  - **Flow 1 (Before Upload)**: Rendered `NOT UPLOADED` status badge with disabled View, Download, Approve, and Reject buttons on Manager Trip Details page when no documents have been submitted.
+  - **Flow 2 (After Driver Upload)**: Saved uploaded POD and Weighbridge slips into MongoDB with status `Pending` (`POD.status = 'Pending'`, `Weighbridge.status = 'Pending'`), set `Trip.status = 'DOCUMENTS_SUBMITTED'`, and enabled Manager View (modal preview of actual uploaded image URL), Download, Approve, and Reject controls.
+  - **Flow 3 (Manager Rejection & Driver Re-upload)**: Implemented Manager Rejection with custom reasons (`Photo not clear`, `Signature missing`, `Wrong slip uploaded`). Saved `rejectionReason` in MongoDB, updated `Trip.status = 'Documents Rejected'`, dispatched real-time Socket.io events (`pod:rejected`, `weighbridge:rejected`), and unlocked **Re-upload** buttons in the Driver mobile app without completing the trip.
+  - **Flow 4 (Approval & Auto-Completion)**: Enforced strict dual-approval verification (`pod.status === 'Approved' && weighbridge.status === 'Approved'`) before setting `Trip.status = 'Completed'`. Dispatched real-time Socket.io `trip:completed` event to automatically transition the Driver mobile app to `Trip Completed ✅` and release vehicle/driver to `Available`.
+- **Linter & API Fixes**:
+  - Restored missing `getDriverNotifications` method in `ApiService` (`api_service.dart`).
+  - Resolved `BuildContext` across async gaps lints by scoping `ScaffoldMessengerState` references prior to async operations.
+  - Cleaned up Dart map construction syntax in `uploadProofOfDelivery` and `uploadWeighbridgeSlip`.
+
+## [1.23.0] - 2026-07-30
+
+### Fixed & Enhanced
+- **RenderFlex Layout Overflow Fix**:
+  - Wrapped `TRIP ID` text column inside an `Expanded` container with `overflow: TextOverflow.ellipsis` in `TripDetailsScreen` (`trip_details_screen.dart`), eliminating the 128-pixel right RenderFlex layout overflow error on narrow device viewports.
+- **Dynamic Trips Data & Active Trips Filtering**:
+  - Restricted `ActiveTripsScreen` (`active_trips_screen.dart`) to display only trips actively in progress (`In Progress`, `Enroute`, `On Transit`, etc.), automatically showing a clean empty state if a trip has not been started yet.
+  - Rewrote `CompletedTripsScreen` (`completed_trips_screen.dart`) to dynamically load completed trips from `/api/driver/trips?status=Completed` API instead of static mock data.
+  - Converted `TripsScreen` (`trips_screen.dart`) into a dynamic `StatefulWidget`, loading live summary card counters (`totalTrips`, `activeTrips`, `upcomingTrips`) and real current/recent trip details from backend API endpoints.
+- **Manager POD & Weighbridge Upload-Only View**:
+  - Removed backend auto-generation of fake dummy POD & Weighbridge documents in `manager.controller.js` (`getPODByTripId` & `getWeighbridgeSlipByTripId`).
+  - Disabled/hid POD and Weighbridge view and approval controls on Manager Web until the driver uploads files, and ensured uploaded documents save to MongoDB/Cloudinary and stream live to Manager via Socket.io.
+- **Real Popup Notifications**:
+  - Added global SocketService listeners in `MainNavigationScreen` (`main_navigation_screen.dart`) to trigger real floating popup toast notifications for new alerts, assigned trips, and status updates.
+  - Replaced hardcoded notifications in `DashboardScreen` and `NotificationsScreen` with dynamic API data.
+
+## [1.22.0] - 2026-07-30
+
+### Fixed & Enhanced
+- **Driver Dashboard Active Trip Card Layout Overflow Fix**:
+  - Refactored `_buildActiveTripCard` layout in `DashboardScreen` (`dashboard_screen.dart`).
+  - Balanced column flex ratios (12:8) and wrapped the ETA text in an `Expanded` widget with `TextOverflow.ellipsis` to prevent text from pushing beyond card bounds.
+  - Added `FittedBox` scale-down constraints and full width sizing to the **View Details** action button, eliminating the 34-pixel right overflow error on mobile & desktop viewports.
+- **Assigned Trip Details Accept & Reject Workflow**:
+  - Refactored `TripDetailsScreen` (`trip_details_screen.dart`) and `UpcomingTripDetailsScreen` (`upcoming_trip_details_screen.dart`) into dynamic screens supporting live API trip data and unaccepted assigned/scheduled status detection.
+  - Ensured **Reject** (outlined red button) and **Accept Trip** (elevated green button) action buttons are guaranteed to render whenever viewing any pending assigned or scheduled trip.
+  - Integrated `ApiService.respondToTripAssignment(tripId, 'accept')` call on **Accept Trip**, automatically displaying confirmation feedback and navigating directly to `UpcomingTripsScreen`.
+
+## [1.21.0] - 2026-07-29
+
+### Added & Enhanced
+- **Complete End-to-End Trips Lifecycle Workflow**:
+  - Implemented Manager trip creation & driver assignment with initial `Assigned` state and real-time socket `trip:assigned` dispatch to the assigned Driver.
+  - Added Driver Accept/Reject trip assignment endpoint (`PATCH /api/driver/trips/:id/respond`) and UI actions in Driver App.
+  - Connected Upcoming Trips screen (`UpcomingTripsScreen`) to live API data with departure time-gated **Start Trip** button enforcement (unlocked 15 minutes prior to scheduled departure time).
+  - Implemented 1-minute automated background cron job in `server.js` alerting drivers 15 minutes before scheduled departure time.
+  - Added **Customer Location Reached** toggle switch (`PATCH /api/driver/trips/:id/customer-location`), enabling Proof of Delivery (POD) and Weighbridge slip uploads upon destination arrival.
+  - Added Weighbridge Slip driver upload endpoint (`POST /api/driver/weighbridge`) and connected real-time manager approval workflow (`updatePODStatus` & `updateWeighbridgeSlipStatus`).
+  - Implemented automatic trip status transition to `Completed` upon Manager POD/Weighbridge approval, releasing Vehicle (`Available`) and Driver (`AVAILABLE`) statuses and updating active views via Socket.io.
+  - Cleaned up dummy hardcoded mock notifications, alerts, and trips across mobile screens and connected live API services.
+
 ## [1.26.0] - 2026-07-31
 
 ### Added & Integrated

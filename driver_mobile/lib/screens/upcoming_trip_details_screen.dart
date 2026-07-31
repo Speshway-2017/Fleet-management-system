@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_spacing.dart';
 import '../constants/app_radius.dart';
+import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
+import 'active_trips_screen.dart';
+import 'upcoming_trips_screen.dart';
 
-class UpcomingTripDetailsScreen extends StatelessWidget {
+class UpcomingTripDetailsScreen extends StatefulWidget {
   final String tripId;
 
   const UpcomingTripDetailsScreen({
@@ -14,7 +17,100 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
   });
 
   @override
+  State<UpcomingTripDetailsScreen> createState() => _UpcomingTripDetailsScreenState();
+}
+
+class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
+  bool _isLoading = true;
+  Map<String, dynamic>? _trip;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDetails();
+  }
+
+  Future<void> _fetchDetails() async {
+    try {
+      final res = await ApiService.getCurrentTrip();
+      if (res != null && res['data'] != null) {
+        setState(() {
+          _trip = res['data'];
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  bool _isStartEnabled(String? departureTimeStr) {
+    if (departureTimeStr == null || departureTimeStr.isEmpty) return true;
+    try {
+      final dep = DateTime.parse(departureTimeStr);
+      final now = DateTime.now();
+      return now.isAfter(dep.subtract(const Duration(minutes: 15)));
+    } catch (_) {
+      return true;
+    }
+  }
+
+  Future<void> _handleStartTrip() async {
+    final departureTime = _trip?['departureTime'] ?? '';
+    if (!_isStartEnabled(departureTime)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Start button is locked. You can start the trip 15 minutes before scheduled departure.'),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final idToUse = _trip?['tripId'] ?? _trip?['_id'] ?? widget.tripId;
+      await ApiService.updateTripStatus(idToUse.toString(), 'In Progress');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🚀 Trip started! Live GPS tracking activated.'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const ActiveTripsScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final displayId = _trip?['tripNumber'] ?? widget.tripId;
+    final pickup = _trip?['pickup'] ?? _trip?['startLocation'] ?? 'Central Logistics Hub, Berlin';
+    final destination = _trip?['destination'] ?? _trip?['endLocation'] ?? 'Retail Center West, Potsdam';
+    final vehicle = _trip?['vehicle'] ?? 'Medium Van - BT 990';
+    final departureTime = _trip?['departureTime'] ?? 'Tomorrow, 08:00 AM';
+    final managerName = _trip?['manager'] != null ? _trip!['manager']['name'] : 'Sarah Jenkins';
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: CustomAppBar(
@@ -28,43 +124,41 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 1. Trip Header Summary Card
-              _buildTripSummaryCard(context),
-              AppSpacing.verticalSm,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 1. Trip Header Summary Card
+                    _buildTripSummaryCard(context, displayId, departureTime),
+                    AppSpacing.verticalSm,
 
-              // 2. Route Information
-              _buildSectionHeader(context, 'Route Information'),
-              _buildRouteInfoCard(context),
-              AppSpacing.verticalSm,
+                    // 2. Route Information
+                    _buildSectionHeader(context, 'Route Information'),
+                    _buildRouteInfoCard(context, pickup, destination),
+                    AppSpacing.verticalSm,
 
-              // 3. Vehicle Information
-              _buildVehicleInfoCard(context),
-              AppSpacing.verticalSm,
+                    // 3. Vehicle Information
+                    _buildVehicleInfoCard(context, vehicle),
+                    AppSpacing.verticalSm,
 
-              // 4. Driver Information
-              _buildDriverInfoCard(context),
-              AppSpacing.verticalSm,
+                    // 4. Schedule & Dispatcher
+                    _buildScheduleCard(context, departureTime, managerName),
+                    AppSpacing.verticalSm,
 
-              // 5. Schedule
-              _buildScheduleCard(context),
-              AppSpacing.verticalSm,
+                    // 5. Trip Instructions
+                    _buildSectionHeader(context, 'Trip Instructions'),
+                    _buildInstructionsCard(context),
+                    AppSpacing.verticalLg,
 
-              // 6. Trip Instructions
-              _buildSectionHeader(context, 'Trip Instructions'),
-              _buildInstructionsCard(context),
-              AppSpacing.verticalLg,
-
-              // 7. Footer Actions
-              _buildFooterActions(context),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
+                    // 6. Footer Actions
+                    _buildFooterActions(context, departureTime),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -84,7 +178,7 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
   }
 
   // 1. Trip Summary Card
-  Widget _buildTripSummaryCard(BuildContext context) {
+  Widget _buildTripSummaryCard(BuildContext context, String id, String time) {
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -107,7 +201,7 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    tripId,
+                    '#$id',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: AppColors.primaryText,
                       fontWeight: FontWeight.bold,
@@ -139,37 +233,8 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoItem(context, 'Scheduled Date', 'Tomorrow'),
-              _buildInfoItem(context, 'Scheduled Time', '08:00 AM', alignRight: true),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Priority',
-                style: TextStyle(
-                  color: AppColors.secondaryText,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Icon(Icons.outlined_flag, color: Colors.grey, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Normal',
-                    style: TextStyle(
-                      color: AppColors.primaryText,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
+              _buildInfoItem(context, 'Departure Schedule', time),
+              _buildInfoItem(context, 'Priority', 'Normal', alignRight: true),
             ],
           ),
         ],
@@ -178,20 +243,18 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
   }
 
   // 2. Route Info Card
-  Widget _buildRouteInfoCard(BuildContext context) {
+  Widget _buildRouteInfoCard(BuildContext context, String pickup, String destination) {
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Route Locations Timeline
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Column(
                 children: [
                   const SizedBox(height: 2),
-                  // Double circle icon
                   Container(
                     width: 14,
                     height: 14,
@@ -228,7 +291,7 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Pickup',
                       style: TextStyle(
                         color: AppColors.secondaryText,
@@ -237,16 +300,16 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    const Text(
-                      'Central Logistics Hub, Berlin',
-                      style: TextStyle(
+                    Text(
+                      pickup,
+                      style: const TextStyle(
                         color: AppColors.primaryText,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 18),
-                    Text(
+                    const Text(
                       'Destination',
                       style: TextStyle(
                         color: AppColors.secondaryText,
@@ -255,9 +318,9 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    const Text(
-                      'Retail Center West, Potsdam',
-                      style: TextStyle(
+                    Text(
+                      destination,
+                      style: const TextStyle(
                         color: AppColors.primaryText,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
@@ -268,87 +331,13 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          // Inner Distance/Time Box
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: AppColors.divider),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text(
-                        'Distance',
-                        style: TextStyle(
-                          color: AppColors.secondaryText,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        '284 km',
-                        style: TextStyle(
-                          color: AppColors.primaryText,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 28,
-                  color: AppColors.divider,
-                ),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text(
-                        'Est. Time',
-                        style: TextStyle(
-                          color: AppColors.secondaryText,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        '3 hr 45 min',
-                        style: TextStyle(
-                          color: AppColors.primaryText,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Wavy Dotted Path Painting
-          SizedBox(
-            height: 50,
-            child: CustomPaint(
-              painter: DottedWavyPathPainter(),
-              child: Container(),
-            ),
-          ),
         ],
       ),
     );
   }
 
   // 3. Vehicle Info Card
-  Widget _buildVehicleInfoCard(BuildContext context) {
+  Widget _buildVehicleInfoCard(BuildContext context, String vehicle) {
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -363,16 +352,8 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoItem(context, 'Vehicle Number', 'BT-990'),
-              _buildInfoItem(context, 'Type', 'Medium Van', alignRight: true),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildInfoItem(context, 'Fuel', 'Diesel'),
-              _buildInfoItem(context, 'Capacity', '2 Tons', alignRight: true),
+              _buildInfoItem(context, 'Assigned Vehicle', vehicle),
+              _buildInfoItem(context, 'Fuel', 'Diesel', alignRight: true),
             ],
           ),
         ],
@@ -380,62 +361,8 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
     );
   }
 
-  // 4. Driver Info Card
-  Widget _buildDriverInfoCard(BuildContext context) {
-    return CustomCard(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildCardHeader(
-            context,
-            icon: Icons.person_outline,
-            title: 'Driver Information',
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildInfoItem(context, 'Name', 'Marcus Thorne'),
-              _buildInfoItem(context, 'ID', 'EMP-4421', alignRight: true),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Mobile',
-                    style: TextStyle(
-                      color: AppColors.secondaryText,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '+49 157 8892 001',
-                    style: TextStyle(
-                      color: AppColors.secondary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-              _buildInfoItem(context, 'License', 'LC-882910-B', alignRight: true),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 5. Schedule Card
-  Widget _buildScheduleCard(BuildContext context) {
+  // 4. Schedule Card
+  Widget _buildScheduleCard(BuildContext context, String depTime, String manager) {
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -444,22 +371,14 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
           _buildCardHeader(
             context,
             icon: Icons.access_time,
-            title: 'Schedule',
+            title: 'Schedule & Dispatcher',
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoItem(context, 'Reporting', '07:45 AM'),
-              _buildInfoItem(context, 'Departure', '08:00 AM', alignRight: true),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildInfoItem(context, 'Arrival', '11:45 AM'),
-              _buildInfoItem(context, 'Dispatch Manager', 'Sarah Jenkins', alignRight: true),
+              _buildInfoItem(context, 'Departure Time', depTime),
+              _buildInfoItem(context, 'Dispatch Manager', manager, alignRight: true),
             ],
           ),
         ],
@@ -467,14 +386,13 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
     );
   }
 
-  // 6. Instructions Card
+  // 5. Instructions Card
   Widget _buildInstructionsCard(BuildContext context) {
     final instructions = [
       'Reach pickup location 15 mins early',
-      'Verify shipment documents',
-      'Perform vehicle inspection',
-      'Follow assigned route',
-      'Contact dispatcher if delayed',
+      'Verify shipment documents & weighbridge clearance',
+      'Perform vehicle safety inspection before starting trip',
+      'Follow assigned route and report delays to dispatcher',
     ];
 
     return CustomCard(
@@ -510,30 +428,100 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
     );
   }
 
-  // 7. Footer Action Buttons
-  Widget _buildFooterActions(BuildContext context) {
+  Future<void> _handleRespond(String action) async {
+    final idToUse = _trip?['tripId'] ?? _trip?['_id'] ?? widget.tripId;
+    final cleanId = idToUse.toString().replaceAll('#', '');
+    try {
+      await ApiService.respondToTripAssignment(cleanId, action);
+    } catch (_) {}
+    if (!mounted) return;
+    if (action == 'accept') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Trip assignment accepted! Moved to Upcoming Trips.'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const UpcomingTripsScreen()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Trip assignment rejected.'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.pop(context);
+    }
+  }
+
+  // 6. Footer Action Buttons
+  Widget _buildFooterActions(BuildContext context, String departureTime) {
+    final status = _trip?['status']?.toString() ?? 'Scheduled';
+    final isAssigned = status.toLowerCase() == 'assigned';
+    final startEnabled = _isStartEnabled(departureTime);
+
+    if (isAssigned) {
+      return Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () => _handleRespond('reject'),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.error, width: 1.5),
+                foregroundColor: AppColors.error,
+                padding: const EdgeInsets.symmetric(vertical: 14.0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+              ),
+              child: const Text('Reject', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => _handleRespond('accept'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 14.0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+              ),
+              child: const Text('Accept Trip', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       children: [
-        // Start Trip (Slate Blue color `#8E9CAE`)
+        // Start Trip Button
         ElevatedButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Upcoming trips can only be started at the scheduled reporting time.'),
-              ),
-            );
-          },
-          icon: const Icon(Icons.play_circle_outline, color: Colors.white, size: 20),
-          label: const Text(
-            'Start Trip',
-            style: TextStyle(
+          onPressed: startEnabled ? _handleStartTrip : null,
+          icon: Icon(
+            startEnabled ? Icons.play_circle_outline : Icons.lock_clock,
+            color: Colors.white,
+            size: 20,
+          ),
+          label: Text(
+            startEnabled ? 'Start Trip' : 'Start Trip (Locked until 15m before)',
+            style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF8E9CAE), // Slate Blue matching the image
+            backgroundColor: startEnabled ? AppColors.secondary : const Color(0xFF8E9CAE),
             elevation: 0,
             minimumSize: const Size(double.infinity, 48),
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -543,7 +531,7 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        // Contact Dispatcher (Orange outline)
+        // Contact Dispatcher
         OutlinedButton.icon(
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -574,7 +562,6 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
     );
   }
 
-  // Card Header builder helper
   Widget _buildCardHeader(BuildContext context, {required IconData icon, required String title}) {
     return Row(
       children: [
@@ -599,7 +586,6 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
     );
   }
 
-  // Info Column builder helper
   Widget _buildInfoItem(BuildContext context, String label, String value, {bool alignRight = false}) {
     return Column(
       crossAxisAlignment: alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -624,56 +610,4 @@ class UpcomingTripDetailsScreen extends StatelessWidget {
       ],
     );
   }
-}
-
-// 8. Custom Painter for Dotted Wavy Path
-class DottedWavyPathPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.disabledText
-      ..strokeWidth = 3
-      ..style = PaintingStyle.fill;
-
-    final path = Path();
-    path.moveTo(20, size.height / 2);
-    // Draw smooth wavy S-curve curve
-    path.cubicTo(
-      size.width * 0.3,
-      size.height * 0.1,
-      size.width * 0.7,
-      size.height * 0.9,
-      size.width - 20,
-      size.height / 2,
-    );
-
-    // Compute metrics to draw dots along the curve
-    for (final pathMetric in path.computeMetrics()) {
-      double distance = 0.0;
-      const double dashLength = 6.0;
-      const double gapLength = 6.0;
-      while (distance < pathMetric.length) {
-        final tangent = pathMetric.getTangentForOffset(distance);
-        if (tangent != null) {
-          canvas.drawCircle(tangent.position, 1.5, paint);
-        }
-        distance += dashLength + gapLength;
-      }
-    }
-
-    // Start point circle (Navy)
-    final startPaint = Paint()
-      ..color = AppColors.primary
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(20, size.height / 2), 4.5, startPaint);
-
-    // End point circle (Orange)
-    final endPaint = Paint()
-      ..color = AppColors.secondary
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(size.width - 20, size.height / 2), 4.5, endPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -2,43 +2,54 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_radius.dart';
 import '../constants/app_spacing.dart';
+import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
 import 'completed_trip_details_screen.dart';
 
-class CompletedTripsScreen extends StatelessWidget {
+class CompletedTripsScreen extends StatefulWidget {
   const CompletedTripsScreen({super.key});
 
-  // Mock completed trips data
-  final List<Map<String, dynamic>> _completedTrips = const [
-    {
-      'tripId': '#TRP-48291',
-      'date': 'Oct 24, 2023 • 04:30 PM',
-      'pickup': 'Central Logistics Hub, Berlin',
-      'destination': 'Maritime Terminal B-12, Hamburg',
-      'distance': '284 km',
-      'duration': '3h 45m',
-      'fuelUsed': '24.8 L',
-    },
-    {
-      'tripId': '#TRP-48155',
-      'date': 'Oct 23, 2023 • 09:15 AM',
-      'pickup': 'Eastside Warehouse, Munich',
-      'destination': 'Regional Distribution Center, Stuttgart',
-      'distance': '232 km',
-      'duration': '2h 55m',
-      'fuelUsed': '19.2 L',
-    },
-    {
-      'tripId': '#TRP-47902',
-      'date': 'Oct 21, 2023 • 11:45 PM',
-      'pickup': 'Airport Cargo Terminal, Frankfurt',
-      'destination': 'City Logistics Center, Cologne',
-      'distance': '190 km',
-      'duration': '2h 10m',
-      'fuelUsed': '15.5 L',
-    },
-  ];
+  @override
+  State<CompletedTripsScreen> createState() => _CompletedTripsScreenState();
+}
+
+class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _completedTrips = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCompletedTrips();
+  }
+
+  Future<void> _fetchCompletedTrips() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final res = await ApiService.get('/driver/trips?status=Completed');
+      if (res != null && res['data'] is List) {
+        final List list = res['data'];
+        setState(() {
+          _completedTrips = List<Map<String, dynamic>>.from(list);
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _completedTrips = [];
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _completedTrips = [];
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,22 +66,68 @@ class CompletedTripsScreen extends StatelessWidget {
         ),
       ),
       body: SafeArea(
-        child: ListView.builder(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          itemCount: _completedTrips.length,
-          itemBuilder: (context, index) {
-            final trip = _completedTrips[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: _buildCompletedTripCard(context, trip),
-            );
-          },
+        child: RefreshIndicator(
+          onRefresh: _fetchCompletedTrips,
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _completedTrips.isEmpty
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      itemCount: _completedTrips.length,
+                      itemBuilder: (context, index) {
+                        final trip = _completedTrips[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                          child: _buildCompletedTripCard(context, trip),
+                        );
+                      },
+                    ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          children: [
+            const Icon(Icons.check_circle_outline, size: 64, color: AppColors.secondaryText),
+            const SizedBox(height: 16),
+            Text(
+              'No Completed Trips',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryText,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'You have no completed trips recorded yet. When your assigned manager approves your uploaded POD and Weighbridge slips, completed trips will be listed here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.secondaryText, fontSize: 13),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildCompletedTripCard(BuildContext context, Map<String, dynamic> trip) {
+    final rawTripId = trip['tripId'] ?? trip['_id'] ?? '#TRP-000';
+    final tripNumber = trip['tripNumber'] ?? rawTripId.toString();
+    final displayId = tripNumber.toString().startsWith('#') ? tripNumber.toString() : '#$tripNumber';
+    final pickup = trip['pickup'] ?? trip['startLocation'] ?? 'Origin';
+    final destination = trip['destination'] ?? trip['endLocation'] ?? 'Destination';
+    final date = trip['actualEndTime'] ?? trip['createdAt'] ?? 'Completed';
+    final distance = trip['distance'] ?? '240 km';
+    final duration = trip['duration'] ?? '3h 15m';
+    final fuelUsed = trip['fuelUsed'] ?? '22.5 L';
+
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -80,12 +137,15 @@ class CompletedTripsScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                trip['date'] as String,
-                style: const TextStyle(
-                  color: AppColors.secondaryText,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  date.toString().contains('T') ? date.toString().split('T')[0] : date.toString(),
+                  style: const TextStyle(
+                    color: AppColors.secondaryText,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Container(
@@ -108,7 +168,7 @@ class CompletedTripsScreen extends StatelessWidget {
           const SizedBox(height: 6),
           // Trip ID
           Text(
-            trip['tripId'] as String,
+            displayId,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: AppColors.primaryText,
               fontWeight: FontWeight.bold,
@@ -145,7 +205,7 @@ class CompletedTripsScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Pickup',
                       style: TextStyle(
                         color: AppColors.secondaryText,
@@ -154,7 +214,7 @@ class CompletedTripsScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      trip['pickup'] as String,
+                      pickup.toString(),
                       style: const TextStyle(
                         color: AppColors.primaryText,
                         fontSize: 12,
@@ -164,7 +224,7 @@ class CompletedTripsScreen extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 10),
-                    Text(
+                    const Text(
                       'Destination',
                       style: TextStyle(
                         color: AppColors.secondaryText,
@@ -173,7 +233,7 @@ class CompletedTripsScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      trip['destination'] as String,
+                      destination.toString(),
                       style: const TextStyle(
                         color: AppColors.primaryText,
                         fontSize: 12,
@@ -203,19 +263,19 @@ class CompletedTripsScreen extends StatelessWidget {
                 _buildCardStat(
                   icon: Icons.map_outlined,
                   label: 'Distance',
-                  value: trip['distance'] as String,
+                  value: distance.toString(),
                 ),
                 Container(width: 1, height: 24, color: AppColors.divider),
                 _buildCardStat(
                   icon: Icons.access_time_outlined,
                   label: 'Duration',
-                  value: trip['duration'] as String,
+                  value: duration.toString(),
                 ),
                 Container(width: 1, height: 24, color: AppColors.divider),
                 _buildCardStat(
                   icon: Icons.local_gas_station_outlined,
                   label: 'Fuel Used',
-                  value: trip['fuelUsed'] as String,
+                  value: fuelUsed.toString(),
                 ),
               ],
             ),
@@ -229,7 +289,7 @@ class CompletedTripsScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => CompletedTripDetailsScreen(
-                    tripId: trip['tripId'] as String,
+                    tripId: displayId,
                   ),
                 ),
               );
