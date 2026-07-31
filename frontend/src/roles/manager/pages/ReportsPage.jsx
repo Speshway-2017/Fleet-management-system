@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { formatEmployeeId } from "@/utils/employeeIdFormatter";
 import { useAuth } from "@/context/AuthContext";
 import { managerApi } from "../api/managerApi";
 
@@ -239,7 +240,7 @@ export default function ReportsPage() {
         return {
           id: d._id,
           name: d.fullName,
-          employeeId: d.employeeId || "N/A",
+          employeeId: formatEmployeeId(d.employeeId),
           assignedVehicle: assignedVehName,
           tripsCount: totalTripsCount,
           distance: totalDistance,
@@ -766,7 +767,7 @@ export default function ReportsPage() {
                   <option value="All">All Drivers</option>
                   {drivers.map(d => (
                     <option key={d._id} value={d._id}>
-                      {d.fullName} ({d.employeeId || 'No ID'})
+                      {d.fullName} ({formatEmployeeId(d.employeeId)})
                     </option>
                   ))}
                 </select>
@@ -1226,7 +1227,7 @@ export default function ReportsPage() {
                         {selectedReport === "Performance" && (
                           <>
                             <td className="py-4 px-6 whitespace-nowrap font-bold text-gray-800">{row.name}</td>
-                            <td className="py-4 px-6 whitespace-nowrap text-gray-600 font-poppins">{row.employeeId}</td>
+                            <td className="py-4 px-6 whitespace-nowrap text-gray-600 font-poppins">{formatEmployeeId(row.employeeId)}</td>
                             <td className="py-4 px-6 whitespace-nowrap text-gray-600">{row.assignedVehicle}</td>
                             <td className="py-4 px-6 whitespace-nowrap text-gray-600">{row.tripsCount}</td>
                             <td className="py-4 px-6 whitespace-nowrap text-gray-600">{row.distance.toLocaleString()} km</td>

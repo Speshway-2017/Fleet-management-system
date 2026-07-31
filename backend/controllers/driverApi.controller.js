@@ -252,6 +252,8 @@ export const getDriverProfile = async (req, res, next) => {
       recoveryCodes: driver.recoveryCodes || [],
       language: driver.language || 'English (US)',
       isDarkMode: driver.isDarkMode || false,
+      driverStatus: driver.driverStatus || 'AVAILABLE',
+      isOnline: driver.isOnline !== undefined ? driver.isOnline : (driver.driverStatus !== 'OFFLINE'),
       notificationPreferences: driver.notificationPreferences || {
         routeChanges: true,
         trafficWarnings: true,
@@ -297,7 +299,9 @@ export const updateDriverProfile = async (req, res, next) => {
       'language',
       'isDarkMode',
       'notificationPreferences',
-      'fcmToken'
+      'fcmToken',
+      'driverStatus',
+      'isOnline'
     ];
     const updateData = {};
     for (const key of allowedFields) {
@@ -306,6 +310,18 @@ export const updateDriverProfile = async (req, res, next) => {
           updateData['phoneNumber'] = req.body[key];
         } else {
           updateData[key] = req.body[key];
+        }
+      }
+    }
+
+    if (req.body.isOnline !== undefined) {
+      if (req.body.isOnline === false || req.body.driverStatus === 'OFFLINE') {
+        updateData.driverStatus = 'OFFLINE';
+        updateData.isOnline = false;
+      } else if (req.body.isOnline === true || req.body.driverStatus === 'AVAILABLE') {
+        updateData.isOnline = true;
+        if (req.user.driverStatus !== 'ON_TRIP') {
+          updateData.driverStatus = 'AVAILABLE';
         }
       }
     }
@@ -322,11 +338,26 @@ export const updateDriverProfile = async (req, res, next) => {
     const updatedDriver = await Driver.findByIdAndUpdate(
       driverId,
       updateData,
-      { new: true, runValidators: true }
+      { new: true }
     ).lean();
 
     if (!updatedDriver) {
       return sendError(res, 404, 'Driver profile not found');
+    }
+
+    if (updatedDriver.assignedManager) {
+      try {
+        const { getIO } = await import('../server.js');
+        if (getIO()) {
+          const managerRoom = `manager:${updatedDriver.assignedManager._id || updatedDriver.assignedManager}`;
+          getIO().to(managerRoom).emit('driver:status-changed', {
+            driverId: updatedDriver._id,
+            driverName: updatedDriver.fullName,
+            driverStatus: updatedDriver.driverStatus,
+            isOnline: updatedDriver.isOnline,
+          });
+        }
+      } catch (_) {}
     }
 
     return sendSuccess(res, 200, updatedDriver, 'Driver profile updated successfully');

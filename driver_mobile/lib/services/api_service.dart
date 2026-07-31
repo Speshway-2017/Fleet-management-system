@@ -2,8 +2,15 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
+  static Function()? onUnauthorized;
+
+  static void initialize() {
+    // Initialization setup if required
+  }
+
   // Default fallback host: 10.86.34.1 (PC Wi-Fi IP) or 127.0.0.1 (via adb reverse) or 10.0.2.2 (Emulator)
   static const String defaultLocalIp = '10.86.34.1';
   static String? _cachedBaseUrl;
@@ -33,7 +40,8 @@ class ApiService {
 
   static Future<void> setBaseUrl(String url) async {
     var formattedUrl = url.trim();
-    if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+    if (!formattedUrl.startsWith('http://') &&
+        !formattedUrl.startsWith('https://')) {
       formattedUrl = 'http://$formattedUrl';
     }
     if (!formattedUrl.endsWith('/api')) {
@@ -52,20 +60,30 @@ class ApiService {
   static Future<bool> testConnection(String targetUrl) async {
     try {
       var formattedUrl = targetUrl.trim();
-      if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+      if (!formattedUrl.startsWith('http://') &&
+          !formattedUrl.startsWith('https://')) {
         formattedUrl = 'http://$formattedUrl';
       }
-      final healthUri = Uri.parse('${formattedUrl.replaceAll('/api', '')}/health');
-      final response = await http.get(healthUri).timeout(const Duration(seconds: 4));
+      final healthUri = Uri.parse(
+        '${formattedUrl.replaceAll('/api', '')}/health',
+      );
+      final response = await http
+          .get(healthUri)
+          .timeout(const Duration(seconds: 4));
       return response.statusCode == 200;
     } catch (_) {
       return false;
     }
   }
 
+  static const _secureStorage = FlutterSecureStorage();
+
   static Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('jwt_token') ?? '';
+    String? token = await _secureStorage.read(key: 'jwt_token');
+    if (token == null || token.isEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      token = prefs.getString('jwt_token') ?? '';
+    }
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -77,14 +95,18 @@ class ApiService {
     final baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
     try {
-      final response = await http.get(Uri.parse('$baseUrl$endpoint'), headers: headers).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(Uri.parse('$baseUrl$endpoint'), headers: headers)
+          .timeout(const Duration(seconds: 10));
       return _processResponse(response);
     } catch (e) {
       // If primary IP fails and we haven't set custom URL, try 127.0.0.1 / localhost as fallback
       if (_cachedBaseUrl == 'http://$defaultLocalIp:5000/api') {
         try {
           final fallbackUrl = 'http://127.0.0.1:5000/api';
-          final response = await http.get(Uri.parse('$fallbackUrl$endpoint'), headers: headers).timeout(const Duration(seconds: 5));
+          final response = await http
+              .get(Uri.parse('$fallbackUrl$endpoint'), headers: headers)
+              .timeout(const Duration(seconds: 5));
           _cachedBaseUrl = fallbackUrl;
           return _processResponse(response);
         } catch (_) {}
@@ -93,26 +115,33 @@ class ApiService {
     }
   }
 
-  static Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
+  static Future<dynamic> post(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     final baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 10));
       return _processResponse(response);
     } catch (e) {
       // Fallback try for physical devices connected via ADB USB reverse
       if (_cachedBaseUrl == 'http://$defaultLocalIp:5000/api') {
         try {
           final fallbackUrl = 'http://127.0.0.1:5000/api';
-          final response = await http.post(
-            Uri.parse('$fallbackUrl$endpoint'),
-            headers: headers,
-            body: jsonEncode(body),
-          ).timeout(const Duration(seconds: 5));
+          final response = await http
+              .post(
+                Uri.parse('$fallbackUrl$endpoint'),
+                headers: headers,
+                body: jsonEncode(body),
+              )
+              .timeout(const Duration(seconds: 5));
           _cachedBaseUrl = fallbackUrl;
           return _processResponse(response);
         } catch (_) {}
@@ -121,14 +150,32 @@ class ApiService {
     }
   }
 
-  static Future<dynamic> patch(String endpoint, Map<String, dynamic> body) async {
+  static Future<dynamic> patch(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     final baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
-    final response = await http.patch(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
-      body: jsonEncode(body),
-    ).timeout(const Duration(seconds: 10));
+    final response = await http
+        .patch(
+          Uri.parse('$baseUrl$endpoint'),
+          headers: headers,
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 10));
+    return _processResponse(response);
+  }
+
+  static Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
+    final baseUrl = await getBaseUrl();
+    final headers = await _getHeaders();
+    final response = await http
+        .put(
+          Uri.parse('$baseUrl$endpoint'),
+          headers: headers,
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 10));
     return _processResponse(response);
   }
 
@@ -144,7 +191,10 @@ class ApiService {
   }
 
   // Trip Flow API Helpers
-  static Future<dynamic> respondToTripAssignment(String tripId, String action) async {
+  static Future<dynamic> respondToTripAssignment(
+    String tripId,
+    String action,
+  ) async {
     return await patch('/driver/trips/$tripId/respond', {'action': action});
   }
 
@@ -152,8 +202,13 @@ class ApiService {
     return await patch('/driver/trips/$tripId/status', {'status': status});
   }
 
-  static Future<dynamic> toggleCustomerLocation(String tripId, {bool reached = true}) async {
-    return await patch('/driver/trips/$tripId/customer-location', {'reached': reached});
+  static Future<dynamic> toggleCustomerLocation(
+    String tripId, {
+    bool reached = true,
+  }) async {
+    return await patch('/driver/trips/$tripId/customer-location', {
+      'reached': reached,
+    });
   }
 
   static Future<dynamic> getCurrentTrip() async {
@@ -197,19 +252,21 @@ class ApiService {
       request.fields['amount'] = amount.toString();
       request.fields['liters'] = liters.toString();
 
-      if (imageFile is String && (imageFile.startsWith('http') || imageFile.startsWith('data:'))) {
+      if (imageFile is String &&
+          (imageFile.startsWith('http') || imageFile.startsWith('data:'))) {
         request.fields['receiptImage'] = imageFile;
       } else if (imageFile is List<int>) {
-        request.files.add(http.MultipartFile.fromBytes(
-          'file',
-          imageFile,
-          filename: imageName ?? 'receipt.jpg',
-        ));
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            imageFile,
+            filename: imageName ?? 'receipt.jpg',
+          ),
+        );
       } else {
-        request.files.add(await http.MultipartFile.fromPath(
-          'file',
-          imageFile.toString(),
-        ));
+        request.files.add(
+          await http.MultipartFile.fromPath('file', imageFile.toString()),
+        );
       }
 
       final streamedResponse = await request.send();
@@ -243,7 +300,9 @@ class ApiService {
     final body = <String, dynamic>{'tripId': tripId};
     if (customerName != null) body['customerName'] = customerName;
     if (receiverName != null) body['receiverName'] = receiverName;
-    if (customerSignatureUrl != null) body['customerSignatureUrl'] = customerSignatureUrl;
+    if (customerSignatureUrl != null) {
+      body['customerSignatureUrl'] = customerSignatureUrl;
+    }
     if (deliveryPhotoUrl != null) body['deliveryPhotoUrl'] = deliveryPhotoUrl;
     if (podDocumentUrl != null) body['podDocumentUrl'] = podDocumentUrl;
     return await post('/driver/pod', body);
@@ -290,19 +349,21 @@ class ApiService {
       request.fields['subject'] = subject;
       request.fields['description'] = description;
 
-      if (imageFile is String && (imageFile.startsWith('http') || imageFile.startsWith('data:'))) {
+      if (imageFile is String &&
+          (imageFile.startsWith('http') || imageFile.startsWith('data:'))) {
         request.fields['imageUrl'] = imageFile;
       } else if (imageFile is List<int>) {
-        request.files.add(http.MultipartFile.fromBytes(
-          'file',
-          imageFile,
-          filename: imageName ?? 'ticket_photo.jpg',
-        ));
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            imageFile,
+            filename: imageName ?? 'ticket_photo.jpg',
+          ),
+        );
       } else {
-        request.files.add(await http.MultipartFile.fromPath(
-          'file',
-          imageFile.toString(),
-        ));
+        request.files.add(
+          await http.MultipartFile.fromPath('file', imageFile.toString()),
+        );
       }
 
       final streamedResponse = await request.send();
@@ -327,18 +388,27 @@ class ApiService {
     return await get('/driver/tickets/$id');
   }
 
-  static Future<dynamic> updateDriverTicketStatus(String id, String status, {String? notes}) async {
+  static Future<dynamic> updateDriverTicketStatus(
+    String id,
+    String status, {
+    String? notes,
+  }) async {
     final Map<String, dynamic> body = {'status': status};
     if (notes != null) body['notes'] = notes;
     return await patch('/driver/tickets/$id/status', body);
   }
 
   static dynamic _processResponse(http.Response response) {
+    if (response.statusCode == 401) {
+      onUnauthorized?.call();
+    }
     final body = jsonDecode(response.body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
     } else {
-      throw Exception(body['message'] ?? 'API Request Failed (${response.statusCode})');
+      throw Exception(
+        body['message'] ?? 'API Request Failed (${response.statusCode})',
+      );
     }
   }
 }

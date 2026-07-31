@@ -336,19 +336,29 @@ export default function ManagerDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Vehicle Status */}
           {(() => {
+            const hasAssignedDriver = (v) => {
+              const driver = v.assignedDriver || v.driverId || v.driver;
+              if (!driver) return false;
+              if (typeof driver === 'string') return driver !== 'Unassigned' && driver !== 'N/A' && driver.trim() !== '';
+              if (typeof driver === 'object' && driver !== null) return Boolean(driver._id || driver.fullName || driver.name);
+              return false;
+            };
+
             const totalVehiclesCount = vehicles.length;
-            const activeCount = vehicles.filter(v => v.status === "Active").length;
-            const availableCount = vehicles.filter(v => v.status === "Available").length;
-            const inServiceCount = vehicles.filter(v => v.status === "On Trip" || v.status === "Assigned").length;
-            const maintenanceCount = vehicles.filter(v => v.status === "Under Maintenance" || v.status === "Maintenance").length;
-            const outOfServiceCount = vehicles.filter(v => v.status === "Inactive" || v.status === "Idle" || v.status === "Out of Service").length;
+            const availableCount = vehicles.filter(v => (v.status === "Available" || v.status === "AVAILABLE") && !hasAssignedDriver(v)).length;
+            const assignedCount = vehicles.filter(v => (v.status === "Assigned" || v.status === "ASSIGNED" || ((v.status === "Available" || v.status === "AVAILABLE") && hasAssignedDriver(v)))).length;
+            const onTripCount = vehicles.filter(v => v.status === "On Trip" || v.status === "ON_TRIP").length;
+            const idleCount = vehicles.filter(v => v.status === "Idle" || v.status === "IDLE").length;
+            const maintenanceCount = vehicles.filter(v => v.status === "Maintenance" || v.status === "Under Maintenance").length;
+            const outOfServiceCount = vehicles.filter(v => v.status === "Out of Service" || v.status === "OUT_OF_SERVICE" || v.status === "Inactive").length;
 
             const chartData = [
-              { name: "Active", value: activeCount, color: "#C65D0E" },
-              { name: "Available", value: availableCount, color: "#10B981" },
-              { name: "In Service", value: inServiceCount, color: "#3B82F6" },
+              { name: "Available", value: availableCount, color: "#22C55E" },
+              { name: "Assigned", value: assignedCount, color: "#3B82F6" },
+              { name: "On Trip", value: onTripCount, color: "#B45A0A" },
+              { name: "Idle", value: idleCount, color: "#64748B" },
               { name: "Under Maintenance", value: maintenanceCount, color: "#EF4444" },
-              { name: "Out of Service", value: outOfServiceCount, color: "#6B7280" }
+              { name: "Out of Service", value: outOfServiceCount, color: "#1E293B" }
             ];
 
             return (

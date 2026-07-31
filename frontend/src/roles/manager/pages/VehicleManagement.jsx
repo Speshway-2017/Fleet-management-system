@@ -28,12 +28,14 @@ import {
   HelpCircle,
   TrendingUp,
   MapPin,
-  ArrowRight
+  ArrowRight,
+  Route
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { vehicleApi } from "@/api/vehicleApi";
 import { managerApi } from "../api/managerApi";
+import { getSocket } from "@/api/socket";
 
 export default function VehicleManagement() {
   const navigate = useNavigate();
@@ -47,6 +49,16 @@ export default function VehicleManagement() {
     if (mappedStatus === 'Under Maintenance') {
       mappedStatus = 'Maintenance';
     }
+
+    let insExp = v.insuranceExpiry || v.insuranceDetails?.expiryDate || v.documents?.insurance?.expiryDate;
+    if (!insExp && (v.documents?.insurance?.fileUrl || v.documents?.insurance?.uploadDate)) {
+      const upDate = new Date(v.documents.insurance.uploadDate || v.documents.insurance.uploadedAt || Date.now());
+      if (!isNaN(upDate.getTime())) {
+        upDate.setFullYear(upDate.getFullYear() + 1);
+        insExp = upDate;
+      }
+    }
+
     return {
       ...v,
       id:           v._id,
@@ -60,6 +72,8 @@ export default function VehicleManagement() {
       branch:       v.branch       || 'Pune',
       dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
       status:       mappedStatus,
+      insuranceExpiry: insExp,
+      assignedDriver: v.assignedDriver || v.driverId || v.driver,
     };
   };
 
@@ -80,6 +94,92 @@ export default function VehicleManagement() {
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 
 
+  const formatRelativeTime = (timestamp) => {
+    if (!timestamp) return "Just now";
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) {
+      return "Just now";
+    }
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} minute${diffInMinutes === 1 ? "" : "s"} ago`;
+    }
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours === 1 ? "" : "s"} ago`;
+    }
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays === 1) {
+      return "Yesterday";
+    }
+    if (diffInDays < 7) {
+      return `${diffInDays} days ago`;
+    }
+
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const getActivityIconAndColor = (act) => {
+    const mod = (act.relatedModule || "").toLowerCase();
+    const type = (act.activityType || act.title || "").toLowerCase();
+
+    if (mod === "trip" || type.includes("trip")) {
+      return { icon: Route, color: "text-indigo-600 bg-indigo-50 border-indigo-100" };
+    }
+    if (mod === "driver" || type.includes("driver")) {
+      return { icon: UserCheck, color: "text-amber-600 bg-amber-50 border-amber-100" };
+    }
+    if (mod === "maintenance" || type.includes("maintenance")) {
+      return { icon: Wrench, color: "text-teal-600 bg-teal-50 border-teal-100" };
+    }
+    if (mod === "fuel" || type.includes("fuel")) {
+      return { icon: Fuel, color: "text-purple-600 bg-purple-50 border-purple-100" };
+    }
+    if (mod === "document" || type.includes("document") || type.includes("insurance") || type.includes("rc") || type.includes("permit") || type.includes("fitness")) {
+      return { icon: FileText, color: "text-emerald-600 bg-emerald-50 border-emerald-100" };
+    }
+    if (type.includes("deleted")) {
+      return { icon: Trash2, color: "text-rose-600 bg-rose-50 border-rose-100" };
+    }
+    return { icon: Truck, color: "text-blue-600 bg-blue-50 border-blue-100" };
+  };
+
+  const handleActivityClick = (act) => {
+    const mod = (act.relatedModule || "").toLowerCase();
+    const type = (act.activityType || act.title || "").toLowerCase();
+
+    if (mod === "trip" || type.includes("trip")) {
+      if (act.relatedId) {
+        navigate(`/manager/trip-details/${act.relatedId}`);
+      } else {
+        navigate("/manager/trips");
+      }
+    } else if (mod === "maintenance" || type.includes("maintenance")) {
+      navigate("/manager/maintenance");
+    } else if (mod === "fuel" || type.includes("fuel")) {
+      navigate("/manager/fuel-management");
+    } else if (mod === "document" || type.includes("document") || type.includes("insurance") || type.includes("rc") || type.includes("permit") || type.includes("fitness")) {
+      if (act.relatedId) {
+        navigate(`/manager/vehicle-details/${act.relatedId}?tab=documents`);
+      } else {
+        navigate("/manager/vehicles-list");
+      }
+    } else {
+      if (act.relatedId) {
+        navigate(`/manager/vehicle-details/${act.relatedId}`);
+      } else {
+        navigate("/manager/vehicles-list");
+      }
+    }
+  };
+
   // Fetch vehicles from backend on mount and poll
   useEffect(() => {
     const fetchVehicles = async (isInitial = false) => {
@@ -89,44 +189,13 @@ export default function VehicleManagement() {
         const rawVeh = vehRes.data?.data ?? [];
         setVehicles(rawVeh.map(normaliseVehicle));
 
-        // Fetch dynamic activities (recent notifications)
+        // Fetch dynamic activity logs
         try {
-          const notifRes = await managerApi.getNotifications();
-          const rawNotifs = notifRes.data?.data || notifRes.data || [];
-          
-          const mapped = rawNotifs.slice(0, 5).map(n => {
-            let icon = Truck;
-            let color = "text-blue-600 bg-blue-50 border-blue-100";
-            const lowerTitle = (n.title || "").toLowerCase();
-            
-            if (lowerTitle.includes('driver')) {
-              icon = UserCheck;
-              color = "text-amber-600 bg-amber-50 border-amber-100";
-            } else if (lowerTitle.includes('deleted')) {
-              icon = Trash2;
-              color = "text-rose-600 bg-rose-50 border-rose-100";
-            } else if (lowerTitle.includes('document')) {
-              icon = FileText;
-              color = "text-emerald-600 bg-emerald-50 border-emerald-100";
-            } else if (lowerTitle.includes('fuel')) {
-              icon = Fuel;
-              color = "text-purple-600 bg-purple-50 border-purple-100";
-            } else if (lowerTitle.includes('maintenance')) {
-              icon = Wrench;
-              color = "text-[#008080] bg-teal-50 border-teal-100";
-            }
-            
-            return {
-              id: n._id,
-              text: n.description,
-              time: new Date(n.createdAt).toLocaleDateString() + ' ' + new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              icon,
-              color
-            };
-          });
-          setActivities(mapped);
-        } catch (notifErr) {
-          console.error("Failed to fetch notification logs:", notifErr);
+          const actRes = await managerApi.getActivities();
+          const rawActs = actRes.data?.data || actRes.data || [];
+          setActivities(rawActs);
+        } catch (actErr) {
+          console.error("Failed to fetch activity logs:", actErr);
         }
 
         // Fetch maintenance records
@@ -146,13 +215,36 @@ export default function VehicleManagement() {
     };
 
     fetchVehicles(true);
+
+    const socket = getSocket();
+    const handleRefresh = () => fetchVehicles(false);
+
+    socket.on("vehicle:created", handleRefresh);
+    socket.on("vehicle:updated", handleRefresh);
+    socket.on("vehicle:deleted", handleRefresh);
+    socket.on("driver:assigned", handleRefresh);
+    socket.on("driver:unassigned", handleRefresh);
+    socket.on("driver:deleted", handleRefresh);
+    socket.on("driver:status-updated", handleRefresh);
+    socket.on("trip:status-updated", handleRefresh);
+
     const interval = setInterval(() => fetchVehicles(false), 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      socket.off("vehicle:created", handleRefresh);
+      socket.off("vehicle:updated", handleRefresh);
+      socket.off("vehicle:deleted", handleRefresh);
+      socket.off("driver:assigned", handleRefresh);
+      socket.off("driver:unassigned", handleRefresh);
+      socket.off("driver:deleted", handleRefresh);
+      socket.off("driver:status-updated", handleRefresh);
+      socket.off("trip:status-updated", handleRefresh);
+    };
   }, []);
 
-  // Sorting
-  const [sortField, setSortField] = useState("id");
-  const [sortDirection, setSortDirection] = useState("asc");
+  // Sorting: Default to newest first so newly added vehicles appear at the top
+  const [sortField, setSortField] = useState("createdAt");
+  const [sortDirection, setSortDirection] = useState("desc");
 
   // Modals & CRUD UI States
   const [modalType, setModalType] = useState(null); // 'add' | 'edit' | 'delete' | 'assign' | 'details'
@@ -206,6 +298,22 @@ export default function VehicleManagement() {
 
     return matchesSearch && matchesStatus && matchesType && matchesBranch && matchesFuel && matchesOwnership && matchesAvail && matchesDate;
   }).sort((a, b) => {
+    if (sortField === "createdAt" || sortField === "id" || sortField === "_id") {
+      const getTimestamp = (item) => {
+        if (item.createdAt) {
+          const t = new Date(item.createdAt).getTime();
+          if (!isNaN(t)) return t;
+        }
+        if (item._id && typeof item._id === "string" && item._id.length === 24) {
+          return parseInt(item._id.substring(0, 8), 16) * 1000;
+        }
+        return 0;
+      };
+      const timeA = getTimestamp(a);
+      const timeB = getTimestamp(b);
+      return sortDirection === "desc" ? timeB - timeA : timeA - timeB;
+    }
+
     let valA = a[sortField];
     let valB = b[sortField];
     if (typeof valA === "string") {
@@ -254,16 +362,30 @@ export default function VehicleManagement() {
   const monthlyUsage = generateMonthlyUsage();
   const maxUsage = Math.max(...monthlyUsage.map(m => m.value), 1);
 
+  const hasAssignedDriver = (v) => {
+    const driver = v.assignedDriver || v.driverId || v.driver;
+    if (!driver) return false;
+    if (typeof driver === 'string') {
+      return driver !== 'Unassigned' && driver !== 'N/A' && driver.trim() !== '';
+    }
+    if (typeof driver === 'object' && driver !== null) {
+      return Boolean(driver._id || driver.fullName || driver.name);
+    }
+    return false;
+  };
+
   // Compute status distribution percentages
   const statusCounts = {
-    "Available": vehicles.filter(v => v.status === "Available").length,
-    "On Trip": vehicles.filter(v => v.status === "On Trip").length,
-    "Idle": vehicles.filter(v => v.status === "Idle").length,
-    "Maintenance": vehicles.filter(v => v.status === "Maintenance").length,
-    "Out of Service": vehicles.filter(v => v.status === "Out of Service").length
+    "Available": vehicles.filter(v => (v.status === "Available" || v.status === "AVAILABLE") && !hasAssignedDriver(v)).length,
+    "Assigned": vehicles.filter(v => (v.status === "Assigned" || v.status === "ASSIGNED" || ((v.status === "Available" || v.status === "AVAILABLE") && hasAssignedDriver(v)))).length,
+    "On Trip": vehicles.filter(v => v.status === "On Trip" || v.status === "ON_TRIP").length,
+    "Idle": vehicles.filter(v => v.status === "Idle" || v.status === "IDLE").length,
+    "Maintenance": vehicles.filter(v => v.status === "Maintenance" || v.status === "Under Maintenance").length,
+    "Out of Service": vehicles.filter(v => v.status === "Out of Service" || v.status === "OUT_OF_SERVICE").length
   };
   const distributionColors = {
     "Available": "#22C55E",
+    "Assigned": "#3B82F6",
     "On Trip": "#B45A0A",
     "Idle": "#64748B",
     "Maintenance": "#EF4444",
@@ -484,8 +606,21 @@ export default function VehicleManagement() {
     }
   };
 
+  const formatDateOrNA = (dateVal) => {
+    if (!dateVal) return "N/A";
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return "N/A";
+    return d.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    });
+  };
+
   const getInsuranceStyle = (expiry) => {
+    if (!expiry) return "text-[#64748B] flex items-center gap-1.5 font-medium";
     const expDate = new Date(expiry);
+    if (isNaN(expDate.getTime())) return "text-[#64748B] flex items-center gap-1.5 font-medium";
     const today = new Date();
     const diffTime = expDate - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -875,29 +1010,17 @@ export default function VehicleManagement() {
                         {/* Insurance Expiry */}
                         <td className="py-4 px-6 text-xs font-semibold whitespace-nowrap">
                           <span className={getInsuranceStyle(v.insuranceExpiry)}>
-                            {new Date(v.insuranceExpiry).toLocaleDateString("en-IN", {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
+                            {formatDateOrNA(v.insuranceExpiry)}
                           </span>
                         </td>
 
                         {/* Last Service */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <p className="text-xs font-semibold text-[#1E293B]">
-                            {new Date(v.lastService).toLocaleDateString("en-IN", {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
+                            {formatDateOrNA(v.lastService)}
                           </p>
                           <span className="text-[10px] text-[#64748B] block mt-0.5 font-medium whitespace-nowrap">
-                            Next: {new Date(v.nextService).toLocaleDateString("en-IN", {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
+                            Next: {formatDateOrNA(v.nextService)}
                           </span>
                         </td>
 
@@ -1062,31 +1185,41 @@ export default function VehicleManagement() {
             <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 flex flex-col">
               <h3 className="font-poppins font-black text-lg text-[#1E293B] mb-5 shrink-0">Recent Vehicle Activities</h3>
 
-              <div className="flex-1 space-y-5 overflow-y-auto max-h-80 custom-scrollbar pr-2 select-none">
-                {activities.map((act) => {
-                  const Icon = act.icon;
-                  return (
-                    <div key={act.id} className="flex gap-4">
-                      {/* Timeline Node */}
-                      <div className="relative flex flex-col items-center shrink-0">
-                        <div className={`p-2.5 rounded-xl border ${act.color} flex items-center justify-center z-10 shadow-sm`}>
-                          <Icon className="w-4.5 h-4.5" />
+              <div className="flex-1 space-y-4 overflow-y-auto max-h-80 custom-scrollbar pr-2 select-none">
+                {activities.length > 0 ? (
+                  activities.map((act) => {
+                    const { icon: Icon, color } = getActivityIconAndColor(act);
+                    const relativeTime = formatRelativeTime(act.createdAt || act.timestamp);
+                    return (
+                      <div
+                        key={act._id || act.id}
+                        onClick={() => handleActivityClick(act)}
+                        className="flex gap-4 p-2 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer group"
+                      >
+                        {/* Timeline Node */}
+                        <div className="relative flex flex-col items-center shrink-0">
+                          <div className={`p-2.5 rounded-xl border ${color} flex items-center justify-center z-10 shadow-sm group-hover:scale-105 transition-transform`}>
+                            <Icon className="w-4.5 h-4.5" />
+                          </div>
+                          {/* Connecting Line */}
+                          <div className="w-[1.5px] bg-[#E7EAF0] flex-1 min-h-[24px] mt-2 last:hidden" />
                         </div>
-                        {/* Connecting Line */}
-                        <div className="w-[1.5px] bg-[#E7EAF0] flex-1 min-h-[30px] mt-2 last:hidden" />
-                      </div>
 
-                      {/* Content */}
-                      <div className="py-1">
-                        <p className="text-xs font-bold text-[#1E293B] leading-tight">{act.text}</p>
-                        <span className="text-[10px] text-[#64748B] font-medium block mt-1 font-poppins">{act.time}</span>
+                        {/* Content */}
+                        <div className="py-0.5 flex-1 min-w-0">
+                          <p className="text-xs font-bold text-[#1E293B] leading-tight group-hover:text-[#B45A0A] transition-colors">
+                            {act.description || act.text || act.title}
+                          </p>
+                          <span className="text-[10px] text-[#64748B] font-medium block mt-1 font-poppins">
+                            {relativeTime}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-                {activities.length === 0 && (
-                  <div className="text-center text-xs text-[#64748B] py-8">
-                    No recent activities recorded.
+                    );
+                  })
+                ) : (
+                  <div className="text-center text-xs font-semibold text-[#64748B] py-12">
+                    No recent vehicle activities found.
                   </div>
                 )}
               </div>
@@ -1533,12 +1666,12 @@ export default function VehicleManagement() {
                   {/* Parameter 11 */}
                   <div>
                     <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Date Added</span>
-                    <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{new Date(selectedVehicle.dateAdded).toLocaleDateString("en-IN")}</span>
+                    <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{formatDateOrNA(selectedVehicle.dateAdded)}</span>
                   </div>
                   {/* Parameter 12 */}
                   <div>
                     <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Insurance Expiry</span>
-                    <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{new Date(selectedVehicle.insuranceExpiry).toLocaleDateString("en-IN")}</span>
+                    <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{formatDateOrNA(selectedVehicle.insuranceExpiry)}</span>
                   </div>
                 </div>
 
@@ -1550,7 +1683,7 @@ export default function VehicleManagement() {
                       <Calendar className="w-5 h-5 text-gray-400 shrink-0" />
                       <div>
                         <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">Last Serviced</p>
-                        <span className="text-xs font-semibold text-[#1E293B] mt-0.5 block">{new Date(selectedVehicle.lastService).toLocaleDateString("en-IN")}</span>
+                        <span className="text-xs font-semibold text-[#1E293B] mt-0.5 block">{formatDateOrNA(selectedVehicle.lastService)}</span>
                       </div>
                     </div>
 
@@ -1558,7 +1691,7 @@ export default function VehicleManagement() {
                       <Wrench className="w-5 h-5 text-gray-400 shrink-0" />
                       <div>
                         <p className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">Next Service Due</p>
-                        <span className="text-xs font-semibold text-[#1E293B] mt-0.5 block">{new Date(selectedVehicle.nextService).toLocaleDateString("en-IN")}</span>
+                        <span className="text-xs font-semibold text-[#1E293B] mt-0.5 block">{formatDateOrNA(selectedVehicle.nextService)}</span>
                       </div>
                     </div>
                   </div>

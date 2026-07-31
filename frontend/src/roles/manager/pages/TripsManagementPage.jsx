@@ -28,64 +28,41 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { getSocket } from "@/api/socket";
-
-
 import { managerApi } from "../api/managerApi";
-
-const CITY_COORDINATES = {
-  mumbai: [19.0760, 72.8777],
-  pune: [18.5204, 73.8567],
-  bengaluru: [12.9716, 77.5946],
-  bangalore: [12.9716, 77.5946],
-  hyderabad: [17.3850, 78.4867],
-  delhi: [28.7041, 77.1025],
-  chennai: [13.0827, 80.2707],
-  kolhapur: [16.7050, 74.2433],
-  satara: [17.6805, 73.9918],
-  anantapur: [14.6819, 77.6006],
-  goa: [15.2993, 74.1240],
-  visakhapatnam: [17.6868, 83.2185],
-  vizag: [17.6868, 83.2185],
-  kolkata: [22.5726, 88.3639],
-  ahmedabad: [23.0225, 72.5714],
-  surat: [21.1702, 72.8311],
-  jaipur: [26.9124, 75.7873],
-  lucknow: [26.8467, 80.9462],
-  manali: [32.2396, 77.1887]
-};
-
-const getCoordinates = (cityName) => {
-  if (!cityName) return [18.5204, 73.8567];
-  const norm = cityName.toLowerCase().trim();
-  for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
-    if (norm.includes(key)) return coords;
-  }
-  return [18.5204, 73.8567];
-};
-
-const getDistance = (startCity, endCity) => {
-  const startCoords = getCoordinates(startCity);
-  const endCoords = getCoordinates(endCity);
-  if (startCoords[0] === 18.5204 && startCoords[1] === 73.8567 && 
-      endCoords[0] === 18.5204 && endCoords[1] === 73.8567) {
-    return 350;
-  }
-  const R = 6371;
-  const dLat = (endCoords[0] - startCoords[0]) * Math.PI / 180;
-  const dLon = (endCoords[1] - startCoords[1]) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(startCoords[0] * Math.PI / 180) * Math.cos(endCoords[0] * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const d = R * c;
-  return Math.round(d);
-};
+import { calculateDrivingRoute, calculateEtaFromDuration } from "../services/routingService";
 
 export default function TripsManagementPage() {
   const navigate = useNavigate();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [tripDistances, setTripDistances] = useState({});
+  const [editRouteInfo, setEditRouteInfo] = useState({ distanceKm: 0, loading: false, errorMessage: "" });
+  const [unreadCounts, setUnreadCounts] = useState({});
+
+  const fetchUnreadCounts = async () => {
+    try {
+      const res = await managerApi.getUnreadChatCounts();
+      const data = res.data?.data || res.data || {};
+      setUnreadCounts(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCounts();
+    const socket = getSocket();
+    const handleNewMsg = (msg) => {
+      if (msg.senderRole === "Driver" && msg.tripId) {
+        setUnreadCounts((prev) => ({
+          ...prev,
+          [msg.tripId]: (prev[msg.tripId] || 0) + 1
+        }));
+      }
+    };
+    socket.on("chat:new-message", handleNewMsg);
+    return () => socket.off("chat:new-message", handleNewMsg);
+  }, []);
 
   // Resources list for assignment dropdowns
   const [driversList, setDriversList] = useState([]);
@@ -226,6 +203,40 @@ export default function TripsManagementPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Compute dynamic driving distances for fetched trips
+  useEffect(() => {
+    if (!trips.length) return;
+    trips.forEach(async (t) => {
+      if (t.startLocation && t.endLocation) {
+        const tripKey = t.id || t._id;
+        const res = await calculateDrivingRoute(t.startLocation, t.endLocation);
+        if (res.success && res.distanceKm) {
+          setTripDistances(prev => ({ ...prev, [tripKey]: res.distanceKm }));
+        }
+      }
+    });
+  }, [trips]);
+
+  // Recalculate route whenever edit modal location inputs change
+  useEffect(() => {
+    if (!showEditModal || !formData.startLocation.trim() || !formData.endLocation.trim()) return;
+    const timer = setTimeout(async () => {
+      setEditRouteInfo(prev => ({ ...prev, loading: true, errorMessage: "" }));
+      const res = await calculateDrivingRoute(formData.startLocation, formData.endLocation);
+      if (res.success) {
+        setEditRouteInfo({ distanceKm: res.distanceKm, loading: false, errorMessage: "" });
+        if (res.durationSeconds > 0 && formData.departureTime) {
+          const newEta = calculateEtaFromDuration(formData.departureTime, res.durationSeconds);
+          setFormData(prev => ({ ...prev, eta: newEta }));
+        }
+      } else {
+        setEditRouteInfo({ distanceKm: 0, loading: false, errorMessage: res.errorMessage || "Invalid route" });
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [formData.startLocation, formData.endLocation, showEditModal]);
+
   const fetchResources = async () => {
     try {
       const vRes = await managerApi.getVehicles();
@@ -271,7 +282,7 @@ export default function TripsManagementPage() {
         vehicle: selectedVehicle._id,
         driver: selectedDriver ? selectedDriver._id : undefined,
         driverName: selectedDriver ? (selectedDriver.name || selectedDriver.fullName) : "",
-        driverPhone: selectedDriver ? (selectedDriver.phone || selectedDriver.phoneNumber) : "",
+        driverPhone: selectedDriver ? (selectedDriver.phoneNumber || selectedDriver.phone) : "",
         vehicleName: selectedVehicle.name || selectedVehicle.vehicleName,
         vehiclePlate: selectedVehicle.plateNumber || selectedVehicle.vehicleNumber,
         startLocation: formData.startLocation,
@@ -332,6 +343,8 @@ export default function TripsManagementPage() {
   const handleOpenEdit = (t) => {
     fetchResources();
     setEditingTrip(t);
+    const pAddr = t.pickupAddress || t.fromAddress || {};
+    const dAddr = t.deliveryAddress || t.toAddress || {};
     setFormData({
       driverId: t.driver?._id || t.driver || "",
       vehicleId: t.vehicle?._id || t.vehicle || "",
@@ -343,7 +356,27 @@ export default function TripsManagementPage() {
       description: t.description || "",
       cargoType: t.cargoType || "",
       cargoWeight: t.cargoWeight || "",
-      tripNotes: t.tripNotes || ""
+      tripNotes: t.tripNotes || "",
+      pickupAddress: {
+        companyName: pAddr.companyName || "",
+        contactPerson: pAddr.contactPerson || "",
+        mobile: pAddr.mobile || pAddr.mobileNumber || "",
+        streetAddress: pAddr.streetAddress || "",
+        area: pAddr.area || pAddr.areaLocality || "",
+        city: pAddr.city || "",
+        state: pAddr.state || "",
+        pincode: pAddr.pincode || ""
+      },
+      deliveryAddress: {
+        companyName: dAddr.companyName || "",
+        contactPerson: dAddr.contactPerson || "",
+        mobile: dAddr.mobile || dAddr.mobileNumber || "",
+        streetAddress: dAddr.streetAddress || "",
+        area: dAddr.area || dAddr.areaLocality || "",
+        city: dAddr.city || "",
+        state: dAddr.state || "",
+        pincode: dAddr.pincode || ""
+      }
     });
     setDepartureError("");
     setEtaError("");
@@ -369,7 +402,7 @@ export default function TripsManagementPage() {
     }
 
     try {
-      await managerApi.updateTrip(editingTrip.id, {
+      await managerApi.updateTrip(editingTrip._id || editingTrip.id, {
         startLocation: formData.startLocation,
         endLocation: formData.endLocation,
         departureTime: formData.departureTime,
@@ -377,7 +410,12 @@ export default function TripsManagementPage() {
         description: formData.description,
         cargoType: formData.cargoType,
         cargoWeight: formData.cargoWeight ? Number(formData.cargoWeight) : undefined,
-        tripNotes: formData.tripNotes
+        tripNotes: formData.tripNotes,
+        pickupAddress: formData.pickupAddress,
+        deliveryAddress: formData.deliveryAddress,
+        fromAddress: formData.pickupAddress,
+        toAddress: formData.deliveryAddress,
+        estimatedDistance: editRouteInfo.distanceKm || undefined
       });
       toast.success("Trip updated successfully");
       setShowEditModal(false);
@@ -646,9 +684,23 @@ export default function TripsManagementPage() {
                         {/* Trip ID */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex flex-col">
-                            <span className="font-bold text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg w-max font-poppins">
-                              {t.tripNumber}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg w-max font-poppins">
+                                {t.tripNumber}
+                              </span>
+                              {unreadCounts[t._id || t.id] > 0 && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/manager/trip-details/${t._id || t.id}?tab=communication`);
+                                  }}
+                                  title="Unread chat messages - click to open conversation"
+                                  className="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white font-black text-[10px] rounded-full shadow-sm flex items-center gap-1 animate-bounce cursor-pointer"
+                                >
+                                  💬 {unreadCounts[t._id || t.id]}
+                                </button>
+                              )}
+                            </div>
                             <span className="text-[10px] text-[#64748B] mt-1 block font-semibold max-w-[150px] truncate">
                               {t.description}
                             </span>
@@ -715,10 +767,15 @@ export default function TripsManagementPage() {
                         {/* Distance */}
                         <td className="py-4 px-6 whitespace-nowrap text-xs text-[#1E293B] font-bold">
                           {(() => {
-                            const est = (t.estimatedDistance && t.estimatedDistance !== 120) ? t.estimatedDistance : getDistance(t.startLocation, t.endLocation);
-                            const act = (t.actualDistance && t.actualDistance !== 120) ? t.actualDistance : est;
-                            return t.status === "Completed" ? act : est;
-                          })()} KM
+                            const tripKey = t.id || t._id;
+                            const dynamicDist = tripDistances[tripKey];
+                            const est = (dynamicDist && dynamicDist < 4000)
+                              ? dynamicDist
+                              : ((t.estimatedDistance && t.estimatedDistance > 0 && t.estimatedDistance < 4000) ? t.estimatedDistance : 0);
+                            const act = (t.actualDistance && t.actualDistance > 0 && t.actualDistance < 4000) ? t.actualDistance : est;
+                            const finalDist = t.status === "Completed" ? act : est;
+                            return finalDist > 0 ? `${finalDist} KM` : "Calculating...";
+                          })()}
                         </td>
 
                         {/* Actions */}
@@ -970,6 +1027,228 @@ export default function TripsManagementPage() {
                     onChange={(e) => setFormData({ ...formData, tripNotes: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
                   />
+                </div>
+              </div>
+
+              {/* Pickup Address Edit Section */}
+              <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3 font-nunito">
+                <h4 className="font-poppins font-bold text-xs text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-1.5">
+                  Pickup Address (From Address)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Company Name</label>
+                    <input
+                      type="text"
+                      value={formData.pickupAddress?.companyName || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, companyName: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Contact Person</label>
+                    <input
+                      type="text"
+                      value={formData.pickupAddress?.contactPerson || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, contactPerson: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Mobile Number</label>
+                    <input
+                      type="text"
+                      maxLength={10}
+                      value={formData.pickupAddress?.mobile || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, mobile: e.target.value.replace(/\D/g, '') }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Street Address</label>
+                    <input
+                      type="text"
+                      value={formData.pickupAddress?.streetAddress || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, streetAddress: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Area / Locality</label>
+                    <input
+                      type="text"
+                      value={formData.pickupAddress?.area || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, area: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">City</label>
+                    <input
+                      type="text"
+                      value={formData.pickupAddress?.city || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, city: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">State</label>
+                    <input
+                      type="text"
+                      value={formData.pickupAddress?.state || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, state: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Pincode</label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={formData.pickupAddress?.pincode || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pickupAddress: { ...formData.pickupAddress, pincode: e.target.value.replace(/\D/g, '') }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Delivery Address Edit Section */}
+              <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3 font-nunito">
+                <h4 className="font-poppins font-bold text-xs text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-1.5">
+                  Delivery Address (To Address)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Company Name</label>
+                    <input
+                      type="text"
+                      value={formData.deliveryAddress?.companyName || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, companyName: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Contact Person</label>
+                    <input
+                      type="text"
+                      value={formData.deliveryAddress?.contactPerson || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, contactPerson: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Mobile Number</label>
+                    <input
+                      type="text"
+                      maxLength={10}
+                      value={formData.deliveryAddress?.mobile || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, mobile: e.target.value.replace(/\D/g, '') }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Street Address</label>
+                    <input
+                      type="text"
+                      value={formData.deliveryAddress?.streetAddress || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, streetAddress: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Area / Locality</label>
+                    <input
+                      type="text"
+                      value={formData.deliveryAddress?.area || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, area: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">City</label>
+                    <input
+                      type="text"
+                      value={formData.deliveryAddress?.city || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, city: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">State</label>
+                    <input
+                      type="text"
+                      value={formData.deliveryAddress?.state || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, state: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Pincode</label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={formData.deliveryAddress?.pincode || ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        deliveryAddress: { ...formData.deliveryAddress, pincode: e.target.value.replace(/\D/g, '') }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-lg text-xs font-medium"
+                    />
+                  </div>
                 </div>
               </div>
 

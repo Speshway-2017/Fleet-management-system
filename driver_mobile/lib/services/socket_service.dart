@@ -10,6 +10,14 @@ class SocketService {
 
   static bool get isConnected => _isConnected;
 
+  static Future<void> connect([String? driverId]) async {
+    if (driverId != null && driverId.isNotEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('driver_id', driverId);
+    }
+    await initSocket();
+  }
+
   static Future<void> initSocket({Function(dynamic data)? onTripStatusUpdated, Function(dynamic data)? onTripAssigned}) async {
     if (_socket != null && _socket!.connected) return;
 

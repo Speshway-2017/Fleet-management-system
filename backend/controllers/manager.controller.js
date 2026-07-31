@@ -1,3 +1,6 @@
+import mongoose from 'mongoose';
+import { geocodeCity } from '../utils/geocodingHelper.js';
+export { getDriverStats } from './driver.controller.js';
 import {
   createVehicle as createVehicleInRepo,
   getVehicles,
@@ -48,6 +51,8 @@ import Driver from '../models/Driver.js';
 import Vehicle from '../models/Vehicle.js';
 import Notification from '../models/Notification.js';
 import EWayBill from '../models/EWayBill.js';
+import TripChat from '../models/TripChat.js';
+import CallHistory from '../models/CallHistory.js';
 import Fuel from '../models/Fuel.js';
 import ActivityLog from '../models/ActivityLog.js';
 import Invoice from '../models/Invoice.js';
@@ -56,11 +61,14 @@ import ProofOfDelivery from '../models/ProofOfDelivery.js';
 import WeighbridgeSlip from '../models/WeighbridgeSlip.js';
 import Review from '../models/Review.js';
 import ManagerMilestone from '../models/ManagerMilestone.js';
+import { generateEmployeeId, generateTempPassword } from '../utils/driverAuthHelper.js';
+import { hashPassword } from '../utils/hashPassword.js';
 import { logActivity } from '../utils/activityLogger.js';
 import { calculateDistance } from '../utils/distanceCalculator.js';
 import TollTransaction from '../models/TollTransaction.js';
 import { generateTollsForTrip } from '../utils/seedTolls.js';
 import VehicleComplaint from '../models/VehicleComplaint.js';
+import { processFastagDeduction } from '../services/fastag.service.js';
 
 export const getDashboard = async (req, res, next) => {
   try {
@@ -383,34 +391,75 @@ export const updateVehicle = async (req, res, next) => {
       updateData.chassisNumber = trimmedChassis;
     }
 
-    const conflictOr = [];
-    if (updateData.vehicleNumber) {
-      conflictOr.push({ vehicleNumber: updateData.vehicleNumber.toUpperCase() });
-    }
-    if (updateData.registrationNumber) {
-      conflictOr.push({ registrationNumber: updateData.registrationNumber.toUpperCase() });
-    }
-    if (updateData.chassisNumber) {
-      conflictOr.push({ chassisNumber: updateData.chassisNumber.trim() });
+    const vehicleId = req.params.id;
+    console.log(`\n=================================`);
+    console.log(`Updating Vehicle\n`);
+    console.log(`Vehicle ID:\n${vehicleId}\n`);
+
+    const excludeIdQuery = mongoose.Types.ObjectId.isValid(vehicleId)
+      ? new mongoose.Types.ObjectId(vehicleId)
+      : vehicleId;
+
+    // 1. Check duplicate chassis
+    if (updateData.chassisNumber && String(updateData.chassisNumber).trim() && String(updateData.chassisNumber).trim().toUpperCase() !== 'N/A') {
+      const trimmedChassis = String(updateData.chassisNumber).trim();
+      console.log(`Checking duplicate chassis...\n`);
+
+      const dupChassis = await Vehicle.findOne({
+        chassisNumber: trimmedChassis,
+        _id: { $ne: excludeIdQuery }
+      });
+
+      if (dupChassis && String(dupChassis._id) !== String(vehicleId)) {
+        console.log(`Duplicate chassis number found.\n`);
+        console.log(`Existing Vehicle ID:\n${dupChassis._id}\n`);
+        console.log(`Update aborted.\n`);
+        console.log(`=================================\n`);
+        return sendError(res, 409, 'A vehicle with this chassis number already exists');
+      }
+      console.log(`✓ Current vehicle ignored\n`);
     }
 
-    if (conflictOr.length > 0) {
-      const existingVehicle = await Vehicle.findOne({
-        _id: { $ne: req.params.id },
-        $or: conflictOr
+    // 2. Check duplicate registration number
+    if (updateData.registrationNumber && String(updateData.registrationNumber).trim() && String(updateData.registrationNumber).trim().toUpperCase() !== 'N/A') {
+      const trimmedRegNum = String(updateData.registrationNumber).trim().toUpperCase();
+      console.log(`Checking duplicate registration number...\n`);
+
+      const dupRegNum = await Vehicle.findOne({
+        registrationNumber: trimmedRegNum,
+        _id: { $ne: excludeIdQuery }
       });
-      if (existingVehicle) {
-        if (updateData.vehicleNumber && existingVehicle.vehicleNumber === updateData.vehicleNumber.toUpperCase()) {
-          return sendError(res, 409, 'A vehicle with this registration plate already exists');
-        }
-        if (updateData.registrationNumber && existingVehicle.registrationNumber === updateData.registrationNumber.toUpperCase()) {
-          return sendError(res, 409, 'A vehicle with this registration number already exists');
-        }
-        if (updateData.chassisNumber && existingVehicle.chassisNumber === updateData.chassisNumber.trim()) {
-          return sendError(res, 409, 'A vehicle with this chassis number already exists');
-        }
+
+      if (dupRegNum && String(dupRegNum._id) !== String(vehicleId)) {
+        console.log(`Duplicate registration number found.\n`);
+        console.log(`Existing Vehicle ID:\n${dupRegNum._id}\n`);
+        console.log(`Update aborted.\n`);
+        console.log(`=================================\n`);
+        return sendError(res, 409, 'A vehicle with this registration number already exists');
       }
+      console.log(`✓ No duplicate found\n`);
     }
+
+    // 3. Check duplicate registration plate (vehicleNumber)
+    const targetPlate = (updateData.vehicleNumber || updateData.plateNumber || '').toString().trim().toUpperCase();
+    if (targetPlate && targetPlate !== 'N/A') {
+      console.log(`Checking duplicate registration plate...\n`);
+
+      const dupPlate = await Vehicle.findOne({
+        vehicleNumber: targetPlate,
+        _id: { $ne: excludeIdQuery }
+      });
+
+      if (dupPlate && String(dupPlate._id) !== String(vehicleId)) {
+        console.log(`Duplicate registration plate found.\n`);
+        console.log(`Existing Vehicle ID:\n${dupPlate._id}\n`);
+        console.log(`Update aborted.\n`);
+        console.log(`=================================\n`);
+        return sendError(res, 409, 'A vehicle with this registration plate already exists');
+      }
+      console.log(`✓ No duplicate found\n`);
+    }
+
     if (updateData.documents) {
       updateData.documents = await processVehicleDocuments(updateData.documents, req.user);
     }
@@ -441,7 +490,10 @@ export const updateVehicle = async (req, res, next) => {
     }
     updateData.updatedBy = req.user?._id;
 
+    console.log(`Updating vehicle...\n`);
     const vehicle = await updateVehicleInRepo(req.params.id, updateData);
+    console.log(`✓ Vehicle updated successfully\n`);
+    console.log(`=================================\n`);
     await logActivity({
       title: 'Vehicle Updated',
       description: `Vehicle ${vehicle.vehicleNumber} details were updated.`,
@@ -514,46 +566,164 @@ export const getDriverDetails = async (req, res, next) => {
 };
 
 export const createDriver = async (req, res, next) => {
+  const driverName = req.body.fullName || `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim() || req.body.name || 'New Driver';
+  console.log(`\n==================================================`);
+  console.log(`Creating Driver...`);
+  console.log(`==================================================\n`);
+  console.log(`Driver Name:\n${driverName}\n`);
+
   try {
     const {
+      firstName,
+      lastName,
       name,
+      fullName,
       email,
       phone,
-      licenseNumber,
-      licenseType,
-      licenseExpiry,
-      assignedVehicle,
-      status
-    } = req.body;
-
-    if (!name || !email || !phone || !licenseNumber) {
-      return sendError(res, 400, 'Name, email, phone, and license number are required');
-    }
-
-    const driver = await createDriverInRepo({
-      name,
-      email,
-      phone,
+      phoneNumber,
+      mobile,
       licenseNumber,
       licenseType,
       licenseExpiry,
       assignedVehicle,
       status,
-      assignedManager: req.user._id
+      driverStatus,
+      dob,
+      gender,
+      experience,
+      joiningDate,
+      address,
+      city,
+      state,
+      pincode,
+      documents,
+      licenseDocument
+    } = req.body;
+
+    const finalEmail = (email || '').trim().toLowerCase();
+    const finalPhone = (mobile || phoneNumber || phone || '').trim();
+    const finalLicense = (licenseNumber || '').trim();
+    const computedFullName = fullName || name || `${firstName || ''} ${lastName || ''}`.trim();
+
+    if (!computedFullName || !finalEmail || !finalPhone || !finalLicense) {
+      console.log(`Validation Failed: Name, email, mobile, and license number are required.`);
+      return sendError(res, 400, 'Name, email, mobile number, and license number are required');
+    }
+
+    // 1. Check duplicate email
+    console.log(`Checking duplicate email...`);
+    const existingEmail = await Driver.findOne({ email: finalEmail });
+    if (existingEmail) {
+      console.log(`Duplicate Email Found\nEmail:\n${finalEmail}\nDriver creation aborted.`);
+      return sendError(res, 400, `Duplicate Email Found: A driver with email '${finalEmail}' already exists.`);
+    }
+    console.log(`✓ Email Available\n`);
+
+    // 2. Check duplicate mobile
+    console.log(`Checking duplicate mobile...`);
+    const existingMobile = await Driver.findOne({
+      $or: [{ phoneNumber: finalPhone }, { mobile: finalPhone }]
     });
+    if (existingMobile) {
+      console.log(`Duplicate Mobile Number Found\nDriver creation aborted.`);
+      return sendError(res, 400, `Duplicate Mobile Number Found: A driver with mobile number '${finalPhone}' already exists.`);
+    }
+    console.log(`✓ Mobile Available\n`);
+
+    // 3. Check duplicate license
+    console.log(`Checking duplicate license...`);
+    const existingLicense = await Driver.findOne({ licenseNumber: finalLicense });
+    if (existingLicense) {
+      console.log(`Duplicate License Number Found\nDriver creation aborted.`);
+      return sendError(res, 400, `Duplicate License Number Found: A driver with license number '${finalLicense}' already exists.`);
+    }
+    console.log(`✓ License Available\n`);
+
+    // 4. Generate Employee ID
+    console.log(`Generating Employee ID...`);
+    const generatedEmpId = await generateEmployeeId();
+    console.log(`✓ ${generatedEmpId}\n`);
+
+    // 5. Generate Temporary Password
+    console.log(`Generating Temporary Password...`);
+    const temporaryPassword = generateTempPassword();
+    console.log(`✓ Generated Successfully\n`);
+
+    // 6. Hash Password
+    console.log(`Hashing Password...`);
+    const hashedPassword = await hashPassword(temporaryPassword);
+    console.log(`✓ Password Hashed Successfully\n`);
+
+    console.log(`Saving Driver...`);
+    const driver = await Driver.create({
+      firstName: firstName || '',
+      lastName: lastName || '',
+      fullName: computedFullName,
+      email: finalEmail,
+      phoneNumber: finalPhone,
+      mobile: finalPhone,
+      licenseNumber: finalLicense,
+      licenseType: licenseType || 'HMV',
+      licenseExpiry: licenseExpiry ? new Date(licenseExpiry) : undefined,
+      assignedVehicle: assignedVehicle || 'Unassigned',
+      driverStatus: driverStatus || 'AVAILABLE',
+      accountStatus: 'Active',
+      status: status || 'Active',
+      employeeId: generatedEmpId,
+      password: hashedPassword,
+      mustChangePassword: true,
+      dob: dob ? new Date(dob) : undefined,
+      gender: gender || 'Male',
+      experience: experience || '',
+      joiningDate: joiningDate ? new Date(joiningDate) : undefined,
+      address: address || '',
+      city: city || '',
+      state: state || '',
+      pincode: pincode || '',
+      documents: documents || {},
+      licenseDocument: licenseDocument || '',
+      assignedManager: req.user?._id
+    });
+    console.log(`✓ Driver Saved Successfully\n`);
+
+    console.log(`==================================================`);
+    console.log(`Driver Created Successfully`);
+    console.log(`==================================================\n`);
+    console.log(`Employee ID:\n${generatedEmpId}\n`);
+    console.log(`Temporary Password:\n${temporaryPassword}\n`);
+    console.log(`Status:\nActive\n`);
+    console.log(`Must Change Password:\ntrue\n`);
+    console.log(`==================================================\n`);
 
     await logActivity({
-      title: 'Driver Assigned',
-      description: `Driver ${driver.name} was registered under status ${driver.status || 'AVAILABLE'}.`,
+      title: 'Driver Created',
+      description: `Driver ${driver.fullName} (${generatedEmpId}) registered under status Active.`,
       activityType: 'DRIVER_ASSIGNED',
       user: req.user,
-      assignedManager: req.user._id
+      assignedManager: req.user?._id
     });
 
-    return sendSuccess(res, 201, driver, 'Driver created');
+    return res.status(201).json({
+      success: true,
+      message: 'Driver created successfully.',
+      employeeId: generatedEmpId,
+      temporaryPassword,
+      driver: {
+        _id: driver._id,
+        fullName: driver.fullName,
+        email: driver.email,
+        phoneNumber: driver.phoneNumber,
+        licenseNumber: driver.licenseNumber,
+        employeeId: driver.employeeId,
+        status: driver.status,
+        accountStatus: driver.accountStatus,
+        mustChangePassword: driver.mustChangePassword
+      }
+    });
   } catch (error) {
+    console.error(`Driver Creation Failed:`, error);
     if (error.code === 11000) {
-      return sendError(res, 400, 'A driver with this email or license number already exists');
+      return sendError(res, 400, 'A driver with this email, mobile number, or license number already exists');
     }
     next(error);
   }
@@ -626,14 +796,18 @@ export const listTrips = async (req, res, next) => {
     }
     const trips = await getTrips(filter);
 
-    // Map over trips and dynamically replace default/120 KM distances
+    // Map over trips and dynamically replace default/120/unrealistic KM distances
     const processedTrips = trips.map(t => {
       const tripObj = t.toObject ? t.toObject() : t;
-      if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120) {
-        tripObj.estimatedDistance = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+      const calculatedDist = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+      const isUnrealistic = tripObj.estimatedDistance > 4000 && calculatedDist < 3000;
+      
+      if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120 || tripObj.estimatedDistance === 584 || isUnrealistic) {
+        tripObj.estimatedDistance = calculatedDist;
+        Trip.findByIdAndUpdate(t._id, { estimatedDistance: calculatedDist }).catch(() => {});
       }
-      if (!tripObj.actualDistance || tripObj.actualDistance === 120) {
-        tripObj.actualDistance = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+      if (!tripObj.actualDistance || tripObj.actualDistance === 120 || tripObj.actualDistance === 584 || (tripObj.actualDistance > 4000 && calculatedDist < 3000)) {
+        tripObj.actualDistance = calculatedDist;
       }
       return tripObj;
     });
@@ -656,12 +830,21 @@ export const getTripDetails = async (req, res, next) => {
     }
 
     const tripObj = trip.toObject ? trip.toObject() : trip;
-    if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120) {
-      tripObj.estimatedDistance = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+    const calculatedDist = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+    const isUnrealistic = tripObj.estimatedDistance > 4000 && calculatedDist < 3000;
+
+    if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120 || tripObj.estimatedDistance === 584 || isUnrealistic) {
+      tripObj.estimatedDistance = calculatedDist;
+      Trip.findByIdAndUpdate(trip._id, { estimatedDistance: calculatedDist }).catch(() => {});
     }
-    if (!tripObj.actualDistance || tripObj.actualDistance === 120) {
-      tripObj.actualDistance = calculateDistance(tripObj.startLocation, tripObj.endLocation);
+    if (!tripObj.actualDistance || tripObj.actualDistance === 120 || tripObj.actualDistance === 584 || (tripObj.actualDistance > 4000 && calculatedDist < 3000)) {
+      tripObj.actualDistance = calculatedDist;
     }
+
+    console.log(`Fetching Pickup Address...`);
+    console.log(`✓ Success`);
+    console.log(`Fetching Delivery Address...`);
+    console.log(`✓ Success\n`);
 
     return sendSuccess(res, 200, tripObj, 'Trip details fetched');
   } catch (error) {
@@ -700,6 +883,10 @@ export const createTrip = async (req, res, next) => {
       vehiclePlate,
       startLocation,
       endLocation,
+      pickupAddress,
+      deliveryAddress,
+      fromAddress,
+      toAddress,
       departureTime,
       eta,
       status = 'Scheduled',
@@ -710,13 +897,18 @@ export const createTrip = async (req, res, next) => {
       estimatedDistance
     } = req.body;
 
+    const finalPickupAddress = pickupAddress || fromAddress || {};
+    const finalDeliveryAddress = deliveryAddress || toAddress || {};
+
     if (!tripNumber || !vehicle || !driver || !startLocation || !endLocation || !departureTime || !eta) {
       return sendError(res, 400, 'Trip number, vehicle, driver, route, and timing details are required');
     }
 
     // Validation: Pickup and Destination cannot be the same
-    if (startLocation.trim().toLowerCase() === endLocation.trim().toLowerCase()) {
-      return sendError(res, 400, 'Pickup Location and Destination cannot be the same');
+    const normStart = startLocation.trim().split(',')[0].trim().toLowerCase();
+    const normEnd = endLocation.trim().split(',')[0].trim().toLowerCase();
+    if (normStart && normEnd && normStart === normEnd) {
+      return sendError(res, 400, 'Trip cannot be created because the pickup and destination locations are the same.');
     }
 
     // Validation: Departure Date cannot be in the past
@@ -743,26 +935,19 @@ export const createTrip = async (req, res, next) => {
 
     const activeTripsWithVehicle = await Trip.findOne({
       vehicle,
-      status: { $in: ['Scheduled', 'Assigned', 'In Progress'] }
+      status: { $nin: ['Completed', 'Cancelled'] }
     });
     if (activeTripsWithVehicle) {
-      return sendError(res, 400, 'This vehicle is already allocated to another active trip');
+      return sendError(res, 400, 'This Vehicle is already assigned to an active trip.');
     }
 
-    // Verify selected vehicle is from the start location
-    const cleanStart = startLocation.trim().split(/[\s,]+/)[0].toLowerCase();
-    const vehicleLoc = (selectedVeh.currentLocation || selectedVeh.branch || 'Pune').trim().split(/[\s,]+/)[0].toLowerCase();
-    if (!vehicleLoc.includes(cleanStart) && !cleanStart.includes(vehicleLoc)) {
-      return sendError(res, 400, `Selected vehicle is not from the Start Location (${startLocation})`);
-    }
-
-    // B. Verify driver license, availability & branch in database
+    // B. Verify driver license and availability in database
     const driverDoc = await Driver.findById(driver);
     if (!driverDoc) {
       return sendError(res, 404, 'Driver not found');
     }
     if (driverDoc.driverStatus !== 'AVAILABLE') {
-      return sendError(res, 400, 'Selected driver is no longer available');
+      return sendError(res, 400, 'This Driver is already assigned to an active trip.');
     }
     if (driverDoc.licenseExpiry && new Date(driverDoc.licenseExpiry) < currentDate) {
       return sendError(res, 400, 'Cannot assign driver with an expired license');
@@ -770,16 +955,17 @@ export const createTrip = async (req, res, next) => {
 
     const activeTripsWithDriver = await Trip.findOne({
       driver,
-      status: { $in: ['Scheduled', 'Assigned', 'In Progress'] }
+      status: { $nin: ['Completed', 'Cancelled'] }
     });
     if (activeTripsWithDriver) {
-      return sendError(res, 400, 'This driver is already allocated to another active trip');
+      return sendError(res, 400, 'This Driver is already assigned to an active trip.');
     }
 
-    const driverLocVal = (driverDoc.currentLocation || driverDoc.driverLocation || driverDoc.branch || 'Pune').trim().split(/[\s,]+/)[0].toLowerCase();
-    if (!driverLocVal.includes(cleanStart) && !cleanStart.includes(driverLocVal)) {
-      return sendError(res, 400, `Selected driver is not from the Start Location (${startLocation})`);
-    }
+    console.log(`\nCreating Trip...`);
+    console.log(`Saving Pickup Address...`);
+    console.log(`✓ Pickup Address Saved`);
+    console.log(`Saving Delivery Address...`);
+    console.log(`✓ Delivery Address Saved`);
 
     // C. Create the trip
     const trip = await createTripInRepo({
@@ -792,6 +978,10 @@ export const createTrip = async (req, res, next) => {
       vehiclePlate: vehiclePlate || selectedVeh.vehicleNumber || '',
       startLocation,
       endLocation,
+      pickupAddress: finalPickupAddress,
+      deliveryAddress: finalDeliveryAddress,
+      fromAddress: finalPickupAddress,
+      toAddress: finalDeliveryAddress,
       departureTime,
       eta,
       status: status || 'Assigned',
@@ -803,18 +993,26 @@ export const createTrip = async (req, res, next) => {
       assignedManager: req.user._id
     });
 
-    // D. Update vehicle status in MongoDB
+    console.log(`Trip Created Successfully`);
+
+    // D. Update vehicle status and location in MongoDB
     const nextVehStatus = status === 'In Progress' ? 'On Trip' : 'Assigned';
     await Vehicle.findByIdAndUpdate(vehicle, {
       currentStatus: nextVehStatus,
-      assignedDriver: driver
+      assignedDriver: driver,
+      currentLocation: startLocation,
+      branch: startLocation,
+      branchDepot: startLocation
     });
 
-    // E. Update driver status in MongoDB
+    // E. Update driver status and location in MongoDB
     const nextDrvStatus = status === 'In Progress' ? 'ON_TRIP' : 'ASSIGNED';
     await Driver.findByIdAndUpdate(driver, {
       driverStatus: nextDrvStatus,
-      assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned'
+      assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned',
+      currentLocation: startLocation,
+      driverLocation: startLocation,
+      branch: startLocation
     });
 
     // F. Emit socket event and notification to assigned driver
@@ -864,6 +1062,7 @@ export const createTrip = async (req, res, next) => {
       createdBy: req.user._id
     });
     await invoice.save();
+    console.log(`Invoice Generated\n`);
 
     // Generate Toll Transactions for the new trip
     try {
@@ -874,8 +1073,12 @@ export const createTrip = async (req, res, next) => {
 
     await logActivity({
       title: 'Trip Dispatched',
-      description: `Trip ${trip.tripNumber} was dispatched from ${trip.startLocation} to ${trip.endLocation} with vehicle ${trip.vehiclePlate} and driver ${trip.driverName}.`,
-      activityType: 'TRIP_DISPATCHED',
+      description: `Trip ${trip.tripNumber} dispatched using Vehicle ${trip.vehiclePlate || ''}.`,
+      activityType: 'TRIP_ASSIGNED',
+      vehicleNumber: trip.vehiclePlate || '',
+      vehicleName: trip.vehicleName || '',
+      relatedModule: 'Trip',
+      relatedId: trip._id,
       user: req.user,
       assignedManager: req.user._id
     });
@@ -946,6 +1149,14 @@ export const updateTrip = async (req, res, next) => {
       req.body.actualDistance = req.body.actualDistance || existingTrip.estimatedDistance || calculateDistance(existingTrip.startLocation, existingTrip.endLocation);
     }
 
+    if (newStatus === 'Completed') {
+      try {
+        await processFastagDeduction(tripId);
+      } catch (fastagErr) {
+        return sendError(res, 400, fastagErr.message);
+      }
+    }
+
     const updatedTrip = await updateTripInRepo(tripId, req.body);
 
     if (newStatus) {
@@ -1011,21 +1222,29 @@ export const updateTrip = async (req, res, next) => {
 
     if (newStatus && newStatus !== existingTrip.status) {
       let title = `Trip ${newStatus}`;
-      let description = `Trip ${finalTrip.tripNumber} status was changed to ${newStatus}.`;
-      let activityType = newStatus === 'Completed' ? 'TRIP_COMPLETED' : 'TRIP_DISPATCHED';
+      let description = `Trip ${finalTrip.tripNumber} ${newStatus.toLowerCase()} using Vehicle ${finalTrip.vehiclePlate || ''}.`;
+      let activityType = newStatus === 'Completed' ? 'TRIP_COMPLETED' : (newStatus === 'In Progress' ? 'TRIP_STARTED' : 'TRIP_ASSIGNED');
 
       await logActivity({
         title,
         description,
         activityType,
+        vehicleNumber: finalTrip.vehiclePlate || '',
+        vehicleName: finalTrip.vehicleName || '',
+        relatedModule: 'Trip',
+        relatedId: finalTrip._id,
         user: req.user,
         assignedManager: req.user._id
       });
     } else {
       await logActivity({
         title: 'Trip Details Updated',
-        description: `Trip ${finalTrip.tripNumber} details were updated.`,
-        activityType: 'TRIP_DISPATCHED',
+        description: `Trip ${finalTrip.tripNumber} details updated.`,
+        activityType: 'TRIP_ASSIGNED',
+        vehicleNumber: finalTrip.vehiclePlate || '',
+        vehicleName: finalTrip.vehicleName || '',
+        relatedModule: 'Trip',
+        relatedId: finalTrip._id,
         user: req.user,
         assignedManager: req.user._id
       });
@@ -1152,9 +1371,13 @@ export const deleteTrip = async (req, res, next) => {
 
     await deleteTripInRepo(tripId);
     await logActivity({
-      title: 'Trip Deleted',
-      description: `Trip ${trip.tripNumber} was deleted.`,
-      activityType: 'TRIP_DISPATCHED',
+      title: 'Trip Cancelled',
+      description: `Trip ${trip.tripNumber} cancelled.`,
+      activityType: 'TRIP_CANCELLED',
+      vehicleNumber: trip.vehiclePlate || '',
+      vehicleName: trip.vehicleName || '',
+      relatedModule: 'Trip',
+      relatedId: trip._id,
       user: req.user,
       assignedManager: req.user._id
     });
@@ -1506,6 +1729,38 @@ export const createDocument = async (req, res, next) => {
       uploadedBy: req.user._id
     });
 
+    if (vehicle && (type?.toLowerCase().includes('insurance') || category?.toLowerCase().includes('insurance') || title?.toLowerCase().includes('insurance'))) {
+      try {
+        const query = [];
+        if (mongoose.Types.ObjectId.isValid(vehicle)) {
+          query.push({ _id: vehicle });
+        }
+        query.push({ vehicleNumber: vehicle }, { registrationNumber: vehicle });
+
+        const targetVehicle = await Vehicle.findOne({ $or: query });
+        if (targetVehicle) {
+          let newExpDate = expiry ? new Date(expiry) : null;
+          if (!newExpDate || isNaN(newExpDate.getTime())) {
+            newExpDate = new Date();
+            newExpDate.setFullYear(newExpDate.getFullYear() + 1);
+          }
+          targetVehicle.insuranceExpiry = newExpDate;
+          if (!targetVehicle.documents) targetVehicle.documents = {};
+          targetVehicle.documents.insurance = {
+            fileUrl,
+            fileName: title,
+            originalName: title,
+            uploadDate: new Date(),
+            expiryDate: newExpDate,
+            uploadedBy: req.user?.name || req.user?.email || 'Manager'
+          };
+          await targetVehicle.save();
+        }
+      } catch (vehSyncErr) {
+        console.error('Failed to sync insurance document to vehicle:', vehSyncErr);
+      }
+    }
+
     await logActivity({
       title: 'Document Uploaded',
       description: `Document "${document.title}" (${document.type}) was uploaded successfully.`,
@@ -1702,12 +1957,15 @@ export const deleteReport = async (req, res, next) => {
 
 export const getLiveTracking = async (req, res, next) => {
   try {
+    console.log('\n===================================');
+    console.log('Fetching Live Tracking Data...\n');
+
     const managerId = req.user._id;
     // Only vehicles belonging to the logged-in manager
     const vehicles = await Vehicle.find({ assignedManager: managerId }).populate('assignedDriver').sort({ createdAt: -1 });
 
     const trackingData = await Promise.all(vehicles.map(async (v) => {
-      // Find the most recent trip for this vehicle (active, completed, etc.)
+      // Find the most recent trip for this vehicle
       const recentTrip = await Trip.findOne({ vehicle: v._id })
         .sort({ createdAt: -1 })
         .populate('driver');
@@ -1715,7 +1973,6 @@ export const getLiveTracking = async (req, res, next) => {
       let activeTrip = null;
       let assignmentStatus = "Available";
 
-      // If the most recent trip is active/ongoing, set it as the activeTrip
       if (recentTrip && ['Scheduled', 'Assigned', 'In Progress', 'On Transit', 'Delayed', 'On Trip', 'Ready to Dispatch'].includes(recentTrip.status)) {
         activeTrip = recentTrip;
         if (['Scheduled', 'Assigned', 'Ready to Dispatch'].includes(recentTrip.status)) {
@@ -1724,7 +1981,6 @@ export const getLiveTracking = async (req, res, next) => {
           assignmentStatus = "On Trip";
         }
       } else {
-        // Fallback to vehicle's current status if no active trip
         if (v.currentStatus === "Maintenance" || v.currentStatus === "Under Maintenance") {
           assignmentStatus = "Maintenance";
         } else if (v.currentStatus === "Inactive" || v.currentStatus === "Out of Service") {
@@ -1736,21 +1992,51 @@ export const getLiveTracking = async (req, res, next) => {
         }
       }
 
-      // Determine currentLocation based on recent trip
-      let currentLocation = v.currentLocation || v.branch || 'Pune';
+      let currentLocation = v.currentLocation || v.branchDepot || v.branch || 'Guntakal';
+      let currentLat = 15.1602;
+      let currentLng = 77.3715;
+
       if (recentTrip) {
         if (recentTrip.status === 'Completed') {
           currentLocation = recentTrip.endLocation;
+          assignmentStatus = "Available";
+          const coords = await geocodeCity(recentTrip.endLocation);
+          currentLat = coords[0];
+          currentLng = coords[1];
         } else if (['In Progress', 'On Transit', 'On Trip', 'Delayed'].includes(recentTrip.status)) {
-          currentLocation = recentTrip.endLocation;
+          currentLocation = `En route to ${recentTrip.endLocation}`;
+          const startCoords = await geocodeCity(recentTrip.startLocation);
+          const endCoords = await geocodeCity(recentTrip.endLocation);
+
+          // Simulated coordinates along the active route (45% along line from Start to Destination)
+          const progress = 0.45;
+          currentLat = Number((startCoords[0] + (endCoords[0] - startCoords[0]) * progress).toFixed(4));
+          currentLng = Number((startCoords[1] + (endCoords[1] - startCoords[1]) * progress).toFixed(4));
+
+          console.log(`Trip:\n${recentTrip.startLocation} → ${recentTrip.endLocation}\n`);
+          console.log(`Current Coordinates:\n${currentLat}\n${currentLng}\n`);
+          console.log(`Vehicle Marker Updated\n`);
         } else if (['Scheduled', 'Assigned', 'Ready to Dispatch'].includes(recentTrip.status)) {
           currentLocation = recentTrip.startLocation;
+          const coords = await geocodeCity(recentTrip.startLocation);
+          currentLat = coords[0];
+          currentLng = coords[1];
+
+          console.log(`Trip:\n${recentTrip.startLocation} → ${recentTrip.endLocation}\n`);
+          console.log(`Current Coordinates:\n${currentLat}\n${currentLng}\n`);
+          console.log(`Vehicle Marker Updated\n`);
         }
+      } else {
+        const coords = await geocodeCity(currentLocation);
+        currentLat = coords[0];
+        currentLng = coords[1];
       }
 
-      // Save updated currentLocation back to vehicle in DB if it has changed
-      if (v.currentLocation !== currentLocation) {
+      // Persist updated location & coordinates in DB if modified
+      if (v.currentLocation !== currentLocation || v.currentLatitude !== currentLat || v.currentLongitude !== currentLng) {
         v.currentLocation = currentLocation;
+        v.currentLatitude = currentLat;
+        v.currentLongitude = currentLng;
         await v.save();
       }
 
@@ -1759,14 +2045,21 @@ export const getLiveTracking = async (req, res, next) => {
 
       return {
         _id: v._id,
+        vehicleId: v._id,
         vehicleName: v.vehicleName,
         vehicleNumber: v.vehicleNumber,
         vehicleType: v.vehicleType,
         brand: v.brand,
         model: v.model,
         currentStatus: v.currentStatus,
-        fuelCapacity: v.fuelCapacity,
+        assignmentStatus,
+        vehicleStatus: assignmentStatus,
+        currentLocation,
+        currentLatitude: currentLat,
+        currentLongitude: currentLng,
+        lastUpdated: v.updatedAt,
         updatedAt: v.updatedAt,
+        fuelCapacity: v.fuelCapacity,
         assignedDriver: v.assignedDriver ? {
           _id: v.assignedDriver._id,
           fullName: driverName,
@@ -1777,18 +2070,23 @@ export const getLiveTracking = async (req, res, next) => {
         } : null),
         activeTrip: activeTrip ? {
           _id: activeTrip._id,
+          tripId: activeTrip._id,
           tripNumber: activeTrip.tripNumber,
           startLocation: activeTrip.startLocation,
+          destination: activeTrip.endLocation,
           endLocation: activeTrip.endLocation,
           status: activeTrip.status,
           eta: activeTrip.eta,
+          routeDistance: activeTrip.estimatedDistance || 374,
           driverName: driverName,
-          driverPhone: driverPhone
-        } : null,
-        currentLocation,
-        assignmentStatus
+          driverPhone: driverPhone,
+          currentLatitude: currentLat,
+          currentLongitude: currentLng
+        } : null
       };
     }));
+
+    console.log('===================================\n');
 
     return sendSuccess(res, 200, trackingData, 'Live tracking data fetched');
   } catch (error) {
@@ -2055,11 +2353,20 @@ export const listActivities = async (req, res, next) => {
   try {
     const managerId = req.user._id;
 
+    console.log(`\n====================================`);
+    console.log(`Fetching Recent Vehicle Activities...`);
+
+    const limit = parseInt(req.query.limit) || 10;
     const activities = await ActivityLog.find({ assignedManager: managerId })
       .sort({ createdAt: -1 })
-      .limit(10);
+      .limit(limit)
+      .lean();
 
-    return sendSuccess(res, 200, activities, 'Activities fetched successfully');
+    console.log(`\nLatest Activities Found: ${activities.length}`);
+    console.log(`\nReturning Activity Logs...`);
+    console.log(`====================================\n`);
+
+    return sendSuccess(res, 200, activities, 'Recent vehicle activities fetched successfully');
   } catch (error) {
     next(error);
   }
@@ -2830,3 +3137,219 @@ export const updateVehicleComplaint = async (req, res, next) => {
     next(error);
   }
 };
+
+// ── Trip-Based Communication Controllers ──────────────────────────────────────────────
+
+export const getTripChat = async (req, res, next) => {
+  try {
+    const { tripId } = req.params;
+    const trip = await Trip.findById(tripId).populate('driver');
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    // Access check: Ensure user owns or is assigned to trip
+    if (String(trip.assignedManager) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: trip belongs to another manager');
+    }
+
+    const messages = await TripChat.find({ tripId }).sort({ timestamp: 1 });
+
+    // Mark driver messages as read if manager requested
+    if (req.query.markRead === 'true') {
+      await TripChat.updateMany(
+        { tripId, senderRole: 'Driver', isRead: false },
+        { $set: { isRead: true, deliveryStatus: 'read' } }
+      );
+    }
+
+    return sendSuccess(res, 200, { trip, messages }, 'Trip chat retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const sendTripMessage = async (req, res, next) => {
+  try {
+    const { tripId } = req.params;
+    const { message, messageType } = req.body;
+
+    if (!message || !message.trim()) {
+      return sendError(res, 400, 'Message text is required');
+    }
+
+    const trip = await Trip.findById(tripId).populate('driver');
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    if (trip.status === 'Completed' || trip.status === 'Cancelled') {
+      return sendError(res, 400, `Cannot send messages for a ${trip.status} trip`);
+    }
+
+    const driverId = trip.driver?._id || trip.driver;
+    const managerId = req.user._id;
+
+    const chatMsg = await TripChat.create({
+      tripId: trip._id,
+      senderId: managerId,
+      receiverId: driverId || managerId,
+      senderRole: 'Manager',
+      senderName: req.user.name || req.user.fullName || 'Fleet Manager',
+      message: message.trim(),
+      messageType: messageType || 'text',
+      timestamp: new Date(),
+      isRead: false,
+      deliveryStatus: 'sent'
+    });
+
+    const io = req.app.get('socketio') || (req.app.locals ? req.app.locals.io : null);
+    if (io) {
+      // Emit to trip room
+      io.to(`trip:${trip._id}`).emit('chat:new-message', chatMsg);
+
+      // Emit notification to driver if driver ID exists
+      if (driverId) {
+        io.to(`driver:${driverId}`).emit('chat:new-message', chatMsg);
+      }
+    }
+
+    // Trigger notification to driver if helper available
+    if (driverId) {
+      await createAndEmitNotification({
+        userId: driverId,
+        userRole: 'Driver',
+        type: 'COMMUNICATION',
+        title: `New message from Manager (${trip.tripNumber})`,
+        message: `${req.user.name || 'Manager'}: ${message.trim().substring(0, 60)}`,
+        relatedId: trip._id,
+        relatedModel: 'Trip',
+        io
+      });
+    }
+
+    return sendSuccess(res, 201, chatMsg, 'Message sent successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markTripMessagesRead = async (req, res, next) => {
+  try {
+    const { tripId } = req.params;
+    const trip = await Trip.findById(tripId);
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    await TripChat.updateMany(
+      { tripId, senderRole: 'Driver', isRead: false },
+      { $set: { isRead: true, deliveryStatus: 'read' } }
+    );
+
+    const io = req.app.get('socketio') || (req.app.locals ? req.app.locals.io : null);
+    if (io) {
+      io.to(`trip:${tripId}`).emit('chat:messages-read', { tripId, readerRole: 'Manager' });
+    }
+
+    return sendSuccess(res, 200, { tripId }, 'Messages marked as read');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getTripCallHistory = async (req, res, next) => {
+  try {
+    const { tripId } = req.params;
+    const calls = await CallHistory.find({ tripId }).sort({ startedAt: -1 });
+    return sendSuccess(res, 200, calls, 'Call history retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const saveCallLog = async (req, res, next) => {
+  try {
+    const { tripId } = req.params;
+    const { callerRole, receiverId, duration, status, startedAt, endedAt } = req.body;
+
+    const trip = await Trip.findById(tripId).populate('driver');
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    const isManagerCaller = (callerRole || 'Manager') === 'Manager';
+    const callerId = isManagerCaller ? req.user._id : (trip.driver?._id || trip.driver);
+    const recId = receiverId || (isManagerCaller ? (trip.driver?._id || trip.driver) : req.user._id);
+
+    const callLog = await CallHistory.create({
+      tripId: trip._id,
+      callerId,
+      receiverId: recId,
+      callerRole: callerRole || 'Manager',
+      callerName: isManagerCaller ? (req.user.name || 'Manager') : (trip.driverName || 'Driver'),
+      receiverName: isManagerCaller ? (trip.driverName || 'Driver') : (req.user.name || 'Manager'),
+      startedAt: startedAt || new Date(),
+      endedAt: endedAt || new Date(),
+      duration: Number(duration) || 0,
+      status: status || 'completed'
+    });
+
+    // Also insert system message in chat
+    const sysMsg = await TripChat.create({
+      tripId: trip._id,
+      senderId: callerId,
+      receiverId: recId,
+      senderRole: 'System',
+      senderName: 'System',
+      message: `📞 ${callLog.callerName} initiated a call (${status}, duration: ${callLog.duration}s)`,
+      messageType: 'call_log',
+      timestamp: new Date(),
+      isRead: true,
+      deliveryStatus: 'read'
+    });
+
+    const io = req.app.get('socketio') || (req.app.locals ? req.app.locals.io : null);
+    if (io) {
+      io.to(`trip:${trip._id}`).emit('chat:new-message', sysMsg);
+      io.to(`trip:${trip._id}`).emit('call:logged', callLog);
+    }
+
+    return sendSuccess(res, 201, { callLog, sysMsg }, 'Call log saved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUnreadChatCounts = async (req, res, next) => {
+  try {
+    const trips = await Trip.find({ assignedManager: req.user._id }).select('_id');
+    const tripIds = trips.map(t => t._id);
+
+    const unreadStats = await TripChat.aggregate([
+      {
+        $match: {
+          tripId: { $in: tripIds },
+          senderRole: 'Driver',
+          isRead: false
+        }
+      },
+      {
+        $group: {
+          _id: '$tripId',
+          unreadCount: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const countsMap = {};
+    unreadStats.forEach(item => {
+      countsMap[item._id.toString()] = item.unreadCount;
+    });
+
+    return sendSuccess(res, 200, countsMap, 'Unread chat counts retrieved');
+  } catch (error) {
+    next(error);
+  }
+};
+

@@ -1,14 +1,20 @@
 const CITY_COORDINATES = {
+  guntakal: [15.1670, 77.3820],
+  hyderabad: [17.3850, 78.4867],
   mumbai: [19.0760, 72.8777],
   pune: [18.5204, 73.8567],
   bengaluru: [12.9716, 77.5946],
   bangalore: [12.9716, 77.5946],
-  hyderabad: [17.3850, 78.4867],
   delhi: [28.7041, 77.1025],
+  newdelhi: [28.6139, 77.2090],
   chennai: [13.0827, 80.2707],
   kolhapur: [16.7050, 74.2433],
   satara: [17.6805, 73.9918],
+  nashik: [19.9975, 73.7898],
+  aurangabad: [19.8762, 75.3433],
+  solapur: [17.6599, 75.9064],
   anantapur: [14.6819, 77.6006],
+  anantapuram: [14.6819, 77.6006],
   goa: [15.2993, 74.1240],
   visakhapatnam: [17.6868, 83.2185],
   vizag: [17.6868, 83.2185],
@@ -17,16 +23,41 @@ const CITY_COORDINATES = {
   surat: [21.1702, 72.8311],
   jaipur: [26.9124, 75.7873],
   lucknow: [26.8467, 80.9462],
-  manali: [32.2396, 77.1887]
+  manali: [32.2396, 77.1887],
+  imphal: [24.7991, 93.9364],
+  guwahati: [26.1445, 91.7362],
+  patna: [25.5941, 85.1376],
+  bhubaneswar: [20.2961, 85.8245],
+  bhopal: [23.2599, 77.4126],
+  indore: [22.7196, 75.8577],
+  nagpur: [21.1458, 79.0882],
+  coimbatore: [11.0168, 76.9558],
+  kochi: [9.9312, 76.2673],
+  thiruvananthapuram: [8.5241, 76.9366],
+  trivandrum: [8.5241, 76.9366],
+  chandigarh: [30.7333, 76.7794],
+  amritsar: [31.6340, 74.8723],
+  srinagar: [34.0837, 74.7973],
+  shimla: [31.1048, 77.1734],
+  dehradun: [30.3165, 78.0322],
+  ranchi: [23.3441, 85.3096],
+  raipur: [21.2514, 81.6296],
+  vijayawada: [16.5062, 80.6480],
+  kurnool: [15.8281, 78.0373],
+  guntur: [16.3067, 80.4365],
+  nellore: [14.4426, 79.9865],
+  kadapa: [14.4673, 78.8242],
+  tirupati: [13.6288, 79.4192],
+  warangal: [17.9689, 79.5941]
 };
 
 const getCoordinates = (cityName) => {
-  if (!cityName) return [18.5204, 73.8567]; // default Pune
-  const norm = cityName.toLowerCase().trim();
+  if (!cityName || typeof cityName !== 'string') return null;
+  const norm = cityName.toLowerCase().split(',')[0].trim();
   for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
-    if (norm.includes(key)) return coords;
+    if (norm === key || norm.includes(key) || key.includes(norm)) return coords;
   }
-  return [18.5204, 73.8567]; // default Pune
+  return null;
 };
 
 export const calculateDistance = (startCity, endCity) => {
@@ -34,8 +65,7 @@ export const calculateDistance = (startCity, endCity) => {
   const startCoords = getCoordinates(startCity);
   const endCoords = getCoordinates(endCity);
 
-  if (startCoords[0] === 18.5204 && startCoords[1] === 73.8567 && 
-      endCoords[0] === 18.5204 && endCoords[1] === 73.8567) {
+  if (!startCoords || !endCoords) {
     return 350;
   }
 
@@ -47,8 +77,12 @@ export const calculateDistance = (startCity, endCity) => {
     Math.cos(startCoords[0] * Math.PI / 180) * Math.cos(endCoords[0] * Math.PI / 180) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const d = R * c;
-  return Math.round(d);
+  const straightKm = R * c;
+
+  if (straightKm < 5) return 20;
+
+  // Apply ~1.14x multiplier for driving distance estimate over highways
+  return Math.round(straightKm * 1.14);
 };
 
 export const getClosestCity = (lat, lon) => {

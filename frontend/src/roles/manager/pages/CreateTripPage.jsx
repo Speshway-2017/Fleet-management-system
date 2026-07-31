@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -17,65 +17,23 @@ import {
   Search,
   DollarSign,
   Activity,
-  Wallet
+  Wallet,
+  Navigation,
+  Phone,
+  Building2,
+  Trash2,
+  Check,
+  AlertTriangle
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { formatDisplayLocation } from "@/utils/locationFormatter";
+import { formatEmployeeId } from "@/utils/employeeIdFormatter";
 import { useAuth } from "@/context/AuthContext";
 import { managerApi } from "../api/managerApi";
-
-const CITY_COORDINATES = {
-  mumbai: [19.0760, 72.8777],
-  pune: [18.5204, 73.8567],
-  bengaluru: [12.9716, 77.5946],
-  bangalore: [12.9716, 77.5946],
-  hyderabad: [17.3850, 78.4867],
-  delhi: [28.7041, 77.1025],
-  chennai: [13.0827, 80.2707],
-  kolhapur: [16.7050, 74.2433],
-  satara: [17.6805, 73.9918],
-  anantapur: [14.6819, 77.6006],
-  goa: [15.2993, 74.1240],
-  visakhapatnam: [17.6868, 83.2185],
-  vizag: [17.6868, 83.2185],
-  kolkata: [22.5726, 88.3639],
-  ahmedabad: [23.0225, 72.5714],
-  surat: [21.1702, 72.8311],
-  jaipur: [26.9124, 75.7873],
-  lucknow: [26.8467, 80.9462],
-  manali: [32.2396, 77.1887]
-};
-
-const getCoordinates = (cityName) => {
-  if (!cityName) return [18.5204, 73.8567];
-  const norm = cityName.toLowerCase().trim();
-  for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
-    if (norm.includes(key)) return coords;
-  }
-  return [18.5204, 73.8567];
-};
-
-const calculateDistance = (startCity, endCity) => {
-  if (!startCity || !endCity) return 0;
-  const startCoords = getCoordinates(startCity);
-  const endCoords = getCoordinates(endCity);
-
-  if (startCoords[0] === 18.5204 && startCoords[1] === 73.8567 && 
-      endCoords[0] === 18.5204 && endCoords[1] === 73.8567) {
-    return 350;
-  }
-
-  const R = 6371;
-  const dLat = (endCoords[0] - startCoords[0]) * Math.PI / 180;
-  const dLon = (endCoords[1] - startCoords[1]) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(startCoords[0] * Math.PI / 180) * Math.cos(endCoords[0] * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const d = R * c;
-  return Math.round(d);
-};
+import { calculateDrivingRoute, calculateEtaFromDuration } from "../services/routingService";
+import { INDIAN_STATES, getCitiesForState, getStateForCity } from "@/constants/indianStates";
+import { cleanCityName } from "@/utils/locationFormatter";
 
 const CITIES_SUGGESTIONS = [
   "Ahmedabad",
@@ -91,6 +49,118 @@ const CITIES_SUGGESTIONS = [
   "Vijayawada",
   "Visakhapatnam"
 ];
+
+function SearchableSelect({
+  label,
+  required,
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select...",
+  error,
+  disabled = false
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredOptions = options.filter((opt) => {
+    const optName = typeof opt === "object" ? opt.name : opt;
+    return String(optName).toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  const handleSelect = (optVal) => {
+    const valStr = typeof optVal === "object" ? optVal.name : optVal;
+    onChange(valStr);
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium text-left flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 ${disabled
+            ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+            : error
+              ? "border-red-300 focus:border-red-500 text-[#1E293B]"
+              : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+          }`}
+      >
+        <span className={value ? "text-[#1E293B] font-semibold font-poppins" : "text-gray-400 font-normal font-poppins"}>
+          {value || placeholder}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-[#64748B] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 mt-1.5 w-full bg-white border border-[#E7EAF0] rounded-xl shadow-lg overflow-hidden py-2 animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="px-2.5 pb-2 border-b border-[#E7EAF0]">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#94A3B8]" />
+              <input
+                type="text"
+                autoFocus
+                placeholder={`Search ${label.toLowerCase()}...`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-[#E7EAF0] rounded-lg text-xs focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-poppins"
+              />
+            </div>
+          </div>
+
+          <div className="max-h-48 overflow-y-auto custom-scrollbar py-1">
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-2.5 text-xs text-gray-400 text-center font-medium font-poppins">
+                No matching options found
+              </div>
+            ) : (
+              filteredOptions.map((opt, idx) => {
+                const optStr = typeof opt === "object" ? opt.name : opt;
+                const isSelected = value === optStr;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSelect(opt)}
+                    className={`w-full px-3.5 py-2 text-left text-xs flex items-center justify-between font-poppins transition-colors ${isSelected
+                        ? "bg-amber-50 text-[#B45A0A] font-bold"
+                        : "text-[#1E293B] hover:bg-gray-50 font-medium"
+                      }`}
+                  >
+                    <span>{optStr}</span>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-[#B45A0A]" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+          <span>•</span> {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function CreateTripPage() {
   const navigate = useNavigate();
@@ -111,6 +181,8 @@ export default function CreateTripPage() {
   // Filters
   const [filterAvailableVehicles, setFilterAvailableVehicles] = useState(true);
   const [filterAvailableDrivers, setFilterAvailableDrivers] = useState(true);
+  const [isNearbyVehiclesFallback, setIsNearbyVehiclesFallback] = useState(false);
+  const [isNearbyDriversFallback, setIsNearbyDriversFallback] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
@@ -122,6 +194,27 @@ export default function CreateTripPage() {
   const [status, setStatus] = useState("Scheduled");
   const [description, setDescription] = useState("");
 
+  const normalizeCityName = (loc) => {
+    if (!loc || typeof loc !== 'string') return '';
+    return loc.trim().split(',')[0].trim().toLowerCase();
+  };
+
+  const isSameLocation = (start, end) => {
+    const normStart = normalizeCityName(start);
+    const normEnd = normalizeCityName(end);
+    return !!(normStart && normEnd && normStart === normEnd);
+  };
+
+  const isSameLocError = isSameLocation(startLocation, endLocation);
+
+  useEffect(() => {
+    if (isSameLocError) {
+      toast.error("Trip cannot be created because the pickup and destination locations are the same.", {
+        id: "same-location-warning"
+      });
+    }
+  }, [startLocation, endLocation, isSameLocError]);
+
   const [departureError, setDepartureError] = useState("");
   const [etaError, setEtaError] = useState("");
 
@@ -129,6 +222,176 @@ export default function CreateTripPage() {
   const [showStartSuggestions, setShowStartSuggestions] = useState(false);
   const [endSuggestions, setEndSuggestions] = useState([]);
   const [showEndSuggestions, setShowEndSuggestions] = useState(false);
+
+  // Address States for Logistics & Invoice
+  const [pickupAddress, setPickupAddress] = useState({
+    companyName: "",
+    contactPerson: "",
+    mobile: "",
+    streetAddress: "",
+    area: "",
+    city: "",
+    state: "",
+    pincode: ""
+  });
+
+  const [deliveryAddress, setDeliveryAddress] = useState({
+    companyName: "",
+    contactPerson: "",
+    mobile: "",
+    streetAddress: "",
+    area: "",
+    city: "",
+    state: "",
+    pincode: ""
+  });
+
+  const [pickupErrors, setPickupErrors] = useState({});
+  const [deliveryErrors, setDeliveryErrors] = useState({});
+
+  const validateAddressField = (type, field, val) => {
+    let err = "";
+    if (field === 'companyName') {
+      if (!val || !val.trim()) err = "Company Name is required.";
+    } else if (field === 'contactPerson') {
+      if (!val || !val.trim()) err = "Contact Person is required.";
+    } else if (field === 'mobile') {
+      if (!val) err = "Mobile Number is required.";
+      else if (!/^\d{10}$/.test(val)) err = "Mobile number must be exactly 10 digits.";
+    } else if (field === 'streetAddress') {
+      if (!val || !val.trim()) err = "Street Address is required.";
+      else if (val.trim().length < 10) err = "Street Address must be at least 10 characters.";
+    } else if (field === 'city') {
+      if (!val || !val.trim()) err = "City is required.";
+    } else if (field === 'state') {
+      if (!val || !val.trim()) err = "State is required.";
+    } else if (field === 'pincode') {
+      if (!val) err = "Pincode is required.";
+      else if (!/^\d{6}$/.test(val)) err = "Pincode must be exactly 6 digits.";
+    }
+    return err;
+  };
+
+  const handleAddressChange = (type, field, val) => {
+    if (type === 'pickup') {
+      setPickupAddress(prev => ({ ...prev, [field]: val }));
+      const err = validateAddressField('pickup', field, val);
+      setPickupErrors(prev => ({ ...prev, [field]: err }));
+    } else {
+      setDeliveryAddress(prev => ({ ...prev, [field]: val }));
+      const err = validateAddressField('delivery', field, val);
+      setDeliveryErrors(prev => ({ ...prev, [field]: err }));
+    }
+  };
+
+  const handleUseCurrentBranch = () => {
+    const rawCity = (startLocation.trim() || user?.city || user?.branch || "Pune").split(',')[0].trim();
+    const city = cleanCityName(rawCity) || "Pune";
+
+    let state = user?.state || "";
+    if (!state || !INDIAN_STATES.some(s => s.name.toLowerCase() === state.trim().toLowerCase())) {
+      state = getStateForCity(city) || "Maharashtra";
+    }
+
+    const pincodeMap = {
+      Hyderabad: "500001",
+      Pune: "411001",
+      Visakhapatnam: "530001",
+      Mumbai: "400001",
+      Bengaluru: "560001",
+      Chennai: "600001",
+      Delhi: "110001",
+      Tirupati: "517501"
+    };
+
+    const newAddress = {
+      companyName: user?.companyName || user?.fullName || "Speshway Logistics Pvt Ltd",
+      contactPerson: user?.fullName || user?.name || "G Sai Kiran",
+      mobile: (user?.mobile || user?.phone || "9876543210").replace(/\D/g, '').slice(0, 10),
+      streetAddress: user?.branchAddress || user?.address || "Plot 42, Central Freight Yard, Highway Zone",
+      area: user?.area || user?.branchArea || "Industrial Area",
+      state: state,
+      city: city,
+      pincode: user?.pincode || pincodeMap[city] || "411001"
+    };
+    setPickupAddress(newAddress);
+    setPickupErrors({});
+    toast.success(`Pickup address populated for ${city}, ${state}.`);
+  };
+
+  const handleClearDeliveryAddress = () => {
+    setDeliveryAddress({
+      companyName: "",
+      contactPerson: "",
+      mobile: "",
+      streetAddress: "",
+      area: "",
+      city: "",
+      state: "",
+      pincode: ""
+    });
+    setDeliveryErrors({});
+    toast.success("Delivery address cleared.");
+  };
+
+  // Dynamic Routing State
+  const [routeInfo, setRouteInfo] = useState({
+    loading: false,
+    distanceKm: 0,
+    durationFormatted: "N/A",
+    durationHours: 0,
+    durationSeconds: 0,
+    errorMessage: "",
+    success: false
+  });
+
+  // Calculate driving route whenever startLocation or endLocation changes
+  useEffect(() => {
+    if (!startLocation.trim() || !endLocation.trim()) {
+      setRouteInfo({
+        loading: false,
+        distanceKm: 0,
+        durationFormatted: "N/A",
+        durationHours: 0,
+        durationSeconds: 0,
+        errorMessage: "",
+        success: false
+      });
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setRouteInfo(prev => ({ ...prev, loading: true, errorMessage: "" }));
+      const res = await calculateDrivingRoute(startLocation, endLocation);
+      if (res.success) {
+        setRouteInfo({
+          loading: false,
+          distanceKm: res.distanceKm,
+          durationFormatted: res.durationFormatted,
+          durationHours: res.durationHours,
+          durationSeconds: res.durationSeconds,
+          errorMessage: "",
+          success: true
+        });
+        if (res.durationSeconds > 0 && departureTime) {
+          const autoEta = calculateEtaFromDuration(departureTime, res.durationSeconds);
+          setEta(autoEta);
+        }
+      } else {
+        setRouteInfo({
+          loading: false,
+          distanceKm: 0,
+          durationFormatted: "N/A",
+          durationHours: 0,
+          durationSeconds: 0,
+          errorMessage: res.errorMessage || "Unable to calculate route between selected locations.",
+          success: false
+        });
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [startLocation, endLocation]);
 
   const handleStartLocationChange = (val) => {
     setStartLocation(val);
@@ -209,9 +472,13 @@ export default function CreateTripPage() {
 
   const handleDepartureTimeChange = (val) => {
     setDepartureTime(val);
-    
+
     let updatedEta = eta;
-    if (val && eta) {
+    if (val && routeInfo.durationSeconds > 0 && (!eta || new Date(val) >= new Date(eta))) {
+      const autoEta = calculateEtaFromDuration(val, routeInfo.durationSeconds);
+      setEta(autoEta);
+      updatedEta = autoEta;
+    } else if (val && eta) {
       const depDate = new Date(val);
       const etaDate = new Date(eta);
       if (depDate.getTime() >= etaDate.getTime()) {
@@ -255,60 +522,76 @@ export default function CreateTripPage() {
           managerApi.getAvailableVehicles({ location: cleanLoc }),
           managerApi.getAvailableDrivers({ location: cleanLoc })
         ]);
-        
-        const allVehicles = vRes.data?.data || vRes.data || [];
-        const allDrivers = dRes.data?.data || dRes.data || [];
 
-        const normalize = (str) => (str || "").trim().toLowerCase();
+        const vPayload = vRes.data?.data || vRes.data || {};
+        const dPayload = dRes.data?.data || dRes.data || {};
 
-        const isLocationMatch = (driverLoc, targetLoc) => {
-          if (!driverLoc || !targetLoc) return false;
-          const normDriver = normalize(driverLoc);
-          const normTarget = normalize(targetLoc);
-          const targetFirstWord = normTarget.split(/[\s,]+/)[0];
-          const driverFirstWord = normDriver.split(/[\s,]+/)[0];
-          return (
-            normDriver === normTarget ||
-            normDriver.includes(targetFirstWord) ||
-            targetFirstWord.includes(driverFirstWord)
-          );
-        };
+        const rawVehicles = Array.isArray(vPayload)
+          ? vPayload
+          : (vPayload.vehicles || vPayload.nearbyVehicles || vPayload.localVehicles || []);
 
-        // Filter vehicles strictly by current location stored in database
-        const filteredVehs = allVehicles.filter(v => {
-          const vLoc = v.currentLocation || v.branch || "";
-          return isLocationMatch(vLoc, cleanLoc);
-        });
+        const rawDrivers = Array.isArray(dPayload)
+          ? dPayload
+          : (dPayload.drivers || dPayload.nearbyDrivers || dPayload.localDrivers || []);
 
-        // Filter drivers strictly by current location stored in database
-        const filteredDrvs = allDrivers.filter(d => {
-          const dLoc = d.currentLocation || d.driverLocation || d.branch || "";
-          return isLocationMatch(dLoc, cleanLoc);
-        });
+        const isVehFallback = !!(vPayload.isNearbyFallback || vPayload.isNearbyVehiclesFallback);
+        const isDrvFallback = !!(dPayload.isNearbyFallback || dPayload.isNearbyDriversFallback);
 
-        const vehiclesData = filteredVehs.map(v => {
-          const isAvailable = v.currentStatus === 'Available' || v.currentStatus === 'Active';
+        setIsNearbyVehiclesFallback(isVehFallback);
+        setIsNearbyDriversFallback(isDrvFallback);
+
+        const vehiclesData = rawVehicles.map(v => {
+          const isAvailable = v.currentStatus === 'Available' || v.currentStatus === 'Active' || v.status === 'Available' || v.status === 'Active';
           return {
             ...v,
-            id: v._id,
-            name: v.vehicleName || `${v.brand} ${v.model}`,
-            plateNumber: v.vehicleNumber,
-            status: isAvailable ? 'Available' : 'Under Maintenance'
+            id: v._id || v.id,
+            name: v.vehicleName || v.name || `${v.brand || ''} ${v.model || ''}`,
+            plateNumber: v.vehicleNumber || v.plateNumber,
+            status: isAvailable ? 'Available' : (v.status || 'Under Maintenance'),
+            isNearby: v.isNearby || isVehFallback,
+            distanceKm: v.distanceKm,
+            estimatedTravelTime: v.estimatedTravelTime,
+            currentLocation: formatDisplayLocation(v.currentLocation, v.branch || v.branchDepot)
           };
         });
 
-        const driversData = filteredDrvs.map(d => {
-          const isAvailable = d.driverStatus === 'AVAILABLE';
+        const driversData = rawDrivers.map(d => {
+          const isAvailable = d.driverStatus === 'AVAILABLE' || d.status === 'Available';
           return {
             ...d,
-            id: d._id,
-            name: d.fullName,
-            status: isAvailable ? 'Available' : 'Not Available'
+            id: d._id || d.id,
+            name: d.fullName || d.name,
+            employeeId: formatEmployeeId(d.employeeId),
+            status: isAvailable ? 'Available' : (d.status || 'Not Available'),
+            isNearby: d.isNearby || isDrvFallback,
+            distanceKm: d.distanceKm,
+            estimatedTravelTime: d.estimatedTravelTime,
+            currentLocation: formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch)
           };
         });
 
-        setDrivers(driversData);
-        setVehicles(vehiclesData);
+        const cleanStartCity = cleanLoc.split(',')[0].trim().toLowerCase();
+        
+        let finalVehicles = vehiclesData;
+        if (cleanStartCity && !isVehFallback) {
+          const matchedVehs = vehiclesData.filter(v => {
+            const vLoc = (v.currentLocation || v.branch || '').toLowerCase();
+            return vLoc.includes(cleanStartCity) || cleanStartCity.includes(vLoc.split(',')[0].trim());
+          });
+          if (matchedVehs.length > 0) finalVehicles = matchedVehs;
+        }
+
+        let finalDrivers = driversData;
+        if (cleanStartCity && !isDrvFallback) {
+          const matchedDrvs = driversData.filter(d => {
+            const dLoc = (d.currentLocation || d.branch || '').toLowerCase();
+            return dLoc.includes(cleanStartCity) || cleanStartCity.includes(dLoc.split(',')[0].trim());
+          });
+          if (matchedDrvs.length > 0) finalDrivers = matchedDrvs;
+        }
+
+        setDrivers(finalDrivers);
+        setVehicles(finalVehicles);
 
         // Auto-clear selection if it is not in the new filtered location list
         setSelectedDriverId(prev => {
@@ -338,6 +621,57 @@ export default function CreateTripPage() {
     return () => clearTimeout(debounceFetch);
   }, [startLocation]);
 
+  const handleVehicleSelection = (vehicle) => {
+    if (isSameLocError) {
+      toast.error("Trip cannot be created because the pickup and destination locations are the same.", {
+        id: "same-location-warning"
+      });
+      return;
+    }
+    if (vehicle.status === "Under Maintenance" || vehicle.currentStatus === "Under Maintenance") {
+      toast.error("This vehicle is under maintenance and cannot be allocated.");
+      return;
+    }
+    if (vehicle.currentStatus === "Assigned" || vehicle.currentStatus === "In Trip" || vehicle.currentStatus === "On Trip") {
+      toast.error("This Vehicle is already assigned to an active trip.");
+      return;
+    }
+    const vehicleIdStr = String(vehicle.id || vehicle._id);
+    if (String(selectedVehicleId) === vehicleIdStr) {
+      setSelectedVehicleId("");
+      toast.info(`Unallocated vehicle ${vehicle.name}`);
+    } else {
+      setSelectedVehicleId(vehicleIdStr);
+      toast.success(`Allocated vehicle ${vehicle.name}`);
+    }
+  };
+
+  const handleDriverSelection = (driver) => {
+    if (isSameLocError) {
+      toast.error("Trip cannot be created because the pickup and destination locations are the same.", {
+        id: "same-location-warning"
+      });
+      return;
+    }
+    const isExpired = driver.licenseExpiry && new Date(driver.licenseExpiry) < new Date();
+    if (isExpired) {
+      toast.error("This driver has an expired license and cannot be assigned.");
+      return;
+    }
+    if (driver.driverStatus === "ASSIGNED" || driver.driverStatus === "ON_TRIP" || driver.status === "Not Available") {
+      toast.error("This Driver is already assigned to an active trip.");
+      return;
+    }
+    const driverIdStr = String(driver.id || driver._id);
+    if (String(selectedDriverId) === driverIdStr) {
+      setSelectedDriverId("");
+      toast.info(`Unassigned driver ${driver.name}`);
+    } else {
+      setSelectedDriverId(driverIdStr);
+      toast.success(`Assigned driver ${driver.name}`);
+    }
+  };
+
   const handleDispatch = async (e) => {
     e.preventDefault();
 
@@ -355,8 +689,10 @@ export default function CreateTripPage() {
       toast.error("Destination is required.");
       return;
     }
-    if (startLocation.trim().toLowerCase() === endLocation.trim().toLowerCase()) {
-      toast.error("Pickup and Destination cannot be the same.");
+    if (isSameLocError || normalizeCityName(startLocation) === normalizeCityName(endLocation)) {
+      toast.error("Trip cannot be created because the pickup and destination locations are the same.", {
+        id: "same-location-warning"
+      });
       return;
     }
     if (!departureTime) {
@@ -365,6 +701,10 @@ export default function CreateTripPage() {
     }
     if (!eta) {
       toast.error("Estimated Arrival is required.");
+      return;
+    }
+    if (!cargoWeight || Number(cargoWeight) <= 0) {
+      toast.error("Cargo Weight (KG) is required.");
       return;
     }
 
@@ -377,6 +717,38 @@ export default function CreateTripPage() {
 
     if (!selectedVehicleId) {
       toast.error("Please select a vehicle from Asset Allocation");
+      return;
+    }
+
+    // Pickup Address Validations (inline error updates)
+    const pErrs = {
+      companyName: validateAddressField('pickup', 'companyName', pickupAddress.companyName),
+      contactPerson: validateAddressField('pickup', 'contactPerson', pickupAddress.contactPerson),
+      mobile: validateAddressField('pickup', 'mobile', pickupAddress.mobile),
+      streetAddress: validateAddressField('pickup', 'streetAddress', pickupAddress.streetAddress),
+      city: validateAddressField('pickup', 'city', pickupAddress.city),
+      state: validateAddressField('pickup', 'state', pickupAddress.state),
+      pincode: validateAddressField('pickup', 'pincode', pickupAddress.pincode),
+    };
+    setPickupErrors(pErrs);
+
+    // Delivery Address Validations (inline error updates)
+    const dErrs = {
+      companyName: validateAddressField('delivery', 'companyName', deliveryAddress.companyName),
+      contactPerson: validateAddressField('delivery', 'contactPerson', deliveryAddress.contactPerson),
+      mobile: validateAddressField('delivery', 'mobile', deliveryAddress.mobile),
+      streetAddress: validateAddressField('delivery', 'streetAddress', deliveryAddress.streetAddress),
+      city: validateAddressField('delivery', 'city', deliveryAddress.city),
+      state: validateAddressField('delivery', 'state', deliveryAddress.state),
+      pincode: validateAddressField('delivery', 'pincode', deliveryAddress.pincode),
+    };
+    setDeliveryErrors(dErrs);
+
+    const hasPickupErr = Object.values(pErrs).some(Boolean);
+    const hasDeliveryErr = Object.values(dErrs).some(Boolean);
+
+    if (hasPickupErr || hasDeliveryErr) {
+      toast.error("Please fill in all required address fields accurately.");
       return;
     }
 
@@ -393,17 +765,65 @@ export default function CreateTripPage() {
     }
 
     try {
-      const distance = calculateDistance(startLocation, endLocation) || 250;
+      const distance = routeInfo.distanceKm || 0;
       await managerApi.createTrip({
         tripNumber,
-        vehicle: vehicle._id,
-        driver: driver ? driver._id : undefined,
+        vehicle: vehicle._id || vehicle.id,
+        driver: driver ? (driver._id || driver.id) : undefined,
         driverName: driver ? driver.name : "",
-        driverPhone: driver ? driver.phone : "",
+        driverPhone: driver ? (driver.phoneNumber || driver.phone || "") : "",
         vehicleName: vehicle.name,
         vehiclePlate: vehicle.plateNumber,
         startLocation,
         endLocation,
+        pickupAddress: {
+          companyName: pickupAddress.companyName.trim(),
+          contactPerson: pickupAddress.contactPerson.trim(),
+          mobile: pickupAddress.mobile.trim(),
+          mobileNumber: pickupAddress.mobile.trim(),
+          streetAddress: pickupAddress.streetAddress.trim(),
+          area: pickupAddress.area?.trim() || "",
+          areaLocality: pickupAddress.area?.trim() || "",
+          city: pickupAddress.city.trim(),
+          state: pickupAddress.state.trim(),
+          pincode: pickupAddress.pincode.trim()
+        },
+        deliveryAddress: {
+          companyName: deliveryAddress.companyName.trim(),
+          contactPerson: deliveryAddress.contactPerson.trim(),
+          mobile: deliveryAddress.mobile.trim(),
+          mobileNumber: deliveryAddress.mobile.trim(),
+          streetAddress: deliveryAddress.streetAddress.trim(),
+          area: deliveryAddress.area?.trim() || "",
+          areaLocality: deliveryAddress.area?.trim() || "",
+          city: deliveryAddress.city.trim(),
+          state: deliveryAddress.state.trim(),
+          pincode: deliveryAddress.pincode.trim()
+        },
+        fromAddress: {
+          companyName: pickupAddress.companyName.trim(),
+          contactPerson: pickupAddress.contactPerson.trim(),
+          mobile: pickupAddress.mobile.trim(),
+          mobileNumber: pickupAddress.mobile.trim(),
+          streetAddress: pickupAddress.streetAddress.trim(),
+          area: pickupAddress.area?.trim() || "",
+          areaLocality: pickupAddress.area?.trim() || "",
+          city: pickupAddress.city.trim(),
+          state: pickupAddress.state.trim(),
+          pincode: pickupAddress.pincode.trim()
+        },
+        toAddress: {
+          companyName: deliveryAddress.companyName.trim(),
+          contactPerson: deliveryAddress.contactPerson.trim(),
+          mobile: deliveryAddress.mobile.trim(),
+          mobileNumber: deliveryAddress.mobile.trim(),
+          streetAddress: deliveryAddress.streetAddress.trim(),
+          area: deliveryAddress.area?.trim() || "",
+          areaLocality: deliveryAddress.area?.trim() || "",
+          city: deliveryAddress.city.trim(),
+          state: deliveryAddress.state.trim(),
+          pincode: deliveryAddress.pincode.trim()
+        },
         departureTime,
         eta,
         status,
@@ -422,20 +842,21 @@ export default function CreateTripPage() {
     }
   };
 
-  const distance = calculateDistance(startLocation, endLocation) || 250;
+  const distance = routeInfo.distanceKm || 0;
   const isWeightValid = cargoWeight !== null && cargoWeight !== undefined && cargoWeight.toString().trim() !== "";
   const cargoWeightDisplay = isWeightValid ? `${cargoWeight} kg` : "--";
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
       <Breadcrumb />
-      {/* Breadcrumbs & Title header */}
+      
+      {/* Title Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#E7EAF0] pb-6">
         <div>
-          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
-            Dispatch New Trip
+          <h1 className="font-poppins font-bold text-[28px] text-[#1E293B] leading-none">
+            Create Trip
           </h1>
-          <p className="text-[18px] text-[#64748B] mt-[12px] font-medium">
+          <p className="text-xs text-[#64748B] mt-2 font-medium font-poppins">
             Configure vehicle, route details, and driver assignment.
           </p>
         </div>
@@ -444,280 +865,235 @@ export default function CreateTripPage() {
           <button
             type="button"
             onClick={() => navigate("/manager/trips")}
-            className="flex-1 md:flex-none px-5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-gray-50 transition-all cursor-pointer text-center"
+            className="px-4 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-gray-50 transition-all cursor-pointer text-center flex items-center gap-1.5 shadow-2xs font-poppins"
           >
-            Cancel
-          </button>
-          <button
-            onClick={handleDispatch}
-            disabled={!!departureError || !!etaError || !departureTime || !eta}
-            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-md cursor-pointer text-center ${
-              (departureError || etaError || !departureTime || !eta)
-                ? "bg-gray-300 shadow-none cursor-not-allowed opacity-60"
-                : "bg-[#B45A0A] hover:bg-[#9A4D08] shadow-[#B45A0A]/20"
-            }`}
-          >
-            Dispatch Trip
+            <ArrowLeft className="w-4 h-4" /> Back to Trips
           </button>
         </div>
       </div>
 
-      {/* Form Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
-        
-        {/* Left Column: Trip Specifications */}
-        <div className="lg:col-span-7 space-y-6">
-          
-          {/* Trip Specifications Form Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-5">
-            <div className="flex items-center gap-2 pb-3 border-b border-[#E7EAF0]">
-              <Route className="w-5 h-5 text-[#B45A0A]" />
-              <h3 className="font-poppins font-bold text-[#1E293B] text-[16px]">Trip Specifications</h3>
-            </div>
+      <div className="space-y-6 mt-6">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Trip ID */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Trip ID (Auto-generated)
-                </label>
+        {/* 1. Trip Specifications Card (100% Width) */}
+        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-5 font-poppins">
+          <div className="flex items-center gap-2 pb-3 border-b border-[#E7EAF0]">
+            <Route className="w-5 h-5 text-[#B45A0A]" />
+            <h3 className="font-poppins font-bold text-[#1E293B] text-[16px]">Trip Specifications</h3>
+          </div>
+
+          {/* Row 1: Start Location | Destination (2-Column Grid) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Start Location */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Start Location <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
                 <input
                   type="text"
-                  value={tripNumber}
-                  disabled
-                  className="w-full px-3.5 py-2.5 h-[44px] bg-slate-50 border border-[#E7EAF0] rounded-xl text-sm text-[#64748B] font-medium focus:outline-none select-none"
+                  placeholder="e.g. Pune, MH"
+                  value={startLocation}
+                  onChange={(e) => handleStartLocationChange(e.target.value)}
+                  onFocus={() => {
+                    if (startLocation.trim().length > 0) setShowStartSuggestions(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowStartSuggestions(false), 200)}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${
+                    isSameLocError
+                      ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
+                      : "border-[#E7EAF0] focus:border-[#B45A0A]"
+                  }`}
+                  required
                 />
-              </div>
-
-              {/* Status Selection */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Initial Trip Status *
-                </label>
-                <div className="relative">
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full pl-3.5 pr-8 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none cursor-pointer font-medium"
-                    required
-                  >
-                    <option value="Scheduled">Scheduled</option>
-                    <option value="On Transit">On Transit</option>
-                    <option value="Delayed">Delayed</option>
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-            </div>
-
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {/* Start Location */}
-               <div>
-                 <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                   Start Location *
-                 </label>
-                 <div className="relative">
-                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                   <input
-                     type="text"
-                     placeholder="e.g. Mumbai, MH"
-                     value={startLocation}
-                     onChange={(e) => handleStartLocationChange(e.target.value)}
-                     onFocus={() => {
-                       if (startLocation.trim().length > 0) {
-                         setShowStartSuggestions(true);
-                       }
-                     }}
-                     onBlur={() => {
-                       setTimeout(() => setShowStartSuggestions(false), 200);
-                     }}
-                     className="w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
-                     required
-                   />
-                   {showStartSuggestions && startSuggestions.length > 0 && (
-                     <div className="absolute left-0 right-0 mt-1 bg-white border border-[#E7EAF0] rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto py-1">
-                       {startSuggestions.map((city) => (
-                         <div
-                           key={city}
-                           onMouseDown={() => {
-                             setStartLocation(city);
-                             setShowStartSuggestions(false);
-                           }}
-                           className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#B45A0A] text-sm text-gray-700 font-medium cursor-pointer transition-colors"
-                         >
-                           {city}
-                         </div>
-                       ))}
-                     </div>
-                   )}
-                 </div>
-               </div>
- 
-               {/* End Location */}
-               <div>
-                 <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                   Destination *
-                 </label>
-                 <div className="relative">
-                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                   <input
-                     type="text"
-                     placeholder="e.g. Pune, MH"
-                     value={endLocation}
-                     onChange={(e) => handleEndLocationChange(e.target.value)}
-                     onFocus={() => {
-                       if (endLocation.trim().length > 0) {
-                         setShowEndSuggestions(true);
-                       }
-                     }}
-                     onBlur={() => {
-                       setTimeout(() => setShowEndSuggestions(false), 200);
-                     }}
-                     className="w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
-                     required
-                   />
-                   {showEndSuggestions && endSuggestions.length > 0 && (
-                     <div className="absolute left-0 right-0 mt-1 bg-white border border-[#E7EAF0] rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto py-1">
-                       {endSuggestions.map((city) => (
-                         <div
-                           key={city}
-                           onMouseDown={() => {
-                             setEndLocation(city);
-                             setShowEndSuggestions(false);
-                           }}
-                           className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#B45A0A] text-sm text-gray-700 font-medium cursor-pointer transition-colors"
-                         >
-                           {city}
-                         </div>
-                       ))}
-                     </div>
-                   )}
-                 </div>
-               </div>
-             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Departure Time */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Departure Time *
-                </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                  <input
-                    type="datetime-local"
-                    value={departureTime}
-                    onChange={(e) => handleDepartureTimeChange(e.target.value)}
-                    onBlur={handleBlur}
-                    min={getCurrentDateTimeString()}
-                    className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium ${
-                      departureError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
-                    }`}
-                    required
-                  />
-                </div>
-                {departureError && (
-                  <p className="text-red-500 text-xs mt-1 font-semibold">{departureError}</p>
-                )}
-              </div>
-
-              {/* ETA */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Estimated Arrival (ETA) *
-                </label>
-                <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                  <input
-                    type="datetime-local"
-                    value={eta}
-                    onChange={(e) => handleEtaChange(e.target.value)}
-                    onBlur={handleBlur}
-                    min={getMinEtaString(departureTime)}
-                    className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium ${
-                      etaError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
-                    }`}
-                    required
-                  />
-                </div>
-                {etaError && (
-                  <p className="text-red-500 text-xs mt-1 font-semibold">{etaError}</p>
+                {showStartSuggestions && startSuggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 mt-1 bg-white border border-[#E7EAF0] rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto py-1">
+                    {startSuggestions.map((city) => (
+                      <div
+                        key={city}
+                        onMouseDown={() => {
+                          setStartLocation(city);
+                          setShowStartSuggestions(false);
+                        }}
+                        className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#B45A0A] text-sm text-gray-700 font-medium cursor-pointer transition-colors font-poppins"
+                      >
+                        {city}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Cargo Type */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Cargo Type (Optional)
-                </label>
+            {/* Destination */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Destination <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Navigation className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
                 <input
                   type="text"
-                  placeholder="e.g. Perishable Goods, Electronics"
-                  value={cargoType}
-                  onChange={(e) => setCargoType(e.target.value)}
-                  className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                  placeholder="e.g. Hyderabad, TS"
+                  value={endLocation}
+                  onChange={(e) => handleEndLocationChange(e.target.value)}
+                  onFocus={() => {
+                    if (endLocation.trim().length > 0) setShowEndSuggestions(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowEndSuggestions(false), 200)}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${
+                    isSameLocError
+                      ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
+                      : "border-[#E7EAF0] focus:border-[#B45A0A]"
+                  }`}
+                  required
                 />
+                {showEndSuggestions && endSuggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 mt-1 bg-white border border-[#E7EAF0] rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto py-1">
+                    {endSuggestions.map((city) => (
+                      <div
+                        key={city}
+                        onMouseDown={() => {
+                          setEndLocation(city);
+                          setShowEndSuggestions(false);
+                        }}
+                        className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#B45A0A] text-sm text-gray-700 font-medium cursor-pointer transition-colors font-poppins"
+                      >
+                        {city}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-
-              {/* Cargo Weight */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Cargo Weight (Optional, kg)
-                </label>
-                <input
-                  type="number"
-                  placeholder="e.g. 5000"
-                  value={cargoWeight}
-                  onChange={(e) => setCargoWeight(e.target.value)}
-                  className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Cargo Description */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Cargo / Description
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Express Deliveries"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
-                />
-              </div>
-
-              {/* Trip Notes */}
-              <div>
-                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                  Trip Notes (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Handle with care, route via tollway"
-                  value={tripNotes}
-                  onChange={(e) => setTripNotes(e.target.value)}
-                  className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
-                />
-              </div>
+              {isSameLocError && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1 font-poppins animate-in fade-in duration-150">
+                  <span>⚠️</span> Start Location and Destination cannot be the same. Please select a different destination.
+                </p>
+              )}
             </div>
           </div>
 
+          {/* Row 2: Required Specifications (Departure Time | Estimated Arrival | Cargo Weight) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Departure Time */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Departure Time <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                <input
+                  type="datetime-local"
+                  value={departureTime}
+                  onChange={(e) => handleDepartureTimeChange(e.target.value)}
+                  onBlur={handleBlur}
+                  min={getCurrentDateTimeString()}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins ${
+                    departureError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
+                  }`}
+                  required
+                />
+              </div>
+              {departureError && (
+                <p className="text-red-500 text-xs mt-1 font-semibold font-poppins">{departureError}</p>
+              )}
+            </div>
+
+            {/* Estimated Arrival (ETA) */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Estimated Arrival (ETA) <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                <input
+                  type="datetime-local"
+                  value={eta}
+                  onChange={(e) => handleEtaChange(e.target.value)}
+                  onBlur={handleBlur}
+                  min={getMinEtaString(departureTime)}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins ${
+                    etaError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
+                  }`}
+                  required
+                />
+              </div>
+              {etaError && (
+                <p className="text-red-500 text-xs mt-1 font-semibold font-poppins">{etaError}</p>
+              )}
+            </div>
+
+            {/* Cargo Weight (REQUIRED) */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Cargo Weight (KG) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                placeholder="e.g. 5000"
+                value={cargoWeight}
+                onChange={(e) => setCargoWeight(e.target.value)}
+                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Row 3: Optional Details (Cargo Type | Cargo Description | Trip Notes) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Cargo Type */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Cargo Type (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Perishable Goods, Electronics"
+                value={cargoType}
+                onChange={(e) => setCargoType(e.target.value)}
+                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins"
+              />
+            </div>
+
+            {/* Cargo Description */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Cargo / Description (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Express Deliveries"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins"
+              />
+            </div>
+
+            {/* Trip Notes */}
+            <div>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                Trip Notes (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Handle with care, route via tollway"
+                value={tripNotes}
+                onChange={(e) => setTripNotes(e.target.value)}
+                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins"
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Right Column: Asset Allocation & Driver Assignment */}
-        <div className="lg:col-span-5 space-y-6">
+        {/* 2. Asset Allocation & Driver Assignment (Side-by-Side 2-Column Grid, Fixed Height with Internal Scrollbar) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           
           {/* Asset Allocation Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0]">
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between space-y-4 font-poppins h-[420px]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0] shrink-0">
               <div className="flex items-center gap-2">
                 <Truck className="w-5 h-5 text-[#B45A0A]" />
-                <h3 className="font-poppins font-bold text-[#1E293B] text-[16px]">Asset Allocation</h3>
+                <h3 className="font-bold text-[#1E293B] text-[16px]">Asset Allocation</h3>
               </div>
               <button
                 type="button"
@@ -728,14 +1104,24 @@ export default function CreateTripPage() {
               </button>
             </div>
 
-            <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
+            {startLocation.trim() && isNearbyVehiclesFallback && (
+              <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0">
+                <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block">No available Vehicles found in {startLocation}.</span>
+                  <span className="text-[11px] text-amber-700 font-medium">Showing the nearest available Vehicles.</span>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2.5 overflow-y-auto pr-1 custom-scrollbar flex-1">
               {!startLocation.trim() ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
                   <MapPin className="w-8 h-8 text-[#94A3B8] mb-2" />
                   <p className="text-xs text-gray-400 font-semibold font-poppins">Please select a Start Location to view available vehicles and drivers.</p>
                 </div>
               ) : loading ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
                   <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available vehicles...</p>
                 </div>
@@ -743,7 +1129,7 @@ export default function CreateTripPage() {
                 ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
                 : vehicles
               ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center font-semibold">No available vehicles found for the selected start location.</p>
+                <p className="text-xs text-gray-400 py-8 text-center font-semibold">No available vehicles found for the selected start location.</p>
               ) : (
                 (filterAvailableVehicles 
                   ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
@@ -753,7 +1139,7 @@ export default function CreateTripPage() {
                     key={v.id}
                     onClick={() => {
                       if (v.status === "Under Maintenance") return;
-                      setSelectedVehicleId(String(v.id));
+                      handleVehicleSelection(v);
                     }}
                     className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${
                       v.status === "Under Maintenance"
@@ -764,13 +1150,25 @@ export default function CreateTripPage() {
                     }`}
                   >
                     <div>
-                      <p className="font-bold text-xs text-[#1E293B]">{v.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-xs text-[#1E293B]">{v.name}</p>
+                        {(v.isNearby || isNearbyVehiclesFallback) && (
+                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
+                        )}
+                      </div>
                       <span className="text-[10px] text-[#64748B] font-semibold block mt-0.5 uppercase">Reg: {v.plateNumber}</span>
                       <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
                         <span>Type: <strong className="text-[#1E293B]">{v.vehicleType || v.type || "Truck"}</strong></span>
                         <span>|</span>
-                        <span>Location: <strong className="text-[#1E293B]">{v.branch || "Pune"}</strong></span>
+                        <span>Location: <strong className="text-[#1E293B]">{formatDisplayLocation(v.currentLocation, v.branch)}</strong></span>
                       </div>
+                      {(v.isNearby || isNearbyVehiclesFallback || (v.distanceKm !== undefined && v.distanceKm > 0)) && (
+                        <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
+                          <span>📍 {v.distanceKm || 0} km away</span>
+                          <span>•</span>
+                          <span>⏱️ {v.estimatedTravelTime || "30 mins"}</span>
+                        </div>
+                      )}
                       <span className={`inline-block mt-2 px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
                         v.status === "Active" || v.status === "Available"
                           ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
@@ -785,9 +1183,9 @@ export default function CreateTripPage() {
                       disabled={v.status === "Under Maintenance"}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedVehicleId(String(v.id));
+                        handleVehicleSelection(v);
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                      className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
                         v.status === "Under Maintenance"
                           ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
                           : String(selectedVehicleId) === String(v.id)
@@ -804,11 +1202,11 @@ export default function CreateTripPage() {
           </div>
 
           {/* Driver Assignment Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0]">
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between space-y-4 font-poppins h-[420px]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0] shrink-0">
               <div className="flex items-center gap-2">
                 <User className="w-5 h-5 text-[#B45A0A]" />
-                <h3 className="font-poppins font-bold text-[#1E293B] text-[16px]">Driver Assignment</h3>
+                <h3 className="font-bold text-[#1E293B] text-[16px]">Driver Assignment</h3>
               </div>
               <button
                 type="button"
@@ -819,14 +1217,24 @@ export default function CreateTripPage() {
               </button>
             </div>
 
-            <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
+            {startLocation.trim() && isNearbyDriversFallback && (
+              <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0">
+                <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block">No drivers are available in {startLocation}.</span>
+                  <span className="text-[11px] text-amber-700 font-medium">Showing the nearest available drivers sorted by distance.</span>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2.5 overflow-y-auto pr-1 custom-scrollbar flex-1">
               {!startLocation.trim() ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
                   <User className="w-8 h-8 text-[#94A3B8] mb-2" />
                   <p className="text-xs text-gray-400 font-semibold font-poppins">Please select a Start Location to view available vehicles and drivers.</p>
                 </div>
               ) : loading ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
                   <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available drivers...</p>
                 </div>
@@ -834,7 +1242,7 @@ export default function CreateTripPage() {
                 ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
                 : drivers
               ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center font-semibold font-poppins">No drivers available in the selected location.</p>
+                <p className="text-xs text-gray-400 py-8 text-center font-semibold font-poppins">No drivers available in the selected location.</p>
               ) : (
                 (filterAvailableDrivers 
                   ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
@@ -849,10 +1257,8 @@ export default function CreateTripPage() {
                           toast.error("This driver has an expired license and cannot be assigned.");
                           return;
                         }
-                        if (d.status === "Not Available") {
-                          return;
-                        }
-                        setSelectedDriverId(String(d.id));
+                        if (d.status === "Not Available") return;
+                        handleDriverSelection(d);
                       }}
                       className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${
                         (isExpired || d.status === "Not Available")
@@ -863,15 +1269,25 @@ export default function CreateTripPage() {
                       }`}
                     >
                       <div>
-                        <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
-                        <span className="text-[10px] text-[#64748B] block mt-0.5 font-semibold">
-                          Emp ID: {d.employeeId || "N/A"}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
+                          {(d.isNearby || isNearbyDriversFallback) && (
+                            <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-[#64748B] block mt-0.5 font-semibold">Emp ID: {formatEmployeeId(d.employeeId)}</span>
                         <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
                           <span>Lic Validity: <strong className={isExpired ? "text-red-500" : "text-[#1E293B]"}>{d.licenseExpiry ? new Date(d.licenseExpiry).toLocaleDateString() : "Valid"}</strong></span>
                           <span>|</span>
-                          <span>Location: <strong className="text-[#1E293B]">{d.driverLocation || d.branch || "Pune"}</strong></span>
+                          <span>Location: <strong className="text-[#1E293B]">{formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch)}</strong></span>
                         </div>
+                        {(d.isNearby || isNearbyDriversFallback || (d.distanceKm !== undefined && d.distanceKm > 0)) && (
+                          <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
+                            <span>📍 {d.distanceKm || 0} km away</span>
+                            <span>•</span>
+                            <span>⏱️ {d.estimatedTravelTime || "35 mins"}</span>
+                          </div>
+                        )}
                         <div className="flex gap-1.5 mt-2">
                           <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
                             isExpired
@@ -894,9 +1310,9 @@ export default function CreateTripPage() {
                             toast.error("This driver has an expired license and cannot be assigned.");
                             return;
                           }
-                          setSelectedDriverId(String(d.id));
+                          handleDriverSelection(d);
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                        className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
                           (isExpired || d.status === "Not Available")
                             ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
                             : String(selectedDriverId) === String(d.id)
@@ -912,77 +1328,388 @@ export default function CreateTripPage() {
               )}
             </div>
           </div>
-
         </div>
 
-      </div>
-
-      {/* Row containing Map and Cost Projections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        {/* Map Diagnostics Viewport Card */}
-        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
-          <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Active Route Simulation Map</h4>
+        {/* 3. Pickup & Delivery Address (Side-by-Side 2-Column Grid) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           
-          <div className="relative h-[240px] bg-[#E8ECEF] border border-[#DCE2E6] rounded-xl overflow-hidden flex flex-col justify-between p-4">
-            {/* Mock Map Background Details */}
-            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#64748b_1.5px,transparent_1.5px)] [background-size:16px_16px]"></div>
-            
-            {/* Top Floating Badge */}
-            <div className="z-10 flex items-center justify-between">
-              <span className="px-2.5 py-1 bg-white border border-[#E7EAF0] rounded-lg text-[9px] font-bold text-[#B45A0A] flex items-center gap-1">
-                <Compass className="w-3 h-3 animate-spin" />
-                Active Diagnostics Routing
-              </span>
-              <span className="px-2.5 py-1 bg-emerald-50 text-[#22C55E] border border-emerald-100 rounded-lg text-[9px] font-bold">
-                Route Connected
-              </span>
+          {/* Pickup Address Card */}
+          <div className="bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm space-y-4 font-poppins flex flex-col justify-between h-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E7EAF0] gap-2">
+              <div>
+                <h2 className="text-base font-bold text-[#1E293B] font-poppins flex items-center gap-2">
+                  📍 Pickup Address
+                </h2>
+                <p className="text-xs text-[#64748B] font-medium mt-0.5 font-poppins">
+                  Sender / Loading Location Details
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleUseCurrentBranch}
+                className="text-xs font-bold text-[#B45A0A] bg-amber-50 hover:bg-amber-100/70 border border-amber-200/60 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs font-poppins shrink-0"
+              >
+                <Building2 className="w-3.5 h-3.5 text-[#B45A0A]" /> Use Current Branch
+              </button>
             </div>
 
-            {/* Route Dot representation */}
-            <div className="z-10 flex items-center justify-between max-w-[280px] mx-auto w-full relative pt-12">
-              <div className="absolute left-1 right-1 top-[56px] h-0.5 border-t-2 border-dashed border-[#B45A0A]"></div>
-              <div className="flex flex-col items-center">
-                <div className="w-4 h-4 bg-white border-4 border-[#B45A0A] rounded-full z-10"></div>
-                <span className="text-[10px] font-bold text-[#1E293B] mt-1.5">{startLocation || "Source Point"}</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="w-4 h-4 bg-[#B45A0A] rounded-full z-10"></div>
-                <span className="text-[10px] font-bold text-[#1E293B] mt-1.5">{endLocation || "Destination Point"}</span>
-              </div>
-            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Company Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Company Name"
+                    value={pickupAddress.companyName}
+                    onChange={(e) => handleAddressChange('pickup', 'companyName', e.target.value)}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                      pickupErrors.companyName ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {pickupErrors.companyName && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {pickupErrors.companyName}
+                    </p>
+                  )}
+                </div>
 
-            {/* Bottom traffic metrics */}
-            <div className="z-10 bg-white border border-[#E7EAF0] rounded-xl p-3 flex items-center justify-between text-[10px] font-semibold text-[#64748B] font-poppins">
-              <span>Simulation Live</span>
-              <span>Heavy Traffic Detected</span>
-              <span className="text-[#B45A0A] hover:underline cursor-pointer">Fit View Route</span>
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Contact Person <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Contact Person Name"
+                    value={pickupAddress.contactPerson}
+                    onChange={(e) => handleAddressChange('pickup', 'contactPerson', e.target.value)}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                      pickupErrors.contactPerson ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {pickupErrors.contactPerson && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {pickupErrors.contactPerson}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Mobile Number <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <div className="absolute left-3 flex items-center gap-1.5 text-[#64748B] pointer-events-none border-r border-[#E7EAF0] pr-2.5 h-6">
+                      <Phone className="w-3.5 h-3.5 text-[#B45A0A]" />
+                      <span className="text-xs font-bold text-[#1E293B] font-poppins">+91</span>
+                    </div>
+                    <input
+                      type="text"
+                      maxLength={10}
+                      placeholder="9876543210"
+                      value={pickupAddress.mobile}
+                      onChange={(e) => handleAddressChange('pickup', 'mobile', e.target.value.replace(/\D/g, ''))}
+                      className={`w-full pl-[72px] pr-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                        pickupErrors.mobile ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                      }`}
+                    />
+                  </div>
+                  {pickupErrors.mobile && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {pickupErrors.mobile}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Street Address <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Enter Complete Street Address"
+                    value={pickupAddress.streetAddress}
+                    onChange={(e) => handleAddressChange('pickup', 'streetAddress', e.target.value)}
+                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all resize-none font-poppins ${
+                      pickupErrors.streetAddress ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {pickupErrors.streetAddress && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {pickupErrors.streetAddress}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <SearchableSelect
+                  label="State"
+                  required={true}
+                  value={pickupAddress.state}
+                  placeholder="Select State"
+                  options={INDIAN_STATES.map(s => s.name)}
+                  onChange={(stateVal) => {
+                    handleAddressChange('pickup', 'state', stateVal);
+                    handleAddressChange('pickup', 'city', '');
+                  }}
+                  error={pickupErrors.state}
+                />
+
+                <SearchableSelect
+                  label="City"
+                  required={true}
+                  disabled={!pickupAddress.state}
+                  value={pickupAddress.city}
+                  placeholder={!pickupAddress.state ? "Select State First" : "Select City"}
+                  options={pickupAddress.state ? getCitiesForState(pickupAddress.state) : []}
+                  onChange={(cityVal) => handleAddressChange('pickup', 'city', cityVal)}
+                  error={pickupErrors.city}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Area / Locality
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Area or Locality"
+                    value={pickupAddress.area}
+                    onChange={(e) => handleAddressChange('pickup', 'area', e.target.value)}
+                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#B45A0A] focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Pincode <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="Enter Pincode"
+                    value={pickupAddress.pincode}
+                    onChange={(e) => handleAddressChange('pickup', 'pincode', e.target.value.replace(/\D/g, ''))}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                      pickupErrors.pincode ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {pickupErrors.pincode && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {pickupErrors.pincode}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Cost & Earnings Projection Card */}
-        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
-          <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Route Projections</h4>
-          
-          {!startLocation.trim() || !endLocation.trim() ? (
-            <div className="p-4 bg-orange-50/30 rounded-xl border border-orange-100/50 text-center text-xs text-[#B45A0A] font-semibold font-poppins">
-              Enter both Start Location and Destination to view route projections.
+          {/* Delivery Address Card */}
+          <div className="bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm space-y-4 font-poppins flex flex-col justify-between h-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E7EAF0] gap-2">
+              <div>
+                <h2 className="text-base font-bold text-[#1E293B] font-poppins flex items-center gap-2">
+                  🚚 Delivery Address
+                </h2>
+                <p className="text-xs text-[#64748B] font-medium mt-0.5 font-poppins">
+                  Receiver / Unloading Location Details
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearDeliveryAddress}
+                className="text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100/70 border border-rose-200/60 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs font-poppins shrink-0"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-500" /> Clear Address
+              </button>
             </div>
-          ) : (
+
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                  <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider font-poppins block">Route Distance</span>
-                  <span className="text-lg font-black text-[#1E293B] font-poppins mt-1 block">{distance} KM</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Company Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Company Name"
+                    value={deliveryAddress.companyName}
+                    onChange={(e) => handleAddressChange('delivery', 'companyName', e.target.value)}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                      deliveryErrors.companyName ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {deliveryErrors.companyName && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {deliveryErrors.companyName}
+                    </p>
+                  )}
                 </div>
-                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                  <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider font-poppins block">Cargo Weight</span>
-                  <span className="text-lg font-black text-[#1E293B] font-poppins mt-1 block">{cargoWeightDisplay}</span>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Contact Person <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Contact Person Name"
+                    value={deliveryAddress.contactPerson}
+                    onChange={(e) => handleAddressChange('delivery', 'contactPerson', e.target.value)}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                      deliveryErrors.contactPerson ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {deliveryErrors.contactPerson && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {deliveryErrors.contactPerson}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Mobile Number <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <div className="absolute left-3 flex items-center gap-1.5 text-[#64748B] pointer-events-none border-r border-[#E7EAF0] pr-2.5 h-6">
+                      <Phone className="w-3.5 h-3.5 text-[#B45A0A]" />
+                      <span className="text-xs font-bold text-[#1E293B] font-poppins">+91</span>
+                    </div>
+                    <input
+                      type="text"
+                      maxLength={10}
+                      placeholder="9876543210"
+                      value={deliveryAddress.mobile}
+                      onChange={(e) => handleAddressChange('delivery', 'mobile', e.target.value.replace(/\D/g, ''))}
+                      className={`w-full pl-[72px] pr-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                        deliveryErrors.mobile ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                      }`}
+                    />
+                  </div>
+                  {deliveryErrors.mobile && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {deliveryErrors.mobile}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Street Address <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Enter Complete Street Address"
+                    value={deliveryAddress.streetAddress}
+                    onChange={(e) => handleAddressChange('delivery', 'streetAddress', e.target.value)}
+                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all resize-none font-poppins ${
+                      deliveryErrors.streetAddress ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {deliveryErrors.streetAddress && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {deliveryErrors.streetAddress}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <SearchableSelect
+                  label="State"
+                  required={true}
+                  value={deliveryAddress.state}
+                  placeholder="Select State"
+                  options={INDIAN_STATES.map(s => s.name)}
+                  onChange={(stateVal) => {
+                    handleAddressChange('delivery', 'state', stateVal);
+                    handleAddressChange('delivery', 'city', '');
+                  }}
+                  error={deliveryErrors.state}
+                />
+
+                <SearchableSelect
+                  label="City"
+                  required={true}
+                  disabled={!deliveryAddress.state}
+                  value={deliveryAddress.city}
+                  placeholder={!deliveryAddress.state ? "Select State First" : "Select City"}
+                  options={deliveryAddress.state ? getCitiesForState(deliveryAddress.state) : []}
+                  onChange={(cityVal) => handleAddressChange('delivery', 'city', cityVal)}
+                  error={deliveryErrors.city}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Area / Locality
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Area or Locality"
+                    value={deliveryAddress.area}
+                    onChange={(e) => handleAddressChange('delivery', 'area', e.target.value)}
+                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#B45A0A] focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    Pincode <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="Enter Pincode"
+                    value={deliveryAddress.pincode}
+                    onChange={(e) => handleAddressChange('delivery', 'pincode', e.target.value.replace(/\D/g, ''))}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
+                      deliveryErrors.pincode ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    }`}
+                  />
+                  {deliveryErrors.pincode && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {deliveryErrors.pincode}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
-          )}
+          </div>
+
         </div>
+
+        {/* 4. Bottom Action Bar (Cancel & Create Trip / Dispatch Trip) */}
+        <div className="flex items-center justify-end gap-4 pt-6 border-t border-[#E7EAF0]">
+          <button
+            type="button"
+            onClick={() => navigate("/manager/trips")}
+            className="px-6 py-3 bg-white border border-[#E7EAF0] rounded-xl text-sm font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-gray-50 transition-all cursor-pointer shadow-2xs font-poppins"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleDispatch}
+            disabled={!!departureError || !!etaError || !departureTime || !eta || !cargoWeight || isSameLocError}
+            className={`px-8 py-3 rounded-xl text-sm font-bold text-white transition-all shadow-md cursor-pointer flex items-center gap-2 font-poppins ${
+              (departureError || etaError || !departureTime || !eta || !cargoWeight || isSameLocError)
+                ? "bg-gray-300 shadow-none cursor-not-allowed opacity-60"
+                : "bg-[#B45A0A] hover:bg-[#9A4D08] shadow-[#B45A0A]/20"
+            }`}
+          >
+            <Navigation className="w-4 h-4" /> Create Trip
+          </button>
+        </div>
+
       </div>
     </div>
   );

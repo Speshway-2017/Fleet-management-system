@@ -5,6 +5,7 @@ import { useSettings } from "@/context/SettingsContext";
 import toast from "react-hot-toast";
 import { managerApi } from "@/roles/manager/api/managerApi";
 import MilestoneReviewModal from "./MilestoneReviewModal";
+import UserProfileCard from "@/components/common/UserProfileCard";
 
 const getImageUrl = (url) => {
   if (!url) return "";
@@ -333,81 +334,14 @@ export default function AppLayout() {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#B45A0A] border border-white rounded-full animate-pulse" />
             </button>
             <div className="relative hidden md:block">
-              {/* Profile Trigger */}
-              <button 
-                onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-3 hover:bg-gray-50 p-1.5 rounded-xl transition-all cursor-pointer text-left border-none bg-transparent"
-              >
-                <div className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 overflow-hidden">
-                  {user?.profileImage ? (
-                    <img
-                      src={getImageUrl(user.profileImage)}
-                      alt={user?.name || "Profile"}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Users className="w-5 h-5" />
-                  )}
-                </div>
-                <div className="text-right hidden sm:block">
-                  <p className="text-sm font-medium text-gray-800 leading-none">
-                    {user?.name || "Alex Thompson"}
-                  </p>
-                  <span className="text-[10px] text-gray-500 mt-1 block">
-                    {role === "admin" ? "Admin" : "Fleet Manager"}
-                  </span>
-                </div>
-                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${profileOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {/* Dropdown Menu */}
-              {profileOpen && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-10" 
-                    onClick={() => setProfileOpen(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg p-1.5 z-20 animate-fade-in origin-top-right">
-                    <button
-                      onClick={() => {
-                        setProfileOpen(false);
-                        navigate(role === "admin" ? "/admin/settings/profile" : "/manager/profile");
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-xs font-bold text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                    >
-                      <User className="w-4 h-4 text-gray-500" />
-                      <span>My Profile</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setProfileOpen(false);
-                        navigate(role === "admin" ? "/admin/settings" : "/manager/settings");
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-xs font-bold text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                    >
-                      <Settings className="w-4 h-4 text-gray-500" />
-                      <span>Settings</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setProfileOpen(false);
-                        navigate(role === "admin" ? "/admin/notifications" : "/manager/notifications");
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-xs font-bold text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                    >
-                      <Bell className="w-4 h-4 text-gray-500" />
-                      <span>Help & Support</span>
-                    </button>
-                    <button
-                      onClick={handleLogoutRequest}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Logout</span>
-                    </button>
-                  </div>
-                </>
-              )}
+              <UserProfileCard
+                user={user}
+                roleLabel={role === "admin" ? "Admin" : "Fleet Manager"}
+                profilePath={role === "admin" ? "/admin/settings/profile" : "/manager/profile"}
+                settingsPath={role === "admin" ? "/admin/settings" : "/manager/settings"}
+                supportPath={role === "admin" ? "/admin/notifications" : "/manager/notifications"}
+                onLogout={handleLogoutRequest}
+              />
             </div>
           </div>
         </header>
