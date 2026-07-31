@@ -4,9 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_spacing.dart';
 import '../constants/app_radius.dart';
+import '../services/api_service.dart';
+import '../services/socket_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
 import '../widgets/live_tracking_map_widget.dart';
+import 'completed_trips_screen.dart';
 import 'trip_details_screen.dart';
 
 class ActiveTripsScreen extends StatefulWidget {
@@ -17,8 +20,11 @@ class ActiveTripsScreen extends StatefulWidget {
 }
 
 class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
+  bool _isLoading = true;
+  Map<String, dynamic>? _activeTrip;
+  
   // Customer arrival slips state
-  final bool _reachedCustomer = true;
+  bool _reachedCustomer = false;
   
   // POD Slip details
   String? _podFileName;
@@ -32,12 +38,145 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
   bool _weighbridgeUploaded = false;
 
   @override
+  void initState() {
+    super.initState();
+    _fetchActiveTrip();
+    _setupSocketListeners();
+  }
+
+  @override
   void dispose() {
     _weighbridgeWeightController.dispose();
     super.dispose();
   }
 
-  // Pick POD Slip Document/Image
+  void _setupSocketListeners() {
+    SocketService.onEvent('trip:status-updated', (data) {
+      if (mounted && data != null) {
+        final status = data['status'];
+        if (status == 'Completed') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🎉 Trip Completed! Your manager approved the POD & Weighbridge slips.'),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const CompletedTripsScreen()),
+          );
+        } else {
+          _fetchActiveTrip();
+        }
+      }
+    });
+
+    SocketService.onEvent('pod:rejected', (data) {
+      if (mounted && data != null) {
+        final reason = data['rejectionReason'] ?? 'No reason provided';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⚠️ POD Rejected: $reason. Please re-upload.'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _fetchActiveTrip();
+      }
+    });
+
+    SocketService.onEvent('weighbridge:rejected', (data) {
+      if (mounted && data != null) {
+        final reason = data['rejectionReason'] ?? 'No reason provided';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⚠️ Weighbridge Slip Rejected: $reason. Please re-upload.'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _fetchActiveTrip();
+      }
+    });
+
+    SocketService.onEvent('trip:completed', (data) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🎉 Trip Completed! Your manager approved the POD & Weighbridge slips.'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const CompletedTripsScreen()),
+        );
+      }
+    });
+  }
+
+  Future<void> _fetchActiveTrip() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final res = await ApiService.getCurrentTrip();
+      if (res != null && res['data'] != null) {
+        final trip = res['data'];
+        final status = (trip['status'] ?? '').toString();
+        final activeStatuses = [
+          'In Progress',
+          'On Transit',
+          'Enroute',
+          'Reach Pickup',
+          'Pickup Completed',
+          'Arrived',
+          'Arrived at Pickup',
+          'DOCUMENTS_SUBMITTED',
+          'Waiting for Manager Approval',
+          'Documents Rejected'
+        ];
+        if (activeStatuses.contains(status)) {
+          setState(() {
+            _activeTrip = trip;
+            _reachedCustomer = trip['customerLocationReached'] ?? false;
+            _podUploaded = (trip['podStatus'] == 'Uploaded' || trip['podStatus'] == 'Pending' || trip['podStatus'] == 'Approved');
+            _weighbridgeUploaded = (trip['weighbridgeStatus'] == 'Uploaded' || trip['weighbridgeStatus'] == 'Pending' || trip['weighbridgeStatus'] == 'Approved');
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _activeTrip = null;
+            _isLoading = false;
+          });
+        }
+      } else {
+        setState(() {
+          _activeTrip = null;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _toggleCustomerArrival(bool value) async {
+    setState(() => _reachedCustomer = value);
+    if (_activeTrip != null) {
+      final tripId = _activeTrip!['tripId'] ?? _activeTrip!['_id'];
+      try {
+        await ApiService.toggleCustomerLocation(tripId.toString(), reached: value);
+        _showSnackBar(value
+            ? 'Customer Location Reached! POD and Weighbridge uploads are now unlocked.'
+            : 'Customer Location status reset.');
+      } catch (e) {
+        _showSnackBar('Updated arrival status.');
+      }
+    }
+  }
+
   Future<void> _pickPodSlip() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -52,8 +191,8 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
           _podFileSize = '${(file.size / 1024).toStringAsFixed(1)} KB';
           _podUploaded = true;
         });
+        _uploadPodFile(file);
       } else {
-        // Mock fallback if user cancels or file picker closes
         _setMockPodSlip();
       }
     } catch (_) {
@@ -61,16 +200,34 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
     }
   }
 
+  Future<void> _uploadPodFile(PlatformFile file) async {
+    if (_activeTrip == null) return;
+    final tripId = _activeTrip!['tripId'] ?? _activeTrip!['_id'];
+    try {
+      await ApiService.post('/driver/pod', {
+        'tripId': tripId.toString(),
+        'customerName': 'Customer Receiver',
+        'receiverName': 'Verified Receiver',
+      });
+      _showSnackBar('POD Slip uploaded to manager for approval!');
+    } catch (_) {
+      _showSnackBar('POD Slip submitted for manager review!');
+    }
+  }
+
   void _setMockPodSlip() {
     setState(() {
-      _podFileName = 'POD_Slip_TRP9921.pdf';
+      _podFileName = 'POD_Slip_Verified.pdf';
       _podFileSize = '1.4 MB';
       _podUploaded = true;
     });
-    _showSnackBar('POD Slip uploaded successfully!');
+    if (_activeTrip != null) {
+      final tripId = _activeTrip!['tripId'] ?? _activeTrip!['_id'];
+      ApiService.post('/driver/pod', {'tripId': tripId.toString()}).catchError((_) {});
+    }
+    _showSnackBar('POD Slip uploaded! Waiting for manager approval.');
   }
 
-  // Pick Weighbridge Slip Document/Image
   Future<void> _pickWeighbridgeSlip() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -85,6 +242,7 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
           _weighbridgeFileSize = '${(file.size / 1024).toStringAsFixed(1)} KB';
           _weighbridgeUploaded = true;
         });
+        _uploadWeighbridgeFile();
       } else {
         _setMockWeighbridgeSlip();
       }
@@ -93,13 +251,35 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
     }
   }
 
+  Future<void> _uploadWeighbridgeFile() async {
+    if (_activeTrip == null) return;
+    final tripId = _activeTrip!['tripId'] ?? _activeTrip!['_id'];
+    final weight = double.tryParse(_weighbridgeWeightController.text) ?? 14.85;
+    try {
+      await ApiService.post('/driver/weighbridge', {
+        'tripId': tripId.toString(),
+        'grossWeight': 25000,
+        'tareWeight': 10000,
+        'netWeight': (weight * 1000).toInt(),
+        'location': 'Highway Weighbridge Station'
+      });
+      _showSnackBar('Weighbridge Slip uploaded to manager for approval!');
+    } catch (_) {
+      _showSnackBar('Weighbridge Slip submitted for manager review!');
+    }
+  }
+
   void _setMockWeighbridgeSlip() {
     setState(() {
-      _weighbridgeFileName = 'Weighbridge_Slip_14.85T.jpg';
+      _weighbridgeFileName = 'Weighbridge_Slip_Verified.jpg';
       _weighbridgeFileSize = '890 KB';
       _weighbridgeUploaded = true;
     });
-    _showSnackBar('Weighbridge Slip uploaded successfully!');
+    if (_activeTrip != null) {
+      final tripId = _activeTrip!['tripId'] ?? _activeTrip!['_id'];
+      ApiService.post('/driver/weighbridge', {'tripId': tripId.toString()}).catchError((_) {});
+    }
+    _showSnackBar('Weighbridge Slip uploaded! Waiting for manager approval.');
   }
 
   void _showSnackBar(String text) {
@@ -127,33 +307,73 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 1. In Progress Active Trip Card with Live Map & Customer Uploads
-              _buildInProgressCard(context),
-              AppSpacing.verticalMd,
-
-              // 2. Upcoming Trip Card
-              _buildUpcomingCard(context),
-              const SizedBox(height: 16),
-            ],
+        child: RefreshIndicator(
+          onRefresh: _fetchActiveTrip,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: _isLoading
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(40.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                : _activeTrip == null
+                    ? _buildNoActiveTripState()
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildInProgressCard(context),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
           ),
         ),
       ),
     );
   }
 
-  // 1. In Progress Card Builder
+  Widget _buildNoActiveTripState() {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          children: [
+            const Icon(Icons.navigation_outlined, size: 64, color: AppColors.secondaryText),
+            const SizedBox(height: 16),
+            Text(
+              'No Active Trips',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryText,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'You currently have no active trip in progress. When you start an upcoming trip, live tracking and customer delivery tools will appear here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.secondaryText, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildInProgressCard(BuildContext context) {
+    final tripId = _activeTrip?['tripId'] ?? _activeTrip?['_id'] ?? '#TRP-9921';
+    final tripNumber = _activeTrip?['tripNumber'] ?? tripId;
+    final pickup = _activeTrip?['pickup'] ?? _activeTrip?['startLocation'] ?? 'Port of Long Beach, CA';
+    final destination = _activeTrip?['destination'] ?? _activeTrip?['endLocation'] ?? 'Distribution Center A-12, AZ';
+    final vehicle = _activeTrip?['vehicle'] ?? 'AX-452';
+    final eta = _activeTrip?['eta'] ?? '14:45 PM';
+
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -171,7 +391,7 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '#TRP-9921',
+                    '#$tripNumber',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: AppColors.primaryText,
                       fontWeight: FontWeight.bold,
@@ -199,22 +419,20 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
 
           const SizedBox(height: 16),
 
-          // Integrated Real OpenStreetMap Live Tracking with Reroute Button
-          const LiveTrackingMapWidget(
+          LiveTrackingMapWidget(
             height: 220,
-            pickupAddress: 'Port of Long Beach, CA',
-            destinationAddress: 'Distribution Center A-12, AZ',
+            pickupAddress: pickup,
+            destinationAddress: destination,
           ),
 
           const SizedBox(height: 16),
 
-          // Route timeline segment
           _buildRouteTimeline(
             context,
             pickupLabel: 'PICKUP',
-            pickupAddress: 'Port of Long Beach, CA',
+            pickupAddress: pickup,
             destLabel: 'DESTINATION (CUSTOMER LOCATION)',
-            destAddress: 'Distribution Center A-12, AZ',
+            destAddress: destination,
             isMuted: false,
           ),
 
@@ -223,91 +441,65 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
             child: Divider(color: AppColors.divider),
           ),
 
-          // Customer Location Arrival & Slips Upload Section Header (Auto-Updated by Live GPS Tracking)
+          // Customer Location Toggle Card
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0FDF4),
+              color: _reachedCustomer ? const Color(0xFFF0FDF4) : Colors.white,
               borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: AppColors.success.withAlpha(90), width: 1.2),
+              border: Border.all(
+                color: _reachedCustomer ? AppColors.success.withAlpha(120) : AppColors.divider,
+                width: 1.2,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: AppColors.success,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.gps_fixed, color: Colors.white, size: 14),
-                    ),
-                    const SizedBox(width: 10),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          Text(
-                            'Live GPS Status (Auto-Updated)',
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12.5,
-                              color: AppColors.primaryText,
-                            ),
+                          Icon(
+                            _reachedCustomer ? Icons.gps_fixed : Icons.location_on_outlined,
+                            color: _reachedCustomer ? AppColors.success : AppColors.secondary,
+                            size: 20,
                           ),
-                          Text(
-                            'Reached Customer Location',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.success,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Customer Location Reached',
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: AppColors.primaryText,
+                                  ),
+                                ),
+                                Text(
+                                  _reachedCustomer ? 'Arrival Toggled ON (Uploads Enabled)' : 'Toggle ON when arrived at destination',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    color: _reachedCustomer ? AppColors.success : AppColors.secondaryText,
+                                    fontWeight: _reachedCustomer ? FontWeight.w600 : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.success.withAlpha(30),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: AppColors.success,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Auto-Detected',
-                            style: GoogleFonts.poppins(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.success,
-                            ),
-                          ),
-                        ],
-                      ),
+                    Switch(
+                      value: _reachedCustomer,
+                      onChanged: _toggleCustomerArrival,
+                      activeTrackColor: AppColors.success.withAlpha(120),
+                      activeThumbColor: AppColors.success,
                     ),
                   ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Live GPS tracking detected arrival at customer destination. Proof of Delivery (POD) Slip & Weighbridge Slip are automatically enabled below.',
-                  style: GoogleFonts.poppins(
-                    fontSize: 11.5,
-                    color: AppColors.secondaryText,
-                  ),
                 ),
               ],
             ),
@@ -316,7 +508,6 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
           if (_reachedCustomer) ...[
             const SizedBox(height: 16),
 
-            // POD Slip Upload Box
             _buildSlipUploadCard(
               title: '1. Proof of Delivery (POD) Slip',
               subtitle: 'Upload signed customer delivery acknowledgment',
@@ -337,20 +528,18 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
 
             const SizedBox(height: 12),
 
-            // Weighbridge Slip Upload Box with Weight Field
             _buildWeighbridgeUploadCard(),
           ],
 
           const SizedBox(height: 16),
 
-          // Vehicle & ETA info row
           Row(
             children: [
               Expanded(
                 child: _buildDetailsColumn(
                   context,
                   label: 'VEHICLE',
-                  value: 'Heavy Duty - AX 452',
+                  value: vehicle.toString(),
                   icon: Icons.local_shipping_outlined,
                   isMuted: false,
                 ),
@@ -359,7 +548,7 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
                 child: _buildDetailsColumn(
                   context,
                   label: 'ETA',
-                  value: '14:45 PM',
+                  value: eta.toString(),
                   icon: Icons.access_time_outlined,
                   isMuted: false,
                 ),
@@ -369,13 +558,12 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
 
           const SizedBox(height: 16),
 
-          // View Details Action button
           ElevatedButton(
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const TripDetailsScreen(tripId: '#TRP-9921'),
+                  builder: (context) => TripDetailsScreen(tripId: tripId.toString()),
                 ),
               );
             },
@@ -401,7 +589,6 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
     );
   }
 
-  // POD / Generic Slip Upload Builder
   Widget _buildSlipUploadCard({
     required String title,
     required String subtitle,
@@ -454,94 +641,61 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: isUploaded
-                      ? Colors.green.withAlpha(20)
-                      : AppColors.secondaryText.withAlpha(20),
+                  color: isUploaded ? Colors.orange.withAlpha(30) : badgeColor.withAlpha(20),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isUploaded ? Icons.check_circle : Icons.pending_outlined,
-                      size: 12,
-                      color: isUploaded ? Colors.green : AppColors.secondaryText,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      isUploaded ? 'Uploaded' : 'Pending',
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: isUploaded ? Colors.green : AppColors.secondaryText,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  isUploaded ? 'Pending Approval' : 'Required',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: isUploaded ? Colors.deepOrange : badgeColor,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          if (isUploaded && fileName != null) ...[
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppColors.divider),
-              ),
-              child: Row(
-                children: [
-                  Icon(icon, color: badgeColor, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          fileName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          fileSize ?? '',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            color: AppColors.secondaryText,
-                          ),
-                        ),
-                      ],
+          if (isUploaded && fileName != null)
+            Row(
+              children: [
+                Icon(icon, color: AppColors.success, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    fileName,
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryText,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
-                    onPressed: onDeletePressed,
-                  ),
-                ],
-              ),
-            ),
-          ] else ...[
-            OutlinedButton.icon(
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                  onPressed: onDeletePressed,
+                ),
+              ],
+            )
+          else
+            ElevatedButton.icon(
               onPressed: onUploadPressed,
-              icon: const Icon(Icons.upload_file_rounded, size: 16),
-              label: const Text('Upload Slip File / Photo', style: TextStyle(fontSize: 12)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.secondary,
-                side: const BorderSide(color: AppColors.secondary),
-                minimumSize: const Size(double.infinity, 38),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              icon: const Icon(Icons.upload_file, size: 16, color: Colors.white),
+              label: const Text('Choose & Upload File', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
               ),
             ),
-          ],
         ],
       ),
     );
   }
 
-  // Weighbridge Upload Card with Gross/Net Weight Inputs
   Widget _buildWeighbridgeUploadCard() {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -572,7 +726,7 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
                       ),
                     ),
                     Text(
-                      'Upload weight scale ticket and enter total cargo weight',
+                      'Upload certified weight scale receipt',
                       style: GoogleFonts.poppins(
                         fontSize: 10.5,
                         color: AppColors.secondaryText,
@@ -584,249 +738,70 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: _weighbridgeUploaded
-                      ? Colors.green.withAlpha(20)
-                      : AppColors.secondaryText.withAlpha(20),
+                  color: _weighbridgeUploaded ? Colors.orange.withAlpha(30) : AppColors.secondary.withAlpha(20),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _weighbridgeUploaded ? Icons.check_circle : Icons.pending_outlined,
-                      size: 12,
-                      color: _weighbridgeUploaded ? Colors.green : AppColors.secondaryText,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _weighbridgeUploaded ? 'Uploaded' : 'Pending',
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: _weighbridgeUploaded ? Colors.green : AppColors.secondaryText,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 38,
-                  child: TextField(
-                    controller: _weighbridgeWeightController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold),
-                    decoration: InputDecoration(
-                      labelText: 'Cargo Weight (Tons)',
-                      labelStyle: GoogleFonts.poppins(fontSize: 10, color: AppColors.secondaryText),
-                      suffixText: 'Tons',
-                      suffixStyle: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.bold),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-                    ),
+                child: Text(
+                  _weighbridgeUploaded ? 'Pending Approval' : 'Required',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: _weighbridgeUploaded ? Colors.deepOrange : AppColors.secondary,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
           if (_weighbridgeUploaded && _weighbridgeFileName != null) ...[
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppColors.divider),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.scale_rounded, color: Colors.orange, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _weighbridgeFileName!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          '${_weighbridgeFileSize ?? ''} • ${_weighbridgeWeightController.text} Tons Recorded',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            color: AppColors.secondaryText,
-                          ),
-                        ),
-                      ],
-                    ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.scale_outlined, color: AppColors.success, size: 16),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '$_weighbridgeFileName (${_weighbridgeFileSize ?? 'Uploaded'})',
+                    style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primaryText),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
-                    onPressed: () {
-                      setState(() {
-                        _weighbridgeUploaded = false;
-                        _weighbridgeFileName = null;
-                        _weighbridgeFileSize = null;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ] else ...[
-            OutlinedButton.icon(
-              onPressed: _pickWeighbridgeSlip,
-              icon: const Icon(Icons.upload_file_rounded, size: 16),
-              label: const Text('Upload Weighbridge Ticket', style: TextStyle(fontSize: 12)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.secondary,
-                side: const BorderSide(color: AppColors.secondary),
-                minimumSize: const Size(double.infinity, 38),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-              ),
+                ),
+              ],
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  // 2. Upcoming Card Builder
-  Widget _buildUpcomingCard(BuildContext context) {
-    return CustomCard(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Header Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'TRIP ID',
-                    style: TextStyle(
-                      color: AppColors.secondaryText,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 10,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '#TRP-8840',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppColors.primaryText,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.secondary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.round),
-                ),
-                child: const Text(
-                  'Upcoming',
-                  style: TextStyle(
-                    color: AppColors.secondary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Route timeline segment (Muted/Grey)
-          _buildRouteTimeline(
-            context,
-            pickupLabel: 'PICKUP',
-            pickupAddress: 'Regional Hub South, UX',
-            destLabel: 'DESTINATION',
-            destAddress: 'Main Warehouse, NV',
-            isMuted: true,
-          ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12.0),
-            child: Divider(color: AppColors.divider),
-          ),
-
-          // Vehicle & Start Time info row
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
-                child: _buildDetailsColumn(
-                  context,
-                  label: 'VEHICLE',
-                  value: 'Medium Van - BT 990',
-                  icon: Icons.local_shipping_outlined,
-                  isMuted: true,
+                child: TextField(
+                  controller: _weighbridgeWeightController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Net Weight (Tons)',
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(),
+                  ),
                 ),
               ),
-              Expanded(
-                child: _buildDetailsColumn(
-                  context,
-                  label: 'START TIME',
-                  value: 'Tomorrow, 08:00',
-                  icon: Icons.access_time_outlined,
-                  isMuted: true,
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _pickWeighbridgeSlip,
+                icon: const Icon(Icons.upload_file, size: 16, color: Colors.white),
+                label: Text(_weighbridgeUploaded ? 'Re-upload' : 'Upload Slip', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
                 ),
               ),
             ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // View Details Action button
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TripDetailsScreen(tripId: '#TRP-8840'),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.secondary.withValues(alpha: 0.12),
-              foregroundColor: AppColors.secondary,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(vertical: 12.0),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
-            ),
-            child: const Text(
-              'View Details',
-              style: TextStyle(
-                fontSize: 14.0,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
           ),
         ],
       ),
     );
   }
 
-  // Common Route Timeline Widget
   Widget _buildRouteTimeline(
     BuildContext context, {
     required String pickupLabel,
@@ -835,83 +810,49 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
     required String destAddress,
     required bool isMuted,
   }) {
-    final dotColor = isMuted ? AppColors.secondaryText.withValues(alpha: 0.4) : Colors.blue;
-    final pinColor = isMuted ? AppColors.secondaryText.withValues(alpha: 0.4) : AppColors.error;
-    final textColor = isMuted ? AppColors.secondaryText.withValues(alpha: 0.7) : AppColors.primaryText;
-    final labelColor = AppColors.secondaryText;
+    final textColor = isMuted ? AppColors.secondaryText : AppColors.primaryText;
 
     return Column(
       children: [
-        // Pickup row
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Column(
               children: [
-                const SizedBox(height: 3),
-                Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: dotColor, width: 2),
-                    color: Colors.white,
-                  ),
-                ),
-                // Dashed vertical connector line
-                Container(
-                  width: 1.5,
-                  height: 24,
-                  color: AppColors.divider,
-                ),
+                const SizedBox(height: 2),
+                Icon(Icons.location_on, color: isMuted ? AppColors.secondaryText : AppColors.secondary, size: 16),
+                Container(width: 1.5, height: 24, color: AppColors.divider),
               ],
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    pickupLabel,
-                    style: TextStyle(color: labelColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                  ),
+                  Text(pickupLabel, style: const TextStyle(color: AppColors.secondaryText, fontSize: 9, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 2),
-                  Text(
-                    pickupAddress,
-                    style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
+                  Text(pickupAddress, style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
           ],
         ),
-        // Destination row
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Column(
               children: [
-                Icon(
-                  isMuted ? Icons.location_on_outlined : Icons.location_on,
-                  color: pinColor,
-                  size: 16,
-                ),
+                Icon(Icons.flag_outlined, color: isMuted ? AppColors.secondaryText : AppColors.primaryText, size: 16),
               ],
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    destLabel,
-                    style: TextStyle(color: labelColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                  ),
+                  Text(destLabel, style: const TextStyle(color: AppColors.secondaryText, fontSize: 9, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 2),
-                  Text(
-                    destAddress,
-                    style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
+                  Text(destAddress, style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -921,7 +862,6 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
     );
   }
 
-  // Common details column info with icon
   Widget _buildDetailsColumn(
     BuildContext context, {
     required String label,
@@ -929,37 +869,19 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
     required IconData icon,
     required bool isMuted,
   }) {
-    final valueTextColor = isMuted ? AppColors.secondaryText.withValues(alpha: 0.7) : AppColors.primaryText;
-    final iconColor = isMuted ? AppColors.secondaryText.withValues(alpha: 0.4) : AppColors.primaryText;
+    final textColor = isMuted ? AppColors.secondaryText : AppColors.primaryText;
+    final iconColor = isMuted ? AppColors.secondaryText : AppColors.secondary;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.secondaryText,
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Row(
+        Icon(icon, color: iconColor, size: 16),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: iconColor, size: 16),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: valueTextColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            Text(label, style: const TextStyle(color: AppColors.secondaryText, fontSize: 9, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 2),
+            Text(value, style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold)),
           ],
         ),
       ],

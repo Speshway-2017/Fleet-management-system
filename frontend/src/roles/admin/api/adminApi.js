@@ -1,5 +1,4 @@
 import { mockUsers } from "@/data/mockUsers";
-import { mockFleetOverview } from "@/data/mockFleetOverview";
 
 let users = [...mockUsers];
 
@@ -43,7 +42,7 @@ export const adminApi = {
     return { data: { id } };
   },
   getFleetOverview: async () => {
-    return { data: mockFleetOverview };
+    return { data: MOCK_OVERVIEW };
   },
 };
 

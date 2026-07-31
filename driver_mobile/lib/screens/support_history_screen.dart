@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/api_service.dart';
 import 'raise_ticket_screen.dart';
 import 'ticket_details_screen.dart';
 import 'calling_fleet_manager_screen.dart';
@@ -14,6 +15,8 @@ class SupportTicketItem {
   final String priority;
   final String status;
   final String raisedDate;
+  final String description;
+  final String? attachmentUrl;
   final Color statusBg;
   final Color statusText;
 
@@ -25,6 +28,8 @@ class SupportTicketItem {
     required this.priority,
     required this.status,
     required this.raisedDate,
+    this.description = '',
+    this.attachmentUrl,
     required this.statusBg,
     required this.statusText,
   });
@@ -46,11 +51,14 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
   int _selectedFilterIndex = 0;
   final List<String> _filters = ['All', 'Open', 'In Progress', 'Resolved', 'Rejected'];
 
-  static const List<SupportTicketItem> _allTickets = [
+  bool _isLoading = false;
+  List<SupportTicketItem> _tickets = [];
+
+  static const List<SupportTicketItem> _defaultMockTickets = [
     SupportTicketItem(
       ticketId: 'TK-1024',
       issueCategory: 'Engine Overheating',
-      vehicleNumber: 'TS09AB4589',
+      vehicleNumber: 'Assigned Vehicle',
       tripId: 'TRP-9901',
       priority: 'High',
       status: 'Open',
@@ -80,45 +88,120 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
       statusBg: Color(0xFFDCFCE7),
       statusText: Color(0xFF15803D),
     ),
-    SupportTicketItem(
-      ticketId: 'TK-0991',
-      issueCategory: 'Battery Not Charging',
-      vehicleNumber: 'AP39CD2211',
-      tripId: 'TRP-9874',
-      priority: 'Low',
-      status: 'Resolved',
-      raisedDate: 'Oct 15, 2023',
-      statusBg: Color(0xFFDCFCE7),
-      statusText: Color(0xFF15803D),
-    ),
-    SupportTicketItem(
-      ticketId: 'TK-0985',
-      issueCategory: 'GPS Device Not Working',
-      vehicleNumber: 'TN22EF5544',
-      tripId: 'TRP-9851',
-      priority: 'Medium',
-      status: 'Rejected',
-      raisedDate: 'Oct 10, 2023',
-      statusBg: Color(0xFFFEE2E2),
-      statusText: Color(0xFFDC2626),
-    ),
-    SupportTicketItem(
-      ticketId: 'TK-0972',
-      issueCategory: 'Breakdown Assistance',
-      vehicleNumber: 'MH04JK7712',
-      tripId: 'TRP-9820',
-      priority: 'High',
-      status: 'Resolved',
-      raisedDate: 'Oct 05, 2023',
-      statusBg: Color(0xFFDCFCE7),
-      statusText: Color(0xFF15803D),
-    ),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadTickets();
+  }
+
+  Future<void> _loadTickets() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final res = await ApiService.getDriverTickets();
+      final List data = (res is Map && res['data'] != null)
+          ? res['data']
+          : (res is List ? res : []);
+
+      if (data.isNotEmpty) {
+        final List<SupportTicketItem> fetched = data.map((t) {
+          final status = t['status'] ?? 'Open';
+          Color bg = const Color(0xFFFFEDD5);
+          Color textClr = const Color(0xFFC2410C);
+
+          if (status == 'Mechanic Assigned' || status == 'Mechanic Arrived') {
+            bg = const Color(0xFFE0F2FE);
+            textClr = const Color(0xFF0369A1);
+          } else if (status == 'Repair In Progress' || status == 'In Progress') {
+            bg = const Color(0xFFFEF3C7);
+            textClr = const Color(0xFFD97706);
+          } else if (status == 'Repair Completed') {
+            bg = const Color(0xFFDCFCE7);
+            textClr = const Color(0xFF16A34A);
+          } else if (status == 'Resolved') {
+            bg = const Color(0xFFDCFCE7);
+            textClr = const Color(0xFF15803D);
+          } else if (status == 'Closed') {
+            bg = const Color(0xFFF1F5F9);
+            textClr = const Color(0xFF475569);
+          } else if (status == 'Rejected') {
+            bg = const Color(0xFFFEE2E2);
+            textClr = const Color(0xFFDC2626);
+          }
+
+          final attachments = t['attachments'] as List?;
+          String? attachUrl;
+          if (attachments != null && attachments.isNotEmpty) {
+            attachUrl = attachments.first['url'];
+          }
+
+          final tripObj = t['trip'];
+          final vehicleObj = t['vehicle'];
+          final tripIdStr = tripObj != null && tripObj is Map
+              ? (tripObj['tripNumber'] ?? 'TRP-9901')
+              : 'TRP-9901';
+          final vehPlateStr = t['vehiclePlate'] ??
+              (vehicleObj != null && vehicleObj is Map
+                  ? (vehicleObj['registrationNumber'] ?? vehicleObj['plateNumber'] ?? 'Assigned Vehicle')
+                  : 'Assigned Vehicle');
+
+          final rawDate = t['reportedAt'] ?? t['createdAt'];
+          String formattedDate = 'Recently';
+          if (rawDate != null) {
+            try {
+              final d = DateTime.parse(rawDate.toString());
+              formattedDate = '${d.day}/${d.month}/${d.year}';
+            } catch (_) {}
+          }
+
+          return SupportTicketItem(
+            ticketId: t['ticketId'] ?? 'TKT-1000',
+            issueCategory: t['issueType'] ?? 'Vehicle Maintenance',
+            vehicleNumber: vehPlateStr,
+            tripId: tripIdStr,
+            priority: t['severity'] ?? 'Medium',
+            status: status,
+            raisedDate: formattedDate,
+            description: t['description'] ?? '',
+            attachmentUrl: attachUrl,
+            statusBg: bg,
+            statusText: textClr,
+          );
+        }).toList();
+
+        setState(() {
+          _tickets = fetched;
+        });
+      } else {
+        setState(() {
+          _tickets = _defaultMockTickets;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load driver tickets from API: $e');
+      if (_tickets.isEmpty) {
+        setState(() {
+          _tickets = _defaultMockTickets;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   List<SupportTicketItem> get _filteredTickets {
-    if (_selectedFilterIndex == 0) return _allTickets;
+    final list = _tickets.isNotEmpty ? _tickets : _defaultMockTickets;
+    if (_selectedFilterIndex == 0) return list;
     final filterName = _filters[_selectedFilterIndex];
-    return _allTickets.where((t) => t.status == filterName).toList();
+    return list.where((t) => t.status == filterName).toList();
   }
 
   @override
@@ -330,16 +413,23 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
               const SizedBox(height: 20.0),
 
               // 3. Ticket List
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _filteredTickets.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 14.0),
-                itemBuilder: (context, index) {
-                  final ticket = _filteredTickets[index];
-                  return _buildTicketCard(context, ticket);
-                },
-              ),
+              _isLoading
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 32.0),
+                        child: CircularProgressIndicator(color: primaryOrange),
+                      ),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _filteredTickets.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 14.0),
+                      itemBuilder: (context, index) {
+                        final ticket = _filteredTickets[index];
+                        return _buildTicketCard(context, ticket);
+                      },
+                    ),
 
               const SizedBox(height: 80.0), // Padding for FAB space
             ],
@@ -349,13 +439,16 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
 
       // 4. Circular (+) Floating Action Button
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          final res = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => const RaiseTicketScreen(),
             ),
           );
+          if (res == true) {
+            _loadTickets();
+          }
         },
         backgroundColor: primaryOrange,
         elevation: 4,
@@ -390,8 +483,12 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
             builder: (context) => TicketDetailsScreen(
               ticketId: ticket.ticketId,
               category: ticket.issueCategory,
+              description: ticket.description.isNotEmpty
+                  ? ticket.description
+                  : 'Vehicle issue reported by driver.',
               vehicleNumber: ticket.vehicleNumber,
               raisedDate: ticket.raisedDate,
+              attachmentUrl: ticket.attachmentUrl,
             ),
           ),
         );
@@ -417,14 +514,18 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '#${ticket.ticketId}',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: primaryOrange,
+              Expanded(
+                child: Text(
+                  '#${ticket.ticketId}',
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: primaryOrange,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8.0),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -434,7 +535,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                 child: Text(
                   ticket.status,
                   style: GoogleFonts.poppins(
-                    fontSize: 11,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     color: ticket.statusText,
                   ),

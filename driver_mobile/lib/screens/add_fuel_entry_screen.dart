@@ -1,21 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
+import '../services/api_service.dart';
 
-/// Driver Module - Add Fuel Entry Screen (Manager-Compatible Unified Schema)
-/// 
-/// Collects all fuel submission fields matching the Manager Fuel Management module:
-/// - Assigned Vehicle (Read-Only: TS09AB4589)
-/// - Current Trip ID (Read-Only: TRP-9901)
-/// - Fuel Station (Dropdown: Empty initially with hint "Select Fuel Station")
-/// - Fuel Type (Dropdown: Empty initially with hint "Select Fuel Type")
-/// - Quantity (Empty initially with hint "e.g. 45.0")
-/// - Fuel Cost (Empty initially with hint "e.g. 4250.00")
-/// - Date & Time (Empty initially with hint "e.g. Oct 24, 2023 • 10:30 AM")
-/// - Payment Mode (Dropdown: Empty initially with hint "Select Payment Mode")
-/// - Odometer Reading (Empty initially with hint "e.g. 142850")
-/// - Interactive Upload Fuel Receipt Section (Empty initially, functional Camera & Gallery buttons)
-/// - Fleet Manager Approval Info Note
-/// - Manager-compatible data payload summary modal upon submission.
+/// Driver Module - Add Fuel Entry Screen
 class AddFuelEntryScreen extends StatefulWidget {
   const AddFuelEntryScreen({super.key});
 
@@ -24,10 +13,12 @@ class AddFuelEntryScreen extends StatefulWidget {
 }
 
 class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
-  // Read-only values
-  final String _assignedVehicle = 'TS09AB4589';
+  // Read-only / dynamic vehicle values
+  String _assignedVehicle = 'Fetching vehicle...';
   final String _currentTripId = 'TRP-9901';
-  final String _driverName = 'Satya Narayana';
+  final String _driverName = 'Driver';
+  final String _receiptFileSize = '1.2 MB';
+  bool _isSubmitting = false;
 
   // Fuel Stations List
   final List<String> _fuelStations = const [
@@ -38,13 +29,13 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
     'Nayara Energy',
     'Shell India',
   ];
-  String? _selectedStation; // Empty initially for new receipt upload
+  String? _selectedStation;
 
   // Form selections
-  String? _selectedFuelType; // Empty initially for new receipt upload
+  String? _selectedFuelType = 'Diesel';
   final List<String> _fuelTypes = const ['Diesel', 'Petrol', 'CNG'];
 
-  String? _selectedPaymentMode; // Empty initially for new receipt upload
+  String? _selectedPaymentMode = 'Fleet Card';
   final List<String> _paymentModes = const ['Cash', 'UPI', 'Fleet Card'];
 
   final TextEditingController _quantityController = TextEditingController();
@@ -52,32 +43,83 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
   final TextEditingController _dateTimeController = TextEditingController();
   final TextEditingController _odometerController = TextEditingController();
 
-  // Receipt Upload State (Starts false for fresh form)
+  // Receipt Upload State
   bool _receiptUploaded = false;
-  String _receiptFileName = 'fuel_receipt_0974.jpg';
-  final String _receiptFileSize = '1.2 MB';
+  String _receiptFileName = '';
+  Uint8List? _imageBytes;
+  String? _imagePath;
+  final ImagePicker _picker = ImagePicker();
 
-  void _simulateReceiptUpload(String source) {
-    setState(() {
-      _receiptUploaded = true;
-      _receiptFileName = source == 'Camera' ? 'cam_receipt_0974.jpg' : 'gallery_receipt_0974.jpg';
-    });
+  @override
+  void initState() {
+    super.initState();
+    _fetchVehicleInfo();
+    _dateTimeController.text = DateTime.now().toString().split('.')[0];
+  }
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Color(0xFF22C55E), size: 20),
-            const SizedBox(width: 8),
-            Text('Receipt attached via $source successfully!'),
-          ],
-        ),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
-      ),
-    );
+  Future<void> _fetchVehicleInfo() async {
+    try {
+      final res = await ApiService.getAssignedVehicle();
+      if (mounted && res != null && res['success'] == true) {
+        final data = res['data'];
+        if (data != null && data['assigned'] == true && data['vehicle'] != null) {
+          final v = data['vehicle'];
+          setState(() {
+            _assignedVehicle = v['vehicleNumber'] ?? v['plateNumber'] ?? 'Assigned Vehicle';
+            if (v['odometer'] != null) {
+              _odometerController.text = v['odometer'].toString();
+            }
+          });
+        } else {
+          setState(() {
+            _assignedVehicle = 'No Vehicle Assigned';
+          });
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _assignedVehicle = 'Assigned Vehicle';
+        });
+      }
+    }
+  }
+
+  Future<void> _pickReceiptImage(ImageSource source) async {
+    try {
+      final XFile? file = await _picker.pickImage(source: source, imageQuality: 85);
+      if (file != null) {
+        final bytes = await file.readAsBytes();
+        setState(() {
+          _receiptUploaded = true;
+          _receiptFileName = file.name;
+          _imageBytes = bytes;
+          _imagePath = file.path;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Color(0xFF22C55E), size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('Receipt attached (${file.name}) successfully!')),
+                ],
+              ),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _showWarning('Failed to select receipt image: $e');
+      }
+    }
   }
 
   void _openReceiptViewerModal(BuildContext context) {
@@ -306,7 +348,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
     );
   }
 
-  void _showSubmitFeedback(BuildContext context) {
+  Future<void> _showSubmitFeedback(BuildContext context) async {
     if (_selectedStation == null) {
       _showWarning('Please select a Fuel Station.');
       return;
@@ -323,23 +365,51 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
       _showWarning('Please enter Fuel Cost.');
       return;
     }
-    if (_odometerController.text.trim().isEmpty) {
-      _showWarning('Please enter Odometer Reading.');
-      return;
-    }
-    if (_dateTimeController.text.trim().isEmpty) {
-      _showWarning('Please enter Date & Time.');
-      return;
-    }
-    if (_selectedPaymentMode == null) {
-      _showWarning('Please select a Payment Mode.');
-      return;
-    }
     if (!_receiptUploaded) {
       _showWarning('Please upload a fuel receipt before submitting.');
       return;
     }
 
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final double amt = double.tryParse(_costController.text.trim()) ?? 0.0;
+      final double ltr = double.tryParse(_quantityController.text.trim()) ?? 0.0;
+
+      final dynamic imgFile = _imageBytes ?? _imagePath;
+
+      final response = await ApiService.createFuelEntry(
+        fuelStation: _selectedStation!,
+        amount: amt,
+        liters: ltr,
+        imageFile: imgFile,
+        imageName: _receiptFileName,
+      );
+
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+
+        if (response != null && response['success'] == true) {
+          _showSuccessModal();
+        } else {
+          _showWarning(response?['message'] ?? 'Failed to submit fuel entry.');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+        _showWarning('Error submitting fuel entry: $e');
+      }
+    }
+  }
+
+  void _showSuccessModal() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -372,7 +442,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Your fuel receipt has been sent to Fleet Management for verification.',
+              'Your fuel receipt has been uploaded and sent to Fleet Management for verification.',
               style: GoogleFonts.nunito(
                 fontSize: 13,
                 color: const Color(0xFF6B7280),
@@ -389,8 +459,6 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
               child: Column(
                 children: [
                   _buildSummaryRow('Vehicle ID', _assignedVehicle),
-                  _buildSummaryRow('Driver', _driverName),
-                  _buildSummaryRow('Trip ID', _currentTripId),
                   _buildSummaryRow('Station', _selectedStation ?? ''),
                   _buildSummaryRow('Fuel Type', _selectedFuelType ?? ''),
                   _buildSummaryRow('Quantity', '${_quantityController.text} L'),
@@ -405,6 +473,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop();
+              _resetForm();
               Navigator.of(context).pop();
             },
             style: ElevatedButton.styleFrom(
@@ -755,7 +824,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () => _simulateReceiptUpload('Camera'),
+                            onPressed: () => _pickReceiptImage(ImageSource.camera),
                             icon: const Icon(Icons.camera_alt_outlined, size: 18),
                             label: const Text('Camera'),
                             style: OutlinedButton.styleFrom(
@@ -776,7 +845,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                         const SizedBox(width: 12.0),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () => _simulateReceiptUpload('Gallery'),
+                            onPressed: () => _pickReceiptImage(ImageSource.gallery),
                             icon: const Icon(Icons.photo_library_outlined, size: 18),
                             label: const Text('Gallery'),
                             style: OutlinedButton.styleFrom(
@@ -1006,7 +1075,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () => _showSubmitFeedback(context),
+                  onPressed: _isSubmitting ? null : () => _showSubmitFeedback(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryOrange,
                     foregroundColor: Colors.white,
@@ -1019,18 +1088,27 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('Submit Fuel Entry'),
-                      const SizedBox(width: 8.0),
-                      const Icon(
-                        Icons.send_rounded,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-                    ],
-                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('Submit Fuel Entry'),
+                            const SizedBox(width: 8.0),
+                            const Icon(
+                              Icons.send_rounded,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
                 ),
               ),
 

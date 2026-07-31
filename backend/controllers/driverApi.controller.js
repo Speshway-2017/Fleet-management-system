@@ -1,13 +1,20 @@
+import mongoose from 'mongoose';
 import Driver from '../models/Driver.js';
 import Trip from '../models/Trip.js';
 import Notification from '../models/Notification.js';
 import Document from '../models/Document.js';
 import ProofOfDelivery from '../models/ProofOfDelivery.js';
+import WeighbridgeSlip from '../models/WeighbridgeSlip.js';
+import Vehicle from '../models/Vehicle.js';
+import Maintenance from '../models/Maintenance.js';
+import Fuel from '../models/Fuel.js';
+import VehicleComplaint from '../models/VehicleComplaint.js';
 import User from '../models/User.js';
 import { comparePassword } from '../utils/hashPassword.js';
 import { generateToken } from '../utils/jwt.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import cloudinary from '../utils/cloudinary.js';
+import { createAndEmitNotification } from '../utils/notification.js';
 
 /**
  * Driver Login
@@ -64,6 +71,7 @@ export const loginDriver = async (req, res, next) => {
   }
 };
 
+
 /**
  * Driver Logout
  * POST /api/driver/logout
@@ -92,7 +100,7 @@ export const getDriverProfile = async (req, res, next) => {
         const Org = (await import('../models/Organization.js')).default;
         const org = await Org.findById(driver.assignedManager.organization);
         if (org) organizationName = org.name;
-      } catch (e) {}
+      } catch (e) { }
     }
 
     return sendSuccess(res, 200, {
@@ -232,6 +240,73 @@ export const getDriverNotifications = async (req, res, next) => {
  * Update Trip Status
  * PATCH /api/driver/trips/:id/status
  */
+/**
+ * Respond to Trip Assignment (Accept or Reject)
+ * PATCH /api/driver/trips/:id/respond
+ */
+export const respondToTripAssignment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { action } = req.body; // 'accept' or 'reject'
+
+    if (!action || !['accept', 'reject'].includes(action.toLowerCase())) {
+      return sendError(res, 400, 'Valid action (accept or reject) is required');
+    }
+
+    const trip = await Trip.findById(id).populate('vehicle').populate('driver');
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    const isAccept = action.toLowerCase() === 'accept';
+    const newStatus = isAccept ? 'Accepted' : 'Rejected';
+    trip.status = newStatus;
+    await trip.save();
+
+    const driverDoc = await Driver.findById(req.user._id);
+
+    if (!isAccept) {
+      // Revert driver and vehicle status to available
+      await Driver.findByIdAndUpdate(req.user._id, { driverStatus: 'AVAILABLE', assignedVehicle: 'Unassigned' });
+      if (trip.vehicle) {
+        await Vehicle.findByIdAndUpdate(trip.vehicle._id || trip.vehicle, { currentStatus: 'Available', assignedDriver: null });
+      }
+    }
+
+    const io = req.app.get('socketio') || req.app.locals?.io;
+    const managerId = trip.assignedManager;
+
+    if (managerId) {
+      await createAndEmitNotification({
+        io,
+        recipient: managerId,
+        recipientRole: 'FLEET_MANAGER',
+        type: isAccept ? 'trip_accepted' : 'trip_rejected',
+        title: `Trip ${trip.tripNumber} ${isAccept ? 'Accepted' : 'Rejected'}`,
+        message: `Driver ${driverDoc?.fullName || req.user.name || 'Assigned driver'} has ${isAccept ? 'accepted' : 'rejected'} trip #${trip.tripNumber}.`,
+        priority: isAccept ? 'normal' : 'high',
+        metadata: { tripId: trip._id, action: newStatus }
+      });
+
+      if (io) {
+        io.to(`manager:${managerId}`).emit('trip:status-updated', {
+          tripId: trip._id,
+          status: newStatus,
+          driverId: req.user._id
+        });
+      }
+    }
+
+    return sendSuccess(res, 200, trip, `Trip assignment ${isAccept ? 'accepted' : 'rejected'} successfully`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update Trip Status
+ * PATCH /api/driver/trips/:id/status
+ */
 export const updateTripStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -246,33 +321,120 @@ export const updateTripStatus = async (req, res, next) => {
       return sendError(res, 404, 'Trip not found');
     }
 
-    trip.status = status;
-    if (status === 'Start Trip' || status === 'In Progress' || status === 'Enroute') {
+    const targetStatus = status === 'Start Trip' ? 'In Progress' : (status === 'Complete Trip' ? 'Completed' : status);
+
+    // Validate 15 min start restriction for In Progress
+    if (targetStatus === 'In Progress') {
+      const departure = new Date(trip.departureTime);
+      const now = new Date();
+      // Enable start if current time is within 15 minutes of departure or later
+      if (!isNaN(departure.getTime())) {
+        const marginMs = 15 * 60 * 1000;
+        if (now.getTime() + marginMs < departure.getTime()) {
+          const diffMins = Math.ceil((departure.getTime() - now.getTime()) / 60000);
+          return sendError(res, 400, `Trip start is locked until 15 minutes before scheduled departure time. Scheduled departure is in ${diffMins} minutes.`);
+        }
+      }
       if (!trip.actualStartTime) trip.actualStartTime = new Date();
-    } else if (status === 'Completed' || status === 'Complete Trip') {
-      trip.status = 'Completed';
+    } else if (targetStatus === 'Completed') {
       trip.actualEndTime = new Date();
     }
+
+    trip.status = targetStatus;
     await trip.save();
 
     // Update Driver status if applicable
-    if (['Completed', 'Complete Trip'].includes(status)) {
+    if (['Completed', 'Complete Trip'].includes(targetStatus)) {
       await Driver.findByIdAndUpdate(req.user._id, { driverStatus: 'AVAILABLE' });
+      if (trip.vehicle) {
+        await Vehicle.findByIdAndUpdate(trip.vehicle, { currentStatus: 'Available' });
+      }
     } else {
       await Driver.findByIdAndUpdate(req.user._id, { driverStatus: 'ON_TRIP' });
+      if (trip.vehicle) {
+        await Vehicle.findByIdAndUpdate(trip.vehicle, { currentStatus: 'On Trip' });
+      }
     }
 
-    // Broadcast Socket.io event to manager
+    // Broadcast Socket.io event and notification to manager
     const io = req.app.get('socketio') || req.app.locals?.io;
-    if (io && trip.assignedManager) {
-      io.to(`manager:${trip.assignedManager}`).emit('trip:status-updated', {
-        tripId: trip._id,
-        status: trip.status,
-        driverId: req.user._id
-      });
+    const managerId = trip.assignedManager;
+    const driverDoc = await Driver.findById(req.user._id);
+
+    if (managerId) {
+      if (targetStatus === 'In Progress') {
+        await createAndEmitNotification({
+          io,
+          recipient: managerId,
+          recipientRole: 'FLEET_MANAGER',
+          type: 'trip_started',
+          title: `Trip Started: ${trip.tripNumber}`,
+          message: `Driver ${driverDoc?.fullName || 'Driver'} has started trip #${trip.tripNumber} (${trip.startLocation} ➔ ${trip.endLocation}). Live GPS tracking activated.`,
+          priority: 'normal',
+          metadata: { tripId: trip._id, driverId: req.user._id }
+        });
+      }
+
+      if (io) {
+        io.to(`manager:${managerId}`).emit('trip:status-updated', {
+          tripId: trip._id,
+          status: trip.status,
+          driverId: req.user._id
+        });
+      }
     }
 
     return sendSuccess(res, 200, trip, 'Trip status updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Toggle Customer Location Reached
+ * PATCH /api/driver/trips/:id/customer-location
+ */
+export const toggleCustomerLocation = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { reached = true } = req.body;
+
+    const trip = await Trip.findById(id);
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    trip.customerLocationReached = reached;
+    if (reached) {
+      trip.customerLocationReachedAt = new Date();
+    }
+    await trip.save();
+
+    const io = req.app.get('socketio') || req.app.locals?.io;
+    const managerId = trip.assignedManager;
+    const driverDoc = await Driver.findById(req.user._id);
+
+    if (managerId && reached) {
+      await createAndEmitNotification({
+        io,
+        recipient: managerId,
+        recipientRole: 'FLEET_MANAGER',
+        type: 'customer_location_reached',
+        title: `Customer Location Reached: ${trip.tripNumber}`,
+        message: `Driver ${driverDoc?.fullName || 'Driver'} has arrived at customer location (${trip.endLocation}) for trip #${trip.tripNumber}. Document uploads enabled.`,
+        priority: 'normal',
+        metadata: { tripId: trip._id, driverId: req.user._id }
+      });
+
+      if (io) {
+        io.to(`manager:${managerId}`).emit('trip:customer-location-reached', {
+          tripId: trip._id,
+          driverId: req.user._id
+        });
+      }
+    }
+
+    return sendSuccess(res, 200, trip, 'Customer location status updated');
   } catch (error) {
     next(error);
   }
@@ -368,50 +530,95 @@ export const getDriverSupportInfo = async (req, res, next) => {
  * Upload Proof of Delivery (POD)
  * POST /api/driver/pod
  */
+/**
+ * Upload Proof of Delivery (POD)
+ * POST /api/driver/pod
+ */
 export const uploadProofOfDelivery = async (req, res, next) => {
   try {
-    const { tripId, customerName, receiverName } = req.body;
+    const { tripId, customerName, receiverName, customerSignatureUrl, deliveryPhotoUrl, podDocumentUrl } = req.body;
 
-    if (!req.file) {
-      return sendError(res, 400, 'POD image/document file is required');
+    let secureUrl = deliveryPhotoUrl || podDocumentUrl || '';
+    if (req.file) {
+      try {
+        const uploadResult = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: 'fleet_pod', resource_type: 'auto' },
+            (err, result) => (err ? reject(err) : resolve(result))
+          );
+          uploadStream.end(req.file.buffer);
+        });
+        secureUrl = uploadResult.secure_url;
+      } catch (err) {
+        console.warn('Cloudinary POD upload warning:', err.message);
+      }
     }
 
-    const uploadResult = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: 'fleet_pod', resource_type: 'auto' },
-        (err, result) => (err ? reject(err) : resolve(result))
-      );
-      uploadStream.end(req.file.buffer);
-    });
+    if (!secureUrl) {
+      secureUrl = 'https://via.placeholder.com/300x300.png?text=POD+Uploaded';
+    }
 
-    const podNumber = `POD-${Date.now()}`;
-    const pod = new ProofOfDelivery({
-      podNumber,
-      trip: tripId || null,
-      driver: req.user._id,
-      customerName: customerName || 'Customer Receiver',
-      receiverName: receiverName || 'Verified Receiver',
-      deliveryDate: new Date(),
-      deliveryPhotoUrl: uploadResult.secure_url,
-      podDocumentUrl: uploadResult.secure_url,
-      status: 'Pending',
-      uploadedBy: 'Driver'
-    });
+    const finalSigUrl = customerSignatureUrl || 'https://via.placeholder.com/300x100.png?text=Signature';
+    const finalDocUrl = podDocumentUrl || secureUrl;
 
-    await pod.save();
+    let pod = await ProofOfDelivery.findOne({ trip: tripId });
+    if (pod) {
+      pod.customerName = customerName || pod.customerName || 'Customer Receiver';
+      pod.receiverName = receiverName || pod.receiverName || 'Verified Receiver';
+      pod.deliveryPhotoUrl = secureUrl;
+      pod.customerSignatureUrl = finalSigUrl;
+      pod.podDocumentUrl = finalDocUrl;
+      pod.status = 'Pending';
+      pod.rejectionReason = '';
+      await pod.save();
+    } else {
+      const podNumber = `POD-${Date.now()}`;
+      pod = new ProofOfDelivery({
+        podNumber,
+        trip: tripId || null,
+        driver: req.user._id,
+        customerName: customerName || 'Customer Receiver',
+        receiverName: receiverName || 'Verified Receiver',
+        deliveryDate: new Date(),
+        customerSignatureUrl: finalSigUrl,
+        deliveryPhotoUrl: secureUrl,
+        podDocumentUrl: finalDocUrl,
+        status: 'Pending',
+        uploadedBy: req.user.name || 'Driver'
+      });
+      await pod.save();
+    }
 
+    let managerId = null;
     if (tripId) {
-      await Trip.findByIdAndUpdate(tripId, { podStatus: 'Uploaded' });
+      const updatedTrip = await Trip.findByIdAndUpdate(tripId, { podStatus: 'Uploaded' }, { new: true });
+      if (updatedTrip?.assignedManager) {
+        managerId = updatedTrip.assignedManager;
+      }
+    }
+
+    const driverDoc = await Driver.findById(req.user._id);
+    if (!managerId && driverDoc?.assignedManager) {
+      managerId = driverDoc.assignedManager;
     }
 
     const io = req.app.get('socketio') || req.app.locals?.io;
-    const driver = await Driver.findById(req.user._id);
-    if (io && driver?.assignedManager) {
-      io.to(`manager:${driver.assignedManager}`).emit('pod:uploaded', {
-        podId: pod._id,
-        tripId,
-        url: uploadResult.secure_url
+    if (managerId) {
+      await createAndEmitNotification({
+        io,
+        recipient: managerId,
+        recipientRole: 'FLEET_MANAGER',
+        type: 'pod_uploaded',
+        title: `Proof of Delivery Uploaded`,
+        message: `Driver ${driverDoc?.fullName || req.user.name || 'Driver'} uploaded Proof of Delivery (POD) for review.`,
+        priority: 'high',
+        metadata: { podId: pod._id, tripId }
       });
+
+      if (io) {
+        io.to(`manager:${managerId}`).emit('pod:uploaded', pod);
+        io.to(`manager:${managerId}`).emit('trip:status-updated', { tripId, podStatus: 'Uploaded' });
+      }
     }
 
     return sendSuccess(res, 201, pod, 'Proof of Delivery uploaded successfully');
@@ -419,3 +626,727 @@ export const uploadProofOfDelivery = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Upload Weighbridge Slip
+ * POST /api/driver/weighbridge
+ */
+export const uploadWeighbridgeSlip = async (req, res, next) => {
+  try {
+    const { tripId, grossWeight, tareWeight, netWeight, location, documentUrl } = req.body;
+
+    let secureUrl = documentUrl || '';
+    if (req.file) {
+      try {
+        const uploadResult = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: 'fleet_weighbridge', resource_type: 'auto' },
+            (err, result) => (err ? reject(err) : resolve(result))
+          );
+          uploadStream.end(req.file.buffer);
+        });
+        secureUrl = uploadResult.secure_url;
+      } catch (err) {
+        console.warn('Cloudinary upload warning:', err.message);
+      }
+    }
+
+    const gross = Number(grossWeight) || 25000;
+    const tare = Number(tareWeight) || 10000;
+    const calculatedNet = Number(netWeight) || (gross - tare);
+
+    let slip = await WeighbridgeSlip.findOne({ trip: tripId });
+    if (slip) {
+      slip.grossWeight = gross;
+      slip.tareWeight = tare;
+      slip.netWeight = calculatedNet;
+      if (location) slip.location = location;
+      if (secureUrl) slip.documentUrl = secureUrl;
+      slip.status = 'Pending';
+      slip.rejectionReason = '';
+      await slip.save();
+    } else {
+      slip = new WeighbridgeSlip({
+        slipNumber: `WB-${Date.now()}`,
+        trip: tripId || null,
+        driver: req.user._id,
+        grossWeight: gross,
+        tareWeight: tare,
+        netWeight: calculatedNet,
+        location: location || 'Highway Weighbridge Station',
+        uploadedBy: req.user.name || 'Driver',
+        status: 'Pending',
+        documentUrl: secureUrl || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+      });
+      await slip.save();
+    }
+
+    let managerId = null;
+    if (tripId) {
+      const updatedTrip = await Trip.findByIdAndUpdate(tripId, { weighbridgeStatus: 'Uploaded' }, { new: true });
+      if (updatedTrip?.assignedManager) {
+        managerId = updatedTrip.assignedManager;
+      }
+    }
+
+    const driverDoc = await Driver.findById(req.user._id);
+    if (!managerId && driverDoc?.assignedManager) {
+      managerId = driverDoc.assignedManager;
+    }
+
+    const io = req.app.get('socketio') || req.app.locals?.io;
+    if (managerId) {
+      await createAndEmitNotification({
+        io,
+        recipient: managerId,
+        recipientRole: 'FLEET_MANAGER',
+        type: 'weighbridge_uploaded',
+        title: `Weighbridge Slip Uploaded`,
+        message: `Driver ${driverDoc?.fullName || req.user.name || 'Driver'} uploaded a Weighbridge Slip (${calculatedNet} kg net) for review.`,
+        priority: 'high',
+        metadata: { slipId: slip._id, tripId }
+      });
+
+      if (io) {
+        io.to(`manager:${managerId}`).emit('weighbridge:uploaded', { slip, slipId: slip._id, tripId, url: slip.documentUrl });
+        io.to(`manager:${managerId}`).emit('trip:status-updated', { tripId, weighbridgeStatus: 'Uploaded' });
+      }
+    }
+
+    return sendSuccess(res, 201, slip, 'Weighbridge slip uploaded successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get Driver Trips (Filtered by status, e.g. Completed, In Progress)
+ * GET /api/driver/trips
+ */
+export const getDriverTrips = async (req, res, next) => {
+  try {
+    const driverId = req.user._id;
+    const { status } = req.query;
+
+    const query = { driver: driverId };
+    if (status) {
+      if (status.includes(',')) {
+        query.status = { $in: status.split(',').map(s => s.trim()) };
+      } else {
+        query.status = status;
+      }
+    }
+
+    const trips = await Trip.find(query).populate('vehicle').sort({ createdAt: -1 });
+
+    const formattedTrips = trips.map((trip) => ({
+      tripId: trip._id,
+      tripNumber: trip.tripNumber,
+      pickup: trip.startLocation,
+      destination: trip.endLocation,
+      status: trip.status,
+      eta: trip.eta,
+      departureTime: trip.departureTime,
+      createdAt: trip.createdAt,
+      actualStartTime: trip.actualStartTime,
+      actualEndTime: trip.actualEndTime,
+      cargoType: trip.cargoType,
+      cargoWeight: trip.cargoWeight,
+      vehicle: trip.vehiclePlate || trip.vehicleName || 'Vehicle',
+      podStatus: trip.podStatus,
+      weighbridgeStatus: trip.weighbridgeStatus,
+    }));
+
+    return sendSuccess(res, 200, formattedTrips, 'Driver trips retrieved');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get Assigned Vehicle for Driver
+ * GET /api/driver/vehicle
+ */
+export const getAssignedVehicle = async (req, res, next) => {
+  try {
+    const driverId = req.user._id;
+
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return sendError(res, 404, 'Driver profile not found');
+    }
+
+    let vehicle = await Vehicle.findOne({ assignedDriver: driverId }).populate('assignedManager', 'name email phone');
+
+    if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '') {
+      vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle }).populate('assignedManager', 'name email phone');
+    }
+
+    if (!vehicle) {
+      // Check active trip vehicle as fallback
+      const activeTrip = await Trip.findOne({
+        driver: driverId,
+        status: { $nin: ['Completed', 'Cancelled'] }
+      }).populate('vehicle');
+
+      if (activeTrip && activeTrip.vehicle && typeof activeTrip.vehicle === 'object') {
+        vehicle = activeTrip.vehicle;
+      }
+    }
+
+    if (!vehicle) {
+      return sendSuccess(res, 200, { assigned: false, vehicle: null }, 'No vehicle assigned');
+    }
+
+    const vehObj = vehicle.toObject ? vehicle.toObject() : vehicle;
+
+    // Attach driver info for completeness
+    vehObj.assignedDriverName = driver.fullName;
+    vehObj.assignedDriverPhone = driver.phoneNumber;
+    vehObj.assignedDriverEmpId = driver.employeeId;
+    vehObj.assignedDriverLicense = driver.licenseNumber;
+
+    return sendSuccess(res, 200, {
+      assigned: true,
+      vehicle: vehObj
+    }, 'Assigned vehicle retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get Driver Vehicle Maintenance Records
+ * GET /api/driver/maintenance
+ */
+export const getDriverMaintenance = async (req, res, next) => {
+  try {
+    const driverId = req.user._id;
+
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return sendError(res, 404, 'Driver profile not found');
+    }
+
+    let vehicle = await Vehicle.findOne({ assignedDriver: driverId });
+    if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '') {
+      vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle });
+    }
+    if (!vehicle) {
+      const activeTrip = await Trip.findOne({ driver: driverId, status: { $nin: ['Completed', 'Cancelled'] } }).populate('vehicle');
+      if (activeTrip && activeTrip.vehicle && typeof activeTrip.vehicle === 'object') {
+        vehicle = activeTrip.vehicle;
+      }
+    }
+
+    if (!vehicle) {
+      return sendSuccess(res, 200, {
+        assigned: false,
+        maintenances: [],
+        activeMaintenances: [],
+        completedMaintenances: [],
+        upcomingCount: 0,
+        overdueCount: 0,
+        lastCompleted: null
+      }, 'No vehicle assigned');
+    }
+
+    const vehNum = vehicle.vehicleNumber || '';
+    const cleanVehNum = vehNum.replace(/\s+/g, '').toUpperCase();
+
+    // Find maintenance records matching vehicle._id or vehicleNumber
+    const maintenances = await Maintenance.find({
+      $or: [
+        { vehicle: vehicle._id },
+        { vehicleId: vehNum },
+        { vehicleId: new RegExp(cleanVehNum.split('').join('\\s*'), 'i') }
+      ]
+    }).sort({ createdAt: -1 });
+
+    const activeMaintenances = maintenances.filter(m => m.status !== 'Completed' && m.status !== 'Cancelled');
+    const completedMaintenances = maintenances.filter(m => m.status === 'Completed');
+
+    // Calculate upcoming and overdue
+    let upcomingCount = 0;
+    let overdueCount = 0;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    activeMaintenances.forEach(m => {
+      if (m.status === 'Scheduled' || m.status === 'In Progress') {
+        if (m.scheduledDate) {
+          try {
+            const schedDate = new Date(m.scheduledDate);
+            if (!isNaN(schedDate.getTime()) && schedDate < now) {
+              overdueCount++;
+            } else {
+              upcomingCount++;
+            }
+          } catch (_) {
+            upcomingCount++;
+          }
+        } else {
+          upcomingCount++;
+        }
+      }
+    });
+
+    const lastCompleted = completedMaintenances.length > 0 ? completedMaintenances[0] : null;
+
+    return sendSuccess(res, 200, {
+      assigned: true,
+      vehicle: {
+        _id: vehicle._id,
+        vehicleNumber: vehicle.vehicleNumber,
+        vehicleName: vehicle.vehicleName || `${vehicle.brand || ''} ${vehicle.model || ''}`.trim() || 'Vehicle',
+        lastServiceDate: vehicle.lastServiceDate || vehicle.lastService,
+        nextServiceDue: vehicle.nextServiceDue || vehicle.nextService,
+        branchDepot: vehicle.branchDepot || vehicle.currentLocation || 'Fleet Service Hub'
+      },
+      maintenances,
+      activeMaintenances,
+      completedMaintenances,
+      upcomingCount,
+      overdueCount,
+      lastCompleted
+    }, 'Driver maintenance list retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Create Driver Fuel Entry with Receipt Image Cloudinary Upload
+ * POST /api/driver/fuel
+ */
+export const createDriverFuelEntry = async (req, res, next) => {
+  try {
+    const driverId = req.user._id;
+    const { fuelStation, station, amount, liters, quantity, odometer, tripId } = req.body;
+
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return sendError(res, 404, 'Driver profile not found');
+    }
+
+    let vehicle = await Vehicle.findOne({ assignedDriver: driverId });
+    if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '') {
+      vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle });
+    }
+    if (!vehicle) {
+      const activeTrip = await Trip.findOne({ driver: driverId, status: { $nin: ['Completed', 'Cancelled'] } }).populate('vehicle');
+      if (activeTrip && activeTrip.vehicle && typeof activeTrip.vehicle === 'object') {
+        vehicle = activeTrip.vehicle;
+      }
+    }
+
+    let receiptImageUrl = '';
+    const rawImage = req.body.receiptImage || req.body.billUrl || req.body.file;
+
+    if (req.file) {
+      const b64 = Buffer.from(req.file.buffer).toString('base64');
+      const mime = req.file.mimetype || 'image/jpeg';
+      const dataURI = `data:${mime};base64,${b64}`;
+      const uploadResult = await cloudinary.uploader.upload(dataURI, {
+        folder: 'fleet_fuel_receipts'
+      });
+      receiptImageUrl = uploadResult.secure_url;
+    } else if (rawImage && typeof rawImage === 'string' && rawImage.trim().length > 0) {
+      if (rawImage.startsWith('http://') || rawImage.startsWith('https://')) {
+        receiptImageUrl = rawImage;
+      } else {
+        const uploadResult = await cloudinary.uploader.upload(rawImage, {
+          folder: 'fleet_fuel_receipts'
+        });
+        receiptImageUrl = uploadResult.secure_url;
+      }
+    }
+
+    const stationName = fuelStation || station || 'General Fuel Station';
+    const totalAmount = Number(amount) || 0;
+    const totalLiters = Number(liters) || Number(quantity) || 0;
+
+    const fuel = new Fuel({
+      vehicle: vehicle ? vehicle._id : null,
+      vehicleId: vehicle ? vehicle.vehicleNumber : (driver.assignedVehicle || 'Unassigned'),
+      vehicleName: vehicle ? (vehicle.vehicleName || `${vehicle.brand || ''} ${vehicle.model || ''}`.trim() || 'Vehicle') : 'Vehicle',
+      driver: driver.fullName || req.user.name || 'Driver',
+      driverId: driver.employeeId || driver._id.toString(),
+      tripId: tripId || '',
+      odometer: Number(odometer) || (vehicle ? vehicle.odometer : 0) || 0,
+      fuelStation: stationName,
+      amount: totalAmount,
+      liters: totalLiters,
+      receiptImage: receiptImageUrl,
+      billUrl: receiptImageUrl,
+      billStatus: receiptImageUrl ? 'Uploaded' : 'Pending',
+      approvalStatus: 'Pending',
+      hasReceipt: Boolean(receiptImageUrl),
+      recordedBy: req.user._id
+    });
+
+    await fuel.save();
+
+    return sendSuccess(res, 201, fuel, 'Fuel entry submitted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get Driver Fuel Records
+ * GET /api/driver/fuel
+ */
+export const getDriverFuelRecords = async (req, res, next) => {
+  try {
+    const driverId = req.user._id;
+
+    const driver = await Driver.findById(driverId);
+
+    const filter = {
+      $or: [
+        { recordedBy: driverId },
+        { driverId: driver ? driver.employeeId : '' },
+        { driverId: driverId.toString() },
+        { driver: driver ? driver.fullName : '' }
+      ]
+    };
+
+    const fuels = await Fuel.find(filter).populate('vehicle').sort({ createdAt: -1 });
+
+    const formattedFuels = fuels.map(f => {
+      const obj = f.toObject();
+      const img = obj.receiptImage || obj.billUrl || '';
+      obj.receiptImage = img;
+      obj.billUrl = img;
+      return obj;
+    });
+
+    return sendSuccess(res, 200, formattedFuels, 'Driver fuel records retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Create Driver Ticket / Complaint
+ * POST /api/driver/tickets
+ */
+export const createDriverTicket = async (req, res, next) => {
+  try {
+    const driverId = req.user._id;
+    const { category, issueType, severity, subject, description, tripId, vehicleId, imageUrl } = req.body;
+
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return sendError(res, 404, 'Driver not found');
+    }
+
+    // Find Active Trip or Latest Trip Safely
+    let trip = null;
+    if (tripId && mongoose.Types.ObjectId.isValid(tripId)) {
+      trip = await Trip.findById(tripId);
+    }
+    if (!trip) {
+      trip = await Trip.findOne({ driver: driverId, status: { $in: ['In Transit', 'Dispatched', 'Assigned', 'Loading', 'On Trip'] } }).sort({ createdAt: -1 });
+    }
+    if (!trip) {
+      trip = await Trip.findOne({ driver: driverId }).sort({ createdAt: -1 });
+    }
+
+    // Safely Find Vehicle by ObjectId or Registration / Plate String
+    let vehicle = null;
+    const candidates = [vehicleId, trip?.vehicle, driver.assignedVehicle].filter(Boolean);
+
+    for (const cand of candidates) {
+      if (typeof cand === 'object' && cand._id) {
+        vehicle = cand;
+        break;
+      }
+      if (mongoose.Types.ObjectId.isValid(cand)) {
+        vehicle = await Vehicle.findById(cand);
+        if (vehicle) break;
+      }
+      if (typeof cand === 'string' && cand.trim()) {
+        vehicle = await Vehicle.findOne({
+          $or: [
+            { registrationNumber: cand.trim() },
+            { plateNumber: cand.trim() },
+            { vehicleNumber: cand.trim() }
+          ]
+        });
+        if (vehicle) break;
+      }
+    }
+
+    if (!vehicle) {
+      vehicle = await Vehicle.findOne({ assignedDriver: driverId });
+    }
+
+    // Determine Vehicle Plate string safely
+    let vehiclePlateStr = 'VEH-UNKNOWN';
+    if (vehicle) {
+      vehiclePlateStr = vehicle.registrationNumber || vehicle.plateNumber || vehicle.vehicleNumber || 'VEH-UNKNOWN';
+    } else if (typeof vehicleId === 'string' && vehicleId.trim()) {
+      vehiclePlateStr = vehicleId.trim();
+    } else if (driver && typeof driver.assignedVehicle === 'string' && driver.assignedVehicle.trim()) {
+      vehiclePlateStr = driver.assignedVehicle.trim();
+    } else if (trip && trip.vehiclePlate) {
+      vehiclePlateStr = trip.vehiclePlate;
+    }
+
+    // Attachments / Image Upload
+    const attachments = [];
+    let uploadUrl = imageUrl || '';
+
+    if (req.file) {
+      try {
+        const uploadResult = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: 'fleet_tickets', resource_type: 'auto' },
+            (err, result) => (err ? reject(err) : resolve(result))
+          );
+          uploadStream.end(req.file.buffer);
+        });
+        uploadUrl = uploadResult.secure_url;
+      } catch (err) {
+        console.warn('Cloudinary ticket photo upload error:', err.message);
+      }
+    }
+
+    if (uploadUrl) {
+      attachments.push({
+        url: uploadUrl,
+        filename: req.file ? req.file.originalname : 'ticket_attachment.jpg',
+        uploadedAt: new Date()
+      });
+    }
+
+    // Custom Ticket ID
+    const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const count = await VehicleComplaint.countDocuments({ ticketId: { $regex: new RegExp('^TKT-VEH-' + todayStr) } });
+    const seq = String(count + 1).padStart(4, '0');
+    const ticketId = `TKT-VEH-${todayStr}-${seq}`;
+
+    // Normalize severity string to Title Case ('Low', 'Medium', 'High', 'Critical')
+    let normSeverity = 'Medium';
+    if (severity) {
+      const s = severity.toString().trim().toLowerCase();
+      if (s === 'low') normSeverity = 'Low';
+      else if (s === 'medium') normSeverity = 'Medium';
+      else if (s === 'high') normSeverity = 'High';
+      else if (s === 'critical') normSeverity = 'Critical';
+    }
+
+    // Determine Issue Matrix Rules
+    const complaintIssueType = issueType || category || 'Vehicle Maintenance';
+    const issueLower = complaintIssueType.toLowerCase();
+
+    let canContinueTrip = 'After Repair';
+    let setMaintenance = true;
+
+    if (issueLower.includes('low air') || issueLower.includes('air pressure') || issueLower.includes('tire pressure')) {
+      canContinueTrip = 'Yes';
+      setMaintenance = false;
+    } else if (issueLower.includes('headlight') || issueLower.includes('light')) {
+      canContinueTrip = 'Yes';
+      setMaintenance = false;
+    } else if (issueLower.includes('tyre') || issueLower.includes('tire') || issueLower.includes('puncture')) {
+      canContinueTrip = 'After Repair';
+      setMaintenance = true;
+    } else if (issueLower.includes('engine') || issueLower.includes('overheating')) {
+      canContinueTrip = 'No';
+      setMaintenance = true;
+    } else if (issueLower.includes('brake')) {
+      canContinueTrip = 'No';
+      setMaintenance = true;
+    } else if (issueLower.includes('accident') || issueLower.includes('breakdown')) {
+      canContinueTrip = 'No';
+      setMaintenance = true;
+    }
+
+    // Auto-update vehicle status to Maintenance if required by issue type
+    if (setMaintenance && vehicle && vehicle._id) {
+      try {
+        await Vehicle.findByIdAndUpdate(vehicle._id, {
+          status: 'Maintenance',
+          operationalStatus: 'Maintenance'
+        });
+      } catch (vehErr) {
+        console.warn('Could not set vehicle status to Maintenance:', vehErr.message);
+      }
+    }
+
+    const complaint = new VehicleComplaint({
+      ticketId,
+      trip: trip ? trip._id : null,
+      vehicle: vehicle ? vehicle._id : null,
+      vehiclePlate: vehiclePlateStr,
+      driver: driver._id,
+      driverName: driver.fullName,
+      issueType: complaintIssueType,
+      severity: normSeverity,
+      canContinueTrip,
+      description: subject ? `${subject}${description ? ` - ${description}` : ''}` : (description || 'Vehicle issue reported by driver'),
+      status: 'Open',
+      attachments,
+      repairTimeline: [
+        {
+          status: 'Open',
+          updatedBy: `Driver (${driver.fullName})`,
+          updatedAt: new Date(),
+          notes: 'Ticket submitted by driver'
+        }
+      ],
+      reportedAt: new Date()
+    });
+
+    await complaint.save();
+
+    // Create & emit notification for assigned manager
+    const managerId = driver.assignedManager || req.user.managerId;
+    if (managerId) {
+      try {
+        await createAndEmitNotification({
+          io: req.io,
+          recipient: managerId,
+          recipientRole: 'FLEET_MANAGER',
+          title: `New Vehicle Ticket: ${ticketId}`,
+          message: `Driver ${driver.fullName} reported a ${normSeverity} issue (${complaint.issueType}) for vehicle ${complaint.vehiclePlate}.`,
+          type: 'alert',
+          priority: (normSeverity === 'Critical' || normSeverity === 'High') ? 'high' : 'normal',
+          metadata: {
+            ticketId,
+            complaintId: complaint._id,
+            vehiclePlate: complaint.vehiclePlate,
+            driverName: driver.fullName,
+            issueType: complaint.issueType,
+            severity: complaint.severity,
+            status: complaint.status
+          }
+        });
+      } catch (notifErr) {
+        console.warn('Failed to emit manager notification for ticket:', notifErr.message);
+      }
+    }
+
+    return sendSuccess(res, 201, complaint, 'Vehicle issue ticket submitted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get Driver Tickets
+ * GET /api/driver/tickets
+ */
+export const getDriverTickets = async (req, res, next) => {
+  try {
+    const driverId = req.user._id;
+    const tickets = await VehicleComplaint.find({ driver: driverId })
+      .populate('vehicle')
+      .populate('trip')
+      .sort({ createdAt: -1 });
+
+    return sendSuccess(res, 200, tickets, 'Driver tickets retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get Driver Ticket Details
+ * GET /api/driver/tickets/:id
+ */
+export const getDriverTicketById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const driverId = req.user._id;
+
+    const queryFilter = mongoose.Types.ObjectId.isValid(id)
+      ? { $or: [{ _id: id }, { ticketId: id }], driver: driverId }
+      : { ticketId: id, driver: driverId };
+
+    const ticket = await VehicleComplaint.findOne(queryFilter)
+      .populate('vehicle')
+      .populate('trip');
+
+    if (!ticket) {
+      return sendError(res, 404, 'Ticket not found');
+    }
+
+    return sendSuccess(res, 200, ticket, 'Ticket details retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Driver Update Ticket Repair Status
+ * PATCH /api/driver/tickets/:id/status
+ */
+export const updateDriverTicketStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, notes } = req.body;
+    const driverId = req.user._id;
+
+    const queryFilter = mongoose.Types.ObjectId.isValid(id)
+      ? { $or: [{ _id: id }, { ticketId: id }], driver: driverId }
+      : { ticketId: id, driver: driverId };
+
+    const ticket = await VehicleComplaint.findOne(queryFilter);
+
+    if (!ticket) {
+      return sendError(res, 404, 'Ticket not found');
+    }
+
+    const validStatuses = ['Mechanic Arrived', 'Repair In Progress', 'Repair Completed'];
+    if (!validStatuses.includes(status)) {
+      return sendError(res, 400, `Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+    }
+
+    ticket.status = status;
+    ticket.repairTimeline.push({
+      status,
+      updatedBy: `Driver (${ticket.driverName || 'Driver'})`,
+      updatedAt: new Date(),
+      notes: notes || `Driver updated status to ${status}`
+    });
+
+    await ticket.save();
+
+    // Create & emit manager notification
+    const driver = await Driver.findById(driverId);
+    const managerId = driver?.assignedManager || req.user.managerId;
+    if (managerId) {
+      try {
+        await createAndEmitNotification({
+          io: req.io,
+          recipient: managerId,
+          recipientRole: 'FLEET_MANAGER',
+          title: `Ticket Update: ${ticket.ticketId}`,
+          message: `Driver ${ticket.driverName} updated ticket ${ticket.ticketId} stage to ${status}.`,
+          type: 'alert',
+          priority: 'normal',
+          metadata: {
+            ticketId: ticket.ticketId,
+            complaintId: ticket._id,
+            status: ticket.status
+          }
+        });
+      } catch (err) {
+        console.warn('Failed to emit ticket status update notification:', err.message);
+      }
+    }
+
+    return sendSuccess(res, 200, ticket, `Ticket status updated to ${status} successfully`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+
+

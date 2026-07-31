@@ -1,55 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Data model representing Indian Fleet Vehicle Details for backend integration.
-class VehicleDetailsData {
-  final String vehicleNumber;
-  final String registrationNumber;
-  final String vehicleType;
-  final String brand;
-  final String model;
-  final String manufacturingYear;
-  final String payloadCapacity;
-  final String gvw;
-  final String fuelType;
-  final String status;
-  final String lastUpdated;
-  final String currentTrip;
-  final String availability;
-  final String currentLocation;
-  final String driverName;
-  final String driverEmpId;
-  final String driverMobile;
-  final String driverLicense;
-  final String engineNumber;
-  final String chassisNumber;
-  final String currentOdometer;
-
-  const VehicleDetailsData({
-    this.vehicleNumber = 'TS09AB4589',
-    this.registrationNumber = 'TS09AB4589',
-    this.vehicleType = 'Heavy Duty Truck',
-    this.brand = 'Tata Motors',
-    this.model = 'Prima 5530.S',
-    this.manufacturingYear = '2023',
-    this.payloadCapacity = '20 Tons',
-    this.gvw = '36 Tons',
-    this.fuelType = 'Diesel',
-    this.status = 'Active',
-    this.lastUpdated = 'Updated Today • 10:30 AM',
-    this.currentTrip = 'TRP-9921',
-    this.availability = 'Assigned',
-    this.currentLocation = 'Hyderabad, Telangana',
-    this.driverName = 'Sai Kumar',
-    this.driverEmpId = 'EMP-1025',
-    this.driverMobile = '+91 9876543210',
-    this.driverLicense = 'TS0920210012456',
-    this.engineNumber = 'ENG-7721',
-    this.chassisNumber = 'CHS-1102',
-    this.currentOdometer = '45,230 km',
-  });
-}
-
 /// Driver Module - Vehicle Details Screen
 /// 
 /// Tailored for Indian Fleet Management standards featuring 4 clean card sections:
@@ -58,11 +9,11 @@ class VehicleDetailsData {
 /// 3. Assigned Driver Information
 /// 4. Technical Specifications
 class VehicleDetailsScreen extends StatelessWidget {
-  final VehicleDetailsData data;
+  final Map<String, dynamic>? vehicle;
 
   const VehicleDetailsScreen({
     super.key,
-    this.data = const VehicleDetailsData(),
+    this.vehicle,
   });
 
   Widget _buildSectionHeader(IconData icon, String title) {
@@ -113,7 +64,7 @@ class VehicleDetailsScreen extends StatelessWidget {
         ),
         const SizedBox(height: 3),
         Text(
-          value,
+          value.isNotEmpty ? value : 'N/A',
           style: GoogleFonts.poppins(
             fontSize: 14,
             fontWeight: FontWeight.w700,
@@ -142,7 +93,7 @@ class VehicleDetailsScreen extends StatelessWidget {
             ),
           ),
           Text(
-            value,
+            value.isNotEmpty ? value : 'N/A',
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -162,6 +113,74 @@ class VehicleDetailsScreen extends StatelessWidget {
     const textPrimary = Color(0xFF1F2937);
     const textSecondary = Color(0xFF6B7280);
     const successGreen = Color(0xFF16A34A);
+
+    if (vehicle == null) {
+      return Scaffold(
+        backgroundColor: bgLight,
+        appBar: AppBar(
+          backgroundColor: primaryDark,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: Text(
+            'Vehicle Details',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.no_transfer_outlined, size: 64, color: textSecondary),
+                const SizedBox(height: 16),
+                Text(
+                  'No Vehicle Assigned',
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Details are unavailable because no vehicle is currently assigned to your driver profile.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.nunito(fontSize: 14, color: textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final veh = vehicle!;
+    final vehicleNumber = veh['vehicleNumber'] ?? veh['registrationNumber'] ?? 'N/A';
+    final registrationNumber = veh['registrationNumber'] ?? veh['vehicleNumber'] ?? 'N/A';
+    final vehicleType = veh['vehicleType'] ?? 'Truck';
+    final brand = veh['brand'] ?? 'N/A';
+    final model = veh['model'] ?? 'N/A';
+    final mfgYear = veh['manufactureYear']?.toString() ?? veh['manufacturingYear']?.toString() ?? 'N/A';
+    final payloadCap = veh['loadCapacity'] != null ? '${veh['loadCapacity']} Tons' : 'N/A';
+    final gvw = veh['gvw'] ?? 'N/A';
+    final fuelType = veh['fuelType'] ?? 'Diesel';
+    final status = veh['currentStatus'] ?? 'Assigned';
+    final currentLocation = veh['currentLocation'] ?? veh['branchDepot'] ?? 'N/A';
+    final driverName = veh['assignedDriverName'] ?? 'Driver';
+    final driverEmpId = veh['assignedDriverEmpId'] ?? 'N/A';
+    final driverMobile = veh['assignedDriverPhone'] ?? 'N/A';
+    final driverLicense = veh['assignedDriverLicense'] ?? 'N/A';
+    final engineNumber = veh['engineNumber'] ?? 'N/A';
+    final chassisNumber = veh['chassisNumber'] ?? 'N/A';
+    final odometer = veh['odometer'] != null ? '${veh['odometer']} km' : '0 km';
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -243,7 +262,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              data.vehicleNumber,
+                              vehicleNumber,
                               style: GoogleFonts.poppins(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
@@ -252,7 +271,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Reg: ${data.registrationNumber}',
+                              'Reg: $registrationNumber',
                               style: GoogleFonts.nunito(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -271,7 +290,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8.0),
                           ),
                           child: Text(
-                            data.vehicleType,
+                            vehicleType,
                             style: GoogleFonts.poppins(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -286,8 +305,8 @@ class VehicleDetailsScreen extends StatelessWidget {
                     // Specs Grid - Row 1: Brand & Model
                     Row(
                       children: [
-                        Expanded(child: _buildSpecCell('Brand', data.brand)),
-                        Expanded(child: _buildSpecCell('Model', data.model)),
+                        Expanded(child: _buildSpecCell('Brand', brand)),
+                        Expanded(child: _buildSpecCell('Model', model)),
                       ],
                     ),
                     const SizedBox(height: 16.0),
@@ -295,8 +314,8 @@ class VehicleDetailsScreen extends StatelessWidget {
                     // Specs Grid - Row 2: Mfg Year & Payload Capacity
                     Row(
                       children: [
-                        Expanded(child: _buildSpecCell('Manufacturing Year', data.manufacturingYear)),
-                        Expanded(child: _buildSpecCell('Payload Capacity', data.payloadCapacity)),
+                        Expanded(child: _buildSpecCell('Manufacturing Year', mfgYear)),
+                        Expanded(child: _buildSpecCell('Payload Capacity', payloadCap)),
                       ],
                     ),
                     const SizedBox(height: 16.0),
@@ -304,8 +323,8 @@ class VehicleDetailsScreen extends StatelessWidget {
                     // Specs Grid - Row 3: GVW & Fuel Type
                     Row(
                       children: [
-                        Expanded(child: _buildSpecCell('GVW', data.gvw)),
-                        Expanded(child: _buildSpecCell('Fuel Type', data.fuelType)),
+                        Expanded(child: _buildSpecCell('GVW', gvw)),
+                        Expanded(child: _buildSpecCell('Fuel Type', fuelType)),
                       ],
                     ),
                   ],
@@ -358,7 +377,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  data.status,
+                                  status,
                                   style: GoogleFonts.poppins(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
@@ -368,7 +387,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                               ],
                             ),
                             Text(
-                              data.lastUpdated,
+                              'Updated Live',
                               style: GoogleFonts.nunito(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -379,7 +398,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 14.0),
 
-                        // Inner Box: Current Trip, Availability & Current Location
+                        // Inner Box: Current Location & Availability
                         Container(
                           padding: const EdgeInsets.all(14.0),
                           decoration: BoxDecoration(
@@ -396,7 +415,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Current Trip',
+                                          'Operational State',
                                           style: GoogleFonts.poppins(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w500,
@@ -405,7 +424,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                                         ),
                                         const SizedBox(height: 3),
                                         Text(
-                                          data.currentTrip,
+                                          status,
                                           style: GoogleFonts.poppins(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w800,
@@ -420,7 +439,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Availability',
+                                          'Odometer Reading',
                                           style: GoogleFonts.poppins(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w500,
@@ -429,7 +448,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                                         ),
                                         const SizedBox(height: 3),
                                         Text(
-                                          data.availability,
+                                          odometer,
                                           style: GoogleFonts.poppins(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w800,
@@ -454,7 +473,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
-                                      data.currentLocation,
+                                      currentLocation,
                                       style: GoogleFonts.poppins(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
@@ -516,7 +535,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              data.driverName,
+                              driverName,
                               style: GoogleFonts.poppins(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -525,7 +544,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 1),
                             Text(
-                              data.driverEmpId,
+                              driverEmpId,
                               style: GoogleFonts.nunito(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -557,7 +576,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 3.0),
                               Text(
-                                data.driverMobile,
+                                driverMobile,
                                 style: GoogleFonts.poppins(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
@@ -581,7 +600,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 3.0),
                               Text(
-                                data.driverLicense,
+                                driverLicense,
                                 style: GoogleFonts.poppins(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
@@ -618,17 +637,17 @@ class VehicleDetailsScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildSectionHeader(Icons.precision_manufacturing_outlined, 'Technical Specifications'),
-                    _buildTechSpecRow('Engine Number', data.engineNumber),
+                    _buildTechSpecRow('Engine Number', engineNumber),
                     const Divider(color: borderGray, height: 1.0),
-                    _buildTechSpecRow('Chassis Number', data.chassisNumber),
+                    _buildTechSpecRow('Chassis Number', chassisNumber),
                     const Divider(color: borderGray, height: 1.0),
-                    _buildTechSpecRow('Current Odometer', data.currentOdometer),
+                    _buildTechSpecRow('Current Odometer', odometer),
                     const Divider(color: borderGray, height: 1.0),
-                    _buildTechSpecRow('Gross Vehicle Weight (GVW)', data.gvw),
+                    _buildTechSpecRow('Gross Vehicle Weight (GVW)', gvw),
                     const Divider(color: borderGray, height: 1.0),
-                    _buildTechSpecRow('Payload Capacity', data.payloadCapacity),
+                    _buildTechSpecRow('Payload Capacity', payloadCap),
                     const Divider(color: borderGray, height: 1.0),
-                    _buildTechSpecRow('Fuel Type', data.fuelType),
+                    _buildTechSpecRow('Fuel Type', fuelType),
                   ],
                 ),
               ),

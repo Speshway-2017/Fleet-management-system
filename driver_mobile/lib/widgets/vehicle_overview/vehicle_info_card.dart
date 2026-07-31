@@ -8,18 +8,16 @@ class VehicleInfoCard extends StatelessWidget {
   final String registrationNumber;
   final String fuelType;
   final String status;
-  final String fuelLevel;
-  final String healthPercentage;
+  final String imageUrl;
 
   const VehicleInfoCard({
     super.key,
-    this.vehicleCode = 'BT-990',
-    this.vehicleType = 'Medium Van',
-    this.registrationNumber = 'ABC-1234',
+    this.vehicleCode = 'N/A',
+    this.vehicleType = 'Vehicle',
+    this.registrationNumber = 'N/A',
     this.fuelType = 'Diesel',
-    this.status = 'Active',
-    this.fuelLevel = '82%',
-    this.healthPercentage = '94%',
+    this.status = 'Available',
+    this.imageUrl = '',
   });
 
   @override
@@ -55,43 +53,21 @@ class VehicleInfoCard extends StatelessWidget {
                   topLeft: Radius.circular(16.0),
                   topRight: Radius.circular(16.0),
                 ),
-                child: Image.asset(
-                  'assets/images/white_van.png',
-                  height: 180,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 180,
-                      width: double.infinity,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE2E8F0),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(16.0),
-                          topRight: Radius.circular(16.0),
-                        ),
+                child: imageUrl.startsWith('http')
+                    ? Image.network(
+                        imageUrl,
+                        height: 180,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => _buildImageFallback(primaryDark, textSecondary),
+                      )
+                    : Image.asset(
+                        'assets/images/white_van.png',
+                        height: 180,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => _buildImageFallback(primaryDark, textSecondary),
                       ),
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.airport_shuttle_outlined,
-                            size: 64,
-                            color: primaryDark,
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Fleet Vehicle Preview',
-                            style: TextStyle(
-                              color: textSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
               ),
 
               // Status Badge (Top-Right)
@@ -180,6 +156,38 @@ class VehicleInfoCard extends StatelessWidget {
                   ],
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageFallback(Color primaryDark, Color textSecondary) {
+    return Container(
+      height: 180,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: Color(0xFFE2E8F0),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(16.0),
+          topRight: Radius.circular(16.0),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.airport_shuttle_outlined,
+            size: 64,
+            color: primaryDark,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Fleet Vehicle Preview',
+            style: TextStyle(
+              color: textSecondary,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],

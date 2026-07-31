@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../services/api_service.dart';
+import '../../services/socket_service.dart';
 import 'notification_details_screen.dart';
 import '../main_navigation_screen.dart';
 
@@ -26,53 +28,7 @@ class NotificationItem {
 }
 
 class NotificationsScreen extends StatefulWidget {
-  static final List<NotificationItem> notifications = [
-    NotificationItem(
-      id: '1',
-      title: 'Route Update',
-      description: 'Your route to Chicago has been updated due to heavy traffic on I-90.',
-      timestamp: '2m ago',
-      category: 'TODAY',
-      isRead: false,
-      icon: Icons.local_shipping_outlined,
-    ),
-    NotificationItem(
-      id: '2',
-      title: 'Maintenance Alert',
-      description: 'Vehicle #402 requires immediate tire pressure check based on telematics...',
-      timestamp: '1h ago',
-      category: 'TODAY',
-      isRead: false,
-      icon: Icons.construction_outlined,
-    ),
-    NotificationItem(
-      id: '3',
-      title: 'Achievement Unlocked',
-      description: "You've reached a 500-mile streak with a perfect safety score! Check your profile for bonuses.",
-      timestamp: '4h ago',
-      category: 'TODAY',
-      isRead: true,
-      icon: Icons.star_outline_rounded,
-    ),
-    NotificationItem(
-      id: '4',
-      title: 'Weekly Report Available',
-      description: 'Your fleet performance report for the last week is now ready for review.',
-      timestamp: 'Yesterday',
-      category: 'YESTERDAY',
-      isRead: true,
-      icon: Icons.assignment_outlined,
-    ),
-    NotificationItem(
-      id: '5',
-      title: 'Security Alert',
-      description: 'A new login was detected for your account from a Chrome browser on Windows.',
-      timestamp: 'Yesterday',
-      category: 'YESTERDAY',
-      isRead: true,
-      icon: Icons.shield_outlined,
-    ),
-  ];
+  static List<NotificationItem> notifications = [];
 
   const NotificationsScreen({super.key});
 
@@ -89,6 +45,37 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void initState() {
     super.initState();
     MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
+    _fetchServerNotifications();
+    SocketService.onEvent('notification:new', (_) {
+      if (mounted) _fetchServerNotifications();
+    });
+  }
+
+  Future<void> _fetchServerNotifications() async {
+    try {
+      final res = await ApiService.getDriverNotifications();
+      if (res != null && res['data'] is List) {
+        final List list = res['data'];
+        if (list.isNotEmpty) {
+          final fetched = list.map((item) {
+            return NotificationItem(
+              id: item['_id'] ?? item['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+              title: item['title'] ?? 'Fleet Notification',
+              description: item['message'] ?? item['description'] ?? '',
+              timestamp: 'Just now',
+              category: 'TODAY',
+              isRead: item['isRead'] ?? false,
+              icon: item['type'] == 'trip_assigned' ? Icons.assignment_ind_outlined : Icons.notifications_none_outlined,
+            );
+          }).toList();
+          if (mounted) {
+            setState(() {
+              NotificationsScreen.notifications = fetched;
+            });
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   @override

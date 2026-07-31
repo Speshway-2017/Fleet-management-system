@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/api_service.dart';
 import '../widgets/vehicle_overview/quick_info_card.dart';
 import '../widgets/vehicle_overview/vehicle_action_tile.dart';
 import '../widgets/vehicle_overview/vehicle_info_card.dart';
@@ -10,16 +11,84 @@ import 'vehicle_status_screen.dart';
 
 /// Driver Module - Vehicle Overview Screen
 /// 
-/// Replicates the Fleet Management design language, color palette, typography,
-/// and card layout from the Vehicle Overview reference specifications.
-class VehicleOverviewScreen extends StatelessWidget {
+/// Connects dynamically to MongoDB backend `/api/driver/vehicle`.
+/// Displays "No vehicle assigned" if driver has no assigned vehicle.
+class VehicleOverviewScreen extends StatefulWidget {
   const VehicleOverviewScreen({super.key});
+
+  @override
+  State<VehicleOverviewScreen> createState() => _VehicleOverviewScreenState();
+}
+
+class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
+  bool _isLoading = true;
+  bool _isAssigned = false;
+  Map<String, dynamic>? _vehicle;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchVehicleData();
+  }
+
+  Future<void> _fetchVehicleData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await ApiService.getAssignedVehicle();
+      if (mounted) {
+        if (response != null && response['success'] == true) {
+          final data = response['data'];
+          if (data != null && data['assigned'] == true && data['vehicle'] != null) {
+            setState(() {
+              _isAssigned = true;
+              _vehicle = Map<String, dynamic>.from(data['vehicle']);
+              _isLoading = false;
+            });
+          } else {
+            setState(() {
+              _isAssigned = false;
+              _vehicle = null;
+              _isLoading = false;
+            });
+          }
+        } else {
+          setState(() {
+            _isAssigned = false;
+            _vehicle = null;
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isAssigned = false;
+          _vehicle = null;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _formatDate(dynamic dateStr) {
+    if (dateStr == null || dateStr.toString().isEmpty) return 'N/A';
+    try {
+      final dt = DateTime.parse(dateStr.toString());
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return '${months[dt.month - 1]} ${dt.day.toString().padLeft(2, '0')}, ${dt.year}';
+    } catch (_) {
+      return dateStr.toString();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     const primaryDark = Color(0xFF101C2C);
     const bgLight = Color(0xFFF7F8FA);
-    const textPrimary = Color(0xFF1F2937);
+    const primaryOrange = Color(0xFFF97316);
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -41,6 +110,11 @@ class VehicleOverviewScreen extends StatelessWidget {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+            onPressed: _fetchVehicleData,
+            tooltip: 'Refresh Vehicle Data',
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Container(
@@ -67,74 +141,151 @@ class VehicleOverviewScreen extends StatelessWidget {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Vehicle Information & Statistics Card
-              const Hero(tag: 'vehicle_details_card', child: Material(type: MaterialType.transparency, child: VehicleInfoCard())),
-              const SizedBox(height: 24.0),
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(primaryOrange),
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: _fetchVehicleData,
+                color: primaryOrange,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  padding: const EdgeInsets.all(16.0),
+                  child: !_isAssigned || _vehicle == null
+                      ? _buildNoVehicleAssignedState(context)
+                      : _buildVehicleContent(context),
+                ),
+              ),
+      ),
+    );
+  }
 
-              // 2. Actions & Details Section Header
+  Widget _buildNoVehicleAssignedState(BuildContext context) {
+    const primaryDark = Color(0xFF101C2C);
+    const textPrimary = Color(0xFF1F2937);
+    const textSecondary = Color(0xFF6B7280);
+    const primaryOrange = Color(0xFFF97316);
+
+    return Column(
+      children: [
+        const SizedBox(height: 40),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24.0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: primaryOrange.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.directions_car_outlined,
+                  size: 42,
+                  color: primaryOrange,
+                ),
+              ),
+              const SizedBox(height: 20),
               Text(
-                'Actions & Details',
+                'No Vehicle Assigned',
                 style: GoogleFonts.poppins(
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: textPrimary,
                 ),
               ),
-              const SizedBox(height: 14.0),
-
-              // 3. Operational Action Cards List
+              const SizedBox(height: 10),
+              Text(
+                'You currently do not have a vehicle assigned to your driver profile. Please contact your Fleet Manager for vehicle allocation.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.nunito(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: textSecondary,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _fetchVehicleData,
+                icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
+                label: Text(
+                  'Check Again',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryDark,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 32),
+        // Action tiles disabled state / explanation
+        Opacity(
+          opacity: 0.5,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Vehicle Actions (Unavailable)',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
               VehicleActionTile(
                 icon: Icons.info_outline_rounded,
                 title: 'Vehicle Details',
                 onTap: () {
-                  debugPrint('Vehicle Details tile tapped');
-                  try {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const VehicleDetailsScreen(),
-                      ),
-                    );
-                  } catch (e, stackTrace) {
-                    debugPrint('Error navigating to VehicleDetailsScreen: $e');
-                    debugPrint(stackTrace.toString());
-                  }
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const VehicleDetailsScreen(vehicle: null),
+                    ),
+                  );
                 },
               ),
               VehicleActionTile(
                 icon: Icons.bar_chart_rounded,
                 title: 'Vehicle Status',
                 onTap: () {
-                  debugPrint('Vehicle Status tile tapped');
-                  try {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const VehicleStatusScreen(),
-                      ),
-                    );
-                  } catch (e, stackTrace) {
-                    debugPrint('Error navigating to VehicleStatusScreen: $e');
-                    debugPrint(stackTrace.toString());
-                  }
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const VehicleStatusScreen(vehicle: null),
+                    ),
+                  );
                 },
               ),
               VehicleActionTile(
                 icon: Icons.notifications_active_outlined,
                 title: 'Maintenance Alerts',
-                subtitle: '1 CRITICAL',
-                subtitleColor: const Color(0xFFEF4444),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const VehicleMaintenanceScreen(),
+                      builder: (context) => const VehicleMaintenanceScreen(vehicle: null),
                     ),
                   );
                 },
@@ -146,33 +297,134 @@ class VehicleOverviewScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const VehicleDocumentsScreen(),
+                      builder: (context) => const VehicleDocumentsScreen(vehicle: null),
                     ),
                   );
                 },
               ),
-
-              const SizedBox(height: 24.0),
-
-              // 4. Quick Info Section Header
-              Text(
-                'Quick Info',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: textPrimary,
-                ),
-              ),
-              const SizedBox(height: 14.0),
-
-              // 5. Quick Info Dark Navy Card
-              const QuickInfoCard(),
-
-              const SizedBox(height: 24.0),
             ],
           ),
         ),
-      ),
+      ],
+    );
+  }
+
+  Widget _buildVehicleContent(BuildContext context) {
+    const textPrimary = Color(0xFF1F2937);
+
+    final veh = _vehicle!;
+    final vehicleCode = veh['vehicleNumber'] ?? veh['registrationNumber'] ?? 'N/A';
+    final brandModel = '${veh['brand'] ?? ''} ${veh['model'] ?? ''}'.trim();
+    final vehicleType = brandModel.isNotEmpty ? brandModel : (veh['vehicleType'] ?? 'Truck');
+    final regNum = veh['registrationNumber'] ?? veh['vehicleNumber'] ?? 'N/A';
+    final fuelType = veh['fuelType'] ?? 'Diesel';
+    final status = veh['currentStatus'] ?? 'Assigned';
+    final imageUrl = veh['image'] ?? '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Vehicle Information & Statistics Card
+        Hero(
+          tag: 'vehicle_details_card',
+          child: Material(
+            type: MaterialType.transparency,
+            child: VehicleInfoCard(
+              vehicleCode: vehicleCode,
+              vehicleType: vehicleType,
+              registrationNumber: regNum,
+              fuelType: fuelType,
+              status: status,
+              imageUrl: imageUrl,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24.0),
+
+        // 2. Actions & Details Section Header
+        Text(
+          'Actions & Details',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: textPrimary,
+          ),
+        ),
+        const SizedBox(height: 14.0),
+
+        // 3. Operational Action Cards List
+        VehicleActionTile(
+          icon: Icons.info_outline_rounded,
+          title: 'Vehicle Details',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => VehicleDetailsScreen(vehicle: veh),
+              ),
+            );
+          },
+        ),
+        VehicleActionTile(
+          icon: Icons.bar_chart_rounded,
+          title: 'Vehicle Status',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => VehicleStatusScreen(vehicle: veh),
+              ),
+            );
+          },
+        ),
+        VehicleActionTile(
+          icon: Icons.notifications_active_outlined,
+          title: 'Maintenance Alerts',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => VehicleMaintenanceScreen(vehicle: veh),
+              ),
+            );
+          },
+        ),
+        VehicleActionTile(
+          icon: Icons.folder_open_outlined,
+          title: 'Vehicle Documents',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => VehicleDocumentsScreen(vehicle: veh),
+              ),
+            );
+          },
+        ),
+
+        const SizedBox(height: 24.0),
+
+        // 4. Quick Info Section Header
+        Text(
+          'Quick Info',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: textPrimary,
+          ),
+        ),
+        const SizedBox(height: 14.0),
+
+        // 5. Quick Info Dark Navy Card
+        QuickInfoCard(
+          lastService: _formatDate(veh['lastServiceDate'] ?? veh['lastService']),
+          nextService: _formatDate(veh['nextServiceDue'] ?? veh['nextService']),
+          insuranceExpiry: _formatDate(veh['insuranceExpiry']),
+          permitExpiry: _formatDate(veh['permitExpiry']),
+        ),
+
+        const SizedBox(height: 24.0),
+      ],
     );
   }
 }

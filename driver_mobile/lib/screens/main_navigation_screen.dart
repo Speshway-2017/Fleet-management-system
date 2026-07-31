@@ -7,6 +7,8 @@ import 'support_history_screen.dart';
 import 'profile/profile_screen.dart';
 import 'notifications/notifications_screen.dart';
 
+import '../services/socket_service.dart';
+
 class MainNavigationScreen extends StatefulWidget {
   static final ValueNotifier<int> selectedTabNotifier = ValueNotifier<int>(0);
 
@@ -24,6 +26,59 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     super.initState();
     _currentIndex = MainNavigationScreen.selectedTabNotifier.value;
     MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
+    _setupSocketNotificationListeners();
+  }
+
+  void _setupSocketNotificationListeners() {
+    SocketService.onEvent('notification:new', (data) {
+      if (mounted && data != null) {
+        final title = data['title'] ?? 'New Notification';
+        final message = data['message'] ?? data['description'] ?? '';
+        _showPopupNotification(title, message);
+      }
+    });
+
+    SocketService.onEvent('trip:assigned', (data) {
+      if (mounted) {
+        _showPopupNotification('🚀 New Trip Assigned!', 'Your manager has assigned a new trip to you.');
+      }
+    });
+
+    SocketService.onEvent('trip:status-updated', (data) {
+      if (mounted && data != null) {
+        final status = data['status'] ?? 'Updated';
+        _showPopupNotification('📋 Trip Status Updated', 'Trip status changed to $status');
+      }
+    });
+  }
+
+  void _showPopupNotification(String title, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.notifications_active, color: Colors.amber, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white)),
+                  if (message.isNotEmpty)
+                    Text(message, style: GoogleFonts.poppins(fontSize: 11, color: Colors.white70), maxLines: 2, overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF091522),
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   @override

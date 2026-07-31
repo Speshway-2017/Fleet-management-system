@@ -10,10 +10,10 @@ class QuickInfoCard extends StatelessWidget {
 
   const QuickInfoCard({
     super.key,
-    this.lastService = 'Oct 12, 2023',
-    this.nextService = '5,000 km',
-    this.insuranceExpiry = 'Dec 20, 2023',
-    this.permitExpiry = 'Jan 15, 2024',
+    this.lastService = 'N/A',
+    this.nextService = 'N/A',
+    this.insuranceExpiry = 'N/A',
+    this.permitExpiry = 'N/A',
   });
 
   Widget _buildInfoCell(String label, String value) {

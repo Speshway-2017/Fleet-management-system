@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_radius.dart';
 import '../constants/app_spacing.dart';
+import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
 
@@ -32,6 +33,10 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
 
   // Photo attachments state
   String? _attachedPhotoPath;
+  bool _isUploadingPod = false;
+  bool _podUploaded = false;
+  bool _isUploadingWeighbridge = false;
+  bool _weighbridgeUploaded = false;
 
   @override
   void dispose() {
@@ -560,28 +565,64 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
+                  children: [
+                    const Text(
                       'POD Slip (Proof of Delivery)',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primaryText),
                     ),
                     Text(
-                      'Required at customer location',
-                      style: TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                      _podUploaded ? 'Uploaded (Pending Manager Approval)' : 'Required at customer location',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _podUploaded ? AppColors.success : AppColors.secondaryText,
+                        fontWeight: _podUploaded ? FontWeight.bold : FontWeight.normal,
+                      ),
                     ),
                   ],
                 ),
               ),
               ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('POD Slip selected & attached!')),
-                  );
-                },
-                icon: const Icon(Icons.upload_file, size: 14),
-                label: const Text('POD', style: TextStyle(fontSize: 11)),
+                onPressed: _isUploadingPod
+                    ? null
+                    : () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        setState(() => _isUploadingPod = true);
+                        try {
+                          await ApiService.uploadProofOfDelivery(
+                            tripId: widget.tripId,
+                            customerName: 'Acme Logistics',
+                            receiverName: 'Verified Receiver',
+                            customerSignatureUrl: 'https://via.placeholder.com/300x100.png?text=Signature',
+                            deliveryPhotoUrl: 'https://via.placeholder.com/300x300.png?text=Delivery+Photo',
+                            podDocumentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                          );
+                          if (mounted) {
+                            setState(() {
+                              _podUploaded = true;
+                              _isUploadingPod = false;
+                            });
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('POD uploaded to DB! Manager notified for approval.'),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            setState(() => _isUploadingPod = false);
+                            messenger.showSnackBar(
+                              SnackBar(content: Text('POD Upload failed: $e')),
+                            );
+                          }
+                        }
+                      },
+                icon: _isUploadingPod
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Icon(_podUploaded ? Icons.check_circle : Icons.upload_file, size: 14),
+                label: Text(_podUploaded ? 'Uploaded' : 'Upload POD', style: const TextStyle(fontSize: 11)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.secondary,
+                  backgroundColor: _podUploaded ? AppColors.success : AppColors.secondary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   elevation: 0,
@@ -608,28 +649,64 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
+                  children: [
+                    const Text(
                       'Weighbridge Slip',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primaryText),
                     ),
                     Text(
-                      'Cargo weight scale slip',
-                      style: TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                      _weighbridgeUploaded ? 'Uploaded (Pending Manager Approval)' : 'Cargo weight scale slip',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _weighbridgeUploaded ? AppColors.success : AppColors.secondaryText,
+                        fontWeight: _weighbridgeUploaded ? FontWeight.bold : FontWeight.normal,
+                      ),
                     ),
                   ],
                 ),
               ),
               ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Weighbridge Slip selected & attached!')),
-                  );
-                },
-                icon: const Icon(Icons.upload_file, size: 14),
-                label: const Text('Weighbridge', style: TextStyle(fontSize: 11)),
+                onPressed: _isUploadingWeighbridge
+                    ? null
+                    : () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        setState(() => _isUploadingWeighbridge = true);
+                        try {
+                          await ApiService.uploadWeighbridgeSlip(
+                            tripId: widget.tripId,
+                            grossWeight: 25000,
+                            tareWeight: 10000,
+                            netWeight: 15000,
+                            location: 'Highway Weighbridge Station',
+                            documentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                          );
+                          if (mounted) {
+                            setState(() {
+                              _weighbridgeUploaded = true;
+                              _isUploadingWeighbridge = false;
+                            });
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Weighbridge slip uploaded to DB! Manager notified for approval.'),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            setState(() => _isUploadingWeighbridge = false);
+                            messenger.showSnackBar(
+                              SnackBar(content: Text('Weighbridge upload failed: $e')),
+                            );
+                          }
+                        }
+                      },
+                icon: _isUploadingWeighbridge
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Icon(_weighbridgeUploaded ? Icons.check_circle : Icons.upload_file, size: 14),
+                label: Text(_weighbridgeUploaded ? 'Uploaded' : 'Upload Slip', style: const TextStyle(fontSize: 11)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.secondary,
+                  backgroundColor: _weighbridgeUploaded ? AppColors.success : AppColors.secondary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   elevation: 0,

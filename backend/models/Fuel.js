@@ -10,6 +10,7 @@ const fuelSchema = new mongoose.Schema(
     tripId: { type: String, default: '' },
     odometer: { type: Number, default: 0 },
     billUrl: { type: String, default: '' },
+    receiptImage: { type: String, default: '' },
     billStatus: { type: String, enum: ['Uploaded', 'Pending', 'Final Validation', 'Approved', 'Rejected'], default: 'Pending' },
     approvalStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
     approvedBy: { type: String, default: '' },

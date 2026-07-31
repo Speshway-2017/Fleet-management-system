@@ -11,8 +11,6 @@ import 'main_navigation_screen.dart';
 import 'notifications/notifications_screen.dart';
 import 'schedule_screen.dart';
 import 'todays_schedule_screen.dart';
-import 'upcoming_trip_details_screen.dart';
-import 'vehicle_maintenance_screen.dart';
 import 'settings/settings_screen.dart';
 import 'fuel_overview_screen.dart';
 
@@ -28,9 +26,6 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  bool get _isTripUnread => NotificationsScreen.notifications.any((n) => n.id == '1' && !n.isRead);
-  bool get _isMaintenanceUnread => NotificationsScreen.notifications.any((n) => n.id == '2' && !n.isRead);
-
   Map<String, dynamic>? _driverProfile;
   Map<String, dynamic>? _currentTrip;
   Map<String, dynamic>? _dashboardData;
@@ -402,7 +397,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           // Left side: Status + Trip Details + Route timeline
           Expanded(
-            flex: 11,
+            flex: 12,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -430,12 +425,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _currentTrip?['tripNumber'] ?? '#TRP-9921',
+                  _currentTrip?['tripNumber'] ?? '#TRP-846708',
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 20,
+                    fontSize: 18,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
                 Row(
@@ -443,11 +440,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF22C55E), // Live Pill
+                        color: (_currentTrip?['status'] == 'Assigned' || _currentTrip?['status'] == 'Scheduled')
+                            ? Colors.orange
+                            : const Color(0xFF22C55E), // Live / Assigned Pill
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        _currentTrip?['status']?.toUpperCase() ?? 'LIVE',
+                        _currentTrip?['status']?.toUpperCase() ?? 'SCHEDULED',
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontSize: 9,
@@ -455,13 +454,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _currentTrip?['eta'] != null ? 'ETA ${_currentTrip!['eta']}' : 'ETA 14:30 PM',
-                      style: GoogleFonts.nunito(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _currentTrip?['eta'] != null
+                            ? 'ETA ${_currentTrip!['eta']}'
+                            : (_currentTrip?['departureTime'] != null
+                                ? 'ETA ${_currentTrip!['departureTime']}'
+                                : 'ETA 10:00 AM'),
+                        style: GoogleFonts.nunito(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -507,7 +514,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           Text(
-                            _currentTrip?['pickup'] ?? 'Port of Long Beach, CA',
+                            _currentTrip?['pickup'] ?? 'Hyderabad',
                             style: GoogleFonts.nunito(
                               color: Colors.white,
                               fontSize: 11,
@@ -527,7 +534,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           Text(
-                            _currentTrip?['destination'] ?? 'Distribution Center A-12, AZ',
+                            _currentTrip?['destination'] ?? 'Chennai',
                             style: GoogleFonts.nunito(
                               color: Colors.white,
                               fontSize: 11,
@@ -544,17 +551,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
 
           // Right side: Progress Box + Progress line + CTA Button
           Expanded(
-            flex: 9,
+            flex: 8,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 // Progress statistic container
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(12),
@@ -567,7 +574,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          fontSize: 16,
                         ),
                       ),
                       Text(
@@ -581,58 +588,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 14),
 
                 // Orange progress bar
                 ClipRRect(
                   borderRadius: BorderRadius.circular(3),
                   child: const SizedBox(
-                    width: 80,
+                    width: 70,
                     child: LinearProgressIndicator(
                       value: 0.65,
                       color: Color(0xFFFF6A00),
                       backgroundColor: Colors.white12,
-                      minHeight: 6,
+                      minHeight: 5,
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 18),
 
                 // View Details orange action button
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const TripDetailsScreen(
-                          tripId: '#TRP-9921',
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final tripIdToPass = _currentTrip?['tripId']?.toString() ??
+                          _currentTrip?['_id']?.toString() ??
+                          _currentTrip?['tripNumber'] ??
+                          'TRP-846708';
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TripDetailsScreen(
+                            tripId: tripIdToPass,
+                            tripData: _currentTrip,
+                          ),
                         ),
+                      );
+                      _loadDashboardData();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF6A00),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.0),
                       ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6A00),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.0),
+                      elevation: 0,
                     ),
-                    elevation: 0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'View Details',
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'View Details',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          const Icon(Icons.chevron_right, size: 14),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.chevron_right, size: 14),
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -953,51 +972,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // Recent Notifications Builder
   Widget _buildRecentNotifications(BuildContext context) {
+    final List serverNotifs = _dashboardData?['notifications'] ?? [];
+    if (serverNotifs.isEmpty && NotificationsScreen.notifications.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF132235),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Text(
+            'No recent notifications',
+            style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+          ),
+        ),
+      );
+    }
+
+    final itemsToDisplay = serverNotifs.isNotEmpty
+        ? serverNotifs.take(3).map((item) {
+            return {
+              'title': item['title'] ?? 'Fleet Notification',
+              'subtitle': item['message'] ?? item['description'] ?? '',
+              'time': 'Recent',
+              'isUnread': !(item['isRead'] ?? false),
+              'icon': item['type'] == 'trip_assigned' ? Icons.inventory_2_outlined : Icons.notifications_none_outlined,
+            };
+          }).toList()
+        : NotificationsScreen.notifications.take(3).map((item) {
+            return {
+              'title': item.title,
+              'subtitle': item.description,
+              'time': item.timestamp,
+              'isUnread': !item.isRead,
+              'icon': item.icon,
+            };
+          }).toList();
+
     return Column(
-      children: [
-        _buildNotificationItem(
+      children: itemsToDisplay.map<Widget>((notif) {
+        return _buildNotificationItem(
           context,
-          icon: Icons.inventory_2_outlined,
-          iconBgColor: const Color(0xFFFFF2EB),
-          iconColor: const Color(0xFFFF6A00),
-          title: 'New Trip Assigned',
-          subtitle: 'Scheduled for Oct 24, 06:00 AM',
-          time: '2m ago',
-          isUnread: _isTripUnread,
+          icon: notif['icon'] as IconData,
+          iconBgColor: const Color(0xFF1E293B),
+          iconColor: const Color(0xFF38BDF8),
+          title: notif['title'] as String,
+          subtitle: notif['subtitle'] as String,
+          time: notif['time'] as String,
+          isUnread: notif['isUnread'] as bool,
           onTap: () {
-            setState(() {
-              NotificationsScreen.notifications.firstWhere((n) => n.id == '1').isRead = true;
-            });
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const UpcomingTripDetailsScreen(tripId: '#TRP-8840'),
-              ),
-            );
+            MainNavigationScreen.selectedTabNotifier.value = 3;
           },
-        ),
-        _buildNotificationItem(
-          context,
-          icon: Icons.construction_outlined,
-          iconBgColor: const Color(0xFFF1F5F9),
-          iconColor: const Color(0xFF667085),
-          title: 'Maintenance Reminder',
-          subtitle: 'Next engine check due in 3 days',
-          time: '1h ago',
-          isUnread: _isMaintenanceUnread,
-          onTap: () {
-            setState(() {
-              NotificationsScreen.notifications.firstWhere((n) => n.id == '2').isRead = true;
-            });
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const VehicleMaintenanceScreen(),
-              ),
-            );
-          },
-        ),
-      ],
+        );
+      }).toList(),
     );
   }
 
