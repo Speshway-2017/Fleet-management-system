@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
+import '../../providers/auth_provider.dart';
 import 'otp_screen.dart';
 import 'reset_password_screen.dart';
 
@@ -14,6 +16,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _inputController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -204,16 +207,40 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
                           // Send OTP Button
                           ElevatedButton(
-                            onPressed: () {
+                            onPressed: _isLoading ? null : () async {
                               if (_formKey.currentState!.validate()) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => OTPScreen(
-                                      contactInfo: _inputController.text.trim(),
+                                setState(() => _isLoading = true);
+                                final email = _inputController.text.trim();
+                                final auth = Provider.of<AuthProvider>(context, listen: false);
+                                final messenger = ScaffoldMessenger.of(context);
+                                final navigator = Navigator.of(context);
+                                
+                                final ok = await auth.forgotPassword(email);
+                                if (!mounted) return;
+                                
+                                if (ok) {
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text('OTP sent to your email successfully!'),
+                                      backgroundColor: AppColors.success,
                                     ),
-                                  ),
-                                );
+                                  );
+                                  navigator.push(
+                                    MaterialPageRoute(
+                                      builder: (context) => OTPScreen(
+                                        contactInfo: email,
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text(auth.errorMessage ?? 'Failed to send OTP. Please check your credentials.'),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                }
+                                if (mounted) setState(() => _isLoading = false);
                               }
                             },
                             style: ElevatedButton.styleFrom(
@@ -226,26 +253,35 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             ),
                              child: FittedBox(
                                fit: BoxFit.scaleDown,
-                               child: Row(
-                                 mainAxisAlignment: MainAxisAlignment.center,
-                                 children: [
-                                   Text(
-                                     'Send OTP',
-                                     style: GoogleFonts.poppins(
-                                       fontSize: 16,
-                                       fontWeight: FontWeight.bold,
-                                       color: Colors.white,
-                                       letterSpacing: 0.5,
+                               child: _isLoading
+                                   ? const SizedBox(
+                                       width: 24,
+                                       height: 24,
+                                       child: CircularProgressIndicator(
+                                         color: Colors.white,
+                                         strokeWidth: 2,
+                                       ),
+                                     )
+                                   : Row(
+                                       mainAxisAlignment: MainAxisAlignment.center,
+                                       children: [
+                                         Text(
+                                           'Send OTP',
+                                           style: GoogleFonts.poppins(
+                                             fontSize: 16,
+                                             fontWeight: FontWeight.bold,
+                                             color: Colors.white,
+                                             letterSpacing: 0.5,
+                                           ),
+                                         ),
+                                         const SizedBox(width: 8),
+                                         Icon(
+                                           Icons.send_rounded,
+                                           color: _isInputNotEmpty() ? Colors.white : AppColors.textDisabled,
+                                           size: 18,
+                                         ),
+                                       ],
                                      ),
-                                   ),
-                                   const SizedBox(width: 8),
-                                   Icon(
-                                     Icons.send_rounded,
-                                     color: _isInputNotEmpty() ? Colors.white : AppColors.textDisabled,
-                                     size: 18,
-                                   ),
-                                 ],
-                               ),
                              ),
                           ),
                           const SizedBox(height: 24),

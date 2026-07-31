@@ -103,6 +103,91 @@ All notable changes to the Fleet Driver Mobile application will be documented in
   - Implemented automatic trip status transition to `Completed` upon Manager POD/Weighbridge approval, releasing Vehicle (`Available`) and Driver (`AVAILABLE`) statuses and updating active views via Socket.io.
   - Cleaned up dummy hardcoded mock notifications, alerts, and trips across mobile screens and connected live API services.
 
+## [1.26.0] - 2026-07-31
+
+### Added & Integrated
+- **Real-Time Trip Assignment Updates (Socket.IO)**:
+  - Integrated `socket_io_client` package in `driver_mobile` to establish persistent WebSocket connections to the backend server.
+  - Implemented `SocketService` class ([socket_service.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/socket_service.dart)) to handle connections, automatic reconnections, and listener hooks for dynamic updates.
+  - Bound `SocketService` connection lifecycle to the driver authentication state inside [auth_provider.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/providers/auth_provider.dart) (connecting on login/session initialization, disconnecting on logout).
+  - Updated [dashboard_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) to register a socket listener, triggering an immediate UI refresh when a new trip or notification is dispatched, bypassing the 10-second polling fallback.
+  - Added backend WebSocket room `joinDriverRoom` handler to [server.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/server.js) allowing drivers to subscribe to `driver:${driverId}` events.
+  - Updated backend notification dispatcher ([notification.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/utils/notification.js)) to route driver-specific notifications to the `driver:${recipient}` room.
+  - Fixed key mismatches in backend REST API response `/api/driver/trips/current` inside [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) by returning `startLocation` and `endLocation` alongside `pickup` and `destination` fields.
+  - Fixed active trip details navigation inside [dashboard_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) to retrieve the correct `tripId` field from the API response payload.
+
+## [1.25.0] - 2026-07-29
+
+### Added & Integrated
+- **Dynamic Trip Assignment & Dashboard Polling**:
+  - Integrated notification triggers inside backend controllers `createTrip` and `updateTrip` ([manager.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/manager.controller.js)) to write `Notification` documents to MongoDB and simulate FCM push delivery.
+  - Implemented background periodic dashboard polling (runs silently every 10 seconds) inside [dashboard_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart).
+  - Programmed delta notification checks inside `_loadDashboardData()` that detect new unread notification records, displaying premium SnackBar alerts with in-app "View" redirect hooks.
+- **Driver Dashboard Integration**:
+  - Replaced all dashboard mock values with dynamic Mongoose queries and REST payloads fetching `/api/driver/dashboard` and `/api/driver/trips/current`.
+  - Configured `_buildActiveTripCard` dynamically mapping `startLocation`, `endLocation`, `eta`, status, and computing real progress updates. Added fallback states when no active trip is currently assigned to the driver.
+  - Linked `_buildScheduleTimeline` dynamically with the array list from `_dashboardData['todaySchedule']`.
+  - Rewrote the recent notifications widget list to display the top 3 live notifications from `NotificationProvider` state with context-styled colors and icons.
+- **Driver Notifications Feed & FCM Push Notifications Integration**:
+  - Connected the Driver Notifications screen ([notifications_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notifications_screen.dart)) to the backend Mongoose `Notification` collection.
+  - Implemented the `NotificationModel` class to handle raw database mapping, categorizations (Today, Yesterday/Older), and dynamic Material icon conversions.
+  - Developed the `NotificationRepository` and `NotificationProvider` to fetch notifications (`GET /api/driver/notifications`), mark single notification read (`PATCH /api/driver/notifications/:id/read`), and mark all notifications read (`PATCH /api/driver/notifications/read-all`).
+  - Added the `firebase_messaging` package, and created `FcmService` to initialize Firebase Cloud Messaging, request system notification permissions, register/refresh the driver's device FCM token in the database, and handle background/foreground/terminated notification-click events.
+  - Modified [dashboard_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) to read active unread notifications via the provider state and automatically mark them as read when clicking on unread trip/maintenance indicators.
+- **Driver Settings Screen & Sub-Screens Integration**:
+  - Connected the Change Password screen ([change_password_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/change_password_screen.dart)) to the existing backend API endpoint `PATCH /api/auth/change-password` by creating a new `changePassword` method in `AuthRepository` and `AuthProvider`.
+  - Fixed `"data and hash arguments required"` bcrypt exception during Driver password changes by modifying `findUserByEmail` inside [auth.repository.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/repositories/auth.repository.js) to explicitly fetch `.select('+password')` for the Driver model.
+  - Extended the MongoDB `Driver` schema ([Driver.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/models/Driver.js)) and profile endpoint response/controller allowed fields to save and return 2FA preferences, language, dark mode theme preferences, and notification configuration settings.
+  - Connected the Two-Factor Authentication configuration screen ([two_factor_auth_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/two_factor_auth_screen.dart)) to load and persist 2FA status, selected method, registered phone, and generated recovery codes. Added logic to generate a random 6-digit OTP, output it to the debugging terminal console, and validate it before configuring 2FA.
+  - Bound the Notification Preferences screen ([notification_settings_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/notification_settings_screen.dart)) to read and save notification preference switches to the driver database.
+  - Synchronized language selector choices and dark mode toggles on the main settings screen ([settings_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/settings_screen.dart)) with immediate backend storage.
+  - Structured all build context usages safely across asynchronous gaps to comply with static lint guidelines.
+  - Made the Issuing State text field optional on [EditProfileScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/edit_profile_screen.dart) by removing its required validation rule, and configured `autovalidateMode: AutovalidateMode.onUserInteraction` on the Form wrapper to clear error alerts reactively. Fixed the Issuing State pre-fill being empty on page load by updating the backend `getDriverProfile` controller ([driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js)) to return the `branch` database field.
+  - Fixed login error screen resets when entering wrong credentials by preventing the `onUnauthorized` auto-logout interceptor inside [api_service.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/api_service.dart) from executing during `/login` API calls.
+  - Implemented `isSessionInitialized` inside [auth_provider.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/providers/auth_provider.dart) and updated the root [main.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/main.dart) `AuthSessionWrapper` to display a full-screen loading spinner only during initial startup session checks. This prevents the widget tree from unmounting and resetting the login form during failed login attempts, enabling SnackBars to render successfully.
+  - Added full 6-digit OTP pasting support inside [two_factor_auth_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/two_factor_auth_screen.dart) by removing direct `maxLength: 1` limits and parsing clipboard strings to distribute digits across the fields manually.
+  - Added `firebase_core` package dependency to `pubspec.yaml` and imported/initialized Firebase inside [main.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/main.dart)'s `main()` method wrapped in a try-catch for safety. Imported [firebase_options.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/firebase_options.dart) and configured initialization to pass `DefaultFirebaseOptions.currentPlatform`.
+- **Dashboard Profile Avatar Synchronization**:
+  - Replaced the static asset-based dashboard avatar in [DashboardScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) with a `ValueListenableBuilder` connected to `ProfileState.profilePhotoUrlNotifier`.
+  - Added support in both [DashboardScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) and [SettingsScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/settings_screen.dart) to render base64 memory images and standard network images dynamically.
+- **License Issuing State Replacement**:
+  - Replaced the static/organization field label with `"ISSUE STATE"` on [ProfileScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/profile_screen.dart) and bound it dynamically to the driver's `branch` data.
+  - Linked the Issuing State text input controller value to the `'branch'` payload property inside `_saveChanges` on [EditProfileScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/edit_profile_screen.dart).
+  - Extended backend profile update controller `updateDriverProfile` (`driverApi.controller.js`) to support editing and saving the `'branch'` property.
+- **Device Image Upload & Cloudinary Integration**:
+  - Implemented base64 image upload in backend profile controller `updateDriverProfile` (`driverApi.controller.js`), parsing incoming data URIs and uploading them to Cloudinary dynamically.
+  - Added a new `"Upload from Device"` action in the profile photo bottom sheet (`edit_profile_screen.dart`), opening the device's native file explorer via `file_picker`.
+  - Added base64 image decoding/memory preview support in both [EditProfileScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/edit_profile_screen.dart) and [ProfileScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/profile_screen.dart) to show instant previews prior to database persistence.
+- **Backend Driver Profile Fields & Update Endpoint**:
+  - Extended the `getDriverProfile` controller response in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) to return joiningDate, dob, address, experience, licenseExpiry, performanceScore, and tripsCompleted.
+  - Implemented the `updateDriverProfile` controller action allowing drivers to update their own profile fields (fullName, email, phoneNumber, dob, address, licenseNumber, licenseType, licenseExpiry, profileImage).
+  - Registered route `PUT /api/driver/profile` in [driverApi.routes.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/routes/driverApi.routes.js) mapped to the new controller.
+- **Help & Support Backend Connection**:
+  - Refactored [HelpSupportScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/help_support_screen.dart) to load live dispatcher support contact info dynamically from `GET /api/driver/support`.
+  - Added loading indicator and retry handler layouts inside the "Still need help?" card.
+  - Linked "Chat on WhatsApp" and "Call Support" actions to launch their respective WhatsApp URI and phone dialer links using `url_launcher`.
+- **Flutter API Integration & Reactive UI Binding**:
+  - Extended [DriverModel](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/models/driver_model.dart) with additional fields (employeeId, joiningDate, address, licenseExpiry, performanceScore, tripsCompleted, dob) and updated JSON serialization.
+  - Added a `put` method to [ApiService](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/api_service.dart) for HTTP PUT request handling.
+  - Implemented `onUnauthorized` static callback inside [ApiService](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/api_service.dart) interceptor triggering on 401 response code.
+  - Registered the `onUnauthorized` interceptor callback in [AuthProvider](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/providers/auth_provider.dart) to automatically execute the logout sequence and trigger reactive redirection to the Login screen.
+  - Implemented `refreshProfile` and `updateProfile` methods in [AuthProvider](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/providers/auth_provider.dart) and [AuthRepository](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/repositories/auth_repository.dart).
+  - Converted [ProfileScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/profile_screen.dart) to a `StatefulWidget` fetching dynamic profile data from backend on start with full pull-to-refresh `RefreshIndicator`, loading indicator, error retry views, and status color mapping.
+  - Updated [EditProfileScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/edit_profile_screen.dart) to dynamically prefill all form fields using the logged-in driver's provider data and call the backend update API upon saving, rendering a loader dialog and a success snackbar.
+
+## [1.21.0] - 2026-07-28
+
+### Added & Integrated
+- **Dio API Client & JWT Secure Storage Interceptor**:
+  - Replaced the `http` package connection implementation in [ApiService](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/api_service.dart) with `Dio`, providing request timeout controls, custom interceptors, and standardized exception transformations.
+  - Configured `flutter_secure_storage` for secure persistence of the JWT authentication token.
+  - Implemented request interceptor in `ApiService` that reads the stored JWT token and injects the `Authorization: Bearer <token>` header automatically into all outgoing requests.
+  - Updated all driver authentication screens ([LoginScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/auth/login_screen.dart), [ForgotPasswordScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/auth/forgot_password_screen.dart), [OTPScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/auth/otp_screen.dart), [ResetPasswordScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/auth/reset_password_screen.dart)) to bind with `AuthProvider` state management, rendering loading state indicators and displaying detailed API error alerts via SnackBars.
+  - Refactored [ProfileScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/profile/profile_screen.dart) and [SettingsScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/settings/settings_screen.dart) to clear secure session keys on logout.
+- **Backend Drivers Password Reset Support**:
+  - Added password reset support fields (`resetPasswordOtp`, `resetPasswordExpires`) to Mongoose `DriverSchema` in [Driver.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/models/Driver.js).
+  - Updated `findUserByEmail` in [auth.repository.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/repositories/auth.repository.js) to look up drivers in the `Driver` collection if no admin/manager is found in `User` collection, enabling full OTP-based forgot-password and reset-password workflows for drivers.
+
 ## [1.20.0] - 2026-07-28
 
 ### Added & Integrated

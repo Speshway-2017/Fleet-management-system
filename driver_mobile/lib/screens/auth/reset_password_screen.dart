@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
+import '../../providers/auth_provider.dart';
 import 'login_screen.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
@@ -14,6 +16,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
@@ -330,7 +333,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
                           // Reset Password Button
                           ElevatedButton(
-                            onPressed: () {
+                            onPressed: _isLoading ? null : () async {
                               if (!_hasMinLength || !_hasNumber || !_hasSpecialChar) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -350,19 +353,36 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 return;
                               }
                               if (_formKey.currentState!.validate()) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Password reset successfully! Please login with your new password.'),
-                                    backgroundColor: AppColors.success,
-                                  ),
-                                );
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const LoginScreen(),
-                                  ),
-                                  (route) => false,
-                                );
+                                setState(() => _isLoading = true);
+                                final auth = Provider.of<AuthProvider>(context, listen: false);
+                                final messenger = ScaffoldMessenger.of(context);
+                                final navigator = Navigator.of(context);
+                                
+                                final ok = await auth.resetPassword(_passwordController.text.trim());
+                                if (!mounted) return;
+                                
+                                if (ok) {
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Password reset successfully! Please login with your new password.'),
+                                      backgroundColor: AppColors.success,
+                                    ),
+                                  );
+                                  navigator.pushAndRemoveUntil(
+                                    MaterialPageRoute(
+                                      builder: (context) => const LoginScreen(),
+                                    ),
+                                    (route) => false,
+                                  );
+                                } else {
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text(auth.errorMessage ?? 'Failed to reset password. Please try again.'),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                }
+                                if (mounted) setState(() => _isLoading = false);
                               }
                             },
                             style: ElevatedButton.styleFrom(
@@ -373,15 +393,24 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                   borderRadius: BorderRadius.circular(12.0)),
                               elevation: 0,
                             ),
-                            child: Text(
-                              'Reset Password',
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Text(
+                                    'Reset Password',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
                           ),
                           const SizedBox(height: 24),
 

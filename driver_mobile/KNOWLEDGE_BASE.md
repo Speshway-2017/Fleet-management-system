@@ -15,9 +15,12 @@ The application is structured following clean coding principles and modularity. 
 | `assets/` | Static project assets (images, icons, vectors). |
 | `assets/images/` | General images (e.g., logos, illustration graphics). |
 | `lib/` | Main application Dart source code. |
+| `lib/models/` | Strong-typed model definitions (`driver_model.dart`). |
+| `lib/providers/` | State management provider notifier controllers (`auth_provider.dart`). |
+| `lib/repositories/` | Data access layer repository interfaces (`auth_repository.dart`). |
 | `lib/screens/` | Screen-level widget containers. |
 | `lib/screens/auth/` | Authentication-related flows (Login, Forgot Password, etc.). |
-| `lib/services/` | Backend REST API integration, authentication, and location tracking services (`api_service.dart`, `auth_service.dart`, `location_service.dart`). |
+| `lib/services/` | Backend REST API integration and location tracking services (`api_service.dart`, `location_service.dart`). |
 | `lib/theme/` | Centralized design system constants and MaterialApp theme settings. |
 | `test/` | Automated widget, integration, and unit tests. |
 
@@ -180,3 +183,47 @@ Executes the test suite in the `test/` folder:
 ```bash
 flutter test
 ```
+
+---
+
+## 5. Authentication & API Integration System
+
+The application connects to a Node.js/Express backend API for session operations, location broadcasts, trip processing, and document management.
+
+### Key Architecture Components
+* **`Dio` Client (`ApiService`)**: Configured with request timeouts, environment fallback IPs, and automated response mapping.
+* **JWT Secure Storage**: Uses `flutter_secure_storage` to write, read, and delete JWT credentials securely.
+* **Auto-Authorize Interceptor**: Intercepts outgoing REST requests inside `ApiService` to append the `Authorization: Bearer <token>` header dynamically.
+* **State Management (`AuthProvider`)**: Inherits from `ChangeNotifier` to drive authentication state (`driver`, `isLoading`, `errorMessage`, `isAuthenticated`). Exposed to screens via Provider bindings.
+* **Models (`DriverModel`, `ManagerModel`)**: Strongly typed JSON serialization for parsing backend collections cleanly.
+* **Profile & Settings Integration**: 
+  - Dynamic profile loading via `refreshProfile` in `AuthProvider` triggered on `ProfileScreen` or `SettingsScreen` initialization.
+  - Profile update API endpoint integration supporting PUT operations on `/api/driver/profile` which handles updates for personal profile fields as well as settings preferences.
+  - Profile image changes supporting native file manager picking (`file_picker`) converting to base64 data URIs.
+  - Cloudinary profile image uploads processed on backend `updateDriverProfile` for incoming base64 data URIs.
+  - Profile image updates globally synchronized across all active avatars (Profile, Edit Profile, Dashboard header, and Settings) via a shared `profilePhotoUrlNotifier`.
+  - Issuing State updates mapping to driver's database `'branch'` field dynamically synced on `ProfileScreen` and `EditProfileScreen`. Made optional in edit profile validations to allow saving other properties without enforcing a value. Added backend return mapping for the `branch` field on get profile endpoints to ensure previous values pre-fill successfully on edit profile screen loads.
+  - Change Password screen connected to backend endpoint `PATCH /api/auth/change-password` through `AuthProvider.changePassword()`. Added explicit `.select('+password')` behavior inside the user database queries to avoid bcrypt comparison failures.
+  - Two-Factor Authentication settings (toggle state, SMS/Email methods, phone number, and generated backup recovery codes) saved in backend and synchronized. Toggling 2FA generates a random 6-digit OTP, prints it to the debugging terminal console for SMS / Email, and validates it before persisting. Supports clipboard multi-digit paste by overriding single maxLength limits.
+  - Notification Preferences (route changes, traffic warnings, sound, vibration, email/SMS/Push notifications) persisted in MongoDB and loaded dynamically.
+  - Language and Dark Mode selections saved instantly to backend to preserve user experience across different devices.
+  - Help & Support Screen backend data binding (`GET /api/driver/support`) for live dispatcher contact phone, email, and WhatsApp launching (`url_launcher`).
+  - Global reactive 401 Unauthorized handling inside `ApiService` and `AuthProvider` that automatically logs out and redirects the user to the `LoginScreen`. Explicitly ignores `/login` API endpoints to prevent state resets and ensure wrong credentials return informative validation SnackBars. Root `AuthSessionWrapper` relies on `isSessionInitialized` to restrict full-screen loaders exclusively to startup session checks.
+  - Firebase integration via `firebase_core` imported and initialized asynchronously inside the mobile root `main()` entry method. Wired up with [firebase_options.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/firebase_options.dart) to pass `DefaultFirebaseOptions.currentPlatform` configuration details automatically.
+  - Driver Notifications Feed integrated with backend Mongoose `Notification` collection. Provides pull-to-refresh (`GET /api/driver/notifications`), individual mark-as-read updates (`PATCH /api/driver/notifications/:id/read`), and mark-all-as-read operations (`PATCH /api/driver/notifications/read-all`).
+  - Firebase Cloud Messaging integration via `FcmService` which handles requesting permission, obtaining and registering device tokens (`fcmToken` property on driver profile), listening to foreground/background messages, showing SnackBar banners, and switching to the notifications tab upon tray notification taps.
+  - Dashboard recent notifications indicators dynamically read provider unread counts and clear unread states when tapped.
+  - Driver Dashboard connected to live backend REST endpoints: `/api/driver/dashboard` (fetches counts for active, upcoming, completed, total trips, today's schedules, and initial notifications) and `/api/driver/trips/current` (fetches the currently running trip).
+  - Active trip progress card computes real completion percentages dynamically from `actualDistance` / `estimatedDistance` values or trip statuses, and provides a fallback view when no trip is currently assigned to the driver.
+  - Today's schedule timeline is dynamically drawn from the `todaySchedule` array payload, and recent notifications are fed directly from the reactive `NotificationProvider` state.
+  - Periodic background polling timer (runs every 10 seconds silently) installed in [dashboard_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) to refresh state.
+  - Backend controller actions `createTrip` and `updateTrip` inside [manager.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/manager.controller.js) automatically save driver `Notification` documents to MongoDB and simulate push notifications during trip assignment, unassignment, or status modifications.
+  - Dynamic in-app local SnackBar indicators triggered on the mobile dashboard whenever a new unread notification arrives, with context actions to go directly to notifications.
+  - **Socket.IO Real-Time Communication System**:
+    - Persistent real-time communication channel implemented via `socket_io_client` inside [SocketService](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/socket_service.dart).
+    - Driver client automatically registers to a driver-specific room `driver:${driverId}` upon successful login or session initialization.
+    - Listens for `'notification:new'` event which triggers instant, reactive dashboard refreshes and UI updates via registered notification listeners, bypassing the periodic 10-second polling lag.
+    - Automatically unsubscribes and disconnects the WebSocket stream upon logout to preserve resources.
+    - Backend WebSocket server ([server.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/server.js)) updated to register `joinDriverRoom` listeners.
+    - Backend notification utility ([notification.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/utils/notification.js)) routes events to the `driver:${recipient}` room when a new trip or notification is created for a user with role `DRIVER`.
+    - REST endpoint `/api/driver/trips/current` returns `startLocation` and `endLocation` fields to resolve key mismatches and correctly bind database properties to the client dashboard's active trip card.

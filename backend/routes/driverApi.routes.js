@@ -3,10 +3,13 @@ import {
   loginDriver,
   logoutDriver,
   getDriverProfile,
+  updateDriverProfile,
   getCurrentTrip,
   getDriverDashboard,
   getDriverNotifications,
   respondToTripAssignment,
+  markDriverNotificationRead,
+  markAllDriverNotificationsRead,
   updateTripStatus,
   toggleCustomerLocation,
   updateDriverLocation,
@@ -38,6 +41,7 @@ router.post('/logout', logoutDriver);
 router.use(protect);
 
 router.get('/profile', getDriverProfile);
+router.put('/profile', updateDriverProfile);
 router.get('/vehicle', getAssignedVehicle);
 router.get('/maintenance', getDriverMaintenance);
 router.get('/trips/current', getCurrentTrip);
@@ -45,6 +49,8 @@ router.get('/trips', getDriverTrips);
 router.get('/dashboard', getDriverDashboard);
 router.get('/notifications', getDriverNotifications);
 router.patch('/trips/:id/respond', respondToTripAssignment);
+router.patch('/notifications/read-all', markAllDriverNotificationsRead);
+router.patch('/notifications/:id/read', markDriverNotificationRead);
 router.patch('/trips/:id/status', updateTripStatus);
 router.patch('/trips/:id/customer-location', toggleCustomerLocation);
 router.post('/location', updateDriverLocation);

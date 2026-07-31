@@ -1,11 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/main_navigation_screen.dart';
+import 'services/api_service.dart';
+import 'providers/auth_provider.dart';
+import 'providers/notification_provider.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase initialization failed: $e');
+  }
+  ApiService.initialize();
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -17,7 +42,45 @@ class MyApp extends StatelessWidget {
       title: 'Fleet Driver Mobile',
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
-      home: const LoginScreen(),
+      home: const AuthSessionWrapper(),
+    );
+  }
+}
+
+class AuthSessionWrapper extends StatefulWidget {
+  const AuthSessionWrapper({super.key});
+
+  @override
+  State<AuthSessionWrapper> createState() => _AuthSessionWrapperState();
+}
+
+class _AuthSessionWrapperState extends State<AuthSessionWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AuthProvider>(context, listen: false).initializeSession();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        if (!auth.isSessionInitialized) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              ),
+            ),
+          );
+        }
+        if (auth.isAuthenticated && auth.driver != null) {
+          return const MainNavigationScreen();
+        }
+        return const LoginScreen();
+      },
     );
   }
 }
