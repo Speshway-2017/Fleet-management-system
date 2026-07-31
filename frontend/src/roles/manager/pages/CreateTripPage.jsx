@@ -771,7 +771,7 @@ export default function CreateTripPage() {
         vehicle: vehicle._id || vehicle.id,
         driver: driver ? (driver._id || driver.id) : undefined,
         driverName: driver ? driver.name : "",
-        driverPhone: driver ? driver.phone : "",
+        driverPhone: driver ? (driver.phoneNumber || driver.phone || "") : "",
         vehicleName: vehicle.name,
         vehiclePlate: vehicle.plateNumber,
         startLocation,
