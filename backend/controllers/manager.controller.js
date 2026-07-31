@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { geocodeCity } from '../utils/geocodingHelper.js';
+export { getDriverStats } from './driver.controller.js';
 import {
   createVehicle as createVehicleInRepo,
   getVehicles,
@@ -929,14 +930,7 @@ export const createTrip = async (req, res, next) => {
       return sendError(res, 400, 'This vehicle is already allocated to another active trip');
     }
 
-    // Verify selected vehicle is from the start location
-    const cleanStart = startLocation.trim().split(/[\s,]+/)[0].toLowerCase();
-    const vehicleLoc = (selectedVeh.currentLocation || selectedVeh.branch || 'Pune').trim().split(/[\s,]+/)[0].toLowerCase();
-    if (!vehicleLoc.includes(cleanStart) && !cleanStart.includes(vehicleLoc)) {
-      return sendError(res, 400, `Selected vehicle is not from the Start Location (${startLocation})`);
-    }
-
-    // B. Verify driver license, availability & branch in database
+    // B. Verify driver license and availability in database
     const driverDoc = await Driver.findById(driver);
     if (!driverDoc) {
       return sendError(res, 404, 'Driver not found');
@@ -954,11 +948,6 @@ export const createTrip = async (req, res, next) => {
     });
     if (activeTripsWithDriver) {
       return sendError(res, 400, 'This driver is already allocated to another active trip');
-    }
-
-    const driverLocVal = (driverDoc.currentLocation || driverDoc.driverLocation || driverDoc.branch || 'Pune').trim().split(/[\s,]+/)[0].toLowerCase();
-    if (!driverLocVal.includes(cleanStart) && !cleanStart.includes(driverLocVal)) {
-      return sendError(res, 400, `Selected driver is not from the Start Location (${startLocation})`);
     }
 
     console.log(`\nCreating Trip...`);
@@ -995,19 +984,32 @@ export const createTrip = async (req, res, next) => {
 
     console.log(`Trip Created Successfully`);
 
-    // D. Update vehicle status in MongoDB
+    // D. Update vehicle status and location in MongoDB
     const nextVehStatus = status === 'In Progress' ? 'On Trip' : 'Assigned';
     await Vehicle.findByIdAndUpdate(vehicle, {
       currentStatus: nextVehStatus,
-      assignedDriver: driver
+      assignedDriver: driver,
+      currentLocation: startLocation,
+      branch: startLocation,
+      branchDepot: startLocation
     });
 
-    // E. Update driver status in MongoDB
+    // E. Update driver status and location in MongoDB
     const nextDrvStatus = status === 'In Progress' ? 'ON_TRIP' : 'ASSIGNED';
     await Driver.findByIdAndUpdate(driver, {
       driverStatus: nextDrvStatus,
-      assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned'
+      assignedVehicle: selectedVeh ? selectedVeh.vehicleNumber : 'Unassigned',
+      currentLocation: startLocation,
+      driverLocation: startLocation,
+      branch: startLocation
     });
+
+    // F. Create Activity Log
+    try {
+      await logActivity(req.user._id, 'TRIP_CREATED', `Created trip ${trip.tripNumber} (${startLocation} -> ${endLocation}). Allocated vehicle ${selectedVeh.vehicleNumber} and driver ${driverDoc.fullName}. Relocated to ${startLocation}.`);
+    } catch (logErr) {
+      console.warn('Activity logging failed:', logErr.message);
+    }
 
     // F. Automatically generate unique invoice and save to database
     const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');

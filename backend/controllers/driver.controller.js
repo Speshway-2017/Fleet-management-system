@@ -1,3 +1,4 @@
+import { geocodeCity, getDistanceKm, getRoadDistanceAndEta } from '../utils/geocodingHelper.js';
 import {
   getDrivers,
   getDriverById,
@@ -226,7 +227,7 @@ export const getAvailableDrivers = async (req, res, next) => {
 
     const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
 
-    const filter = {
+    const allAvailable = await Driver.find({
       assignedManager: req.user._id,
       _id: { $nin: allocatedDriverIds },
       driverStatus: 'AVAILABLE',
@@ -235,44 +236,102 @@ export const getAvailableDrivers = async (req, res, next) => {
         { licenseExpiry: null },
         { licenseExpiry: { $gte: new Date() } }
       ]
+    });
+
+    const targetLoc = (req.query.location || req.query.startLocation || '').trim();
+    if (!targetLoc) {
+      return sendSuccess(res, 200, allAvailable, 'Available drivers fetched successfully');
+    }
+
+    const normTarget = targetLoc.toLowerCase();
+    const targetFirstWord = normTarget.split(/[\s,]+/)[0];
+
+    const getDriverEffectiveLocation = (d) => {
+      if (d.currentLocation && d.currentLocation.trim()) return d.currentLocation.trim();
+      if (d.driverLocation && d.driverLocation.trim()) return d.driverLocation.trim();
+      if (d.branch && d.branch.trim()) return d.branch.trim();
+      return '';
     };
 
-    const rawLoc = req.query.location || req.query.startLocation;
-    if (rawLoc && typeof rawLoc === 'string' && rawLoc.trim()) {
-      const cleanLoc = rawLoc.trim();
-      const firstWord = cleanLoc.split(/[\s,]+/)[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const escapedLoc = cleanLoc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const locRegex = new RegExp(`^\\s*${escapedLoc}\\s*$|${firstWord}`, 'i');
+    const isMatch = (d) => {
+      const dLoc = getDriverEffectiveLocation(d);
+      if (!dLoc) return false;
+      const norm = dLoc.trim().toLowerCase();
+      const firstWord = norm.split(/[\s,]+/)[0];
+      return norm === normTarget || norm.includes(targetFirstWord) || targetFirstWord.includes(firstWord);
+    };
 
-      filter.$and = filter.$and || [];
-      filter.$and.push({
-        $or: [
-          { currentLocation: locRegex },
-          { driverLocation: locRegex },
-          { branch: locRegex }
-        ]
-      });
+    const localDrivers = [];
+    const nearbyRawDrivers = [];
+
+    for (const d of allAvailable) {
+      if (isMatch(d)) {
+        localDrivers.push(d);
+      } else {
+        nearbyRawDrivers.push(d);
+      }
     }
 
-    const availableDrivers = await Driver.find(filter);
+    // Priority 1: If local drivers exist, use local drivers only and skip nearby search
+    console.log('\n===================================');
+    console.log('Start Location:');
+    console.log(`${targetLoc}\n`);
+    console.log('Searching local Drivers...');
+    console.log('Drivers Found:');
+    console.log(`${localDrivers.length}\n`);
 
-    if (rawLoc && typeof rawLoc === 'string' && rawLoc.trim()) {
-      const cleanLoc = rawLoc.trim().toLowerCase();
-      const firstWord = cleanLoc.split(/[\s,]+/)[0];
-      availableDrivers.sort((a, b) => {
-        const aLoc = (a.currentLocation || a.driverLocation || a.branch || '').toLowerCase();
-        const bLoc = (b.currentLocation || b.driverLocation || b.branch || '').toLowerCase();
-        const aMatch = aLoc.includes(firstWord) || firstWord.includes(aLoc);
-        const bMatch = bLoc.includes(firstWord) || firstWord.includes(bLoc);
-        if (aMatch && !bMatch) return -1;
-        if (!aMatch && bMatch) return 1;
-        return 0;
-      });
-    } else {
-      availableDrivers.sort((a, b) => b.createdAt - a.createdAt);
+    if (localDrivers.length > 0) {
+      console.log('Using local Drivers.');
+      console.log('Skipping nearby Driver search.');
+      console.log('===================================\n');
+
+      return sendSuccess(res, 200, {
+        drivers: localDrivers,
+        localDrivers,
+        nearbyDrivers: [],
+        localCount: localDrivers.length,
+        nearbyCount: 0,
+        isNearbyFallback: false
+      }, 'Available drivers fetched successfully');
     }
 
-    return sendSuccess(res, 200, availableDrivers, 'Available drivers fetched successfully');
+    // Priority 2: Only if local drivers count is 0, execute nearest driver search sorted by road distance
+    console.log(`No available Drivers found in ${targetLoc}. Searching nearest available Drivers...`);
+    const nearbyDrivers = await Promise.all(
+      nearbyRawDrivers.map(async (d) => {
+        const dLoc = getDriverEffectiveLocation(d) || 'Pune';
+        const routeData = await getRoadDistanceAndEta(targetLoc, dLoc);
+        const dObj = d.toObject ? d.toObject() : { ...d };
+        return {
+          ...dObj,
+          isNearby: true,
+          distanceKm: routeData.distanceKm,
+          estimatedTravelTime: routeData.estimatedTravelTime,
+          currentBranch: d.branch || d.currentLocation || dLoc,
+          currentLocation: dLoc
+        };
+      })
+    );
+
+    // Sort in ascending order based on road distance
+    nearbyDrivers.sort((a, b) => a.distanceKm - b.distanceKm);
+
+    if (nearbyDrivers.length > 0) {
+      console.log(`Nearest Drivers for ${targetLoc} sorted by distance:`);
+      nearbyDrivers.slice(0, 5).forEach((d, idx) => {
+        console.log(`${idx + 1}. ${d.fullName || d.name} (${d.employeeId || 'N/A'}) - Loc: ${d.currentLocation} - ${d.distanceKm} km away (${d.estimatedTravelTime})`);
+      });
+    }
+    console.log('===================================\n');
+
+    return sendSuccess(res, 200, {
+      drivers: nearbyDrivers,
+      localDrivers: [],
+      nearbyDrivers,
+      localCount: 0,
+      nearbyCount: nearbyDrivers.length,
+      isNearbyFallback: true
+    }, 'Available drivers fetched successfully');
   } catch (error) {
     next(error);
   }

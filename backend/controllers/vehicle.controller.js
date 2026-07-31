@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { geocodeCity, getDistanceKm, getRoadDistanceAndEta } from '../utils/geocodingHelper.js';
 import {
   getVehicles,
   getVehicleById,
@@ -38,42 +39,101 @@ export const getAvailableVehicles = async (req, res, next) => {
 
     const allocatedVehicleIds = activeTrips.map(t => t.vehicle).filter(Boolean);
 
-    const filter = {
+    const allAvailable = await Vehicle.find({
       assignedManager: req.user._id,
       _id: { $nin: allocatedVehicleIds },
       currentStatus: { $in: ['Available', 'Active'] }
+    }).populate('assignedDriver');
+
+    const targetLoc = (req.query.location || req.query.startLocation || '').trim();
+    if (!targetLoc) {
+      return sendSuccess(res, 200, allAvailable, 'Available vehicles fetched successfully');
+    }
+
+    const normTarget = targetLoc.toLowerCase();
+    const targetFirstWord = normTarget.split(/[\s,]+/)[0];
+
+    const getVehicleEffectiveLocation = (v) => {
+      if (v.currentLocation && v.currentLocation.trim()) return v.currentLocation.trim();
+      if (v.branchDepot && v.branchDepot.trim()) return v.branchDepot.trim();
+      if (v.branch && v.branch.trim()) return v.branch.trim();
+      return '';
     };
 
-    const cleanLoc = req.query.location ? req.query.location.trim().split(/[\s,]+/)[0].toLowerCase() : null;
+    const isMatch = (v) => {
+      const vLoc = getVehicleEffectiveLocation(v);
+      if (!vLoc) return false;
+      const norm = vLoc.trim().toLowerCase();
+      const firstWord = norm.split(/[\s,]+/)[0];
+      return norm === normTarget || norm.includes(targetFirstWord) || targetFirstWord.includes(firstWord);
+    };
 
-    if (cleanLoc) {
-      filter.$and = [
-        {
-          $or: [
-            { branch: { $regex: new RegExp(cleanLoc, 'i') } },
-            { currentLocation: { $regex: new RegExp(cleanLoc, 'i') } }
-          ]
-        }
-      ];
+    const localVehicles = [];
+    const nearbyRawVehicles = [];
+
+    for (const v of allAvailable) {
+      if (isMatch(v)) {
+        localVehicles.push(v);
+      } else {
+        nearbyRawVehicles.push(v);
+      }
     }
 
-    const availableVehicles = await Vehicle.find(filter).populate('assignedDriver');
+    // Priority 1: If local vehicles exist, return local vehicles only and skip nearby search
+    console.log('Searching local Vehicles...');
+    console.log(`Vehicles Found in ${targetLoc}: ${localVehicles.length}\n`);
 
-    if (cleanLoc) {
-      availableVehicles.sort((a, b) => {
-        const aLoc = (a.currentLocation || a.branch || '').toLowerCase();
-        const bLoc = (b.currentLocation || b.branch || '').toLowerCase();
-        const aMatch = aLoc.includes(cleanLoc) || cleanLoc.includes(aLoc);
-        const bMatch = bLoc.includes(cleanLoc) || cleanLoc.includes(bLoc);
-        if (aMatch && !bMatch) return -1;
-        if (!aMatch && bMatch) return 1;
-        return 0;
+    if (localVehicles.length > 0) {
+      console.log(`Using local Vehicles for ${targetLoc}. Skipping nearby Vehicle search.`);
+      console.log('===================================\n');
+
+      return sendSuccess(res, 200, {
+        vehicles: localVehicles,
+        localVehicles,
+        nearbyVehicles: [],
+        localCount: localVehicles.length,
+        nearbyCount: 0,
+        isNearbyFallback: false
+      }, 'Available vehicles fetched successfully');
+    }
+
+    // Priority 2: Only if local vehicles count is 0, execute nearest vehicle search sorted by road distance
+    console.log(`No available Vehicles found in ${targetLoc}. Searching nearest available Vehicles...`);
+    const nearbyVehicles = await Promise.all(
+      nearbyRawVehicles.map(async (v) => {
+        const vLoc = getVehicleEffectiveLocation(v) || 'Pune';
+        const routeData = await getRoadDistanceAndEta(targetLoc, vLoc);
+        const vObj = v.toObject ? v.toObject() : { ...v };
+        return {
+          ...vObj,
+          isNearby: true,
+          distanceKm: routeData.distanceKm,
+          estimatedTravelTime: routeData.estimatedTravelTime,
+          currentBranch: v.branchDepot || v.branch || vLoc,
+          currentLocation: vLoc
+        };
+      })
+    );
+
+    // Sort in ascending order based on road distance
+    nearbyVehicles.sort((a, b) => a.distanceKm - b.distanceKm);
+
+    if (nearbyVehicles.length > 0) {
+      console.log(`Nearest Vehicles for ${targetLoc} sorted by distance:`);
+      nearbyVehicles.slice(0, 5).forEach((v, idx) => {
+        console.log(`${idx + 1}. ${v.vehicleName || v.name} (${v.vehicleNumber || v.plateNumber}) - Loc: ${v.currentLocation} - ${v.distanceKm} km away (${v.estimatedTravelTime})`);
       });
-    } else {
-      availableVehicles.sort((a, b) => b.createdAt - a.createdAt);
     }
+    console.log('===================================\n');
 
-    return sendSuccess(res, 200, availableVehicles, 'Available vehicles fetched successfully');
+    return sendSuccess(res, 200, {
+      vehicles: nearbyVehicles,
+      localVehicles: [],
+      nearbyVehicles,
+      localCount: 0,
+      nearbyCount: nearbyVehicles.length,
+      isNearbyFallback: true
+    }, 'Available vehicles fetched successfully');
   } catch (error) {
     next(error);
   }
