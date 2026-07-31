@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -23,21 +23,47 @@ import {
   Activity,
   Wallet,
   TrendingUp,
-  Percent
+  Percent,
+  FileText,
+  MessageSquare
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { formatEmployeeId } from "@/utils/employeeIdFormatter";
 import DriverChatDrawer from "@/components/common/DriverChatDrawer";
 import { getSocket } from "@/api/socket";
 import { useAuth } from "@/context/AuthContext";
 
 import { managerApi } from "../api/managerApi";
+import TripCommunicationSection from "../components/TripCommunicationSection";
+import { calculateDrivingRoute, calculateFallbackDistance } from "../services/routingService";
 
 export default function TripDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth();
   const [trip, setTrip] = useState(null);
+
+  const [activeTab, setActiveTab] = useState(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["overview", "timeline", "documents", "communication"].includes(tabParam.toLowerCase())) {
+      return tabParam.toLowerCase();
+    }
+    if (window.location.hash === "#communication") {
+      return "communication";
+    }
+    return "overview";
+  });
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["overview", "timeline", "documents", "communication"].includes(tabParam.toLowerCase())) {
+      setActiveTab(tabParam.toLowerCase());
+    } else if (window.location.hash === "#communication") {
+      setActiveTab("communication");
+    }
+  }, [searchParams, id]);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [invoice, setInvoice] = useState(null);
@@ -65,137 +91,140 @@ export default function TripDetailsPage() {
   const tollDropdownRef = useRef(null);
   const tollButtonRef = useRef(null);
 
+  const invoiceModalOverlayRef = useRef(null);
+  const invoiceModalContentRef = useRef(null);
+
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
 
-  // Coordinates dictionary for routing simulation
-  const CITY_COORDINATES = {
-    mumbai: [19.0760, 72.8777],
-    pune: [18.5204, 73.8567],
-    bengaluru: [12.9716, 77.5946],
-    bangalore: [12.9716, 77.5946],
-    hyderabad: [17.3850, 78.4867],
-    delhi: [28.7041, 77.1025],
-    chennai: [13.0827, 80.2707],
-    kolhapur: [16.7050, 74.2433],
-    satara: [17.6805, 73.9918],
-    anantapur: [14.6819, 77.6006],
-    goa: [15.2993, 74.1240],
-    visakhapatnam: [17.6868, 83.2185],
-    vizag: [17.6868, 83.2185],
-    kolkata: [22.5726, 88.3639],
-    ahmedabad: [23.0225, 72.5714],
-    surat: [21.1702, 72.8311],
-    jaipur: [26.9124, 75.7873],
-    lucknow: [26.8467, 80.9462],
-    manali: [32.2396, 77.1887]
-  };
+  const [drivingInfo, setDrivingInfo] = useState(null);
 
-  const getCoordinates = (cityName) => {
-    if (!cityName) return [18.5204, 73.8567]; // default Pune
-    const norm = cityName.toLowerCase().trim();
-    for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
-      if (norm.includes(key)) return coords;
+  // Reset Trip Invoice scroll position to top whenever modal opens
+  useEffect(() => {
+    if (showInvoiceModal && invoice) {
+      console.log("=====================================");
+      console.log("Opening Trip Invoice...");
+      console.log("Resetting Invoice Scroll Position...");
+
+      // Reset main window scroll position
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+
+      // Reset modal container scroll positions
+      if (invoiceModalOverlayRef.current) {
+        invoiceModalOverlayRef.current.scrollTop = 0;
+      }
+      if (invoiceModalContentRef.current) {
+        invoiceModalContentRef.current.scrollTop = 0;
+      }
+
+      console.log("Scroll Position: Top");
+      console.log("Invoice Ready");
+      console.log("=====================================");
     }
-    return [18.5204, 73.8567]; // default Pune
-  };
-
-  const calculateDistance = (startCity, endCity) => {
-    const startCoords = getCoordinates(startCity);
-    const endCoords = getCoordinates(endCity);
-
-    // If both resolve to default Pune, fallback to 350
-    if (startCoords[0] === 18.5204 && startCoords[1] === 73.8567 && 
-        endCoords[0] === 18.5204 && endCoords[1] === 73.8567) {
-      return 350;
-    }
-
-    const R = 6371; // Radius of the earth in km
-    const dLat = (endCoords[0] - startCoords[0]) * Math.PI / 180;
-    const dLon = (endCoords[1] - startCoords[1]) * Math.PI / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(startCoords[0] * Math.PI / 180) * Math.cos(endCoords[0] * Math.PI / 180) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const d = R * c; // Distance in km
-    return Math.round(d);
-  };
+  }, [showInvoiceModal, invoice]);
 
   // Initialize Leaflet map
   useEffect(() => {
-    if (!trip || !mapRef.current) return;
-    
-    // Clear old map if exists
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.remove();
-      mapInstanceRef.current = null;
-    }
+    if (!trip || activeTab !== "overview") return;
 
-    const startCoords = getCoordinates(trip.startLocation);
-    const endCoords = getCoordinates(trip.endLocation);
+    let isMounted = true;
+    let map = null;
 
-    // Initialize map
-    const map = L.map(mapRef.current);
-    
-    // Set view to center or fit bounds
-    map.setView(startCoords, 8);
+    // Small delay to ensure DOM node mapRef.current is rendered
+    const timer = setTimeout(async () => {
+      if (!mapRef.current || !isMounted) return;
 
-    // Add OpenStreetMap tiles
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19
-    }).addTo(map);
+      // Clear old map instance if exists
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
 
-    // Start Marker
-    const startIcon = L.divIcon({
-      html: `<div class="bg-[#B45A0A] rounded-full w-6 h-6 flex items-center justify-center text-white shadow-lg border-2 border-white animate-pulse">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      </div>`,
-      className: "",
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
-    });
+      let res = { success: false };
+      try {
+        res = await calculateDrivingRoute(trip.startLocation, trip.endLocation);
+      } catch (err) {
+        console.error("Failed to calculate driving route for map:", err);
+      }
 
-    // Destination Marker
-    const endIcon = L.divIcon({
-      html: `<div class="bg-indigo-600 rounded-full w-6 h-6 flex items-center justify-center text-white shadow-lg border-2 border-white animate-pulse">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      </div>`,
-      className: "",
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
-    });
+      if (!isMounted || !mapRef.current) return;
 
-    L.marker(startCoords, { icon: startIcon }).bindPopup(`<strong>Start Location</strong><br/>${trip.startLocation}`).addTo(map);
-    L.marker(endCoords, { icon: endIcon }).bindPopup(`<strong>Destination</strong><br/>${trip.endLocation}`).addTo(map);
+      if (res && res.success) {
+        setDrivingInfo(res);
+      }
 
-    // Beautiful Polyline connecting them
-    const polyline = L.polyline([startCoords, endCoords], {
-      color: '#B45A0A',
-      weight: 4,
-      dashArray: '6, 8',
-      opacity: 0.8
-    }).addTo(map);
+      const startCoords = res.startCoords || [14.6819, 77.6006];
+      const endCoords = res.endCoords || [24.8170, 93.9368];
+      const pathCoords = (res.routeGeometry && res.routeGeometry.length > 0)
+        ? res.routeGeometry
+        : [startCoords, endCoords];
 
-    // Zoom to fit polyline path bounds
-    map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+      // Initialize Leaflet map instance
+      map = L.map(mapRef.current);
+      map.setView(startCoords, 8);
 
-    mapInstanceRef.current = map;
+      // Add OpenStreetMap tile layer
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+      }).addTo(map);
+
+      // Start Location Marker
+      const startIcon = L.divIcon({
+        html: `<div class="bg-[#B45A0A] rounded-full w-6 h-6 flex items-center justify-center text-white shadow-lg border-2 border-white animate-pulse">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>`,
+        className: "",
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+
+      // Destination Marker
+      const endIcon = L.divIcon({
+        html: `<div class="bg-indigo-600 rounded-full w-6 h-6 flex items-center justify-center text-white shadow-lg border-2 border-white animate-pulse">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>`,
+        className: "",
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+
+      L.marker(startCoords, { icon: startIcon }).bindPopup(`<strong>Start Location</strong><br/>${trip.startLocation}`).addTo(map);
+      L.marker(endCoords, { icon: endIcon }).bindPopup(`<strong>Destination</strong><br/>${trip.endLocation}`).addTo(map);
+
+      // Road Polyline connecting locations
+      const polyline = L.polyline(pathCoords, {
+        color: '#B45A0A',
+        weight: 4,
+        dashArray: '6, 8',
+        opacity: 0.8
+      }).addTo(map);
+
+      map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+
+      mapInstanceRef.current = map;
+
+      // Invalidate size to ensure Leaflet renders tiles inside flex/tab containers
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+      }, 200);
+    }, 100);
 
     return () => {
+      isMounted = false;
+      clearTimeout(timer);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
-  }, [trip]);
+  }, [trip, activeTab]);
 
   // Load trip record & invoice
   const fetchTripAndInvoice = async () => {
@@ -364,8 +393,43 @@ export default function TripDetailsPage() {
 
 
 
+  const getFormattedInvoiceAddress = (addrObj, defaultLocString = '') => {
+    const cleanLocation = (defaultLocString || '')
+      .replace(/\(?-?\d+\.\d+,\s*-?\d+\.\d+\)?/g, '')
+      .replace(/^\s*,\s*|\s*,\s*$/g, '')
+      .trim();
+
+    const parts = cleanLocation ? cleanLocation.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const fallbackCity = parts[0] || 'N/A';
+    const fallbackState = parts.length > 1 ? parts[1] : (parts[0] || 'N/A');
+
+    const companyName = addrObj?.companyName || (cleanLocation ? `${cleanLocation} Logistics Hub` : 'N/A');
+    const contactPerson = addrObj?.contactPerson || 'N/A';
+    const rawMobile = addrObj?.mobile || addrObj?.mobileNumber || '';
+    const mobile = rawMobile ? (rawMobile.startsWith('+91') ? rawMobile : `+91 ${rawMobile}`) : 'N/A';
+    const streetAddress = addrObj?.streetAddress || 'N/A';
+    const area = addrObj?.area || addrObj?.areaLocality || '';
+    const city = addrObj?.city || fallbackCity;
+    const state = addrObj?.state || fallbackState;
+    const pincode = addrObj?.pincode || '';
+
+    return {
+      companyName: companyName || 'N/A',
+      contactPerson: contactPerson || 'N/A',
+      mobile: mobile || 'N/A',
+      streetAddress: streetAddress || 'N/A',
+      area: area || '',
+      city: city || 'N/A',
+      state: state || 'N/A',
+      pincode: pincode || ''
+    };
+  };
+
   const handlePrintInvoice = () => {
     if (!invoice) return;
+    const fromAddr = getFormattedInvoiceAddress(trip.pickupAddress || trip.fromAddress, trip.startLocation);
+    const toAddr = getFormattedInvoiceAddress(trip.deliveryAddress || trip.toAddress, trip.endLocation);
+
     const printWindow = window.open("", "_blank");
     printWindow.document.write(`
       <html>
@@ -386,6 +450,11 @@ export default function TripDetailsPage() {
             .info-item { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #F1F5F9; }
             .info-label { color: #64748B; }
             .info-val { font-weight: bold; color: #1E293B; }
+            .address-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 20px; }
+            .address-box { background: #F8FAFC; border: 1px solid #E7EAF0; border-radius: 8px; padding: 16px; font-size: 12px; line-height: 1.6; }
+            .address-title { font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: bold; color: #B45A0A; text-transform: uppercase; border-bottom: 1px solid #E7EAF0; padding-bottom: 6px; margin-bottom: 10px; }
+            .field-label { color: #64748B; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-top: 6px; }
+            .field-val { font-weight: bold; color: #1E293B; margin-bottom: 4px; }
             .footer { margin-top: 40px; border-top: 1px solid #E7EAF0; padding-top: 20px; font-size: 11px; color: #64748B; text-align: center; }
           </style>
         </head>
@@ -414,14 +483,56 @@ export default function TripDetailsPage() {
 
             <div class="section-title">Trip Information</div>
             <div class="info-grid">
-              <div class="info-item"><span class="info-label">Pickup Location</span><span class="info-val">${trip.startLocation}</span></div>
-              <div class="info-item"><span class="info-label">Destination</span><span class="info-val">${trip.endLocation}</span></div>
               <div class="info-item"><span class="info-label">Departure Date & Time</span><span class="info-val">${formatDateTime(trip.departureTime)}</span></div>
               <div class="info-item"><span class="info-label">Estimated Arrival</span><span class="info-val">${formatDateTime(trip.eta)}</span></div>
-              <div class="info-item"><span class="info-label">Distance (KM)</span><span class="info-val">${trip.status === "Completed" ? ((trip.actualDistance && trip.actualDistance !== 120) ? trip.actualDistance : ((trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance)) : ((trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance)} KM</span></div>
+              <div class="info-item"><span class="info-label">Distance (KM)</span><span class="info-val">${distanceVal} KM</span></div>
               <div class="info-item"><span class="info-label">Cargo Type</span><span class="info-val">${trip.cargoType || "General Cargo"}</span></div>
               <div class="info-item"><span class="info-label">Cargo Weight</span><span class="info-val">${trip.cargoWeight || 0} kg</span></div>
               <div class="info-item"><span class="info-label">Trip Notes</span><span class="info-val">${trip.tripNotes || "None"}</span></div>
+            </div>
+
+            <div class="address-grid">
+              <div class="address-box">
+                <div class="address-title">FROM ADDRESS</div>
+                <div style="font-weight: bold; color: #1E293B; font-size: 14px; margin-bottom: 6px;">${fromAddr.companyName}</div>
+                
+                <div class="field-label">Contact Person</div>
+                <div class="field-val">${fromAddr.contactPerson}</div>
+
+                <div class="field-label">Mobile</div>
+                <div class="field-val">${fromAddr.mobile}</div>
+
+                <div style="margin-top: 6px; color: #334155;">
+                  <div>${fromAddr.streetAddress}</div>
+                  ${fromAddr.area ? `<div>${fromAddr.area}</div>` : ''}
+                </div>
+
+                <div style="color: #1E293B; font-weight: bold; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #E2E8F0;">
+                  <div>${fromAddr.city}</div>
+                  <div>${fromAddr.state}${fromAddr.pincode ? ' - ' + fromAddr.pincode : ''}</div>
+                </div>
+              </div>
+
+              <div class="address-box">
+                <div class="address-title">TO ADDRESS</div>
+                <div style="font-weight: bold; color: #1E293B; font-size: 14px; margin-bottom: 6px;">${toAddr.companyName}</div>
+                
+                <div class="field-label">Contact Person</div>
+                <div class="field-val">${toAddr.contactPerson}</div>
+
+                <div class="field-label">Mobile</div>
+                <div class="field-val">${toAddr.mobile}</div>
+
+                <div style="margin-top: 6px; color: #334155;">
+                  <div>${toAddr.streetAddress}</div>
+                  ${toAddr.area ? `<div>${toAddr.area}</div>` : ''}
+                </div>
+
+                <div style="color: #1E293B; font-weight: bold; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #E2E8F0;">
+                  <div>${toAddr.city}</div>
+                  <div>${toAddr.state}${toAddr.pincode ? ' - ' + toAddr.pincode : ''}</div>
+                </div>
+              </div>
             </div>
 
             <div class="section-title">Vehicle Information</div>
@@ -434,8 +545,8 @@ export default function TripDetailsPage() {
             <div class="section-title">Driver Information</div>
             <div class="info-grid">
               <div class="info-item"><span class="info-label">Driver Name</span><span class="info-val">${trip.driverName || "N/A"}</span></div>
-              <div class="info-item"><span class="info-label">Employee ID</span><span class="info-val">${trip.driver?.employeeId || "N/A"}</span></div>
-              <div class="info-item"><span class="info-label">Mobile Number</span><span class="info-val">${trip.driverPhone || "N/A"}</span></div>
+              <div class="info-item"><span class="info-label">Employee ID</span><span class="info-val">${formatEmployeeId(trip.driver?.employeeId)}</span></div>
+              <div class="info-item"><span class="info-label">Mobile Number</span><span class="info-val">${trip.driverPhone || trip.driver?.phoneNumber || trip.driver?.phone || "N/A"}</span></div>
             </div>
 
             <div class="section-title">Additional Info</div>
@@ -566,11 +677,15 @@ export default function TripDetailsPage() {
   const isCompleted = trip.status === "Completed";
   const isDelayed = trip.status === "Delayed";
 
-  const totalDistance = calculateDistance(trip.startLocation, trip.endLocation);
+  const totalDistance = (drivingInfo?.distanceKm && drivingInfo.distanceKm < 4000)
+    ? drivingInfo.distanceKm
+    : ((trip.estimatedDistance && trip.estimatedDistance > 0 && trip.estimatedDistance < 4000)
+      ? trip.estimatedDistance
+      : calculateFallbackDistance(trip.startLocation, trip.endLocation));
   
   const distanceVal = trip.status === "Completed" 
-    ? (trip.actualDistance && trip.actualDistance !== 120 ? trip.actualDistance : (trip.estimatedDistance && trip.estimatedDistance !== 120 ? trip.estimatedDistance : totalDistance))
-    : (trip.estimatedDistance && trip.estimatedDistance !== 120 ? trip.estimatedDistance : totalDistance);
+    ? ((trip.actualDistance && trip.actualDistance > 0 && trip.actualDistance < 4000) ? trip.actualDistance : totalDistance)
+    : totalDistance;
 
   const tripCargoWeight = trip.cargoWeight && trip.cargoWeight.toString().trim() ? Number(trip.cargoWeight) : null;
   const weightVal = tripCargoWeight !== null ? tripCargoWeight : 0;
@@ -591,7 +706,11 @@ export default function TripDetailsPage() {
       const response = await managerApi.updateTrip(trip._id, { status: newStatus });
       const data = response.data?.data || response.data;
       setTrip({ ...data, id: data.tripNumber });
-      toast.success(`Trip status updated to ${newStatus}`);
+      if (newStatus === "Completed") {
+        toast.success("Trip completed successfully. Fastag balance updated after deducting total toll charges.");
+      } else {
+        toast.success(`Trip status updated to ${newStatus}`);
+      }
     } catch (error) {
       const errMsg = error.response?.data?.message || "Failed to update status";
       toast.error(errMsg);
@@ -717,7 +836,40 @@ export default function TripDetailsPage() {
         </div>
       </div>
 
-      {/* KPI statistics cards */}
+      {/* Top Tab Navigation Bar */}
+      <div className="bg-white rounded-2xl border border-[#E7EAF0] p-1.5 shadow-sm mt-6 flex items-center gap-1.5 font-poppins text-xs font-bold overflow-x-auto no-scrollbar">
+        {[
+          { id: "overview", label: "Overview", icon: Route },
+          { id: "timeline", label: "Timeline", icon: Clock },
+          { id: "documents", label: "Documents", icon: FileText },
+          { id: "communication", label: "Communication", icon: MessageSquare }
+        ].map((tabItem) => {
+          const Icon = tabItem.icon;
+          const isActive = activeTab === tabItem.id;
+          return (
+            <button
+              key={tabItem.id}
+              onClick={() => {
+                setActiveTab(tabItem.id);
+                setSearchParams({ tab: tabItem.id });
+              }}
+              className={`px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+                isActive
+                  ? "bg-[#B45A0A] text-white shadow-md shadow-[#B45A0A]/20"
+                  : "text-[#64748B] hover:text-[#1E293B] hover:bg-slate-50"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{tabItem.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab 1: Overview View */}
+      {activeTab === "overview" && (
+        <div className="space-y-6 mt-6">
+          {/* KPI statistics cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
         
         {/* Distance Stats */}
@@ -725,11 +877,7 @@ export default function TripDetailsPage() {
           <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Distance Details</p>
           <div className="flex items-baseline gap-1.5 mt-2">
             <span className="text-3xl font-black text-[#1E293B] font-poppins">
-              {(() => {
-                const est = (trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance;
-                const act = (trip.actualDistance && trip.actualDistance !== 120) ? trip.actualDistance : est;
-                return trip.status === "Completed" ? act : est;
-              })()}
+              {distanceVal}
             </span>
             <span className="text-xs text-[#64748B] font-bold">KM</span>
           </div>
@@ -737,7 +885,7 @@ export default function TripDetailsPage() {
             {trip.status === "Completed" ? (
               <span>Actual distance logged upon completion</span>
             ) : (
-              <span>Estimated route distance: { (trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance } KM</span>
+              <span>Estimated route distance: {distanceVal} KM</span>
             )}
           </div>
         </div>
@@ -821,6 +969,82 @@ export default function TripDetailsPage() {
                 <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Trip Notes</span>
                 <p className="text-sm font-medium text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100">{trip.tripNotes || "No notes available for this dispatch"}</p>
               </div>
+            </div>
+          </div>
+
+          {/* Pickup Address & Delivery Address Details Card */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4 font-nunito">
+            <h3 className="font-poppins font-bold text-[#1E293B] text-[14px] border-b border-gray-100 pb-3 flex items-center justify-between">
+              <span>Pickup & Delivery Address Details</span>
+              <span className="text-[10px] text-[#B45A0A] font-bold uppercase tracking-wider bg-amber-50 px-2.5 py-1 rounded-md border border-amber-100">Logistics Addresses</span>
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Pickup Address (From Address) */}
+              {(() => {
+                const from = getFormattedInvoiceAddress(trip.pickupAddress || trip.fromAddress, trip.startLocation);
+                return (
+                  <div className="bg-slate-50/80 p-5 rounded-xl border border-slate-200/80 space-y-2.5 text-xs">
+                    <h4 className="font-poppins font-bold text-[11px] text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-2">
+                      FROM ADDRESS
+                    </h4>
+                    <div className="font-bold text-slate-800 text-sm">{from.companyName}</div>
+
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact Person</div>
+                      <div className="font-bold text-slate-700 text-xs mt-0.5">{from.contactPerson}</div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mobile</div>
+                      <div className="font-bold text-slate-700 text-xs mt-0.5">{from.mobile}</div>
+                    </div>
+
+                    <div className="text-slate-700">
+                      <div>{from.streetAddress}</div>
+                      {from.area && <div>{from.area}</div>}
+                    </div>
+
+                    <div className="text-slate-800 font-bold pt-1.5 border-t border-slate-200/60">
+                      <div>{from.city}</div>
+                      <div>{from.state}{from.pincode ? ` - ${from.pincode}` : ''}</div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Delivery Address (To Address) */}
+              {(() => {
+                const to = getFormattedInvoiceAddress(trip.deliveryAddress || trip.toAddress, trip.endLocation);
+                return (
+                  <div className="bg-slate-50/80 p-5 rounded-xl border border-slate-200/80 space-y-2.5 text-xs">
+                    <h4 className="font-poppins font-bold text-[11px] text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-2">
+                      TO ADDRESS
+                    </h4>
+                    <div className="font-bold text-slate-800 text-sm">{to.companyName}</div>
+
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact Person</div>
+                      <div className="font-bold text-slate-700 text-xs mt-0.5">{to.contactPerson}</div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mobile</div>
+                      <div className="font-bold text-slate-700 text-xs mt-0.5">{to.mobile}</div>
+                    </div>
+
+                    <div className="text-slate-700">
+                      <div>{to.streetAddress}</div>
+                      {to.area && <div>{to.area}</div>}
+                    </div>
+
+                    <div className="text-slate-800 font-bold pt-1.5 border-t border-slate-200/60">
+                      <div>{to.city}</div>
+                      <div>{to.state}{to.pincode ? ` - ${to.pincode}` : ''}</div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -1104,6 +1328,26 @@ export default function TripDetailsPage() {
           <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
             <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Vehicle Details</h4>
             
+            <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
+              {trip.vehicle?.vehicleImage?.secure_url || trip.vehicle?.image ? (
+                <img
+                  src={trip.vehicle?.vehicleImage?.secure_url || trip.vehicle?.image}
+                  alt={trip.vehicleName}
+                  className="w-12 h-12 rounded-xl object-cover border border-gray-200 shadow-sm shrink-0"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-[#FDF3EC] border border-[#B45A0A]/20 flex items-center justify-center shrink-0">
+                  <Truck className="w-6 h-6 text-[#B45A0A]" />
+                </div>
+              )}
+              <div>
+                <h5 className="font-poppins font-bold text-[#1E293B] text-sm">{trip.vehicleName || "Unassigned"}</h5>
+                <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider block mt-0.5">
+                  {trip.vehiclePlate || "N/A"}
+                </span>
+              </div>
+            </div>
+
             <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[#64748B] font-medium font-poppins">Model</span>
@@ -1129,20 +1373,100 @@ export default function TripDetailsPage() {
                 <span className="text-[#64748B] font-medium font-poppins">Fuel Type</span>
                 <span className="font-bold text-gray-700 font-poppins">{trip.vehicle?.fuelType || "Diesel"}</span>
               </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[#64748B] font-medium font-poppins">FASTag Balance</span>
+                <span className={`font-bold font-poppins ${
+                  (trip.vehicle?.fastagBalance ?? 0) < 1000 ? 'text-rose-600' : 'text-emerald-600'
+                }`}>
+                  ₹{trip.vehicle?.fastagBalance?.toLocaleString("en-IN") ?? 0}
+                </span>
+              </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
 
-            <button
-              onClick={() => navigate("/manager/vehicles-list")}
-              className="w-full py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Truck className="w-3.5 h-3.5" />
-              View Fleet Diagnostics
-            </button>
+      {/* Tab 2: Timeline View */}
+      {activeTab === "timeline" && (
+        <div className="space-y-6 mt-6 max-w-4xl">
+          {/* Dispatch Status Progress Timeline */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
+            <h4 className="font-poppins font-bold text-[#1E293B] text-sm uppercase tracking-wider">Dispatch Progress Milestones</h4>
+            
+            <div className="space-y-4.5 pt-2">
+              {[
+                { label: "Scheduled", desc: "Trip is scheduled in the calendar", done: true },
+                { label: "Assigned", desc: "Driver & vehicle allocated", done: trip.status !== "Scheduled" },
+                { label: "In Progress", desc: "Transit active on route", done: trip.status === "In Progress" || trip.status === "Completed" },
+                { label: "Completed", desc: "Arrived at destination points", done: trip.status === "Completed" }
+              ].map((step, idx) => (
+                <div key={idx} className="flex items-start gap-4">
+                  <div className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center border text-xs font-bold font-poppins ${
+                    step.done
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-gray-400 border-gray-200"
+                  }`}>
+                    {idx + 1}
+                  </div>
+                  <div>
+                    <p className={`text-sm font-bold font-poppins ${step.done ? "text-[#1E293B]" : "text-gray-400"}`}>
+                      {step.label}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">{step.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Unified Trip Documents Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-6">
-            <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider border-b border-[#E7EAF0] pb-2">Trip Documents</h4>
+          {/* Checkpoints Route Timeline */}
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
+            <h3 className="font-poppins font-bold text-[#1E293B] text-sm uppercase tracking-wider">Route Checkpoints & Activity Logs</h3>
+            
+            <div className="relative pl-6 border-l-2 border-dashed border-gray-200 ml-3 space-y-6 pt-2">
+              <div className="relative">
+                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-[#B45A0A] rounded-full border-4 border-orange-100 z-10"></div>
+                <div>
+                  <p className="text-xs font-bold text-[#1E293B] font-poppins">Dispatch Initialized</p>
+                  <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">
+                    Planned Departure: {formatDateTime(trip.departureTime)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-emerald-500 rounded-full border-4 border-emerald-100 z-10"></div>
+                <div>
+                  <p className="text-xs font-bold text-[#1E293B] font-poppins">Actual Start</p>
+                  <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">
+                    {trip.actualStartTime ? `Started at: ${formatDateTime(trip.actualStartTime)}` : "Waiting to start..."}
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-indigo-600 rounded-full border-4 border-indigo-100 z-10"></div>
+                <div>
+                  <p className="text-xs font-bold text-[#1E293B] font-poppins">Actual End</p>
+                  <span className="text-[10px] text-indigo-600 font-bold block mt-0.5">
+                    {trip.actualEndTime ? `Completed at: ${formatDateTime(trip.actualEndTime)}` : "Waiting for completion..."}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 3: Documents View */}
+      {activeTab === "documents" && (
+        <div className="space-y-6 mt-6 max-w-4xl">
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-6">
+            <h4 className="font-poppins font-bold text-sm text-[#1E293B] uppercase tracking-wider border-b border-[#E7EAF0] pb-3">
+              Trip Documents Ledger
+            </h4>
 
             {/* Trip Invoice Section */}
             <div className="space-y-3">
@@ -1150,10 +1474,10 @@ export default function TripDetailsPage() {
               {!invoice ? (
                 <p className="text-xs text-gray-500 font-medium italic">No Invoice generated yet.</p>
               ) : (
-                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+                <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl space-y-3 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 font-medium">Status</span>
-                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md text-[9px] font-bold uppercase tracking-wider">
+                    <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md text-[10px] font-bold uppercase tracking-wider">
                       Generated
                     </span>
                   </div>
@@ -1161,11 +1485,11 @@ export default function TripDetailsPage() {
                     <span className="text-gray-500 font-medium">Invoice Number</span>
                     <span className="font-bold text-gray-700">{invoice.invoiceNumber}</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 pt-2">
+                  <div className="grid grid-cols-3 gap-3 pt-2">
                     <button
                       type="button"
                       onClick={() => setShowInvoiceModal(true)}
-                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       View
@@ -1173,14 +1497,14 @@ export default function TripDetailsPage() {
                     <button
                       type="button"
                       onClick={handleDownloadInvoice}
-                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       Download
                     </button>
                     <button
                       type="button"
                       onClick={handlePrintInvoice}
-                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       Print
                     </button>
@@ -1190,10 +1514,8 @@ export default function TripDetailsPage() {
             </div>
 
             {/* Proof of Delivery Section */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Proof of Delivery (POD)</h5>
-              </div>
+            <div className="space-y-3 pt-4 border-t border-gray-100">
+              <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Proof of Delivery (POD)</h5>
               {!pod ? (
                 <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
                   <div className="flex justify-between items-center">
@@ -1237,7 +1559,7 @@ export default function TripDetailsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+                <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl space-y-3 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 font-medium">Status</span>
                     <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
@@ -1249,17 +1571,17 @@ export default function TripDetailsPage() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">POD Number</span>
-                    <span className="font-bold text-gray-700">{pod.podNumber || "N/A"}</span>
+                    <span className="text-gray-500 font-medium">Uploaded By</span>
+                    <span className="font-bold text-gray-700">{pod.uploadedBy || "Driver"}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 mt-2">
+                  <div className="grid grid-cols-2 gap-3 pt-2">
                     <button
                       type="button"
                       onClick={() => setShowPodModal(true)}
-                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer col-span-1"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Eye className="w-3.5 h-3.5" />
-                      View
+                      View Document
                     </button>
                     <button
                       type="button"
@@ -1267,9 +1589,9 @@ export default function TripDetailsPage() {
                         if (pod.podDocumentUrl || pod.deliveryPhotoUrl) window.open(pod.podDocumentUrl || pod.deliveryPhotoUrl, "_blank");
                         else toast.error("No document available for download");
                       }}
-                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer col-span-1"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      Download
+                      Download File
                     </button>
                   </div>
                   {(pod.status === 'Pending' || pod.status === 'PENDING' || pod.status === 'Uploaded') && (
@@ -1300,10 +1622,8 @@ export default function TripDetailsPage() {
             </div>
 
             {/* Weighbridge Slip Section */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Weighbridge Slip</h5>
-              </div>
+            <div className="space-y-3 pt-4 border-t border-gray-100">
+              <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Weighbridge Slip</h5>
               {!weighbridge ? (
                 <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
                   <div className="flex justify-between items-center">
@@ -1347,7 +1667,7 @@ export default function TripDetailsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+                <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl space-y-3 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 font-medium">Status</span>
                     <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
@@ -1359,47 +1679,27 @@ export default function TripDetailsPage() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Slip Number</span>
-                    <span className="font-bold text-gray-700">{weighbridge.slipNumber || "N/A"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Gross Weight</span>
-                    <span className="font-bold text-gray-700">{weighbridge.grossWeight} kg</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Tare Weight</span>
-                    <span className="font-bold text-gray-700">{weighbridge.tareWeight} kg</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Net Weight</span>
-                    <span className="font-bold text-gray-700">{weighbridge.netWeight} kg</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Location</span>
-                    <span className="font-bold text-gray-700">{weighbridge.location || "N/A"}</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-gray-500 font-medium">Uploaded By</span>
                     <span className="font-bold text-gray-700">{weighbridge.uploadedBy || "Driver"}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 mt-2">
+                  <div className="grid grid-cols-2 gap-3 pt-2">
                     <button
                       type="button"
                       onClick={() => setShowWeighbridgeModal(true)}
-                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer col-span-1"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Eye className="w-3.5 h-3.5" />
-                      View
+                      View Document
                     </button>
                     <button
                       type="button"
                       onClick={() => {
                         if (weighbridge.documentUrl) window.open(weighbridge.documentUrl, "_blank");
-                        else toast.error("No document available for download");
+                        else toast.error("No document file available");
                       }}
-                      className="px-2.5 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1 transition-colors cursor-pointer col-span-1"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      Download
+                      Download File
                     </button>
                   </div>
                   {(weighbridge.status === 'Pending' || weighbridge.status === 'PENDING' || weighbridge.status === 'Uploaded') && (
@@ -1428,15 +1728,16 @@ export default function TripDetailsPage() {
                 </div>
               )}
             </div>
-
-
-
           </div>
-
-
         </div>
+      )}
 
-      </div>
+      {/* Tab 4: Communication View */}
+      {activeTab === "communication" && (
+        <div className="mt-6">
+          <TripCommunicationSection trip={trip} />
+        </div>
+      )}
 
       {/* --- CANCEL DISPATCH CONFIRMATION MODAL --- */}
       {showCancelConfirm && (
@@ -1503,8 +1804,14 @@ export default function TripDetailsPage() {
       )}
       {/* --- INVOICE VIEW MODAL --- */}
       {showInvoiceModal && invoice && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl p-6 md:p-8 border border-[#E7EAF0] relative my-8 animate-scale-up">
+        <div 
+          ref={invoiceModalOverlayRef}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-6 md:pt-10 animate-fade-in overflow-y-auto"
+        >
+          <div 
+            ref={invoiceModalContentRef}
+            className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl p-6 md:p-8 border border-[#E7EAF0] relative my-4 md:my-6 animate-scale-up max-h-[85vh] overflow-y-auto"
+          >
             <button
               onClick={() => setShowInvoiceModal(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
@@ -1562,11 +1869,9 @@ export default function TripDetailsPage() {
                 <div className="space-y-3.5">
                   <h4 className="font-poppins font-bold text-[11px] text-[#64748B] uppercase tracking-wider border-b border-[#E7EAF0] pb-1.5">Trip Information</h4>
                   <div className="space-y-2 text-xs">
-                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Pickup Location</span><span className="font-bold text-gray-700">{trip.startLocation}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Destination</span><span className="font-bold text-gray-700">{trip.endLocation}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Departure Date & Time</span><span className="font-bold text-gray-700">{formatDateTime(trip.departureTime)}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Estimated Arrival</span><span className="font-bold text-gray-700">{formatDateTime(trip.eta)}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Distance</span><span className="font-bold text-gray-700">{trip.status === "Completed" ? ((trip.actualDistance && trip.actualDistance !== 120) ? trip.actualDistance : ((trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance)) : ((trip.estimatedDistance && trip.estimatedDistance !== 120) ? trip.estimatedDistance : totalDistance)} KM</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Distance</span><span className="font-bold text-gray-700">{distanceVal} KM</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Cargo Type</span><span className="font-bold text-gray-700">{trip.cargoType || "General Cargo"}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Cargo Weight</span><span className="font-bold text-gray-700">{trip.cargoWeight || 0} kg</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Trip Notes</span><span className="font-bold text-gray-700">{trip.tripNotes || "None"}</span></div>
@@ -1590,12 +1895,77 @@ export default function TripDetailsPage() {
                     <h4 className="font-poppins font-bold text-[11px] text-[#64748B] uppercase tracking-wider border-b border-[#E7EAF0] pb-1.5">Driver Information</h4>
                     <div className="space-y-2 text-xs">
                       <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Driver Name</span><span className="font-bold text-gray-700">{trip.driverName || "N/A"}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Employee ID</span><span className="font-bold text-gray-700">{trip.driver?.employeeId || "N/A"}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Mobile Number</span><span className="font-bold text-gray-700">{trip.driverPhone || "N/A"}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Employee ID</span><span className="font-bold text-gray-700">{formatEmployeeId(trip.driver?.employeeId)}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Mobile Number</span><span className="font-bold text-gray-700">{trip.driverPhone || trip.driver?.phoneNumber || trip.driver?.phone || "N/A"}</span></div>
                     </div>
                   </div>
                 </div>
               </div>
+
+              {/* FROM ADDRESS & TO ADDRESS Two-Column Section */}
+              {(() => {
+                const fromAddr = getFormattedInvoiceAddress(trip.pickupAddress || trip.fromAddress, trip.startLocation);
+                const toAddr = getFormattedInvoiceAddress(trip.deliveryAddress || trip.toAddress, trip.endLocation);
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[#E7EAF0] font-nunito">
+                    {/* FROM ADDRESS */}
+                    <div className="bg-slate-50/80 p-4.5 rounded-xl border border-slate-200/80 space-y-2 text-xs">
+                      <h4 className="font-poppins font-bold text-[11px] text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-2 mb-2">
+                        FROM ADDRESS
+                      </h4>
+                      <div className="font-bold text-slate-800 text-sm mb-1">{fromAddr.companyName}</div>
+
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact Person</div>
+                        <div className="font-bold text-slate-700 text-xs mt-0.5">{fromAddr.contactPerson}</div>
+                      </div>
+
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mobile</div>
+                        <div className="font-bold text-slate-700 text-xs mt-0.5">{fromAddr.mobile}</div>
+                      </div>
+
+                      <div className="text-slate-700">
+                        <div>{fromAddr.streetAddress}</div>
+                        {fromAddr.area && <div>{fromAddr.area}</div>}
+                      </div>
+
+                      <div className="text-slate-800 font-bold pt-1.5 border-t border-slate-200/60">
+                        <div>{fromAddr.city}</div>
+                        <div>{fromAddr.state}{fromAddr.pincode ? ` - ${fromAddr.pincode}` : ''}</div>
+                      </div>
+                    </div>
+
+                    {/* TO ADDRESS */}
+                    <div className="bg-slate-50/80 p-4.5 rounded-xl border border-slate-200/80 space-y-2 text-xs">
+                      <h4 className="font-poppins font-bold text-[11px] text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-2 mb-2">
+                        TO ADDRESS
+                      </h4>
+                      <div className="font-bold text-slate-800 text-sm mb-1">{toAddr.companyName}</div>
+
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact Person</div>
+                        <div className="font-bold text-slate-700 text-xs mt-0.5">{toAddr.contactPerson}</div>
+                      </div>
+
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mobile</div>
+                        <div className="font-bold text-slate-700 text-xs mt-0.5">{toAddr.mobile}</div>
+                      </div>
+
+                      <div className="text-slate-700">
+                        <div>{toAddr.streetAddress}</div>
+                        {toAddr.area && <div>{toAddr.area}</div>}
+                      </div>
+
+                      <div className="text-slate-800 font-bold pt-1.5 border-t border-slate-200/60">
+                        <div>{toAddr.city}</div>
+                        <div>{toAddr.state}{toAddr.pincode ? ` - ${toAddr.pincode}` : ''}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Creator details */}
               <div className="pt-4 border-t border-[#E7EAF0] flex flex-col sm:flex-row justify-between text-[10px] text-[#64748B] font-semibold gap-2">

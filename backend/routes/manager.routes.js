@@ -69,11 +69,19 @@ import {
   getTripTolls,
   createVehicleComplaint,
   listVehicleComplaints,
-  updateVehicleComplaint
+  updateVehicleComplaint,
+  // Trip Communication
+  getTripChat,
+  sendTripMessage,
+  markTripMessagesRead,
+  getTripCallHistory,
+  saveCallLog,
+  getUnreadChatCounts
 } from '../controllers/manager.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
 import { checkActiveSubscription } from '../middleware/subscription.middleware.js';
+import { getDriverStats } from '../controllers/driver.controller.js';
 
 const router = express.Router();
 
@@ -94,6 +102,8 @@ router.put('/vehicles/:id', ...auth, checkActiveSubscription, updateVehicle);
 router.delete('/vehicles/:id', ...auth, checkActiveSubscription, deleteVehicle);
 
 // Drivers
+router.get('/drivers/stats', ...auth, getDriverStats);
+router.get('/drivers/dashboard', ...auth, getDriverStats);
 router.get('/drivers', ...auth, listDrivers);
 router.post('/drivers', ...auth, checkActiveSubscription, createDriver);
 router.get('/drivers/:id', ...auth, getDriverDetails);
@@ -101,12 +111,18 @@ router.put('/drivers/:id', ...auth, checkActiveSubscription, updateDriver);
 router.delete('/drivers/:id', ...auth, checkActiveSubscription, deleteDriver);
 
 // Trips
+router.get('/trips/unread-chat-counts', ...auth, getUnreadChatCounts);
 router.get('/trips', ...auth, listTrips);
 router.post('/trips', ...auth, checkActiveSubscription, createTrip);
 router.get('/trips/:id', ...auth, getTripDetails);
 router.get('/trips/:tripId/tolls', ...auth, getTripTolls);
 router.put('/trips/:id', ...auth, checkActiveSubscription, updateTrip);
 router.delete('/trips/:id', ...auth, checkActiveSubscription, deleteTrip);
+router.get('/trips/:tripId/chat', ...auth, getTripChat);
+router.post('/trips/:tripId/chat', ...auth, sendTripMessage);
+router.patch('/trips/:tripId/chat/read', ...auth, markTripMessagesRead);
+router.get('/trips/:tripId/calls', ...auth, getTripCallHistory);
+router.post('/trips/:tripId/calls', ...auth, saveCallLog);
 
 // Fuel
 router.get('/fuel', ...auth, listFuelRecords);

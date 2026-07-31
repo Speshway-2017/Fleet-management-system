@@ -1,3 +1,5 @@
+import { resolveLocationName, isCoordinateString } from '../utils/reverseGeocoder.js';
+import { geocodeCity, getDistanceKm, getRoadDistanceAndEta } from '../utils/geocodingHelper.js';
 import {
   getDrivers,
   getDriverById,
@@ -13,6 +15,60 @@ import Trip from '../models/Trip.js';
 import Driver from '../models/Driver.js';
 import Document from '../models/Document.js';
 import mongoose from 'mongoose';
+import { generateEmployeeId, generateTempPassword } from '../utils/driverAuthHelper.js';
+import { hashPassword } from '../utils/hashPassword.js';
+
+/**
+ * Fetch Driver Statistics
+ * GET /api/drivers/stats, GET /api/drivers/dashboard
+ */
+export const getDriverStats = async (req, res, next) => {
+  try {
+    const baseFilter = { isDeleted: { $ne: true } };
+    if (req.user && req.user._id) {
+      baseFilter.assignedManager = req.user._id;
+    }
+
+    const totalDrivers = await Driver.countDocuments(baseFilter);
+    const activeDrivers = await Driver.countDocuments({
+      ...baseFilter,
+      driverStatus: { $in: ['AVAILABLE', 'ON_TRIP', 'ASSIGNED'] }
+    });
+    const availableDrivers = await Driver.countDocuments({
+      ...baseFilter,
+      driverStatus: 'AVAILABLE'
+    });
+    const onTripDrivers = await Driver.countDocuments({
+      ...baseFilter,
+      driverStatus: 'ON_TRIP'
+    });
+    const suspendedDrivers = await Driver.countDocuments({
+      ...baseFilter,
+      driverStatus: 'SUSPENDED'
+    });
+
+    console.log('\nFetching Driver Statistics...');
+    console.log(`Total Drivers in MongoDB:\n${totalDrivers}\n`);
+    console.log(`Active Drivers:\n${activeDrivers}\n`);
+    console.log(`On Trip:\n${onTripDrivers}\n`);
+    console.log(`Suspended:\n${suspendedDrivers}\n`);
+    console.log('Returning dashboard statistics...\n');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Driver statistics fetched successfully',
+      data: {
+        totalDrivers,
+        activeDrivers,
+        availableDrivers,
+        onTripDrivers,
+        suspendedDrivers
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 /**
  * List drivers belonging to the logged-in manager
@@ -20,16 +76,18 @@ import mongoose from 'mongoose';
  */
 export const listDrivers = async (req, res, next) => {
   try {
-    // Always scope to the logged-in manager
-    const filter = { assignedManager: req.user._id };
+    // Always scope to the logged-in manager and exclude soft-deleted drivers only
+    const filter = { assignedManager: req.user._id, isDeleted: { $ne: true } };
 
-    // 1. Search by Name, Employee ID, or Phone
+    // 1. Search by Name, Employee ID, Phone, Email, or DL number
     if (req.query.search) {
       const searchRegex = new RegExp(req.query.search, 'i');
       filter.$or = [
         { fullName: searchRegex },
         { employeeId: searchRegex },
-        { phoneNumber: searchRegex }
+        { phoneNumber: searchRegex },
+        { email: searchRegex },
+        { licenseNumber: searchRegex }
       ];
     }
 
@@ -83,7 +141,7 @@ export const listDrivers = async (req, res, next) => {
     // 6. Exclude drivers on active trips if availableOnly is set
     if (req.query.availableOnly === 'true' || req.query.available === 'true') {
       const activeTrips = await Trip.find({
-        status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip'] }
+        status: { $nin: ['Completed', 'Cancelled'] }
       });
       const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
       filter._id = { $nin: allocatedDriverIds };
@@ -92,7 +150,10 @@ export const listDrivers = async (req, res, next) => {
 
     // 7. Pagination & Sorting
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    let limit = 1000;
+    if (req.query.limit) {
+      limit = req.query.limit === 'all' ? 10000 : parseInt(req.query.limit);
+    }
     const skip = (page - 1) * limit;
 
     const sortField = req.query.sortBy || 'createdAt';
@@ -105,10 +166,54 @@ export const listDrivers = async (req, res, next) => {
       .skip(skip)
       .limit(limit);
 
+    for (const d of drivers) {
+      const rawLoc = d.currentLocation || d.driverLocation;
+      if (isCoordinateString(rawLoc)) {
+        const resolvedName = await resolveLocationName(rawLoc, d.branch);
+        d.currentLocation = resolvedName;
+        d.driverLocation = resolvedName;
+        Driver.findByIdAndUpdate(d._id, { currentLocation: resolvedName, driverLocation: resolvedName }).catch(() => {});
+      }
+    }
+
+    // Compute overall statistics using countDocuments()
+    const baseStatsFilter = { assignedManager: req.user._id, isDeleted: { $ne: true } };
+    const totalDriversInDB = await Driver.countDocuments(baseStatsFilter);
+    const activeDriversCount = await Driver.countDocuments({
+      ...baseStatsFilter,
+      driverStatus: { $in: ['AVAILABLE', 'ON_TRIP', 'ASSIGNED'] }
+    });
+    const availableDriversCount = await Driver.countDocuments({
+      ...baseStatsFilter,
+      driverStatus: 'AVAILABLE'
+    });
+    const onTripDriversCount = await Driver.countDocuments({
+      ...baseStatsFilter,
+      driverStatus: 'ON_TRIP'
+    });
+    const suspendedDriversCount = await Driver.countDocuments({
+      ...baseStatsFilter,
+      driverStatus: 'SUSPENDED'
+    });
+
+    console.log('\nFetching Driver Statistics...');
+    console.log(`Total Drivers in MongoDB:\n${totalDriversInDB}\n`);
+    console.log(`Active Drivers:\n${activeDriversCount}\n`);
+    console.log(`On Trip:\n${onTripDriversCount}\n`);
+    console.log(`Suspended:\n${suspendedDriversCount}\n`);
+    console.log('Returning dashboard statistics...\n');
+
     return res.status(200).json({
       success: true,
       message: 'Drivers fetched successfully',
       data: drivers,
+      stats: {
+        totalDrivers: totalDriversInDB,
+        activeDrivers: activeDriversCount,
+        availableDrivers: availableDriversCount,
+        onTripDrivers: onTripDriversCount,
+        suspendedDrivers: suspendedDriversCount
+      },
       pagination: {
         total,
         page,
@@ -128,12 +233,12 @@ export const listDrivers = async (req, res, next) => {
 export const getAvailableDrivers = async (req, res, next) => {
   try {
     const activeTrips = await Trip.find({
-      status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'Assigned', 'In Progress', 'On Trip'] }
+      status: { $nin: ['Completed', 'Cancelled'] }
     });
 
     const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
 
-    const filter = {
+    const allAvailable = await Driver.find({
       assignedManager: req.user._id,
       _id: { $nin: allocatedDriverIds },
       driverStatus: 'AVAILABLE',
@@ -142,44 +247,116 @@ export const getAvailableDrivers = async (req, res, next) => {
         { licenseExpiry: null },
         { licenseExpiry: { $gte: new Date() } }
       ]
+    });
+
+    for (const d of allAvailable) {
+      const rawLoc = d.currentLocation || d.driverLocation;
+      if (isCoordinateString(rawLoc)) {
+        const resolvedName = await resolveLocationName(rawLoc, d.branch);
+        d.currentLocation = resolvedName;
+        d.driverLocation = resolvedName;
+        Driver.findByIdAndUpdate(d._id, { currentLocation: resolvedName, driverLocation: resolvedName }).catch(() => {});
+      }
+    }
+
+    const targetLoc = (req.query.location || req.query.startLocation || '').trim();
+    if (!targetLoc) {
+      return sendSuccess(res, 200, allAvailable, 'Available drivers fetched successfully');
+    }
+
+    const normTarget = targetLoc.toLowerCase();
+    const targetFirstWord = normTarget.split(/[\s,]+/)[0];
+
+    const getDriverEffectiveLocation = (d) => {
+      if (d.currentLocation && d.currentLocation.trim()) return d.currentLocation.trim();
+      if (d.driverLocation && d.driverLocation.trim()) return d.driverLocation.trim();
+      if (d.branch && d.branch.trim()) return d.branch.trim();
+      return '';
     };
 
-    const rawLoc = req.query.location || req.query.startLocation;
-    if (rawLoc && typeof rawLoc === 'string' && rawLoc.trim()) {
-      const cleanLoc = rawLoc.trim();
-      const firstWord = cleanLoc.split(/[\s,]+/)[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const escapedLoc = cleanLoc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const locRegex = new RegExp(`^\\s*${escapedLoc}\\s*$|${firstWord}`, 'i');
+    const isMatch = (d) => {
+      const dLoc = getDriverEffectiveLocation(d);
+      if (!dLoc) return false;
+      const norm = dLoc.trim().toLowerCase();
+      const firstWord = norm.split(/[\s,]+/)[0];
+      return norm === normTarget || norm.includes(targetFirstWord) || targetFirstWord.includes(firstWord);
+    };
 
-      filter.$and = filter.$and || [];
-      filter.$and.push({
-        $or: [
-          { currentLocation: locRegex },
-          { driverLocation: locRegex },
-          { branch: locRegex }
-        ]
-      });
+    const localDrivers = [];
+    const nearbyRawDrivers = [];
+
+    for (const d of allAvailable) {
+      if (isMatch(d)) {
+        localDrivers.push(d);
+      } else {
+        nearbyRawDrivers.push(d);
+      }
     }
 
-    const availableDrivers = await Driver.find(filter);
+    // Priority 1: If local drivers exist, use local drivers only and skip nearby search
+    console.log('\n===================================');
+    console.log('Start Location:');
+    console.log(`${targetLoc}\n`);
+    console.log('Searching local Drivers...');
+    console.log('Drivers Found:');
+    console.log(`${localDrivers.length}\n`);
 
-    if (rawLoc && typeof rawLoc === 'string' && rawLoc.trim()) {
-      const cleanLoc = rawLoc.trim().toLowerCase();
-      const firstWord = cleanLoc.split(/[\s,]+/)[0];
-      availableDrivers.sort((a, b) => {
-        const aLoc = (a.currentLocation || a.driverLocation || a.branch || '').toLowerCase();
-        const bLoc = (b.currentLocation || b.driverLocation || b.branch || '').toLowerCase();
-        const aMatch = aLoc.includes(firstWord) || firstWord.includes(aLoc);
-        const bMatch = bLoc.includes(firstWord) || firstWord.includes(bLoc);
-        if (aMatch && !bMatch) return -1;
-        if (!aMatch && bMatch) return 1;
-        return 0;
-      });
-    } else {
-      availableDrivers.sort((a, b) => b.createdAt - a.createdAt);
+    if (localDrivers.length > 0) {
+      console.log('Using local Drivers.');
+      console.log('Skipping nearby Driver search.');
+      console.log('===================================\n');
+
+      return sendSuccess(res, 200, {
+        drivers: localDrivers,
+        localDrivers,
+        nearbyDrivers: [],
+        localCount: localDrivers.length,
+        nearbyCount: 0,
+        isNearbyFallback: false
+      }, 'Available drivers fetched successfully');
     }
 
-    return sendSuccess(res, 200, availableDrivers, 'Available drivers fetched successfully');
+    // Priority 2: Only if local drivers count is 0, execute nearest driver search sorted by road distance
+    console.log(`No available Drivers found in ${targetLoc}. Searching nearest available Drivers...`);
+    const nearbyDrivers = await Promise.all(
+      nearbyRawDrivers.map(async (d) => {
+        const rawEffective = getDriverEffectiveLocation(d);
+        const dLoc = await resolveLocationName(rawEffective || 'Pune', d.branch);
+        if (isCoordinateString(rawEffective)) {
+          Driver.findByIdAndUpdate(d._id, { currentLocation: dLoc, driverLocation: dLoc }).catch(() => {});
+        }
+        const routeData = await getRoadDistanceAndEta(targetLoc, dLoc);
+        const dObj = d.toObject ? d.toObject() : { ...d };
+        return {
+          ...dObj,
+          isNearby: true,
+          distanceKm: routeData.distanceKm,
+          estimatedTravelTime: routeData.estimatedTravelTime,
+          currentBranch: d.branch || d.currentLocation || dLoc,
+          currentLocation: dLoc
+        };
+      })
+    );
+
+    // Sort in ascending order based on road distance
+    nearbyDrivers.sort((a, b) => a.distanceKm - b.distanceKm);
+
+    if (nearbyDrivers.length > 0) {
+      console.log(`Nearest Drivers for ${targetLoc} sorted by distance:`);
+      nearbyDrivers.slice(0, 5).forEach((d, idx) => {
+        console.log(`${idx + 1}. ${d.fullName || d.name} (${d.employeeId || 'N/A'}) - Loc: ${d.currentLocation} - ${d.distanceKm} km away (${d.estimatedTravelTime})`);
+      });
+    }
+    console.log('===================================\n');
+
+    return sendSuccess(res, 200, {
+      drivers: nearbyDrivers,
+      localDrivers: [],
+      nearbyDrivers,
+      localCount: 0,
+      nearbyCount: nearbyDrivers.length,
+      isNearbyFallback: true
+    }, 'Available drivers fetched successfully');
   } catch (error) {
     next(error);
   }
@@ -211,35 +388,48 @@ export const getDriver = async (req, res, next) => {
  * POST /api/drivers
  */
 export const createDriver = async (req, res, next) => {
+  const driverName = req.body.fullName || `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim() || req.body.name || 'New Driver';
+  console.log(`\n==================================================`);
+  console.log(`Creating Driver...`);
+  console.log(`==================================================\n`);
+  console.log(`Driver Name:\n${driverName}\n`);
+
   try {
     const {
+      firstName,
+      lastName,
+      name,
       fullName,
       email,
+      phone,
       phoneNumber,
+      mobile,
       licenseNumber,
       licenseType,
       licenseExpiry,
       assignedVehicle,
+      status,
       driverStatus,
-      experience,
-      joiningDate,
-      medicalFitnessStatus,
-      profileImage,
-      licenseDocument,
-      employeeId,
       dob,
       gender,
+      experience,
+      joiningDate,
       address,
-      driverLocation,
-      licenseIssuingAuthority,
-      onTimeDeliveries,
-      attendancePercentage,
-      safetyRecord,
-      trafficViolations,
+      city,
+      state,
+      pincode,
+      documents,
+      licenseDocument
     } = req.body;
 
-    if (!fullName || !email || !phoneNumber || !licenseNumber) {
-      return sendError(res, 400, 'Full name, email, phone number, and license number are required');
+    const finalEmail = (email || '').trim().toLowerCase();
+    const finalPhone = (mobile || phoneNumber || phone || '').trim();
+    const finalLicense = (licenseNumber || '').trim();
+    const computedFullName = fullName || name || `${firstName || ''} ${lastName || ''}`.trim();
+
+    if (!computedFullName || !finalEmail || !finalPhone || !finalLicense) {
+      console.log(`Validation Failed: Name, email, mobile, and license number are required.`);
+      return sendError(res, 400, 'Name, email, mobile number, and license number are required');
     }
 
     const rawPassword = req.body.password || 'driver123';
@@ -251,25 +441,53 @@ export const createDriver = async (req, res, next) => {
       licenseNumber,
       password: rawPassword,
       licenseType: licenseType || 'HMV',
-      licenseExpiry: licenseExpiry || undefined,
+      licenseExpiry: licenseExpiry ? new Date(licenseExpiry) : undefined,
       assignedVehicle: assignedVehicle || 'Unassigned',
       driverStatus: driverStatus || 'AVAILABLE',
-      experience: experience || '',
-      joiningDate: joiningDate || undefined,
-      medicalFitnessStatus: medicalFitnessStatus || '✅ Fit',
-      profileImage: profileImage || '',
-      licenseDocument: licenseDocument || '',
-      assignedManager: req.user?._id,
-      employeeId: employeeId || undefined,
-      dob: dob || undefined,
+      accountStatus: 'Active',
+      status: status || 'Active',
+      employeeId: generatedEmpId,
+      password: hashedPassword,
+      mustChangePassword: true,
+      dob: dob ? new Date(dob) : undefined,
       gender: gender || 'Male',
+      experience: experience || '',
+      joiningDate: joiningDate ? new Date(joiningDate) : undefined,
       address: address || '',
-      driverLocation: driverLocation || '',
-      licenseIssuingAuthority: licenseIssuingAuthority || '',
-      onTimeDeliveries: onTimeDeliveries !== undefined ? Number(onTimeDeliveries) : 0,
-      attendancePercentage: attendancePercentage !== undefined ? Number(attendancePercentage) : 100,
-      safetyRecord: safetyRecord || 'Excellent',
-      trafficViolations: trafficViolations !== undefined ? Number(trafficViolations) : 0,
+      city: city || '',
+      state: state || '',
+      pincode: pincode || '',
+      documents: documents || {},
+      licenseDocument: licenseDocument || '',
+      assignedManager: req.user?._id
+    });
+    console.log(`✓ Driver Saved Successfully\n`);
+
+    console.log(`==================================================`);
+    console.log(`Driver Created Successfully`);
+    console.log(`==================================================\n`);
+    console.log(`Employee ID:\n${generatedEmpId}\n`);
+    console.log(`Temporary Password:\n${temporaryPassword}\n`);
+    console.log(`Status:\nActive\n`);
+    console.log(`Must Change Password:\ntrue\n`);
+    console.log(`==================================================\n`);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Driver created successfully.',
+      employeeId: generatedEmpId,
+      temporaryPassword,
+      driver: {
+        _id: driver._id,
+        fullName: driver.fullName,
+        email: driver.email,
+        phoneNumber: driver.phoneNumber,
+        licenseNumber: driver.licenseNumber,
+        employeeId: driver.employeeId,
+        status: driver.status,
+        accountStatus: driver.accountStatus,
+        mustChangePassword: driver.mustChangePassword
+      }
     });
 
     console.log(`\n==================================================`);
@@ -283,15 +501,9 @@ export const createDriver = async (req, res, next) => {
 
     return sendSuccess(res, 201, driver, 'Driver created successfully');
   } catch (error) {
+    console.error(`Driver Creation Failed:`, error);
     if (error.code === 11000) {
-      const field = Object.keys(error.keyValue)[0];
-      const message =
-        field === 'licenseNumber'
-          ? 'A driver with this license number already exists'
-          : field === 'employeeId'
-          ? 'A driver with this Employee ID already exists'
-          : 'A driver with this email already exists';
-      return sendError(res, 409, message);
+      return sendError(res, 400, 'A driver with this email, mobile number, or license number already exists');
     }
     next(error);
   }

@@ -2,9 +2,16 @@ import mongoose from 'mongoose';
 
 const driverSchema = new mongoose.Schema(
   {
+    firstName: { type: String, trim: true, default: '' },
+    lastName: { type: String, trim: true, default: '' },
     fullName: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
     phoneNumber: { type: String, required: true, trim: true },
+    mobile: { type: String, trim: true, default: '' },
+    password: { type: String, default: '' },
+    mustChangePassword: { type: Boolean, default: true },
+    accountStatus: { type: String, enum: ['Active', 'Inactive', 'Suspended'], default: 'Active' },
+    status: { type: String, default: 'Active' },
     licenseNumber: { type: String, required: true, unique: true, trim: true },
     licenseType: { type: String, enum: ['HMV', 'LMV', 'MCWG'], default: 'HMV' },
     licenseExpiry: { type: Date },
@@ -19,6 +26,14 @@ const driverSchema = new mongoose.Schema(
     dob: { type: Date },
     gender: { type: String, enum: ['Male', 'Female', 'Other'], default: 'Male' },
     address: { type: String, default: '' },
+    city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    pincode: { type: String, default: '' },
+    documents: {
+      photo: { type: String, default: '' },
+      license: { type: String, default: '' },
+      idProof: { type: String, default: '' }
+    },
     licenseIssuingAuthority: { type: String, default: '' },
     onTimeDeliveries: { type: Number, default: 0 },
     attendancePercentage: { type: Number, default: 100 },

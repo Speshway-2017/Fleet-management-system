@@ -61,8 +61,8 @@ export default function VehiclesListPage() {
   const [permitFilter, setPermitFilter] = useState("All Permits");
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 
-  const [sortField, setSortField] = useState("name");
-  const [sortDirection, setSortDirection] = useState("asc");
+  const [sortField, setSortField] = useState("createdAt");
+  const [sortDirection, setSortDirection] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
@@ -174,6 +174,22 @@ export default function VehiclesListPage() {
       );
     })
     .sort((a, b) => {
+      if (sortField === "createdAt" || sortField === "id" || sortField === "_id") {
+        const getTimestamp = (item) => {
+          if (item.createdAt) {
+            const t = new Date(item.createdAt).getTime();
+            if (!isNaN(t)) return t;
+          }
+          if (item._id && typeof item._id === "string" && item._id.length === 24) {
+            return parseInt(item._id.substring(0, 8), 16) * 1000;
+          }
+          return 0;
+        };
+        const timeA = getTimestamp(a);
+        const timeB = getTimestamp(b);
+        return sortDirection === "desc" ? timeB - timeA : timeA - timeB;
+      }
+
       let valA = a[sortField];
       let valB = b[sortField];
       if (typeof valA === "string") {
@@ -649,9 +665,22 @@ export default function VehiclesListPage() {
                           {vehicle.plateNumber || vehicle.vehicleNumber}
                         </td>
                         <td className="py-4 px-6 whitespace-nowrap">
-                          <div className="flex flex-col">
-                            <p className="font-bold text-[#1E293B] text-sm">{vehicle.name}</p>
-                            <p className="text-xs text-[#64748B]">{vehicle.manufacturer}</p>
+                          <div className="flex items-center gap-3">
+                            {vehicle.vehicleImage?.secure_url || vehicle.image ? (
+                              <img
+                                src={vehicle.vehicleImage?.secure_url || vehicle.image}
+                                alt={vehicle.name}
+                                className="w-10 h-10 rounded-xl object-cover border border-gray-200 shrink-0 shadow-sm"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-xl bg-[#FDF3EC] border border-[#B45A0A]/20 flex items-center justify-center shrink-0">
+                                <Truck className="w-5 h-5 text-[#B45A0A]" />
+                              </div>
+                            )}
+                            <div className="flex flex-col">
+                              <p className="font-bold text-[#1E293B] text-sm">{vehicle.name}</p>
+                              <p className="text-xs text-[#64748B]">{vehicle.manufacturer}</p>
+                            </div>
                           </div>
                         </td>
                         <td className="py-4 px-6 whitespace-nowrap">
