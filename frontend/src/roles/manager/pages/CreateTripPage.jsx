@@ -22,7 +22,8 @@ import {
   Phone,
   Building2,
   Trash2,
-  Check
+  Check,
+  AlertTriangle
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -179,6 +180,8 @@ export default function CreateTripPage() {
   // Filters
   const [filterAvailableVehicles, setFilterAvailableVehicles] = useState(true);
   const [filterAvailableDrivers, setFilterAvailableDrivers] = useState(true);
+  const [isNearbyVehiclesFallback, setIsNearbyVehiclesFallback] = useState(false);
+  const [isNearbyDriversFallback, setIsNearbyDriversFallback] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
@@ -477,54 +480,50 @@ export default function CreateTripPage() {
           managerApi.getAvailableDrivers({ location: cleanLoc })
         ]);
         
-        const allVehicles = vRes.data?.data || vRes.data || [];
-        const allDrivers = dRes.data?.data || dRes.data || [];
+        const vPayload = vRes.data?.data || vRes.data || {};
+        const dPayload = dRes.data?.data || dRes.data || {};
 
-        const normalize = (str) => (str || "").trim().toLowerCase();
+        const rawVehicles = Array.isArray(vPayload) 
+          ? vPayload 
+          : (vPayload.vehicles || vPayload.nearbyVehicles || vPayload.localVehicles || []);
+        
+        const rawDrivers = Array.isArray(dPayload) 
+          ? dPayload 
+          : (dPayload.drivers || dPayload.nearbyDrivers || dPayload.localDrivers || []);
 
-        const isLocationMatch = (driverLoc, targetLoc) => {
-          if (!driverLoc || !targetLoc) return false;
-          const normDriver = normalize(driverLoc);
-          const normTarget = normalize(targetLoc);
-          const targetFirstWord = normTarget.split(/[\s,]+/)[0];
-          const driverFirstWord = normDriver.split(/[\s,]+/)[0];
-          return (
-            normDriver === normTarget ||
-            normDriver.includes(targetFirstWord) ||
-            targetFirstWord.includes(driverFirstWord)
-          );
-        };
+        const isVehFallback = !!(vPayload.isNearbyFallback || vPayload.isNearbyVehiclesFallback);
+        const isDrvFallback = !!(dPayload.isNearbyFallback || dPayload.isNearbyDriversFallback);
 
-        // Filter vehicles strictly by current location stored in database
-        const filteredVehs = allVehicles.filter(v => {
-          const vLoc = v.currentLocation || v.branch || "";
-          return isLocationMatch(vLoc, cleanLoc);
-        });
+        setIsNearbyVehiclesFallback(isVehFallback);
+        setIsNearbyDriversFallback(isDrvFallback);
 
-        // Filter drivers strictly by current location stored in database
-        const filteredDrvs = allDrivers.filter(d => {
-          const dLoc = d.currentLocation || d.driverLocation || d.branch || "";
-          return isLocationMatch(dLoc, cleanLoc);
-        });
-
-        const vehiclesData = filteredVehs.map(v => {
-          const isAvailable = v.currentStatus === 'Available' || v.currentStatus === 'Active';
+        const vehiclesData = rawVehicles.map(v => {
+          const isAvailable = v.currentStatus === 'Available' || v.currentStatus === 'Active' || v.status === 'Available' || v.status === 'Active';
           return {
             ...v,
-            id: v._id,
-            name: v.vehicleName || `${v.brand} ${v.model}`,
-            plateNumber: v.vehicleNumber,
-            status: isAvailable ? 'Available' : 'Under Maintenance'
+            id: v._id || v.id,
+            name: v.vehicleName || v.name || `${v.brand || ''} ${v.model || ''}`,
+            plateNumber: v.vehicleNumber || v.plateNumber,
+            status: isAvailable ? 'Available' : (v.status || 'Under Maintenance'),
+            isNearby: v.isNearby || isVehFallback,
+            distanceKm: v.distanceKm,
+            estimatedTravelTime: v.estimatedTravelTime,
+            currentLocation: v.currentLocation || v.branch || "Nearby"
           };
         });
 
-        const driversData = filteredDrvs.map(d => {
-          const isAvailable = d.driverStatus === 'AVAILABLE';
+        const driversData = rawDrivers.map(d => {
+          const isAvailable = d.driverStatus === 'AVAILABLE' || d.status === 'Available';
           return {
             ...d,
-            id: d._id,
-            name: d.fullName,
-            status: isAvailable ? 'Available' : 'Not Available'
+            id: d._id || d.id,
+            name: d.fullName || d.name,
+            employeeId: d.employeeId || 'N/A',
+            status: isAvailable ? 'Available' : (d.status || 'Not Available'),
+            isNearby: d.isNearby || isDrvFallback,
+            distanceKm: d.distanceKm,
+            estimatedTravelTime: d.estimatedTravelTime,
+            currentLocation: d.currentLocation || d.driverLocation || d.branch || "Nearby"
           };
         });
 
@@ -1008,6 +1007,16 @@ export default function CreateTripPage() {
               </button>
             </div>
 
+            {startLocation.trim() && isNearbyVehiclesFallback && (
+              <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 font-poppins">
+                <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block">No vehicles are available in {startLocation}.</span>
+                  <span className="text-[11px] text-amber-700 font-medium">Showing the nearest available vehicles sorted by distance.</span>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
               {!startLocation.trim() ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center px-4">
@@ -1033,7 +1042,7 @@ export default function CreateTripPage() {
                     key={v.id}
                     onClick={() => {
                       if (v.status === "Under Maintenance") return;
-                      setSelectedVehicleId(String(v.id));
+                      handleVehicleSelection(v);
                     }}
                     className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${
                       v.status === "Under Maintenance"
@@ -1044,13 +1053,27 @@ export default function CreateTripPage() {
                     }`}
                   >
                     <div>
-                      <p className="font-bold text-xs text-[#1E293B]">{v.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-xs text-[#1E293B]">{v.name}</p>
+                        {(v.isNearby || isNearbyVehiclesFallback) && (
+                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">
+                            Nearby
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[10px] text-[#64748B] font-semibold block mt-0.5 uppercase">Reg: {v.plateNumber}</span>
                       <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
                         <span>Type: <strong className="text-[#1E293B]">{v.vehicleType || v.type || "Truck"}</strong></span>
                         <span>|</span>
-                        <span>Location: <strong className="text-[#1E293B]">{v.branch || "Pune"}</strong></span>
+                        <span>Location: <strong className="text-[#1E293B]">{v.currentLocation || v.branch || "Nearby"}</strong></span>
                       </div>
+                      {(v.isNearby || isNearbyVehiclesFallback || (v.distanceKm !== undefined && v.distanceKm > 0)) && (
+                        <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
+                          <span>📍 {v.distanceKm || 0} km away</span>
+                          <span>•</span>
+                          <span>⏱️ {v.estimatedTravelTime || "30 mins"}</span>
+                        </div>
+                      )}
                       <span className={`inline-block mt-2 px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
                         v.status === "Active" || v.status === "Available"
                           ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
@@ -1065,7 +1088,7 @@ export default function CreateTripPage() {
                       disabled={v.status === "Under Maintenance"}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedVehicleId(String(v.id));
+                        handleVehicleSelection(v);
                       }}
                       className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                         v.status === "Under Maintenance"
@@ -1098,6 +1121,16 @@ export default function CreateTripPage() {
                 {filterAvailableDrivers ? "Show All Drivers" : "Filter Available"}
               </button>
             </div>
+
+            {startLocation.trim() && isNearbyDriversFallback && (
+              <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 font-poppins">
+                <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block">No drivers are available in {startLocation}.</span>
+                  <span className="text-[11px] text-amber-700 font-medium">Showing the nearest available drivers sorted by distance.</span>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
               {!startLocation.trim() ? (
@@ -1132,7 +1165,7 @@ export default function CreateTripPage() {
                         if (d.status === "Not Available") {
                           return;
                         }
-                        setSelectedDriverId(String(d.id));
+                        handleDriverSelection(d);
                       }}
                       className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${
                         (isExpired || d.status === "Not Available")
@@ -1143,15 +1176,29 @@ export default function CreateTripPage() {
                       }`}
                     >
                       <div>
-                        <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
+                          {(d.isNearby || isNearbyDriversFallback) && (
+                            <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">
+                              Nearby
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[10px] text-[#64748B] block mt-0.5 font-semibold">
                           Emp ID: {d.employeeId || "N/A"}
                         </span>
                         <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
                           <span>Lic Validity: <strong className={isExpired ? "text-red-500" : "text-[#1E293B]"}>{d.licenseExpiry ? new Date(d.licenseExpiry).toLocaleDateString() : "Valid"}</strong></span>
                           <span>|</span>
-                          <span>Location: <strong className="text-[#1E293B]">{d.driverLocation || d.branch || "Pune"}</strong></span>
+                          <span>Location: <strong className="text-[#1E293B]">{d.currentLocation || d.driverLocation || d.branch || "Nearby"}</strong></span>
                         </div>
+                        {(d.isNearby || isNearbyDriversFallback || (d.distanceKm !== undefined && d.distanceKm > 0)) && (
+                          <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
+                            <span>📍 {d.distanceKm || 0} km away</span>
+                            <span>•</span>
+                            <span>⏱️ {d.estimatedTravelTime || "35 mins"}</span>
+                          </div>
+                        )}
                         <div className="flex gap-1.5 mt-2">
                           <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
                             isExpired

@@ -44,6 +44,21 @@ const CITY_COORDINATES = {
 const geocodeCache = new Map();
 
 /**
+ * Calculate distance in KM between two lat/lng coordinates (Haversine formula)
+ */
+export function getDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.max(5, Math.round(R * c));
+}
+
+/**
  * Dynamically resolve lat/lng coordinates for any location name
  * @param {string} locationName 
  * @returns {Promise<[number, number]>} [latitude, longitude]
@@ -97,3 +112,106 @@ export async function geocodeCity(locationName) {
   geocodeCache.set(query, coords);
   return coords;
 }
+
+const roadDistanceCache = new Map();
+
+/**
+ * Calculate actual road distance and travel time ETA between two locations.
+ * Uses OSRM driving route API with in-memory caching, with fallback to Haversine * 1.3 estimation.
+ * @param {string} originLoc 
+ * @param {string} destLoc 
+ * @returns {Promise<{ distanceKm: number, estimatedTravelTime: string, durationSeconds: number }>}
+ */
+export async function getRoadDistanceAndEta(originLoc, destLoc) {
+  if (!originLoc || !destLoc) {
+    return { distanceKm: 0, estimatedTravelTime: '0 mins', durationSeconds: 0 };
+  }
+  const cleanOrigin = originLoc.trim();
+  const cleanDest = destLoc.trim();
+
+  if (cleanOrigin.toLowerCase() === cleanDest.toLowerCase()) {
+    return { distanceKm: 0, estimatedTravelTime: '0 mins', durationSeconds: 0 };
+  }
+
+  const cacheKey = `${cleanOrigin.toLowerCase()}:${cleanDest.toLowerCase()}`;
+  if (roadDistanceCache.has(cacheKey)) {
+    return roadDistanceCache.get(cacheKey);
+  }
+
+  // 1. Resolve coordinates
+  const [coords1, coords2] = await Promise.all([
+    geocodeCity(cleanOrigin),
+    geocodeCity(cleanDest)
+  ]);
+
+  const [lat1, lon1] = coords1;
+  const [lat2, lon2] = coords2;
+
+  // 2. Query OSRM API with 3-second timeout
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
+    const res = await fetch(osrmUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.code === 'Ok' && Array.isArray(data.routes) && data.routes.length > 0) {
+        const distanceMeters = data.routes[0].distance;
+        const durationSecs = data.routes[0].duration;
+
+        const distanceKm = Math.max(1, Math.round(distanceMeters / 1000));
+        const hours = Math.floor(durationSecs / 3600);
+        const minutes = Math.round((durationSecs % 3600) / 60);
+
+        let travelTime = `${minutes} mins`;
+        if (hours > 0) {
+          travelTime = minutes === 0 ? `${hours} hrs` : `${hours} hrs ${minutes} mins`;
+        }
+
+        const result = {
+          distanceKm,
+          estimatedTravelTime: travelTime,
+          durationSeconds: durationSecs
+        };
+
+        roadDistanceCache.set(cacheKey, result);
+        return result;
+      }
+    }
+  } catch (err) {
+    // Proceed to fallback
+  }
+
+  // 3. Fallback: Haversine distance * 1.3 (road factor multiplier)
+  const R = 6371;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const straightKm = R * c;
+  const distanceKm = Math.max(5, Math.round(straightKm * 1.3));
+  const durationSecs = Math.round((distanceKm / 55) * 3600);
+  const hours = Math.floor(durationSecs / 3600);
+  const minutes = Math.round((durationSecs % 3600) / 60);
+
+  let travelTime = `${minutes} mins`;
+  if (hours > 0) {
+    travelTime = minutes === 0 ? `${hours} hrs` : `${hours} hrs ${minutes} mins`;
+  }
+
+  const fallbackResult = {
+    distanceKm,
+    estimatedTravelTime: travelTime,
+    durationSeconds: durationSecs
+  };
+
+  roadDistanceCache.set(cacheKey, fallbackResult);
+  return fallbackResult;
+}
+
