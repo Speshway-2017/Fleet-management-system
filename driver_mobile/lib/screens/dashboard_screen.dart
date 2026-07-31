@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../constants/app_colors.dart';
 import 'trip_details_screen.dart';
 import 'trips_screen.dart';
 import 'active_trips_screen.dart';
@@ -13,6 +12,7 @@ import 'schedule_screen.dart';
 import 'todays_schedule_screen.dart';
 import 'settings/settings_screen.dart';
 import 'fuel_overview_screen.dart';
+import '../widgets/driver_profile_dropdown.dart';
 
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -121,7 +121,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Good Morning, ${_driverProfile?['fullName'] ?? 'Driver'} 👋',
+                                'Good Morning 👋',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
@@ -146,52 +146,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () {
-                      MainNavigationScreen.selectedTabNotifier.value = 4;
-                    },
-                    child: Stack(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white24, width: 1.5),
-                          ),
-                          child: ClipOval(
-                            child: Image.asset(
-                              'assets/images/driver_avatar.png',
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(
-                                  Icons.person,
-                                  color: Colors.white,
-                                  size: 18,
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            width: 10,
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: AppColors.success, // Green online dot
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: const Color(0xFF091522),
-                                width: 1.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const DriverProfileDropdown(isDarkBackground: true),
                 ],
               ),
             ),

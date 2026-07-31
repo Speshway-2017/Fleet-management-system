@@ -21,6 +21,7 @@ class AuthRepository {
       
       // Save details in shared_preferences for quick fallback/read if needed
       final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('jwt_token', token);
       await prefs.setString('driver_id', data['driverId'] ?? '');
       await prefs.setString('manager_id', data['managerId'] ?? '');
       await prefs.setString('organization_id', data['organizationId'] ?? '');
@@ -41,6 +42,7 @@ class AuthRepository {
 
     // Clear shared_preferences session data
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('jwt_token');
     await prefs.remove('driver_id');
     await prefs.remove('manager_id');
     await prefs.remove('organization_id');

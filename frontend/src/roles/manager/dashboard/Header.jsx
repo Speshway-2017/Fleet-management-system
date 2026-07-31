@@ -1,22 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Bell, Menu, User, LogOut, ChevronDown } from "lucide-react";
-import toast from "react-hot-toast";
-
-const getImageUrl = (url) => {
-  if (!url) return "";
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-  const host = apiBase.replace(/\/api\/?$/, "");
-  return `${host}${url}`;
-};
+import { Bell, Menu } from "lucide-react";
+import UserProfileCard from "@/components/common/UserProfileCard";
 
 export default function Header({ onMenuToggle, showMenuButton = true }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
   const handleLogout = () => {
@@ -64,7 +55,6 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
           <button
             onClick={() => {
               navigate("/manager/notifications");
-              setUserMenuOpen(false);
             }}
             className="relative p-2.5 text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none transition-colors duration-150 cursor-pointer"
           >
@@ -73,10 +63,20 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
           </button>
         </div>
 
-        {/* User Card */}
-        <div className="relative">
-          <button
-            onClick={() => {
+        {/* Reusable User Profile Card */}
+        <UserProfileCard
+          user={user}
+          roleLabel="Fleet Manager"
+          profilePath="/manager/profile"
+          settingsPath="/manager/settings"
+          supportPath="/manager/notifications"
+          onLogout={handleLogout}
+        />
+
+      </div>
+    </header>
+  );
+}
               setUserMenuOpen(!userMenuOpen);
             }}
             className="flex items-center gap-3 p-1 hover:bg-gray-100 rounded-2xl focus:outline-none transition-colors"
