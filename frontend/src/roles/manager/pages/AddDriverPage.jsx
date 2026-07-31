@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { formatDisplayLocation } from "@/utils/locationFormatter";
 import { driverApi } from "@/api/driverApi";
 
 // Format bytes to readable string
@@ -134,7 +135,7 @@ export default function AddDriverPage() {
           dob: d.dob ? d.dob.split("T")[0] : "",
           gender: d.gender || "Male",
           address: d.address || "",
-          driverLocation: d.driverLocation || "",
+          driverLocation: formatDisplayLocation(d.driverLocation || d.currentLocation, d.branch),
           licenseIssuingAuthority: d.licenseIssuingAuthority || "",
         });
         const pErr = validateField("phoneNumber", d.phoneNumber || "");

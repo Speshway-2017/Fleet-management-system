@@ -282,7 +282,7 @@ export default function TripsManagementPage() {
         vehicle: selectedVehicle._id,
         driver: selectedDriver ? selectedDriver._id : undefined,
         driverName: selectedDriver ? (selectedDriver.name || selectedDriver.fullName) : "",
-        driverPhone: selectedDriver ? (selectedDriver.phone || selectedDriver.phoneNumber) : "",
+        driverPhone: selectedDriver ? (selectedDriver.phoneNumber || selectedDriver.phone) : "",
         vehicleName: selectedVehicle.name || selectedVehicle.vehicleName,
         vehiclePlate: selectedVehicle.plateNumber || selectedVehicle.vehicleNumber,
         startLocation: formData.startLocation,

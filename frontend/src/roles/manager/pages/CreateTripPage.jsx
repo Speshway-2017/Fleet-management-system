@@ -523,7 +523,7 @@ export default function CreateTripPage() {
             isNearby: d.isNearby || isDrvFallback,
             distanceKm: d.distanceKm,
             estimatedTravelTime: d.estimatedTravelTime,
-            currentLocation: d.currentLocation || d.driverLocation || d.branch || "Nearby"
+            currentLocation: formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch)
           };
         });
 
@@ -651,7 +651,7 @@ export default function CreateTripPage() {
         vehicle: vehicle._id,
         driver: driver ? driver._id : undefined,
         driverName: driver ? driver.name : "",
-        driverPhone: driver ? driver.phone : "",
+        driverPhone: driver ? (driver.phoneNumber || driver.phone || "") : "",
         vehicleName: vehicle.name,
         vehiclePlate: vehicle.plateNumber,
         startLocation,
@@ -1190,7 +1190,7 @@ export default function CreateTripPage() {
                         <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
                           <span>Lic Validity: <strong className={isExpired ? "text-red-500" : "text-[#1E293B]"}>{d.licenseExpiry ? new Date(d.licenseExpiry).toLocaleDateString() : "Valid"}</strong></span>
                           <span>|</span>
-                          <span>Location: <strong className="text-[#1E293B]">{d.currentLocation || d.driverLocation || d.branch || "Nearby"}</strong></span>
+                          <span>Location: <strong className="text-[#1E293B]">{formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch)}</strong></span>
                         </div>
                         {(d.isNearby || isNearbyDriversFallback || (d.distanceKm !== undefined && d.distanceKm > 0)) && (
                           <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">

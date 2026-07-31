@@ -544,8 +544,8 @@ export default function TripDetailsPage() {
             <div class="section-title">Driver Information</div>
             <div class="info-grid">
               <div class="info-item"><span class="info-label">Driver Name</span><span class="info-val">${trip.driverName || "N/A"}</span></div>
-              <div class="info-item"><span class="info-label">Employee ID</span><span class="info-val">${trip.driver?.employeeId || "N/A"}</span></div>
-              <div class="info-item"><span class="info-label">Mobile Number</span><span class="info-val">${trip.driverPhone || "N/A"}</span></div>
+              <div class="info-item"><span class="info-label">Employee ID</span><span class="info-val">${formatEmployeeId(trip.driver?.employeeId)}</span></div>
+              <div class="info-item"><span class="info-label">Mobile Number</span><span class="info-val">${trip.driverPhone || trip.driver?.phoneNumber || trip.driver?.phone || "N/A"}</span></div>
             </div>
 
             <div class="section-title">Additional Info</div>
@@ -1378,14 +1378,6 @@ export default function TripDetailsPage() {
                 </span>
               </div>
             </div>
-
-            <button
-              onClick={() => navigate("/manager/vehicles-list")}
-              className="w-full py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Truck className="w-3.5 h-3.5" />
-              View Fleet Diagnostics
-            </button>
           </div>
         </div>
       </div>
@@ -1773,8 +1765,8 @@ export default function TripDetailsPage() {
                     <h4 className="font-poppins font-bold text-[11px] text-[#64748B] uppercase tracking-wider border-b border-[#E7EAF0] pb-1.5">Driver Information</h4>
                     <div className="space-y-2 text-xs">
                       <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Driver Name</span><span className="font-bold text-gray-700">{trip.driverName || "N/A"}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Employee ID</span><span className="font-bold text-gray-700">{trip.driver?.employeeId || "N/A"}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Mobile Number</span><span className="font-bold text-gray-700">{trip.driverPhone || "N/A"}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Employee ID</span><span className="font-bold text-gray-700">{formatEmployeeId(trip.driver?.employeeId)}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 font-medium font-nunito">Mobile Number</span><span className="font-bold text-gray-700">{trip.driverPhone || trip.driver?.phoneNumber || trip.driver?.phone || "N/A"}</span></div>
                     </div>
                   </div>
                 </div>
