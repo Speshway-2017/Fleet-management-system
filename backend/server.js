@@ -80,7 +80,7 @@ const startServer = async () => {
   // 5. Set up Socket.IO
   const io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:5173',
+      origin: (origin, callback) => callback(null, true),
       credentials: true,
     }
   });
@@ -103,14 +103,19 @@ const startServer = async () => {
       socket.join(`manager:${managerId}`);
     });
 
+    // Join driver-specific room
+    socket.on('joinDriverRoom', (driverId) => {
+      socket.join(`driver:${driverId}`);
+    });
+
     // Join organization-specific room
     socket.on('joinOrganizationRoom', (organizationId) => {
       socket.join(`organization:${organizationId}`);
     });
 
-    // Join driver-specific room
-    socket.on('joinDriverRoom', (driverId) => {
-      socket.join(`driver:${driverId}`);
+    // Join role room (for SUPER_ADMIN or FLEET_MANAGER or DRIVER)
+    socket.on('joinRoleRoom', (role) => {
+      socket.join(`role:${role}`);
     });
 
     // Join trip room
@@ -267,14 +272,62 @@ const startServer = async () => {
     });
   });
 
+  // Background 1-minute interval checking for trips starting within 15 minutes
+  setInterval(async () => {
+    try {
+      const Trip = (await import('./models/Trip.js')).default;
+      const { createAndEmitNotification } = await import('./utils/notification.js');
+      const now = new Date();
+      const marginMs = 15 * 60 * 1000;
+
+      const upcomingTrips = await Trip.find({
+        status: { $in: ['Assigned', 'Accepted', 'Scheduled'] },
+        notified15MinBefore: { $ne: true }
+      });
+
+      for (const trip of upcomingTrips) {
+        if (!trip.departureTime) continue;
+        const depTime = new Date(trip.departureTime);
+        if (isNaN(depTime.getTime())) continue;
+
+        const diff = depTime.getTime() - now.getTime();
+        // Notify if within 15 minutes prior to departure (and not past by more than 30 mins)
+        if (diff <= marginMs && diff >= -30 * 60 * 1000) {
+          trip.notified15MinBefore = true;
+          await trip.save();
+
+          if (trip.driver) {
+            await createAndEmitNotification({
+              io,
+              recipient: trip.driver,
+              recipientRole: 'DRIVER',
+              type: 'trip_15min_reminder',
+              title: `Trip Departure Reminder: #${trip.tripNumber}`,
+              message: `Your trip #${trip.tripNumber} (${trip.startLocation} ➔ ${trip.endLocation}) is scheduled to start in 15 minutes! Please get ready and start the trip.`,
+              priority: 'high',
+              metadata: { tripId: trip._id, tripNumber: trip.tripNumber }
+            });
+
+            io.to(`driver:${trip.driver}`).emit('trip:15min-reminder', {
+              tripId: trip._id,
+              tripNumber: trip.tripNumber,
+              message: 'Your trip starts in 15 minutes! Start button is now enabled.'
+            });
+          }
+        }
+      }
+    } catch (cronErr) {
+      console.error('Error in 15-min departure notification check:', cronErr.message);
+    }
+  }, 60000);
+
   // Attach io to app.locals so controllers can use it
   app.locals.io = io;
 
   // 6. Start server
   server.listen(PORT, () => {
-    console.log(`🚀  Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-    console.log(`🌐  CORS allowed for: ${process.env.CLIENT_URL}`);
-    // printRoutes(app);
+    console.log(`🚀  Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+    console.log(`🌐  CORS allowed for: Frontend (localhost:5173), Flutter Web, and Mobile Clients`);
   });
 
   server.on('error', (err) => {

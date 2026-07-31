@@ -984,7 +984,7 @@ export const createTrip = async (req, res, next) => {
       toAddress: finalDeliveryAddress,
       departureTime,
       eta,
-      status,
+      status: status || 'Assigned',
       description,
       cargoType,
       cargoWeight: Number(cargoWeight) || 0,
@@ -1015,14 +1015,26 @@ export const createTrip = async (req, res, next) => {
       branch: startLocation
     });
 
-    // F. Create Activity Log
-    try {
-      await logActivity(req.user._id, 'TRIP_CREATED', `Created trip ${trip.tripNumber} (${startLocation} -> ${endLocation}). Allocated vehicle ${selectedVeh.vehicleNumber} and driver ${driverDoc.fullName}. Relocated to ${startLocation}.`);
-    } catch (logErr) {
-      console.warn('Activity logging failed:', logErr.message);
+    // F. Emit socket event and notification to assigned driver
+    const io = req.app.get('socketio') || req.app.locals?.io;
+    if (driver) {
+      await createAndEmitNotification({
+        io,
+        recipient: driver,
+        recipientRole: 'DRIVER',
+        type: 'trip_assigned',
+        title: `New Trip Assignment: #${tripNumber}`,
+        message: `You have been assigned trip #${tripNumber} (${startLocation} ➔ ${endLocation}). Please accept or reject this assignment in your app.`,
+        priority: 'high',
+        metadata: { tripId: trip._id, tripNumber }
+      });
+
+      if (io) {
+        io.to(`driver:${driver}`).emit('trip:assigned', trip);
+      }
     }
 
-    // F. Automatically generate unique invoice and save to database
+    // G. Automatically generate unique invoice and save to database
     const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
     const seq = String(count + 1).padStart(4, '0');
@@ -1046,6 +1058,30 @@ export const createTrip = async (req, res, next) => {
       console.error('Failed to generate toll transactions for new trip:', tollErr);
     }
 
+    // G. Create and emit notification for the assigned Driver
+    try {
+      const io = req.app.get('socketio') || req.app.locals?.io;
+      await createAndEmitNotification({
+        io,
+        recipient: driver,
+        sender: req.user._id,
+        recipientRole: 'DRIVER',
+        senderRole: 'FLEET_MANAGER',
+        organization: driverDoc.organization || req.user.organization,
+        type: 'trip_assigned',
+        title: 'New Trip Assigned',
+        message: `You have been assigned a new trip: ${tripNumber} from ${startLocation} to ${endLocation}.`,
+        priority: 'high',
+        referenceId: trip._id,
+        referenceType: 'Trip'
+      });
+      if (driverDoc.fcmToken) {
+        console.log(`[FCM] Simulated push notification sent to FCM token ${driverDoc.fcmToken} for driver ${driverDoc.fullName}: "New Trip Assigned: Trip ${tripNumber}"`);
+      }
+    } catch (notifErr) {
+      console.error('Failed to send assignment notification to driver:', notifErr);
+    }
+
     await logActivity({
       title: 'Trip Dispatched',
       description: `Trip ${trip.tripNumber} dispatched using Vehicle ${trip.vehiclePlate || ''}.`,
@@ -1058,7 +1094,7 @@ export const createTrip = async (req, res, next) => {
       assignedManager: req.user._id
     });
 
-    return sendSuccess(res, 201, trip, 'Trip created and invoice generated successfully');
+    return sendSuccess(res, 201, trip, 'Trip created and assigned successfully');
   } catch (error) {
     if (error.code === 11000) {
       return sendError(res, 400, 'A trip with this trip number already exists');
@@ -1225,6 +1261,82 @@ export const updateTrip = async (req, res, next) => {
       });
     }
 
+    // Send notifications to the driver if changed or if status changed
+    try {
+      const ioInstance = req.app.get('socketio') || req.app.locals?.io;
+      
+      // If driver is changed
+      if (req.body.driver && String(req.body.driver) !== String(existingTrip.driver)) {
+        // Notify new driver
+        const newDriverDoc = await Driver.findById(req.body.driver);
+        if (newDriverDoc) {
+          await createAndEmitNotification({
+            io: ioInstance,
+            recipient: req.body.driver,
+            sender: req.user._id,
+            recipientRole: 'DRIVER',
+            senderRole: 'FLEET_MANAGER',
+            organization: newDriverDoc.organization || req.user.organization,
+            type: 'trip_assigned',
+            title: 'New Trip Assigned',
+            message: `You have been assigned a new trip: ${finalTrip.tripNumber} from ${finalTrip.startLocation} to ${finalTrip.endLocation}.`,
+            priority: 'high',
+            referenceId: finalTrip._id,
+            referenceType: 'Trip'
+          });
+          if (newDriverDoc.fcmToken) {
+            console.log(`[FCM] Simulated push notification sent to FCM token ${newDriverDoc.fcmToken}: "New Trip Assigned"`);
+          }
+        }
+
+        // Notify old driver
+        const oldDriverDoc = await Driver.findById(existingTrip.driver);
+        if (oldDriverDoc) {
+          await createAndEmitNotification({
+            io: ioInstance,
+            recipient: existingTrip.driver,
+            sender: req.user._id,
+            recipientRole: 'DRIVER',
+            senderRole: 'FLEET_MANAGER',
+            organization: oldDriverDoc.organization || req.user.organization,
+            type: 'trip_cancelled',
+            title: 'Trip Unassigned',
+            message: `You have been unassigned from trip ${finalTrip.tripNumber}.`,
+            priority: 'high',
+            referenceId: finalTrip._id,
+            referenceType: 'Trip'
+          });
+          if (oldDriverDoc.fcmToken) {
+            console.log(`[FCM] Simulated push notification sent to FCM token ${oldDriverDoc.fcmToken}: "Trip Unassigned"`);
+          }
+        }
+      } else if (newStatus && newStatus !== existingTrip.status && finalTrip.driver) {
+        // Status changed on existing driver
+        const currentDriverDoc = await Driver.findById(finalTrip.driver);
+        if (currentDriverDoc) {
+          await createAndEmitNotification({
+            io: ioInstance,
+            recipient: finalTrip.driver,
+            sender: req.user._id,
+            recipientRole: 'DRIVER',
+            senderRole: 'FLEET_MANAGER',
+            organization: currentDriverDoc.organization || req.user.organization,
+            type: 'trip_status_changed',
+            title: `Trip Status Updated`,
+            message: `Your trip ${finalTrip.tripNumber} status is now ${newStatus}.`,
+            priority: 'normal',
+            referenceId: finalTrip._id,
+            referenceType: 'Trip'
+          });
+          if (currentDriverDoc.fcmToken) {
+            console.log(`[FCM] Simulated push notification sent to FCM token ${currentDriverDoc.fcmToken}: "Trip Status Updated"`);
+          }
+        }
+      }
+    } catch (notifErr) {
+      console.error('Failed to send status update notification:', notifErr);
+    }
+
     // Emit real-time status update to manager room
     const io = req.app.get('socketio') || (req.app.locals ? req.app.locals.io : null);
     if (io) {
@@ -1299,7 +1411,14 @@ export const listFuelRecords = async (req, res, next) => {
       filter.vehicle = req.query.vehicle;
     }
     const records = await getFuelRecords(filter);
-    return sendSuccess(res, 200, records, 'Fuel records fetched');
+    const formatted = records.map(r => {
+      const obj = r.toObject ? r.toObject() : r;
+      const img = obj.billUrl || obj.receiptImage || '';
+      obj.billUrl = img;
+      obj.receiptImage = img;
+      return obj;
+    });
+    return sendSuccess(res, 200, formatted, 'Fuel records fetched');
   } catch (error) {
     next(error);
   }
@@ -2322,31 +2441,81 @@ export const getInvoiceByTripId = async (req, res, next) => {
 
 export const getPODByTripId = async (req, res, next) => {
   try {
-    let pod = await ProofOfDelivery.findOne({ trip: req.params.tripId }).populate('driver');
+    const pod = await ProofOfDelivery.findOne({ trip: req.params.tripId }).populate('driver');
     if (!pod) {
-      const trip = await Trip.findById(req.params.tripId);
-      if (trip) {
-        pod = new ProofOfDelivery({
-          podNumber: `POD-${Date.now()}`,
-          trip: trip._id,
-          driver: trip.driver,
-          customerName: 'Acme Logistics',
-          receiverName: 'John Doe',
-          status: 'Pending',
-          deliveryDate: new Date(),
-          customerSignatureUrl: 'https://via.placeholder.com/300x100.png?text=Signature',
-          deliveryPhotoUrl: 'https://via.placeholder.com/300x300.png?text=Delivery+Photo',
-          podDocumentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-          uploadedBy: trip.driverName || 'Driver'
-        });
-        await pod.save();
-      } else {
-        return sendSuccess(res, 200, null, 'No POD uploaded yet');
-      }
+      return sendSuccess(res, 200, null, 'No POD uploaded yet');
     }
     return sendSuccess(res, 200, pod, 'POD fetched successfully');
   } catch (error) {
     next(error);
+  }
+};
+
+const checkAndCompleteTripIfApproved = async (tripId, req) => {
+  if (!tripId) return;
+  const trip = await Trip.findById(tripId);
+  if (!trip || trip.status === 'Completed') return;
+
+  const pod = await ProofOfDelivery.findOne({ trip: tripId });
+  const weighbridge = await WeighbridgeSlip.findOne({ trip: tripId });
+
+  const isPodApproved = pod && (pod.status === 'Approved' || pod.status === 'APPROVED');
+  const isWeighbridgeApproved = weighbridge && (weighbridge.status === 'Approved' || weighbridge.status === 'APPROVED');
+
+  if (isPodApproved && isWeighbridgeApproved) {
+    trip.status = 'Completed';
+    trip.podStatus = 'Approved';
+    trip.weighbridgeStatus = 'Approved';
+    trip.actualEndTime = new Date();
+    await trip.save();
+
+    if (trip.driver) {
+      await Driver.findByIdAndUpdate(trip.driver, {
+        driverStatus: 'AVAILABLE',
+        assignedVehicle: 'Unassigned',
+        driverLocation: trip.endLocation,
+        currentLocation: trip.endLocation
+      });
+    }
+    if (trip.vehicle) {
+      await Vehicle.findByIdAndUpdate(trip.vehicle, {
+        currentStatus: 'Available',
+        assignedDriver: null,
+        branch: trip.endLocation,
+        currentLocation: trip.endLocation
+      });
+    }
+
+    const io = req.io || req.app?.get('socketio') || req.app?.locals?.io;
+    if (io) {
+      io.to(`manager:${trip.assignedManager}`).emit('trip:status-updated', {
+        tripId: trip._id,
+        status: 'Completed'
+      });
+      if (trip.driver) {
+        io.to(`driver:${trip.driver}`).emit('trip:completed', {
+          tripId: trip._id,
+          status: 'Completed'
+        });
+        io.to(`driver:${trip.driver}`).emit('trip:status-updated', {
+          tripId: trip._id,
+          status: 'Completed'
+        });
+      }
+    }
+
+    if (trip.driver) {
+      await createAndEmitNotification({
+        io,
+        recipient: trip.driver,
+        recipientRole: 'DRIVER',
+        type: 'trip_completed',
+        title: `Trip Completed: #${trip.tripNumber}`,
+        message: `Your trip #${trip.tripNumber} to ${trip.endLocation} has been approved and completed!`,
+        priority: 'high',
+        metadata: { tripId: trip._id }
+      });
+    }
   }
 };
 
@@ -2364,6 +2533,47 @@ export const updatePODStatus = async (req, res, next) => {
       pod.rejectionReason = '';
     }
     await pod.save();
+
+    if (pod.trip) {
+      const newPodStatus = status === 'Rejected' ? 'Rejected' : status;
+      const updatedTrip = await Trip.findByIdAndUpdate(
+        pod.trip,
+        {
+          podStatus: newPodStatus,
+          status: status === 'Rejected' ? 'Documents Rejected' : 'DOCUMENTS_SUBMITTED'
+        },
+        { new: true }
+      );
+
+      const io = req.io || req.app?.get('socketio') || req.app?.locals?.io;
+      if (status === 'Rejected' && updatedTrip?.driver) {
+        await createAndEmitNotification({
+          io,
+          recipient: updatedTrip.driver,
+          recipientRole: 'DRIVER',
+          type: 'pod_rejected',
+          title: 'Proof of Delivery Rejected',
+          message: `Your POD document was rejected by manager. Reason: ${pod.rejectionReason}`,
+          priority: 'high',
+          metadata: { tripId: pod.trip, rejectionReason: pod.rejectionReason }
+        });
+        if (io) {
+          io.to(`driver:${updatedTrip.driver}`).emit('pod:rejected', {
+            tripId: pod.trip,
+            rejectionReason: pod.rejectionReason,
+            documentType: 'POD'
+          });
+          io.to(`driver:${updatedTrip.driver}`).emit('trip:status-updated', {
+            tripId: pod.trip,
+            status: 'Documents Rejected',
+            rejectionReason: pod.rejectionReason
+          });
+        }
+      } else if (status === 'Approved') {
+        await checkAndCompleteTripIfApproved(pod.trip, req);
+      }
+    }
+
     return sendSuccess(res, 200, pod, `POD ${status} successfully`);
   } catch (error) {
     next(error);
@@ -2372,32 +2582,17 @@ export const updatePODStatus = async (req, res, next) => {
 
 export const getWeighbridgeByTripId = async (req, res, next) => {
   try {
-    let slip = await WeighbridgeSlip.findOne({ trip: req.params.tripId }).populate('driver');
+    const slip = await WeighbridgeSlip.findOne({ trip: req.params.tripId }).populate('driver');
     if (!slip) {
-      const trip = await Trip.findById(req.params.tripId);
-      if (trip) {
-        slip = new WeighbridgeSlip({
-          slipNumber: `WB-${Date.now()}`,
-          trip: trip._id,
-          driver: trip.driver,
-          grossWeight: 25000,
-          tareWeight: 10000,
-          netWeight: 15000,
-          weighingDate: new Date(),
-          location: 'Industrial Hub Gate 1',
-          slipDocumentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-          status: 'Verified'
-        });
-        await slip.save();
-      } else {
-        return sendSuccess(res, 200, null, 'No Weighbridge slip found');
-      }
+      return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
     }
     return sendSuccess(res, 200, slip, 'Weighbridge slip fetched successfully');
   } catch (error) {
     next(error);
   }
 };
+
+export const getWeighbridgeSlipByTripId = getWeighbridgeByTripId;
 
 // Trip Milestone Review Controllers
 export const getPendingMilestone = async (req, res, next) => {
@@ -2633,37 +2828,6 @@ export const getEarnings = async (req, res, next) => {
     next(error);
   }
 };
-// ------------------------------------------------------------------
-// Weighbridge Slip Management
-// ------------------------------------------------------------------
-
-export const getWeighbridgeSlipByTripId = async (req, res, next) => {
-  try {
-    let slip = await WeighbridgeSlip.findOne({ trip: req.params.tripId });
-    if (!slip) {
-      const trip = await Trip.findById(req.params.tripId);
-      if (trip) {
-        slip = new WeighbridgeSlip({
-          trip: trip._id,
-          slipNumber: `WS-${Date.now().toString().slice(-6)}`,
-          grossWeight: 45000 + Math.floor(Math.random() * 5000),
-          tareWeight: 15000 + Math.floor(Math.random() * 2000),
-          netWeight: 30000 + Math.floor(Math.random() * 3000),
-          location: 'Highway Weighbridge Station A',
-          uploadedBy: trip.driverName || 'Driver',
-          status: 'Pending',
-          documentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
-        });
-        await slip.save();
-      } else {
-        return sendSuccess(res, 200, null, 'No Weighbridge Slip found for this trip');
-      }
-    }
-    return sendSuccess(res, 200, slip, 'Weighbridge Slip retrieved successfully');
-  } catch (error) {
-    next(error);
-  }
-};
 
 export const createVehicleComplaint = async (req, res, next) => {
   try {
@@ -2738,17 +2902,44 @@ export const createVehicleComplaint = async (req, res, next) => {
 export const listVehicleComplaints = async (req, res, next) => {
   try {
     const { tripId } = req.query;
-    const filter = {};
+    let filter = {};
+
     if (tripId) {
       filter.trip = tripId;
     } else {
       const managerId = req.user._id;
       const trips = await Trip.find({ assignedManager: managerId }, '_id');
       const tripIds = trips.map(t => t._id);
-      filter.trip = { $in: tripIds };
+
+      const drivers = await Driver.find({ assignedManager: managerId }, '_id');
+      const driverIds = drivers.map(d => d._id);
+
+      const vehicles = await Vehicle.find({ assignedManager: managerId }, '_id');
+      const vehicleIds = vehicles.map(v => v._id);
+
+      filter = {
+        $or: [
+          { trip: { $in: tripIds } },
+          { driver: { $in: driverIds } },
+          { vehicle: { $in: vehicleIds } }
+        ]
+      };
     }
 
-    const complaints = await VehicleComplaint.find(filter).populate('driver', 'fullName').sort({ createdAt: -1 });
+    let complaints = await VehicleComplaint.find(filter)
+      .populate('driver', 'fullName email phoneNumber')
+      .populate('vehicle', 'registrationNumber make model plateNumber')
+      .populate('trip', 'tripNumber origin destination')
+      .sort({ createdAt: -1 });
+
+    if (complaints.length === 0 && !tripId) {
+      complaints = await VehicleComplaint.find({})
+        .populate('driver', 'fullName email phoneNumber')
+        .populate('vehicle', 'registrationNumber make model plateNumber')
+        .populate('trip', 'tripNumber origin destination')
+        .sort({ createdAt: -1 });
+    }
+
     return sendSuccess(res, 200, complaints, 'Vehicle complaints retrieved successfully');
   } catch (error) {
     next(error);
@@ -2763,10 +2954,53 @@ export const updateWeighbridgeSlipStatus = async (req, res, next) => {
       return sendError(res, 404, 'Weighbridge Slip not found');
     }
     slip.status = status;
-    if (status === 'Rejected' && rejectionReason) {
-      slip.rejectionReason = rejectionReason;
+    if (status === 'Rejected') {
+      slip.rejectionReason = rejectionReason || 'No reason provided';
+    } else {
+      slip.rejectionReason = '';
     }
     await slip.save();
+
+    if (slip.trip) {
+      const newSlipStatus = status === 'Rejected' ? 'Rejected' : status;
+      const updatedTrip = await Trip.findByIdAndUpdate(
+        slip.trip,
+        {
+          weighbridgeStatus: newSlipStatus,
+          status: status === 'Rejected' ? 'Documents Rejected' : 'DOCUMENTS_SUBMITTED'
+        },
+        { new: true }
+      );
+
+      const io = req.io || req.app?.get('socketio') || req.app?.locals?.io;
+      if (status === 'Rejected' && updatedTrip?.driver) {
+        await createAndEmitNotification({
+          io,
+          recipient: updatedTrip.driver,
+          recipientRole: 'DRIVER',
+          type: 'weighbridge_rejected',
+          title: 'Weighbridge Slip Rejected',
+          message: `Your Weighbridge slip was rejected by manager. Reason: ${slip.rejectionReason}`,
+          priority: 'high',
+          metadata: { tripId: slip.trip, rejectionReason: slip.rejectionReason }
+        });
+        if (io) {
+          io.to(`driver:${updatedTrip.driver}`).emit('weighbridge:rejected', {
+            tripId: slip.trip,
+            rejectionReason: slip.rejectionReason,
+            documentType: 'Weighbridge'
+          });
+          io.to(`driver:${updatedTrip.driver}`).emit('trip:status-updated', {
+            tripId: slip.trip,
+            status: 'Documents Rejected',
+            rejectionReason: slip.rejectionReason
+          });
+        }
+      } else if (status === 'Approved') {
+        await checkAndCompleteTripIfApproved(slip.trip, req);
+      }
+    }
+
     return sendSuccess(res, 200, slip, `Weighbridge Slip ${status} successfully`);
   } catch (error) {
     next(error);
@@ -2776,24 +3010,127 @@ export const updateWeighbridgeSlipStatus = async (req, res, next) => {
 export const updateVehicleComplaint = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status, estimatedCost, actualCost, notes } = req.body;
+    const { status, estimatedCost, actualCost, notes, mechanicName, mechanicPhone, mechanicLocation } = req.body;
 
     const complaint = await VehicleComplaint.findById(id);
     if (!complaint) {
       return sendError(res, 404, 'Vehicle complaint not found');
     }
 
-    if (status !== undefined) {
+    // Handle Mechanic Assignment
+    if (mechanicName || status === 'Mechanic Assigned') {
+      complaint.assignedMechanic = {
+        name: mechanicName || complaint.assignedMechanic?.name || 'Assigned Mechanic',
+        phone: mechanicPhone || complaint.assignedMechanic?.phone || '',
+        location: mechanicLocation || complaint.assignedMechanic?.location || '',
+        assignedAt: new Date()
+      };
+      complaint.status = 'Mechanic Assigned';
+      complaint.repairTimeline.push({
+        status: 'Mechanic Assigned',
+        updatedBy: `Manager (${req.user?.name || 'Fleet Manager'})`,
+        updatedAt: new Date(),
+        notes: `Assigned Mechanic: ${mechanicName || 'Offline Mechanic'} (${mechanicPhone || 'N/A'}, ${mechanicLocation || 'N/A'})`
+      });
+
+      // Send notification to Driver
+      if (complaint.driver) {
+        try {
+          await createAndEmitNotification({
+            io: req.io,
+            recipient: complaint.driver,
+            recipientRole: 'DRIVER',
+            title: `Mechanic Assigned: ${complaint.ticketId}`,
+            message: `Manager assigned Mechanic ${mechanicName || 'Offline Mechanic'} (${mechanicPhone || 'Contact Manager'}) at ${mechanicLocation || 'Nearest Service Spot'}.`,
+            type: 'alert',
+            priority: 'normal',
+            metadata: {
+              ticketId: complaint.ticketId,
+              complaintId: complaint._id,
+              status: 'Mechanic Assigned',
+              mechanicName: mechanicName || 'Offline Mechanic',
+              mechanicPhone: mechanicPhone || ''
+            }
+          });
+        } catch (notifErr) {
+          console.warn('Failed to send mechanic assigned notification to driver:', notifErr.message);
+        }
+      }
+    } else if (status !== undefined) {
       complaint.status = status;
+      complaint.repairTimeline.push({
+        status,
+        updatedBy: `Manager (${req.user?.name || 'Fleet Manager'})`,
+        updatedAt: new Date(),
+        notes: notes || `Manager updated status to ${status}`
+      });
+
       if (status === 'Resolved' || status === 'Closed') {
         complaint.completionDate = new Date();
+
+        // 1. Auto Vehicle Status Transition: Maintenance -> Active
+        try {
+          let vehicleIdToUpdate = complaint.vehicle;
+          if (!vehicleIdToUpdate && complaint.vehiclePlate) {
+            const vDoc = await Vehicle.findOne({
+              $or: [
+                { registrationNumber: complaint.vehiclePlate.trim() },
+                { plateNumber: complaint.vehiclePlate.trim() },
+                { vehicleNumber: complaint.vehiclePlate.trim() }
+              ]
+            });
+            if (vDoc) vehicleIdToUpdate = vDoc._id;
+          }
+
+          if (vehicleIdToUpdate) {
+            await Vehicle.findByIdAndUpdate(vehicleIdToUpdate, {
+              status: 'Active',
+              operationalStatus: 'Active'
+            });
+          }
+        } catch (vehErr) {
+          console.warn('Failed to auto-transition vehicle status to Active on ticket resolution:', vehErr.message);
+        }
+
+        // 2. Notify Driver: "Ticket Resolved - Continue Trip"
+        if (complaint.driver) {
+          try {
+            await createAndEmitNotification({
+              io: req.io,
+              recipient: complaint.driver,
+              recipientRole: 'DRIVER',
+              title: `Ticket Resolved - Continue Trip 🚚`,
+              message: `Vehicle complaint ${complaint.ticketId} is Resolved! Vehicle is now Active. You can continue your trip.`,
+              type: 'trip',
+              priority: 'high',
+              metadata: {
+                ticketId: complaint.ticketId,
+                complaintId: complaint._id,
+                status: 'Resolved',
+                canContinueTrip: 'Yes'
+              }
+            });
+          } catch (notifErr) {
+            console.warn('Failed to send ticket resolved notification to driver:', notifErr.message);
+          }
+        }
       } else {
         complaint.completionDate = undefined;
       }
     }
+
     if (estimatedCost !== undefined) complaint.estimatedCost = Number(estimatedCost) || 0;
     if (actualCost !== undefined) complaint.actualCost = Number(actualCost) || 0;
     if (notes !== undefined) complaint.notes = notes;
+
+    // Handle Category-Specific Dynamic Data
+    const { categoryData } = req.body;
+    if (categoryData && typeof categoryData === 'object') {
+      complaint.categoryData = {
+        ...complaint.categoryData?.toObject?.() || complaint.categoryData,
+        ...categoryData
+      };
+    }
 
     await complaint.save();
 
@@ -2802,7 +3139,7 @@ export const updateVehicleComplaint = async (req, res, next) => {
       title: 'Vehicle Complaint Updated',
       description: `Vehicle complaint ticket ${complaint.ticketId} updated to status ${complaint.status}.`,
       activityType: 'MAINTENANCE_LOGGED',
-      user: req.user,
+      user: req.user._id?.toString() || req.user.name || 'Fleet Manager',
       assignedManager: req.user._id
     });
 

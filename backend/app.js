@@ -11,6 +11,7 @@ import adminRoutes from './routes/admin.routes.js';
 import managerRoutes from './routes/manager.routes.js';
 import vehicleRoutes from './routes/vehicle.routes.js';
 import driverRoutes from './routes/driver.routes.js';
+import driverApiRoutes from './routes/driverApi.routes.js';
 import contactRoutes from './routes/contact.routes.js';
 import subscriptionRoutes from './routes/subscription.routes.js';
 import publicRoutes from './routes/public.routes.js';
@@ -25,7 +26,21 @@ const app = express();
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, Postman)
+      if (!origin) return callback(null, true);
+      // Allow localhost, 127.0.0.1, local network IPs, and configured CLIENT_URL
+      if (
+        origin === process.env.CLIENT_URL ||
+        origin.startsWith('http://localhost') ||
+        origin.startsWith('http://127.0.0.1') ||
+        origin.startsWith('http://10.') ||
+        origin.startsWith('http://192.168.')
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
     credentials: true,
   })
 );
@@ -44,6 +59,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/manager', managerRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/drivers', driverRoutes);
+app.use('/api/driver', driverApiRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/public', publicRoutes);

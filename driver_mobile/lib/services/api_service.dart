@@ -1,0 +1,329 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+class ApiService {
+  // Default fallback host: 10.86.34.1 (PC Wi-Fi IP) or 127.0.0.1 (via adb reverse) or 10.0.2.2 (Emulator)
+  static const String defaultLocalIp = '10.86.34.1';
+  static String? _cachedBaseUrl;
+
+  static Future<String> getBaseUrl() async {
+    if (_cachedBaseUrl != null && _cachedBaseUrl!.isNotEmpty) {
+      return _cachedBaseUrl!;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final savedUrl = prefs.getString('server_url');
+
+    if (savedUrl != null && savedUrl.isNotEmpty) {
+      _cachedBaseUrl = savedUrl;
+      return savedUrl;
+    }
+
+    // Default auto fallback
+    if (kIsWeb) {
+      _cachedBaseUrl = 'http://localhost:5000/api';
+    } else {
+      _cachedBaseUrl = 'http://$defaultLocalIp:5000/api';
+    }
+
+    return _cachedBaseUrl!;
+  }
+
+  static Future<void> setBaseUrl(String url) async {
+    var formattedUrl = url.trim();
+    if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+      formattedUrl = 'http://$formattedUrl';
+    }
+    if (!formattedUrl.endsWith('/api')) {
+      if (formattedUrl.endsWith('/')) {
+        formattedUrl = '${formattedUrl}api';
+      } else {
+        formattedUrl = '$formattedUrl/api';
+      }
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('server_url', formattedUrl);
+    _cachedBaseUrl = formattedUrl;
+  }
+
+  static Future<bool> testConnection(String targetUrl) async {
+    try {
+      var formattedUrl = targetUrl.trim();
+      if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+        formattedUrl = 'http://$formattedUrl';
+      }
+      final healthUri = Uri.parse('${formattedUrl.replaceAll('/api', '')}/health');
+      final response = await http.get(healthUri).timeout(const Duration(seconds: 4));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<Map<String, String>> _getHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
+
+  static Future<dynamic> get(String endpoint) async {
+    final baseUrl = await getBaseUrl();
+    final headers = await _getHeaders();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl$endpoint'), headers: headers).timeout(const Duration(seconds: 10));
+      return _processResponse(response);
+    } catch (e) {
+      // If primary IP fails and we haven't set custom URL, try 127.0.0.1 / localhost as fallback
+      if (_cachedBaseUrl == 'http://$defaultLocalIp:5000/api') {
+        try {
+          final fallbackUrl = 'http://127.0.0.1:5000/api';
+          final response = await http.get(Uri.parse('$fallbackUrl$endpoint'), headers: headers).timeout(const Duration(seconds: 5));
+          _cachedBaseUrl = fallbackUrl;
+          return _processResponse(response);
+        } catch (_) {}
+      }
+      rethrow;
+    }
+  }
+
+  static Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
+    final baseUrl = await getBaseUrl();
+    final headers = await _getHeaders();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: headers,
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 10));
+      return _processResponse(response);
+    } catch (e) {
+      // Fallback try for physical devices connected via ADB USB reverse
+      if (_cachedBaseUrl == 'http://$defaultLocalIp:5000/api') {
+        try {
+          final fallbackUrl = 'http://127.0.0.1:5000/api';
+          final response = await http.post(
+            Uri.parse('$fallbackUrl$endpoint'),
+            headers: headers,
+            body: jsonEncode(body),
+          ).timeout(const Duration(seconds: 5));
+          _cachedBaseUrl = fallbackUrl;
+          return _processResponse(response);
+        } catch (_) {}
+      }
+      rethrow;
+    }
+  }
+
+  static Future<dynamic> patch(String endpoint, Map<String, dynamic> body) async {
+    final baseUrl = await getBaseUrl();
+    final headers = await _getHeaders();
+    final response = await http.patch(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers,
+      body: jsonEncode(body),
+    ).timeout(const Duration(seconds: 10));
+    return _processResponse(response);
+  }
+
+  // Trip Flow API Helpers
+  static Future<dynamic> respondToTripAssignment(String tripId, String action) async {
+    return await patch('/driver/trips/$tripId/respond', {'action': action});
+  }
+
+  static Future<dynamic> updateTripStatus(String tripId, String status) async {
+    return await patch('/driver/trips/$tripId/status', {'status': status});
+  }
+
+  static Future<dynamic> toggleCustomerLocation(String tripId, {bool reached = true}) async {
+    return await patch('/driver/trips/$tripId/customer-location', {'reached': reached});
+  }
+
+  static Future<dynamic> getCurrentTrip() async {
+    return await get('/driver/trips/current');
+  }
+
+  static Future<dynamic> getAssignedVehicle() async {
+    return await get('/driver/vehicle');
+  }
+
+  static Future<dynamic> getDriverMaintenance() async {
+    return await get('/driver/maintenance');
+  }
+
+  static Future<dynamic> getDriverFuelRecords() async {
+    return await get('/driver/fuel');
+  }
+
+  static Future<dynamic> createFuelEntry({
+    required String fuelStation,
+    required double amount,
+    required double liters,
+    dynamic imageFile,
+    String? imageName,
+  }) async {
+    final baseUrl = await getBaseUrl();
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    final uri = Uri.parse('$baseUrl/driver/fuel');
+
+    if (imageFile != null) {
+      final request = http.MultipartRequest('POST', uri);
+      if (token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.fields['fuelStation'] = fuelStation;
+      request.fields['amount'] = amount.toString();
+      request.fields['liters'] = liters.toString();
+
+      if (imageFile is String && (imageFile.startsWith('http') || imageFile.startsWith('data:'))) {
+        request.fields['receiptImage'] = imageFile;
+      } else if (imageFile is List<int>) {
+        request.files.add(http.MultipartFile.fromBytes(
+          'file',
+          imageFile,
+          filename: imageName ?? 'receipt.jpg',
+        ));
+      } else {
+        request.files.add(await http.MultipartFile.fromPath(
+          'file',
+          imageFile.toString(),
+        ));
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      return _processResponse(response);
+    } else {
+      return await post('/driver/fuel', {
+        'fuelStation': fuelStation,
+        'amount': amount,
+        'liters': liters,
+      });
+    }
+  }
+
+  static Future<dynamic> getDriverDashboard() async {
+    return await get('/driver/dashboard');
+  }
+
+  static Future<dynamic> getDriverNotifications() async {
+    return await get('/driver/notifications');
+  }
+
+  static Future<dynamic> uploadProofOfDelivery({
+    required String tripId,
+    String? customerName,
+    String? receiverName,
+    String? customerSignatureUrl,
+    String? deliveryPhotoUrl,
+    String? podDocumentUrl,
+  }) async {
+    final body = <String, dynamic>{'tripId': tripId};
+    if (customerName != null) body['customerName'] = customerName;
+    if (receiverName != null) body['receiverName'] = receiverName;
+    if (customerSignatureUrl != null) body['customerSignatureUrl'] = customerSignatureUrl;
+    if (deliveryPhotoUrl != null) body['deliveryPhotoUrl'] = deliveryPhotoUrl;
+    if (podDocumentUrl != null) body['podDocumentUrl'] = podDocumentUrl;
+    return await post('/driver/pod', body);
+  }
+
+  static Future<dynamic> uploadWeighbridgeSlip({
+    required String tripId,
+    double? grossWeight,
+    double? tareWeight,
+    double? netWeight,
+    String? location,
+    String? documentUrl,
+  }) async {
+    final body = <String, dynamic>{'tripId': tripId};
+    if (grossWeight != null) body['grossWeight'] = grossWeight;
+    if (tareWeight != null) body['tareWeight'] = tareWeight;
+    if (netWeight != null) body['netWeight'] = netWeight;
+    if (location != null) body['location'] = location;
+    if (documentUrl != null) body['documentUrl'] = documentUrl;
+    return await post('/driver/weighbridge', body);
+  }
+
+  static Future<dynamic> createDriverTicket({
+    required String category,
+    required String priority,
+    required String subject,
+    required String description,
+    dynamic imageFile,
+    String? imageName,
+  }) async {
+    final baseUrl = await getBaseUrl();
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    final uri = Uri.parse('$baseUrl/driver/tickets');
+
+    if (imageFile != null) {
+      final request = http.MultipartRequest('POST', uri);
+      if (token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.fields['category'] = category;
+      request.fields['issueType'] = category;
+      request.fields['severity'] = priority;
+      request.fields['subject'] = subject;
+      request.fields['description'] = description;
+
+      if (imageFile is String && (imageFile.startsWith('http') || imageFile.startsWith('data:'))) {
+        request.fields['imageUrl'] = imageFile;
+      } else if (imageFile is List<int>) {
+        request.files.add(http.MultipartFile.fromBytes(
+          'file',
+          imageFile,
+          filename: imageName ?? 'ticket_photo.jpg',
+        ));
+      } else {
+        request.files.add(await http.MultipartFile.fromPath(
+          'file',
+          imageFile.toString(),
+        ));
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      return _processResponse(response);
+    } else {
+      return await post('/driver/tickets', {
+        'category': category,
+        'issueType': category,
+        'severity': priority,
+        'subject': subject,
+        'description': description,
+      });
+    }
+  }
+
+  static Future<dynamic> getDriverTickets() async {
+    return await get('/driver/tickets');
+  }
+
+  static Future<dynamic> getDriverTicketById(String id) async {
+    return await get('/driver/tickets/$id');
+  }
+
+  static Future<dynamic> updateDriverTicketStatus(String id, String status, {String? notes}) async {
+    final Map<String, dynamic> body = {'status': status};
+    if (notes != null) body['notes'] = notes;
+    return await patch('/driver/tickets/$id/status', body);
+  }
+
+  static dynamic _processResponse(http.Response response) {
+    final body = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return body;
+    } else {
+      throw Exception(body['message'] ?? 'API Request Failed (${response.statusCode})');
+    }
+  }
+}

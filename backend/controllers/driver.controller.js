@@ -432,59 +432,14 @@ export const createDriver = async (req, res, next) => {
       return sendError(res, 400, 'Name, email, mobile number, and license number are required');
     }
 
-    // 1. Check duplicate email
-    console.log(`Checking duplicate email...`);
-    const existingEmail = await Driver.findOne({ email: finalEmail });
-    if (existingEmail) {
-      console.log(`Duplicate Email Found\nEmail:\n${finalEmail}\nDriver creation aborted.`);
-      return sendError(res, 400, `Duplicate Email Found: A driver with email '${finalEmail}' already exists.`);
-    }
-    console.log(`✓ Email Available\n`);
+    const rawPassword = req.body.password || 'driver123';
 
-    // 2. Check duplicate mobile
-    console.log(`Checking duplicate mobile...`);
-    const existingMobile = await Driver.findOne({
-      $or: [{ phoneNumber: finalPhone }, { mobile: finalPhone }]
-    });
-    if (existingMobile) {
-      console.log(`Duplicate Mobile Number Found\nDriver creation aborted.`);
-      return sendError(res, 400, `Duplicate Mobile Number Found: A driver with mobile number '${finalPhone}' already exists.`);
-    }
-    console.log(`✓ Mobile Available\n`);
-
-    // 3. Check duplicate license
-    console.log(`Checking duplicate license...`);
-    const existingLicense = await Driver.findOne({ licenseNumber: finalLicense });
-    if (existingLicense) {
-      console.log(`Duplicate License Number Found\nDriver creation aborted.`);
-      return sendError(res, 400, `Duplicate License Number Found: A driver with license number '${finalLicense}' already exists.`);
-    }
-    console.log(`✓ License Available\n`);
-
-    // 4. Generate Employee ID
-    console.log(`Generating Employee ID...`);
-    const generatedEmpId = await generateEmployeeId();
-    console.log(`✓ ${generatedEmpId}\n`);
-
-    // 5. Generate Temporary Password
-    console.log(`Generating Temporary Password...`);
-    const temporaryPassword = generateTempPassword();
-    console.log(`✓ Generated Successfully\n`);
-
-    // 6. Hash Password
-    console.log(`Hashing Password...`);
-    const hashedPassword = await hashPassword(temporaryPassword);
-    console.log(`✓ Password Hashed Successfully\n`);
-
-    console.log(`Saving Driver...`);
-    const driver = await Driver.create({
-      firstName: firstName || '',
-      lastName: lastName || '',
-      fullName: computedFullName,
-      email: finalEmail,
-      phoneNumber: finalPhone,
-      mobile: finalPhone,
-      licenseNumber: finalLicense,
+    const driver = await createDriverRecord({
+      fullName,
+      email,
+      phoneNumber,
+      licenseNumber,
+      password: rawPassword,
       licenseType: licenseType || 'HMV',
       licenseExpiry: licenseExpiry ? new Date(licenseExpiry) : undefined,
       assignedVehicle: assignedVehicle || 'Unassigned',
@@ -534,6 +489,17 @@ export const createDriver = async (req, res, next) => {
         mustChangePassword: driver.mustChangePassword
       }
     });
+
+    console.log(`\n==================================================`);
+    console.log(`🔑 NEW DRIVER CREATED`);
+    console.log(`👤 Name:     ${driver.fullName}`);
+    console.log(`📧 Email:    ${driver.email}`);
+    console.log(`🔑 Password: ${rawPassword}`);
+    console.log(`📱 Phone:    ${driver.phoneNumber}`);
+    console.log(`🆔 Emp ID:   ${driver.employeeId || driver._id}`);
+    console.log(`==================================================\n`);
+
+    return sendSuccess(res, 201, driver, 'Driver created successfully');
   } catch (error) {
     console.error(`Driver Creation Failed:`, error);
     if (error.code === 11000) {

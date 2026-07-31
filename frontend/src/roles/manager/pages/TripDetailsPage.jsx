@@ -576,6 +576,7 @@ export default function TripDetailsPage() {
       const updatedPod = response.data?.data || response.data;
       setPod(updatedPod);
       toast.success("POD Approved successfully");
+      await fetchTripAndInvoice();
     } catch (error) {
       toast.error("Failed to approve POD");
     }
@@ -593,6 +594,7 @@ export default function TripDetailsPage() {
       setShowRejectModal(false);
       setRejectReason("");
       toast.success("POD Rejected successfully");
+      await fetchTripAndInvoice();
     } catch (error) {
       toast.error("Failed to reject POD");
     }
@@ -605,6 +607,7 @@ export default function TripDetailsPage() {
       const updatedData = response.data?.data || response.data;
       setWeighbridge(updatedData);
       toast.success("Weighbridge Slip Approved");
+      await fetchTripAndInvoice();
     } catch (error) {
       toast.error("Failed to approve Weighbridge Slip");
     }
@@ -1514,17 +1517,57 @@ export default function TripDetailsPage() {
             <div className="space-y-3 pt-4 border-t border-gray-100">
               <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Proof of Delivery (POD)</h5>
               {!pod ? (
-                <p className="text-xs text-gray-500 font-medium italic">No Proof of Delivery uploaded yet.</p>
+                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 font-medium">Status</span>
+                    <span className="font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider bg-gray-100 text-gray-500 border border-gray-200">
+                      🔴 NOT UPLOADED
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 mt-2">
+                    <button
+                      type="button"
+                      disabled
+                      className="px-2.5 py-2 bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 flex items-center justify-center gap-1 cursor-not-allowed col-span-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-2.5 py-2 bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 flex items-center justify-center gap-1 cursor-not-allowed col-span-1"
+                    >
+                      Download
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-2">
+                    <button
+                      type="button"
+                      disabled
+                      className="px-2.5 py-2 bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 cursor-not-allowed"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-2.5 py-2 bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 cursor-not-allowed"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl space-y-3 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 font-medium">Status</span>
-                    <span className={`font-bold px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider ${
-                      pod.status === "Approved" ? "bg-emerald-50 text-emerald-700" :
-                      pod.status === "Rejected" ? "bg-red-50 text-red-600" :
+                    <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
+                      pod.status === "Approved" || pod.status === "APPROVED" ? "bg-emerald-50 text-emerald-700" :
+                      pod.status === "Rejected" || pod.status === "REJECTED" ? "bg-red-50 text-red-600" :
                       "bg-amber-50 text-[#B45A0A]"
                     }`}>
-                      {pod.status === "Approved" ? "🟢 Approved" : pod.status === "Rejected" ? "🔴 Rejected" : "🟡 Pending"}
+                      {pod.status === "Approved" || pod.status === "APPROVED" ? "🟢 Approved" : pod.status === "Rejected" || pod.status === "REJECTED" ? "🔴 Rejected" : "🟡 PENDING"}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -1543,14 +1586,37 @@ export default function TripDetailsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (pod.documentUrl) window.open(pod.documentUrl, "_blank");
-                        else toast.error("No document file available");
+                        if (pod.podDocumentUrl || pod.deliveryPhotoUrl) window.open(pod.podDocumentUrl || pod.deliveryPhotoUrl, "_blank");
+                        else toast.error("No document available for download");
                       }}
                       className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       Download File
                     </button>
                   </div>
+                  {(pod.status === 'Pending' || pod.status === 'PENDING' || pod.status === 'Uploaded') && (
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={handlePODApprove}
+                        className="px-2.5 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-[10px] font-bold text-emerald-700 transition-colors cursor-pointer"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowRejectModal(true)}
+                        className="px-2.5 py-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-[10px] font-bold text-red-600 transition-colors cursor-pointer"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  )}
+                  {(pod.status === 'Rejected' || pod.status === 'REJECTED') && pod.rejectionReason && (
+                    <div className="mt-2 p-2 bg-red-50 text-red-600 text-[10px] rounded-lg border border-red-100">
+                      <strong>Reason:</strong> {pod.rejectionReason}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1559,17 +1625,57 @@ export default function TripDetailsPage() {
             <div className="space-y-3 pt-4 border-t border-gray-100">
               <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Weighbridge Slip</h5>
               {!weighbridge ? (
-                <p className="text-xs text-gray-500 font-medium italic">No Weighbridge Slip uploaded yet.</p>
+                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 font-medium">Status</span>
+                    <span className="font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider bg-gray-100 text-gray-500 border border-gray-200">
+                      🔴 NOT UPLOADED
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 mt-2">
+                    <button
+                      type="button"
+                      disabled
+                      className="px-2.5 py-2 bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 flex items-center justify-center gap-1 cursor-not-allowed col-span-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-2.5 py-2 bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 flex items-center justify-center gap-1 cursor-not-allowed col-span-1"
+                    >
+                      Download
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-2">
+                    <button
+                      type="button"
+                      disabled
+                      className="px-2.5 py-2 bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 cursor-not-allowed"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-2.5 py-2 bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 cursor-not-allowed"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl space-y-3 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 font-medium">Status</span>
-                    <span className={`font-bold px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider ${
-                      weighbridge.status === "Approved" ? "bg-emerald-50 text-emerald-700" :
-                      weighbridge.status === "Rejected" ? "bg-red-50 text-red-600" :
+                    <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
+                      weighbridge.status === "Approved" || weighbridge.status === "APPROVED" ? "bg-emerald-50 text-emerald-700" :
+                      weighbridge.status === "Rejected" || weighbridge.status === "REJECTED" ? "bg-red-50 text-red-600" :
                       "bg-amber-50 text-[#B45A0A]"
                     }`}>
-                      {weighbridge.status === "Approved" ? "🟢 Approved" : weighbridge.status === "Rejected" ? "🔴 Rejected" : "🟡 Pending"}
+                      {weighbridge.status === "Approved" || weighbridge.status === "APPROVED" ? "🟢 Approved" : weighbridge.status === "Rejected" || weighbridge.status === "REJECTED" ? "🔴 Rejected" : "🟡 PENDING"}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -1596,6 +1702,29 @@ export default function TripDetailsPage() {
                       Download File
                     </button>
                   </div>
+                  {(weighbridge.status === 'Pending' || weighbridge.status === 'PENDING' || weighbridge.status === 'Uploaded') && (
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleWeighbridgeApprove}
+                        className="px-2.5 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-[10px] font-bold text-emerald-700 transition-colors cursor-pointer"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowWeighbridgeRejectModal(true)}
+                        className="px-2.5 py-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-[10px] font-bold text-red-600 transition-colors cursor-pointer"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  )}
+                  {(weighbridge.status === 'Rejected' || weighbridge.status === 'REJECTED') && weighbridge.rejectionReason && (
+                    <div className="mt-2 p-2 bg-red-50 text-red-600 text-[10px] rounded-lg border border-red-100">
+                      <strong>Reason:</strong> {weighbridge.rejectionReason}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

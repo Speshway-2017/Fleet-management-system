@@ -57,10 +57,33 @@ const driverSchema = new mongoose.Schema(
     medicalFitnessStatus: { type: String, default: 'Fit' },
     tripsCompleted: { type: Number, default: 0 },
     incidentCount: { type: Number, default: 0 },
+    password: { type: String, select: false },
+    resetPasswordOtp: { type: String },
+    resetPasswordExpires: { type: Date },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     branch: { type: String, default: 'Pune', trim: true },
     driverLocation: { type: String, default: '', trim: true },
     currentLocation: { type: String, default: '', trim: true },
+    twoFactorEnabled: { type: Boolean, default: false },
+    twoFactorMethod: { type: String, default: 'SMS' },
+    twoFactorPhone: { type: String, default: '' },
+    recoveryCodes: { type: [String], default: [] },
+    language: { type: String, default: 'English (US)' },
+    isDarkMode: { type: Boolean, default: false },
+    notificationPreferences: {
+      routeChanges: { type: Boolean, default: true },
+      trafficWarnings: { type: Boolean, default: true },
+      healthAlertes: { type: Boolean, default: true },
+      fuelWarnings: { type: Boolean, default: true },
+      emergencyAlerts: { type: Boolean, default: true },
+      tripUpdates: { type: Boolean, default: true },
+      sound: { type: Boolean, default: true },
+      vibration: { type: Boolean, default: true },
+      pushNotifications: { type: Boolean, default: true },
+      emailNotifications: { type: Boolean, default: false },
+      smsNotifications: { type: Boolean, default: true },
+    },
+    fcmToken: { type: String, default: '' },
   },
   { timestamps: true }
 );
@@ -79,6 +102,17 @@ driverSchema.post('init', function (doc) {
 });
 
 driverSchema.pre('save', async function (next) {
+  // Hash password if modified or newly added
+  if (this.isModified('password') && this.password) {
+    if (!this.password.startsWith('$2b$') && !this.password.startsWith('$2a$')) {
+      const { hashPassword } = await import('../utils/hashPassword.js');
+      this.password = await hashPassword(this.password);
+    }
+  } else if (!this.password && this.isNew) {
+    const { hashPassword } = await import('../utils/hashPassword.js');
+    this.password = await hashPassword('driver123');
+  }
+
   // Generate employeeId if not present
   if (!this.employeeId) {
     let unique = false;

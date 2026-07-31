@@ -19,6 +19,18 @@ const activityLogSchema = new mongoose.Schema({
   },
   activityType: {
     type: String,
+    enum: [
+      'VEHICLE_ADDED',
+      'VEHICLE_UPDATED',
+      'VEHICLE_DELETED',
+      'DRIVER_ASSIGNED',
+      'MAINTENANCE_COMPLETED',
+      'MAINTENANCE_LOGGED',
+      'FUEL_ENTRY_ADDED',
+      'DOCUMENT_UPLOADED',
+      'TRIP_DISPATCHED',
+      'TRIP_COMPLETED'
+    ],
     required: true,
   },
   relatedModule: {

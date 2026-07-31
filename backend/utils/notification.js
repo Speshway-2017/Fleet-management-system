@@ -57,9 +57,13 @@ export const createAndEmitNotification = async (params) => {
       io.to('role:SUPER_ADMIN').emit('notification:new', savedNotification.toObject());
     }
 
-    // Emit to specific manager room if recipient exists
+    // Emit to specific recipient room if recipient exists
     if (recipient && io) {
-      io.to(`manager:${recipient}`).emit('notification:new', savedNotification.toObject());
+      if (recipientRole === 'DRIVER') {
+        io.to(`driver:${recipient}`).emit('notification:new', savedNotification.toObject());
+      } else {
+        io.to(`manager:${recipient}`).emit('notification:new', savedNotification.toObject());
+      }
     }
 
     // Emit to organization room if organization exists
