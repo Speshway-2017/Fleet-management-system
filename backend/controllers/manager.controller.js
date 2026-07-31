@@ -972,10 +972,10 @@ export const createTrip = async (req, res, next) => {
       tripNumber,
       vehicle,
       driver,
-      driverName,
-      driverPhone,
-      vehicleName,
-      vehiclePlate,
+      driverName: driverName || driverDoc.fullName || '',
+      driverPhone: driverPhone || driverDoc.phoneNumber || '',
+      vehicleName: vehicleName || selectedVeh.vehicleName || '',
+      vehiclePlate: vehiclePlate || selectedVeh.vehicleNumber || '',
       startLocation,
       endLocation,
       pickupAddress: finalPickupAddress,
@@ -1018,19 +1018,32 @@ export const createTrip = async (req, res, next) => {
     // F. Emit socket event and notification to assigned driver
     const io = req.app.get('socketio') || req.app.locals?.io;
     if (driver) {
-      await createAndEmitNotification({
-        io,
-        recipient: driver,
-        recipientRole: 'DRIVER',
-        type: 'trip_assigned',
-        title: `New Trip Assignment: #${tripNumber}`,
-        message: `You have been assigned trip #${tripNumber} (${startLocation} ➔ ${endLocation}). Please accept or reject this assignment in your app.`,
-        priority: 'high',
-        metadata: { tripId: trip._id, tripNumber }
-      });
+      try {
+        await createAndEmitNotification({
+          io,
+          recipient: driver,
+          sender: req.user._id,
+          recipientRole: 'DRIVER',
+          senderRole: 'FLEET_MANAGER',
+          organization: driverDoc.organization || req.user.organization,
+          type: 'trip_assigned',
+          title: `New Trip Assignment: #${tripNumber}`,
+          message: `You have been assigned trip #${tripNumber} (${startLocation} ➔ ${endLocation}). Please accept or reject this assignment in your app.`,
+          priority: 'high',
+          referenceId: trip._id,
+          referenceType: 'Trip',
+          metadata: { tripId: trip._id, tripNumber }
+        });
 
-      if (io) {
-        io.to(`driver:${driver}`).emit('trip:assigned', trip);
+        if (io) {
+          io.to(`driver:${driver}`).emit('trip:assigned', trip);
+        }
+
+        if (driverDoc.fcmToken) {
+          console.log(`[FCM] Simulated push notification sent to FCM token ${driverDoc.fcmToken} for driver ${driverDoc.fullName}: "New Trip Assigned: Trip ${tripNumber}"`);
+        }
+      } catch (notifErr) {
+        console.error('Failed to send assignment notification to driver:', notifErr);
       }
     }
 
@@ -1056,30 +1069,6 @@ export const createTrip = async (req, res, next) => {
       await generateTollsForTrip(trip);
     } catch (tollErr) {
       console.error('Failed to generate toll transactions for new trip:', tollErr);
-    }
-
-    // G. Create and emit notification for the assigned Driver
-    try {
-      const io = req.app.get('socketio') || req.app.locals?.io;
-      await createAndEmitNotification({
-        io,
-        recipient: driver,
-        sender: req.user._id,
-        recipientRole: 'DRIVER',
-        senderRole: 'FLEET_MANAGER',
-        organization: driverDoc.organization || req.user.organization,
-        type: 'trip_assigned',
-        title: 'New Trip Assigned',
-        message: `You have been assigned a new trip: ${tripNumber} from ${startLocation} to ${endLocation}.`,
-        priority: 'high',
-        referenceId: trip._id,
-        referenceType: 'Trip'
-      });
-      if (driverDoc.fcmToken) {
-        console.log(`[FCM] Simulated push notification sent to FCM token ${driverDoc.fcmToken} for driver ${driverDoc.fullName}: "New Trip Assigned: Trip ${tripNumber}"`);
-      }
-    } catch (notifErr) {
-      console.error('Failed to send assignment notification to driver:', notifErr);
     }
 
     await logActivity({

@@ -179,6 +179,17 @@ class ApiService {
     return _processResponse(response);
   }
 
+  static Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
+    final baseUrl = await getBaseUrl();
+    final headers = await _getHeaders();
+    final response = await http.put(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers,
+      body: jsonEncode(body),
+    ).timeout(const Duration(seconds: 10));
+    return _processResponse(response);
+  }
+
   // Trip Flow API Helpers
   static Future<dynamic> respondToTripAssignment(
     String tripId,
@@ -202,6 +213,10 @@ class ApiService {
 
   static Future<dynamic> getCurrentTrip() async {
     return await get('/driver/trips/current');
+  }
+
+  static Future<dynamic> getTripDetails(String tripId) async {
+    return await get('/driver/trips/$tripId');
   }
 
   static Future<dynamic> getAssignedVehicle() async {

@@ -85,7 +85,16 @@ class AuthRepository {
     try {
       final response = await ApiService.get('/driver/profile');
       if (response['success'] == true && response['data'] != null) {
-        return DriverModel.fromJson(response['data']);
+        final profile = DriverModel.fromJson(response['data']);
+        
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('driver_id', profile.id);
+        if (profile.manager != null) {
+          await prefs.setString('manager_id', profile.manager!.id);
+        }
+        await prefs.setString('organization_id', profile.organization);
+        
+        return profile;
       }
     } catch (_) {
       rethrow;

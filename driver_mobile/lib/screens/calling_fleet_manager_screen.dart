@@ -1,13 +1,88 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 
 /// Driver Module - Calling Fleet Manager Screen
 /// 
 /// Replicates a professional Android calling interface adapted for an Indian
 /// Fleet Management application. Displays active call timer, Ramesh Kumar's profile,
 /// current assignment details, 2x3 circular call controls, and end call CTA.
-class CallingFleetManagerScreen extends StatelessWidget {
+class CallingFleetManagerScreen extends StatefulWidget {
   const CallingFleetManagerScreen({super.key});
+
+  @override
+  State<CallingFleetManagerScreen> createState() => _CallingFleetManagerScreenState();
+}
+
+class _CallingFleetManagerScreenState extends State<CallingFleetManagerScreen> {
+  String _managerName = 'G Sai Kiran';
+  String _managerPhone = '+91 98765 43210';
+  String _tripId = 'Unassigned';
+  String _vehiclePlate = 'Unassigned';
+  String _route = 'No Active Route';
+  
+  Timer? _timer;
+  int _secondsElapsed = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+    _startTimer();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _secondsElapsed++;
+        });
+      }
+    });
+  }
+
+  String _formatDuration(int totalSeconds) {
+    final int minutes = totalSeconds ~/ 60;
+    final int seconds = totalSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _loadData() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.driver != null) {
+      if (auth.driver!.manager != null) {
+        setState(() {
+          _managerName = auth.driver!.manager!.name.isNotEmpty ? auth.driver!.manager!.name : 'G Sai Kiran';
+          _managerPhone = auth.driver!.manager!.phone.isNotEmpty ? auth.driver!.manager!.phone : '+91 98765 43210';
+        });
+      }
+    }
+
+    try {
+      final res = await ApiService.getCurrentTrip();
+      if (res != null && res['success'] == true && res['data'] != null) {
+        final data = res['data'];
+        setState(() {
+          _tripId = data['tripNumber'] ?? 'Unassigned';
+          _vehiclePlate = data['vehiclePlate'] ?? 'Unassigned';
+          final start = data['startLocation'] ?? '';
+          final end = data['endLocation'] ?? '';
+          if (start.isNotEmpty && end.isNotEmpty) {
+            _route = '$start → $end';
+          }
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +170,7 @@ class CallingFleetManagerScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: Center(
+                    child: const Center(
                       child: Icon(
                         Icons.person_rounded,
                         size: 56,
@@ -121,7 +196,7 @@ class CallingFleetManagerScreen extends StatelessWidget {
               const SizedBox(height: 12.0),
 
               Text(
-                'Rajesh Sharma',
+                _managerName,
                 style: GoogleFonts.poppins(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
@@ -186,7 +261,7 @@ class CallingFleetManagerScreen extends StatelessWidget {
 
               // 2. Call Status Section
               Text(
-                '00:18',
+                _formatDuration(_secondsElapsed),
                 style: GoogleFonts.poppins(
                   fontSize: 34,
                   fontWeight: FontWeight.w800,
@@ -215,7 +290,7 @@ class CallingFleetManagerScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 8.0),
                   Text(
-                    '+91 98765 43210',
+                    _managerPhone,
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -275,7 +350,7 @@ class CallingFleetManagerScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 2.0),
                               Text(
-                                'TRP-9901',
+                                _tripId,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -300,7 +375,7 @@ class CallingFleetManagerScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 2.0),
                               Text(
-                                'MH12PQ8820',
+                                _vehiclePlate,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -325,7 +400,7 @@ class CallingFleetManagerScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 2.0),
                               Text(
-                                'Mumbai → Pune',
+                                _route,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,

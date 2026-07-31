@@ -4,6 +4,7 @@ import '../constants/app_spacing.dart';
 import '../constants/app_radius.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
+import '../utils/date_formatter.dart';
 import '../widgets/custom_card.dart';
 import 'active_trips_screen.dart';
 import 'upcoming_trips_screen.dart';
@@ -108,7 +109,7 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
     final pickup = _trip?['pickup'] ?? _trip?['startLocation'] ?? 'Central Logistics Hub, Berlin';
     final destination = _trip?['destination'] ?? _trip?['endLocation'] ?? 'Retail Center West, Potsdam';
     final vehicle = _trip?['vehicle'] ?? 'Medium Van - BT 990';
-    final departureTime = _trip?['departureTime'] ?? 'Tomorrow, 08:00 AM';
+    final departureTime = formatIndianDateTime(_trip?['departureTime'] ?? 'Tomorrow, 08:00 AM');
     final managerName = _trip?['manager'] != null ? _trip!['manager']['name'] : 'Sarah Jenkins';
 
     return Scaffold(

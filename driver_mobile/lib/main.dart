@@ -8,7 +8,6 @@ import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/main_navigation_screen.dart';
-import 'services/api_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/notification_provider.dart';
 
@@ -21,7 +20,6 @@ void main() async {
   } catch (e) {
     debugPrint('Firebase initialization failed: $e');
   }
-  ApiService.initialize();
   runApp(
     MultiProvider(
       providers: [

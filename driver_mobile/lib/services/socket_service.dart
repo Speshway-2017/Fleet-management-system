@@ -6,6 +6,7 @@ import 'api_service.dart';
 class SocketService {
   static io.Socket? _socket;
   static bool _isConnected = false;
+  static final Map<String, List<Function(dynamic)>> _listeners = {};
 
   static bool get isConnected => _isConnected;
 
@@ -54,6 +55,13 @@ class SocketService {
         _isConnected = false;
       });
 
+      // Register all queued event listeners on the newly created socket
+      _listeners.forEach((event, callbacks) {
+        for (final callback in callbacks) {
+          _socket!.on(event, (data) => callback(data));
+        }
+      });
+
       if (onTripStatusUpdated != null) {
         _socket!.on('trip:status-updated', (data) {
           onTripStatusUpdated(data);
@@ -71,6 +79,10 @@ class SocketService {
   }
 
   static void onEvent(String event, Function(dynamic data) callback) {
+    final list = _listeners.putIfAbsent(event, () => []);
+    if (!list.contains(callback)) {
+      list.add(callback);
+    }
     if (_socket != null) {
       _socket!.on(event, (data) => callback(data));
     }
@@ -87,5 +99,6 @@ class SocketService {
     _socket?.dispose();
     _socket = null;
     _isConnected = false;
+    _listeners.clear();
   }
 }

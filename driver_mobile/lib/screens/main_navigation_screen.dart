@@ -9,6 +9,7 @@ import 'notifications/notifications_screen.dart';
 import '../services/fcm_service.dart';
 
 import '../services/socket_service.dart';
+import '../utils/date_formatter.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   static final ValueNotifier<int> selectedTabNotifier = ValueNotifier<int>(0);
@@ -38,6 +39,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         final title = data['title'] ?? 'New Notification';
         final message = data['message'] ?? data['description'] ?? '';
         _showPopupNotification(title, message);
+
+        final newItem = NotificationItem(
+          id: data['_id'] ?? data['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          title: title,
+          description: message,
+          timestamp: formatNotificationTime(data['createdAt']),
+          category: getNotificationCategory(data['createdAt']),
+          isRead: false,
+          icon: data['type'] == 'trip_assigned' ? Icons.assignment_ind_outlined : Icons.notifications_none_outlined,
+        );
+
+        // Prepend to static notifications feed and update notifier
+        NotificationsScreen.notifications.insert(0, newItem);
+        NotificationsScreen.unreadCountNotifier.value = NotificationsScreen.notifications.where((n) => !n.isRead).length;
       }
     });
 
@@ -158,17 +173,23 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             color: isSelected ? AppColors.secondary : AppColors.textDisabled,
             size: 24,
           ),
-          Positioned(
-            right: -2,
-            top: -2,
-            child: Container(
-              width: 8,
-              height: 8,
-              decoration: const BoxDecoration(
-                color: AppColors.secondary, // Fleet Orange
-                shape: BoxShape.circle,
-              ),
-            ),
+          ValueListenableBuilder<int>(
+            valueListenable: NotificationsScreen.unreadCountNotifier,
+            builder: (context, count, _) {
+              if (count == 0) return const SizedBox.shrink();
+              return Positioned(
+                right: -2,
+                top: -2,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppColors.secondary, // Fleet Orange
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              );
+            },
           ),
         ],
       );

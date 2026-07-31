@@ -54,42 +54,6 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
   bool _isLoading = false;
   List<SupportTicketItem> _tickets = [];
 
-  static const List<SupportTicketItem> _defaultMockTickets = [
-    SupportTicketItem(
-      ticketId: 'TK-1024',
-      issueCategory: 'Engine Overheating',
-      vehicleNumber: 'Assigned Vehicle',
-      tripId: 'TRP-9901',
-      priority: 'High',
-      status: 'Open',
-      raisedDate: 'Oct 24, 2023',
-      statusBg: Color(0xFFFFEDD5),
-      statusText: Color(0xFFC2410C),
-    ),
-    SupportTicketItem(
-      ticketId: 'TK-1018',
-      issueCategory: 'Tyre Puncture',
-      vehicleNumber: 'MH12PQ8820',
-      tripId: 'TRP-9905',
-      priority: 'Medium',
-      status: 'In Progress',
-      raisedDate: 'Oct 22, 2023',
-      statusBg: Color(0xFFDBEAFE),
-      statusText: Color(0xFF1D4ED8),
-    ),
-    SupportTicketItem(
-      ticketId: 'TK-0998',
-      issueCategory: 'Brake Service Required',
-      vehicleNumber: 'KA02AB1456',
-      tripId: 'TRP-9882',
-      priority: 'High',
-      status: 'Resolved',
-      raisedDate: 'Oct 18, 2023',
-      statusBg: Color(0xFFDCFCE7),
-      statusText: Color(0xFF15803D),
-    ),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -107,87 +71,79 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
           ? res['data']
           : (res is List ? res : []);
 
-      if (data.isNotEmpty) {
-        final List<SupportTicketItem> fetched = data.map((t) {
-          final status = t['status'] ?? 'Open';
-          Color bg = const Color(0xFFFFEDD5);
-          Color textClr = const Color(0xFFC2410C);
+      final List<SupportTicketItem> fetched = data.map((t) {
+        final status = t['status'] ?? 'Open';
+        Color bg = const Color(0xFFFFEDD5);
+        Color textClr = const Color(0xFFC2410C);
 
-          if (status == 'Mechanic Assigned' || status == 'Mechanic Arrived') {
-            bg = const Color(0xFFE0F2FE);
-            textClr = const Color(0xFF0369A1);
-          } else if (status == 'Repair In Progress' || status == 'In Progress') {
-            bg = const Color(0xFFFEF3C7);
-            textClr = const Color(0xFFD97706);
-          } else if (status == 'Repair Completed') {
-            bg = const Color(0xFFDCFCE7);
-            textClr = const Color(0xFF16A34A);
-          } else if (status == 'Resolved') {
-            bg = const Color(0xFFDCFCE7);
-            textClr = const Color(0xFF15803D);
-          } else if (status == 'Closed') {
-            bg = const Color(0xFFF1F5F9);
-            textClr = const Color(0xFF475569);
-          } else if (status == 'Rejected') {
-            bg = const Color(0xFFFEE2E2);
-            textClr = const Color(0xFFDC2626);
-          }
+        if (status == 'Mechanic Assigned' || status == 'Mechanic Arrived') {
+          bg = const Color(0xFFE0F2FE);
+          textClr = const Color(0xFF0369A1);
+        } else if (status == 'Repair In Progress' || status == 'In Progress') {
+          bg = const Color(0xFFFEF3C7);
+          textClr = const Color(0xFFD97706);
+        } else if (status == 'Repair Completed') {
+          bg = const Color(0xFFDCFCE7);
+          textClr = const Color(0xFF16A34A);
+        } else if (status == 'Resolved') {
+          bg = const Color(0xFFDCFCE7);
+          textClr = const Color(0xFF15803D);
+        } else if (status == 'Closed') {
+          bg = const Color(0xFFF1F5F9);
+          textClr = const Color(0xFF475569);
+        } else if (status == 'Rejected') {
+          bg = const Color(0xFFFEE2E2);
+          textClr = const Color(0xFFDC2626);
+        }
 
-          final attachments = t['attachments'] as List?;
-          String? attachUrl;
-          if (attachments != null && attachments.isNotEmpty) {
-            attachUrl = attachments.first['url'];
-          }
+        final attachments = t['attachments'] as List?;
+        String? attachUrl;
+        if (attachments != null && attachments.isNotEmpty) {
+          attachUrl = attachments.first['url'];
+        }
 
-          final tripObj = t['trip'];
-          final vehicleObj = t['vehicle'];
-          final tripIdStr = tripObj != null && tripObj is Map
-              ? (tripObj['tripNumber'] ?? 'TRP-9901')
-              : 'TRP-9901';
-          final vehPlateStr = t['vehiclePlate'] ??
-              (vehicleObj != null && vehicleObj is Map
-                  ? (vehicleObj['registrationNumber'] ?? vehicleObj['plateNumber'] ?? 'Assigned Vehicle')
-                  : 'Assigned Vehicle');
+        final tripObj = t['trip'];
+        final vehicleObj = t['vehicle'];
+        final tripIdStr = tripObj != null && tripObj is Map
+            ? (tripObj['tripNumber'] ?? 'TRP-9901')
+            : 'TRP-9901';
+        final vehPlateStr = t['vehiclePlate'] ??
+            (vehicleObj != null && vehicleObj is Map
+                ? (vehicleObj['registrationNumber'] ?? vehicleObj['plateNumber'] ?? 'Assigned Vehicle')
+                : 'Assigned Vehicle');
 
-          final rawDate = t['reportedAt'] ?? t['createdAt'];
-          String formattedDate = 'Recently';
-          if (rawDate != null) {
-            try {
-              final d = DateTime.parse(rawDate.toString());
-              formattedDate = '${d.day}/${d.month}/${d.year}';
-            } catch (_) {}
-          }
+        final rawDate = t['reportedAt'] ?? t['createdAt'];
+        String formattedDate = 'Recently';
+        if (rawDate != null) {
+          try {
+            final d = DateTime.parse(rawDate.toString());
+            formattedDate = '${d.day}/${d.month}/${d.year}';
+          } catch (_) {}
+        }
 
-          return SupportTicketItem(
-            ticketId: t['ticketId'] ?? 'TKT-1000',
-            issueCategory: t['issueType'] ?? 'Vehicle Maintenance',
-            vehicleNumber: vehPlateStr,
-            tripId: tripIdStr,
-            priority: t['severity'] ?? 'Medium',
-            status: status,
-            raisedDate: formattedDate,
-            description: t['description'] ?? '',
-            attachmentUrl: attachUrl,
-            statusBg: bg,
-            statusText: textClr,
-          );
-        }).toList();
+        return SupportTicketItem(
+          ticketId: t['ticketId'] ?? 'TKT-1000',
+          issueCategory: t['issueType'] ?? 'Vehicle Maintenance',
+          vehicleNumber: vehPlateStr,
+          tripId: tripIdStr,
+          priority: t['severity'] ?? 'Medium',
+          status: status,
+          raisedDate: formattedDate,
+          description: t['description'] ?? '',
+          attachmentUrl: attachUrl,
+          statusBg: bg,
+          statusText: textClr,
+        );
+      }).toList();
 
-        setState(() {
-          _tickets = fetched;
-        });
-      } else {
-        setState(() {
-          _tickets = _defaultMockTickets;
-        });
-      }
+      setState(() {
+        _tickets = fetched;
+      });
     } catch (e) {
       debugPrint('Failed to load driver tickets from API: $e');
-      if (_tickets.isEmpty) {
-        setState(() {
-          _tickets = _defaultMockTickets;
-        });
-      }
+      setState(() {
+        _tickets = [];
+      });
     } finally {
       if (mounted) {
         setState(() {
@@ -198,7 +154,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
   }
 
   List<SupportTicketItem> get _filteredTickets {
-    final list = _tickets.isNotEmpty ? _tickets : _defaultMockTickets;
+    final list = _tickets;
     if (_selectedFilterIndex == 0) return list;
     final filterName = _filters[_selectedFilterIndex];
     return list.where((t) => t.status == filterName).toList();
@@ -420,16 +376,49 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                         child: CircularProgressIndicator(color: primaryOrange),
                       ),
                     )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _filteredTickets.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 14.0),
-                      itemBuilder: (context, index) {
-                        final ticket = _filteredTickets[index];
-                        return _buildTicketCard(context, ticket);
-                      },
-                    ),
+                  : _filteredTickets.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.support_agent_outlined,
+                                  size: 64,
+                                  color: textSecondary.withValues(alpha: 0.4),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No Tickets Found',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'You haven\'t raised any support requests yet.',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 13,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _filteredTickets.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 14.0),
+                          itemBuilder: (context, index) {
+                            final ticket = _filteredTickets[index];
+                            return _buildTicketCard(context, ticket);
+                          },
+                        ),
 
               const SizedBox(height: 80.0), // Padding for FAB space
             ],

@@ -1,5 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 import 'calling_fleet_manager_screen.dart';
 import 'message_fleet_manager_screen.dart';
 
@@ -8,8 +12,59 @@ import 'message_fleet_manager_screen.dart';
 /// Replicates the Fleet Management design language, color palette, typography,
 /// manager profile card, contact details, active assignment, action buttons,
 /// and recent activity timeline with authentic Indian fleet logistics data.
-class ContactFleetManagerScreen extends StatelessWidget {
+class ContactFleetManagerScreen extends StatefulWidget {
   const ContactFleetManagerScreen({super.key});
+
+  @override
+  State<ContactFleetManagerScreen> createState() => _ContactFleetManagerScreenState();
+}
+
+class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
+  String _managerName = 'G Sai Kiran';
+  String _managerPhone = '+91 98765 43210';
+  String _managerEmail = 'sai@fleet.com';
+  String _driverName = 'Meghana';
+  String _vehiclePlate = 'Unassigned';
+  String _tripId = 'Unassigned';
+  String _tripStatus = 'NO ACTIVE TRIP';
+  String _route = 'No Active Route';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.driver != null) {
+      _driverName = auth.driver!.fullName.isNotEmpty ? auth.driver!.fullName : 'Meghana';
+      if (auth.driver!.manager != null) {
+        setState(() {
+          _managerName = auth.driver!.manager!.name.isNotEmpty ? auth.driver!.manager!.name : 'G Sai Kiran';
+          _managerPhone = auth.driver!.manager!.phone.isNotEmpty ? auth.driver!.manager!.phone : '+91 98765 43210';
+          _managerEmail = auth.driver!.manager!.email.isNotEmpty ? auth.driver!.manager!.email : 'sai@fleet.com';
+        });
+      }
+    }
+
+    try {
+      final res = await ApiService.getCurrentTrip();
+      if (res != null && res['success'] == true && res['data'] != null) {
+        final data = res['data'];
+        setState(() {
+          _tripId = data['tripNumber'] ?? 'Unassigned';
+          _vehiclePlate = data['vehiclePlate'] ?? 'Unassigned';
+          _tripStatus = (data['status'] ?? 'Assigned').toString().toUpperCase();
+          final start = data['startLocation'] ?? '';
+          final end = data['endLocation'] ?? '';
+          if (start.isNotEmpty && end.isNotEmpty) {
+            _route = '$start → $end';
+          }
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +161,7 @@ class ContactFleetManagerScreen extends StatelessWidget {
                                 color: primaryDark.withAlpha(20),
                                 border: Border.all(color: borderGray, width: 2),
                               ),
-                              child: Center(
+                              child: const Center(
                                 child: Icon(
                                   Icons.person_rounded,
                                   size: 38,
@@ -135,7 +190,7 @@ class ContactFleetManagerScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Rajesh Sharma',
+                                _managerName,
                                 style: GoogleFonts.poppins(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
@@ -276,7 +331,7 @@ class ContactFleetManagerScreen extends StatelessWidget {
                     _buildContactItem(
                       icon: Icons.phone_outlined,
                       label: 'Phone',
-                      value: '+91 98765 43210',
+                      value: _managerPhone,
                       subValue: 'Office: +91 22 6123 4567',
                     ),
                     const Padding(
@@ -286,7 +341,7 @@ class ContactFleetManagerScreen extends StatelessWidget {
                     _buildContactItem(
                       icon: Icons.mail_outline_rounded,
                       label: 'Email',
-                      value: 'rajesh.sharma@fleetpro.in',
+                      value: _managerEmail,
                     ),
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 12.0),
@@ -358,11 +413,11 @@ class ContactFleetManagerScreen extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: successGreen,
+                            color: _tripStatus == 'NO ACTIVE TRIP' ? Colors.grey : successGreen,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            'IN PROGRESS',
+                            _tripStatus,
                             style: GoogleFonts.poppins(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -391,7 +446,7 @@ class ContactFleetManagerScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                'Satya Narayana',
+                                _driverName,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -414,7 +469,7 @@ class ContactFleetManagerScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                'MH-12-PQ-8820 (Tata Prima)',
+                                _vehiclePlate,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -442,7 +497,7 @@ class ContactFleetManagerScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                '#TRP-9901',
+                                _tripId,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -457,7 +512,7 @@ class ContactFleetManagerScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Location',
+                                'Route',
                                 style: GoogleFonts.nunito(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -465,7 +520,7 @@ class ContactFleetManagerScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                'NH-48 (Mumbai-Pune Expressway)',
+                                _route,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -476,26 +531,6 @@ class ContactFleetManagerScreen extends StatelessWidget {
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 12.0),
-                    const Divider(color: borderGray, height: 1.0),
-                    const SizedBox(height: 12.0),
-
-                    Text(
-                      'Next Destination',
-                      style: GoogleFonts.nunito(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: textSecondary,
-                      ),
-                    ),
-                    Text(
-                      'Bhiwandi Logistics Hub, Thane',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: textPrimary,
-                      ),
                     ),
                   ],
                 ),
@@ -579,7 +614,7 @@ class ContactFleetManagerScreen extends StatelessWidget {
                 isLast: false,
                 isOrangeDot: true,
                 title: 'Call Completed',
-                subtitle: 'Discussed route adjustments near Lonavala ghats.',
+                subtitle: 'Discussed route adjustments near Hub corridors.',
                 timestamp: 'Today',
               ),
               _buildTimelineItem(
@@ -587,7 +622,7 @@ class ContactFleetManagerScreen extends StatelessWidget {
                 isLast: false,
                 isOrangeDot: false,
                 title: 'Maintenance Talk',
-                subtitle: 'Confirmed tire pressure check at Khalapur Toll Plaza.',
+                subtitle: 'Confirmed tire pressure check at departure terminal.',
                 timestamp: 'Yesterday',
               ),
               _buildTimelineItem(
@@ -595,7 +630,7 @@ class ContactFleetManagerScreen extends StatelessWidget {
                 isLast: true,
                 isOrangeDot: false,
                 title: 'Trip Approval',
-                subtitle: 'Assignment #TRP-9901 authorized for JNPT Port terminal.',
+                subtitle: 'Assignment authorized for Logistics Hub terminal.',
                 timestamp: '2 days ago',
               ),
 

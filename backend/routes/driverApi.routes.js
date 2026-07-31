@@ -19,6 +19,7 @@ import {
   uploadProofOfDelivery,
   uploadWeighbridgeSlip,
   getDriverTrips,
+  getDriverTripById,
   getAssignedVehicle,
   getDriverMaintenance,
   createDriverFuelEntry,
@@ -46,6 +47,7 @@ router.get('/vehicle', getAssignedVehicle);
 router.get('/maintenance', getDriverMaintenance);
 router.get('/trips/current', getCurrentTrip);
 router.get('/trips', getDriverTrips);
+router.get('/trips/:id', getDriverTripById);
 router.get('/dashboard', getDriverDashboard);
 router.get('/notifications', getDriverNotifications);
 router.patch('/trips/:id/respond', respondToTripAssignment);
