@@ -1,9 +1,10 @@
-import 'ticket_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import 'raise_ticket_screen.dart';
-import '../widgets/external_contact_modal.dart';
+import 'ticket_details_screen.dart';
+import 'calling_fleet_manager_screen.dart';
+import 'message_fleet_manager_screen.dart';
 
 /// Representation of a Support Ticket data item.
 class SupportTicketItem {
@@ -35,7 +36,7 @@ class SupportTicketItem {
 }
 
 /// Driver Module - Support History Screen
-///
+/// 
 /// Replicates the Fleet Management design system with Dark Navy header (#101C2C),
 /// Orange primary CTA (#FF7A1A), search bar, filter chips (All, Open, In Progress,
 /// Resolved, Rejected), realistic Indian fleet issue ticket cards, and a Raise Ticket FAB.
@@ -48,13 +49,7 @@ class SupportHistoryScreen extends StatefulWidget {
 
 class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
   int _selectedFilterIndex = 0;
-  final List<String> _filters = [
-    'All',
-    'Open',
-    'In Progress',
-    'Resolved',
-    'Rejected',
-  ];
+  final List<String> _filters = ['All', 'Open', 'In Progress', 'Resolved', 'Rejected'];
 
   bool _isLoading = false;
   List<SupportTicketItem> _tickets = [];
@@ -63,6 +58,11 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
   void initState() {
     super.initState();
     _loadTickets();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   Future<void> _loadTickets() async {
@@ -112,12 +112,9 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         final tripIdStr = tripObj != null && tripObj is Map
             ? (tripObj['tripNumber'] ?? 'TRP-9901')
             : 'TRP-9901';
-        final vehPlateStr =
-            t['vehiclePlate'] ??
+        final vehPlateStr = t['vehiclePlate'] ??
             (vehicleObj != null && vehicleObj is Map
-                ? (vehicleObj['registrationNumber'] ??
-                      vehicleObj['plateNumber'] ??
-                      'Assigned Vehicle')
+                ? (vehicleObj['registrationNumber'] ?? vehicleObj['plateNumber'] ?? 'Assigned Vehicle')
                 : 'Assigned Vehicle');
 
         final rawDate = t['reportedAt'] ?? t['createdAt'];
@@ -144,10 +141,11 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         );
       }).toList();
 
-      if (!mounted) return;
-      setState(() {
-        _tickets = fetched;
-      });
+      if (mounted) {
+        setState(() {
+          _tickets = fetched;
+        });
+      }
     } catch (e) {
       debugPrint('Failed to load driver tickets from API: $e');
       if (mounted) {
@@ -301,7 +299,10 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                       label: 'Call Manager',
                       color: const Color(0xFF10B981),
                       onTap: () {
-                        showExternalContactOptionsModal(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const CallingFleetManagerScreen()),
+                        );
                       },
                     ),
                   ),
@@ -313,7 +314,10 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                       label: 'Message Manager',
                       color: primaryOrange,
                       onTap: () {
-                        showExternalContactOptionsModal(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const MessageFleetManagerScreen()),
+                        );
                       },
                     ),
                   ),
@@ -329,8 +333,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
                   itemCount: _filters.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(width: 8.0),
+                  separatorBuilder: (context, index) => const SizedBox(width: 8.0),
                   itemBuilder: (context, index) {
                     final isSelected = _selectedFilterIndex == index;
                     return GestureDetector(
@@ -340,10 +343,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                         });
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
                           color: isSelected ? primaryDark : Colors.white,
                           borderRadius: BorderRadius.circular(20.0),
@@ -365,9 +365,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                           _filters[index],
                           style: GoogleFonts.poppins(
                             fontSize: 12,
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                             color: isSelected ? Colors.white : textPrimary,
                           ),
                         ),
@@ -388,49 +386,48 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                       ),
                     )
                   : _filteredTickets.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 40.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.support_agent_outlined,
-                              size: 64,
-                              color: textSecondary.withValues(alpha: 0.4),
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.support_agent_outlined,
+                                  size: 64,
+                                  color: textSecondary.withValues(alpha: 0.4),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No Tickets Found',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'You haven\'t raised any support requests yet.',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 13,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No Tickets Found',
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'You haven\'t raised any support requests yet.',
-                              style: GoogleFonts.nunito(
-                                fontSize: 13,
-                                color: textSecondary,
-                              ),
-                            ),
-                          ],
+                          ),
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _filteredTickets.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 14.0),
+                          itemBuilder: (context, index) {
+                            final ticket = _filteredTickets[index];
+                            return _buildTicketCard(context, ticket);
+                          },
                         ),
-                      ),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _filteredTickets.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 14.0),
-                      itemBuilder: (context, index) {
-                        final ticket = _filteredTickets[index];
-                        return _buildTicketCard(context, ticket);
-                      },
-                    ),
 
               const SizedBox(height: 80.0), // Padding for FAB space
             ],
@@ -443,7 +440,9 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         onPressed: () async {
           final res = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const RaiseTicketScreen()),
+            MaterialPageRoute(
+              builder: (context) => const RaiseTicketScreen(),
+            ),
           );
           if (res == true) {
             _loadTickets();
@@ -493,189 +492,183 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         );
       },
       child: Container(
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16.0),
-          border: Border.all(color: borderGray, width: 1.0),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(8),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Row: Ticket ID & Status Badge
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    '#${ticket.ticketId}',
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: primaryOrange,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8.0),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: ticket.statusBg,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    ticket.status,
-                    style: GoogleFonts.poppins(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: ticket.statusText,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 8.0),
-
-            // Issue Title & Priority Tag
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    ticket.issueCategory,
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: textPrimary,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8.0),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: priorityBg,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    ticket.priority,
-                    style: GoogleFonts.poppins(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: priorityText,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12.0),
-            const Divider(color: borderGray, height: 1.0),
-            const SizedBox(height: 12.0),
-
-            // Details Grid (Vehicle, Trip, Date) & Chevron Arrow
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'VEHICLE',
-                        style: GoogleFonts.poppins(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2.0),
-                      Text(
-                        ticket.vehicleNumber,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'TRIP ID',
-                        style: GoogleFonts.poppins(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2.0),
-                      Text(
-                        ticket.tripId,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'RAISED DATE',
-                        style: GoogleFonts.poppins(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2.0),
-                      Text(
-                        ticket.raisedDate,
-                        style: GoogleFonts.nunito(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: textSecondary,
-                  size: 20,
-                ),
-              ],
-            ),
-          ],
-        ),
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(color: borderGray, width: 1.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(8),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row: Ticket ID & Status Badge
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  '#${ticket.ticketId}',
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: primaryOrange,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8.0),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: ticket.statusBg,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  ticket.status,
+                  style: GoogleFonts.poppins(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: ticket.statusText,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8.0),
+
+          // Issue Title & Priority Tag
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  ticket.issueCategory,
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8.0),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: priorityBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  ticket.priority,
+                  style: GoogleFonts.poppins(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: priorityText,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12.0),
+          const Divider(color: borderGray, height: 1.0),
+          const SizedBox(height: 12.0),
+
+          // Details Grid (Vehicle, Trip, Date) & Chevron Arrow
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'VEHICLE',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: textSecondary,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2.0),
+                    Text(
+                      ticket.vehicleNumber,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TRIP ID',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: textSecondary,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2.0),
+                    Text(
+                      ticket.tripId,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'RAISED DATE',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: textSecondary,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2.0),
+                    Text(
+                      ticket.raisedDate,
+                      style: GoogleFonts.nunito(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: textSecondary,
+                size: 20,
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
     );
   }
 
@@ -698,7 +691,11 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 18),
+            Icon(
+              icon,
+              color: color,
+              size: 18,
+            ),
             const SizedBox(width: 8.0),
             Text(
               label,

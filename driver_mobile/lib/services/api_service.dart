@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'secure_storage_helper.dart';
 
 class ApiService {
   static Function()? onUnauthorized;
+  static Map<String, dynamic> mockResponses = {};
 
   static void initialize() {
     // Initialization setup if required
@@ -76,10 +77,8 @@ class ApiService {
     }
   }
 
-  static const _secureStorage = FlutterSecureStorage();
-
   static Future<Map<String, String>> _getHeaders() async {
-    String? token = await _secureStorage.read(key: 'jwt_token');
+    String? token = await SecureStorageHelper.read(key: 'jwt_token');
     if (token == null || token.isEmpty) {
       final prefs = await SharedPreferences.getInstance();
       token = prefs.getString('jwt_token') ?? '';
@@ -92,6 +91,10 @@ class ApiService {
   }
 
   static Future<dynamic> get(String endpoint) async {
+    debugPrint('API_GET: $endpoint, mocked=${mockResponses.containsKey(endpoint)}');
+    if (mockResponses.containsKey(endpoint)) {
+      return mockResponses[endpoint];
+    }
     final baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
     try {
@@ -119,6 +122,9 @@ class ApiService {
     String endpoint,
     Map<String, dynamic> body,
   ) async {
+    if (mockResponses.containsKey(endpoint)) {
+      return mockResponses[endpoint];
+    }
     final baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
     try {
@@ -154,6 +160,9 @@ class ApiService {
     String endpoint,
     Map<String, dynamic> body,
   ) async {
+    if (mockResponses.containsKey(endpoint)) {
+      return mockResponses[endpoint];
+    }
     final baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
     final response = await http
@@ -167,6 +176,9 @@ class ApiService {
   }
 
   static Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
+    if (mockResponses.containsKey(endpoint)) {
+      return mockResponses[endpoint];
+    }
     final baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
     final response = await http
@@ -206,6 +218,236 @@ class ApiService {
 
   static Future<dynamic> getTripDetails(String tripId) async {
     return await get('/driver/trips/$tripId');
+  }
+
+  static Future<dynamic> getDriverTripTolls(String tripId) async {
+    return await get('/driver/trips/$tripId/tolls');
+  }
+
+  static Future<dynamic> uploadTripPod({
+    required String tripId,
+    required String customerName,
+    required String receiverName,
+    dynamic imageFile,
+    String? imageName,
+  }) async {
+    final baseUrl = await getBaseUrl();
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    final uri = Uri.parse('$baseUrl/driver/pod');
+
+    if (imageFile != null) {
+      final request = http.MultipartRequest('POST', uri);
+      if (token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.fields['tripId'] = tripId;
+      request.fields['customerName'] = customerName;
+      request.fields['receiverName'] = receiverName;
+
+      if (imageFile is String &&
+          (imageFile.startsWith('http') || imageFile.startsWith('data:'))) {
+        request.fields['podDocumentUrl'] = imageFile;
+      } else if (imageFile is List<int>) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            imageFile,
+            filename: imageName ?? 'pod.jpg',
+          ),
+        );
+      } else {
+        request.files.add(
+          await http.MultipartFile.fromPath('file', imageFile.toString()),
+        );
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      return _processResponse(response);
+    } else {
+      return await post('/driver/pod', {
+        'tripId': tripId,
+        'customerName': customerName,
+        'receiverName': receiverName,
+      });
+    }
+  }
+
+  static Future<dynamic> uploadWeighbridgeSlip({
+    required String tripId,
+    required double grossWeight,
+    required double tareWeight,
+    required double netWeight,
+    required String location,
+    dynamic imageFile,
+    String? imageName,
+    String? documentUrl,
+  }) async {
+    final baseUrl = await getBaseUrl();
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    final uri = Uri.parse('$baseUrl/driver/weighbridge');
+
+    if (imageFile != null || documentUrl != null) {
+      final request = http.MultipartRequest('POST', uri);
+      if (token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.fields['tripId'] = tripId;
+      request.fields['grossWeight'] = grossWeight.toString();
+      request.fields['tareWeight'] = tareWeight.toString();
+      request.fields['netWeight'] = netWeight.toString();
+      request.fields['location'] = location;
+
+      if (imageFile != null) {
+        if (imageFile is String &&
+            (imageFile.startsWith('http') || imageFile.startsWith('data:'))) {
+          request.fields['documentUrl'] = imageFile;
+        } else if (imageFile is List<int>) {
+          request.files.add(
+            http.MultipartFile.fromBytes(
+              'file',
+              imageFile,
+              filename: imageName ?? 'weighbridge.jpg',
+            ),
+          );
+        } else {
+          request.files.add(
+            await http.MultipartFile.fromPath('file', imageFile.toString()),
+          );
+        }
+      } else if (documentUrl != null) {
+        request.fields['documentUrl'] = documentUrl;
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      return _processResponse(response);
+    } else {
+      return await post('/driver/weighbridge', {
+        'tripId': tripId,
+        'grossWeight': grossWeight,
+        'tareWeight': tareWeight,
+        'netWeight': netWeight,
+        'location': location,
+      });
+    }
+  }
+
+  static Future<dynamic> createTripFuelEntry({
+    required String fuelStation,
+    required double amount,
+    required double liters,
+    required double odometer,
+    required String tripId,
+    required String dateTime,
+    dynamic imageFile,
+    String? imageName,
+  }) async {
+    final baseUrl = await getBaseUrl();
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    final uri = Uri.parse('$baseUrl/driver/fuel');
+
+    if (imageFile != null) {
+      final request = http.MultipartRequest('POST', uri);
+      if (token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.fields['fuelStation'] = fuelStation;
+      request.fields['amount'] = amount.toString();
+      request.fields['liters'] = liters.toString();
+      request.fields['odometer'] = odometer.toString();
+      request.fields['tripId'] = tripId;
+      request.fields['dateTime'] = dateTime;
+
+      if (imageFile is String &&
+          (imageFile.startsWith('http') || imageFile.startsWith('data:'))) {
+        request.fields['receiptImage'] = imageFile;
+      } else if (imageFile is List<int>) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            imageFile,
+            filename: imageName ?? 'receipt.jpg',
+          ),
+        );
+      } else {
+        request.files.add(
+          await http.MultipartFile.fromPath('file', imageFile.toString()),
+        );
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      return _processResponse(response);
+    } else {
+      return await post('/driver/fuel', {
+        'fuelStation': fuelStation,
+        'amount': amount,
+        'liters': liters,
+        'odometer': odometer,
+        'tripId': tripId,
+        'dateTime': dateTime,
+      });
+    }
+  }
+
+  static Future<dynamic> createTripTollEntry({
+    required String tollPlazaName,
+    required double amountPaid,
+    required String tripId,
+    required String dateTime,
+    required List<dynamic> imageFiles,
+    required List<String> imageNames,
+  }) async {
+    final baseUrl = await getBaseUrl();
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    final uri = Uri.parse('$baseUrl/driver/tolls');
+
+    if (imageFiles.isNotEmpty) {
+      final request = http.MultipartRequest('POST', uri);
+      if (token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.fields['tollPlazaName'] = tollPlazaName;
+      request.fields['amountPaid'] = amountPaid.toString();
+      request.fields['tripId'] = tripId;
+      request.fields['dateTime'] = dateTime;
+
+      for (int i = 0; i < imageFiles.length; i++) {
+        final img = imageFiles[i];
+        final name = imageNames[i];
+        if (img is String && (img.startsWith('http') || img.startsWith('data:'))) {
+          request.fields['receiptUrl'] = img;
+        } else if (img is List<int>) {
+          request.files.add(
+            http.MultipartFile.fromBytes(
+              'files',
+              img,
+              filename: name,
+            ),
+          );
+        } else {
+          request.files.add(
+            await http.MultipartFile.fromPath('files', img.toString()),
+          );
+        }
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      return _processResponse(response);
+    } else {
+      return await post('/driver/tolls', {
+        'tollPlazaName': tollPlazaName,
+        'amountPaid': amountPaid,
+        'tripId': tripId,
+        'dateTime': dateTime,
+      });
+    }
   }
 
   static Future<dynamic> getAssignedVehicle() async {
@@ -297,22 +539,7 @@ class ApiService {
     return await post('/driver/pod', body);
   }
 
-  static Future<dynamic> uploadWeighbridgeSlip({
-    required String tripId,
-    double? grossWeight,
-    double? tareWeight,
-    double? netWeight,
-    String? location,
-    String? documentUrl,
-  }) async {
-    final body = <String, dynamic>{'tripId': tripId};
-    if (grossWeight != null) body['grossWeight'] = grossWeight;
-    if (tareWeight != null) body['tareWeight'] = tareWeight;
-    if (netWeight != null) body['netWeight'] = netWeight;
-    if (location != null) body['location'] = location;
-    if (documentUrl != null) body['documentUrl'] = documentUrl;
-    return await post('/driver/weighbridge', body);
-  }
+
 
   static Future<dynamic> createDriverTicket({
     required String category,

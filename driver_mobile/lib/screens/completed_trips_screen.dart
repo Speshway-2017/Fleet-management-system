@@ -291,6 +291,7 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
                 MaterialPageRoute(
                   builder: (context) => CompletedTripDetailsScreen(
                     tripId: displayId,
+                    tripData: trip,
                   ),
                 ),
               );
