@@ -118,7 +118,62 @@ const startServer = async () => {
       socket.join(`role:${role}`);
     });
 
-    socket.on('trip:status-update', async ({ tripId, status, actualDistance }) => {
+    // Join trip room
+    socket.on('joinTripRoom', (tripId) => {
+      socket.join(`trip:${tripId}`);
+    });
+
+    // Leave trip room
+    socket.on('leaveTripRoom', (tripId) => {
+      socket.leave(`trip:${tripId}`);
+    });
+
+    // Typing indicator
+    socket.on('chat:typing', ({ tripId, senderRole, isTyping }) => {
+      socket.to(`trip:${tripId}`).emit('chat:typing-status', { tripId, senderRole, isTyping });
+    });
+
+    // Call events
+    socket.on('call:initiate', async ({ tripId, callerRole, callerName, receiverId }) => {
+      io.to(`trip:${tripId}`).emit('call:incoming', { tripId, callerRole, callerName, receiverId, timestamp: new Date() });
+      if (receiverId) {
+        io.to(`user:${receiverId}`).emit('call:incoming', { tripId, callerRole, callerName });
+        io.to(`driver:${receiverId}`).emit('call:incoming', { tripId, callerRole, callerName });
+      }
+
+      if (callerRole === 'driver' || callerRole === 'DRIVER') {
+        const { triggerDriverNotification } = await import('./utils/driverNotificationHelper.js');
+        await triggerDriverNotification({
+          type: 'DRIVER_CALL',
+          driverId: receiverId,
+          driverName: callerName,
+          tripId,
+          io
+        });
+      }
+    });
+
+    socket.on('chat:send-message', async ({ tripId, senderRole, senderName, message, senderId }) => {
+      io.to(`trip:${tripId}`).emit('chat:message-received', { tripId, senderRole, senderName, message, timestamp: new Date() });
+
+      if (senderRole === 'driver' || senderRole === 'DRIVER') {
+        const { triggerDriverNotification } = await import('./utils/driverNotificationHelper.js');
+        await triggerDriverNotification({
+          type: 'DRIVER_MESSAGE',
+          driverId: senderId,
+          driverName: senderName,
+          tripId,
+          customMessage: `Driver "${senderName}" sent a new message: "${String(message).substring(0, 40)}"`,
+          io
+        });
+      }
+    });
+
+    socket.on('call:end', ({ tripId, duration, status }) => {
+      io.to(`trip:${tripId}`).emit('call:ended', { tripId, duration, status });
+    });
+
+    socket.on('trip:status-update', async ({ tripId, status, actualDistance, driverId, driverName }) => {
       try {
         const Trip = (await import('./models/Trip.js')).default;
         const Vehicle = (await import('./models/Vehicle.js')).default;
@@ -126,6 +181,17 @@ const startServer = async () => {
 
         const existingTrip = await Trip.findById(tripId);
         if (!existingTrip) return;
+
+        if (status === 'Completed') {
+          const { processFastagDeduction } = await import('./services/fastag.service.js');
+          try {
+            await processFastagDeduction(tripId);
+          } catch (fastagErr) {
+            console.error('FASTag deduction failed via socket status-update:', fastagErr.message);
+            socket.emit('trip:status-update-error', { tripId, message: fastagErr.message });
+            return;
+          }
+        }
 
         existingTrip.status = status;
         if (status === 'In Progress') {
@@ -176,6 +242,26 @@ const startServer = async () => {
         const managerId = finalTrip.assignedManager;
         if (managerId) {
           io.to(`manager:${managerId}`).emit('trip:status-updated', finalTrip);
+        }
+
+        // Trigger Driver Notification
+        const { triggerDriverNotification } = await import('./utils/driverNotificationHelper.js');
+        let notifType = "";
+        if (status === 'Accepted') notifType = 'TRIP_ACCEPTED';
+        else if (status === 'Rejected') notifType = 'TRIP_REJECTED';
+        else if (status === 'In Progress' || status === 'On Transit') notifType = 'TRIP_STARTED';
+        else if (status === 'Completed') notifType = 'TRIP_COMPLETED';
+
+        if (notifType) {
+          await triggerDriverNotification({
+            type: notifType,
+            driverId: driverId || (finalTrip.driver?._id || finalTrip.driver),
+            driverName: driverName || (finalTrip.driverName || finalTrip.driver?.fullName),
+            tripId: finalTrip._id,
+            tripNumber: finalTrip.tripNumber,
+            managerId,
+            io
+          });
         }
       } catch (err) {
         console.error('Failed to update trip status via socket:', err);

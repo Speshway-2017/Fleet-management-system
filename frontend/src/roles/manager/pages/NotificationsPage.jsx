@@ -172,6 +172,32 @@ export default function NotificationsPage() {
     }
   };
 
+  const resolveTargetUrl = (notif) => {
+    if (notif.metadata?.targetUrl) return notif.metadata.targetUrl;
+    
+    const tripId = notif.metadata?.tripId || notif.referenceId || notif.relatedId;
+    const driverId = notif.metadata?.driverId;
+    const type = (notif.type || '').toUpperCase();
+    const title = (notif.title || '').toLowerCase();
+
+    if (type.includes("MESSAGE") || type.includes("CALL") || title.includes("message") || title.includes("call")) {
+      return tripId ? `/manager/trip-details/${tripId}?tab=communication` : `/manager/trips`;
+    }
+    if (type.includes("MAINTENANCE") || title.includes("maintenance")) {
+      return `/manager/maintenance`;
+    }
+    if (type.includes("FUEL") || title.includes("fuel")) {
+      return `/manager/fuel-management`;
+    }
+    if (tripId) {
+      return `/manager/trip-details/${tripId}`;
+    }
+    if (driverId) {
+      return `/manager/driver-profile/${driverId}`;
+    }
+    return `/manager/notifications/${notif._id || notif.id}`;
+  };
+
   const handleNotificationClick = async (notif) => {
     const notifId = notif._id || notif.id;
     try {
@@ -287,61 +313,76 @@ export default function NotificationsPage() {
 
           {/* Loading state / Empty state */}
           {loading ? (
-            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500">
+            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500 font-poppins text-xs font-semibold">
               Loading alerts...
             </div>
           ) : filteredNotifications.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center text-gray-400 font-medium font-poppins select-none shadow-sm">
-              <div className="w-16 h-16 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Icon icon="mdi:bell-off-outline" className="w-8 h-8" />
+              <div className="w-14 h-14 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Icon icon="mdi:bell-off-outline" className="w-7 h-7" />
               </div>
-              <h4 className="text-gray-700 font-bold">No Alerts Found</h4>
+              <h4 className="text-gray-700 font-bold text-sm">No Alerts Found</h4>
               <p className="text-xs text-gray-450 mt-1 max-w-xs mx-auto leading-relaxed">
                 You have no active notifications or priority updates matching this category.
               </p>
             </div>
           ) : (
-            filteredNotifications.map((notif) => (
-              <div 
-                key={notif._id || notif.id} 
-                onClick={() => handleNotificationClick(notif)}
-                className={`bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative ${!notif.isRead ? 'border-l-4 border-l-[#B45A0A]' : ''}`}
-              >
-                <div className="flex gap-4">
-                  <div className={`w-12 h-12 rounded-full ${getIconColor(notif.type)} flex items-center justify-center shrink-0`}>
-                    <Icon icon={getIcon(notif.type)} className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                        {notif.title}
-                        {!notif.isRead && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#B45A0A]" />
-                        )}
-                      </h4>
-                      <span className="text-xs text-gray-400 font-medium">
-                        {notif.createdAt ? new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
-                      </span>
+            <div className="max-h-[calc(100vh-230px)] overflow-y-auto space-y-3 pr-1.5 custom-scrollbar">
+              {filteredNotifications.map((notif) => (
+                <div 
+                  key={notif._id || notif.id} 
+                  onClick={() => handleNotificationClick(notif)}
+                  className={`bg-white rounded-xl border border-[#E7EAF0] px-4 py-3.5 shadow-xs hover:shadow-md transition-all cursor-pointer relative group ${
+                    !notif.isRead ? 'border-l-4 border-l-[#B45A0A] bg-amber-50/20' : 'hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-start gap-3.5">
+                    {/* Compact Icon Badge */}
+                    <div className={`w-9 h-9 rounded-xl ${getIconColor(notif.type)} flex items-center justify-center shrink-0 mt-0.5 shadow-2xs`}>
+                      <Icon icon={getIcon(notif.type)} className="w-4.5 h-4.5" />
                     </div>
-                    <p className="text-gray-600 text-sm mb-4">{notif.description}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {(notif.actions || []).map((action, i) => (
-                        <button
-                          key={i}
-                          onClick={(e) => handleActionClick(action, notif, e)}
-                          className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer border ${action.bg === 'bg-white'
-                              ? `${action.bg} ${action.text} border-gray-300 hover:bg-gray-50`
-                              : `${action.bg} text-white border-transparent ${action.hover}`
-                            }`}
-                        >
-                          {action.label}
-                        </button>
-                      ))}
+
+                    {/* Content Area */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-4">
+                        <h4 className="font-poppins font-bold text-xs text-[#1E293B] truncate group-hover:text-[#B45A0A] transition-colors flex items-center gap-1.5">
+                          <span>{notif.title}</span>
+                          {!notif.isRead && (
+                            <span className="w-2 h-2 rounded-full bg-[#B45A0A] shrink-0" title="Unread" />
+                          )}
+                        </h4>
+                        <span className="text-[11px] font-medium text-gray-400 font-poppins shrink-0">
+                          {notif.createdAt ? new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-[#64748B] font-nunito font-normal line-clamp-2 mt-1 leading-relaxed">
+                        {notif.message || notif.description}
+                      </p>
+
+                      {/* Action buttons if present */}
+                      {notif.actions && notif.actions.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2.5">
+                          {notif.actions.map((action, i) => (
+                            <button
+                              key={i}
+                              onClick={(e) => handleActionClick(action, notif, e)}
+                              className={`px-3 py-1 rounded-lg text-[11px] font-bold font-poppins transition-colors cursor-pointer border ${
+                                action.bg === 'bg-white'
+                                  ? `${action.bg} ${action.text} border-gray-200 hover:bg-gray-50`
+                                  : `${action.bg} text-white border-transparent ${action.hover}`
+                              }`}
+                            >
+                              {action.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
       </div>

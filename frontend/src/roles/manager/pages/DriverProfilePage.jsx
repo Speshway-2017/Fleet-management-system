@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { formatDisplayLocation } from "@/utils/locationFormatter";
+import { formatEmployeeId } from "@/utils/employeeIdFormatter";
 import { driverApi } from "@/api/driverApi";
 import { vehicleApi } from "@/api/vehicleApi";
 import { managerApi } from "../api/managerApi";
@@ -251,7 +253,7 @@ export default function DriverProfilePage() {
                   {getStatusLabel(driver.driverStatus)}
                 </span>
               </div>
-              <p className="text-sm text-[#64748B] mt-0.5 font-medium">{driver.email} • {driver.phoneNumber}</p>
+              <p className="text-sm text-[#64748B] mt-0.5 font-medium font-poppins"><strong className="text-[#1E293B]">{formatEmployeeId(driver.employeeId)}</strong> • {driver.email} • {driver.phoneNumber}</p>
             </div>
           </div>
         </div>
@@ -264,15 +266,6 @@ export default function DriverProfilePage() {
             <Edit className="w-4 h-4" />
             <span>Edit Profile</span>
           </button>
-          {(!driver.assignedVehicle || driver.assignedVehicle === "Unassigned") && (
-            <button
-              onClick={() => navigate(`/manager/driver-assign-vehicle/${driver._id}`)}
-              className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 font-poppins cursor-pointer"
-            >
-              <Plus className="w-4.5 h-4.5" />
-              <span>Assign Vehicle</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -284,8 +277,10 @@ export default function DriverProfilePage() {
               <TrendingUp className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Total Trips</span>
-              <p className="text-xl font-extrabold text-[#1E293B] mt-0.5 font-poppins">{driver.tripsCompleted ?? 0}</p>
+              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Completed Trips</span>
+              <p className="text-xl font-extrabold text-[#1E293B] mt-0.5 font-poppins">
+                {trips.filter(t => t.status === "Completed").length} <span className="text-xs text-gray-500 font-normal">({trips.length} Total)</span>
+              </p>
             </div>
           </div>
         </div>
@@ -387,6 +382,11 @@ export default function DriverProfilePage() {
             )}
           </div>
 
+        </div>
+
+        {/* --- RIGHT COLUMN: PERSONAL INFO & TRIP LOGS --- */}
+        <div className="lg:col-span-6 space-y-6">
+
           {/* Personal Details */}
           <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4">
             <h3 className="font-poppins font-black text-lg text-[#1E293B] border-b border-[#E7EAF0]/60 pb-3 flex items-center gap-2">
@@ -418,57 +418,9 @@ export default function DriverProfilePage() {
 
               <div>
                 <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Current Location</span>
-                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{driver.driverLocation || driver.branch || "Pune"}</span>
+                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{formatDisplayLocation(driver.driverLocation || driver.currentLocation, driver.branch)}</span>
               </div>
             </div>
-          </div>
-
-        </div>
-
-        {/* --- RIGHT COLUMN: VEHICLE DETAILS & TRIP LOGS --- */}
-        <div className="lg:col-span-6 space-y-6">
-          
-          {/* Vehicle details */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4">
-            <h3 className="font-poppins font-black text-lg text-[#1E293B] border-b border-[#E7EAF0]/60 pb-3 flex items-center gap-2">
-              <Truck className="w-5 h-5 text-indigo-500" />
-              Current Vehicle Assignment
-            </h3>
-
-            {vehicle ? (
-              <div className="space-y-4">
-                <div className="p-4 bg-[#F5F7FB] border border-[#E7EAF0] rounded-xl flex items-center gap-3 select-none">
-                  <div className="bg-[#FDF3EC] text-[#B45A0A] p-2.5 rounded-xl border border-[#FDF3EC]/50 shrink-0">
-                    <Truck className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-[#1E293B] font-poppins">{vehicle.name}</p>
-                    <span className="text-[11px] text-[#64748B] font-semibold tracking-wider block mt-0.5">{vehicle.plateNumber}</span>
-                  </div>
-                  <span className="ml-auto bg-[#FDF3EC] text-[#B45A0A] border border-[#FDF3EC] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    {vehicle.type}
-                  </span>
-                </div>
-
-                <div className="text-xs font-semibold text-gray-500 p-1">
-                  <div>
-                    <span>Branch Depot:</span>
-                    <span className="text-[#1E293B] block font-bold text-sm mt-0.5">{vehicle.branch || "—"}</span>
-                  </div>
-                </div>
-
-              </div>
-            ) : (
-              <div className="py-8 text-center space-y-3">
-                <p className="text-gray-400 text-xs font-medium">No vehicle assigned to this driver currently.</p>
-                <button
-                  onClick={() => navigate(`/manager/driver-assign-vehicle/${driver._id}`)}
-                  className="px-4 py-2 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer"
-                >
-                  Assign Vehicle Now
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Recent Trips timeline */}
@@ -489,13 +441,13 @@ export default function DriverProfilePage() {
                 <div className="text-center py-6 text-red-500 font-medium text-xs font-poppins">
                   {tripsError}
                 </div>
-              ) : trips.length < 2 ? (
+              ) : trips.length === 0 ? (
                 <div className="text-center py-8 text-[#64748B] font-medium text-xs font-nunito">
-                  No trips assigned Yet
+                  No trips assigned yet.
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {(showAllTrips ? trips : trips.slice(0, 2)).map((trip) => (
+                  {(showAllTrips ? trips : trips.slice(0, 5)).map((trip) => (
                     <div
                       key={trip._id}
                       onClick={() => navigate(`/manager/trip-details/${trip._id}`)}
@@ -505,12 +457,12 @@ export default function DriverProfilePage() {
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-xs text-[#1E293B] font-poppins">{trip.tripNumber}</span>
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                            trip.status === "Completed" ? "text-emerald-600 bg-emerald-50" :
-                            trip.status === "On Transit" || trip.status === "Ongoing" ? "text-blue-600 bg-blue-50" :
-                            trip.status === "Cancelled" ? "text-red-600 bg-red-50" :
-                            "text-amber-600 bg-amber-50"
+                            trip.status === "Completed" ? "text-emerald-700 bg-emerald-50 border border-emerald-200" :
+                            trip.status === "On Transit" || trip.status === "In Progress" || trip.status === "Ongoing" ? "text-blue-700 bg-blue-50 border border-blue-200" :
+                            trip.status === "Cancelled" ? "text-red-700 bg-red-50 border border-red-200" :
+                            "text-amber-700 bg-amber-50 border border-amber-200"
                           }`}>
-                            {trip.status === "Completed" ? "Complete" : trip.status}
+                            {trip.status === "Completed" ? "Completed" : trip.status}
                           </span>
                         </div>
                         <p className="text-xs text-gray-600 font-medium font-nunito">
@@ -519,7 +471,7 @@ export default function DriverProfilePage() {
                         <div className="flex items-center gap-2 text-[10px] text-gray-400 font-semibold mt-0.5">
                           <span>Reg: <strong className="text-gray-600 uppercase">{trip.vehiclePlate || (trip.vehicle && trip.vehicle.vehicleNumber) || "—"}</strong></span>
                           <span>•</span>
-                          <span>Dist: <strong className="text-gray-600">{calculateDistance(trip.startLocation, trip.endLocation)} km</strong></span>
+                          <span>Dist: <strong className="text-gray-600">{trip.estimatedDistance || calculateDistance(trip.startLocation, trip.endLocation)} km</strong></span>
                         </div>
                       </div>
                       
@@ -530,14 +482,14 @@ export default function DriverProfilePage() {
                       </div>
                     </div>
                   ))}
-                  {trips.length > 2 && (
+                  {trips.length > 5 && (
                     <div className="pt-2 text-center">
                       <button
                         type="button"
                         onClick={() => setShowAllTrips(!showAllTrips)}
                         className="px-4 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] transition-colors cursor-pointer"
                       >
-                        {showAllTrips ? "View Less" : "View More"}
+                        {showAllTrips ? "View Less" : `View All (${trips.length})`}
                       </button>
                     </div>
                   )}
