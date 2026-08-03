@@ -1307,19 +1307,19 @@ export default function TripDetailsPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-2">
-              <a
-                href={`tel:${trip.driverPhone}`}
-                className="px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              <button
+                onClick={() => setIsChatOpen(true)}
+                className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-[10px] font-bold text-emerald-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Phone className="w-3.5 h-3.5" />
                 Call Driver
-              </a>
+              </button>
               <button
                 onClick={() => setIsChatOpen(true)}
-                className="px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl text-[10px] font-bold text-blue-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Mail className="w-3.5 h-3.5" />
-                Message
+                Message Driver
               </button>
             </div>
           </div>
