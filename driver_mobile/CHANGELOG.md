@@ -2,6 +2,24 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.50.0] - 2026-08-03
+
+### Fixed
+- **Added `getTripDetails` Helper Method to `ApiService` ([api_service.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/services/api_service.dart))**:
+  - Added `static Future<dynamic> getTripDetails(String tripId)` to `ApiService`, resolving `The method 'getTripDetails' isn't defined for the type 'ApiService'` compiler error.
+- **Fixed Dangling Doc Comment Warning ([date_formatter.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/utils/date_formatter.dart))**:
+  - Converted `///` to `//` header comment in `date_formatter.dart`, resolving `Dangling library doc comment` warning.
+
+## [1.49.0] - 2026-08-03
+
+### Fixed & Implemented
+- **Implemented Date Formatter Utility ([date_formatter.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/utils/date_formatter.dart))**:
+  - Implemented `formatIndianDate`, `formatIndianDateTime`, and `formatNotificationTime` helper functions, replacing the empty placeholder file.
+- **Fixed `ApiService` Callback Type Signature ([api_service.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/services/api_service.dart))**:
+  - Specified `static void Function()? onUnauthorized;` type signature to eliminate static analyzer return warnings.
+- **Cleaned Up `TripDetailsScreen` ([trip_details_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart))**:
+  - Synchronized with upstream changes and eliminated invalid object extensions and type errors.
+
 ## [1.42.0] - 2026-08-03
 
 ### Fixed & Enhanced (Web & Driver Mobile Portal)

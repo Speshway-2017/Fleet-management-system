@@ -282,7 +282,9 @@ The application connects to a Node.js/Express backend API for session operations
 * **Instant Maintenance Status Update & Silent Polling (`Maintenance.jsx`, `IssueCard.jsx`)**:
   - `IssueCard.jsx` updates local status state optimistically upon driver button click (**Mechanic Arrived 📍**, **Start Repair 🔧**, **Mark Repair Completed ✅**) and triggers `onStatusUpdated()` callback.
   - `Maintenance.jsx` runs background silent refreshes (`fetchTickets(true)`) and 5-second interval polling, reflecting status changes instantly on driver web without disruptive full-screen loading spinners.
-* **Driver Profile & Settings Default Pre-fill (`Settings.jsx`, `Profile.jsx`)**:
+* **Date Formatter & API Service Signature Integration (`date_formatter.dart`, `api_service.dart`)**:
+  - Implemented `formatIndianDate`, `formatIndianDateTime`, and `formatNotificationTime` inside `date_formatter.dart` to provide uniform Indian date formatting (`dd/MM/yyyy hh:mm a`) and relative notification timestamps.
+  - Specified `static void Function()? onUnauthorized;` callback return type signature and added `ApiService.getTripDetails(tripId)` in `api_service.dart`.
   - Profile fields (`fullName` / `name`, `phone` / `phoneNumber`, `email`, `licenseNumber`) pre-fill default values from `AuthContext` user object and `/driver/profile` API response, preventing empty inputs on initial render.
   - Added **Profile Information** card to `Settings.jsx` (`/driver/settings`), enabling drivers to view and update contact details directly alongside password and preferences.
 
