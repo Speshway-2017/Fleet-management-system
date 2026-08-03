@@ -414,28 +414,32 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
               // 4. Subject Input Field
               _buildFieldLabel('SUBJECT'),
               const SizedBox(height: 6.0),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.0),
-                  border: Border.all(color: borderGray, width: 1.0),
+              TextField(
+                controller: _subjectController,
+                style: GoogleFonts.poppins(
+                  fontSize: 13.5,
+                  color: textPrimary,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-                child: TextField(
-                  controller: _subjectController,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13.5,
-                    color: textPrimary,
+                decoration: InputDecoration(
+                  hintText: 'Briefly summarize the issue (e.g. Engine Overheating)',
+                  hintStyle: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: textSecondary.withAlpha(180),
                   ),
-                  decoration: InputDecoration(
-                    hintText: 'Briefly summarize the issue (e.g. Engine Overheating)',
-                    hintStyle: GoogleFonts.poppins(
-                      fontSize: 13,
-                      color: textSecondary.withAlpha(180),
-                    ),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: borderGray, width: 1.0),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: primaryOrange, width: 1.5),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: borderGray, width: 1.0),
                   ),
                 ),
               ),
@@ -445,32 +449,36 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
               // 5. Detailed Description Input Field
               _buildFieldLabel('DETAILED DESCRIPTION'),
               const SizedBox(height: 6.0),
-              Container(
-                height: 110,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.0),
-                  border: Border.all(color: borderGray, width: 1.0),
+              TextField(
+                controller: _descriptionController,
+                minLines: 4,
+                maxLines: 6,
+                keyboardType: TextInputType.multiline,
+                style: GoogleFonts.nunito(
+                  fontSize: 13.5,
+                  color: textPrimary,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-                child: TextField(
-                  controller: _descriptionController,
-                  maxLines: null,
-                  keyboardType: TextInputType.multiline,
-                  style: GoogleFonts.nunito(
-                    fontSize: 13.5,
-                    color: textPrimary,
+                decoration: InputDecoration(
+                  hintText:
+                      'Please provide specific details including vehicle condition, location or breakdown symptoms...',
+                  hintStyle: GoogleFonts.nunito(
+                    fontSize: 13,
+                    color: textSecondary.withAlpha(180),
                   ),
-                  decoration: InputDecoration(
-                    hintText:
-                        'Please provide specific details including vehicle condition, location or breakdown symptoms...',
-                    hintStyle: GoogleFonts.nunito(
-                      fontSize: 13,
-                      color: textSecondary.withAlpha(180),
-                    ),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: borderGray, width: 1.0),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: primaryOrange, width: 1.5),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: borderGray, width: 1.0),
                   ),
                 ),
               ),

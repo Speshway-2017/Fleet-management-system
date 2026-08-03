@@ -174,8 +174,17 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     final freight = (distanceVal * 230 / 100).round() * 100;
     final loading = 2500;
     final unloading = 2500;
-    final toll = (distanceVal * 6 / 100).round() * 100;
-    final fuel = (distanceVal * 42 / 100).round() * 100;
+
+    final fuelDetails = trip['fuelDetails'] as Map<String, dynamic>?;
+    final fuel = fuelDetails != null
+        ? (double.tryParse(fuelDetails['amount']?.toString() ?? '')?.round() ?? 0)
+        : (distanceVal * 42 / 100).round() * 100;
+
+    final double rawTollAmount = double.tryParse(trip['totalTollsAmount']?.toString() ?? '') ?? 0.0;
+    final toll = rawTollAmount > 0.0
+        ? rawTollAmount.round()
+        : (distanceVal * 6 / 100).round() * 100;
+
     final subtotal = freight + loading + unloading + toll + fuel;
     final tax = (subtotal * 0.18).round();
     final grandTotal = subtotal + tax;

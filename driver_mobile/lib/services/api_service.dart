@@ -619,6 +619,7 @@ class ApiService {
       onUnauthorized?.call();
     }
     final body = jsonDecode(response.body);
+    print('[DEBUG] [API Response] Status: ${response.statusCode}, Body: ${response.body}');
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
     } else {

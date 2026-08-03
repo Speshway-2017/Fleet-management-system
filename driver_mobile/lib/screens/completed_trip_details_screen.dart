@@ -45,6 +45,7 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     try {
       final cleanId = widget.tripId.replaceAll('#', '').trim();
       final res = await ApiService.getTripDetails(cleanId);
+      print('[DEBUG] [GET Trip Details API response] res: $res');
       if (res != null && res['data'] != null) {
         if (mounted) {
           setState(() {
@@ -241,7 +242,10 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     final distanceStr = '${distanceVal.toStringAsFixed(0)} km';
     final durationStr = _calculateDuration(trip['actualStartTime'] ?? trip['departureTime'], trip['actualEndTime'] ?? trip['createdAt']);
     
-    final fuelTotal = trip['fuelUsed'] ?? '${(distanceVal * 0.18).toStringAsFixed(0)}L';
+    final fuelDetails = trip['fuelDetails'] as Map<String, dynamic>?;
+    final fuelTotal = fuelDetails != null
+        ? '${double.tryParse(fuelDetails['liters'].toString())?.toStringAsFixed(0) ?? fuelDetails['liters']}L'
+        : (trip['fuelUsed'] ?? '30L');
     final stopsCount = distanceVal > 200 ? '2' : (distanceVal > 100 ? '1' : '0');
     final avgSpeed = _calculateAvgSpeed(distanceVal, durationStr);
 
@@ -252,8 +256,9 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     final driverName = trip['driverName'] ?? 'Marcus Sterling';
     final managerName = trip['manager'] != null ? (trip['manager']['name'] ?? 'Sarah Jenkins') : 'Sarah Jenkins';
 
+    final podDetails = trip['podDetails'] as Map<String, dynamic>?;
     final notes = trip['tripNotes'] ?? trip['description'] ?? 'Delivery completed successfully. Goods handed over without any damage.';
-    final receiver = 'John Doe';
+    final receiver = podDetails != null ? (podDetails['receiverName'] ?? 'John Doe') : 'John Doe';
 
     final timelineEvents = _buildTimelineEvents(trip);
 
@@ -841,10 +846,11 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                         return;
                     }
                     if (targetScreen != null) {
-                      Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => targetScreen!),
                       );
+                      _fetchTripDetails();
                     }
                   },
                   child: Row(
@@ -1087,6 +1093,7 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        print('[DEBUG] [Document View Dialog] Title: $title, DocumentName: $documentName, DocumentUrl: $documentUrl, Details: $details');
         final isUploaded = details != null || (documentUrl != null && documentUrl.isNotEmpty);
         
         return Dialog(
@@ -1094,11 +1101,13 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
             borderRadius: BorderRadius.circular(16.0),
           ),
           backgroundColor: AppColors.background,
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 450),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1259,8 +1268,9 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
               ],
             ),
           ),
-        );
-      },
+        ),
+      );
+    },
     );
   }
 }
