@@ -2,6 +2,26 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.52.0] - 2026-08-03
+
+### Enhanced & Removed (External App Launchers Integration)
+- **Removed Internal Conversation/Calling Screens & Replaced with External App Launchers**:
+  - Removed internal chat and call screens (`message_fleet_manager_screen.dart`, `calling_fleet_manager_screen.dart`).
+  - Created `external_contact_modal.dart` ([external_contact_modal.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/widgets/external_contact_modal.dart)) presenting a clean modal sheet allowing drivers to launch **WhatsApp**, **Phone Dialer**, **SMS Text**, or **Email** directly.
+  - Updated [ContactFleetManagerScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/contact_fleet_manager_screen.dart) and [SupportHistoryScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/support_history_screen.dart) Call & Message buttons to open the External Contact Modal.
+  - Updated Manager Web [DriverChatDrawer.jsx](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/components/common/DriverChatDrawer.jsx) and [TripCommunicationSection.jsx](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/manager/components/TripCommunicationSection.jsx) to launch WhatsApp, Phone Calls, SMS, and Email directly.
+
+## [1.51.0] - 2026-08-03
+
+### Removed & Fixed
+- **Complete Removal of Schedule Module ([schedule_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/schedule_screen.dart), [todays_schedule_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/todays_schedule_screen.dart), [upcoming_schedule_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/upcoming_schedule_screen.dart))**:
+  - Completely removed `schedule_screen.dart`, `todays_schedule_screen.dart`, and `upcoming_schedule_screen.dart` files from the codebase as requested.
+  - Updated [dashboard_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) to remove Schedule imports, Today's Schedule timeline cards, and updated Quick Actions to a clean 5-item row (`Vehicle`, `Fuel`, `Issue`, `Trips`, `Settings`).
+- **Resolved Duplicate `put` Method Declaration in `ApiService` ([api_service.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/services/api_service.dart))**:
+  - Removed duplicate `static Future<dynamic> put(...)` method at line 182, resolving compiler build error `The name 'put' is already defined`.
+- **Deprecation Fixes in `TripDetailsScreen` ([trip_details_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart))**:
+  - Replaced `.withOpacity(...)` calls with `.withValues(alpha: ...)` to resolve Flutter deprecation warnings.
+
 ## [1.30.0] - 2026-07-31
 
 ### Added & Enhanced

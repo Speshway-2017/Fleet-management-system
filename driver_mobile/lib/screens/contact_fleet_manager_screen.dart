@@ -4,11 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
-import 'calling_fleet_manager_screen.dart';
-import 'message_fleet_manager_screen.dart';
+import '../widgets/external_contact_modal.dart';
 
 /// Driver Module - Contact Fleet Manager Screen (Indian Fleet Data Context)
-/// 
+///
 /// Replicates the Fleet Management design language, color palette, typography,
 /// manager profile card, contact details, active assignment, action buttons,
 /// and recent activity timeline with authentic Indian fleet logistics data.
@@ -16,7 +15,8 @@ class ContactFleetManagerScreen extends StatefulWidget {
   const ContactFleetManagerScreen({super.key});
 
   @override
-  State<ContactFleetManagerScreen> createState() => _ContactFleetManagerScreenState();
+  State<ContactFleetManagerScreen> createState() =>
+      _ContactFleetManagerScreenState();
 }
 
 class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
@@ -38,18 +38,27 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
   Future<void> _loadData() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (auth.driver != null) {
-      _driverName = auth.driver!.fullName.isNotEmpty ? auth.driver!.fullName : 'Meghana';
+      _driverName = auth.driver!.fullName.isNotEmpty
+          ? auth.driver!.fullName
+          : 'Meghana';
       if (auth.driver!.manager != null) {
         setState(() {
-          _managerName = auth.driver!.manager!.name.isNotEmpty ? auth.driver!.manager!.name : 'G Sai Kiran';
-          _managerPhone = auth.driver!.manager!.phone.isNotEmpty ? auth.driver!.manager!.phone : '+91 98765 43210';
-          _managerEmail = auth.driver!.manager!.email.isNotEmpty ? auth.driver!.manager!.email : 'sai@fleet.com';
+          _managerName = auth.driver!.manager!.name.isNotEmpty
+              ? auth.driver!.manager!.name
+              : 'G Sai Kiran';
+          _managerPhone = auth.driver!.manager!.phone.isNotEmpty
+              ? auth.driver!.manager!.phone
+              : '+91 98765 43210';
+          _managerEmail = auth.driver!.manager!.email.isNotEmpty
+              ? auth.driver!.manager!.email
+              : 'sai@fleet.com';
         });
       }
     }
 
     try {
       final res = await ApiService.getCurrentTrip();
+      if (!mounted) return;
       if (res != null && res['success'] == true && res['data'] != null) {
         final data = res['data'];
         setState(() {
@@ -178,7 +187,10 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                                 decoration: BoxDecoration(
                                   color: successGreen,
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 2,
+                                  ),
                                 ),
                               ),
                             ),
@@ -350,7 +362,8 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                     _buildContactItem(
                       icon: Icons.location_on_outlined,
                       label: 'Office Address',
-                      value: 'Fleet Operations Hub, Plot 42, Nhava Sheva Logistics Park, Navi Mumbai, Maharashtra - 400707',
+                      value:
+                          'Fleet Operations Hub, Plot 42, Nhava Sheva Logistics Park, Navi Mumbai, Maharashtra - 400707',
                     ),
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 12.0),
@@ -413,7 +426,9 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: _tripStatus == 'NO ACTIVE TRIP' ? Colors.grey : successGreen,
+                            color: _tripStatus == 'NO ACTIVE TRIP'
+                                ? Colors.grey
+                                : successGreen,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -544,11 +559,11 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                 height: 50,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.push(
+                    showExternalContactOptionsModal(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const CallingFleetManagerScreen(),
-                      ),
+                      managerName: _managerName,
+                      phone: _managerPhone,
+                      email: _managerEmail,
                     );
                   },
                   icon: const Icon(Icons.phone_in_talk_rounded, size: 20),
@@ -573,11 +588,11 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                 height: 50,
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    Navigator.push(
+                    showExternalContactOptionsModal(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const MessageFleetManagerScreen(),
-                      ),
+                      managerName: _managerName,
+                      phone: _managerPhone,
+                      email: _managerEmail,
                     );
                   },
                   icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
@@ -622,7 +637,8 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                 isLast: false,
                 isOrangeDot: false,
                 title: 'Maintenance Talk',
-                subtitle: 'Confirmed tire pressure check at departure terminal.',
+                subtitle:
+                    'Confirmed tire pressure check at departure terminal.',
                 timestamp: 'Yesterday',
               ),
               _buildTimelineItem(
@@ -725,17 +741,16 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                     color: isOrangeDot ? primaryOrange : Colors.white,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isOrangeDot ? primaryOrange : const Color(0xFFD1D5DB),
+                      color: isOrangeDot
+                          ? primaryOrange
+                          : const Color(0xFFD1D5DB),
                       width: isOrangeDot ? 0 : 2,
                     ),
                   ),
                 ),
                 if (!isLast)
                   Expanded(
-                    child: Container(
-                      width: 2,
-                      color: const Color(0xFFE5E7EB),
-                    ),
+                    child: Container(width: 2, color: const Color(0xFFE5E7EB)),
                   ),
               ],
             ),
