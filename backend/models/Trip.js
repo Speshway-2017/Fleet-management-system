@@ -48,6 +48,16 @@ const tripSchema = new mongoose.Schema(
     podStatus: { type: String, enum: ['Not Uploaded', 'Uploaded', 'Pending', 'Approved', 'Rejected'], default: 'Not Uploaded' },
     weighbridgeStatus: { type: String, enum: ['Not Uploaded', 'Uploaded', 'Pending', 'Approved', 'Rejected'], default: 'Not Uploaded' },
     weighbridgeRequired: { type: Boolean, default: true },
+    fuelStatus: { type: String, default: 'Not Uploaded' },
+    tollStatus: { type: String, default: 'Not Uploaded' },
+    podUrl: { type: String, default: '' },
+    weighbridgeUrl: { type: String, default: '' },
+    fuelUrl: { type: String, default: '' },
+    tollUrl: { type: String, default: '' },
+    podDetails: { type: mongoose.Schema.Types.Mixed, default: null },
+    weighbridgeDetails: { type: mongoose.Schema.Types.Mixed, default: null },
+    fuelDetails: { type: mongoose.Schema.Types.Mixed, default: null },
+    tollDetails: { type: mongoose.Schema.Types.Mixed, default: null },
     notified15MinBefore: { type: Boolean, default: false }
   },
   { timestamps: true }

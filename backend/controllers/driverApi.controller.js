@@ -940,10 +940,28 @@ export const uploadProofOfDelivery = async (req, res, next) => {
       });
       await pod.save();
     }
+    console.log("[DEBUG] [POD Upload API] Saved POD Document:", pod);
 
     let managerId = null;
     if (resolvedTripId) {
-      const updatedTrip = await Trip.findByIdAndUpdate(resolvedTripId, { podStatus: 'Uploaded' }, { new: true });
+      const updatedTrip = await Trip.findByIdAndUpdate(
+        resolvedTripId,
+        {
+          podStatus: 'Uploaded',
+          podUrl: finalDocUrl,
+          podDetails: {
+            podNumber: pod.podNumber,
+            customerName: pod.customerName,
+            receiverName: pod.receiverName,
+            status: pod.status,
+            rejectionReason: pod.rejectionReason || '',
+            deliveryDate: pod.deliveryDate,
+            podDocumentUrl: finalDocUrl,
+            customerSignatureUrl: finalSigUrl,
+          }
+        },
+        { new: true }
+      );
       if (updatedTrip?.assignedManager) {
         managerId = updatedTrip.assignedManager;
       }
@@ -1048,10 +1066,28 @@ export const uploadWeighbridgeSlip = async (req, res, next) => {
       });
       await slip.save();
     }
+    console.log("[DEBUG] [Weighbridge Upload API] Saved Weighbridge Slip:", slip);
 
     let managerId = null;
     if (resolvedTripId) {
-      const updatedTrip = await Trip.findByIdAndUpdate(resolvedTripId, { weighbridgeStatus: 'Uploaded' }, { new: true });
+      const updatedTrip = await Trip.findByIdAndUpdate(
+        resolvedTripId,
+        {
+          weighbridgeStatus: 'Uploaded',
+          weighbridgeUrl: secureUrl,
+          weighbridgeDetails: {
+            slipNumber: slip.slipNumber,
+            grossWeight: slip.grossWeight,
+            tareWeight: slip.tareWeight,
+            netWeight: slip.netWeight,
+            location: slip.location,
+            status: slip.status,
+            rejectionReason: slip.rejectionReason || '',
+            documentUrl: secureUrl,
+          }
+        },
+        { new: true }
+      );
       if (updatedTrip?.assignedManager) {
         managerId = updatedTrip.assignedManager;
       }
@@ -1132,7 +1168,17 @@ export const getDriverTrips = async (req, res, next) => {
         weighbridgeRequired: trip.weighbridgeRequired !== false,
         estimatedDistance: trip.estimatedDistance || 0,
         actualDistance: trip.actualDistance || 0,
-        invoiceNumber: invoice ? invoice.invoiceNumber : 'N/A'
+        invoiceNumber: invoice ? invoice.invoiceNumber : 'N/A',
+        fuelStatus: trip.fuelStatus || 'Not Uploaded',
+        tollStatus: trip.tollStatus || 'Not Uploaded',
+        podUrl: trip.podUrl || '',
+        weighbridgeUrl: trip.weighbridgeUrl || '',
+        fuelUrl: trip.fuelUrl || '',
+        tollUrl: trip.tollUrl || '',
+        podDetails: trip.podDetails || null,
+        weighbridgeDetails: trip.weighbridgeDetails || null,
+        fuelDetails: trip.fuelDetails || null,
+        tollDetails: trip.tollDetails || null
       };
     }));
 
@@ -1303,6 +1349,22 @@ export const createDriverFuelEntry = async (req, res, next) => {
     const driverId = req.user._id;
     const { fuelStation, station, amount, liters, quantity, odometer, tripId } = req.body;
 
+    let resolvedTripId = tripId;
+    if (tripId) {
+      let tripDoc;
+      if (mongoose.Types.ObjectId.isValid(tripId)) {
+        tripDoc = await Trip.findById(tripId);
+      } else {
+        tripDoc = await Trip.findOne({ tripNumber: tripId });
+        if (!tripDoc && !tripId.startsWith('#')) {
+          tripDoc = await Trip.findOne({ tripNumber: `#${tripId}` });
+        }
+      }
+      if (tripDoc) {
+        resolvedTripId = tripDoc._id;
+      }
+    }
+
     const driver = await Driver.findById(driverId);
     if (!driver) {
       return sendError(res, 404, 'Driver profile not found');
@@ -1365,6 +1427,23 @@ export const createDriverFuelEntry = async (req, res, next) => {
     });
 
     await fuel.save();
+    console.log("[DEBUG] [Fuel Upload API] Saved Fuel Entry:", fuel);
+
+    if (resolvedTripId) {
+      await Trip.findByIdAndUpdate(resolvedTripId, {
+        fuelStatus: 'Uploaded',
+        fuelUrl: receiptImageUrl,
+        fuelDetails: {
+          fuelStation: stationName,
+          amount: totalAmount,
+          liters: totalLiters,
+          odometer: fuel.odometer,
+          approvalStatus: 'Pending',
+          rejectionReason: '',
+          billUrl: receiptImageUrl,
+        }
+      });
+    }
 
     return sendSuccess(res, 201, fuel, 'Fuel entry submitted successfully');
   } catch (error) {
@@ -1774,17 +1853,24 @@ export const getDriverTripById = async (req, res, next) => {
       });
       await invoice.save();
     }
-
     let pod = await ProofOfDelivery.findOne({ trip: trip._id });
     let weighbridge = await WeighbridgeSlip.findOne({ trip: trip._id });
     let fuel = await Fuel.findOne({
       $or: [
         { tripId: trip._id.toString() },
-        { tripId: trip.tripNumber }
+        { tripId: trip.tripNumber },
+        { tripId: trip.tripNumber.replace('#', '') },
+        { tripId: '#' + trip.tripNumber.replace('#', '') }
       ]
     });
+    let toll = await TollTransaction.findOne({ trip: trip._id }).sort({ createdAt: -1 });
+    const tollsList = await TollTransaction.find({ trip: trip._id });
+    let totalTollsAmount = 0;
+    for (const t of tollsList) {
+      totalTollsAmount += t.amountPaid || 0;
+    }
 
-    return sendSuccess(res, 200, {
+    const payload = {
       tripId: trip._id,
       tripNumber: trip.tripNumber,
       pickup: trip.startLocation,
@@ -1807,8 +1893,8 @@ export const getDriverTripById = async (req, res, next) => {
       actualStartTime: trip.actualStartTime || null,
       actualEndTime: trip.actualEndTime || null,
       podStatus: trip.podStatus,
-      podUrl: pod ? (pod.podDocumentUrl || pod.deliveryPhotoUrl) : null,
-      podDetails: pod ? {
+      podUrl: trip.podUrl || (pod ? (pod.podDocumentUrl || pod.deliveryPhotoUrl) : null),
+      podDetails: trip.podDetails || (pod ? {
         podNumber: pod.podNumber,
         customerName: pod.customerName,
         receiverName: pod.receiverName,
@@ -1817,11 +1903,11 @@ export const getDriverTripById = async (req, res, next) => {
         deliveryDate: pod.deliveryDate,
         podDocumentUrl: pod.podDocumentUrl || pod.deliveryPhotoUrl,
         customerSignatureUrl: pod.customerSignatureUrl,
-      } : null,
+      } : null),
       weighbridgeStatus: trip.weighbridgeStatus,
       weighbridgeRequired: trip.weighbridgeRequired !== false,
-      weighbridgeUrl: weighbridge ? weighbridge.documentUrl : null,
-      weighbridgeDetails: weighbridge ? {
+      weighbridgeUrl: trip.weighbridgeUrl || (weighbridge ? weighbridge.documentUrl : null),
+      weighbridgeDetails: trip.weighbridgeDetails || (weighbridge ? {
         slipNumber: weighbridge.slipNumber,
         grossWeight: weighbridge.grossWeight,
         tareWeight: weighbridge.tareWeight,
@@ -1830,10 +1916,10 @@ export const getDriverTripById = async (req, res, next) => {
         status: weighbridge.status,
         rejectionReason: weighbridge.rejectionReason,
         documentUrl: weighbridge.documentUrl,
-      } : null,
-      fuelStatus: fuel ? fuel.billStatus : 'Not Uploaded',
-      fuelUrl: fuel ? (fuel.billUrl || fuel.receiptImage) : null,
-      fuelDetails: fuel ? {
+      } : null),
+      fuelStatus: trip.fuelStatus || (fuel ? fuel.billStatus : 'Not Uploaded'),
+      fuelUrl: trip.fuelUrl || (fuel ? (fuel.billUrl || fuel.receiptImage) : null),
+      fuelDetails: trip.fuelDetails || (fuel ? {
         fuelStation: fuel.fuelStation,
         amount: fuel.amount,
         liters: fuel.liters,
@@ -1841,13 +1927,33 @@ export const getDriverTripById = async (req, res, next) => {
         approvalStatus: fuel.approvalStatus || fuel.billStatus,
         rejectionReason: fuel.rejectionReason,
         billUrl: fuel.billUrl || fuel.receiptImage,
-      } : null,
+      } : null),
+      tollStatus: trip.tollStatus || (toll ? 'Uploaded' : 'Not Uploaded'),
+      tollUrl: trip.tollUrl || (toll ? toll.receiptUrl : null),
+      tollDetails: trip.tollDetails || (toll ? {
+        tollPlazaName: toll.tollPlazaName,
+        amountPaid: toll.amountPaid,
+        dateTime: toll.dateTime,
+        fastagTransactionId: toll.fastagTransactionId,
+        receiptStatus: toll.receiptStatus,
+        receiptUrl: toll.receiptUrl,
+      } : null),
       customerLocationReached: trip.customerLocationReached || false,
+      totalTollsAmount: totalTollsAmount,
       invoiceNumber: invoice.invoiceNumber,
       manager: managerInfo,
       pickupAddress: trip.pickupAddress || trip.fromAddress || {},
       deliveryAddress: trip.deliveryAddress || trip.toAddress || {}
-    }, 'Trip details retrieved');
+    };
+
+    console.log("[DEBUG] [GET Trip Details API] Querying Trip ID/Number:", id);
+    console.log("[DEBUG] [GET Trip Details API] Found Trip:", trip);
+    console.log("[DEBUG] [GET Trip Details API] Found POD:", pod);
+    console.log("[DEBUG] [GET Trip Details API] Found Weighbridge:", weighbridge);
+    console.log("[DEBUG] [GET Trip Details API] Found Fuel:", fuel);
+    console.log("[DEBUG] [GET Trip Details API] Response payload:", payload);
+
+    return sendSuccess(res, 200, payload, 'Trip details retrieved');
   } catch (error) {
     next(error);
   }
@@ -1922,6 +2028,22 @@ export const createDriverTollTransaction = async (req, res, next) => {
     });
 
     await toll.save();
+    console.log("[DEBUG] [Toll Upload API] Saved Toll Transaction:", toll);
+
+    if (resolvedTripId) {
+      await Trip.findByIdAndUpdate(resolvedTripId, {
+        tollStatus: 'Uploaded',
+        tollUrl: receiptUrls.join(','),
+        tollDetails: {
+          tollPlazaName: plazaName,
+          amountPaid: totalAmount,
+          dateTime: transactionDate,
+          fastagTransactionId: toll.fastagTransactionId,
+          receiptStatus: 'Paid',
+          receiptUrl: receiptUrls.join(','),
+        }
+      });
+    }
 
     // Broadcast to Fleet Manager
     const io = req.app.get('socketio') || req.app.locals?.io;

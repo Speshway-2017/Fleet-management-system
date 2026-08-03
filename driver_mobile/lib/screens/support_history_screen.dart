@@ -3,8 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import 'raise_ticket_screen.dart';
 import 'ticket_details_screen.dart';
-import 'calling_fleet_manager_screen.dart';
-import 'message_fleet_manager_screen.dart';
+import '../widgets/external_contact_modal.dart';
 
 /// Representation of a Support Ticket data item.
 class SupportTicketItem {
@@ -299,10 +298,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                       label: 'Call Manager',
                       color: const Color(0xFF10B981),
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const CallingFleetManagerScreen()),
-                        );
+                        showExternalContactOptionsModal(context);
                       },
                     ),
                   ),
@@ -314,10 +310,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                       label: 'Message Manager',
                       color: primaryOrange,
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const MessageFleetManagerScreen()),
-                        );
+                        showExternalContactOptionsModal(context);
                       },
                     ),
                   ),
