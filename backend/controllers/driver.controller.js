@@ -141,7 +141,7 @@ export const listDrivers = async (req, res, next) => {
     // 6. Exclude drivers on active trips if availableOnly is set
     if (req.query.availableOnly === 'true' || req.query.available === 'true') {
       const activeTrips = await Trip.find({
-        status: { $nin: ['Completed', 'Cancelled'] }
+        status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
       });
       const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
       filter._id = { $nin: allocatedDriverIds };
@@ -233,7 +233,7 @@ export const listDrivers = async (req, res, next) => {
 export const getAvailableDrivers = async (req, res, next) => {
   try {
     const activeTrips = await Trip.find({
-      status: { $nin: ['Completed', 'Cancelled'] }
+      status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
     });
 
     const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);

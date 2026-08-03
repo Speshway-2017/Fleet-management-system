@@ -2,6 +2,156 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.42.0] - 2026-08-03
+
+### Fixed & Enhanced (Web & Driver Mobile Portal)
+- **Notification Read Status Persistence & Synchronization (`NotificationsPage.jsx`, `NotificationDetailsPage.jsx`, `Dashboard.jsx`, `notifications_screen.dart`)**:
+  - Connected `handleNotificationClick` on Manager Notifications page (`NotificationsPage.jsx`) to update local notification state with `isRead: true` immediately alongside the backend API call.
+  - Automatically trigger `managerApi.markNotificationRead(id)` when opening Manager Notification Details page (`NotificationDetailsPage.jsx`) so viewing details marks notifications as read in backend and UI.
+  - Passed `onMarkRead={handleMarkNotifRead}` to `NotificationCard` components on Driver Web Dashboard (`Dashboard.jsx`) to allow drivers to mark notifications as read directly from the dashboard inbox.
+- **Trip Progress Pipeline Status Enum Fix (`Trip.js`, `driverApi.controller.js`, `manager.controller.js`, `vehicle.controller.js`, `driver.controller.js`, `syncVehicleStatus.js`)**:
+  - Expanded Mongoose `Trip` schema `status` enum list to include all valid trip pipeline progression stage values (`'En Route'`, `'At Loading'`, `'Loading'`, `'In Transit'`, `'On Transit'`, `'Dispatched'`, `'Delivered'`, `'Start Trip'`, `'Complete Trip'`).
+  - Resolved `Trip validation failed: status: En Route is not a valid enum value for path status` error when drivers click pipeline progress buttons (**Start / In Progress**, **En Route**, **At Loading**, **In Transit**, **Delivered**, **Completed**).
+  - Updated active trip allocation queries across backend controllers and utility functions (`syncVehicleStatus.js`, `manager.controller.js`, `vehicle.controller.js`, `driver.controller.js`) to use `{ status: { $nin: ['Completed', 'Cancelled', 'Rejected'] } }`, ensuring active vehicle and driver availability is preserved throughout all intermediate trip progress states.
+
+## [1.41.0] - 2026-08-03
+
+### Fixed & Enhanced (Web & Driver Portal)
+- **Fleet Manager Ticket View Modal Scroll Fix (`ViewTicketsPage.jsx`)**:
+  - Restrained ticket update modal container height to `max-h-[90vh]` with vertical overflow scrolling (`overflow-y-auto`) and flex layout (`flex flex-col`), ensuring bottom action buttons (**Save Updates**, **Cancel**) and dynamic resolution form fields are fully visible and clickable without being clipped by the screen boundary.
+- **Instant Driver Maintenance Ticket Status Updates (`Maintenance.jsx`, `IssueCard.jsx`)**:
+  - Added optimistic status updates and immediate `onStatusUpdated` callbacks in `IssueCard.jsx` when drivers click stage buttons (**Mechanic Arrived 📍**, **Start Repair 🔧**, **Mark Repair Completed ✅**).
+  - Configured `Maintenance.jsx` with background silent refreshes (`fetchTickets(true)`) and automated 5-second polling intervals so manager status changes update instantly on driver web without showing full-page loading spinners.
+- **Driver Profile & Settings Default Name and Phone Pre-fill (`Settings.jsx`, `Profile.jsx`)**:
+  - Pre-filled Driver Name (`fullName` / `name`) and Phone Number (`phone` / `phoneNumber`) input fields from `AuthContext` and backend profile response so driver profile inputs are never left blank.
+  - Added a dedicated **Profile Information** card section to `Settings.jsx` (`/driver/settings`), allowing drivers to view and update contact details directly alongside password and preference settings.
+
+## [1.40.0] - 2026-08-02
+
+### Fixed & Enhanced (Web & Driver Portal)
+- **Vehicle Plate & Spec Cards Overflow Fix (`SummaryCard.jsx`, `VehicleCard.jsx`, `Vehicles.jsx`)**:
+  - Prevented vehicle registration plate numbers (e.g. `TG-09-AL-4587`) from breaking awkwardly at hyphens into multi-line text (`TG-09-` line 1, `AL-4587` line 2) by applying `whitespace-nowrap`, responsive font scaling (`text-lg sm:text-xl font-bold`), `truncate`, and flexbox `min-w-0` overflow safeguards across Driver Dashboard summary cards and Assigned Vehicle detail cards.
+  - Adjusted vehicle specification grid cards (`Fuel Specs`, `Insurance Status`, `Maintenance Health`) to prevent label clipping and line overflow on desktop and mobile viewports.
+- **Driver Trip Assignment Accept / Reject Workflow (`TripCard.jsx`, `Dashboard.jsx`, `Trips.jsx`, `CreateTripPage.jsx`, `TripsManagementPage.jsx`)**:
+  - Defaulted new trip dispatch creation in Fleet Manager portal (`CreateTripPage.jsx`, `TripsManagementPage.jsx`) to initial status `"Assigned"` (Pending response).
+  - Prominently displayed **Accept Trip** (emerald accent) and **Reject Trip** (rose border) action buttons under the **Current Trip Focus** section on the Driver Dashboard and under the **Pending Response** tab on the Driver Trips page (`/driver/trips`).
+- **Driver Destination Location Update on Trip Completion (`driverApi.controller.js`, `manager.controller.js`)**:
+  - Automatically updated `Driver.driverLocation` and `Driver.currentLocation` as well as `Vehicle.currentLocation` and `Vehicle.branch` to the completed trip's destination / customer location (`endLocation`).
+  - Resets driver status to `AVAILABLE` at that customer location, enabling Fleet Managers (`CreateTripPage.jsx`, `DriversListPage.jsx`) to view driver waiting status and dispatch new trips starting from that city.
+- **Interactive Notification Navigation (`NotificationCard.jsx`, `NotificationsPage.jsx`, `NotificationDetailsPage.jsx`)**:
+  - Added click handlers to notification items across Driver and Manager portals to navigate directly to target feature pages (`/driver/trips/${tripId}`, `/driver/maintenance`, `/driver/fuel`, `/manager/trips/${tripId}`, `/manager/complaints`, `/manager/fuel`).
+
+## [1.39.0] - 2026-07-31
+
+### Added & Enhanced (Web & Backend)
+- **Vehicle Issue Ticket Workflow & Action Buttons (`backend/`, `frontend/src/roles/driver/`, `frontend/src/roles/manager/`)**:
+  - **Structured Issue Creation**: Updated Driver Web modal (`Maintenance.jsx`) with predefined issue types (**Tyre / Brake Issue**, **Mechanic / Engine Breakdown**, **Severe Accident / Emergency**, **Fuel / Payment Issue**, **Electrical Issue**, **Custom / Manual Entry**) and manual text input field.
+  - **Driver Interactive Progress Buttons**: Enhanced `IssueCard.jsx` with driver progress update actions (**Confirm Mechanic Arrived 📍**, **Start Repair 🔧**, **Mark Repair Completed ✅**, **Need Maintenance 🛠️**) and assigned mechanic details card.
+  - **Manager Condition-Based Actions (`ViewTicketsPage.jsx`)**:
+    - **Mechanic / Tyre Breakdown**: Mechanic assignment modal (Name, Phone, Location) and ticket resolution (`Vehicle.status: Active`).
+    - **Severe Accident Cancellation**: Added 1-click **"Cancel Trip (Severe Accident 🚨)"** action button in `ViewTicketsPage.jsx` and `updateVehicleComplaint` controller, cancelling the active trip (`Trip.status: Cancelled`), setting `Vehicle.status: Maintenance`, releasing driver status (`Driver.status: AVAILABLE`), and alerting driver.
+    - **Fuel / Payment Quick Resolution**: Added 1-click **"Approve & Resolve Fuel Ticket"** action box resolving fuel tickets directly without requiring mechanic assignment.
+
+## [1.38.0] - 2026-07-31
+
+### Fixed & Enhanced
+- **Sidebar Scroll Position Lock (`frontend/src/components/layout/AppLayout.jsx`, `DriverLayout.jsx`, `Sidebar.jsx`, `NewAdminSidebar.jsx`)**:
+  - Locked navigation sidebars to `sticky top-0 h-screen overflow-hidden` across Manager, Driver, and Super Admin portals so scrolling page content does not scroll the sidebar container out of viewport view.
+  - Retained custom inner navigation scrollable views for long navigation menus.
+- **Fleet Manager Driver Fuel & Maintenance Records Visibility (`backend/controllers/manager.controller.js` & `FuelManagementPage.jsx`)**:
+  - Fixed database query in `listFuelRecords` controller to fetch fuel entries logged by assigned drivers (e.g. driver "bunny" refilling entry `6a6c7911ff3c61f3310feea7`) using multi-property `$or` queries matching vehicle IDs, plate numbers, driver IDs, and driver user IDs, with fallback query to prevent hidden pending fuel entries.
+  - Enhanced `listMaintenance` controller query to return all maintenance tickets and driver maintenance logs assigned to manager's fleet.
+  - Fixed `FuelManagementPage.jsx` fallback plate numbers to display actual vehicle registration or `"Unassigned"` status.
+- **Removed Driver Documents & Certificates View (`frontend/src/roles/driver/`)**:
+  - Removed "Documents" menu item from Driver Navigation bar (`DriverLayout.jsx`).
+  - Redirected `/driver/documents` route to `/driver/dashboard` in `App.jsx`.
+  - Removed "Vehicle Documents & Certificates" tile and tab panel from Driver Vehicle Overview page (`Vehicles.jsx`).
+
+## [1.37.0] - 2026-07-31
+
+### Added & Enhanced
+- **Driver Web Vehicle Overview & Details Parity (`frontend/src/roles/driver/pages/Vehicles.jsx`)**:
+  - **Dynamic Vehicle Banner**: Implemented top vehicle overview card matching mobile Flutter aesthetic (`vehicle_overview_screen.dart`), displaying vehicle image, status badge (`Active`, `Available`, `Maintenance`), vehicle code (`BT-990`), registration number, and fuel type badge (`Diesel`, `Petrol`, `CNG`, `Electric`).
+  - **Interactive Action Cards / Nav Tabs**:
+    - **Vehicle Details**: Renders basic info, operational status, assigned driver specs, load capacity, GVW, engine #, and chassis #.
+    - **Vehicle Status**: Displays health score, live odometer reading, fuel tank capacity, and depot branch.
+    - **Maintenance Alerts**: Dynamically fetches manager maintenance work orders (`/api/driver/maintenance`). Displays alert summary metrics (active, upcoming, overdue), priority badges (`CRITICAL`, `HIGH`, `MEDIUM`), service type, garage, scheduled date, comments, and read-only progress status (since Manager handles repair execution).
+    - **Vehicle Documents**: Lists Registration Certificate (RC), Insurance, Fitness Permit, PUC, and License documents with validity status and view links.
+  - **Dark Navy Quick Info Component**: Added bottom Quick Info card (`#101C2C`) displaying formatted dates for Last Service Date, Next Service Due, Insurance Expiry, and Permit Expiry.
+  - **Unassigned State Handling**: Added clean "No Vehicle Assigned" view with a "Check Again" refresh trigger when no vehicle is linked to the driver profile.
+
+## [1.36.0] - 2026-07-31
+
+### Fixed & Enhanced
+- **Fuel Log 500 Internal Server Error Fix (`backend/models/Fuel.js` & `driverApi.controller.js`)**:
+  - Made `vehicle` field in `Fuel` Mongoose schema optional (`required: false`) so driver fuel refilling logs can be submitted without throwing validation errors when no vehicle is currently assigned to the driver profile.
+  - Normalized backend fuel payload properties (`quantity`, `liters`, `totalCost`, `amount`, `stationName`, `fuelStation`, `odometerReading`) and output aliases (`receiptUrl`, `vehicleRegistration`, `status`) to support both Web and Mobile apps cleanly.
+- **Trip Status Update API Safeguards (`backend/controllers/driverApi.controller.js`)**:
+  - Added `mongoose.Types.ObjectId.isValid(id)` guard to `updateTripStatus` to prevent unhandled CastErrors resulting in HTTP 500 responses when invalid or string trip IDs are passed.
+  - Wrapped Socket.io broadcasting and manager notifications in `try...catch` blocks to protect trip updates from notification dispatch failures.
+- **Removed Hardcoded Dummy Vehicle Specifications (`frontend/src/roles/driver/`)**:
+  - Stripped hardcoded fallback values (`Volvo`, `FH16`, `Heavy Truck`, `300 Liters`, `2023`, `Valid`, `Optimal`, `Normal (110 PSI)`, `In 2,500 km`) across `Vehicles.jsx` and `VehicleCard.jsx`.
+  - Bound Driver Portal vehicle specification cards directly to real Fleet Manager assigned vehicle attributes (`brand`, `make`, `model`, `vehicleType`, `manufactureYear`, `fuelCapacity`, `insuranceExpiry`, `fitnessExpiry`, `odometer`).
+- **Assigned Vehicle Multi-Level Resolver (`backend/controllers/driverApi.controller.js`)**:
+  - Enhanced `getAssignedVehicle` resolver to check direct `Vehicle.assignedDriver`, driver `assignedVehicle` string/ID, and current active/recent trip vehicle, normalizing output properties for seamless consumption.
+
+## [1.35.0] - 2026-07-31
+
+### Added & Enhanced
+- **Driver Web Portal & Mobile Parity - Trip Assignment, 15-Min Start Lock & Vehicle Details Integration (`frontend/src/roles/driver/`)**:
+  - **Trip Accept / Reject Flow**:
+    - Enabled drivers to review complete trip assignment details (origin, destination, cargo, schedule, manager info, assigned vehicle specs) and perform **Accept** or **Reject**.
+    - Accepting a trip (`PATCH /api/driver/trips/:id/respond` with `{ action: 'accept' }`) updates status to `Accepted` and moves trip directly to **Upcoming Trips**.
+    - Rejecting a trip frees driver and assigned vehicle statuses to `Available`.
+  - **15-Minute Pre-Start Notification & Button Lock Rule**:
+    - Enforced 15-minute start lock restriction on **Start Trip** button across `TripCard` and `TripDetails` pages.
+    - Until 15 minutes before scheduled departure, **Start Trip** button remains locked with a lock icon 🔒 and clear unlock time badge.
+    - Backend background interval loop in `server.js` triggers database notification & Socket.io event `trip:15min-reminder` to **both Driver and Fleet Manager** 15 minutes before departure.
+    - Start trip button automatically unlocks when departure window is reached.
+  - **Active Trip Transition & Manager Notification**:
+    - Clicking **Start Trip** updates trip status to `In Progress`, updates driver & vehicle statuses to `ON_TRIP` / `On Trip`, shifts trip to **Active Trips**, and dispatches a live `Trip Started` notification to the Fleet Manager.
+  - **Assigned Vehicle Details**:
+    - Fully integrated assigned vehicle details card (Registration / Plate Number, Vehicle Model, Type, Status, and Fuel level) across trip cards and details views.
+  - **Bug Fixes & Customer Location Arrival Flow**:
+    - **`tripId` Resolution & 500 Error Fix**: Updated backend `getDriverTrips` and `getCurrentTrip` controllers to explicitly return `_id` and `id` properties in JSON response objects, resolving `PATCH /api/driver/trips/undefined/status` HTTP 500 errors and React missing `key` prop console warnings.
+    - **Live GPS Map Tracking & Vehicle Movement**: Rendered animated vehicle position tracking on Leaflet map (`MapView.jsx`) with dynamic speed gauge, remaining distance, ETA, and 3-stop route timeline.
+    - **Customer Location Reached Toggle**: Integrated interactive toggle switch for **"Arrived at Customer Location"** (`PATCH /api/driver/trips/:id/customer-location`).
+    - **Automatic POD & Weighbridge Unlocking**: Upload forms for Proof of Delivery (POD) and Weighbridge Slips automatically remain locked until driver toggles ON customer arrival.
+
+## [1.34.0] - 2026-07-31
+
+### Added & Enhanced
+- **Driver Web Portal Design System Synchronization (`frontend/src/roles/driver/`)**:
+  - **Color Palette Alignment**: Unified Driver Web Portal (`frontend/src/roles/driver/`) to use the exact same color palette and design system tokens as Admin and Manager portals.
+  - **Theme Tokens**:
+    - **Page Background**: `#F5F7FA` light background.
+    - **Brand Accent**: Warm Amber / Orange (`#B45A0A` / `#9A4D08` / `bg-amber-50` / `text-[#B45A0A]` / `border-amber-200`).
+    - **Sidebar**: Dark Charcoal `#0F0F10` matching Manager sidebar with left border amber active link indicator (`border-[#B45A0A]`).
+    - **Top Header Bar**: Clean white background (`bg-white border-b border-slate-200 shadow-sm`), dark font-poppins titles (`text-slate-900`), and duty toggle status badge (`bg-emerald-50 text-emerald-700`).
+    - **Cards & Data Tables**: Pure white cards (`bg-white border border-slate-200 shadow-sm rounded-2xl`), `font-poppins` headings, and `font-nunito` body typography across all 12 driver pages and components.
+
+## [1.33.0] - 2026-07-31
+
+### Added & Enhanced
+- **Driver Web Desktop Module Integration (`frontend/src/roles/driver/`)**:
+  - **Module Architecture**: Created desktop-optimized Driver Web portal inside `frontend/src/roles/driver/` with dedicated API client (`driverApi.js`), Socket hook (`useDriverSocket.js`), and responsive container (`DriverLayout.jsx`).
+  - **12 Phase Desktop Features**:
+    1. **Authentication & Profile**: Driver login screen (`Login.jsx`), session/localStorage token management, protected routes (`ProtectedRoute.jsx`), and profile manager (`Profile.jsx`).
+    2. **Desktop Dashboard**: Personalized driver greeting, shift status (On Duty / Off Duty toggle), active trip focus card, assigned vehicle summary, KPI metric widgets (`SummaryCard.jsx`), recent notifications inbox, and quick actions toolbar.
+    3. **Assigned Vehicle Inspector**: Read-only vehicle specs view (`Vehicles.jsx`), registration details, compliance certificates (Insurance, Fitness, PUC status), and engine maintenance health.
+    4. **Tabbed Trips Manager**: Filterable trip tabs (`Trips.jsx`) for Pending (Accept/Reject), Upcoming (Start trip), Active (Progress tracking & map navigation), and Completed history.
+    5. **Live Tracking & Documents**: Full-screen interactive Leaflet map (`MapView.jsx` & `TripDetails.jsx`) displaying driver position, origin/destination markers, polyline route, speed, ETA, remaining distance, and upload modals for Proof of Delivery (POD) & Weighbridge slips.
+    6. **Fuel & Maintenance Modules**: Fuel logs data grid (`Fuel.jsx`) with bill receipt attachment upload and approval status tags; Maintenance ticket submission (`Maintenance.jsx`) with photo attachment upload and 5-stage progress pipeline.
+    7. **Documents & Notifications Inbox**: Compliance document viewer (`Documents.jsx`) for Driver License, RC, Insurance, and PUC; Real-time socket notification inbox (`Notifications.jsx`) with instant toasts and mark-as-read actions.
+    8. **Support & Desktop Settings**: Direct helpline desk (`Support.jsx`) with click-to-call, email, and WhatsApp deep links for Manager & Dispatcher; Account settings (`Settings.jsx`) for password changes, language selection, and theme preferences.
+
+## [1.32.0] - 2026-07-31
+
+### Added & Enhanced
+- **Mobile Service Methods & Connection Handler Fix**:
+  - **ApiService Enhancements**: Added `initialize()`, `put()`, and `onUnauthorized` callback interceptor to `ApiService` in `api_service.dart`.
+  - **SocketService Overload & Static Fields Fix**: Restored static `_socket` and `_isConnected` member fields in `socket_service.dart` and updated `connect([String? driverId, ...])` to accept an optional positional `driverId` parameter, resolving compilation errors in `AuthProvider`.
+
 ## [1.28.0] - 2026-07-30
 
 ### Added & Enhanced

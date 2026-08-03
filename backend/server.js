@@ -314,6 +314,25 @@ const startServer = async () => {
               message: 'Your trip starts in 15 minutes! Start button is now enabled.'
             });
           }
+
+          if (trip.assignedManager) {
+            await createAndEmitNotification({
+              io,
+              recipient: trip.assignedManager,
+              recipientRole: 'FLEET_MANAGER',
+              type: 'trip_15min_reminder',
+              title: `Upcoming Trip Departure: #${trip.tripNumber}`,
+              message: `Trip #${trip.tripNumber} (${trip.startLocation} ➔ ${trip.endLocation}) is scheduled to start in 15 minutes.`,
+              priority: 'normal',
+              metadata: { tripId: trip._id, tripNumber: trip.tripNumber }
+            });
+
+            io.to(`manager:${trip.assignedManager}`).emit('trip:15min-reminder', {
+              tripId: trip._id,
+              tripNumber: trip.tripNumber,
+              message: `Trip #${trip.tripNumber} starts in 15 minutes.`
+            });
+          }
         }
       }
     } catch (cronErr) {

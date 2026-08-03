@@ -63,6 +63,10 @@ export default function NotificationDetailsPage() {
         const found = list.find(n => n._id === id || n.id === id);
         if (found) {
           setNotification(found);
+          if (!found.isRead) {
+            managerApi.markNotificationRead(id).catch(err => console.error("Failed to mark read", err));
+            setNotification(prev => prev ? { ...prev, isRead: true } : prev);
+          }
         } else {
           toast.error("Notification not found");
           navigate("/manager/notifications");
@@ -216,7 +220,7 @@ export default function NotificationDetailsPage() {
 
             {/* Actions */}
             {notification.actions && notification.actions.length > 0 && (
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-3 mb-6">
                 {notification.actions.map((act, i) => (
                   <button
                     key={i}

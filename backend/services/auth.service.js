@@ -16,14 +16,15 @@ export const loginUser = async ({ email, password, role }) => {
     throw new Error('Role mismatch');
   }
 
-  const token = generateToken({ id: user._id, role: user.role });
+  const userRole = user.role || 'DRIVER';
+  const token = generateToken({ id: user._id, role: userRole });
   return {
     token,
     user: {
       id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role,
+      role: userRole,
       profileImage: user.profileImage || "",
       subscriptionStatus: user.subscriptionStatus,
       subscriptionPlan: user.subscriptionPlan,

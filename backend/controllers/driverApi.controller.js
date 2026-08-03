@@ -243,18 +243,27 @@ export const getCurrentTrip = async (req, res, next) => {
     }
 
     return sendSuccess(res, 200, {
+      _id: currentTrip._id,
+      id: currentTrip._id,
       tripId: currentTrip._id,
       tripNumber: currentTrip.tripNumber,
       pickup: currentTrip.startLocation,
       destination: currentTrip.endLocation,
       startLocation: currentTrip.startLocation,
       endLocation: currentTrip.endLocation,
+      origin: { address: currentTrip.startLocation },
+      destinationObj: { address: currentTrip.endLocation },
       status: currentTrip.status,
       eta: currentTrip.eta,
       departureTime: currentTrip.departureTime,
       cargoType: currentTrip.cargoType,
       cargoWeight: currentTrip.cargoWeight,
-      vehicle: currentTrip.vehiclePlate || currentTrip.vehicleName || 'Vehicle',
+      vehicle: currentTrip.vehicle || currentTrip.vehiclePlate || currentTrip.vehicleName || 'Vehicle',
+      vehiclePlate: currentTrip.vehiclePlate || currentTrip.vehicle?.registrationNumber || 'Vehicle',
+      podStatus: currentTrip.podStatus,
+      weighbridgeStatus: currentTrip.weighbridgeStatus,
+      customerLocationReached: currentTrip.customerLocationReached || false,
+      customerLocationReachedAt: currentTrip.customerLocationReachedAt || null,
       manager: managerInfo
     }, 'Current trip retrieved');
   } catch (error) {
@@ -396,7 +405,8 @@ export const markAllDriverNotificationsRead = async (req, res, next) => {
 export const respondToTripAssignment = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { action } = req.body; // 'accept' or 'reject'
+    const rawAction = req.body.action || req.body.status;
+    const action = rawAction?.toLowerCase() === 'accepted' ? 'accept' : rawAction?.toLowerCase() === 'rejected' ? 'reject' : rawAction;
 
     if (!action || !['accept', 'reject'].includes(action.toLowerCase())) {
       return sendError(res, 400, 'Valid action (accept or reject) is required');
@@ -465,6 +475,10 @@ export const updateTripStatus = async (req, res, next) => {
       return sendError(res, 400, 'Status is required');
     }
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 400, 'Invalid trip ID format');
+    }
+
     const trip = await Trip.findById(id);
     if (!trip) {
       return sendError(res, 404, 'Trip not found');
@@ -472,12 +486,12 @@ export const updateTripStatus = async (req, res, next) => {
 
     const targetStatus = status === 'Start Trip' ? 'In Progress' : (status === 'Complete Trip' ? 'Completed' : status);
 
-    // Validate 15 min start restriction for In Progress
-    if (targetStatus === 'In Progress') {
+    // Validate 15 min start restriction for starting active progress
+    if (['In Progress', 'En Route', 'At Loading', 'In Transit'].includes(targetStatus) && trip.status === 'Assigned') {
       const departure = new Date(trip.departureTime);
       const now = new Date();
       // Enable start if current time is within 15 minutes of departure or later
-      if (!isNaN(departure.getTime())) {
+      if (trip.departureTime && !isNaN(departure.getTime())) {
         const marginMs = 15 * 60 * 1000;
         if (now.getTime() + marginMs < departure.getTime()) {
           const diffMins = Math.ceil((departure.getTime() - now.getTime()) / 60000);
@@ -485,52 +499,68 @@ export const updateTripStatus = async (req, res, next) => {
         }
       }
       if (!trip.actualStartTime) trip.actualStartTime = new Date();
-    } else if (targetStatus === 'Completed') {
+    } else if (['In Progress', 'En Route', 'At Loading', 'In Transit', 'Delivered'].includes(targetStatus)) {
+      if (!trip.actualStartTime) trip.actualStartTime = new Date();
+    } else if (['Completed', 'Complete Trip'].includes(targetStatus)) {
       trip.actualEndTime = new Date();
     }
 
     trip.status = targetStatus;
     await trip.save();
 
-    // Update Driver status if applicable
+    // Update Driver & Vehicle status and locations if applicable
     if (['Completed', 'Complete Trip'].includes(targetStatus)) {
-      await Driver.findByIdAndUpdate(req.user._id, { driverStatus: 'AVAILABLE' });
-      if (trip.vehicle) {
-        await Vehicle.findByIdAndUpdate(trip.vehicle, { currentStatus: 'Available' });
+      const destLocation = trip.endLocation || trip.destination?.address || trip.destinationObj?.address || 'Customer Location';
+      await Driver.findByIdAndUpdate(req.user._id, {
+        driverStatus: 'AVAILABLE',
+        driverLocation: destLocation,
+        currentLocation: destLocation,
+        currentCity: destLocation
+      });
+      if (trip.vehicle && mongoose.Types.ObjectId.isValid(trip.vehicle)) {
+        await Vehicle.findByIdAndUpdate(trip.vehicle, {
+          currentStatus: 'Available',
+          currentLocation: destLocation,
+          branch: destLocation
+        });
       }
     } else {
       await Driver.findByIdAndUpdate(req.user._id, { driverStatus: 'ON_TRIP' });
-      if (trip.vehicle) {
+      if (trip.vehicle && mongoose.Types.ObjectId.isValid(trip.vehicle)) {
         await Vehicle.findByIdAndUpdate(trip.vehicle, { currentStatus: 'On Trip' });
       }
     }
 
-    // Broadcast Socket.io event and notification to manager
-    const io = req.app.get('socketio') || req.app.locals?.io;
-    const managerId = trip.assignedManager;
-    const driverDoc = await Driver.findById(req.user._id);
+    // Broadcast Socket.io event and notification to manager safely
+    try {
+      const io = req.app.get('socketio') || req.app.locals?.io;
+      const managerId = trip.assignedManager;
+      const driverDoc = await Driver.findById(req.user._id);
 
-    if (managerId) {
-      if (targetStatus === 'In Progress') {
-        await createAndEmitNotification({
-          io,
-          recipient: managerId,
-          recipientRole: 'FLEET_MANAGER',
-          type: 'trip_started',
-          title: `Trip Started: ${trip.tripNumber}`,
-          message: `Driver ${driverDoc?.fullName || 'Driver'} has started trip #${trip.tripNumber} (${trip.startLocation} ➔ ${trip.endLocation}). Live GPS tracking activated.`,
-          priority: 'normal',
-          metadata: { tripId: trip._id, driverId: req.user._id }
-        });
-      }
+      if (managerId) {
+        if (targetStatus === 'In Progress') {
+          await createAndEmitNotification({
+            io,
+            recipient: managerId,
+            recipientRole: 'FLEET_MANAGER',
+            type: 'trip_started',
+            title: `Trip Started: ${trip.tripNumber}`,
+            message: `Driver ${driverDoc?.fullName || 'Driver'} has started trip #${trip.tripNumber} (${trip.startLocation} ➔ ${trip.endLocation}). Live GPS tracking activated.`,
+            priority: 'normal',
+            metadata: { tripId: trip._id, driverId: req.user._id }
+          });
+        }
 
-      if (io) {
-        io.to(`manager:${managerId}`).emit('trip:status-updated', {
-          tripId: trip._id,
-          status: trip.status,
-          driverId: req.user._id
-        });
+        if (io) {
+          io.to(`manager:${managerId}`).emit('trip:status-updated', {
+            tripId: trip._id,
+            status: trip.status,
+            driverId: req.user._id
+          });
+        }
       }
+    } catch (notifyErr) {
+      console.error('Error emitting trip status notification:', notifyErr);
     }
 
     return sendSuccess(res, 200, trip, 'Trip status updated successfully');
@@ -889,10 +919,16 @@ export const getDriverTrips = async (req, res, next) => {
     const trips = await Trip.find(query).populate('vehicle').sort({ createdAt: -1 });
 
     const formattedTrips = trips.map((trip) => ({
+      _id: trip._id,
+      id: trip._id,
       tripId: trip._id,
       tripNumber: trip.tripNumber,
       pickup: trip.startLocation,
       destination: trip.endLocation,
+      startLocation: trip.startLocation,
+      endLocation: trip.endLocation,
+      origin: { address: trip.startLocation },
+      destinationObj: { address: trip.endLocation },
       status: trip.status,
       eta: trip.eta,
       departureTime: trip.departureTime,
@@ -901,9 +937,12 @@ export const getDriverTrips = async (req, res, next) => {
       actualEndTime: trip.actualEndTime,
       cargoType: trip.cargoType,
       cargoWeight: trip.cargoWeight,
-      vehicle: trip.vehiclePlate || trip.vehicleName || 'Vehicle',
+      vehicle: trip.vehicle || trip.vehiclePlate || trip.vehicleName || 'Vehicle',
+      vehiclePlate: trip.vehiclePlate || trip.vehicle?.registrationNumber || 'Vehicle',
       podStatus: trip.podStatus,
       weighbridgeStatus: trip.weighbridgeStatus,
+      customerLocationReached: trip.customerLocationReached || false,
+      customerLocationReachedAt: trip.customerLocationReachedAt || null,
     }));
 
     return sendSuccess(res, 200, formattedTrips, 'Driver trips retrieved');
@@ -925,21 +964,42 @@ export const getAssignedVehicle = async (req, res, next) => {
       return sendError(res, 404, 'Driver profile not found');
     }
 
-    let vehicle = await Vehicle.findOne({ assignedDriver: driverId }).populate('assignedManager', 'name email phone');
+    // 1. Direct query on Vehicle by assignedDriver
+    let vehicle = await Vehicle.findOne({
+      $or: [
+        { assignedDriver: driverId },
+        { assignedDriver: driver._id.toString() }
+      ]
+    }).populate('assignedManager', 'name email phone');
 
+    // 2. Check driver's assignedVehicle property
     if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '') {
-      vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle }).populate('assignedManager', 'name email phone');
+      const orConditions = [
+        { vehicleNumber: driver.assignedVehicle },
+        { registrationNumber: driver.assignedVehicle }
+      ];
+      if (mongoose.Types.ObjectId.isValid(driver.assignedVehicle)) {
+        orConditions.push({ _id: driver.assignedVehicle });
+      }
+      vehicle = await Vehicle.findOne({ $or: orConditions }).populate('assignedManager', 'name email phone');
     }
 
+    // 3. Fallback to active or recent trip vehicle
     if (!vehicle) {
-      // Check active trip vehicle as fallback
-      const activeTrip = await Trip.findOne({
-        driver: driverId,
-        status: { $nin: ['Completed', 'Cancelled'] }
-      }).populate('vehicle');
-
-      if (activeTrip && activeTrip.vehicle && typeof activeTrip.vehicle === 'object') {
-        vehicle = activeTrip.vehicle;
+      const trip = await Trip.findOne({ driver: driverId }).sort({ createdAt: -1 }).populate('vehicle');
+      if (trip && trip.vehicle) {
+        if (typeof trip.vehicle === 'object' && trip.vehicle._id) {
+          vehicle = await Vehicle.findById(trip.vehicle._id).populate('assignedManager', 'name email phone');
+        } else if (mongoose.Types.ObjectId.isValid(trip.vehicle)) {
+          vehicle = await Vehicle.findById(trip.vehicle).populate('assignedManager', 'name email phone');
+        } else if (typeof trip.vehicle === 'string') {
+          vehicle = await Vehicle.findOne({
+            $or: [
+              { vehicleNumber: trip.vehicle },
+              { registrationNumber: trip.vehicle }
+            ]
+          }).populate('assignedManager', 'name email phone');
+        }
       }
     }
 
@@ -947,9 +1007,27 @@ export const getAssignedVehicle = async (req, res, next) => {
       return sendSuccess(res, 200, { assigned: false, vehicle: null }, 'No vehicle assigned');
     }
 
-    const vehObj = vehicle.toObject ? vehicle.toObject() : vehicle;
+    const vehObj = vehicle.toObject ? vehicle.toObject() : { ...vehicle };
 
-    // Attach driver info for completeness
+    // Normalize field aliases so frontend components receive uniform data
+    vehObj.registrationNumber = vehObj.registrationNumber || vehObj.vehicleNumber || 'N/A';
+    vehObj.vehicleNumber = vehObj.vehicleNumber || vehObj.registrationNumber || 'N/A';
+    vehObj.brand = vehObj.brand || vehObj.manufacturer || vehObj.make || '';
+    vehObj.make = vehObj.make || vehObj.brand || vehObj.manufacturer || '';
+    vehObj.model = vehObj.model || '';
+    vehObj.type = vehObj.vehicleType || vehObj.type || 'Truck';
+    vehObj.vehicleType = vehObj.vehicleType || vehObj.type || 'Truck';
+    vehObj.year = vehObj.manufactureYear || vehObj.year || '';
+    vehObj.manufactureYear = vehObj.manufactureYear || vehObj.year || '';
+    vehObj.fuelType = vehObj.fuelType || 'Diesel';
+    vehObj.tankCapacity = vehObj.fuelCapacity || vehObj.tankCapacity || 0;
+    vehObj.fuelCapacity = vehObj.fuelCapacity || vehObj.tankCapacity || 0;
+    vehObj.status = vehObj.currentStatus || vehObj.status || 'Available';
+    vehObj.currentStatus = vehObj.currentStatus || vehObj.status || 'Available';
+    vehObj.insuranceExpiry = vehObj.insuranceExpiry || vehObj.insuranceDetails?.expiryDate || null;
+    vehObj.fitnessExpiry = vehObj.fitnessExpiry || vehObj.permitDetails?.expiryDate || null;
+
+    // Attach driver info
     vehObj.assignedDriverName = driver.fullName;
     vehObj.assignedDriverPhone = driver.phoneNumber;
     vehObj.assignedDriverEmpId = driver.employeeId;
@@ -1071,7 +1149,7 @@ export const getDriverMaintenance = async (req, res, next) => {
 export const createDriverFuelEntry = async (req, res, next) => {
   try {
     const driverId = req.user._id;
-    const { fuelStation, station, amount, liters, quantity, odometer, tripId } = req.body;
+    const { fuelStation, station, stationName, amount, totalCost, liters, quantity, odometer, odometerReading, tripId } = req.body;
 
     const driver = await Driver.findById(driverId);
     if (!driver) {
@@ -1080,7 +1158,14 @@ export const createDriverFuelEntry = async (req, res, next) => {
 
     let vehicle = await Vehicle.findOne({ assignedDriver: driverId });
     if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '') {
-      vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle });
+      const orConditions = [
+        { vehicleNumber: driver.assignedVehicle },
+        { registrationNumber: driver.assignedVehicle }
+      ];
+      if (mongoose.Types.ObjectId.isValid(driver.assignedVehicle)) {
+        orConditions.push({ _id: driver.assignedVehicle });
+      }
+      vehicle = await Vehicle.findOne({ $or: orConditions });
     }
     if (!vehicle) {
       const activeTrip = await Trip.findOne({ driver: driverId, status: { $nin: ['Completed', 'Cancelled'] } }).populate('vehicle');
@@ -1111,21 +1196,22 @@ export const createDriverFuelEntry = async (req, res, next) => {
       }
     }
 
-    const stationName = fuelStation || station || 'General Fuel Station';
-    const totalAmount = Number(amount) || 0;
-    const totalLiters = Number(liters) || Number(quantity) || 0;
+    const stName = stationName || fuelStation || station || 'General Fuel Station';
+    const totalAmt = Number(amount) || Number(totalCost) || 0;
+    const totalLit = Number(liters) || Number(quantity) || 0;
+    const odom = Number(odometer) || Number(odometerReading) || (vehicle ? vehicle.odometer : 0) || 0;
 
     const fuel = new Fuel({
-      vehicle: vehicle ? vehicle._id : null,
-      vehicleId: vehicle ? vehicle.vehicleNumber : (driver.assignedVehicle || 'Unassigned'),
+      vehicle: vehicle ? vehicle._id : undefined,
+      vehicleId: vehicle ? (vehicle.vehicleNumber || vehicle.registrationNumber) : (driver.assignedVehicle || 'Unassigned'),
       vehicleName: vehicle ? (vehicle.vehicleName || `${vehicle.brand || ''} ${vehicle.model || ''}`.trim() || 'Vehicle') : 'Vehicle',
       driver: driver.fullName || req.user.name || 'Driver',
       driverId: driver.employeeId || driver._id.toString(),
       tripId: tripId || '',
-      odometer: Number(odometer) || (vehicle ? vehicle.odometer : 0) || 0,
-      fuelStation: stationName,
-      amount: totalAmount,
-      liters: totalLiters,
+      odometer: odom,
+      fuelStation: stName,
+      amount: totalAmt,
+      liters: totalLit,
       receiptImage: receiptImageUrl,
       billUrl: receiptImageUrl,
       billStatus: receiptImageUrl ? 'Uploaded' : 'Pending',
@@ -1136,7 +1222,20 @@ export const createDriverFuelEntry = async (req, res, next) => {
 
     await fuel.save();
 
-    return sendSuccess(res, 201, fuel, 'Fuel entry submitted successfully');
+    const obj = fuel.toObject();
+    obj.stationName = stName;
+    obj.fuelStation = stName;
+    obj.quantity = totalLit;
+    obj.liters = totalLit;
+    obj.totalCost = totalAmt;
+    obj.amount = totalAmt;
+    obj.odometerReading = odom;
+    obj.status = 'Pending';
+    obj.approvalStatus = 'Pending';
+    obj.receiptUrl = receiptImageUrl;
+    obj.vehicleRegistration = obj.vehicleId;
+
+    return sendSuccess(res, 201, obj, 'Fuel entry submitted successfully');
   } catch (error) {
     next(error);
   }
@@ -1149,17 +1248,14 @@ export const createDriverFuelEntry = async (req, res, next) => {
 export const getDriverFuelRecords = async (req, res, next) => {
   try {
     const driverId = req.user._id;
-
     const driver = await Driver.findById(driverId);
 
-    const filter = {
-      $or: [
-        { recordedBy: driverId },
-        { driverId: driver ? driver.employeeId : '' },
-        { driverId: driverId.toString() },
-        { driver: driver ? driver.fullName : '' }
-      ]
-    };
+    const filterConditions = [{ recordedBy: driverId }];
+    if (driverId) filterConditions.push({ driverId: driverId.toString() });
+    if (driver?.employeeId) filterConditions.push({ driverId: driver.employeeId });
+    if (driver?.fullName) filterConditions.push({ driver: driver.fullName });
+
+    const filter = filterConditions.length > 0 ? { $or: filterConditions } : {};
 
     const fuels = await Fuel.find(filter).populate('vehicle').sort({ createdAt: -1 });
 
@@ -1168,6 +1264,13 @@ export const getDriverFuelRecords = async (req, res, next) => {
       const img = obj.receiptImage || obj.billUrl || '';
       obj.receiptImage = img;
       obj.billUrl = img;
+      obj.receiptUrl = img;
+      obj.stationName = obj.fuelStation || obj.stationName || 'Fuel Station';
+      obj.quantity = obj.liters || obj.quantity || 0;
+      obj.totalCost = obj.amount || obj.totalCost || 0;
+      obj.odometerReading = obj.odometer || obj.odometerReading || 0;
+      obj.status = obj.approvalStatus || obj.billStatus || 'Pending';
+      obj.vehicleRegistration = obj.vehicleId || obj.vehicleName || (obj.vehicle ? (obj.vehicle.registrationNumber || obj.vehicle.vehicleNumber) : 'Assigned Truck');
       return obj;
     });
 
@@ -1450,7 +1553,7 @@ export const updateDriverTicketStatus = async (req, res, next) => {
       return sendError(res, 404, 'Ticket not found');
     }
 
-    const validStatuses = ['Mechanic Arrived', 'Repair In Progress', 'Repair Completed'];
+    const validStatuses = ['Mechanic Arrived', 'Repair In Progress', 'Repair Completed', 'Need Maintenance'];
     if (!validStatuses.includes(status)) {
       return sendError(res, 400, `Invalid status. Must be one of: ${validStatuses.join(', ')}`);
     }

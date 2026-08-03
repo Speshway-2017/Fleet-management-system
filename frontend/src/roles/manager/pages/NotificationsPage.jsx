@@ -199,19 +199,19 @@ export default function NotificationsPage() {
   };
 
   const handleNotificationClick = async (notif) => {
+    const notifId = notif._id || notif.id;
     try {
-      if (!notif.isRead) {
-        await managerApi.markNotificationRead(notif._id || notif.id);
-        setNotifications(prev =>
-          prev.map(n => (n._id === notif._id || n.id === notif.id) ? { ...n, isRead: true } : n)
-        );
-      }
+      await managerApi.markNotificationRead(notifId);
+      setNotifications(prev =>
+        prev.map(n => (n._id === notifId || n.id === notifId) ? { ...n, isRead: true } : n)
+      );
     } catch (err) {
       console.error("Failed to mark read", err);
     }
 
-    const url = resolveTargetUrl(notif);
-    navigate(url);
+    // Update active tab to match the category
+    setActiveTab(mapTypeToTab(notif.type));
+    navigate(`/manager/notifications/${notifId}`);
   };
 
   const countByPriority = (priority) => {

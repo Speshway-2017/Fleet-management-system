@@ -8,6 +8,12 @@ class ApiService {
   static const String defaultLocalIp = '10.86.34.1';
   static String? _cachedBaseUrl;
 
+  static Function()? onUnauthorized;
+
+  static Future<void> initialize() async {
+    await getBaseUrl();
+  }
+
   static Future<String> getBaseUrl() async {
     if (_cachedBaseUrl != null && _cachedBaseUrl!.isNotEmpty) {
       return _cachedBaseUrl!;
@@ -80,7 +86,6 @@ class ApiService {
       final response = await http.get(Uri.parse('$baseUrl$endpoint'), headers: headers).timeout(const Duration(seconds: 10));
       return _processResponse(response);
     } catch (e) {
-      // If primary IP fails and we haven't set custom URL, try 127.0.0.1 / localhost as fallback
       if (_cachedBaseUrl == 'http://$defaultLocalIp:5000/api') {
         try {
           final fallbackUrl = 'http://127.0.0.1:5000/api';
@@ -104,7 +109,6 @@ class ApiService {
       ).timeout(const Duration(seconds: 10));
       return _processResponse(response);
     } catch (e) {
-      // Fallback try for physical devices connected via ADB USB reverse
       if (_cachedBaseUrl == 'http://$defaultLocalIp:5000/api') {
         try {
           final fallbackUrl = 'http://127.0.0.1:5000/api';
@@ -119,6 +123,17 @@ class ApiService {
       }
       rethrow;
     }
+  }
+
+  static Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
+    final baseUrl = await getBaseUrl();
+    final headers = await _getHeaders();
+    final response = await http.put(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers,
+      body: jsonEncode(body),
+    ).timeout(const Duration(seconds: 10));
+    return _processResponse(response);
   }
 
   static Future<dynamic> patch(String endpoint, Map<String, dynamic> body) async {
@@ -323,6 +338,9 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
     } else {
+      if (response.statusCode == 401) {
+        onUnauthorized?.call();
+      }
       throw Exception(body['message'] ?? 'API Request Failed (${response.statusCode})');
     }
   }

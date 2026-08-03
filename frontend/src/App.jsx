@@ -83,6 +83,20 @@ import SubscriptionRequests from "@/roles/admin/pages/SubscriptionRequests";
 import SubscriptionPage from "@/roles/manager/pages/SubscriptionPage";
 import EarningsPage from "@/roles/manager/pages/EarningsPage";
 
+import DriverLayout from "@/roles/driver/layouts/DriverLayout";
+import DriverLogin from "@/roles/driver/pages/Login";
+import DriverDashboard from "@/roles/driver/pages/Dashboard";
+import DriverTripsPage from "@/roles/driver/pages/Trips";
+import DriverTripDetailsPage from "@/roles/driver/pages/TripDetails";
+import DriverVehiclesPage from "@/roles/driver/pages/Vehicles";
+import DriverFuelPage from "@/roles/driver/pages/Fuel";
+import DriverMaintenancePage from "@/roles/driver/pages/Maintenance";
+import DriverDocumentsPage from "@/roles/driver/pages/Documents";
+import DriverNotificationsPage from "@/roles/driver/pages/Notifications";
+import DriverSupportPage from "@/roles/driver/pages/Support";
+import DriverSelfProfilePage from "@/roles/driver/pages/Profile";
+import DriverSettingsPage from "@/roles/driver/pages/Settings";
+
 function PublicRoute({ children }) {
   const { isAuthenticated, role, initializing } = useAuth();
   if (initializing) {
@@ -93,7 +107,9 @@ function PublicRoute({ children }) {
     );
   }
   if (isAuthenticated) {
-    return <Navigate to={role === "SUPER_ADMIN" || role === "admin" ? "/admin/dashboard" : "/manager"} replace />;
+    if (role === "SUPER_ADMIN" || role === "admin") return <Navigate to="/admin/dashboard" replace />;
+    if (role === "DRIVER" || role === "driver") return <Navigate to="/driver/dashboard" replace />;
+    return <Navigate to="/manager" replace />;
   }
   return children;
 }
@@ -108,7 +124,9 @@ function RootRedirect() {
     );
   }
   if (isAuthenticated) {
-    return <Navigate to={role === "SUPER_ADMIN" || role === "admin" ? "/admin/dashboard" : "/manager"} replace />;
+    if (role === "SUPER_ADMIN" || role === "admin") return <Navigate to="/admin/dashboard" replace />;
+    if (role === "DRIVER" || role === "driver") return <Navigate to="/driver/dashboard" replace />;
+    return <Navigate to="/manager" replace />;
   }
   return <Navigate to="/login" replace />;
 }
@@ -218,6 +236,25 @@ export default function App() {
               <Route path="/manager/profile/2fa" element={<TwoFactorPage />} />
               <Route path="/manager/subscription" element={<SubscriptionPage />} />
               <Route path="/manager/earnings" element={<EarningsPage />} />
+            </Route>
+          </Route>
+
+          <Route path="/driver/login" element={<Navigate to="/login" replace />} />
+
+          <Route element={<ProtectedRoute allowedRoles={["DRIVER", "driver"]} />}>
+            <Route element={<DriverLayout />}>
+              <Route path="/driver" element={<Navigate to="/driver/dashboard" replace />} />
+              <Route path="/driver/dashboard" element={<DriverDashboard />} />
+              <Route path="/driver/trips" element={<DriverTripsPage />} />
+              <Route path="/driver/trips/:id" element={<DriverTripDetailsPage />} />
+              <Route path="/driver/vehicles" element={<DriverVehiclesPage />} />
+              <Route path="/driver/fuel" element={<DriverFuelPage />} />
+              <Route path="/driver/maintenance" element={<DriverMaintenancePage />} />
+              <Route path="/driver/documents" element={<Navigate to="/driver/dashboard" replace />} />
+              <Route path="/driver/notifications" element={<DriverNotificationsPage />} />
+              <Route path="/driver/support" element={<DriverSupportPage />} />
+              <Route path="/driver/profile" element={<DriverSelfProfilePage />} />
+              <Route path="/driver/settings" element={<DriverSettingsPage />} />
             </Route>
           </Route>
 

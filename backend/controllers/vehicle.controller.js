@@ -43,7 +43,7 @@ export const listVehicles = async (req, res, next) => {
 export const getAvailableVehicles = async (req, res, next) => {
   try {
     const activeTrips = await Trip.find({
-      status: { $nin: ['Completed', 'Cancelled'] }
+      status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
     });
 
     const allocatedVehicleIds = activeTrips.map(t => t.vehicle).filter(Boolean);

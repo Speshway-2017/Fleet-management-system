@@ -4,6 +4,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../services/api_service.dart';
 import '../../services/socket_service.dart';
+import '../../repositories/notification_repository.dart';
 import 'notification_details_screen.dart';
 import '../main_navigation_screen.dart';
 
@@ -90,25 +91,39 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  void _markAllAsRead() {
+  void _markAllAsRead() async {
     setState(() {
       for (var item in _notifications) {
         item.isRead = true;
       }
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('All notifications marked as read.'),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    try {
+      await NotificationRepository().markAllAsRead();
+    } catch (e) {
+      debugPrint('Failed to mark all as read: $e');
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('All notifications marked as read.'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
-  void _toggleReadStatus(NotificationItem item) {
-    setState(() {
-      item.isRead = true;
-    });
+  void _toggleReadStatus(NotificationItem item) async {
+    if (!item.isRead) {
+      setState(() {
+        item.isRead = true;
+      });
+      try {
+        await NotificationRepository().markAsRead(item.id);
+      } catch (e) {
+        debugPrint('Failed to mark notification as read: $e');
+      }
+    }
   }
 
   Widget _buildFilterBar() {
