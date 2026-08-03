@@ -215,7 +215,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.divider.withOpacity(0.2),
+                      color: AppColors.divider.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
@@ -369,9 +369,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppColors.secondary.withOpacity(0.1),
+                      color: AppColors.secondary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+                      border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -401,9 +401,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppColors.success.withOpacity(0.1),
+                      color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: AppColors.success.withOpacity(0.3)),
+                      border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
