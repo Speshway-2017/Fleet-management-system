@@ -60,6 +60,11 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
     _loadTickets();
   }
 
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   Future<void> _loadTickets() async {
     setState(() {
       _isLoading = true;
@@ -136,14 +141,18 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         );
       }).toList();
 
-      setState(() {
-        _tickets = fetched;
-      });
+      if (mounted) {
+        setState(() {
+          _tickets = fetched;
+        });
+      }
     } catch (e) {
       debugPrint('Failed to load driver tickets from API: $e');
-      setState(() {
-        _tickets = [];
-      });
+      if (mounted) {
+        setState(() {
+          _tickets = [];
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {

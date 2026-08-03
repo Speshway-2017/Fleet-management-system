@@ -9,6 +9,7 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
 import '../services/api_service.dart';
 import '../utils/date_formatter.dart';
+import 'trip_completion_screen.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final String tripId;
@@ -534,43 +535,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
-  Future<void> _handleCompleteTrip() async {
-    setState(() {
-      _isSubmitting = true;
-    });
 
-    try {
-      final rawId = _trip?['tripId'] ?? _trip?['_id'] ?? widget.tripId;
-      final cleanId = rawId.toString().replaceAll('#', '');
-      await ApiService.updateTripStatus(cleanId, 'Completed');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Trip completed successfully!'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        _fetchTripDetails();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
-    }
-  }
 
   Future<void> _handleRespond(String action) async {
     setState(() {
@@ -1181,7 +1146,22 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     ] else if (rawStatus.toLowerCase() == 'in progress' || rawStatus.toLowerCase() == 'on transit') ...[
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
-                        onPressed: _isSubmitting ? null : _handleCompleteTrip,
+                        onPressed: _isSubmitting
+                            ? null
+                            : () async {
+                                final res = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => TripCompletionScreen(
+                                      tripId: widget.tripId,
+                                      tripData: _trip,
+                                    ),
+                                  ),
+                                );
+                                if (res == true) {
+                                  _fetchTripDetails();
+                                }
+                              },
                         icon: const Icon(Icons.check_circle, color: Colors.white),
                         label: _isSubmitting
                             ? const SizedBox(

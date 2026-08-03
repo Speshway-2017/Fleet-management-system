@@ -20,10 +20,12 @@ import {
   uploadWeighbridgeSlip,
   getDriverTrips,
   getDriverTripById,
+  getDriverTripTolls,
   getAssignedVehicle,
   getDriverMaintenance,
   createDriverFuelEntry,
   getDriverFuelRecords,
+  createDriverTollTransaction,
   createDriverTicket,
   getDriverTickets,
   getDriverTicketById,
@@ -48,6 +50,7 @@ router.get('/maintenance', getDriverMaintenance);
 router.get('/trips/current', getCurrentTrip);
 router.get('/trips', getDriverTrips);
 router.get('/trips/:id', getDriverTripById);
+router.get('/trips/:id/tolls', getDriverTripTolls);
 router.get('/dashboard', getDriverDashboard);
 router.get('/notifications', getDriverNotifications);
 router.patch('/trips/:id/respond', respondToTripAssignment);
@@ -87,6 +90,15 @@ router.post('/weighbridge', (req, res, next) => {
     next();
   });
 }, uploadWeighbridgeSlip);
+
+router.post('/tolls', (req, res, next) => {
+  memoryUpload.array('files', 5)(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    next();
+  });
+}, createDriverTollTransaction);
 
 router.get('/tickets', getDriverTickets);
 router.get('/tickets/:id', getDriverTicketById);

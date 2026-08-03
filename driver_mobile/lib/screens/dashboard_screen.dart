@@ -143,7 +143,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Good Morning, ${_driverProfile?['fullName'] ?? 'Driver'} 👋',
+                                'Good Morning, ${(_driverProfile?['fullName'] ?? 'Driver').toString().split(' ')[0]} 👋',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
