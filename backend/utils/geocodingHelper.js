@@ -15,6 +15,9 @@ const CITY_COORDINATES = {
   anantapuram: [14.6819, 77.6006],
   goa: [15.2993, 74.1240],
   visakhapatnam: [17.6868, 83.2185],
+  visakapatnam: [17.6868, 83.2185],
+  visakapatanam: [17.6868, 83.2185],
+  visakhapatanam: [17.6868, 83.2185],
   vizag: [17.6868, 83.2185],
   kolkata: [22.5726, 88.3639],
   ahmedabad: [23.0225, 72.5714],
@@ -41,6 +44,51 @@ const CITY_COORDINATES = {
   indore: [22.7196, 75.8577]
 };
 
+/**
+ * Normalize location names to handle variations, extra spaces, casing, and common city aliases.
+ */
+export function normalizeCityName(loc) {
+  if (!loc) return '';
+  let clean = loc.toString().trim().toLowerCase();
+  clean = clean.split(',')[0].trim();
+  clean = clean.replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ');
+
+  const aliases = {
+    'visakapatnam': 'visakhapatnam',
+    'visakapatanam': 'visakhapatnam',
+    'visakhapatanam': 'visakhapatnam',
+    'vizag': 'visakhapatnam',
+    'waltair': 'visakhapatnam',
+    'bengaluru': 'bangalore',
+    'bangalore': 'bengaluru',
+    'gurugram': 'gurgaon',
+    'gurgaon': 'gurugram',
+    'cyberabad': 'hyderabad',
+    'secunderabad': 'hyderabad',
+    'dtl': 'dwaraka tirumala',
+    'dwarakatirumala': 'dwaraka tirumala',
+    'vijayawada': 'vijayawada',
+    'tirupati': 'tirupati'
+  };
+
+  return aliases[clean] || clean;
+}
+
+/**
+ * Check if two location names represent the same location.
+ */
+export function isSameLocation(loc1, loc2) {
+  if (!loc1 || !loc2) return false;
+  const n1 = normalizeCityName(loc1);
+  const n2 = normalizeCityName(loc2);
+
+  if (n1 === n2) return true;
+  if (n1.length >= 3 && n2.length >= 3) {
+    if (n1.includes(n2) || n2.includes(n1)) return true;
+  }
+  return false;
+}
+
 const geocodeCache = new Map();
 
 /**
@@ -48,14 +96,14 @@ const geocodeCache = new Map();
  */
 export function getDistanceKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.max(5, Math.round(R * c));
+  return Math.round(R * c);
 }
 
 /**

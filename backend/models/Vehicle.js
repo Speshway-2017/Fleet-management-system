@@ -35,6 +35,9 @@ const vehicleSchema = new mongoose.Schema(
     manufacturer:       { type: String, trim: true },
     createdBy:          { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     updatedBy:          { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    isAssigned:         { type: Boolean, default: false },
+    activeTripId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Trip', default: null },
+    currentTripId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Trip', default: null },
     
     seatingCapacity:    { type: String, default: '2' },
     registrationState:  { type: String, trim: true },

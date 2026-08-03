@@ -5,13 +5,16 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/main_navigation_screen.dart';
+import '../screens/profile/profile_screen.dart';
 
 class DriverProfileDropdown extends StatefulWidget {
   final bool isDarkBackground;
+  final bool compact;
 
   const DriverProfileDropdown({
     super.key,
     this.isDarkBackground = false,
+    this.compact = false,
   });
 
   @override
@@ -154,7 +157,7 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            if (isMobile) ...[
+                            if (isMobile || widget.compact) ...[
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                                 child: Column(
@@ -374,40 +377,40 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
   }
 
   Widget _buildAvatarImage(String? photoUrl) {
-    if (photoUrl != null && photoUrl.isNotEmpty) {
-      if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
-        return Image.network(
-          photoUrl,
-          width: 48,
-          height: 48,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => _buildFallbackIcon(),
-        );
-      } else if (photoUrl.startsWith('data:image') || photoUrl.length > 100) {
-        try {
-          final cleanBase64 = photoUrl.contains(',') ? photoUrl.split(',')[1] : photoUrl;
-          final bytes = base64Decode(cleanBase64.trim());
-          return Image.memory(
-            bytes,
-            width: 48,
-            height: 48,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => _buildFallbackIcon(),
-          );
-        } catch (_) {
-          return _buildFallbackIcon();
+    return ValueListenableBuilder<String>(
+      valueListenable: ProfileState.profilePhotoUrlNotifier,
+      builder: (context, staticNotifierUrl, child) {
+        final activeUrl = (photoUrl != null && photoUrl.isNotEmpty) ? photoUrl : staticNotifierUrl;
+        if (activeUrl.isNotEmpty) {
+          if (activeUrl.startsWith('http://') || activeUrl.startsWith('https://')) {
+            return Image.network(
+              activeUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => _buildFallbackIcon(),
+            );
+          } else if (activeUrl.startsWith('data:image') || activeUrl.length > 100) {
+            try {
+              final cleanBase64 = activeUrl.contains(',') ? activeUrl.split(',')[1] : activeUrl;
+              final bytes = base64Decode(cleanBase64.trim());
+              return Image.memory(
+                bytes,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => _buildFallbackIcon(),
+              );
+            } catch (_) {
+              return _buildFallbackIcon();
+            }
+          } else {
+            return Image.asset(
+              activeUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => _buildFallbackIcon(),
+            );
+          }
         }
-      } else {
-        return Image.asset(
-          photoUrl,
-          width: 48,
-          height: 48,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => _buildFallbackIcon(),
-        );
-      }
-    }
-    return _buildFallbackIcon();
+        return _buildFallbackIcon();
+      },
+    );
   }
 
   Widget _buildFallbackIcon() {
@@ -433,6 +436,9 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
         final roleColor = widget.isDarkBackground ? const Color(0xFF98A2B3) : const Color(0xFF6B7280);
         final arrowColor = widget.isDarkBackground ? Colors.white70 : const Color(0xFF6B7280);
 
+        final avatarSize = widget.compact ? 36.0 : 48.0;
+        final dotSize = widget.compact ? 10.0 : 12.0;
+
         return CompositedTransformTarget(
           link: _layerLink,
           child: InkWell(
@@ -441,25 +447,27 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
             hoverColor: widget.isDarkBackground ? Colors.white10 : const Color(0x0A000000),
             splashColor: widget.isDarkBackground ? Colors.white12 : const Color(0x0F000000),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
+              padding: widget.compact
+                  ? EdgeInsets.zero
+                  : const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16.0),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Circular Profile Image / Avatar (48x48) with Dynamic Online Status Dot
+                  // Circular Profile Image / Avatar with Dynamic Online Status Dot
                   Stack(
                     children: [
                       Container(
-                        width: 48,
-                        height: 48,
+                        width: avatarSize,
+                        height: avatarSize,
                         decoration: BoxDecoration(
                           color: const Color(0x1AB45A0A),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color(0x33B45A0A),
-                            width: 1.0,
+                            color: widget.isDarkBackground ? Colors.white24 : const Color(0x33B45A0A),
+                            width: 1.5,
                           ),
                         ),
                         child: ClipOval(
@@ -467,17 +475,17 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
                         ),
                       ),
                       Positioned(
-                        bottom: 1,
-                        right: 1,
+                        bottom: 0,
+                        right: 0,
                         child: Container(
-                          width: 12,
-                          height: 12,
+                          width: dotSize,
+                          height: dotSize,
                           decoration: BoxDecoration(
                             color: isOnline ? const Color(0xFF22C55E) : const Color(0xFF9CA3AF),
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: widget.isDarkBackground ? const Color(0xFF091522) : Colors.white,
-                              width: 2.0,
+                              width: 1.5,
                             ),
                           ),
                         ),
@@ -485,45 +493,47 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
                     ],
                   ),
 
-                  // Name, Role and Dropdown Arrow
-                  const SizedBox(width: 10),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        driverName,
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
-                          height: 1.1,
+                  // Name, Role and Dropdown Arrow (Only if not compact)
+                  if (!widget.compact) ...[
+                    const SizedBox(width: 10),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          driverName,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                            height: 1.1,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        'Driver',
-                        style: GoogleFonts.nunito(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: roleColor,
-                          height: 1.1,
+                        const SizedBox(height: 3),
+                        Text(
+                          'Driver',
+                          style: GoogleFonts.nunito(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: roleColor,
+                            height: 1.1,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 6),
-                  AnimatedRotation(
-                    turns: _isOpen ? 0.5 : 0.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 18,
-                      color: arrowColor,
+                      ],
                     ),
-                  ),
+                    const SizedBox(width: 6),
+                    AnimatedRotation(
+                      turns: _isOpen ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 18,
+                        color: arrowColor,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

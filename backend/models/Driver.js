@@ -85,6 +85,9 @@ const driverSchema = new mongoose.Schema(
       smsNotifications: { type: Boolean, default: true },
     },
     fcmToken: { type: String, default: '' },
+    isAssigned: { type: Boolean, default: false },
+    activeTripId: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip', default: null },
+    currentTripId: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip', default: null },
   },
   { timestamps: true }
 );

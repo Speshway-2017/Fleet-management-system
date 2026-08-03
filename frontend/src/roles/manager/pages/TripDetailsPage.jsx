@@ -13,7 +13,9 @@ import {
   MapPin,
   Compass,
   AlertCircle,
+  CheckCircle,
   CheckCircle2,
+  XCircle,
   Phone,
   Mail,
   X,
@@ -64,6 +66,7 @@ export default function TripDetailsPage() {
       setActiveTab("communication");
     }
   }, [searchParams, id]);
+  const [actionLoading, setActionLoading] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [invoice, setInvoice] = useState(null);
@@ -234,7 +237,7 @@ export default function TripDetailsPage() {
       if (data) {
         setTrip({ ...data, id: data.tripNumber });
         
-        // Fetch invoice, POD, and weighbridge in parallel with error handling
+        // Fetch invoice, POD, and weighbridge in parallel with single-source-of-truth fallback from Trip document
         Promise.allSettled([
           (async () => {
             try {
@@ -242,25 +245,75 @@ export default function TripDetailsPage() {
               const invData = invRes.data?.data || invRes.data;
               if (invData) setInvoice(invData);
             } catch (invErr) {
-              console.debug("Invoice not available for this trip");
+              if (data.tripInvoice && data.tripInvoice.invoiceNumber) {
+                setInvoice(data.tripInvoice);
+              }
             }
           })(),
           (async () => {
             try {
               const podRes = await managerApi.getPODByTripId(data._id);
               const podData = podRes.data?.data || podRes.data;
-              if (podData) setPod(podData);
+              if (podData && (podData.podDocumentUrl || podData.deliveryPhotoUrl)) {
+                setPod(podData);
+              } else if (data.proofOfDelivery && (data.proofOfDelivery.url || data.proofOfDelivery.deliveryPhotoUrl)) {
+                setPod({
+                  _id: data.proofOfDelivery._id || data._id,
+                  trip: data._id,
+                  podDocumentUrl: data.proofOfDelivery.url || data.proofOfDelivery.deliveryPhotoUrl,
+                  deliveryPhotoUrl: data.proofOfDelivery.deliveryPhotoUrl || data.proofOfDelivery.url,
+                  customerSignatureUrl: data.proofOfDelivery.customerSignatureUrl,
+                  customerName: data.proofOfDelivery.customerName || 'Customer Receiver',
+                  receiverName: data.proofOfDelivery.receiverName || 'Verified Receiver',
+                  status: data.proofOfDelivery.status || data.podStatus || 'Uploaded'
+                });
+              }
             } catch (podErr) {
-              console.debug("POD not available for this trip");
+              if (data.proofOfDelivery && (data.proofOfDelivery.url || data.proofOfDelivery.deliveryPhotoUrl)) {
+                setPod({
+                  _id: data.proofOfDelivery._id || data._id,
+                  trip: data._id,
+                  podDocumentUrl: data.proofOfDelivery.url || data.proofOfDelivery.deliveryPhotoUrl,
+                  deliveryPhotoUrl: data.proofOfDelivery.deliveryPhotoUrl || data.proofOfDelivery.url,
+                  customerSignatureUrl: data.proofOfDelivery.customerSignatureUrl,
+                  customerName: data.proofOfDelivery.customerName || 'Customer Receiver',
+                  receiverName: data.proofOfDelivery.receiverName || 'Verified Receiver',
+                  status: data.proofOfDelivery.status || data.podStatus || 'Uploaded'
+                });
+              }
             }
           })(),
           (async () => {
             try {
               const wbRes = await managerApi.getWeighbridgeSlipByTripId(data._id);
               const wbData = wbRes.data?.data || wbRes.data;
-              if (wbData) setWeighbridge(wbData);
+              if (wbData && wbData.documentUrl) {
+                setWeighbridge(wbData);
+              } else if (data.weighbridgeSlip && (data.weighbridgeSlip.url || data.weighbridgeSlip.documentUrl)) {
+                setWeighbridge({
+                  _id: data.weighbridgeSlip._id || data._id,
+                  trip: data._id,
+                  documentUrl: data.weighbridgeSlip.url || data.weighbridgeSlip.documentUrl,
+                  grossWeight: data.weighbridgeSlip.grossWeight || 25000,
+                  tareWeight: data.weighbridgeSlip.tareWeight || 10000,
+                  netWeight: data.weighbridgeSlip.netWeight || 15000,
+                  location: data.weighbridgeSlip.location || 'Highway Weighbridge Station',
+                  status: data.weighbridgeSlip.status || data.weighbridgeStatus || 'Uploaded'
+                });
+              }
             } catch (wbErr) {
-              console.debug("Weighbridge slip not available for this trip");
+              if (data.weighbridgeSlip && (data.weighbridgeSlip.url || data.weighbridgeSlip.documentUrl)) {
+                setWeighbridge({
+                  _id: data.weighbridgeSlip._id || data._id,
+                  trip: data._id,
+                  documentUrl: data.weighbridgeSlip.url || data.weighbridgeSlip.documentUrl,
+                  grossWeight: data.weighbridgeSlip.grossWeight || 25000,
+                  tareWeight: data.weighbridgeSlip.tareWeight || 10000,
+                  netWeight: data.weighbridgeSlip.netWeight || 15000,
+                  location: data.weighbridgeSlip.location || 'Highway Weighbridge Station',
+                  status: data.weighbridgeSlip.status || data.weighbridgeStatus || 'Uploaded'
+                });
+              }
             }
           })()
         ]).catch(err => {
@@ -339,19 +392,33 @@ export default function TripDetailsPage() {
       const socket = getSocket();
       socket.emit("joinManagerRoom", user._id || user.id);
 
+      // Helper to check if event trip ID matches current trip
+      const matchesCurrentTrip = (incomingId) => {
+        if (!incomingId || !trip) return false;
+        const target = String(incomingId).replaceAll('#', '').trim();
+        const currentId = String(trip._id || trip.id || '').replaceAll('#', '').trim();
+        const currentNum = String(trip.tripNumber || '').replaceAll('#', '').trim();
+        return target === currentId || target === currentNum || target === `TRP-${currentNum}` || `TRP-${target}` === currentNum;
+      };
+
       // Listen for pod upload event
-      const handlePodUploaded = (newPod) => {
-        // Only update if it's for the current trip
-        if (String(newPod.trip) === String(trip._id) || String(newPod.trip) === String(trip.id)) {
-          setPod(newPod);
+      const handlePodUploaded = (data) => {
+        const podDoc = data?.pod || data;
+        const targetId = podDoc?.trip || data?.tripId;
+        if (matchesCurrentTrip(targetId)) {
+          if (podDoc && (podDoc.podDocumentUrl || podDoc.deliveryPhotoUrl)) setPod(podDoc);
+          fetchTripAndInvoice();
           toast.success("Driver uploaded Proof of Delivery!");
         }
       };
 
       // Listen for weighbridge upload event
       const handleWeighbridgeUploaded = (data) => {
-        if (String(data.tripId) === String(trip._id) || String(data.tripId) === String(trip.id)) {
-          setWeighbridge(data.slip);
+        const slipDoc = data?.slip || data;
+        const targetId = data?.tripId || slipDoc?.trip;
+        if (matchesCurrentTrip(targetId)) {
+          if (slipDoc && (slipDoc.documentUrl || slipDoc.slipNumber)) setWeighbridge(slipDoc);
+          fetchTripAndInvoice();
           toast.success("Driver uploaded Weighbridge Slip!");
         }
       };
@@ -360,9 +427,12 @@ export default function TripDetailsPage() {
       socket.on("weighbridge:uploaded", handleWeighbridgeUploaded);
       
       const handleTripStatusUpdated = (updatedTrip) => {
-        if (String(updatedTrip._id) === String(trip._id) || String(updatedTrip.id) === String(trip.id)) {
+        const targetId = updatedTrip?._id || updatedTrip?.id || updatedTrip?.tripId;
+        if (matchesCurrentTrip(targetId)) {
           fetchTripAndInvoice();
-          toast.success(`Trip status updated: ${updatedTrip.status}`);
+          if (updatedTrip?.status) {
+            toast.success(`Trip status updated: ${updatedTrip.status}`);
+          }
         }
       };
       socket.on("trip:status-updated", handleTripStatusUpdated);
@@ -572,9 +642,10 @@ export default function TripDetailsPage() {
 
   const handlePODApprove = async () => {
     try {
-      const response = await managerApi.updatePODStatus(pod._id, { status: "Approved" });
+      const podId = pod?._id || trip?._id || id;
+      const response = await managerApi.updatePODStatus(podId, { status: "Approved" });
       const updatedPod = response.data?.data || response.data;
-      setPod(updatedPod);
+      if (updatedPod) setPod(updatedPod);
       toast.success("POD Approved successfully");
       await fetchTripAndInvoice();
     } catch (error) {
@@ -588,9 +659,10 @@ export default function TripDetailsPage() {
       return;
     }
     try {
-      const response = await managerApi.updatePODStatus(pod._id, { status: "Rejected", rejectionReason: rejectReason });
+      const podId = pod?._id || trip?._id || id;
+      const response = await managerApi.updatePODStatus(podId, { status: "Rejected", rejectionReason: rejectReason });
       const updatedPod = response.data?.data || response.data;
-      setPod(updatedPod);
+      if (updatedPod) setPod(updatedPod);
       setShowRejectModal(false);
       setRejectReason("");
       toast.success("POD Rejected successfully");
@@ -603,9 +675,10 @@ export default function TripDetailsPage() {
 
   const handleWeighbridgeApprove = async () => {
     try {
-      const response = await managerApi.updateWeighbridgeSlipStatus(weighbridge._id, { status: "Approved" });
+      const wbId = weighbridge?._id || trip?._id || id;
+      const response = await managerApi.updateWeighbridgeSlipStatus(wbId, { status: "Approved" });
       const updatedData = response.data?.data || response.data;
-      setWeighbridge(updatedData);
+      if (updatedData) setWeighbridge(updatedData);
       toast.success("Weighbridge Slip Approved");
       await fetchTripAndInvoice();
     } catch (error) {
@@ -619,12 +692,14 @@ export default function TripDetailsPage() {
       return;
     }
     try {
-      const response = await managerApi.updateWeighbridgeSlipStatus(weighbridge._id, { status: "Rejected", rejectionReason: weighbridgeRejectReason });
+      const wbId = weighbridge?._id || trip?._id || id;
+      const response = await managerApi.updateWeighbridgeSlipStatus(wbId, { status: "Rejected", rejectionReason: weighbridgeRejectReason });
       const updatedData = response.data?.data || response.data;
-      setWeighbridge(updatedData);
+      if (updatedData) setWeighbridge(updatedData);
       setShowWeighbridgeRejectModal(false);
       setWeighbridgeRejectReason("");
       toast.success("Weighbridge Slip Rejected");
+      await fetchTripAndInvoice();
     } catch (error) {
       toast.error("Failed to reject Weighbridge Slip");
     }
@@ -869,6 +944,65 @@ export default function TripDetailsPage() {
       {/* Tab 1: Overview View */}
       {activeTab === "overview" && (
         <div className="space-y-6 mt-6">
+          {/* Manager Approval Review Banner */}
+          {trip.status === "Waiting for Manager Approval" && (
+            <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1.5 font-poppins">
+                <div className="flex items-center gap-2 text-amber-900 font-extrabold text-base">
+                  <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
+                  <span>Trip Completion Review Requested</span>
+                </div>
+                <p className="text-xs text-amber-800 font-medium">
+                  Driver <strong>{trip.driverName || 'Driver'}</strong> has uploaded Proof of Delivery and Weighbridge documents for review.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={async () => {
+                    try {
+                      setActionLoading(true);
+                      await managerApi.approveTripCompletion(trip._id);
+                      toast.success("Trip completion approved successfully!");
+                      fetchTripDetails();
+                    } catch (err) {
+                      toast.error(err.response?.data?.message || "Failed to approve trip");
+                    } finally {
+                      setActionLoading(false);
+                    }
+                  }}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-poppins font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Approve Trip
+                </button>
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={async () => {
+                    const reason = prompt("Enter rejection reason for driver:", "Uploaded documents require correction.");
+                    if (reason === null) return;
+                    try {
+                      setActionLoading(true);
+                      await managerApi.rejectTripDocuments(trip._id, { reason });
+                      toast.success("Trip documents rejected. Driver notified to re-upload.");
+                      fetchTripDetails();
+                    } catch (err) {
+                      toast.error(err.response?.data?.message || "Failed to reject documents");
+                    } finally {
+                      setActionLoading(false);
+                    }
+                  }}
+                  className="px-4 py-2.5 bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 font-poppins font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Reject Documents
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* KPI statistics cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
         

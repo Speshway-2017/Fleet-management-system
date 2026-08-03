@@ -179,23 +179,20 @@ class ApiService {
     return _processResponse(response);
   }
 
-  static Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
-    final baseUrl = await getBaseUrl();
-    final headers = await _getHeaders();
-    final response = await http.put(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
-      body: jsonEncode(body),
-    ).timeout(const Duration(seconds: 10));
-    return _processResponse(response);
-  }
-
   // Trip Flow API Helpers
   static Future<dynamic> respondToTripAssignment(
     String tripId,
     String action,
   ) async {
-    return await patch('/driver/trips/$tripId/respond', {'action': action});
+    return await post('/driver/trips/$tripId/respond', {'action': action});
+  }
+
+  static Future<dynamic> acceptTrip(String tripId) async {
+    return await post('/driver/trips/$tripId/accept', {});
+  }
+
+  static Future<dynamic> rejectTrip(String tripId, {String? reason}) async {
+    return await post('/driver/trips/$tripId/reject', {'reason': reason ?? ''});
   }
 
   static Future<dynamic> updateTripStatus(String tripId, String status) async {
@@ -296,13 +293,44 @@ class ApiService {
     String? customerSignatureUrl,
     String? deliveryPhotoUrl,
     String? podDocumentUrl,
+    dynamic fileBytes,
+    String? fileName,
   }) async {
-    final body = <String, dynamic>{'tripId': tripId};
+    final baseUrl = await getBaseUrl();
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    final uri = Uri.parse('$baseUrl/driver/pod');
+
+    if (fileBytes != null && fileBytes is List<int>) {
+      final request = http.MultipartRequest('POST', uri);
+      if (token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.fields['tripId'] = tripId;
+      request.fields['documentType'] = 'proofOfDelivery';
+      if (customerName != null) request.fields['customerName'] = customerName;
+      if (receiverName != null) request.fields['receiverName'] = receiverName;
+      if (customerSignatureUrl != null) request.fields['customerSignatureUrl'] = customerSignatureUrl;
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          fileBytes,
+          filename: fileName ?? 'pod_document.pdf',
+        ),
+      );
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      return _processResponse(response);
+    }
+
+    final body = <String, dynamic>{
+      'tripId': tripId,
+      'documentType': 'proofOfDelivery',
+    };
     if (customerName != null) body['customerName'] = customerName;
     if (receiverName != null) body['receiverName'] = receiverName;
-    if (customerSignatureUrl != null) {
-      body['customerSignatureUrl'] = customerSignatureUrl;
-    }
+    if (customerSignatureUrl != null) body['customerSignatureUrl'] = customerSignatureUrl;
     if (deliveryPhotoUrl != null) body['deliveryPhotoUrl'] = deliveryPhotoUrl;
     if (podDocumentUrl != null) body['podDocumentUrl'] = podDocumentUrl;
     return await post('/driver/pod', body);
@@ -315,8 +343,42 @@ class ApiService {
     double? netWeight,
     String? location,
     String? documentUrl,
+    dynamic fileBytes,
+    String? fileName,
   }) async {
-    final body = <String, dynamic>{'tripId': tripId};
+    final baseUrl = await getBaseUrl();
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    final uri = Uri.parse('$baseUrl/driver/weighbridge');
+
+    if (fileBytes != null && fileBytes is List<int>) {
+      final request = http.MultipartRequest('POST', uri);
+      if (token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.fields['tripId'] = tripId;
+      request.fields['documentType'] = 'weighbridgeSlip';
+      if (grossWeight != null) request.fields['grossWeight'] = grossWeight.toString();
+      if (tareWeight != null) request.fields['tareWeight'] = tareWeight.toString();
+      if (netWeight != null) request.fields['netWeight'] = netWeight.toString();
+      if (location != null) request.fields['location'] = location;
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          fileBytes,
+          filename: fileName ?? 'weighbridge_slip.pdf',
+        ),
+      );
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      return _processResponse(response);
+    }
+
+    final body = <String, dynamic>{
+      'tripId': tripId,
+      'documentType': 'weighbridgeSlip',
+    };
     if (grossWeight != null) body['grossWeight'] = grossWeight;
     if (tareWeight != null) body['tareWeight'] = tareWeight;
     if (netWeight != null) body['netWeight'] = netWeight;
