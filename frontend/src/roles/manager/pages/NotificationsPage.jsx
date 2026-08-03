@@ -173,15 +173,19 @@ export default function NotificationsPage() {
   };
 
   const handleNotificationClick = async (notif) => {
+    const notifId = notif._id || notif.id;
     try {
-      await managerApi.markNotificationRead(notif._id || notif.id);
+      await managerApi.markNotificationRead(notifId);
+      setNotifications(prev =>
+        prev.map(n => (n._id === notifId || n.id === notifId) ? { ...n, isRead: true } : n)
+      );
     } catch (err) {
       console.error("Failed to mark read", err);
     }
 
     // Update active tab to match the category
     setActiveTab(mapTypeToTab(notif.type));
-    navigate(`/manager/notifications/${notif._id || notif.id}`);
+    navigate(`/manager/notifications/${notifId}`);
   };
 
   const countByPriority = (priority) => {

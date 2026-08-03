@@ -96,7 +96,7 @@ export default function FuelManagementPage() {
         setLogs(result.map(l => ({
           ...l,
           id: l._id,
-          vehicleId: l.vehicleId || (l.vehicle && l.vehicle.plateNumber) || "MH-12-AB-5678",
+          vehicleId: l.vehicleId || (l.vehicle && (l.vehicle.vehicleNumber || l.vehicle.registrationNumber || l.vehicle.plateNumber)) || "Unassigned",
           vehicleName: l.vehicleName || (l.vehicle && l.vehicle.name) || "Fleet Vehicle",
           qty: `${l.liters} L`,
           total: `₹${(l.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,

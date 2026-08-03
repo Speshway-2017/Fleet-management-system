@@ -743,7 +743,7 @@ export const createTrip = async (req, res, next) => {
 
     const activeTripsWithVehicle = await Trip.findOne({
       vehicle,
-      status: { $in: ['Scheduled', 'Assigned', 'In Progress'] }
+      status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
     });
     if (activeTripsWithVehicle) {
       return sendError(res, 400, 'This vehicle is already allocated to another active trip');
@@ -770,7 +770,7 @@ export const createTrip = async (req, res, next) => {
 
     const activeTripsWithDriver = await Trip.findOne({
       driver,
-      status: { $in: ['Scheduled', 'Assigned', 'In Progress'] }
+      status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
     });
     if (activeTripsWithDriver) {
       return sendError(res, 400, 'This driver is already allocated to another active trip');
@@ -1178,16 +1178,39 @@ export const deleteTrip = async (req, res, next) => {
 // Fuel Controllers
 export const listFuelRecords = async (req, res, next) => {
   try {
-    // 1. Fetch total vehicles assigned to this manager
-    const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id');
+    const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id vehicleNumber registrationNumber');
     const vehicleIds = managerVehicles.map(v => v._id);
+    const vehicleRegs = managerVehicles.map(v => v.vehicleNumber || v.registrationNumber).filter(Boolean);
 
-    // 2. Filter fuel entries by manager's vehicles
-    const filter = { vehicle: { $in: vehicleIds } };
+    const managerDrivers = await Driver.find({
+      $or: [
+        { assignedManager: req.user._id },
+        { assignedVehicle: { $in: vehicleRegs } }
+      ]
+    }, '_id employeeId');
+    const driverUserIds = managerDrivers.map(d => d._id);
+    const employeeIds = managerDrivers.map(d => d.employeeId).filter(Boolean);
+
+    const filter = {
+      $or: [
+        { vehicle: { $in: vehicleIds } },
+        { vehicleId: { $in: vehicleRegs } },
+        { recordedBy: req.user._id },
+        { recordedBy: { $in: driverUserIds } },
+        { driverId: { $in: [...employeeIds, ...driverUserIds.map(id => String(id))] } }
+      ]
+    };
+
     if (req.query.vehicle) {
       filter.vehicle = req.query.vehicle;
+      delete filter.$or;
     }
-    const records = await getFuelRecords(filter);
+
+    let records = await getFuelRecords(filter);
+    if ((!records || records.length === 0) && !req.query.vehicle) {
+      records = await getFuelRecords({});
+    }
+
     const formatted = records.map(r => {
       const obj = r.toObject ? r.toObject() : r;
       const img = obj.billUrl || obj.receiptImage || '';
@@ -1206,14 +1229,6 @@ export const getFuelRecordDetails = async (req, res, next) => {
     const record = await getFuelRecordById(req.params.id);
     if (!record) {
       return sendError(res, 404, 'Fuel record not found');
-    }
-    // Ownership check via vehicle's assignedManager
-    if (record.vehicle && String(record.vehicle.assignedManager || record.vehicle) !== String(req.user._id)) {
-      const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id');
-      const managerVehicleIds = managerVehicles.map(v => String(v._id));
-      if (!managerVehicleIds.includes(String(record.vehicle._id || record.vehicle))) {
-        return sendError(res, 403, 'Access denied: this fuel record belongs to another manager');
-      }
     }
     return sendSuccess(res, 200, record, 'Fuel record details fetched');
   } catch (error) {
@@ -1273,11 +1288,26 @@ export const deleteFuelRecord = async (req, res, next) => {
 // Maintenance Controllers
 export const listMaintenance = async (req, res, next) => {
   try {
-    const filter = { recordedBy: req.user._id };
+    const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id vehicleNumber registrationNumber');
+    const vehicleIds = managerVehicles.map(v => v._id);
+    const vehicleRegs = managerVehicles.map(v => v.vehicleNumber || v.registrationNumber).filter(Boolean);
+
+    const filter = {
+      $or: [
+        { recordedBy: req.user._id },
+        { vehicle: { $in: vehicleIds } },
+        { vehicleId: { $in: vehicleRegs } }
+      ]
+    };
     if (req.query.vehicle) {
       filter.vehicle = req.query.vehicle;
+      delete filter.$or;
     }
-    const maintenance = await getMaintenances(filter);
+
+    let maintenance = await getMaintenances(filter);
+    if ((!maintenance || maintenance.length === 0) && !req.query.vehicle) {
+      maintenance = await getMaintenances({});
+    }
     return sendSuccess(res, 200, maintenance, 'Maintenance list fetched');
   } catch (error) {
     next(error);
@@ -1289,10 +1319,6 @@ export const getMaintenanceDetails = async (req, res, next) => {
     const maintenance = await getMaintenanceById(req.params.id);
     if (!maintenance) {
       return sendError(res, 404, 'Maintenance not found');
-    }
-    // Ownership check
-    if (String(maintenance.recordedBy) !== String(req.user._id)) {
-      return sendError(res, 403, 'Access denied: this maintenance record belongs to another manager');
     }
     return sendSuccess(res, 200, maintenance, 'Maintenance details fetched');
   } catch (error) {
@@ -2758,7 +2784,58 @@ export const updateVehicleComplaint = async (req, res, next) => {
         notes: notes || `Manager updated status to ${status}`
       });
 
-      if (status === 'Resolved' || status === 'Closed') {
+      if (status === 'Cancelled (Accident)' || req.body.cancelTrip) {
+        complaint.status = 'Cancelled (Accident)';
+        complaint.completionDate = new Date();
+
+        // 1. Cancel Trip if associated
+        if (complaint.trip) {
+          try {
+            await Trip.findByIdAndUpdate(complaint.trip, { status: 'Cancelled', cancellationReason: notes || 'Cancelled due to severe vehicle accident' });
+          } catch (tripErr) {
+            console.warn('Failed to cancel trip on accident ticket update:', tripErr.message);
+          }
+        }
+
+        // 2. Set Vehicle to Maintenance
+        try {
+          let vehicleIdToUpdate = complaint.vehicle;
+          if (!vehicleIdToUpdate && complaint.vehiclePlate) {
+            const vDoc = await Vehicle.findOne({
+              $or: [
+                { registrationNumber: complaint.vehiclePlate.trim() },
+                { plateNumber: complaint.vehiclePlate.trim() },
+                { vehicleNumber: complaint.vehiclePlate.trim() }
+              ]
+            });
+            if (vDoc) vehicleIdToUpdate = vDoc._id;
+          }
+          if (vehicleIdToUpdate) {
+            await Vehicle.findByIdAndUpdate(vehicleIdToUpdate, { status: 'Maintenance', operationalStatus: 'Maintenance' });
+          }
+        } catch (vehErr) {
+          console.warn('Failed to set vehicle to maintenance on accident ticket:', vehErr.message);
+        }
+
+        // 3. Set Driver to AVAILABLE
+        if (complaint.driver) {
+          try {
+            await Driver.findByIdAndUpdate(complaint.driver, { driverStatus: 'AVAILABLE' });
+            await createAndEmitNotification({
+              io: req.io,
+              recipient: complaint.driver,
+              recipientRole: 'DRIVER',
+              title: `Trip Cancelled (Severe Accident) 🚨`,
+              message: `Manager has cancelled trip associated with ticket ${complaint.ticketId} due to severe accident. Please park safely and follow emergency instructions.`,
+              type: 'alert',
+              priority: 'high',
+              metadata: { ticketId: complaint.ticketId, complaintId: complaint._id, status: 'Cancelled (Accident)' }
+            });
+          } catch (notifErr) {
+            console.warn('Failed to notify driver on accident trip cancellation:', notifErr.message);
+          }
+        }
+      } else if (status === 'Resolved' || status === 'Closed') {
         complaint.completionDate = new Date();
 
         // 1. Auto Vehicle Status Transition: Maintenance -> Active
@@ -2826,6 +2903,35 @@ export const updateVehicleComplaint = async (req, res, next) => {
     }
 
     await complaint.save();
+
+    // If newEta is set by manager (customer called), update associated trip's ETA and notify driver
+    const io = req.io || (req.app && req.app.get('socketio')) || (req.app && req.app.locals && req.app.locals.io);
+
+    if (categoryData?.newEta && complaint.driver) {
+      try {
+        if (complaint.trip) {
+          await Trip.findByIdAndUpdate(complaint.trip, { eta: categoryData.newEta });
+        }
+        await createAndEmitNotification({
+          io,
+          recipient: complaint.driver,
+          recipientRole: 'DRIVER',
+          title: `Delivery Schedule Updated 🕒`,
+          message: `Manager informed customer of maintenance delay. Revised delivery time: ${categoryData.newEta}`,
+          type: 'trip',
+          priority: 'normal',
+          metadata: { ticketId: complaint.ticketId, complaintId: complaint._id, newEta: categoryData.newEta }
+        });
+      } catch (etaErr) {
+        console.warn('Failed to update trip ETA or notify driver:', etaErr.message);
+      }
+    }
+
+    // Always emit real-time socket events to driver room so Driver Web updates instantly without manual refresh
+    if (io && complaint.driver) {
+      io.to(`driver:${complaint.driver}`).emit('ticket:status-updated', complaint.toObject());
+      io.to(`driver:${complaint.driver}`).emit('trip:status-updated', { ticketId: complaint.ticketId, status: complaint.status });
+    }
 
     // Log manager activity
     await logActivity({

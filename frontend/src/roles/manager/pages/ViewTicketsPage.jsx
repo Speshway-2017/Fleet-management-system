@@ -247,9 +247,18 @@ export default function ViewTicketsPage() {
       case 'breakdown':
         return (
           <div className="space-y-3 p-3.5 bg-red-50/60 border border-red-200/70 rounded-xl font-nunito">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-600" />
-              <span className="text-xs font-bold text-red-900 font-poppins">Emergency Breakdown & Towing Assistance</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600" />
+                <span className="text-xs font-bold text-red-900 font-poppins">Emergency Breakdown & Towing Assistance</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setData(prev => ({ ...prev, status: 'Cancelled (Accident)' }))}
+                className="py-1 px-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold transition shadow-sm cursor-pointer"
+              >
+                🚨 Severe Accident - Cancel Trip
+              </button>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -422,6 +431,64 @@ export default function ViewTicketsPage() {
                 rows="2"
                 className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-medium text-[#1E293B] placeholder-gray-400 focus:outline-none"
               ></textarea>
+            </div>
+
+            {/* Customer Call & Delivery Schedule Adjustment (Maintenance Delay) */}
+            <div className="pt-3 border-t border-blue-200/80 space-y-2 font-nunito">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-purple-600" />
+                <span className="text-xs font-bold text-purple-900 font-poppins">Customer Call & Revised Delivery Schedule</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="maintCustomerInformed"
+                  checked={!!data.categoryData?.customerInformed}
+                  onChange={(e) => setData(prev => ({
+                    ...prev,
+                    categoryData: { ...prev.categoryData, customerInformed: e.target.checked }
+                  }))}
+                  className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                />
+                <label htmlFor="maintCustomerInformed" className="text-xs font-bold text-slate-800 cursor-pointer">
+                  Customer Called & Informed of Maintenance Issue 📞
+                </label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                    Revised Delivery Date & Time
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Tomorrow, 06:00 PM"
+                    value={data.categoryData?.newEta || ''}
+                    onChange={(e) => setData(prev => ({
+                      ...prev,
+                      categoryData: { ...prev.categoryData, newEta: e.target.value }
+                    }))}
+                    className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                    Delay Reason
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Maintenance Repair Delay"
+                    value={data.categoryData?.delayReason || 'Vehicle Maintenance Break'}
+                    onChange={(e) => setData(prev => ({
+                      ...prev,
+                      categoryData: { ...prev.categoryData, delayReason: e.target.value }
+                    }))}
+                    className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -903,10 +970,10 @@ export default function ViewTicketsPage() {
 
       {/* --- EDIT TICKET SUB-MODAL --- */}
       {selectedTicket && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-[60] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col my-auto">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-150 flex items-center justify-between bg-slate-50">
+            <div className="px-6 py-4 border-b border-gray-150 flex items-center justify-between bg-slate-50 shrink-0">
               <div>
                 <h4 className="font-poppins font-bold text-[#1E293B] text-[14px]">
                   {modalMode === "view" ? "Vehicle Ticket Details" : "Update Issue Ticket"}
@@ -923,7 +990,7 @@ export default function ViewTicketsPage() {
 
             {/* Content */}
             {modalMode === "view" ? (
-              <div className="p-6 space-y-4">
+              <div className="p-6 space-y-4 flex-1 overflow-y-auto">
                 <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs space-y-2.5 font-nunito">
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Vehicle Plate:</span>
@@ -1042,7 +1109,7 @@ export default function ViewTicketsPage() {
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleUpdateTicket} className="p-6 space-y-4">
+              <form onSubmit={handleUpdateTicket} className="p-6 space-y-4 flex-1 overflow-y-auto">
                 <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs space-y-1.5 font-nunito">
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Vehicle Plate:</span>
@@ -1078,6 +1145,7 @@ export default function ViewTicketsPage() {
                     <option value="Resolved">Resolved (Auto Active Vehicle)</option>
                     <option value="Closed">Closed</option>
                     <option value="Rejected">Rejected</option>
+                    <option value="Cancelled (Accident)">Cancel Trip (Severe Accident 🚨)</option>
                   </select>
                 </div>
 
@@ -1087,6 +1155,12 @@ export default function ViewTicketsPage() {
                 {(editingTicketData.status === 'Resolved' || editingTicketData.status === 'Closed') && (
                   <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] font-semibold text-emerald-800 flex items-center gap-2 font-nunito">
                     <span>✨ Resolving ticket will set Vehicle Status to <strong>ACTIVE</strong> and send <strong>Continue Trip</strong> alert to driver!</span>
+                  </div>
+                )}
+
+                {editingTicketData.status === 'Cancelled (Accident)' && (
+                  <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-[11px] font-semibold text-red-800 flex items-center gap-2 font-nunito">
+                    <span>🚨 Cancelling trip due to severe accident will cancel trip, place vehicle in <strong>MAINTENANCE</strong> status, and free up driver!</span>
                   </div>
                 )}
 

@@ -119,7 +119,7 @@ export default function CreateTripPage() {
   const [endLocation, setEndLocation] = useState("");
   const [departureTime, setDepartureTime] = useState("");
   const [eta, setEta] = useState("");
-  const [status, setStatus] = useState("Scheduled");
+  const [status, setStatus] = useState("Assigned");
   const [description, setDescription] = useState("");
 
   const [departureError, setDepartureError] = useState("");

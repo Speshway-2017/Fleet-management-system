@@ -108,7 +108,7 @@ export default function TripsManagementPage() {
     endLocation: "",
     departureTime: "",
     eta: "",
-    status: "Scheduled",
+    status: "Assigned",
     description: ""
   });
 
@@ -293,7 +293,7 @@ export default function TripsManagementPage() {
         endLocation: "",
         departureTime: "",
         eta: "",
-        status: "Scheduled",
+        status: "Assigned",
         description: "",
         cargoType: "",
         cargoWeight: "",
