@@ -55,12 +55,65 @@ export default function DriverVehiclesPage() {
         setVehicle(null);
       }
 
-      // 2. Fetch maintenance alerts created by manager
+      // 2. Fetch maintenance alerts & driver issue tickets
       try {
-        const mainRes = await driverApi.getMaintenance();
+        const [mainRes, ticketsRes] = await Promise.all([
+          driverApi.getMaintenance().catch(() => null),
+          driverApi.getTickets().catch(() => null)
+        ]);
+
+        let activeMain = [];
+        let completedMain = [];
+        let upcoming = 0;
+        let overdue = 0;
+
         if (mainRes?.success && mainRes.data) {
-          setMaintenance(mainRes.data);
+          activeMain = mainRes.data.activeMaintenances || [];
+          completedMain = mainRes.data.completedMaintenances || [];
+          upcoming = mainRes.data.upcomingCount || 0;
+          overdue = mainRes.data.overdueCount || 0;
         }
+
+        const ticketList = ticketsRes?.data || ticketsRes || [];
+        if (Array.isArray(ticketList)) {
+          ticketList.forEach(t => {
+            const st = t.status || "Open";
+            const isDone = st === "Resolved" || st === "Closed" || st === "Completed" || st === "Repair Completed";
+            const formattedTicket = {
+              _id: t._id || t.ticketId,
+              serviceType: t.issueType || t.title || "Vehicle Issue",
+              status: st === "Need Maintenance" ? "Maintenance Needed" : st,
+              scheduledDate: t.reportedAt || t.createdAt,
+              comments: t.description || "Issue reported by driver.",
+              garage: t.assignedMechanic?.location || "Garage Workshop",
+              assignedMechanic: t.assignedMechanic,
+              isTicket: true
+            };
+            if (isDone) {
+              if (!completedMain.some(m => m._id === formattedTicket._id)) {
+                completedMain.unshift(formattedTicket);
+              }
+            } else {
+              if (!activeMain.some(m => m._id === formattedTicket._id)) {
+                activeMain.unshift(formattedTicket);
+              }
+            }
+          });
+        }
+
+        // Keep activeMaintenances focused strictly on active needed maintenance
+        const filteredActive = activeMain.filter(m => {
+          const s = (m.status || "").toLowerCase();
+          return !s.includes("completed") && !s.includes("resolved") && !s.includes("closed");
+        });
+
+        setMaintenance({
+          activeMaintenances: filteredActive,
+          completedMaintenances: completedMain,
+          upcomingCount: upcoming,
+          overdueCount: overdue,
+          lastCompleted: completedMain[0] || null
+        });
       } catch (err) {
         console.warn("Could not fetch maintenance data:", err);
       }
@@ -432,13 +485,34 @@ export default function DriverVehiclesPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   {/* Status Metric Card 1 */}
-                  <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-2">
+                  <div className={`p-5 rounded-2xl space-y-2 border ${
+                    maintenance?.activeMaintenances?.length > 0
+                      ? 'bg-amber-50 border-amber-200 text-amber-900'
+                      : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  }`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Vehicle Operational Health</span>
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      <span className={`text-xs font-bold uppercase tracking-wider ${
+                        maintenance?.activeMaintenances?.length > 0 ? 'text-amber-700' : 'text-emerald-700'
+                      }`}>Vehicle Operational Health</span>
+                      {maintenance?.activeMaintenances?.length > 0 ? (
+                        <Wrench className="w-5 h-5 text-amber-600" />
+                      ) : (
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      )}
                     </div>
-                    <p className="text-2xl font-extrabold font-poppins text-emerald-800">100% Fit</p>
-                    <p className="text-xs text-emerald-700">All mechanical components verified ready for long-haul routes.</p>
+                    <p className={`text-2xl font-extrabold font-poppins ${
+                      maintenance?.activeMaintenances?.length > 0 ? 'text-amber-800' : 'text-emerald-800'
+                    }`}>
+                      {maintenance?.activeMaintenances?.length > 0 ? 'Under Maintenance' : '100% Fit'}
+                    </p>
+                    <p className={`text-xs ${
+                      maintenance?.activeMaintenances?.length > 0 ? 'text-amber-700' : 'text-emerald-700'
+                    }`}>
+                      {maintenance?.activeMaintenances?.length > 0
+                        ? `${maintenance.activeMaintenances.length} active maintenance ticket(s) in progress.`
+                        : 'All mechanical components verified ready for long-haul routes.'
+                      }
+                    </p>
                   </div>
 
                   {/* Status Metric Card 2 */}

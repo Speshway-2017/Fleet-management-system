@@ -14,8 +14,9 @@ export default function DriverSupportPage() {
     setLoading(true);
     try {
       const res = await driverApi.getSupportInfo();
-      if (res?.success && res.data) {
-        setSupportInfo(res.data);
+      const info = res?.data?.data || res?.data;
+      if (info && (info.manager || info.dispatcher)) {
+        setSupportInfo(info);
       } else {
         setSupportInfo({
           manager: { name: "Fleet Manager Office", phone: "+919876543210", email: "manager@fleet.com" },

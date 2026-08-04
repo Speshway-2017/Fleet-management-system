@@ -180,7 +180,9 @@ export const updateDriverProfile = async (req, res, next) => {
       'language',
       'isDarkMode',
       'notificationPreferences',
-      'fcmToken'
+      'fcmToken',
+      'isDuty',
+      'driverStatus'
     ];
     const updateData = {};
     for (const key of allowedFields) {
@@ -190,6 +192,28 @@ export const updateDriverProfile = async (req, res, next) => {
         } else {
           updateData[key] = req.body[key];
         }
+      }
+    }
+
+    if (req.body.isDuty !== undefined) {
+      const isDutyBool = Boolean(req.body.isDuty);
+      updateData['isDuty'] = isDutyBool;
+      if (!isDutyBool) {
+        updateData['driverStatus'] = 'OFFLINE';
+      } else {
+        const currentDriver = await Driver.findById(driverId).select('driverStatus');
+        if (currentDriver && currentDriver.driverStatus !== 'ON_TRIP' && currentDriver.driverStatus !== 'ASSIGNED') {
+          updateData['driverStatus'] = 'AVAILABLE';
+        }
+      }
+    }
+
+    if (req.body.driverStatus !== undefined) {
+      updateData['driverStatus'] = req.body.driverStatus;
+      if (req.body.driverStatus === 'OFFLINE' || req.body.driverStatus === 'OFF_DUTY') {
+        updateData['isDuty'] = false;
+      } else if (req.body.driverStatus === 'AVAILABLE' || req.body.driverStatus === 'ON_TRIP') {
+        updateData['isDuty'] = true;
       }
     }
 
@@ -210,6 +234,26 @@ export const updateDriverProfile = async (req, res, next) => {
 
     if (!updatedDriver) {
       return sendError(res, 404, 'Driver profile not found');
+    }
+
+    // Emit real-time status update to assigned manager & global manager socket room
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        const payload = {
+          driverId: updatedDriver._id,
+          id: updatedDriver._id,
+          driverStatus: updatedDriver.driverStatus,
+          isDuty: updatedDriver.isDuty,
+          fullName: updatedDriver.fullName
+        };
+        if (updatedDriver.assignedManager) {
+          io.to(`user_${updatedDriver.assignedManager}`).emit('driver:status-updated', payload);
+        }
+        io.emit('driver:status-updated', payload);
+      }
+    } catch (sockErr) {
+      console.error('Socket emit error on driver status update:', sockErr);
     }
 
     return sendSuccess(res, 200, updatedDriver, 'Driver profile updated successfully');
@@ -513,6 +557,7 @@ export const updateTripStatus = async (req, res, next) => {
       const destLocation = trip.endLocation || trip.destination?.address || trip.destinationObj?.address || 'Customer Location';
       await Driver.findByIdAndUpdate(req.user._id, {
         driverStatus: 'AVAILABLE',
+        assignedVehicle: 'Unassigned',
         driverLocation: destLocation,
         currentLocation: destLocation,
         currentCity: destLocation
@@ -520,6 +565,7 @@ export const updateTripStatus = async (req, res, next) => {
       if (trip.vehicle && mongoose.Types.ObjectId.isValid(trip.vehicle)) {
         await Vehicle.findByIdAndUpdate(trip.vehicle, {
           currentStatus: 'Available',
+          assignedDriver: null,
           currentLocation: destLocation,
           branch: destLocation
         });
@@ -691,14 +737,33 @@ export const getDriverDocumentById = async (req, res, next) => {
 export const getDriverSupportInfo = async (req, res, next) => {
   try {
     const driver = await Driver.findById(req.user._id).populate('assignedManager');
-    const manager = driver?.assignedManager;
+    let manager = driver?.assignedManager;
+
+    if (!manager && driver?.organization) {
+      manager = await User.findOne({ role: 'FLEET_MANAGER', organization: driver.organization });
+    }
+    if (!manager) {
+      const trip = await Trip.findOne({ driver: req.user._id }).populate('assignedManager');
+      if (trip && trip.assignedManager) {
+        manager = trip.assignedManager;
+      }
+    }
+    if (!manager) {
+      manager = await User.findOne({ role: 'FLEET_MANAGER' });
+    }
 
     return sendSuccess(res, 200, {
-      dispatcherName: manager ? manager.name : 'Fleet Operations Team',
-      phone: manager ? manager.phone || '+18005550199' : '+18005550199',
-      email: manager ? manager.email || 'support@fleetapp.com' : 'support@fleetapp.com',
-      whatsapp: manager ? manager.phone || '+18005550199' : '+18005550199',
-      workingHours: '24/7 Fleet Control Center'
+      manager: {
+        name: manager ? manager.name : 'Fleet Manager',
+        phone: manager ? (manager.phone || '+919876543210') : '+919876543210',
+        email: manager ? manager.email : 'manager@fleet.com',
+        jobTitle: manager?.jobTitle || 'Assigned Fleet Manager'
+      },
+      dispatcher: {
+        name: 'Central Dispatch Desk',
+        phone: '+919876543211',
+        email: 'dispatch@fleet.com'
+      }
     }, 'Support contact retrieved');
   } catch (error) {
     next(error);
@@ -984,19 +1049,23 @@ export const getAssignedVehicle = async (req, res, next) => {
       vehicle = await Vehicle.findOne({ $or: orConditions }).populate('assignedManager', 'name email phone');
     }
 
-    // 3. Fallback to active or recent trip vehicle
+    // 3. Fallback to active trip vehicle ONLY (not completed/cancelled trips)
     if (!vehicle) {
-      const trip = await Trip.findOne({ driver: driverId }).sort({ createdAt: -1 }).populate('vehicle');
-      if (trip && trip.vehicle) {
-        if (typeof trip.vehicle === 'object' && trip.vehicle._id) {
-          vehicle = await Vehicle.findById(trip.vehicle._id).populate('assignedManager', 'name email phone');
-        } else if (mongoose.Types.ObjectId.isValid(trip.vehicle)) {
-          vehicle = await Vehicle.findById(trip.vehicle).populate('assignedManager', 'name email phone');
-        } else if (typeof trip.vehicle === 'string') {
+      const activeTrip = await Trip.findOne({
+        driver: driverId,
+        status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
+      }).sort({ createdAt: -1 }).populate('vehicle');
+
+      if (activeTrip && activeTrip.vehicle) {
+        if (typeof activeTrip.vehicle === 'object' && activeTrip.vehicle._id) {
+          vehicle = await Vehicle.findById(activeTrip.vehicle._id).populate('assignedManager', 'name email phone');
+        } else if (mongoose.Types.ObjectId.isValid(activeTrip.vehicle)) {
+          vehicle = await Vehicle.findById(activeTrip.vehicle).populate('assignedManager', 'name email phone');
+        } else if (typeof activeTrip.vehicle === 'string') {
           vehicle = await Vehicle.findOne({
             $or: [
-              { vehicleNumber: trip.vehicle },
-              { registrationNumber: trip.vehicle }
+              { vehicleNumber: activeTrip.vehicle },
+              { registrationNumber: activeTrip.vehicle }
             ]
           }).populate('assignedManager', 'name email phone');
         }
@@ -1455,6 +1524,14 @@ export const createDriverTicket = async (req, res, next) => {
 
     await complaint.save();
 
+    // Update vehicle currentStatus to Need Maintenance
+    if (complaint.vehiclePlate) {
+      await Vehicle.findOneAndUpdate(
+        { vehicleNumber: complaint.vehiclePlate },
+        { currentStatus: 'Need Maintenance' }
+      ).catch(() => {});
+    }
+
     // Create & emit notification for assigned manager
     const managerId = driver.assignedManager || req.user.managerId;
     if (managerId) {
@@ -1536,11 +1613,12 @@ export const getDriverTicketById = async (req, res, next) => {
 /**
  * Driver Update Ticket Repair Status
  * PATCH /api/driver/tickets/:id/status
+ * POST /api/driver/tickets/:id/resolve
  */
 export const updateDriverTicketStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status, notes } = req.body;
+    let { status, notes, actualCost } = req.body;
     const driverId = req.user._id;
 
     const queryFilter = mongoose.Types.ObjectId.isValid(id)
@@ -1553,40 +1631,132 @@ export const updateDriverTicketStatus = async (req, res, next) => {
       return sendError(res, 404, 'Ticket not found');
     }
 
-    const validStatuses = ['Mechanic Arrived', 'Repair In Progress', 'Repair Completed', 'Need Maintenance'];
-    if (!validStatuses.includes(status)) {
+    const validStatuses = [
+      'Mechanic Arrived',
+      'Repair In Progress',
+      'Repair Completed',
+      'Need Maintenance',
+      'Resolved',
+      'Closed'
+    ];
+
+    if (status && !validStatuses.includes(status)) {
       return sendError(res, 400, `Invalid status. Must be one of: ${validStatuses.join(', ')}`);
     }
 
+    if (!status) {
+      status = ticket.status || 'Need Maintenance';
+    }
+
+    // Process file upload for service bill if provided
+    let serviceBillUrl = req.body.serviceBillUrl || '';
+    if (req.file) {
+      try {
+        const uploadResult = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: 'fleet_service_bills', resource_type: 'auto' },
+            (err, result) => (err ? reject(err) : resolve(result))
+          );
+          uploadStream.end(req.file.buffer);
+        });
+        serviceBillUrl = uploadResult.secure_url;
+      } catch (err) {
+        console.warn('Cloudinary service bill upload error:', err.message);
+      }
+    }
+
+    if (serviceBillUrl) {
+      if (!ticket.attachments) ticket.attachments = [];
+      ticket.attachments.push({
+        url: serviceBillUrl,
+        filename: req.file ? req.file.originalname : 'service_bill.jpg',
+        uploadedAt: new Date()
+      });
+    }
+
+    if (actualCost !== undefined && actualCost !== null && actualCost !== '') {
+      ticket.actualCost = Number(actualCost) || ticket.actualCost || 0;
+    }
+
     ticket.status = status;
+
+    let timelineNote = notes || `Driver updated status to ${status}`;
+    if (serviceBillUrl) {
+      timelineNote += ` (Service Bill uploaded)`;
+    }
+
     ticket.repairTimeline.push({
       status,
-      updatedBy: `Driver (${ticket.driverName || 'Driver'})`,
+      updatedBy: `Driver (${ticket.driverName || req.user.name || 'Driver'})`,
       updatedAt: new Date(),
-      notes: notes || `Driver updated status to ${status}`
+      notes: timelineNote
     });
+
+    if (status === 'Resolved' || status === 'Closed' || status === 'Repair Completed') {
+      ticket.completionDate = new Date();
+      // Restore vehicle operational status if assigned
+      if (ticket.vehicle) {
+        try {
+          await Vehicle.findByIdAndUpdate(ticket.vehicle, {
+            status: 'Available',
+            currentStatus: 'Available',
+            operationalStatus: 'Operational'
+          });
+        } catch (vehErr) {
+          console.warn('Could not restore vehicle status:', vehErr.message);
+        }
+      }
+    }
 
     await ticket.save();
 
     // Create & emit manager notification
     const driver = await Driver.findById(driverId);
     const managerId = driver?.assignedManager || req.user.managerId;
+
     if (managerId) {
       try {
+        let notifTitle = `Ticket Update: ${ticket.ticketId}`;
+        let notifMessage = `Driver ${ticket.driverName || 'Driver'} updated ticket ${ticket.ticketId} stage to ${status}.`;
+        let notifPriority = 'normal';
+
+        if (status === 'Need Maintenance') {
+          notifTitle = `🚨 Need Maintenance Alert: ${ticket.ticketId}`;
+          notifMessage = `Vehicle ${ticket.vehiclePlate || 'assigned'} repair incomplete! Driver ${ticket.driverName || 'Driver'} requested manager maintenance assistance.`;
+          notifPriority = 'high';
+        } else if (status === 'Resolved' || status === 'Closed') {
+          notifTitle = `✅ Maintenance Resolved: ${ticket.ticketId}`;
+          notifMessage = `Driver ${ticket.driverName || 'Driver'} resolved ticket ${ticket.ticketId}.${serviceBillUrl ? ' Service bill uploaded.' : ''}`;
+        }
+
+        const io = req.app.get('socketio') || req.app.locals?.io || req.io;
+
         await createAndEmitNotification({
-          io: req.io,
+          io,
           recipient: managerId,
           recipientRole: 'FLEET_MANAGER',
-          title: `Ticket Update: ${ticket.ticketId}`,
-          message: `Driver ${ticket.driverName} updated ticket ${ticket.ticketId} stage to ${status}.`,
+          title: notifTitle,
+          message: notifMessage,
           type: 'alert',
-          priority: 'normal',
+          priority: notifPriority,
           metadata: {
             ticketId: ticket.ticketId,
             complaintId: ticket._id,
-            status: ticket.status
+            vehiclePlate: ticket.vehiclePlate,
+            status: ticket.status,
+            serviceBillUrl
           }
         });
+
+        if (io) {
+          io.to(`manager:${managerId}`).emit('ticket:status-updated', {
+            ticketId: ticket.ticketId,
+            complaintId: ticket._id,
+            status: ticket.status,
+            serviceBillUrl,
+            driverName: ticket.driverName
+          });
+        }
       } catch (err) {
         console.warn('Failed to emit ticket status update notification:', err.message);
       }

@@ -16,9 +16,10 @@ const driverSchema = new mongoose.Schema(
     licenseType: { type: String, enum: ['HMV', 'LMV', 'MCWG'], default: 'HMV' },
     licenseExpiry: { type: Date },
     assignedVehicle: { type: String, default: 'Unassigned' },
+    isDuty: { type: Boolean, default: true },
     driverStatus: {
       type: String,
-      enum: ['AVAILABLE', 'ON_TRIP', 'ASSIGNED', 'SUSPENDED'],
+      enum: ['AVAILABLE', 'ON_TRIP', 'ASSIGNED', 'SUSPENDED', 'OFFLINE', 'OFF_DUTY'],
       default: 'AVAILABLE',
     },
     employeeId: { type: String, unique: true, sparse: true },

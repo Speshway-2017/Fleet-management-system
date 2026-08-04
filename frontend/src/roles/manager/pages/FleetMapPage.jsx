@@ -189,56 +189,66 @@ export default function FleetMapPage() {
 
   // Initialize Map
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || mapInstanceRef.current) return;
 
-    // Pune / Lonavala region center default coords
-    const centerCoords = [18.5204, 73.8567];
-    const map = L.map(mapRef.current, {
-      zoomControl: false,
-      attributionControl: false
-    }).setView(centerCoords, 9);
+    try {
+      // Pune / Lonavala region center default coords
+      const centerCoords = [18.5204, 73.8567];
+      const map = L.map(mapRef.current, {
+        zoomControl: false,
+        attributionControl: false
+      }).setView(centerCoords, 9);
 
-    // Standard street layer
-    defaultTileLayerRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      className: "map-tiles-grayscale"
-    }).addTo(map);
+      // Standard street layer
+      defaultTileLayerRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        className: "map-tiles-grayscale"
+      }).addTo(map);
 
-    // Satellite imagery layer
-    satelliteTileLayerRef.current = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-      maxZoom: 19
-    });
+      // Satellite imagery layer
+      satelliteTileLayerRef.current = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+        maxZoom: 19
+      });
 
-    // Custom Zoom controls at top-right
-    L.control.zoom({
-      position: "topright"
-    }).addTo(map);
+      // Custom Zoom controls at top-right
+      L.control.zoom({
+        position: "topright"
+      }).addTo(map);
 
-    // Layer Groups
-    markersGroupRef.current = L.layerGroup().addTo(map);
-    routesGroupRef.current = L.layerGroup().addTo(map);
-    trafficGroupRef.current = L.layerGroup().addTo(map);
+      // Layer Groups
+      markersGroupRef.current = L.layerGroup().addTo(map);
+      routesGroupRef.current = L.layerGroup().addTo(map);
+      trafficGroupRef.current = L.layerGroup().addTo(map);
 
-    mapInstanceRef.current = map;
+      mapInstanceRef.current = map;
+    } catch (e) {
+      console.warn("Leaflet init warning:", e.message);
+    }
 
     return () => {
-      map.remove();
-      mapInstanceRef.current = null;
+      try {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.remove();
+          mapInstanceRef.current = null;
+        }
+      } catch (e) {}
     };
   }, []);
 
   // Update satellite layer
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map) return;
+    if (!map || !map._loaded) return;
 
-    if (isSatellite) {
-      map.removeLayer(defaultTileLayerRef.current);
-      satelliteTileLayerRef.current.addTo(map);
-    } else {
-      map.removeLayer(satelliteTileLayerRef.current);
-      defaultTileLayerRef.current.addTo(map);
-    }
+    try {
+      if (isSatellite) {
+        if (map.hasLayer(defaultTileLayerRef.current)) map.removeLayer(defaultTileLayerRef.current);
+        if (!map.hasLayer(satelliteTileLayerRef.current)) satelliteTileLayerRef.current.addTo(map);
+      } else {
+        if (map.hasLayer(satelliteTileLayerRef.current)) map.removeLayer(satelliteTileLayerRef.current);
+        if (!map.hasLayer(defaultTileLayerRef.current)) defaultTileLayerRef.current.addTo(map);
+      }
+    } catch (e) {}
   }, [isSatellite]);
 
   // Update markers and route lines

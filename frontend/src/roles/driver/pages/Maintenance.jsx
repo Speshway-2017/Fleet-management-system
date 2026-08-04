@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import driverApi from "../api/driverApi";
 import IssueCard from "../components/IssueCard";
 import { toast } from "react-hot-toast";
@@ -7,6 +8,9 @@ import { Wrench, Plus, X, RefreshCw } from "lucide-react";
 import { useDriverSocket } from "../hooks/useDriverSocket";
 
 export default function DriverMaintenancePage() {
+  const [searchParams] = useSearchParams();
+  const highlightedTicketId = searchParams.get("ticketId") || searchParams.get("id");
+
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -123,9 +127,22 @@ export default function DriverMaintenancePage() {
         </div>
       ) : tickets.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {tickets.map((ticket) => (
-            <IssueCard key={ticket._id || ticket.id} ticket={ticket} onStatusUpdated={() => fetchTickets(true)} />
-          ))}
+          {tickets.map((ticket) => {
+            const isMatch = highlightedTicketId && (
+              String(ticket._id) === String(highlightedTicketId) ||
+              String(ticket.id) === String(highlightedTicketId) ||
+              String(ticket.ticketId || "").toUpperCase() === String(highlightedTicketId).toUpperCase() ||
+              String(ticket.complaintId || "").toUpperCase() === String(highlightedTicketId).toUpperCase()
+            );
+            return (
+              <IssueCard
+                key={ticket._id || ticket.id}
+                ticket={ticket}
+                highlighted={Boolean(isMatch)}
+                onStatusUpdated={() => fetchTickets(true)}
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">

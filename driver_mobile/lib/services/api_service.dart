@@ -8,7 +8,7 @@ class ApiService {
   static const String defaultLocalIp = '10.86.34.1';
   static String? _cachedBaseUrl;
 
-  static Function()? onUnauthorized;
+  static void Function()? onUnauthorized;
 
   static Future<void> initialize() async {
     await getBaseUrl();
@@ -325,6 +325,10 @@ class ApiService {
 
   static Future<dynamic> getDriverTicketById(String id) async {
     return await get('/driver/tickets/$id');
+  }
+
+  static Future<dynamic> getTripDetails(String tripId) async {
+    return await get('/driver/trips/$tripId');
   }
 
   static Future<dynamic> updateDriverTicketStatus(String id, String status, {String? notes}) async {

@@ -2608,13 +2608,21 @@ export const updatePODStatus = async (req, res, next) => {
 
 export const getWeighbridgeByTripId = async (req, res, next) => {
   try {
-    const slip = await WeighbridgeSlip.findOne({ trip: req.params.tripId }).populate('driver');
+    const { tripId } = req.params;
+    if (!tripId) {
+      return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
+    }
+    const query = mongoose.Types.ObjectId.isValid(tripId)
+      ? { trip: tripId }
+      : { $or: [{ trip: tripId }, { slipNumber: tripId }] };
+      
+    const slip = await WeighbridgeSlip.findOne(query).populate('driver').catch(() => null);
     if (!slip) {
       return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
     }
     return sendSuccess(res, 200, slip, 'Weighbridge slip fetched successfully');
   } catch (error) {
-    next(error);
+    return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
   }
 };
 

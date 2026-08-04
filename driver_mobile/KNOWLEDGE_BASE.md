@@ -49,8 +49,14 @@ The application includes the following key authentication screens:
 - **[UpdateTripStatusScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/update_trip_status_screen.dart)** - Trip status update screen connected to `ApiService.uploadProofOfDelivery` and `ApiService.uploadWeighbridgeSlip`, saving uploaded image metadata to MongoDB, triggering real-time notifications to the assigned manager, and enabling manager approval to complete the trip.
 - **[SupportHistoryScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/support_history_screen.dart)** - Support History screen displaying Dark Navy header, search bar, 50/50 horizontal action buttons Row ("Call Manager" and "Message Manager"), full-width scrollable filter chips (`All`, `Open`, `In Progress`, `Resolved`, `Rejected`), dynamic MongoDB ticket cards loaded via `ApiService.getDriverTickets()`, vehicle registrations, trip numbers, status badges (`Mechanic Assigned`, `Mechanic Arrived`, `Repair In Progress`, `Repair Completed`, `Resolved`), and an orange `+` FAB opening RaiseTicketScreen.
 - **[RaiseTicketScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/raise_ticket_screen.dart)** & **[Driver Web Maintenance Page](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/driver/pages/Maintenance.jsx)** - Vehicle Issue reporting interface supporting structured issue selection (**Tyre / Brake Issue**, **Mechanic / Engine Breakdown**, **Severe Accident / Emergency**, **Fuel / Payment Issue**, **Electrical Issue**, **Custom / Manual Entry**) and manual text input field. Submits ticket to `POST /api/driver/tickets` with photo attachments. Auto-binds active trip and assigned vehicle.
-- **[TicketDetailsScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/ticket_details_screen.dart)** & **[Driver Web Issue Card](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/driver/components/IssueCard.jsx)** - Vehicle Issue tracking interface featuring status progression action buttons (**Confirm Mechanic Arrived 📍**, **Start Repair 🔧**, **Mark Repair Completed ✅**, **Need Maintenance Escalation 🛠️**), assigned mechanic info card with direct call trigger, trip continuation banner (`Resolved - Continue Trip 🚚`), severe accident cancellation alert (`Trip Cancelled (Severe Accident) 🚨`), Cloudinary photo thumbnail preview & full-screen modal, and vertical repair timeline.
-- **[Manager ViewTicketsPage](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/manager/pages/ViewTicketsPage.jsx)** - Fleet Manager Ticket Resolution center featuring context-aware action buttons: Mechanic Assignment (Name, Phone, Location), **"Cancel Trip (Severe Accident 🚨)"** (cancels trip, sets vehicle to Maintenance, releases driver status), and **"Approve & Resolve Fuel Ticket"** (1-click fuel/payment ticket resolution).
+- **[TicketDetailsScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/ticket_details_screen.dart)** & **[Driver Web Issue Card](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/driver/components/IssueCard.jsx)** - Vehicle Issue tracking interface featuring step-gated driver progress action buttons (**Mechanic Arrived 📍** -> **Service Completed ✅** & **Need Maintenance 🔧**). Restricts `Awaiting Manager Mechanic Assignment ⏳` banner strictly to `Open` stage tickets without assigned mechanics. Supports `highlighted` glowing ring (`ring-4 ring-amber-500`) and auto scroll when deep linked via ticket notification clicks.
+- **[Driver Support Page](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/driver/pages/Support.jsx)** - Driver Support Helpline interface connected dynamically to `GET /api/driver/support`. Populates the exact assigned Fleet Manager (`G Sai Kiran`, phone, email, WhatsApp) for the working driver.
+- **[Super Admin Platform Analytics Page](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/admin/pages/Analytics.jsx)** & **[Super Admin Dashboard](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/admin/pages/Dashboard.jsx)** - Dynamic database-driven Super Admin analytics hub. Fetches live MongoDB metrics (`Trip`, `Organization`, `User`, `AuditLog`, `Fuel`) via `adminApi.getAnalytics(filter)` with timeframe selection (`today`, `week`, `month`, `year`). Uses real database counts for Active Trips, Completed Trips, Revenue Trends, Subscription Distributions, and Organization/Manager growth curves.
+- **[Manager Analytics Page](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/manager/pages/AnalyticsPage.jsx)** - Fleet Manager Analytics page featuring dynamic timeframe (`Last 7 Days`, `30 Days`, `Year to Date`) and Branch filtering across real MongoDB vehicle, trip, fuel, and maintenance records. Enables interactive Heatmap grid, Operational Costs breakdown, Top Spender vehicle, and AI Operational Insights.
+- **[Manager DriversListPage](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/manager/pages/DriversListPage.jsx)** & **[CreateTripPage](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/manager/pages/CreateTripPage.jsx)** - Driver management & trip creation interfaces featuring real-time Socket.io duty updates (`driver:status-updated`), displaying Green **`ON DUTY (AVAILABLE) 🟢`** badges for active duty drivers and Red **`OFFLINE (OFF DUTY) 🔴`** badges for off-duty drivers, restricting trip assignment for offline drivers. Resolves `generatedEmpId` ReferenceError in `driver.controller.js` to enable smooth driver onboarding.
+- **[Manager Weighbridge & Routing Services](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/manager/services/routingService.js)** - Routing & Weighbridge integrations. Imports `WeighbridgeSlip` model in `manager.controller.js` to resolve 500 Internal Server Errors, silences OSRM console error flood with memory caching, and safely cleans up Leaflet map layer references.
+- **[Driver Notification Card](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/driver/components/NotificationCard.jsx)** & **[useDriverSocket](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/driver/hooks/useDriverSocket.js)** - Driver notification card component and WebSocket listener hook. Resolves `ReferenceError` on `ticketId` variable, enabling direct navigation to target module pages (`/driver/maintenance`, `/driver/trips`, `/driver/fuel`) on notification click without dashboard fallback redirects. Socket callback references are optimized via `useRef`.
+- **[Manager Vehicle Management Page](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/manager/pages/VehicleManagement.jsx)** - Fleet Manager vehicle overview displaying real-time vehicle fleet numbers (Total, Active, Idle, In Maintenance), dynamically mapping vehicles with active issue complaints (`Need Maintenance`, `Open`, `In Progress`, `Repair In Progress`) into the In Maintenance KPI counter.
 - **[FuelOverviewScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/fuel_overview_screen.dart)** - Primary landing page for the Fuel Module opened from the Dashboard Fuel Quick Action. Features Dark Navy header, Vehicle #TS09AB4589 status card (65% fuel level, 320 km est. distance), Quick Actions row (`Add Fuel Entry` opening AddFuelEntryScreen, `Fuel History` opening FuelHistoryScreen), and Fuel Statistics cards (`Today's Consumption` 8.2L, `This Week` 54.5L, `Last Refill Cost` ₹852.20).
 - **[AddFuelEntryScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/add_fuel_entry_screen.dart)** - Unified Fuel Entry interface optimized for Manager Fuel Management module schema. Features top read-only fields for `Assigned Vehicle` (`TS09AB4589`) and `Current Trip ID` (`TRP-9901`), clean unpopulated default form fields with placeholder hints (`Select Fuel Station`, `Select Fuel Type`, `e.g. 45.0`, `e.g. 4250.00`, `Select Payment Mode`, `e.g. 142850`), mandatory field validation, interactive Receipt Upload section (Camera / Gallery triggers), View Receipt invoice modal, trash bin removal action, Fleet Manager approval info note, and a manager-compatible data payload summary modal upon submission.
 - **[FuelHistoryScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/fuel_history_screen.dart)** - Fuel History screen featuring Dark Navy header, search bar, filter chips (`All`, `Verified`, `Pending`, `Approved`), and card items that navigate to FuelEntryDetailsScreen upon tap.
@@ -282,7 +288,94 @@ The application connects to a Node.js/Express backend API for session operations
 * **Instant Maintenance Status Update & Silent Polling (`Maintenance.jsx`, `IssueCard.jsx`)**:
   - `IssueCard.jsx` updates local status state optimistically upon driver button click (**Mechanic Arrived 📍**, **Start Repair 🔧**, **Mark Repair Completed ✅**) and triggers `onStatusUpdated()` callback.
   - `Maintenance.jsx` runs background silent refreshes (`fetchTickets(true)`) and 5-second interval polling, reflecting status changes instantly on driver web without disruptive full-screen loading spinners.
-* **Driver Profile & Settings Default Pre-fill (`Settings.jsx`, `Profile.jsx`)**:
+* **Date Formatter & API Service Signature Integration (`date_formatter.dart`, `api_service.dart`)**:
+  - Implemented `formatIndianDate`, `formatIndianDateTime`, and `formatNotificationTime` inside `date_formatter.dart` to provide uniform Indian date formatting (`dd/MM/yyyy hh:mm a`) and relative notification timestamps.
+  - Specified `static void Function()? onUnauthorized;` callback return type signature and added `ApiService.getTripDetails(tripId)` in `api_service.dart`.
   - Profile fields (`fullName` / `name`, `phone` / `phoneNumber`, `email`, `licenseNumber`) pre-fill default values from `AuthContext` user object and `/driver/profile` API response, preventing empty inputs on initial render.
-  - Added **Profile Information** card to `Settings.jsx` (`/driver/settings`), enabling drivers to view and update contact details directly alongside password and preferences.
+
+### 5.4. Organization Form Fields & Manager Communication Workspace Removal
+* **Admin Organization Form Cleanup (`AddOrganization.jsx`, `EditOrganization.jsx`)**:
+  - Removed **Subscription Plan** and **Status** dropdown fields from Admin Organization creation (`AddOrganization.jsx`) and editing (`EditOrganization.jsx`) forms.
+  - Simplified Organization Information form layout, keeping core fields (Name, Industry, Email, Phone, Address, City, State, Country).
+* **Manager Communication Tab & Unread Badge Removal (`TripDetailsPage.jsx`, `TripsManagementPage.jsx`, `TripsListPage.jsx`, `NotificationsPage.jsx`, `Header.jsx`)**:
+  - Removed **Communication** tab from top tab bar navigation and detail rendering section in Manager Trip Details page (`TripDetailsPage.jsx`), retaining **Overview**, **Timeline**, and **Documents** tabs.
+  - Removed unread chat message badge buttons (`💬 count`) and `tab=communication` URL query parameters from Manager Trips lists (`TripsManagementPage.jsx`, `TripsListPage.jsx`) and Notifications / Header navigation (`NotificationsPage.jsx`, `Header.jsx`).
+
+### 5.5. Driver-Raised Maintenance Workflow & Manager Creation Restriction
+* **Disabled Manager Service Schedule Creation (`MaintenanceManagementPage.jsx`, `UpcomingServicesPage.jsx`, `ScheduleServicePage.jsx`, `AnalyticsPage.jsx`, `NotificationsPage.jsx`)**:
+  - Removed `+ Schedule Service` creation buttons, modal triggers, and scheduling forms from Manager Web portal.
+  - Configured `ScheduleServicePage.jsx` to automatically redirect managers to the Maintenance Overview page with a clear notification informing them that service creation is disabled.
+* **Driver-Raised Ticket Flow & Manager Oversight**:
+  - Drivers initiate all vehicle maintenance requests by reporting issues via Driver Web (`/driver/maintenance`), attaching photos, severity levels, and description notes.
+  - Manager Web Overview (`/manager/maintenance`) and Tickets View (`/manager/maintenance/tickets`) act as a dedicated review and management hub for driver-raised tickets, allowing managers to assign mechanics, track repair statuses (`Open`, `Mechanic Assigned`, `Repair In Progress`, `Repair Completed`, `Resolved`), and log costs.
+
+### 5.6. Read-Only Manager Services & Driver Vehicles Maintenance Alerts Sync
+* **Read-Only Manager Services Tables (`MaintenanceManagementPage.jsx`, `UpcomingServicesPage.jsx`)**:
+  - Removed `Start Service` and `Complete` action buttons from Manager Web maintenance tables.
+  - Manager views services and maintenance logs in read-only mode, with status column dynamically reflecting live driver progress (`Need Maintenance`, `Mechanic Assigned`, `Mechanic Arrived`, `Repair In Progress`, `Repair Completed`, `Resolved`, `Completed`).
+### 5.7. Ticket Issue Maintenance Filtering & 3-Stage Driver Progress Controls
+* **Ticket Issue Focused Maintenance Views (`MaintenanceManagementPage.jsx`, `UpcomingServicesPage.jsx`)**:
+  - Manager Maintenance Overview and Services lists filter and render strictly driver-raised issue tickets and needed maintenance, eliminating non-ticket upcoming dummy work orders.
+* **3-Stage Driver Maintenance Action Buttons (`IssueCard.jsx`)**:
+  - Driver ticket cards provide step-by-step progress action controls:
+    1. **`Start Service 🔧`**: Driver initiates repair, setting status to `Repair In Progress`.
+    2. **`Service In Progress ⚙️`**: Active repair indicator with pulsing state tag.
+    3. **`Mark Service Completed ✅`**: Driver completes repair, updating status to `Repair Completed`.
+  - Actions immediately trigger socket events and DB status updates, enabling managers to track maintenance progress live in real time.
+### 5.8. 10-Record Pagination & Maintenance Header Cleanup
+### 5.12. Safe Date Formatting & MapPin Icon Import Fix
+* **Safe Date Formatter & Icon Imports (`ViewTicketsPage.jsx`)**:
+  - Imported `MapPin` icon from `lucide-react` to resolve `ReferenceError: MapPin is not defined`.
+  - Implemented `formatDateSafe` helper to catch invalid timestamp values or missing date parameters.
+  - Prevents runtime crashes when opening ticket details modals or table rows.
+* **View Ticket Details Modal**:
+  - Renders complete issue breakdown, vehicle plate, driver name, severity level, current status, driver reported location (`MapPin` 📍), maintenance notes, uploaded photos, and verified service bills.
+
+* **Category-Specific Dynamic Forms (`ViewTicketsPage.jsx`)**:
+  - Emergency Accident form renders strictly for `Accident / Emergency` issues.
+  - General Vehicle Maintenance & Mechanic Repair form renders for Engine, Tyre, Brake, Mechanical repairs.
+  - Fuel / Payment Resolution form renders for Fuel & Payment issues.
+  - GPS & Technical Support form renders for Technical & Telematics issues.
+  - Delivery Delay & Route Management form renders for Delay & Route issues.
+* **Driver Current Location Visibility (`ViewTicketsPage.jsx`)**:
+  - Displays **`Driver Reported Location 📍`** in ticket details and update modals so manager tracks exact GPS/highway location where issue was reported.
+* **Completed Service Bill & Invoice Attachment (`ViewTicketsPage.jsx`)**:
+  - Adds Service Bill Number and Receipt Date fields.
+  - Renders verified **`Service Bill & Maintenance Receipt 🧾`** section upon service completion.
+
+* **Manager Mechanic Assignment Requirement (`IssueCard.jsx`)**:
+  - Driver cannot click `Start Service` until manager assigns a mechanic to the ticket.
+  - Driver ticket cards display `Awaiting Manager Mechanic Assignment ⏳` banner while ticket is unassigned.
+* **Step-by-Step Maintenance Actions**:
+  - Once manager assigns mechanic, driver unlocks sequential action controls:
+    1. **`Mechanic Arrived 📍`**: Updates status to `Mechanic Arrived`.
+    2. **`Start Service 🔧`**: Updates status to `Repair In Progress`.
+    3. **`Mark Service Completed ✅`**: Updates status to `Repair Completed`.
+  - All status updates reflect live on Manager Web (`/manager/maintenance` / `ViewTicketsPage.jsx`) with distinct status badges (`NEED MAINTENANCE`, `MECHANIC ASSIGNED`, `MECHANIC ARRIVED`, `REPAIR IN PROGRESS`, `REPAIR COMPLETED`, `RESOLVED`).
+
+* **Replicated Single Table View (`MaintenanceManagementPage.jsx`)**:
+  - Replaced all legacy tables and widgets on `/manager/maintenance` with the exact **Vehicle Issue Tickets** table replicated from the ticket overview screenshot.
+  - Displays strictly the 6 ticket summary metric cards (`Total Tickets`, `Open`, `In Progress`, `Resolved`, `Total Cost`, `Avg Cost`).
+  - Removed all other old cards (calendar widget, 4 old metric cards) and secondary tables from the Maintenance Management page.
+* **Interactive Ticket Management**:
+  - Full search bar (`Search Ticket, Vehicle, Driver...`), status filter tabs (`All`, `Open`, `In Progress`, `Resolved`, `Closed`), and severity filter dropdown (`All Severities`, `Low`, `Medium`, `High`, `Critical`).
+  - 10-records-per-page pagination with functional `Prev` and `Next` buttons.
+  - Interactive View Details (`👁`) and Assign Mechanic / Edit Ticket (`🔧`) modals with 5-second interval polling for real-time updates.
+
+* **10-Record Table Pagination (`MaintenanceManagementPage.jsx`, `ViewTicketsPage.jsx`)**:
+  - Replaced old mock Service History table with the **Vehicle Issue Tickets Table** displaying driver-reported vehicle maintenance tickets and fault logs.
+  - Implemented 10-records-per-page pagination with working **`Prev`** and **`Next`** buttons and entry range counters (`Showing 1 to 10 of N entries`).
+  - Automatically resets page state to 1 upon search query or status/severity filter updates.
+
+* **Manager Dashboard Real Maintenance Alerts & Click Navigation (`ManagerDashboard.jsx`)**:
+  - Dynamically combines active vehicle complaint tickets (`managerApi.getVehicleComplaints()`) and service orders (`managerApi.getMaintenance()`).
+  - Displays real overdue and active maintenance alerts sorted by urgency with `Overdue 🚨` badges, high/medium/low priority tags, and exact vehicle registration plates.
+  - Interactive alert cards feature click handlers (`onClick={() => navigate(alert.link)}`) that navigate directly to `/manager/maintenance?ticketId=...` to filter and highlight ticket details.
+
+
+
+
+
+
+
 

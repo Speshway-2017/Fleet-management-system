@@ -101,8 +101,24 @@ export const driverApi = {
     const response = await axiosClient.post("/driver/tickets", formData);
     return response.data;
   },
-  updateTicketStatus: async (ticketId, status) => {
-    const response = await axiosClient.patch(`/driver/tickets/${ticketId}/status`, { status });
+  updateTicketStatus: async (ticketId, payload) => {
+    if (payload instanceof FormData) {
+      const response = await axiosClient.patch(`/driver/tickets/${ticketId}/status`, payload, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      return response.data;
+    }
+    if (typeof payload === "string") {
+      const response = await axiosClient.patch(`/driver/tickets/${ticketId}/status`, { status: payload });
+      return response.data;
+    }
+    const response = await axiosClient.patch(`/driver/tickets/${ticketId}/status`, payload);
+    return response.data;
+  },
+  resolveTicket: async (ticketId, formData) => {
+    const response = await axiosClient.post(`/driver/tickets/${ticketId}/resolve`, formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
     return response.data;
   },
 

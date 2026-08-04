@@ -115,21 +115,25 @@ export default function DriversListPage() {
 
   const getStatusLabel = (status) => {
     switch (status) {
-      case "AVAILABLE": return "Available";
-      case "ON_TRIP":   return "On Trip";
-      case "ON_LEAVE":  return "On Leave";
-      case "SUSPENDED": return "Suspended";
-      default:          return status;
+      case "AVAILABLE": return "Online 🟢";
+      case "ON_TRIP":   return "On Trip 🚛";
+      case "ON_LEAVE":  return "On Leave 🌴";
+      case "SUSPENDED": return "Suspended ⚠️";
+      case "OFFLINE":   return "Offline 🔴";
+      case "OFF_DUTY":  return "Offline 🔴";
+      default:          return status ? `${status}` : "Offline 🔴";
     }
   };
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case "AVAILABLE": return "bg-emerald-50 text-[#22C55E] border border-emerald-100";
-      case "ON_TRIP":   return "bg-amber-50 text-[#B45A0A] border border-amber-100";
-      case "ON_LEAVE":  return "bg-blue-50 text-blue-600 border border-blue-100";
-      case "SUSPENDED": return "bg-red-50 text-[#EF4444] border border-red-100";
-      default:          return "bg-gray-100 text-gray-500 border border-gray-200";
+      case "AVAILABLE": return "bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold";
+      case "ON_TRIP":   return "bg-amber-50 text-[#B45A0A] border border-amber-200 font-bold";
+      case "ON_LEAVE":  return "bg-blue-50 text-blue-700 border border-blue-200 font-bold";
+      case "SUSPENDED": return "bg-red-50 text-red-600 border border-red-200 font-bold";
+      case "OFFLINE":   return "bg-red-50 text-red-600 border border-red-200 font-bold";
+      case "OFF_DUTY":  return "bg-red-50 text-red-600 border border-red-200 font-bold";
+      default:          return "bg-red-50 text-red-600 border border-red-200 font-bold";
     }
   };
 

@@ -257,6 +257,36 @@ export const getAvailableDrivers = async (req, res, next) => {
         d.driverLocation = resolvedName;
         Driver.findByIdAndUpdate(d._id, { currentLocation: resolvedName, driverLocation: resolvedName }).catch(() => {});
       }
+
+      // Populate assignedVehicle from assignmentHistory, Vehicle model, or recent completed trip if empty
+      let vehStr = (d.assignedVehicle && d.assignedVehicle !== 'Unassigned') ? d.assignedVehicle : '';
+      if (!vehStr && d.assignmentHistory && d.assignmentHistory.length > 0) {
+        const lastAssignment = d.assignmentHistory[d.assignmentHistory.length - 1];
+        if (lastAssignment && lastAssignment.vehicleNumber) {
+          vehStr = lastAssignment.vehicleNumber;
+        }
+      }
+      if (!vehStr) {
+        try {
+          const VehicleModel = (await import('../models/Vehicle.js')).default;
+          const vDoc = await VehicleModel.findOne({ assignedDriver: d._id });
+          if (vDoc) {
+            vehStr = vDoc.registrationNumber || vDoc.vehicleNumber || '';
+          }
+        } catch (e) {}
+      }
+      if (!vehStr) {
+        try {
+          const TripModel = (await import('../models/Trip.js')).default;
+          const lastTrip = await TripModel.findOne({ driver: d._id }).sort({ createdAt: -1 });
+          if (lastTrip && (lastTrip.vehiclePlate || lastTrip.vehicleName)) {
+            vehStr = lastTrip.vehiclePlate || lastTrip.vehicleName;
+          }
+        } catch (e) {}
+      }
+      if (vehStr) {
+        d.assignedVehicle = vehStr;
+      }
     }
 
     const targetLoc = (req.query.location || req.query.startLocation || '').trim();
@@ -432,14 +462,16 @@ export const createDriver = async (req, res, next) => {
       return sendError(res, 400, 'Name, email, mobile number, and license number are required');
     }
 
-    const rawPassword = req.body.password || 'driver123';
+    const temporaryPassword = req.body.password || generateTempPassword();
+    const hashedPassword = await hashPassword(temporaryPassword);
+    const generatedEmpId = req.body.employeeId || await generateEmployeeId();
 
     const driver = await createDriverRecord({
-      fullName,
-      email,
-      phoneNumber,
-      licenseNumber,
-      password: rawPassword,
+      fullName: computedFullName,
+      email: finalEmail,
+      phoneNumber: finalPhone,
+      licenseNumber: finalLicense,
+      password: hashedPassword,
       licenseType: licenseType || 'HMV',
       licenseExpiry: licenseExpiry ? new Date(licenseExpiry) : undefined,
       assignedVehicle: assignedVehicle || 'Unassigned',
@@ -447,7 +479,6 @@ export const createDriver = async (req, res, next) => {
       accountStatus: 'Active',
       status: status || 'Active',
       employeeId: generatedEmpId,
-      password: hashedPassword,
       mustChangePassword: true,
       dob: dob ? new Date(dob) : undefined,
       gender: gender || 'Male',

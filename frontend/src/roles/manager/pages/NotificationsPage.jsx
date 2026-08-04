@@ -158,13 +158,7 @@ export default function NotificationsPage() {
     } else if (actType === "View Analytics") {
       navigate("/manager/analytics");
     } else if (actType === "Schedule Now") {
-      navigate("/manager/maintenance/schedule", {
-        state: {
-          vehicleNumber: notification.vehicle,
-          maintenanceType: "Brake Check",
-          dueMileage: "150 miles"
-        }
-      });
+      navigate("/manager/maintenance/tickets");
     } else if (actType === "Download PDF") {
       toast.success(`Downloading PDF for ${notification.title}...`);
     } else {
@@ -177,25 +171,29 @@ export default function NotificationsPage() {
     
     const tripId = notif.metadata?.tripId || notif.referenceId || notif.relatedId;
     const driverId = notif.metadata?.driverId;
-    const type = (notif.type || '').toUpperCase();
-    const title = (notif.title || '').toLowerCase();
+    let extractedTicketId = notif.metadata?.ticketId || notif.metadata?.complaintId;
+    if (!extractedTicketId) {
+      const match = (title + " " + message).match(/TKT-VEH-[\w-]+/i);
+      if (match) extractedTicketId = match[0];
+    }
 
+    if (extractedTicketId || ticketId || title.includes("ticket") || title.includes("mechanic") || title.includes("maintenance") || message.includes("tkt-") || message.includes("mechanic") || type.includes("MAINTENANCE")) {
+      const target = extractedTicketId || ticketId;
+      return target ? `/manager/view-tickets?ticketId=${encodeURIComponent(target)}` : `/manager/maintenance`;
+    }
     if (type.includes("MESSAGE") || type.includes("CALL") || title.includes("message") || title.includes("call")) {
-      return tripId ? `/manager/trip-details/${tripId}?tab=communication` : `/manager/trips`;
+      return tripId ? `/manager/trip-details/${tripId}` : `/manager/trips`;
     }
-    if (type.includes("MAINTENANCE") || title.includes("maintenance")) {
-      return `/manager/maintenance`;
-    }
-    if (type.includes("FUEL") || title.includes("fuel")) {
+    if (type.includes("FUEL") || title.includes("fuel") || message.includes("fuel")) {
       return `/manager/fuel-management`;
     }
-    if (tripId) {
-      return `/manager/trip-details/${tripId}`;
+    if (tripId || type.includes("TRIP") || title.includes("trip") || message.includes("trp-")) {
+      return tripId ? `/manager/trip-details/${tripId}` : `/manager/trips`;
     }
-    if (driverId) {
-      return `/manager/driver-profile/${driverId}`;
+    if (driverId || type.includes("DRIVER") || title.includes("driver")) {
+      return driverId ? `/manager/driver-profile/${driverId}` : `/manager/drivers`;
     }
-    return `/manager/notifications/${notif._id || notif.id}`;
+    return `/manager/maintenance`;
   };
 
   const handleNotificationClick = async (notif) => {
@@ -209,9 +207,8 @@ export default function NotificationsPage() {
       console.error("Failed to mark read", err);
     }
 
-    // Update active tab to match the category
-    setActiveTab(mapTypeToTab(notif.type));
-    navigate(`/manager/notifications/${notifId}`);
+    const targetUrl = resolveTargetUrl(notif);
+    navigate(targetUrl);
   };
 
   const countByPriority = (priority) => {

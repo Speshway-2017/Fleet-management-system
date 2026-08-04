@@ -21,7 +21,16 @@ import { logActivity } from '../utils/activityLogger.js';
  */
 export const listVehicles = async (req, res, next) => {
   try {
-    const vehicles = await getVehicles({ assignedManager: req.user._id });
+    const managerId = req.user._id;
+    const orgId = req.user.organization;
+    const filter = {
+      $or: [
+        { assignedManager: managerId },
+        { createdBy: managerId },
+        ...(orgId ? [{ organization: orgId }] : [])
+      ]
+    };
+    const vehicles = await getVehicles(filter);
     for (const v of vehicles) {
       const rawLoc = v.currentLocation;
       if (isCoordinateString(rawLoc)) {

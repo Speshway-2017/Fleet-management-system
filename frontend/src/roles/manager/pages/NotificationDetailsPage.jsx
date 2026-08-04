@@ -135,13 +135,7 @@ export default function NotificationDetailsPage() {
     } else if (actType === "View Analytics") {
       navigate("/manager/analytics");
     } else if (actType === "Schedule Now") {
-      navigate("/manager/maintenance/schedule", {
-        state: {
-          vehicleNumber: notification.vehicle,
-          maintenanceType: "Brake Check",
-          dueMileage: "150 miles"
-        }
-      });
+      navigate("/manager/maintenance/tickets");
     } else if (actType === "Download PDF") {
       toast.success(`Downloading PDF for ${notification.title}...`);
     } else {
