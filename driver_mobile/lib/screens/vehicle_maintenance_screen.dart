@@ -215,11 +215,6 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            onPressed: _fetchMaintenanceData,
-            tooltip: 'Refresh Maintenance',
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Container(

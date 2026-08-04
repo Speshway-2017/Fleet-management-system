@@ -31,6 +31,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? _driverProfile;
   Map<String, dynamic>? _currentTrip;
   Map<String, dynamic>? _dashboardData;
+  bool _isVehicleAssigned = false;
+  String? _vehicleNumber;
 
   @override
   void initState() {
@@ -56,6 +58,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final profile = await AuthService.fetchProfile();
       final currentTripRes = await ApiService.get('/driver/trips/current');
       final dashRes = await ApiService.get('/driver/dashboard');
+      final vehRes = await ApiService.get('/driver/vehicle');
 
       if (mounted) {
         if (profile != null && profile['profileImage'] != null) {
@@ -64,10 +67,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ProfileState.profilePhotoUrlNotifier.value = img;
           }
         }
+
+        bool isAssigned = false;
+        String? vehicleNum;
+
+        final tripData = currentTripRes?['data'];
+        if (tripData != null && tripData is Map<String, dynamic>) {
+          final rawStatus = tripData['status']?.toString() ?? '';
+          final statusLower = rawStatus.toLowerCase();
+          final activeStatuses = [
+            'assigned', 'scheduled', 'in progress', 'accepted', 
+            'on transit', 'enroute', 'reach pickup', 'pickup completed', 
+            'waiting for manager approval'
+          ];
+          if (activeStatuses.contains(statusLower)) {
+            final vName = tripData['vehicleName']?.toString() ?? '';
+            final vPlate = tripData['vehiclePlate']?.toString() ?? '';
+            if (vPlate.isNotEmpty) {
+              isAssigned = true;
+              vehicleNum = vName.isNotEmpty ? '$vName – $vPlate' : vPlate;
+            } else {
+              final vId = tripData['vehicle']?.toString() ?? '';
+              if (vId.isNotEmpty && vId != 'Unassigned') {
+                isAssigned = true;
+                vehicleNum = vId;
+              }
+            }
+          }
+        }
+
+        if (!isAssigned && vehRes != null && vehRes['success'] == true) {
+          final data = vehRes['data'];
+          if (data != null && data['assigned'] == true && data['vehicle'] != null) {
+            isAssigned = true;
+            final vName = data['vehicle']['vehicleName'] ?? data['vehicle']['brand'] ?? '';
+            final vPlate = data['vehicle']['vehicleNumber'] ?? data['vehicle']['registrationNumber'] ?? '';
+            if (vPlate.isNotEmpty) {
+              vehicleNum = vName.isNotEmpty ? '$vName – $vPlate' : vPlate;
+            }
+          }
+        }
+
         setState(() {
           _driverProfile = profile;
-          _currentTrip = currentTripRes['data'];
+          _currentTrip = currentTripRes?['data'];
           _dashboardData = dashRes['data'];
+          _isVehicleAssigned = isAssigned;
+          _vehicleNumber = vehicleNum;
         });
 
         if (_currentTrip != null && _currentTrip!['tripId'] != null) {
@@ -87,7 +133,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _onTabChanged() {
     if (mounted && MainNavigationScreen.selectedTabNotifier.value == 0) {
-      setState(() {});
+      _loadDashboardData();
     }
   }
 
@@ -152,7 +198,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                '${_driverProfile?['vehicle'] ?? 'Unassigned'} • ID: ${_driverProfile?['driverId'] ?? 'N/A'}',
+                                _isVehicleAssigned && _vehicleNumber != null && _vehicleNumber!.isNotEmpty
+                                    ? '$_vehicleNumber • ID: ${_driverProfile?['employeeId'] ?? _driverProfile?['driverId'] ?? 'N/A'}'
+                                    : 'ID: ${_driverProfile?['employeeId'] ?? _driverProfile?['driverId'] ?? 'N/A'}',
                                 style: GoogleFonts.nunito(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
@@ -395,7 +443,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final depTime = _currentTrip?['departureTime']?.toString() ?? 'N/A';
     final vehicle = _currentTrip?['vehicleName'] != null && _currentTrip!['vehicleName'].toString().isNotEmpty
         ? '${_currentTrip!['vehicleName']} (${_currentTrip!['vehiclePlate'] ?? ''})'
-        : (_currentTrip?['vehicle']?.toString() ?? 'Vehicle Assigned');
+        : (_currentTrip?['vehicle']?.toString() ?? 'No Vehicle Assigned');
     final cargo = '${_currentTrip?['cargoType'] ?? 'General Cargo'} (${_currentTrip?['cargoWeight'] ?? 0} kg)';
 
     return Container(
@@ -614,6 +662,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ? 'ETA ${formatIndianDateTime(_currentTrip!['departureTime'])}'
             : '');
 
+    final activeVehicle = _currentTrip?['vehicleName'] != null && _currentTrip!['vehicleName'].toString().isNotEmpty
+        ? '${_currentTrip!['vehicleName']} – ${_currentTrip!['vehiclePlate'] ?? ''}'
+        : (_currentTrip?['vehicle']?.toString() ?? 'No Vehicle Assigned');
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
@@ -782,6 +834,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.local_shipping_outlined,
+                      color: Colors.white54,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        activeVehicle,
+                        style: GoogleFonts.nunito(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -903,20 +978,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Row(
         children: [
           Expanded(
-            child: _buildActionCard(context, Icons.local_shipping_outlined, 'Vehicle', () {
-              Navigator.push(
+            child: _buildActionCard(context, Icons.local_shipping_outlined, 'Vehicle', () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const VehicleOverviewScreen()),
               );
+              _loadDashboardData();
             }),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: _buildActionCard(context, Icons.local_gas_station_outlined, 'Fuel', () {
-              Navigator.push(
+            child: _buildActionCard(context, Icons.local_gas_station_outlined, 'Fuel', () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const FuelOverviewScreen()),
               );
+              _loadDashboardData();
             }),
           ),
           const SizedBox(width: 8),
@@ -933,11 +1010,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: _buildActionCard(context, Icons.settings_outlined, 'Settings', () {
-              Navigator.push(
+            child: _buildActionCard(context, Icons.settings_outlined, 'Settings', () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
               );
+              _loadDashboardData();
             }),
           ),
         ],

@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
-import 'dart:js' as js;
-import 'dart:convert';
 import '../constants/app_colors.dart';
 import '../constants/app_radius.dart';
 import '../constants/app_spacing.dart';
@@ -149,161 +146,18 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
 
   Future<void> _downloadTripReport() async {
     if (_trip == null) return;
-
-    final trip = _trip!;
-    final tripNumber = trip['tripNumber'] ?? widget.tripId;
-    final startLocation = trip['startLocation'] ?? trip['pickup'] ?? 'N/A';
-    final endLocation = trip['endLocation'] ?? trip['destination'] ?? 'N/A';
-    final actualStartTime = trip['actualStartTime'] != null ? '${_formatDate(trip['actualStartTime'])} ${_formatTime(trip['actualStartTime'])}' : 'N/A';
-    final actualEndTime = trip['actualEndTime'] != null ? '${_formatDate(trip['actualEndTime'])} ${_formatTime(trip['actualEndTime'])}' : 'N/A';
-    final distance = trip['actualDistance'] != null ? '${trip['actualDistance']} KM' : (trip['estimatedDistance'] != null ? '${trip['estimatedDistance']} KM' : 'N/A');
-    final duration = _calculateDuration(trip['actualStartTime'], trip['actualEndTime']);
-    final cargoType = trip['cargoType'] ?? 'General Cargo';
-    final cargoWeight = trip['cargoWeight'] != null ? '${trip['cargoWeight']} kg' : 'N/A';
-    
-    // Unpack vehicle
-    String vehicleName = 'N/A';
-    String vehiclePlate = 'N/A';
-    if (trip['vehicle'] != null) {
-      if (trip['vehicle'] is Map) {
-        vehicleName = trip['vehicle']['vehicleModel'] ?? trip['vehicle']['brand'] ?? 'N/A';
-        vehiclePlate = trip['vehicle']['vehicleNumber'] ?? trip['vehicle']['registrationNumber'] ?? 'N/A';
-      } else {
-        vehiclePlate = trip['vehicle'].toString();
-      }
-    }
-    if (vehicleName == 'N/A' && trip['vehicleName'] != null) {
-      vehicleName = trip['vehicleName'];
-    }
-    if (vehiclePlate == 'N/A' && trip['vehiclePlate'] != null) {
-      vehiclePlate = trip['vehiclePlate'];
-    }
-
-    final driverName = trip['driverName'] ?? 'N/A';
-    final driverPhone = trip['driverPhone'] ?? 'N/A';
-    
-    String managerName = 'N/A';
-    if (trip['manager'] != null && trip['manager'] is Map) {
-      managerName = trip['manager']['name'] ?? 'N/A';
-    }
-
-    final totalTolls = trip['tollsAmount'] ?? trip['totalTollsAmount'] ?? 0;
-    final receiverName = trip['receiverName'] ?? 'Verified Receiver';
-
-    final htmlContent = '''
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Trip Report $tripNumber</title>
-  <style>
-    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; padding: 20px; line-height: 1.4; }
-    .report-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, .15); border-radius: 8px; background: #fff; }
-    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #f97316; padding-bottom: 20px; margin-bottom: 20px; }
-    .logo { font-size: 24px; font-weight: bold; color: #101c2c; }
-    .logo span { color: #f97316; }
-    .company-details { text-align: right; font-size: 12px; color: #666; }
-    .report-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: #f3f4f6; padding: 15px; border-radius: 6px; margin-bottom: 20px; font-size: 12px; }
-    .meta-item { display: flex; flex-direction: column; }
-    .meta-label { font-weight: bold; color: #4b5563; font-size: 10px; text-transform: uppercase; }
-    .meta-val { font-weight: bold; color: #111827; margin-top: 4px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-    .section-title { font-size: 14px; font-weight: bold; color: #101c2c; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 10px; text-transform: uppercase; }
-    .detail-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
-    .detail-label { color: #666; }
-    .detail-val { font-weight: bold; color: #333; }
-    .footer { text-align: center; font-size: 11px; color: #999; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; }
-  </style>
-</head>
-<body>
-  <div class="report-box">
-    <div class="header">
-      <div class="logo">Speshway <span>Logistics</span></div>
-      <div class="company-details">
-        <strong>Speshway Logistics Pvt Ltd</strong><br>
-        Plot 45, Industrial Depot, Sector 3<br>
-        Pune, Maharashtra, 411018<br>
-        Phone: +91 20 5566 7788 | support@speshway.com
-      </div>
-    </div>
-    
-    <div class="report-meta">
-      <div class="meta-item">
-        <span class="meta-label">Trip Number</span>
-        <span class="meta-val">$tripNumber</span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Report Date</span>
-        <span class="meta-val">${DateTime.now().toString().split(' ')[0]}</span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Total Distance</span>
-        <span class="meta-val">$distance</span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Duration</span>
-        <span class="meta-val">$duration</span>
-      </div>
-    </div>
-
-    <div class="grid">
-      <div>
-        <div class="section-title">Trip Details</div>
-        <div class="detail-row"><span class="detail-label">Start Location</span><span class="detail-val">$startLocation</span></div>
-        <div class="detail-row"><span class="detail-label">End Location</span><span class="detail-val">$endLocation</span></div>
-        <div class="detail-row"><span class="detail-label">Start Time</span><span class="detail-val">$actualStartTime</span></div>
-        <div class="detail-row"><span class="detail-label">End Time</span><span class="detail-val">$actualEndTime</span></div>
-        <div class="detail-row"><span class="detail-label">Cargo Type</span><span class="detail-val">$cargoType</span></div>
-        <div class="detail-row"><span class="detail-label">Cargo Weight</span><span class="detail-val">$cargoWeight</span></div>
-      </div>
-      
-      <div>
-        <div class="section-title">Asset & Driver Information</div>
-        <div class="detail-row"><span class="detail-label">Vehicle Name</span><span class="detail-val">$vehicleName</span></div>
-        <div class="detail-row"><span class="detail-label">Registration Number</span><span class="detail-val">$vehiclePlate</span></div>
-        <div class="detail-row"><span class="detail-label">Driver Name</span><span class="detail-val">$driverName</span></div>
-        <div class="detail-row"><span class="detail-label">Driver Phone</span><span class="detail-val">$driverPhone</span></div>
-        <div class="detail-row"><span class="detail-label">Manager</span><span class="detail-val">$managerName</span></div>
-        <div class="detail-row"><span class="detail-label">Receiver Name</span><span class="detail-val">$receiverName</span></div>
-      </div>
-    </div>
-
-    <div class="grid">
-      <div>
-        <div class="section-title">Financial Summary</div>
-        <div class="detail-row"><span class="detail-label">Tolls Cost</span><span class="detail-val">₹$totalTolls</span></div>
-      </div>
-    </div>
-
-    <div class="footer">
-      This is a secure system-generated Completed Trip Report from Speshway Logistics.
-    </div>
-  </div>
-  <script>
-    window.onload = function() {
-      setTimeout(function() {
-        window.print();
-      }, 500);
-    }
-  </script>
-</body>
-</html>
-''';
-
-    final bytes = utf8.encode(htmlContent);
-    final base64Str = base64.encode(bytes);
-    final urlStr = 'data:text/html;base64,$base64Str';
-    final uri = Uri.parse(urlStr);
-    
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      } else {
-        final textUri = Uri.dataFromString(htmlContent, mimeType: 'text/html', encoding: Encoding.getByName('utf-8'));
-        await launchUrl(textUri);
+      final baseUrl = await ApiService.getBaseUrl();
+      final cleanId = widget.tripId.replaceAll('#', '').trim();
+      final reportUrl = '${baseUrl.replaceAll('/api', '')}/api/public/trips/$cleanId/report';
+      final uri = Uri.parse(reportUrl);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error generating report: $e')),
+        );
       }
-    } catch (_) {
-      final textUri = Uri.dataFromString(htmlContent, mimeType: 'text/html', encoding: Encoding.getByName('utf-8'));
-      await launchUrl(textUri);
     }
   }
 
@@ -350,18 +204,15 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
       );
     }
 
-    // Try sharing via WhatsApp
     final whatsappUri = Uri.parse('https://wa.me/?text=$encodedText');
+    final emailUri = Uri.parse('mailto:?subject=Trip%20Report%20$tripNumber&body=$encodedText');
     try {
-      if (await canLaunchUrl(whatsappUri)) {
-        await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
-      } else {
-        final emailUri = Uri.parse('mailto:?subject=Trip%20Report%20$tripNumber&body=$encodedText');
-        if (await canLaunchUrl(emailUri)) {
-          await launchUrl(emailUri);
-        }
-      }
-    } catch (_) {}
+      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      try {
+        await launchUrl(emailUri, mode: LaunchMode.externalApplication);
+      } catch (_) {}
+    }
   }
 
   List<Map<String, dynamic>> _buildTimelineEvents(Map<String, dynamic> trip) {
