@@ -7,10 +7,12 @@ import '../constants/app_spacing.dart';
 import '../constants/app_radius.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
+import '../widgets/upload_required_documents_dialog.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
 import '../utils/date_formatter.dart';
 import 'add_fuel_entry_screen.dart';
+import 'invoice_screen.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final String tripId;
@@ -158,165 +160,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
-  void _showInvoiceDialog(BuildContext context, Map<String, dynamic> trip, String invoiceNo) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final startLocation = trip['startLocation'] ?? trip['pickup'] ?? 'N/A';
-        final endLocation = trip['endLocation'] ?? trip['destination'] ?? 'N/A';
-        final departureTime = trip['departureTime'] != null ? formatIndianDateTime(trip['departureTime']) : 'N/A';
-        final eta = trip['eta'] != null ? formatIndianDateTime(trip['eta']) : 'N/A';
-        final distance = trip['estimatedDistance'] != null ? '${trip['estimatedDistance']} KM' : (trip['distance'] ?? 'N/A');
-        final cargoType = trip['cargoType'] ?? 'General Cargo';
-        final cargoWeight = trip['cargoWeight'] != null ? '${trip['cargoWeight']} kg' : 'N/A';
-        final vehicleName = trip['vehicleName'] ?? 'N/A';
-        final vehiclePlate = trip['vehiclePlate'] ?? 'N/A';
-        final driverName = trip['driverName'] ?? 'N/A';
-        final driverPhone = trip['driverPhone'] ?? 'N/A';
 
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 500),
-            padding: const EdgeInsets.all(24),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Speshway Logistics',
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.secondary,
-                            ),
-                          ),
-                          Text(
-                            'Billing & Dispatch',
-                            style: GoogleFonts.nunito(
-                              fontSize: 11,
-                              color: AppColors.secondaryText,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 24, color: AppColors.divider),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.divider.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildRowItem('Invoice Number', invoiceNo, isBoldValue: true),
-                        const SizedBox(height: 4),
-                        _buildRowItem('Invoice Date', DateTime.now().toString().split(' ')[0]),
-                        const SizedBox(height: 4),
-                        _buildRowItem('Trip ID', trip['tripNumber'] ?? 'N/A'),
-                        const SizedBox(height: 4),
-                        _buildRowItem('Trip Status', trip['status'] ?? 'N/A', isBoldValue: true),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'TRIP DETAILS',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.secondaryText,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const Divider(height: 12, color: AppColors.divider),
-                  _buildRowItem('Pickup Location', startLocation),
-                  _buildRowItem('Destination', endLocation),
-                  _buildRowItem('Departure', departureTime),
-                  _buildRowItem('ETA', eta),
-                  _buildRowItem('Distance', distance),
-                  _buildRowItem('Cargo Type', cargoType),
-                  _buildRowItem('Cargo Weight', cargoWeight),
-                  const SizedBox(height: 16),
-                  Text(
-                    'ASSETS & DRIVER',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.secondaryText,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const Divider(height: 12, color: AppColors.divider),
-                  _buildRowItem('Vehicle Name', vehicleName),
-                  _buildRowItem('Vehicle Plate', vehiclePlate),
-                  _buildRowItem('Driver Name', driverName),
-                  _buildRowItem('Driver Phone', driverPhone),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.divider),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                          child: Text(
-                            'Close',
-                            style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.secondaryText),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            printInvoice(trip, invoiceNo);
-                          },
-                          icon: const Icon(Icons.download, size: 16, color: Colors.white),
-                          label: Text(
-                            'Download',
-                            style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.success,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildDocumentRow(
     String label,
     String status, {
     required bool isUploaded,
     required bool isUploading,
-    required VoidCallback onUpload,
+    VoidCallback? onUpload,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
@@ -380,32 +231,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
-  Widget _buildRowItem(String label, String value, {bool isBoldValue = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.nunito(
-              fontSize: 12,
-              color: AppColors.secondaryText,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              fontWeight: isBoldValue ? FontWeight.bold : FontWeight.w600,
-              color: AppColors.primaryText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildInvoiceDetailRow(String label, String value) {
     final hasInvoice = value != 'N/A' && value.isNotEmpty;
@@ -436,7 +262,18 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               if (hasInvoice) ...[
                 const SizedBox(width: 8),
                 InkWell(
-                  onTap: () => _showInvoiceDialog(context, _trip!, value),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => InvoiceScreen(
+                          tripId: widget.tripId,
+                          invoiceNumber: value,
+                          tripData: _trip,
+                        ),
+                      ),
+                    );
+                  },
                   borderRadius: BorderRadius.circular(4),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -565,8 +402,65 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
+  bool _isTripEnded(Map<String, dynamic>? trip) {
+    if (trip == null) return false;
+    final status = (trip['status'] ?? '').toString().toLowerCase();
+    if (['reached destination', 'trip ended', 'ended', 'waiting for manager approval', 'completed'].contains(status)) {
+      return true;
+    }
+    return trip['tripEnded'] == true || trip['customerLocationReached'] == true;
+  }
+
   bool _isStartEnabled(String? departureTimeStr) {
-    return true;
+    if (departureTimeStr == null || departureTimeStr.toString().trim().isEmpty) return true;
+    try {
+      final dep = DateTime.parse(departureTimeStr.toString()).toLocal();
+      final now = DateTime.now();
+      final windowStart = dep.subtract(const Duration(minutes: 15));
+      return now.isAfter(windowStart) || now.isAtSameMomentAs(windowStart);
+    } catch (_) {
+      return true;
+    }
+  }
+
+  Future<void> _handleEndTrip() async {
+    if (_isSubmitting) return;
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final rawId = _trip?['tripId'] ?? _trip?['_id'] ?? widget.tripId;
+      final cleanId = rawId.toString().replaceAll('#', '').trim();
+      final res = await ApiService.endTrip(cleanId);
+      if (res != null) {
+        await _fetchTripDetails();
+        if (mounted) {
+          await UploadRequiredDocumentsDialog.show(
+            context,
+            tripId: widget.tripId,
+            tripData: _trip,
+          );
+          await _fetchTripDetails();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to end trip: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
   Future<void> _handleStartTrip() async {
@@ -704,56 +598,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   Future<void> _handleCompleteTrip() async {
-    final podStatus = (_trip?['podStatus'] ?? 'Not Uploaded').toString();
-    final weighbridgeStatus = (_trip?['weighbridgeStatus'] ?? 'Not Uploaded').toString();
-    final hasPod = ['uploaded', 'pending', 'approved'].contains(podStatus.toLowerCase());
-    final hasWeighbridge = ['uploaded', 'pending', 'approved'].contains(weighbridgeStatus.toLowerCase());
-
-    if (!hasPod || !hasWeighbridge) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please upload both Proof of Delivery and Weighbridge Slip before completing the trip.'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _isSubmitting = true;
-    });
-
-    try {
-      final rawId = _trip?['tripId'] ?? _trip?['_id'] ?? widget.tripId;
-      final cleanId = rawId.toString().replaceAll('#', '').trim();
-      await ApiService.updateTripStatus(cleanId, 'Completed');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Trip completed successfully!'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        _fetchTripDetails();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
+    final submitted = await UploadRequiredDocumentsDialog.show(
+      context,
+      tripId: widget.tripId,
+      tripData: _trip,
+    );
+    if (submitted == true) {
+      _fetchTripDetails();
     }
   }
 
@@ -1219,8 +1070,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           const Divider(height: 24, color: AppColors.divider),
                           Builder(
                             builder: (context) {
-                              final podStatusStr = (_trip?['podStatus'] ?? 'Not Uploaded').toString();
-                              final wbStatusStr = (_trip?['weighbridgeStatus'] ?? 'Not Uploaded').toString();
+                              final rawStatus = (_trip?['status'] ?? '').toString().toLowerCase();
+                              final isEnded = _isTripEnded(_trip);
+                              final isLocked = rawStatus == 'waiting for manager approval' || rawStatus == 'completed';
+                              final canUpload = isEnded && !isLocked;
+
+                              final podStatusStr = isEnded ? (_trip?['podStatus'] ?? 'Not Uploaded').toString() : 'Not Uploaded';
+                              final wbStatusStr = isEnded ? (_trip?['weighbridgeStatus'] ?? 'Not Uploaded').toString() : 'Not Uploaded';
                               final hasPod = ['uploaded', 'pending', 'approved'].contains(podStatusStr.toLowerCase());
                               final hasWb = ['uploaded', 'pending', 'approved'].contains(wbStatusStr.toLowerCase());
 
@@ -1231,14 +1087,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                     podStatusStr,
                                     isUploaded: hasPod,
                                     isUploading: _isUploadingPod,
-                                    onUpload: _uploadPodFromDetails,
+                                    onUpload: canUpload ? _uploadPodFromDetails : null,
                                   ),
                                   _buildDocumentRow(
                                     'Weighbridge Slip',
                                     wbStatusStr,
                                     isUploaded: hasWb,
                                     isUploading: _isUploadingWeighbridge,
-                                    onUpload: _uploadWeighbridgeFromDetails,
+                                    onUpload: canUpload ? _uploadWeighbridgeFromDetails : null,
                                   ),
                                 ],
                               );
@@ -1362,44 +1218,70 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       ),
                     ] else if (isAcceptedOrScheduled) ...[
                       const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: _isSubmitting ? null : _handleStartTrip,
-                        icon: const Icon(
-                          Icons.play_arrow_rounded,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                        label: _isSubmitting
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                              )
-                            : Text(
-                                'Start Trip',
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                      Builder(
+                        builder: (context) {
+                          final depTime = _trip?['departureTime'] ?? _trip?['scheduledDeparture'];
+                          final canStart = _isStartEnabled(depTime);
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: (_isSubmitting || !canStart) ? null : _handleStartTrip,
+                                icon: Icon(
+                                  canStart ? Icons.play_arrow_rounded : Icons.lock_clock,
                                   color: Colors.white,
+                                  size: 22,
+                                ),
+                                label: _isSubmitting
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                      )
+                                    : Text(
+                                        canStart ? 'Start Trip' : 'Start Trip (Locked until 15m before departure)',
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: canStart ? const Color(0xFFFF6A00) : const Color(0xFF8E9CAE),
+                                  disabledBackgroundColor: const Color(0xFF8E9CAE),
+                                  disabledForegroundColor: Colors.white70,
+                                  minimumSize: const Size(double.infinity, 50),
+                                  elevation: 2,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                 ),
                               ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6A00),
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(double.infinity, 50),
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
+                              if (!canStart) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Departure window opens 15 minutes before scheduled start.',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 11,
+                                    color: AppColors.secondaryText,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ],
+                          );
+                        },
                       ),
                     ] else if (rawStatus.toLowerCase() == 'in progress' || rawStatus.toLowerCase() == 'on transit') ...[
                       const SizedBox(height: 24),
                       Builder(
                         builder: (context) {
+                          final isEnded = _isTripEnded(_trip);
                           final podStatusStr = (_trip?['podStatus'] ?? 'Not Uploaded').toString();
                           final wbStatusStr = (_trip?['weighbridgeStatus'] ?? 'Not Uploaded').toString();
                           final hasPod = ['uploaded', 'pending', 'approved'].contains(podStatusStr.toLowerCase());
                           final hasWb = ['uploaded', 'pending', 'approved'].contains(wbStatusStr.toLowerCase());
-                          final canComplete = hasPod && hasWb;
+                          final canComplete = isEnded && hasPod && hasWb;
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1432,79 +1314,113 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              if (!canComplete) ...[
-                                Container(
-                                  padding: const EdgeInsets.all(14.0),
-                                  margin: const EdgeInsets.only(bottom: 12.0),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFFFBEB),
-                                    borderRadius: BorderRadius.circular(10.0),
-                                    border: Border.all(color: const Color(0xFFFCD34D)),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.info_outline, color: Color(0xFFD97706), size: 18),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              'Mandatory Uploads Required',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.bold,
-                                                color: const Color(0xFF92400E),
-                                              ),
-                                            ),
+                              if (!isEnded) ...[
+                                ElevatedButton.icon(
+                                  onPressed: _isSubmitting ? null : _handleEndTrip,
+                                  icon: const Icon(Icons.flag_rounded, color: Colors.white, size: 20),
+                                  label: _isSubmitting
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                        )
+                                      : Text(
+                                          'End Trip',
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                            color: Colors.white,
                                           ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            hasPod ? Icons.check_circle : Icons.radio_button_unchecked,
-                                            color: hasPod ? const Color(0xFF16A34A) : const Color(0xFFD97706),
-                                            size: 16,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            '• Proof of Delivery (POD)${hasPod ? ' (Uploaded)' : ''}',
-                                            style: GoogleFonts.nunito(
-                                              fontSize: 12,
-                                              fontWeight: hasPod ? FontWeight.bold : FontWeight.w600,
-                                              color: hasPod ? const Color(0xFF16A34A) : const Color(0xFF92400E),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            hasWb ? Icons.check_circle : Icons.radio_button_unchecked,
-                                            color: hasWb ? const Color(0xFF16A34A) : const Color(0xFFD97706),
-                                            size: 16,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            '• Weighbridge Slip${hasWb ? ' (Uploaded)' : ''}',
-                                            style: GoogleFonts.nunito(
-                                              fontSize: 12,
-                                              fontWeight: hasWb ? FontWeight.bold : FontWeight.w600,
-                                              color: hasWb ? const Color(0xFF16A34A) : const Color(0xFF92400E),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                                        ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFDC2626),
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size(double.infinity, 50),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
                                 ),
-                              ],
-                              MouseRegion(
-                                cursor: canComplete ? SystemMouseCursors.click : SystemMouseCursors.forbidden,
-                                child: ElevatedButton.icon(
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Note: Click "End Trip" upon arrival at destination to unlock POD & Weighbridge slip uploads.',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 11,
+                                    color: AppColors.secondaryText,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ] else ...[
+                                if (!canComplete) ...[
+                                  Container(
+                                    padding: const EdgeInsets.all(14.0),
+                                    margin: const EdgeInsets.only(bottom: 12.0),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFFBEB),
+                                      borderRadius: BorderRadius.circular(10.0),
+                                      border: Border.all(color: const Color(0xFFFCD34D)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.info_outline, color: Color(0xFFD97706), size: 18),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                'Mandatory Uploads Required',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: const Color(0xFF92400E),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              hasPod ? Icons.check_circle : Icons.radio_button_unchecked,
+                                              color: hasPod ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              '• Proof of Delivery (POD)${hasPod ? ' (Uploaded)' : ''}',
+                                              style: GoogleFonts.nunito(
+                                                fontSize: 12,
+                                                fontWeight: hasPod ? FontWeight.bold : FontWeight.w600,
+                                                color: hasPod ? const Color(0xFF16A34A) : const Color(0xFF92400E),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              hasWb ? Icons.check_circle : Icons.radio_button_unchecked,
+                                              color: hasWb ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              '• Weighbridge Slip${hasWb ? ' (Uploaded)' : ''}',
+                                              style: GoogleFonts.nunito(
+                                                fontSize: 12,
+                                                fontWeight: hasWb ? FontWeight.bold : FontWeight.w600,
+                                                color: hasWb ? const Color(0xFF16A34A) : const Color(0xFF92400E),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                ElevatedButton.icon(
                                   onPressed: (_isSubmitting || !canComplete) ? null : _handleCompleteTrip,
                                   icon: Icon(
                                     canComplete ? Icons.check_circle : Icons.lock_rounded,
@@ -1532,7 +1448,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
                                 ),
-                              ),
+                              ],
                             ],
                           );
                         },
