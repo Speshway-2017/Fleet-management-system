@@ -10,6 +10,7 @@ import '../widgets/custom_card.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
 import '../utils/date_formatter.dart';
+import 'add_fuel_entry_screen.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final String tripId;
@@ -1403,6 +1404,34 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => AddFuelEntryScreen(
+                                        tripId: _trip?['_id']?.toString() ?? widget.tripId,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.local_gas_station_rounded, color: Colors.white),
+                                label: Text(
+                                  'Record Fuel Purchase',
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.secondary,
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size(double.infinity, 48),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
                               if (!canComplete) ...[
                                 Container(
                                   padding: const EdgeInsets.all(14.0),

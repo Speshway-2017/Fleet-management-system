@@ -10,6 +10,7 @@ import 'completed_trips_screen.dart';
 import 'vehicle_overview_screen.dart';
 import 'main_navigation_screen.dart';
 import 'notifications/notifications_screen.dart';
+import 'notifications/notification_details_screen.dart';
 import 'settings/settings_screen.dart';
 import 'fuel_overview_screen.dart';
 import '../widgets/driver_profile_dropdown.dart';
@@ -151,7 +152,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                '${_driverProfile?['vehicle'] ?? 'Vehicle AX-452'} • ID: ${_driverProfile?['driverId'] ?? 'EMP-1002'}',
+                                '${_driverProfile?['vehicle'] ?? 'Unassigned'} • ID: ${_driverProfile?['driverId'] ?? 'N/A'}',
                                 style: GoogleFonts.nunito(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
@@ -230,33 +231,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   color: const Color(0xFF1B2430),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const TripsScreen(),
-                                    ),
-                                  );
-                                },
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      'View Trips',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: const Color(0xFFFF6A00),
-                                      ),
-                                    ),
-                                    const Icon(
-                                      Icons.chevron_right,
-                                      color: Color(0xFFFF6A00),
-                                      size: 16,
-                                    ),
-                                  ],
                                 ),
                               ),
                             ],
@@ -1125,20 +1099,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final itemsToDisplay = serverNotifs.isNotEmpty
         ? serverNotifs.take(3).map((item) {
             return {
+              'id': item['_id'] ?? item['id'] ?? '',
               'title': item['title'] ?? 'Fleet Notification',
               'subtitle': item['message'] ?? item['description'] ?? '',
               'time': formatNotificationTime(item['createdAt']),
               'isUnread': !(item['isRead'] ?? false),
               'icon': item['type'] == 'trip_assigned' ? Icons.inventory_2_outlined : Icons.notifications_none_outlined,
+              'type': item['type']?.toString() ?? '',
+              'tripId': item['metadata']?['tripId']?.toString() ?? item['referenceId']?.toString() ?? '',
             };
           }).toList()
         : NotificationsScreen.notifications.take(3).map((item) {
             return {
+              'id': item.id,
               'title': item.title,
               'subtitle': item.description,
               'time': item.timestamp,
               'isUnread': !item.isRead,
               'icon': item.icon,
+              'type': item.type ?? item.title,
+              'tripId': item.tripId ?? '',
             };
           }).toList();
 
@@ -1154,7 +1134,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           time: notif['time'] as String,
           isUnread: notif['isUnread'] as bool,
           onTap: () {
-            MainNavigationScreen.selectedTabNotifier.value = 3;
+            NotificationsScreen.markAsReadStatic(notif['id'] as String);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => NotificationDetailsScreen(
+                  title: notif['title'] as String,
+                  message: notif['subtitle'] as String,
+                  time: notif['time'] as String,
+                  type: (notif['type'] as String).isNotEmpty ? notif['type'] as String : notif['title'] as String,
+                  icon: notif['icon'] as IconData,
+                  comingFromDashboard: false,
+                ),
+              ),
+            ).then((_) {
+              if (mounted) {
+                _loadDashboardData();
+              }
+            });
           },
         );
       }).toList(),

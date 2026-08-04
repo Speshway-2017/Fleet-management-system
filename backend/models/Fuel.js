@@ -25,6 +25,9 @@ const fuelSchema = new mongoose.Schema(
     resolutionComment: { type: String, default: '' },
     hasReceipt: { type: Boolean, default: true },
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    fuelType: { type: String, default: 'Diesel' },
+    dateTime: { type: Date, default: Date.now },
+    notes: { type: String, default: '' },
   },
   { timestamps: true }
 );

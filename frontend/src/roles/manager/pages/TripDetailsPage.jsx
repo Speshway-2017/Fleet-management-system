@@ -81,7 +81,7 @@ export default function TripDetailsPage() {
   const [showWeighbridgeModal, setShowWeighbridgeModal] = useState(false);
   const [weighbridgeRejectReason, setWeighbridgeRejectReason] = useState("");
   const [showWeighbridgeRejectModal, setShowWeighbridgeRejectModal] = useState(false);
-  const [fuelRecord, setFuelRecord] = useState(null);
+  const [fuelRecords, setFuelRecords] = useState([]);
 
   const [tolls, setTolls] = useState([]);
   const [isTollOpen, setIsTollOpen] = useState(false);
@@ -102,6 +102,8 @@ export default function TripDetailsPage() {
   const mapInstanceRef = useRef(null);
 
   const [drivingInfo, setDrivingInfo] = useState(null);
+
+  const totalFuelCost = fuelRecords.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
 
   // Reset Trip Invoice scroll position to top whenever modal opens
   useEffect(() => {
@@ -321,8 +323,8 @@ export default function TripDetailsPage() {
             try {
               const fuelRes = await managerApi.getFuelRecords({ tripId: data._id });
               const fuelData = fuelRes.data?.data || fuelRes.data;
-              if (fuelData && fuelData.length > 0) {
-                setFuelRecord(fuelData[0]);
+              if (Array.isArray(fuelData)) {
+                setFuelRecords(fuelData);
               }
             } catch (fuelErr) {
               console.debug("Fuel records not available for this trip");
@@ -1876,9 +1878,16 @@ export default function TripDetailsPage() {
             </div>
 
             {/* Fuel Receipt Section */}
-            <div className="space-y-3 pt-4 border-t border-gray-100">
-              <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Fuel Receipt</h5>
-              {!fuelRecord ? (
+            <div className="space-y-4 pt-4 border-t border-gray-100">
+              <div className="flex justify-between items-center">
+                <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Fuel Entries History</h5>
+                {fuelRecords.length > 0 && (
+                  <span className="font-poppins font-bold text-xs text-[#22C55E] bg-[#22C55E]/10 px-2 py-0.5 rounded-lg">
+                    Total: ₹{totalFuelCost.toLocaleString('en-IN')}
+                  </span>
+                )}
+              </div>
+              {fuelRecords.length === 0 ? (
                 <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 font-medium">Status</span>
@@ -1905,50 +1914,67 @@ export default function TripDetailsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl space-y-3 text-xs">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500 font-medium">Status</span>
-                    <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
-                      fuelRecord.approvalStatus === "Approved" || fuelRecord.approvalStatus === "APPROVED" ? "bg-emerald-50 text-emerald-700" :
-                      fuelRecord.approvalStatus === "Rejected" || fuelRecord.approvalStatus === "REJECTED" ? "bg-red-50 text-red-600" :
-                      "bg-amber-50 text-[#B45A0A]"
-                    }`}>
-                      {fuelRecord.approvalStatus === "Approved" || fuelRecord.approvalStatus === "APPROVED" ? "🟢 Approved" : fuelRecord.approvalStatus === "Rejected" || fuelRecord.approvalStatus === "REJECTED" ? "🔴 Rejected" : "🟡 PENDING"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Liters / Amount</span>
-                    <span className="font-bold text-[#1E293B] font-semibold">{fuelRecord.liters} L / ₹{fuelRecord.amount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Station</span>
-                    <span className="font-bold text-[#1E293B] font-semibold">{fuelRecord.fuelStation}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const img = fuelRecord.billUrl || fuelRecord.receiptImage;
-                        if (img) window.open(img, "_blank");
-                        else toast.error("No receipt image available");
-                      }}
-                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      View Receipt
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const img = fuelRecord.billUrl || fuelRecord.receiptImage;
-                        if (img) window.open(img, "_blank");
-                        else toast.error("No receipt image available");
-                      }}
-                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      Download File
-                    </button>
-                  </div>
+                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                  {fuelRecords.map((record, index) => {
+                    const img = record.billUrl || record.receiptImage;
+                    return (
+                      <div key={record._id || index} className="p-4 bg-gray-50 border border-gray-100 rounded-xl space-y-3 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-[#1E293B] font-poppins">Entry #{index + 1} - {record.fuelStation || 'Fuel Station'}</span>
+                          <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
+                            record.approvalStatus === "Approved" || record.approvalStatus === "APPROVED" ? "bg-emerald-50 text-emerald-700" :
+                            record.approvalStatus === "Rejected" || record.approvalStatus === "REJECTED" ? "bg-red-50 text-red-600" :
+                            "bg-amber-50 text-[#B45A0A]"
+                          }`}>
+                            {record.approvalStatus === "Approved" || record.approvalStatus === "APPROVED" ? "🟢 Approved" : record.approvalStatus === "Rejected" || record.approvalStatus === "REJECTED" ? "🔴 Rejected" : "🟡 PENDING"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-y-2 pt-1 border-t border-gray-100">
+                          <div className="flex flex-col">
+                            <span className="text-gray-400 text-[10px] uppercase font-medium">Liters / Amount</span>
+                            <span className="font-bold text-[#1E293B]">{record.liters} L / ₹{record.amount}</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-400 text-[10px] uppercase font-medium">Odometer</span>
+                            <span className="font-bold text-[#1E293B]">{record.odometer} km</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-400 text-[10px] uppercase font-medium">Fuel Type</span>
+                            <span className="font-bold text-[#1E293B]">{record.fuelType || 'Diesel'}</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-400 text-[10px] uppercase font-medium">Date & Time</span>
+                            <span className="font-bold text-[#1E293B]">{record.dateTime ? new Date(record.dateTime).toLocaleString('en-IN') : new Date(record.createdAt).toLocaleString('en-IN')}</span>
+                          </div>
+                          {record.notes && (
+                            <div className="flex flex-col col-span-2">
+                              <span className="text-gray-400 text-[10px] uppercase font-medium">Notes</span>
+                              <span className="text-[#1E293B] font-medium italic">{record.notes}</span>
+                            </div>
+                          )}
+                        </div>
+                        {img && (
+                          <div className="grid grid-cols-2 gap-3 pt-2">
+                            <button
+                              type="button"
+                              onClick={() => window.open(img, "_blank")}
+                              className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              View Receipt
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => window.open(img, "_blank")}
+                              className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              Download File
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

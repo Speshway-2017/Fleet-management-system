@@ -11,6 +11,7 @@ import Fuel from '../models/Fuel.js';
 import VehicleComplaint from '../models/VehicleComplaint.js';
 import User from '../models/User.js';
 import Invoice from '../models/Invoice.js';
+import TollTransaction from '../models/TollTransaction.js';
 import { comparePassword } from '../utils/hashPassword.js';
 import { generateToken } from '../utils/jwt.js';
 import { sendSuccess, sendError } from '../utils/response.js';
@@ -240,6 +241,9 @@ export const getDriverProfile = async (req, res, next) => {
       } catch (e) { }
     }
 
+    const assignedVeh = await Vehicle.findOne({ assignedDriver: driver._id });
+    const vehicleNumber = assignedVeh ? assignedVeh.vehicleNumber : 'Unassigned';
+
     return sendSuccess(res, 200, {
       driverId: driver.employeeId || driver._id,
       employeeId: driver.employeeId || '',
@@ -249,7 +253,7 @@ export const getDriverProfile = async (req, res, next) => {
       licenseNumber: driver.licenseNumber,
       licenseType: driver.licenseType,
       licenseExpiry: driver.licenseExpiry || null,
-      vehicle: driver.assignedVehicle || 'Unassigned',
+      vehicle: vehicleNumber,
       driverStatus: driver.driverStatus,
       profileImage: driver.profileImage || '',
       address: driver.address || '',
@@ -514,7 +518,7 @@ export const getDriverNotifications = async (req, res, next) => {
       $or: [
         { recipient: driverId },
         { user: driverId },
-        { targetRole: 'DRIVER' }
+        { recipientRole: 'DRIVER' }
       ]
     }).sort({ createdAt: -1 }).limit(20);
 
@@ -538,7 +542,7 @@ export const markDriverNotificationRead = async (req, res, next) => {
         $or: [
           { recipient: driverId },
           { user: driverId },
-          { targetRole: 'DRIVER' }
+          { recipientRole: 'DRIVER' }
         ]
       },
       { isRead: true },
@@ -567,7 +571,7 @@ export const markAllDriverNotificationsRead = async (req, res, next) => {
         $or: [
           { recipient: driverId },
           { user: driverId },
-          { targetRole: 'DRIVER' }
+          { recipientRole: 'DRIVER' }
         ]
       },
       { isRead: true }
@@ -1355,23 +1359,7 @@ export const getAssignedVehicle = async (req, res, next) => {
       return sendError(res, 404, 'Driver profile not found');
     }
 
-    let vehicle = await Vehicle.findOne({ assignedDriver: driverId }).populate('assignedManager', 'name email phone');
-
-    if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '') {
-      vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle }).populate('assignedManager', 'name email phone');
-    }
-
-    if (!vehicle) {
-      // Check active trip vehicle as fallback
-      const activeTrip = await Trip.findOne({
-        driver: driverId,
-        status: { $nin: ['Completed', 'Cancelled'] }
-      }).populate('vehicle');
-
-      if (activeTrip && activeTrip.vehicle && typeof activeTrip.vehicle === 'object') {
-        vehicle = activeTrip.vehicle;
-      }
-    }
+    const vehicle = await Vehicle.findOne({ assignedDriver: driverId }).populate('assignedManager', 'name email phone');
 
     if (!vehicle) {
       return sendSuccess(res, 200, { assigned: false, vehicle: null }, 'No vehicle assigned');
@@ -1501,7 +1489,7 @@ export const getDriverMaintenance = async (req, res, next) => {
 export const createDriverFuelEntry = async (req, res, next) => {
   try {
     const driverId = req.user._id;
-    const { fuelStation, station, amount, liters, quantity, odometer, tripId } = req.body;
+    const { fuelStation, station, amount, liters, quantity, odometer, tripId, fuelType, dateTime, notes } = req.body;
 
     const driver = await Driver.findById(driverId);
     if (!driver) {
@@ -1561,7 +1549,10 @@ export const createDriverFuelEntry = async (req, res, next) => {
       billStatus: receiptImageUrl ? 'Uploaded' : 'Pending',
       approvalStatus: 'Pending',
       hasReceipt: Boolean(receiptImageUrl),
-      recordedBy: req.user._id
+      recordedBy: req.user._id,
+      fuelType: fuelType || (vehicle ? vehicle.fuelType : 'Diesel') || 'Diesel',
+      dateTime: dateTime ? new Date(dateTime) : Date.now(),
+      notes: notes || ''
     });
 
     await fuel.save();
@@ -2009,6 +2000,64 @@ export const getDriverTripById = async (req, res, next) => {
       generatedAt: invoice?.createdAt || new Date()
     };
 
+    // Compatibility Lookups for Fuel and Toll details
+    let fuel = await Fuel.findOne({
+      $or: [
+        { tripId: trip._id.toString() },
+        { tripId: trip.tripNumber },
+        { tripId: trip.tripNumber.replace('#', '') },
+        { tripId: '#' + trip.tripNumber.replace('#', '') }
+      ]
+    });
+
+    const tollsList = await TollTransaction.find({ trip: trip._id }).sort({ dateTime: 1 });
+    let totalTollsAmount = 0;
+    for (const t of tollsList) {
+      totalTollsAmount += t.amountPaid || 0;
+    }
+    const toll = tollsList.length > 0 ? tollsList[tollsList.length - 1] : null;
+
+    const podDetailsObj = {
+      podNumber: podDoc?.podNumber || '',
+      customerName: podDoc?.customerName || '',
+      receiverName: podDoc?.receiverName || '',
+      status: resolvedPodStatus,
+      rejectionReason: podDoc?.rejectionReason || '',
+      deliveryDate: podDoc?.deliveryDate || null,
+      podDocumentUrl: podUrl || '',
+      customerSignatureUrl: podDoc?.customerSignatureUrl || '',
+    };
+
+    const weighbridgeDetailsObj = {
+      slipNumber: wbDoc?.slipNumber || '',
+      grossWeight: wbDoc?.grossWeight || 0,
+      tareWeight: wbDoc?.tareWeight || 0,
+      netWeight: wbDoc?.netWeight || 0,
+      location: wbDoc?.location || '',
+      status: resolvedWbStatus,
+      rejectionReason: wbDoc?.rejectionReason || '',
+      documentUrl: wbUrl || '',
+    };
+
+    const fuelDetailsObj = fuel ? {
+      fuelStation: fuel.fuelStation,
+      amount: fuel.amount,
+      liters: fuel.liters,
+      odometer: fuel.odometer,
+      approvalStatus: fuel.approvalStatus || fuel.billStatus,
+      rejectionReason: fuel.rejectionReason,
+      billUrl: fuel.billUrl || fuel.receiptImage,
+    } : null;
+
+    const tollDetailsObj = toll ? {
+      tollPlazaName: toll.tollPlazaName,
+      amountPaid: toll.amountPaid,
+      dateTime: toll.dateTime,
+      fastagTransactionId: toll.fastagTransactionId,
+      receiptStatus: toll.receiptStatus,
+      receiptUrl: toll.receiptUrl,
+    } : null;
+
     return sendSuccess(res, 200, {
       tripId: trip._id,
       _id: trip._id,
@@ -2039,8 +2088,144 @@ export const getDriverTripById = async (req, res, next) => {
       tripInvoice: tripInvoiceObj,
       customerLocationReached: trip.customerLocationReached || false,
       invoiceNumber: invoice.invoiceNumber,
-      manager: managerInfo
+      manager: managerInfo,
+
+      // Compatibility fields for mobile screens
+      podUrl: podUrl || '',
+      podDetails: podDetailsObj,
+      weighbridgeUrl: wbUrl || '',
+      weighbridgeDetails: weighbridgeDetailsObj,
+      fuelStatus: fuel ? fuel.billStatus : 'Not Uploaded',
+      fuelUrl: fuel ? (fuel.billUrl || fuel.receiptImage) : '',
+      fuelDetails: fuelDetailsObj,
+      tollStatus: toll ? 'Uploaded' : 'Not Uploaded',
+      tollUrl: toll ? toll.receiptUrl : '',
+      tollDetails: tollDetailsObj,
+      totalTollsAmount: totalTollsAmount
     }, 'Trip details retrieved');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Create Driver Toll Transaction with Multiple Receipt Images Upload
+ * POST /api/driver/tolls
+ */
+export const createDriverTollTransaction = async (req, res, next) => {
+  try {
+    const driverId = req.user._id;
+    const { tollPlazaName, amountPaid, amount, dateTime, tripId } = req.body;
+
+    let resolvedTripId = tripId;
+    if (tripId) {
+      let tripDoc;
+      if (mongoose.Types.ObjectId.isValid(tripId)) {
+        tripDoc = await Trip.findById(tripId);
+      } else {
+        tripDoc = await Trip.findOne({ tripNumber: tripId });
+        if (!tripDoc && !tripId.startsWith('#')) {
+          tripDoc = await Trip.findOne({ tripNumber: `#${tripId}` });
+        }
+      }
+      if (tripDoc) {
+        resolvedTripId = tripDoc._id;
+      }
+    }
+
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return sendError(res, 404, 'Driver profile not found');
+    }
+
+    let vehicle = await Vehicle.findOne({ assignedDriver: driverId });
+    if (!vehicle) {
+      const activeTrip = await Trip.findOne({ driver: driverId, status: { $nin: ['Completed', 'Cancelled'] } }).populate('vehicle');
+      if (activeTrip && activeTrip.vehicle) {
+        vehicle = activeTrip.vehicle;
+      }
+    }
+
+    let receiptUrls = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const b64 = Buffer.from(file.buffer).toString('base64');
+        const mime = file.mimetype || 'image/jpeg';
+        const dataURI = `data:${mime};base64,${b64}`;
+        const uploadResult = await cloudinary.uploader.upload(dataURI, {
+          folder: 'fleet_toll_receipts'
+        });
+        receiptUrls.push(uploadResult.secure_url);
+      }
+    }
+
+    const plazaName = tollPlazaName || 'General Toll Plaza';
+    const totalAmount = Number(amountPaid) || Number(amount) || 0;
+    const transactionDate = dateTime ? new Date(dateTime) : new Date();
+
+    const toll = new TollTransaction({
+      trip: resolvedTripId,
+      vehiclePlate: vehicle ? (vehicle.registrationNumber || vehicle.plateNumber || vehicle.vehicleNumber || '') : '',
+      tollPlazaName: plazaName,
+      location: vehicle?.currentLocation || 'NH Highway',
+      dateTime: transactionDate,
+      amountPaid: totalAmount,
+      paymentMethod: 'Cash/Card',
+      fastagTransactionId: `TXN-TOLL-${Math.floor(100000 + Math.random() * 900000)}`,
+      receiptStatus: 'Paid',
+      receiptUrl: receiptUrls.join(',')
+    });
+
+    await toll.save();
+    console.log("[DEBUG] [Toll Upload API] Saved Toll Transaction:", toll);
+
+    // Broadcast to Fleet Manager
+    const io = req.app.get('socketio') || req.app.locals?.io;
+    const tripObj = await Trip.findById(resolvedTripId);
+    if (tripObj && tripObj.assignedManager) {
+      const managerId = tripObj.assignedManager;
+      await createAndEmitNotification({
+        io,
+        recipient: managerId,
+        recipientRole: 'FLEET_MANAGER',
+        type: 'toll_uploaded',
+        title: 'Toll Receipt Uploaded',
+        message: `Driver ${driver?.fullName || req.user.name || 'Driver'} uploaded a manual toll receipt for plaza ${plazaName}.`,
+        priority: 'normal',
+        metadata: { tollId: toll._id, tripId: resolvedTripId }
+      });
+      if (io) {
+        io.to(`manager:${managerId}`).emit('trip:status-updated', { _id: resolvedTripId, status: tripObj.status });
+      }
+    }
+
+    return sendSuccess(res, 201, toll, 'Toll transaction submitted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get Driver Trip Tolls
+ * GET /api/driver/trips/:id/tolls
+ */
+export const getDriverTripTolls = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    let trip;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      trip = await Trip.findById(id);
+    } else {
+      trip = await Trip.findOne({ tripNumber: id });
+      if (!trip && !id.startsWith('#')) {
+        trip = await Trip.findOne({ tripNumber: `#${id}` });
+      }
+    }
+    if (!trip) {
+      return sendSuccess(res, 200, [], 'Trip not found');
+    }
+    const tolls = await TollTransaction.find({ trip: trip._id }).sort({ dateTime: 1 });
+    return sendSuccess(res, 200, tolls, 'Toll transactions fetched successfully');
   } catch (error) {
     next(error);
   }

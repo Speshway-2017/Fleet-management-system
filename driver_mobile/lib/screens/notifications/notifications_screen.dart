@@ -39,6 +39,56 @@ class NotificationsScreen extends StatefulWidget {
 
   const NotificationsScreen({super.key});
 
+  static Future<void> fetchNotificationsFromServer() async {
+    try {
+      final res = await ApiService.getDriverNotifications();
+      if (res != null && res['data'] is List) {
+        final List list = res['data'];
+        final fetched = list.map((item) {
+          final typeStr = item['type']?.toString() ?? '';
+          final tId = item['metadata']?['tripId']?.toString() ?? item['referenceId']?.toString() ?? '';
+          IconData iconData = Icons.notifications_none_outlined;
+          if (typeStr == 'trip_assigned') {
+            iconData = Icons.assignment_ind_outlined;
+          } else if (typeStr == 'trip_updated') {
+            iconData = Icons.edit_calendar_outlined;
+          } else if (typeStr == 'trip_status_changed') {
+            iconData = Icons.sync_outlined;
+          }
+
+          return NotificationItem(
+            id: item['_id'] ?? item['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+            title: item['title'] ?? 'Fleet Notification',
+            description: item['message'] ?? item['description'] ?? '',
+            timestamp: formatNotificationTime(item['createdAt']),
+            category: getNotificationCategory(item['createdAt']),
+            isRead: item['isRead'] ?? false,
+            icon: iconData,
+            tripId: tId,
+            type: typeStr,
+          );
+        }).toList();
+
+        NotificationsScreen.notifications = fetched;
+        NotificationsScreen.unreadCountNotifier.value = fetched.where((n) => !n.isRead).length;
+      } else {
+        NotificationsScreen.notifications = [];
+        NotificationsScreen.unreadCountNotifier.value = 0;
+      }
+    } catch (_) {}
+  }
+
+  static void markAsReadStatic(String id) {
+    if (id.isEmpty) return;
+    final index = notifications.indexWhere((n) => n.id == id);
+    if (index != -1) {
+      if (notifications[index].isRead) return;
+      notifications[index].isRead = true;
+      unreadCountNotifier.value = notifications.where((n) => !n.isRead).length;
+    }
+    ApiService.patch('/driver/notifications/$id/read', {}).catchError((_) {});
+  }
+
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
@@ -51,10 +101,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    // Clear old session static data to prevent leaking/badge flicker
-    NotificationsScreen.notifications = [];
-    NotificationsScreen.unreadCountNotifier.value = 0;
-
     MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
     _fetchServerNotifications();
     SocketService.onEvent('notification:new', (_) {
@@ -63,51 +109,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _fetchServerNotifications() async {
-    try {
-      final res = await ApiService.getDriverNotifications();
-      if (res != null && res['data'] is List) {
-        final List list = res['data'];
-        if (list.isNotEmpty) {
-          final fetched = list.map((item) {
-            final typeStr = item['type']?.toString() ?? '';
-            final tId = item['metadata']?['tripId']?.toString() ?? item['referenceId']?.toString() ?? '';
-            IconData iconData = Icons.notifications_none_outlined;
-            if (typeStr == 'trip_assigned') {
-              iconData = Icons.assignment_ind_outlined;
-            } else if (typeStr == 'trip_updated') {
-              iconData = Icons.edit_calendar_outlined;
-            } else if (typeStr == 'trip_status_changed') {
-              iconData = Icons.sync_outlined;
-            }
-
-            return NotificationItem(
-              id: item['_id'] ?? item['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-              title: item['title'] ?? 'Fleet Notification',
-              description: item['message'] ?? item['description'] ?? '',
-              timestamp: formatNotificationTime(item['createdAt']),
-              category: getNotificationCategory(item['createdAt']),
-              isRead: item['isRead'] ?? false,
-              icon: iconData,
-              tripId: tId,
-              type: typeStr,
-            );
-          }).toList();
-          if (mounted) {
-            setState(() {
-              NotificationsScreen.notifications = fetched;
-              NotificationsScreen.unreadCountNotifier.value = fetched.where((n) => !n.isRead).length;
-            });
-          }
-        } else {
-          if (mounted) {
-            setState(() {
-              NotificationsScreen.notifications = [];
-              NotificationsScreen.unreadCountNotifier.value = 0;
-            });
-          }
-        }
-      }
-    } catch (_) {}
+    await NotificationsScreen.fetchNotificationsFromServer();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -129,6 +134,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
       NotificationsScreen.unreadCountNotifier.value = 0;
     });
+    ApiService.patch('/driver/notifications/read-all', {}).catchError((_) {});
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('All notifications marked as read.'),
@@ -139,9 +145,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _toggleReadStatus(NotificationItem item) {
+    if (item.isRead) return;
     setState(() {
-      item.isRead = true;
-      NotificationsScreen.unreadCountNotifier.value = _notifications.where((n) => !n.isRead).length;
+      NotificationsScreen.markAsReadStatic(item.id);
     });
   }
 
@@ -271,36 +277,44 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           children: [
             _buildFilterBar(),
             Expanded(
-              child: filteredNotifications.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+              child: RefreshIndicator(
+                onRefresh: _fetchServerNotifications,
+                color: AppColors.secondary,
+                child: filteredNotifications.isEmpty
+                    ? SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Container(
+                          height: MediaQuery.of(context).size.height - 200,
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.notifications_off_outlined,
+                                size: 64,
+                                color: AppColors.textDisabled,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _selectedFilterIndex == 0
+                                    ? 'No Notifications Yet'
+                                    : _selectedFilterIndex == 1
+                                        ? 'No Read Notifications'
+                                        : 'No Unread Notifications',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                         children: [
-                          Icon(
-                            Icons.notifications_off_outlined,
-                            size: 64,
-                            color: AppColors.textDisabled,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _selectedFilterIndex == 0
-                                ? 'No Notifications Yet'
-                                : _selectedFilterIndex == 1
-                                    ? 'No Read Notifications'
-                                    : 'No Unread Notifications',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-                      children: [
                         // TODAY SECTION
                         if (todayNotifications.isNotEmpty) ...[
                           Row(
@@ -356,6 +370,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ],
                       ],
                     ),
+              ),
             ),
           ],
         ),
@@ -367,8 +382,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return GestureDetector(
       onTap: () {
         _toggleReadStatus(item);
-        ApiService.patch('/driver/notifications/${item.id}/read', {}).catchError((_) {});
-
         if (item.tripId != null && item.tripId!.isNotEmpty) {
           Navigator.push(
             context,

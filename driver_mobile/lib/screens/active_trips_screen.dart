@@ -366,8 +366,11 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
     final tripNumber = _activeTrip?['tripNumber'] ?? tripId;
     final pickup = _activeTrip?['pickup'] ?? _activeTrip?['startLocation'] ?? 'Port of Long Beach, CA';
     final destination = _activeTrip?['destination'] ?? _activeTrip?['endLocation'] ?? 'Distribution Center A-12, AZ';
-    final vehicle = _activeTrip?['vehicle'] ?? 'AX-452';
-    final eta = _activeTrip?['eta'] ?? '14:45 PM';
+    final vehicleRaw = _activeTrip?['vehicle'];
+    final vehicle = vehicleRaw is Map
+        ? (vehicleRaw['vehicleNumber'] ?? vehicleRaw['registrationNumber'] ?? 'N/A')
+        : (vehicleRaw?.toString() ?? 'Unassigned');
+    final eta = _activeTrip?['eta'] ?? 'N/A';
 
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
