@@ -50,7 +50,7 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     try {
       final cleanId = widget.tripId.replaceAll('#', '').trim();
       final res = await ApiService.getTripDetails(cleanId);
-      print('[DEBUG] [GET Trip Details API response] res: $res');
+      debugPrint('[DEBUG] [GET Trip Details API response] res: $res');
       if (res != null && res['data'] != null) {
         if (mounted) {
           setState(() {
@@ -1315,7 +1315,7 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        print('[DEBUG] [Document View Dialog] Title: $title, DocumentName: $documentName, DocumentUrl: $documentUrl, Details: $details');
+        debugPrint('[DEBUG] [Document View Dialog] Title: $title, DocumentName: $documentName, DocumentUrl: $documentUrl, Details: $details');
         final isUploaded = details != null || (documentUrl != null && documentUrl.isNotEmpty);
         
         return Dialog(

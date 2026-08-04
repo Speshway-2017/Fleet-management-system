@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import 'raise_ticket_screen.dart';
 import 'ticket_details_screen.dart';
-import '../widgets/external_contact_modal.dart';
+import 'contact_fleet_manager_screen.dart';
 
 /// Representation of a Support Ticket data item.
 class SupportTicketItem {
@@ -51,6 +51,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
   final List<String> _filters = ['All', 'Open', 'In Progress', 'Resolved', 'Rejected'];
 
   bool _isLoading = false;
+  bool _isVehicleAssigned = false;
   List<SupportTicketItem> _tickets = [];
 
   @override
@@ -59,17 +60,23 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
     _loadTickets();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
   Future<void> _loadTickets() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
+      bool assigned = false;
+      try {
+        final vehRes = await ApiService.getAssignedVehicle();
+        if (vehRes != null && vehRes['success'] == true) {
+          final vData = vehRes['data'];
+          if (vData != null && vData['assigned'] == true && vData['vehicle'] != null) {
+            assigned = true;
+          }
+        }
+      } catch (_) {}
+
       final res = await ApiService.getDriverTickets();
       final List data = (res is Map && res['data'] != null)
           ? res['data']
@@ -140,18 +147,16 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         );
       }).toList();
 
-      if (mounted) {
-        setState(() {
-          _tickets = fetched;
-        });
-      }
+      setState(() {
+        _isVehicleAssigned = assigned;
+        _tickets = fetched;
+      });
     } catch (e) {
       debugPrint('Failed to load driver tickets from API: $e');
-      if (mounted) {
-        setState(() {
-          _tickets = [];
-        });
-      }
+      setState(() {
+        _isVehicleAssigned = false;
+        _tickets = [];
+      });
     } finally {
       if (mounted) {
         setState(() {
@@ -183,47 +188,49 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         backgroundColor: primaryDark,
         elevation: 0,
         centerTitle: false,
-        titleSpacing: 16.0,
-        automaticallyImplyLeading: false,
-        title: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
+        titleSpacing: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Support & Tickets',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+            onPressed: _loadTickets,
+            tooltip: 'Refresh Tickets',
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: Container(
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8.0),
               ),
               padding: const EdgeInsets.all(4.0),
               child: Image.asset(
-                'assets/logo.png',
+                'assets/images/logo.png',
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
-                  return Image.asset(
-                    'assets/images/logo.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.local_shipping_rounded,
-                        color: primaryDark,
-                        size: 20,
-                      );
-                    },
+                  return const Icon(
+                    Icons.local_shipping_rounded,
+                    color: primaryDark,
+                    size: 20,
                   );
                 },
               ),
             ),
-            const SizedBox(width: 12),
-            Text(
-              'Support History',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -232,6 +239,40 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (!_isVehicleAssigned) ...[
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 16.0),
+                  padding: const EdgeInsets.all(14.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF), // Light blue box
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        color: Color(0xFF2563EB),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'No vehicle is currently assigned. You can view your previous records, but new maintenance tickets will be available once a vehicle is assigned.',
+                          style: GoogleFonts.nunito(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1E40AF),
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               // Subtitle Banner Description
               Text(
                 'Track and manage your vehicle issues and support requests.',
@@ -298,7 +339,10 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                       label: 'Call Manager',
                       color: const Color(0xFF10B981),
                       onTap: () {
-                        showExternalContactOptionsModal(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ContactFleetManagerScreen()),
+                        );
                       },
                     ),
                   ),
@@ -310,7 +354,10 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                       label: 'Message Manager',
                       color: primaryOrange,
                       onTap: () {
-                        showExternalContactOptionsModal(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ContactFleetManagerScreen()),
+                        );
                       },
                     ),
                   ),
@@ -431,6 +478,16 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
       // 4. Circular (+) Floating Action Button
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
+          if (!_isVehicleAssigned) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No vehicle is currently assigned. New maintenance tickets will be available once a vehicle is assigned.'),
+                backgroundColor: Colors.orange,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            return;
+          }
           final res = await Navigator.push(
             context,
             MaterialPageRoute(
@@ -441,10 +498,10 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
             _loadTickets();
           }
         },
-        backgroundColor: primaryOrange,
-        elevation: 4,
+        backgroundColor: _isVehicleAssigned ? primaryOrange : const Color(0xFF94A3B8),
+        elevation: _isVehicleAssigned ? 4 : 1,
         shape: const CircleBorder(),
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+        child: Icon(_isVehicleAssigned ? Icons.add_rounded : Icons.lock_outline_rounded, color: Colors.white, size: 26),
       ),
     );
   }

@@ -28,18 +28,33 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
     _fetchFuelRecords();
   }
 
+  bool _isAssigned = false;
+
   Future<void> _fetchFuelRecords() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
+      bool assigned = false;
+      try {
+        final vehRes = await ApiService.getAssignedVehicle();
+        if (vehRes != null && vehRes['success'] == true) {
+          final vData = vehRes['data'];
+          if (vData != null && vData['assigned'] == true && vData['vehicle'] != null) {
+            assigned = true;
+          }
+        }
+      } catch (_) {}
+
+      // ALWAYS fetch fuel records regardless of assigned status (Requirement 5)
       final res = await ApiService.getDriverFuelRecords();
       if (mounted) {
         if (res != null && res['success'] == true) {
           final data = res['data'];
           if (data != null && data is List) {
             setState(() {
+              _isAssigned = assigned;
               _fuelEntries = data;
               _isLoading = false;
             });
@@ -157,6 +172,40 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (!_isAssigned) ...[
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 16.0),
+                          padding: const EdgeInsets.all(14.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF), // Light blue box
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(
+                                Icons.info_outline_rounded,
+                                color: Color(0xFF2563EB),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'No vehicle is currently assigned. You can view your previous records, but new fuel entries will be available once a vehicle is assigned.',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF1E40AF),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       // 1. Filter Chips Horizontal Scroll
                       SizedBox(
                         height: 36,
@@ -209,7 +258,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                       const SizedBox(height: 20.0),
 
                       // 2. Fuel History List or Empty State
-                      entriesToDisplay.isEmpty
+                      !_isAssigned
                           ? Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(32),
@@ -221,10 +270,10 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.local_gas_station_outlined, size: 64, color: textSecondary),
+                                  const Icon(Icons.local_gas_station_outlined, size: 64, color: primaryOrange),
                                   const SizedBox(height: 16),
                                   Text(
-                                    'No fuel records found.',
+                                    'No Vehicle Assigned',
                                     style: GoogleFonts.poppins(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
@@ -233,14 +282,45 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'No fuel logs have been recorded for your profile.',
+                                    'No vehicle has been assigned yet. Vehicle-related features will become available once your manager assigns a vehicle.',
                                     textAlign: TextAlign.center,
-                                    style: GoogleFonts.nunito(fontSize: 14, color: textSecondary),
+                                    style: GoogleFonts.nunito(fontSize: 14, color: textSecondary, height: 1.5),
                                   ),
                                 ],
                               ),
                             )
-                          : ListView.separated(
+                          : entriesToDisplay.isEmpty
+                              ? Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(32),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: borderGray),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.local_gas_station_outlined, size: 64, color: textSecondary),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'No fuel records found.',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'No fuel logs have been recorded for your profile.',
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.nunito(fontSize: 14, color: textSecondary),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ListView.separated(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: entriesToDisplay.length,

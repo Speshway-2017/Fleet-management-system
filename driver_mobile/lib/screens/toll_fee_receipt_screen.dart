@@ -238,7 +238,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
                   ),
                   if (_isSubmitting)
                     Container(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       child: const Center(
                         child: CircularProgressIndicator(color: AppColors.primary),
                       ),
@@ -289,7 +289,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.1),
+                  color: AppColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppRadius.round),
                 ),
                 child: Text(
@@ -339,7 +339,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
+                    color: Colors.blue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: const Icon(Icons.toll, color: Colors.blue, size: 20),
@@ -405,7 +405,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: method == 'FASTag' ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                    color: method == 'FASTag' ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(

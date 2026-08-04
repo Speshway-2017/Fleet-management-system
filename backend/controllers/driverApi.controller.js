@@ -279,7 +279,9 @@ export const getDriverProfile = async (req, res, next) => {
       language: driver.language || 'English (US)',
       isDarkMode: driver.isDarkMode || false,
       driverStatus: driver.driverStatus || 'AVAILABLE',
-      isOnline: driver.isOnline !== undefined ? driver.isOnline : (driver.driverStatus !== 'OFFLINE'),
+      isOnline: (driver.isOnline !== undefined && driver.isOnline !== null)
+        ? (driver.isOnline === true || driver.isOnline === 'true' || driver.isOnline === 1)
+        : (driver.driverStatus !== 'OFFLINE'),
       notificationPreferences: driver.notificationPreferences || {
         routeChanges: true,
         trafficWarnings: true,
@@ -306,6 +308,16 @@ export const getDriverProfile = async (req, res, next) => {
 export const updateDriverProfile = async (req, res, next) => {
   try {
     const driverId = req.user._id;
+
+    console.log('[DEBUG] [Availability Update] Request Body:', req.body);
+
+    const driverBefore = await Driver.findById(driverId).lean();
+    console.log('[DEBUG] [Availability Update] Driver Before Update:', {
+      _id: driverBefore?._id,
+      isOnline: driverBefore?.isOnline,
+      driverStatus: driverBefore?.driverStatus
+    });
+
     const allowedFields = [
       'fullName',
       'phoneNumber',
@@ -334,23 +346,37 @@ export const updateDriverProfile = async (req, res, next) => {
       if (req.body[key] !== undefined) {
         if (key === 'phone') {
           updateData['phoneNumber'] = req.body[key];
+        } else if (key === 'isOnline') {
+          const val = req.body.isOnline;
+          updateData['isOnline'] = (val === true || val === 'true' || val === 1 || val === '1');
         } else {
           updateData[key] = req.body[key];
         }
       }
     }
 
-    if (req.body.isOnline !== undefined) {
-      if (req.body.isOnline === false || req.body.driverStatus === 'OFFLINE') {
+    if (req.body.isOnline !== undefined || req.body.driverStatus !== undefined) {
+      const rawIsOnline = req.body.isOnline;
+      const isOff = (
+        rawIsOnline === false ||
+        rawIsOnline === 'false' ||
+        rawIsOnline === 0 ||
+        rawIsOnline === '0' ||
+        req.body.driverStatus === 'OFFLINE'
+      );
+
+      if (isOff) {
         updateData.driverStatus = 'OFFLINE';
         updateData.isOnline = false;
-      } else if (req.body.isOnline === true || req.body.driverStatus === 'AVAILABLE') {
+      } else {
         updateData.isOnline = true;
-        if (req.user.driverStatus !== 'ON_TRIP') {
+        if (driverBefore && driverBefore.driverStatus !== 'ON_TRIP') {
           updateData.driverStatus = 'AVAILABLE';
         }
       }
     }
+
+    console.log('[DEBUG] [Availability Update] MongoDB updateData:', updateData);
 
     // If profileImage is a base64 string, upload to Cloudinary!
     if (updateData.profileImage && updateData.profileImage.startsWith('data:image')) {
@@ -363,13 +389,19 @@ export const updateDriverProfile = async (req, res, next) => {
 
     const updatedDriver = await Driver.findByIdAndUpdate(
       driverId,
-      updateData,
-      { new: true }
+      { $set: updateData },
+      { new: true, runValidators: true }
     ).lean();
 
     if (!updatedDriver) {
       return sendError(res, 404, 'Driver profile not found');
     }
+
+    console.log('[DEBUG] [Availability Update] Driver After Update in MongoDB:', {
+      _id: updatedDriver._id,
+      isOnline: updatedDriver.isOnline,
+      driverStatus: updatedDriver.driverStatus
+    });
 
     if (updatedDriver.assignedManager) {
       try {
@@ -386,7 +418,17 @@ export const updateDriverProfile = async (req, res, next) => {
       } catch (_) {}
     }
 
-    return sendSuccess(res, 200, updatedDriver, 'Driver profile updated successfully');
+    const responsePayload = {
+      ...updatedDriver,
+      driverId: updatedDriver.employeeId || updatedDriver._id,
+      id: updatedDriver._id,
+      isOnline: updatedDriver.isOnline,
+      driverStatus: updatedDriver.driverStatus,
+    };
+
+    console.log('[DEBUG] [Availability Update] API Response payload isOnline:', responsePayload.isOnline);
+
+    return sendSuccess(res, 200, responsePayload, 'Driver profile updated successfully');
   } catch (error) {
     next(error);
   }
@@ -873,6 +915,69 @@ export const updateTripStatus = async (req, res, next) => {
     }
 
     return sendSuccess(res, 200, trip, 'Trip status updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * End Trip (Destination Reached / Journey Ended)
+ * PATCH /api/driver/trips/:id/end-trip
+ */
+export const endTrip = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const trip = await Trip.findById(id);
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    if (trip.status !== 'In Progress') {
+      return sendError(res, 400, 'Trip must be In Progress to end journey.');
+    }
+
+    trip.tripEnded = true;
+    trip.endedAt = new Date();
+    trip.customerLocationReached = true;
+    trip.customerLocationReachedAt = new Date();
+    await trip.save();
+
+    const io = req.app.get('socketio') || req.app.locals?.io;
+    const managerId = trip.assignedManager;
+    const driverDoc = await Driver.findById(req.user._id);
+
+    if (managerId) {
+      await createAndEmitNotification({
+        io,
+        recipient: managerId,
+        recipientRole: 'FLEET_MANAGER',
+        type: 'trip_ended',
+        title: `Trip Journey Ended: ${trip.tripNumber}`,
+        message: `Driver ${driverDoc?.fullName || 'Driver'} has arrived at destination and ended trip #${trip.tripNumber}. Document uploads are now unlocked.`,
+        priority: 'normal',
+        metadata: { tripId: trip._id, driverId: req.user._id }
+      });
+
+      if (io) {
+        io.to(`manager:${managerId}`).emit('trip:ended', {
+          tripId: trip._id,
+          tripNumber: trip.tripNumber,
+          driverId: req.user._id
+        });
+        io.to(`manager:${managerId}`).emit('trip:status-updated', {
+          tripId: trip._id,
+          tripNumber: trip.tripNumber,
+          status: 'In Progress',
+          tripEnded: true
+        });
+      }
+    }
+
+    if (io) {
+      io.to(`driver:${req.user._id}`).emit('trip:updated', trip);
+    }
+
+    return sendSuccess(res, 200, trip, 'Trip ended successfully. You can now upload Proof of Delivery and Weighbridge Slip.');
   } catch (error) {
     next(error);
   }

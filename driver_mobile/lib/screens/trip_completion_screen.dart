@@ -172,19 +172,23 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                             imageName: data['imageName'],
                           );
                           await _fetchTripDetails();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('✅ POD uploaded successfully!'),
-                              backgroundColor: AppColors.success,
-                            ),
-                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('✅ POD uploaded successfully!'),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                          }
                         } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('POD upload failed: $e'),
-                              backgroundColor: AppColors.error,
-                            ),
-                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('POD upload failed: $e'),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
                         } finally {
                           setState(() {
                             _isSubmitting = false;
@@ -227,19 +231,23 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                             imageName: data['imageName'],
                           );
                           await _fetchTripDetails();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('✅ Fuel entry uploaded successfully!'),
-                              backgroundColor: AppColors.success,
-                            ),
-                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('✅ Fuel entry uploaded successfully!'),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                          }
                         } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Fuel upload failed: $e'),
-                              backgroundColor: AppColors.error,
-                            ),
-                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Fuel upload failed: $e'),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
                         } finally {
                           setState(() {
                             _isSubmitting = false;
@@ -285,19 +293,23 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                                   imageName: data['imageName'],
                                 );
                                 await _fetchTripDetails();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('✅ Weighbridge Slip uploaded successfully!'),
-                                    backgroundColor: AppColors.success,
-                                  ),
-                                );
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('✅ Weighbridge Slip uploaded successfully!'),
+                                      backgroundColor: AppColors.success,
+                                    ),
+                                  );
+                                }
                               } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Weighbridge upload failed: $e'),
-                                    backgroundColor: AppColors.error,
-                                  ),
-                                );
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Weighbridge upload failed: $e'),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                }
                               } finally {
                                 setState(() {
                                   _isSubmitting = false;
@@ -347,19 +359,23 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                               imageNames: data['imageNames'],
                             );
                             await _fetchTripDetails();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('✅ Toll Receipt uploaded successfully!'),
-                                backgroundColor: AppColors.success,
-                              ),
-                            );
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('✅ Toll Receipt uploaded successfully!'),
+                                  backgroundColor: AppColors.success,
+                                ),
+                              );
+                            }
                           } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Toll upload failed: $e'),
-                                backgroundColor: AppColors.error,
-                              ),
-                            );
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Toll upload failed: $e'),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
                           } finally {
                             setState(() {
                               _isSubmitting = false;
@@ -396,7 +412,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
             ),
             if (_isSubmitting)
               Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: const Center(
                   child: CircularProgressIndicator(color: AppColors.primary),
                 ),
@@ -438,7 +454,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.success.withOpacity(0.1),
+              color: AppColors.success.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppRadius.round),
             ),
             child: Text(
@@ -475,7 +491,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
+                color: iconColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: iconColor, size: 22),
@@ -511,8 +527,8 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: isCompleted 
-                    ? AppColors.success.withOpacity(0.1)
-                    : AppColors.secondary.withOpacity(0.1),
+                    ? AppColors.success.withValues(alpha: 0.1)
+                    : AppColors.secondary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -1353,7 +1369,7 @@ class _TollTransactionsDialogState extends State<TollTransactionsDialog> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: Colors.blue.withOpacity(0.08),
+                              color: Colors.blue.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -1817,7 +1833,7 @@ class _WeighbridgeEntryScreenState extends State<WeighbridgeEntryScreen> {
                           style: GoogleFonts.poppins(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.primaryText.withOpacity(0.6),
+                            color: AppColors.primaryText.withValues(alpha: 0.6),
                           ),
                           decoration: InputDecoration(
                             isDense: true,

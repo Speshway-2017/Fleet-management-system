@@ -17,6 +17,8 @@ class FuelOverviewScreen extends StatefulWidget {
 
 class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
   bool _isLoading = true;
+  bool _isAssigned = false;
+  bool _hasActiveTrip = false;
   String _vehicleNumber = 'Assigned Vehicle';
   double _lastRefillCost = 0.0;
   double _lastRefillLiters = 0.0;
@@ -35,37 +37,75 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
     });
 
     try {
-      final vehRes = await ApiService.getAssignedVehicle();
-      if (mounted && vehRes != null && vehRes['success'] == true) {
-        final vData = vehRes['data'];
-        if (vData != null && vData['assigned'] == true && vData['vehicle'] != null) {
-          final v = vData['vehicle'];
-          _vehicleNumber = v['vehicleNumber'] ?? v['plateNumber'] ?? 'Assigned Vehicle';
+      bool assigned = false;
+      String vehNum = 'No Vehicle Assigned';
+      try {
+        final vehRes = await ApiService.getAssignedVehicle();
+        if (vehRes != null && vehRes['success'] == true) {
+          final vData = vehRes['data'];
+          if (vData != null && vData['assigned'] == true && vData['vehicle'] != null) {
+            final v = vData['vehicle'];
+            assigned = true;
+            vehNum = v['vehicleNumber'] ?? v['plateNumber'] ?? 'Assigned Vehicle';
+          }
         }
+      } catch (e) {
+        debugPrint('Error fetching assigned vehicle: $e');
       }
 
-      final fuelRes = await ApiService.getDriverFuelRecords();
-      if (mounted && fuelRes != null && fuelRes['success'] == true) {
-        final List<dynamic> logs = fuelRes['data'] ?? [];
-        double sumLiters = 0.0;
-        for (var l in logs) {
-          sumLiters += (_parseNumber(l['liters']) ?? 0.0);
+      bool hasActive = false;
+      try {
+        final tripRes = await ApiService.getCurrentTrip();
+        if (tripRes != null && tripRes['success'] == true && tripRes['data'] != null) {
+          final tData = tripRes['data'];
+          if (tData is Map && tData.isNotEmpty && tData['tripNumber'] != null) {
+            final st = (tData['status'] ?? '').toString().toLowerCase();
+            final activeStatuses = ['assigned', 'scheduled', 'in progress', 'accepted', 'on transit', 'enroute', 'reach pickup', 'pickup completed'];
+            if (activeStatuses.contains(st)) {
+              hasActive = true;
+            }
+          }
         }
-        _totalEntries = logs.length;
-        _totalLiters = sumLiters;
-
-        if (logs.isNotEmpty) {
-          final latest = logs[0];
-          _lastRefillCost = (_parseNumber(latest['amount']) ?? 0.0);
-          _lastRefillLiters = (_parseNumber(latest['liters']) ?? 0.0);
-        }
+      } catch (e) {
+        debugPrint('Error fetching current trip: $e');
       }
-    } catch (_) {}
 
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+      // ALWAYS fetch fuel records regardless of vehicle assignment to display history!
+      try {
+        final fuelRes = await ApiService.getDriverFuelRecords();
+        if (fuelRes != null && fuelRes['success'] == true) {
+          final List<dynamic> logs = fuelRes['data'] ?? [];
+          double sumLiters = 0.0;
+          for (var l in logs) {
+            sumLiters += (_parseNumber(l['liters']) ?? 0.0);
+          }
+          _totalEntries = logs.length;
+          _totalLiters = sumLiters;
+
+          if (logs.isNotEmpty) {
+            final latest = logs[0];
+            _lastRefillCost = (_parseNumber(latest['amount']) ?? 0.0);
+            _lastRefillLiters = (_parseNumber(latest['liters']) ?? 0.0);
+          }
+        }
+      } catch (e) {
+        debugPrint('Error fetching fuel records: $e');
+      }
+
+      if (mounted) {
+        setState(() {
+          _isAssigned = assigned;
+          _vehicleNumber = vehNum;
+          _hasActiveTrip = hasActive;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -150,10 +190,78 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 1. Vehicle Fuel Overview Card
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(18.0),
+                      // Status Banner
+                      if (!_isAssigned) ...[
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 16.0),
+                          padding: const EdgeInsets.all(14.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF), // Light blue box
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(
+                                Icons.info_outline_rounded,
+                                color: Color(0xFF2563EB),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'No vehicle is currently assigned. You can view your previous records, but new fuel entries will be available once a vehicle is assigned.',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF1E40AF),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (!_hasActiveTrip) ...[
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 16.0),
+                          padding: const EdgeInsets.all(14.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFFBEB), // Light amber box
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFFCD34D)),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                color: Color(0xFFD97706),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'No active trip found. You can view your previous records, but adding new fuel entries is available only during an active trip.',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF92400E),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                            // 1. Vehicle Fuel Overview Card
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(18.0),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(20.0),
@@ -305,7 +413,28 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                               context,
                               icon: Icons.add_circle_outline_rounded,
                               label: 'Add Fuel\nEntry',
+                              isDisabled: !(_isAssigned && _hasActiveTrip),
                               onTap: () async {
+                                if (!_isAssigned) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('No vehicle is currently assigned. New fuel entries will be available once a vehicle is assigned.'),
+                                      backgroundColor: Colors.orange,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                if (!_hasActiveTrip) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Adding fuel entries is only permitted during an active trip.'),
+                                      backgroundColor: Colors.orange,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  return;
+                                }
                                 await Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -322,6 +451,7 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                               context,
                               icon: Icons.history_rounded,
                               label: 'Fuel\nHistory',
+                              isDisabled: false,
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -381,54 +511,59 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    bool isDisabled = false,
   }) {
     const borderGray = Color(0xFFE2E8F0);
     const textPrimary = Color(0xFF1F2937);
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 8.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16.0),
-          border: Border.all(color: borderGray, width: 1.0),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(6),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                shape: BoxShape.circle,
-                border: Border.all(color: borderGray, width: 1.0),
+      child: Opacity(
+        opacity: isDisabled ? 0.6 : 1.0,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 8.0),
+          decoration: BoxDecoration(
+            color: isDisabled ? const Color(0xFFF8FAFC) : Colors.white,
+            borderRadius: BorderRadius.circular(16.0),
+            border: Border.all(color: borderGray, width: 1.0),
+            boxShadow: [
+              if (!isDisabled)
+                BoxShadow(
+                  color: Colors.black.withAlpha(6),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isDisabled ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: borderGray, width: 1.0),
+                ),
+                child: Icon(
+                  isDisabled ? Icons.lock_outline_rounded : icon,
+                  color: isDisabled ? const Color(0xFF94A3B8) : textPrimary,
+                  size: 22,
+                ),
               ),
-              child: Icon(
-                icon,
-                color: textPrimary,
-                size: 22,
+              const SizedBox(height: 10.0),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: isDisabled ? const Color(0xFF94A3B8) : textPrimary,
+                  height: 1.2,
+                ),
               ),
-            ),
-            const SizedBox(height: 10.0),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: textPrimary,
-                height: 1.2,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -779,7 +779,7 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
                   controller: _weighbridgeWeightController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
-                    labelText: 'Net Weight (Tons)',
+                    labelText: 'Net Weight (KG)',
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     border: OutlineInputBorder(),

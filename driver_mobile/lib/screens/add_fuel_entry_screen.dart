@@ -60,6 +60,9 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
     _dateTimeController.text = DateTime.now().toString().split('.')[0];
   }
 
+  bool _isVehicleAssigned = false;
+  bool _hasActiveTrip = false;
+
   @override
   void dispose() {
     _quantityController.dispose();
@@ -89,6 +92,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
         if (data != null && data['assigned'] == true && data['vehicle'] != null) {
           final v = data['vehicle'];
           setState(() {
+            _isVehicleAssigned = true;
             _assignedVehicle = v['vehicleNumber'] ?? v['plateNumber'] ?? 'Assigned Vehicle';
             if (v['odometer'] != null) {
               _odometerController.text = v['odometer'].toString();
@@ -96,14 +100,34 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
           });
         } else {
           setState(() {
+            _isVehicleAssigned = false;
             _assignedVehicle = 'No Vehicle Assigned';
           });
         }
       }
+
+      try {
+        final tripRes = await ApiService.getCurrentTrip();
+        if (tripRes != null && tripRes['success'] == true && tripRes['data'] != null) {
+          final tData = tripRes['data'];
+          if (tData is Map && tData.isNotEmpty && tData['tripNumber'] != null) {
+            final st = (tData['status'] ?? '').toString().toLowerCase();
+            final activeStatuses = ['assigned', 'scheduled', 'in progress', 'accepted', 'on transit', 'enroute', 'reach pickup', 'pickup completed'];
+            if (activeStatuses.contains(st)) {
+              setState(() {
+                _hasActiveTrip = true;
+              });
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error checking active trip in AddFuelEntryScreen: $e');
+      }
     } catch (_) {
       if (mounted) {
         setState(() {
-          _assignedVehicle = 'Assigned Vehicle';
+          _isVehicleAssigned = false;
+          _assignedVehicle = 'No Vehicle Assigned';
         });
       }
     }
@@ -373,6 +397,14 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
   }
 
   Future<void> _showSubmitFeedback(BuildContext context) async {
+    if (!_isVehicleAssigned || _assignedVehicle == 'No Vehicle Assigned' || _assignedVehicle == 'Unassigned' || _assignedVehicle.isEmpty) {
+      _showWarning('No vehicle is currently assigned. You can view your previous records, but new fuel entries will be available once a vehicle is assigned.');
+      return;
+    }
+    if (!_hasActiveTrip) {
+      _showWarning('Adding fuel entries is only permitted during an active trip.');
+      return;
+    }
     if (_selectedStation == null) {
       _showWarning('Please select a Fuel Station.');
       return;
