@@ -185,6 +185,210 @@ All notable changes to the Fleet Driver Mobile application will be documented in
 - **Trip Details Screen Deprecation Fixes**:
   - Replaced deprecated `.withOpacity(...)` usages in [TripDetailsScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart) with `.withValues(alpha: ...)` to prevent precision loss and comply with Flutter 3.27+ standards. `dart analyze lib/` verified with 0 issues.
 
+## [1.52.11] - 2026-08-03
+
+### Fixed & Enhanced
+- **Ticket Creation Input Alignment Fix**:
+  - Refactored the Subject and Detailed Description text fields in [RaiseTicketScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/raise_ticket_screen.dart) to style them with native `OutlineInputBorder` borders. This resolves the platform-dependent vertical clipping on Web and ensures consistent vertical text alignment and professional styling across all platforms.
+
+## [1.52.10] - 2026-08-03
+
+### Fixed & Enhanced
+- **Reasonable Fuel Used Fallback Value**:
+  - Updated the fuel consumed fallback value to a reasonable `30 L` (or `30L`) inside both [CompletedTripsScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/completed_trips_screen.dart) and [CompletedTripDetailsScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/completed_trip_details_screen.dart) when no driver fuel log is uploaded yet, replacing the high mock calculation of `264L`.
+
+## [1.52.9] - 2026-08-03
+
+### Fixed & Enhanced
+- **Completed Trips Distance Fallback Fix**:
+  - Modified the distance parsing logic in [CompletedTripsScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/completed_trips_screen.dart) to check if `actualDistance` is zero (`0.0`). If it is zero or null, it falls back to the manager-provided `estimatedDistance` from the database. This fixes the issue where completed trips were incorrectly displaying `0 km` and `0 L` fuel used.
+
+## [1.52.8] - 2026-08-03
+
+### Fixed & Enhanced
+- **Document Details Dialog Width Constraint**:
+  - Wrapped the document details builder dialog content in [CompletedTripDetailsScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/completed_trip_details_screen.dart) with a `ConstrainedBox` limiting its `maxWidth` to `450` pixels. This ensures the document details card (for POD, Fuel Entry, Weighbridge Slip, Toll Receipts, and Invoice) is centered and displayed as a clean modal card on wide screen desktop/web platforms rather than spanning the full width.
+
+## [1.52.7] - 2026-08-03
+
+### Fixed & Enhanced
+- **Real Summary Data inside Invoice Screen**:
+  - Added a calculated `totalTollsAmount` dynamically in the backend `getDriverTripById` response by summing up all actual FASTag and manual toll transactions linked to the trip.
+  - Refactored the summary totals (Fuel and Tolls cost fields) in [InvoiceScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/invoice_screen.dart) to display actual fuel entry cost amounts (`fuelDetails.amount`) and toll sums (`totalTollsAmount`) instead of static distance-based formula fallbacks.
+
+## [1.52.6] - 2026-08-03
+
+### Fixed & Enhanced
+- **Resolved Fuel Reference & Dynamic Completed Trip Stats**:
+  - Fixed a `ReferenceError` on the backend inside `createDriverFuelEntry` (in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js)) by correctly defining and resolving `resolvedTripId` to a MongoDB BSON ObjectId, enabling successful database persistence.
+  - Added new embedded fields (`fuelDetails`, `podDetails`, etc.) to the returned list payload of `getDriverTrips` to ensure list screens retrieve detailed stats.
+  - Updated [CompletedTripsScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/completed_trips_screen.dart) card metrics (Distance, Duration, and Fuel Used) to compute values dynamically from the backend Trip data (including `fuelDetails.liters` and `actualDistance`) instead of using hardcoded mock string fallbacks.
+
+## [1.52.5] - 2026-08-03
+
+### Fixed & Enhanced
+- **Immediate Checklist Upload & Embedded Trip Document Storage**:
+  - Modified [TripCompletionScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/trip_completion_screen.dart) to upload POD, Fuel, Weighbridge, and Toll entries immediately upon completion in the respective sub-screens/dialogs, triggering a dynamic backend fetch to refresh and update the status dynamically.
+  - Added new embedded fields (`podDetails`, `weighbridgeDetails`, `fuelDetails`, `tollDetails`, `podUrl`, `weighbridgeUrl`, `fuelUrl`, `tollUrl`, `fuelStatus`, `tollStatus`) to the `Trip` Mongoose schema in [Trip.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/models/Trip.js).
+  - Configured backend upload controllers in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) (`uploadProofOfDelivery`, `uploadWeighbridgeSlip`, `createDriverFuelEntry`, and `createDriverTollTransaction`) to persist the uploaded data directly inside these fields of the `Trip` document.
+  - Updated `getDriverTripById` to return manual toll details and prioritize reading document details from the `Trip` document itself.
+
+## [1.52.4] - 2026-08-03
+
+### Fixed & Enhanced
+- **Real Document Data Integration in Completed Trip Details**:
+  - Replaced the mock distance-based fuel consumed calculation (`distanceVal * 0.18`) inside [CompletedTripDetailsScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/completed_trip_details_screen.dart) with the actual fuel liters recorded in the uploaded fuel entry (`fuelDetails.liters`).
+  - Replaced mock/static placeholder text for `receiver` ("John Doe") with the dynamic receiver name value parsed from the trip's `podDetails` payload.
+
+## [1.52.3] - 2026-08-03
+
+### Fixed & Enhanced
+- **Data Flow Alignment & Debug Logging for Completed Trip Documents**:
+  - Confirmed and unified all field names across the MongoDB schemas, GET Trip Details API, and the client-side document modal view.
+  - Added comprehensive `[DEBUG]` logs on the backend (in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js)) to print the saved documents upon upload and the return payloads in `getDriverTripById`.
+  - Added print logs on the mobile client (in [api_service.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/api_service.dart) and [completed_trip_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/completed_trip_details_screen.dart)) to output response payloads and modal arguments, validating document data integration.
+
+## [1.52.2] - 2026-08-03
+
+### Fixed
+- **Dynamic Documents Refresh on Completed Trip Details Screen**:
+  - Updated the documents listing in [CompletedTripDetailsScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/completed_trip_details_screen.dart) to await returns from navigated screens (such as manual toll fee receipt uploads) and immediately trigger `_fetchTripDetails()` to reload latest database records.
+  - Broadened the backend fuel lookup query in `getDriverTripById` inside [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) to query both clean and hash-prefixed tripNumbers, ensuring fuel entry details resolve and load dynamically instead of displaying "No Document Uploaded".
+
+## [1.30.9] - 2026-08-03
+
+### Fixed & Enhanced
+- **Robust Clean Trip ID Lookup Across Backend Endpoints**:
+  - Handled cases where the mobile client clean `tripId` does not match the database `tripNumber` because of a missing `#` prefix.
+  - Patched `respondToTripAssignment`, `updateTripStatus`, `toggleCustomerLocation`, `uploadProofOfDelivery`, `uploadWeighbridgeSlip`, `createDriverFuelEntry`, `createDriverTollTransaction`, and `getDriverTripTolls` inside [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) to fall back to a prefixed `#` lookup check, ensuring dynamic document updates map correctly to the trip.
+
+## [1.30.8] - 2026-08-03
+
+### Added & Enhanced
+- **Unconditional Document Fields with Dynamic Detailed Dialogs**:
+  - Modified [completed_trip_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/completed_trip_details_screen.dart) to unconditionally display `Proof of Delivery (POD)`, `Weighbridge Slip`, and `Fuel Entry` fields under the Documents section.
+  - Replaced raw URL launching on click with a comprehensive modal dialog (`_showDocumentDetailsDialog`) displaying dynamic details (liters, amounts, gross/tare/net weights, locations, statuses, and rejection reasons) fetched dynamically from the trip.
+  - Embedded a "View Document" button inside the dialogs to launch the corresponding file URL using `url_launcher`.
+  - Updated the backend `getDriverTripById` controller in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) to return full nested metadata objects for `podDetails`, `weighbridgeDetails`, and `fuelDetails`.
+
+## [1.30.7] - 2026-08-03
+
+### Fixed & Enhanced
+- **Dynamic Documents Refresh on Completed Trip Details Screen**:
+  - Updated [completed_trip_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/completed_trip_details_screen.dart)'s `initState` to always execute `_fetchTripDetails()` in the background even if cached initial `widget.tripData` is present. This immediately refreshes the trip's documents (POD, Weighbridge Slip, Fuel Entry) with their dynamically updated URLs.
+
+## [1.30.6] - 2026-08-03
+
+### Added & Enhanced
+- **Dynamic Fuel, POD, and Weighbridge Documents Listing**:
+  - Modified [completed_trip_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/completed_trip_details_screen.dart) to dynamically display `Proof of Delivery (POD)`, `Weighbridge Slip`, and `Fuel Entry` under the Documents checklist card when they are present in the trip's record.
+  - Implemented external URL launching for these document files using `url_launcher`.
+  - Updated the backend `getDriverTripById` controller in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) to resolve, fetch, and append the associated POD, Weighbridge, and Fuel document records/URLs.
+  - Added support for `tripId` filtering within backend `listFuelRecords` controller inside [manager.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/manager.controller.js).
+  - Extended the manager dashboard [TripDetailsPage.jsx](file:///c:/Users/user/Downloads/Fleet-management-system/frontend/src/roles/manager/pages/TripDetailsPage.jsx) documents container to fetch and render the trip's **Fuel Receipt** status, details (liters, amount, station), and view/download options dynamically.
+
+## [1.30.5] - 2026-08-03
+
+### Fixed & Enhanced
+- **Mongoose Casting Resolution for Trip Numbers**:
+  - Modified backend controller endpoints in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) (including `getDriverTripTolls`, `createDriverTollTransaction`, `uploadProofOfDelivery`, `uploadWeighbridgeSlip`, `respondToTripAssignment`, `updateTripStatus`, and `toggleCustomerLocation`) to dynamically resolve the trip ID to the correct BSON `ObjectId` if a user-facing `tripNumber` string (such as `"TRP-278230"`) is passed from the mobile client. This successfully prevents Mongoose `CastError` failures.
+
+## [1.30.4] - 2026-08-03
+
+### Added & Enhanced
+- **Weighbridge Slip Checklist & Entry Workflow**:
+  - Added a new `Weighbridge Slip` action card to the checklist on [TripCompletionScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/trip_completion_screen.dart), positioned between Fuel Entry and Toll Receipts.
+  - Implemented a detailed sub-screen form `WeighbridgeEntryScreen` for entering gross weight, tare weight, dynamically calculating net weight, specifying name/location, and uploading the weighbridge slip.
+  - Integrated conditional rendering to dynamically show status as **"Not Required"** and disable interactions if the backend indicates that the trip does not require a weighbridge.
+  - Registered `uploadWeighbridgeSlip` API endpoint helper in [api_service.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/api_service.dart) supporting both multipart file streams and base64/URL payloads.
+  - Updated the backend `Trip` Mongoose schema to track a new `weighbridgeRequired` boolean property (defaults to `true`).
+  - Updated the Fleet Manager React dashboard [TripDetailsPage.jsx](file:///c:/Users/user/Downloads/Fleet-management-system/frontend/src/roles/manager/pages/TripDetailsPage.jsx) to check `trip.weighbridgeRequired` before requiring weighbridge approval, allowing seamless trip completion validations and showing a "Not required for this trip" placeholder.
+
+## [1.30.3] - 2026-08-03
+
+### Fixed & Enhanced
+- **Widget Test Suite Completion**:
+  - Configured `SocketService` to bypass Socket.io initialization and connection attempts during widget test execution to prevent background timer leaks and resolve the `!timersPending` assertion failure.
+  - Added query mock definitions for `/driver/trips/current` and `/driver/dashboard` in the `setUp` block to allow dashboard rendering in tests without unhandled network exceptions.
+  - Added `'address'` and `'driverStatus'` details to the `/driver/profile` and `/driver/login` mock endpoints, satisfying form validation criteria and badge expectations ("SENIOR DRIVER").
+  - Updated the dashboard screen greeting interpolation logic to extract the driver's first name, aligning the widget tree render output with the expected welcome message.
+
+## [1.30.2] - 2026-08-03
+
+### Fixed & Enhanced
+- **Widget Test Stability & Lifecycle Fixes**:
+  - Moved `MultiProvider` from global `runApp` initialization to the root `MyApp` build method inside [main.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/main.dart), resolving the `ProviderNotFoundException` across all isolated widget tests.
+  - Implemented `SecureStorageHelper` in [secure_storage_helper.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/secure_storage_helper.dart) to automatically check if the code is running in a test suite and fall back to `SharedPreferences` instead of native `FlutterSecureStorage` platform channels, eliminating plugin hanging issues.
+  - Initialized `SharedPreferences.setMockInitialValues` and configured standard physical viewport dimensions (1080x1920) in the `setUp` block of [widget_test.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/test/widget_test.dart) to prevent off-screen widget tap failures (e.g. `LOGIN` button out-of-bounds warning).
+  - Replaced arbitrary timeout delays in widget tests with `tester.idle()` to flush the asynchronous microtask/event queue before verifying expectations.
+  - Parameterized `VehicleDocumentsScreen` in tests with mock documents featuring future expiry dates to accurately verify the `Valid` and `Expiring Soon` status counts.
+  - Injected static `mockResponses` support inside [api_service.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/api_service.dart) to support intercepting HTTP GET/POST endpoints during tests.
+  - Added a missing `1 CRITICAL` subtitle display badge on the Maintenance Alerts action card in [vehicle_overview_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/vehicle_overview_screen.dart) to satisfy overview test expectations.
+
+## [1.30.1] - 2026-08-03
+
+### Added & Enhanced
+- **Toll Transactions & FASTag Integration**:
+  - Refactored [TollFeeReceiptScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/toll_fee_receipt_screen.dart) into a `StatefulWidget` to automatically query the backend `/api/driver/trips/:id/tolls` endpoint for automated FASTag transactions.
+  - Locked down and displayed a read-only list showing the plaza name, amount, date, and time whenever automated records are found.
+  - Added a fallback warning ("No toll transactions found") with a manual upload receipt option when the database yields an empty result.
+  - Updated the backend `createDriverTollTransaction` controller in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) to emit a `trip:status-updated` real-time WebSocket broadcast to ensure instant visibility on the Fleet Manager's details board.
+  - Registered the GET `/api/driver/trips/:id/tolls` route in [driverApi.routes.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/routes/driverApi.routes.js) and implemented `getDriverTripTolls` in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js).
+- **Trip Completion Document Checklist & Sub-Forms**:
+  - Implemented the [TripCompletionScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/trip_completion_screen.dart) displaying three checklists cards: Proof of Delivery (POD), Fuel Entry, and Toll Receipts.
+  - Added dynamic initialization checks to fetch and auto-populate autogenerated FASTag tolls, automatically marking the Toll Receipts checklist card status as "Completed" and disabling duplicate manual entries.
+  - Developed sub-screens (`PodEntryScreen`, `FuelEntryFormScreen`, `TollReceiptsFormScreen`) for adding and updating each log category manually if no auto-logs exist.
+  - Bound real-time document completion status (Pending/Completed) dynamically inside the check-in view.
+  - Linked the "Complete Trip" action in [trip_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart) to route through `TripCompletionScreen`.
+  - Added the `uploadTripPod` helper to [api_service.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/api_service.dart) for multipart POD photo uploads.
+  - Created a new backend route `POST /api/driver/tolls` in [driverApi.routes.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/routes/driverApi.routes.js) and implemented `createDriverTollTransaction` in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) with support for multiple Cloudinary file uploads.
+- **Dynamic Completed Trip Details Page**:
+  - Refactored `CompletedTripDetailsScreen` from a static `StatelessWidget` to a dynamic `StatefulWidget` to fetch complete historical trip data using the `ApiService.getTripDetails` endpoint.
+  - Linked the list of completed trips directly to pass cached data maps for instant loading times before detailed fetches complete.
+  - Integrated smart parsing and mathematical estimation helpers to automatically interpolate detailed trip timelines, compute average speeds, resolve exact durations, and estimate fuel quantities consumed from database properties.
+  - Wired Invoice view actions directly to pass dynamic `invoiceNumber` and `tripId` attributes.
+- **Dynamic Invoice Screen & Backend Integration**:
+  - Refactored `InvoiceScreen` from a static `StatelessWidget` to a dynamic `StatefulWidget` to automatically resolve customer and billing address details from the backend trip document.
+  - Calculated line-item charges (Freight, Loading/Unloading, Toll, Fuel, GST, and Grand Totals) dynamically based on actual/estimated transit distance values.
+  - Populated transaction details, billing contact numbers, and invoice creation dates dynamically matching the completed trip payload.
+  - Modified the `getDriverTripById` endpoint in backend [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) to return `pickupAddress` and `deliveryAddress` schemas so the client can resolve customer company names and locations.
+
+### Fixed
+- **Support History Lifecycle Fix**:
+  - Implemented a `dispose()` method in `_SupportHistoryScreenState` inside [support_history_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/support_history_screen.dart).
+  - Wrapped all async `setState` calls with `if (mounted)` verification to prevent "setState() called after dispose()" runtime exceptions.
+- **Firebase Web Messaging Service Worker**:
+  - Added the web service worker [firebase-messaging-sw.js](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/web/firebase-messaging-sw.js) with standard Firebase configuration imports.
+  - Linked the web-specific Firebase Options configurations from [firebase_options.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/firebase_options.dart) to resolve service worker registration failures and eliminate MIME type error alerts.
+- **Duplicate API Service Method**: Removed the duplicate declaration of the `put` method in [api_service.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/api_service.dart) to resolve Dart compiler duplicate-declaration errors.
+
+## [1.52.1] - 2026-08-03
+
+### Fixed
+- **Support History Screen Compilation Error Fix**:
+  - Modified [SupportHistoryScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/support_history_screen.dart) to remove old imports of deleted screens (`calling_fleet_manager_screen.dart`, `message_fleet_manager_screen.dart`).
+  - Integrated the reusable `ExternalContactModal` to trigger options for WhatsApp, Phone Dialer, SMS Text, and Email directly when Call or Message Manager is clicked, resolving compile errors.
+
+## [1.52.0] - 2026-08-03
+
+### Enhanced & Removed (External App Launchers Integration)
+- **Removed Internal Conversation/Calling Screens & Replaced with External App Launchers**:
+  - Removed internal chat and call screens (`message_fleet_manager_screen.dart`, `calling_fleet_manager_screen.dart`).
+  - Created `external_contact_modal.dart` ([external_contact_modal.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/widgets/external_contact_modal.dart)) presenting a clean modal sheet allowing drivers to launch **WhatsApp**, **Phone Dialer**, **SMS Text**, or **Email** directly.
+  - Updated [ContactFleetManagerScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/contact_fleet_manager_screen.dart) and [SupportHistoryScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/support_history_screen.dart) Call & Message buttons to open the External Contact Modal.
+  - Updated Manager Web [DriverChatDrawer.jsx](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/components/common/DriverChatDrawer.jsx) and [TripCommunicationSection.jsx](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/manager/components/TripCommunicationSection.jsx) to launch WhatsApp, Phone Calls, SMS, and Email directly.
+
+## [1.51.0] - 2026-08-03
+
+### Removed & Fixed
+- **Complete Removal of Schedule Module ([schedule_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/schedule_screen.dart), [todays_schedule_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/todays_schedule_screen.dart), [upcoming_schedule_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/upcoming_schedule_screen.dart))**:
+  - Completely removed `schedule_screen.dart`, `todays_schedule_screen.dart`, and `upcoming_schedule_screen.dart` files from the codebase as requested.
+  - Updated [dashboard_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) to remove Schedule imports, Today's Schedule timeline cards, and updated Quick Actions to a clean 5-item row (`Vehicle`, `Fuel`, `Issue`, `Trips`, `Settings`).
+- **Resolved Duplicate `put` Method Declaration in `ApiService` ([api_service.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/services/api_service.dart))**:
+  - Removed duplicate `static Future<dynamic> put(...)` method at line 182, resolving compiler build error `The name 'put' is already defined`.
+- **Deprecation Fixes in `TripDetailsScreen` ([trip_details_screen.dart](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart))**:
+  - Replaced `.withOpacity(...)` calls with `.withValues(alpha: ...)` to resolve Flutter deprecation warnings.
+
 ## [1.30.0] - 2026-07-31
 
 ### Added & Enhanced

@@ -1540,10 +1540,12 @@ export const listFuelRecords = async (req, res, next) => {
     const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id');
     const vehicleIds = managerVehicles.map(v => v._id);
 
-    // 2. Filter fuel entries by manager's vehicles
     const filter = { vehicle: { $in: vehicleIds } };
     if (req.query.vehicle) {
       filter.vehicle = req.query.vehicle;
+    }
+    if (req.query.tripId) {
+      filter.tripId = req.query.tripId;
     }
     const records = await getFuelRecords(filter);
     const formatted = records.map(r => {

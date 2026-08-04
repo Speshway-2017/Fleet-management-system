@@ -81,6 +81,7 @@ export default function TripDetailsPage() {
   const [showWeighbridgeModal, setShowWeighbridgeModal] = useState(false);
   const [weighbridgeRejectReason, setWeighbridgeRejectReason] = useState("");
   const [showWeighbridgeRejectModal, setShowWeighbridgeRejectModal] = useState(false);
+  const [fuelRecord, setFuelRecord] = useState(null);
 
   const [tolls, setTolls] = useState([]);
   const [isTollOpen, setIsTollOpen] = useState(false);
@@ -314,6 +315,17 @@ export default function TripDetailsPage() {
                   status: data.weighbridgeSlip.status || data.weighbridgeStatus || 'Uploaded'
                 });
               }
+            }
+          })(),
+          (async () => {
+            try {
+              const fuelRes = await managerApi.getFuelRecords({ tripId: data._id });
+              const fuelData = fuelRes.data?.data || fuelRes.data;
+              if (fuelData && fuelData.length > 0) {
+                setFuelRecord(fuelData[0]);
+              }
+            } catch (fuelErr) {
+              console.debug("Fuel records not available for this trip");
             }
           })()
         ]).catch(err => {
@@ -1441,19 +1453,19 @@ export default function TripDetailsPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-2">
-              <a
-                href={`tel:${trip.driverPhone}`}
-                className="px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              <button
+                onClick={() => setIsChatOpen(true)}
+                className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-[10px] font-bold text-emerald-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Phone className="w-3.5 h-3.5" />
                 Call Driver
-              </a>
+              </button>
               <button
                 onClick={() => setIsChatOpen(true)}
-                className="px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl text-[10px] font-bold text-blue-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Mail className="w-3.5 h-3.5" />
-                Message
+                Message Driver
               </button>
             </div>
           </div>
@@ -1859,6 +1871,84 @@ export default function TripDetailsPage() {
                       <strong>Reason:</strong> {weighbridge.rejectionReason}
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+
+            {/* Fuel Receipt Section */}
+            <div className="space-y-3 pt-4 border-t border-gray-100">
+              <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Fuel Receipt</h5>
+              {!fuelRecord ? (
+                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 font-medium">Status</span>
+                    <span className="font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider bg-gray-100 text-gray-500 border border-gray-200">
+                      🔴 NOT UPLOADED
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 mt-2">
+                    <button
+                      type="button"
+                      disabled
+                      className="px-2.5 py-2 bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 flex items-center justify-center gap-1 cursor-not-allowed col-span-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-2.5 py-2 bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 flex items-center justify-center gap-1 cursor-not-allowed col-span-1"
+                    >
+                      Download
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl space-y-3 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 font-medium">Status</span>
+                    <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
+                      fuelRecord.approvalStatus === "Approved" || fuelRecord.approvalStatus === "APPROVED" ? "bg-emerald-50 text-emerald-700" :
+                      fuelRecord.approvalStatus === "Rejected" || fuelRecord.approvalStatus === "REJECTED" ? "bg-red-50 text-red-600" :
+                      "bg-amber-50 text-[#B45A0A]"
+                    }`}>
+                      {fuelRecord.approvalStatus === "Approved" || fuelRecord.approvalStatus === "APPROVED" ? "🟢 Approved" : fuelRecord.approvalStatus === "Rejected" || fuelRecord.approvalStatus === "REJECTED" ? "🔴 Rejected" : "🟡 PENDING"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 font-medium">Liters / Amount</span>
+                    <span className="font-bold text-[#1E293B] font-semibold">{fuelRecord.liters} L / ₹{fuelRecord.amount}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 font-medium">Station</span>
+                    <span className="font-bold text-[#1E293B] font-semibold">{fuelRecord.fuelStation}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const img = fuelRecord.billUrl || fuelRecord.receiptImage;
+                        if (img) window.open(img, "_blank");
+                        else toast.error("No receipt image available");
+                      }}
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      View Receipt
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const img = fuelRecord.billUrl || fuelRecord.receiptImage;
+                        if (img) window.open(img, "_blank");
+                        else toast.error("No receipt image available");
+                      }}
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      Download File
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

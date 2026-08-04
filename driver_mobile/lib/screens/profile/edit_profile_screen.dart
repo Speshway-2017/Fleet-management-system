@@ -455,22 +455,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 Center(
                   child: Column(
                     children: [
-                      Text(
-                        'Alex Johnson',
-                        style: GoogleFonts.poppins(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _nameController,
+                        builder: (context, value, _) {
+                          return Text(
+                            value.text.isNotEmpty ? value.text : 'Driver Profile',
+                            style: GoogleFonts.poppins(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        'Driver ID: FF-9821',
-                        style: GoogleFonts.nunito(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        ),
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _employeeIdController,
+                        builder: (context, value, _) {
+                          return Text(
+                            value.text.isNotEmpty ? 'Driver ID: ${value.text}' : 'Driver Profile',
+                            style: GoogleFonts.nunito(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
