@@ -2,6 +2,128 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.31.0] - 2026-08-03
+
+### Added & Enhanced
+- **Manager Trip Details Page Crash & 500 Error Resolution**:
+  - Imported `CheckCircle` and `XCircle` from `lucide-react` in [TripDetailsPage.jsx](file:///c:/Users/Dell/Desktop/Fleet-management-system/frontend/src/roles/manager/pages/TripDetailsPage.jsx), resolving `ReferenceError: CheckCircle is not defined`.
+  - Refactored `getPODByTripId` and `getWeighbridgeByTripId` in [manager.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/manager.controller.js) to safely retrieve documents directly from `Trip` embedded fields (`proofOfDelivery` and `weighbridgeSlip`) or return `200 OK null`, eliminating HTTP 500 server crashes.
+  - Verified graceful error handling state rendering when trip data or document endpoints are inaccessible.
+- **Manager Trip Details Component State Fix**:
+- **Manager Trip Details Component State Fix**:
+  - Declared `actionLoading` state variable (`const [actionLoading, setActionLoading] = useState(false)`) in [TripDetailsPage.jsx](file:///c:/Users/Dell/Desktop/Fleet-management-system/frontend/src/roles/manager/pages/TripDetailsPage.jsx), resolving `Uncaught ReferenceError: actionLoading is not defined` runtime crash on the Manager Trip Details page.
+- **Driver & Vehicle Allocation Priority Optimization**:
+- **Driver & Vehicle Allocation Priority Optimization**:
+  - Optimized [getAvailableDrivers](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driver.controller.js) and [getAvailableVehicles](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/vehicle.controller.js) to return strictly local resources matching `startLocation`.
+  - Excluded non-local / nearest recommendations whenever local matching drivers/vehicles exist at the selected Start Location.
+  - Nearest available drivers/vehicles and fallback banners (`No drivers/vehicles are available at <Start Location>. Showing the nearest available...`) are triggered only when 0 local matching resources exist.
+- **Manual ETA Entry Configuration**:
+- **Manual ETA Entry Configuration**:
+  - Removed automatic ETA override hooks in [CreateTripPage.jsx](file:///c:/Users/Dell/Desktop/Fleet-management-system/frontend/src/roles/manager/pages/CreateTripPage.jsx) and [TripsManagementPage.jsx](file:///c:/Users/Dell/Desktop/Fleet-management-system/frontend/src/roles/manager/pages/TripsManagementPage.jsx).
+  - Managers now have full manual control to select/type the exact **Estimated Arrival (ETA)** date and time without automatic route duration overrides wiping or altering user input.
+- **Driver Allocation Distance Normalization & Priority Sorting**:
+- **Driver Allocation Distance Normalization & Priority Sorting**:
+  - Implemented `normalizeCityName` and `isSameLocation` in [geocodingHelper.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/utils/geocodingHelper.js) to normalize locations (case-insensitive, trimming spaces, stripping punctuation, and mapping city aliases like `visakapatnam`/`visakhapatnam`/`vizag`).
+  - Updated [getAvailableDrivers](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driver.controller.js) to evaluate drivers against `driver.currentLocation`.
+  - Configured 0 km distance and 0 mins travel time for local drivers matching trip start location, displaying Priority 1 local drivers (`0 km`, `Nearby` badge) at the top of the allocation list followed by Priority 2 nearby drivers ordered by actual road distance.
+  - Enhanced [CreateTripPage.jsx](file:///c:/Users/Dell/Desktop/Fleet-management-system/frontend/src/roles/manager/pages/CreateTripPage.jsx) with real-time recalculation upon Start Location change and dynamic `Nearby` / `0 km` badge rendering.
+- **Weighbridge Slip Upload Workflow & Field Consistency Alignment**:
+  - Aligned [ApiService.uploadWeighbridgeSlip](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/services/api_service.dart) with [ApiService.uploadProofOfDelivery](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/services/api_service.dart), adding `documentType = 'weighbridgeSlip'` and multipart form-data file upload support (`http.MultipartRequest`).
+  - Standardized MongoDB `Trip` model ([Trip.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/models/Trip.js)) fields: `weighbridgeStatus` (`'Uploaded'`), and `weighbridgeSlip` object schema (`{ url, documentUrl, grossWeight, tareWeight, netWeight, location, uploadedAt, status }`).
+  - Improved error logging in [trip_details_screen.dart](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart) and [driverApi.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driverApi.controller.js) with `debugPrint` stack traces.
+- **Manager Approval Workflow Before Trip Completion**:
+- **Manager Approval Workflow Before Trip Completion**:
+  - Configured trip status transition to `'Waiting for Manager Approval'` in [Trip.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/models/Trip.js) and [driverApi.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driverApi.controller.js) when driver clicks **Complete Trip** after uploading POD & Weighbridge slips.
+  - Added dedicated Manager endpoints `POST /api/manager/trips/:id/approve-completion` and `POST /api/manager/trips/:id/reject-documents` in [manager.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/manager.controller.js) and [manager.routes.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/routes/manager.routes.js).
+  - Implemented Manager Review Banner in [TripDetailsPage.jsx](file:///c:/Users/Dell/Desktop/Fleet-management-system/frontend/src/roles/manager/pages/TripDetailsPage.jsx) with **[ Approve Trip ]** and **[ Reject Documents ]** action buttons.
+  - Created Driver Waiting Screen in [trip_details_screen.dart](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart) displaying banner `"Waiting for Manager Approval"` and info message while hiding Start/Complete/Upload action buttons.
+  - Configured rejection workflow to return trip to `In Progress` status for document re-upload, and approval workflow to complete trip and release driver/vehicle to `Available` status at destination location.
+- **POD & Weighbridge Upload Resolver & Error Handling Fix**:
+  - Exported `resolveTripHelper` as a top-level async function in [driverApi.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driverApi.controller.js) to resolve trips by MongoDB `_id`, canonical `tripNumber` (`TRP-XXXXXX`), or `#TRP-XXXXXX`.
+  - Fixed `ReferenceError: resolveTripHelper is not defined` runtime error during document uploads.
+  - Sanitized catch blocks in [trip_details_screen.dart](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart) and [update_trip_status_screen.dart](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/update_trip_status_screen.dart) to show friendly fallback messages (`Unable to upload document. Please try again.`) instead of raw JavaScript engine stack traces.
+- **Start Trip Workflow & Backend Lifecycle Enforcement**:
+- **Start Trip Workflow & Backend Lifecycle Enforcement**:
+  - Implemented exact conditional rendering rules in [trip_details_screen.dart](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart) for all trip statuses (`Pending Driver Acceptance`, `Scheduled`, `In Progress`, `Completed`).
+  - Added primary orange (`#FF6A00`), full-width **Start Trip** button rendered below Trip Manifest when status is `Scheduled`. Removed 15-minute lock delay.
+  - Configured backend endpoint `PATCH /api/driver/trips/:id/status` in [driverApi.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driverApi.controller.js) to enforce `Scheduled` pre-condition validation, record `actualStartTime`, update `driverStatus = 'ON_TRIP'` and `currentStatus = 'On Trip'`, and notify the manager upon starting.
+  - Automatically transitions UI to `In Progress` status, hiding **Start Trip** and revealing document upload workflow (POD & Weighbridge Slip) + **Complete Trip** button.
+- **Start Trip Button Display for Scheduled & Accepted Trips**:
+  - Updated status evaluation in [trip_details_screen.dart](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart) to define `isAcceptedOrScheduled` for `'accepted'`, `'scheduled'`, and `'assigned'` trip statuses.
+  - Enabled rendering of the **Start Trip** (or locked timer button if >15m before departure) button for trips with status `Scheduled`, fixing the issue where no button was shown on scheduled trip detail screens.
+- **Automatic Driver Notifications for Trip Updates**:
+  - Implemented operational field change detection in `updateTrip` ([manager.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/manager.controller.js)) covering Pickup Date, Pickup Time, ETA, Pickup Location, Destination, Vehicle, Driver, Cargo Details, and Trip Notes.
+  - Automatically creates a high-priority notification (`Trip Schedule Updated`, `type = 'trip_updated'`) in MongoDB with diff details (e.g. `Pickup Time changed from 01:40 PM → 03:30 PM`).
+  - Emits real-time Socket.io events (`notification:new` and `trip:updated`) to the assigned driver.
+  - Added live `trip:updated` event handler to [trip_details_screen.dart](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart) to automatically re-fetch trip details and display banner: `"Trip details have been updated by your Fleet Manager."`.
+  - Updated [notifications_screen.dart](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/notifications/notifications_screen.dart) and [main_navigation_screen.dart](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/main_navigation_screen.dart) to display unread badge counters, render new items at top, and open [TripDetailsScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart) on click.
+- **Driver Trip Acceptance Workflow**:
+  - Configured manager trip creation (`createTrip` in [manager.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/manager.controller.js)) to set initial status to `"Pending Driver Acceptance"` instead of immediately marking as Scheduled.
+  - Implemented backend endpoints `POST /api/driver/trips/:id/accept` and `POST /api/driver/trips/:id/reject` in [driverApi.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driverApi.controller.js) and [driverApi.routes.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/routes/driverApi.routes.js).
+  - Added `acceptedAt`, `rejectedAt`, and `rejectionReason` fields to [Trip.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/models/Trip.js) model.
+  - Acceptance flow: Updates `trip.status = 'Scheduled'`, `driver.driverStatus = 'ASSIGNED'`, `vehicle.currentStatus = 'Assigned'`, saves `acceptedAt`, and emits Socket.io events (`trip:accepted`, `trip:status-updated`).
+  - Rejection flow: Updates `trip.status = 'Rejected'`, saves `rejectedAt` & `rejectionReason`, releases driver (`driverStatus = 'AVAILABLE'`, `isAssigned = false`) and vehicle (`currentStatus = 'Available'`, `isAssigned = false`), and emits Socket.io events (`trip:rejected`, `trip:status-updated`).
+  - Mobile App UI: Created `_buildPendingTripCard` in [dashboard_screen.dart](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) displaying trip details, departure time, vehicle, cargo specs, and interactive **[ Accept ]** and **[ Reject ]** action buttons calling `acceptTrip` and `rejectTrip` in [api_service.dart](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/services/api_service.dart).
+- **Vehicle & Driver Release Logic After Trip Completion**:
+  - Resolved issue where creating a new trip returned 400 error `This Vehicle is already assigned to an active trip` even after trip completion.
+  - Configured `updateDriverAndVehicleOnCompletion` in [driverLocationHelper.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/utils/driverLocationHelper.js) to atomically set:
+    - `vehicle.currentStatus = 'Available'`, `vehicle.isAssigned = false`, `vehicle.activeTripId = null`, `vehicle.currentTripId = null`, `vehicle.assignedDriver = null`, `vehicle.currentLocation = trip.destination`.
+    - `driver.driverStatus = 'AVAILABLE'`, `driver.isAssigned = false`, `driver.activeTripId = null`, `driver.currentTripId = null`, `driver.assignedVehicle = 'Unassigned'`, `driver.currentLocation = trip.destination`.
+  - Updated `createTrip` validation in [manager.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/manager.controller.js) to filter active blocking trips strictly by in-progress status (`In Progress`, `On Transit`, `Enroute`, `Reach Pickup`, `Pickup Completed`) and ignore `Completed` or `Cancelled` trips. Automatically cancels stale non-completed trips when vehicles/drivers are released to `Available` status.
+- **Vehicle Allocation `currentLocation` Synchronization in Create Trip Module**:
+  - Resolved issue where vehicle `Bolero XL` (`GJ 05 TR 3302`) with `currentLocation` at `Tirupati` was incorrectly reported as `No available vehicles found in Tirupati`.
+  - Updated `getAvailableVehicles` (`GET /api/vehicles/available`) in [vehicle.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/vehicle.controller.js):
+    - Replaced hardcoded/branch fallbacks with direct filtering on `vehicle.currentLocation`.
+    - Added `syncVehicleLocationFromLatestTrip` helper to automatically derive up-to-date `currentLocation` and `branch` from the vehicle's most recently completed trip in MongoDB (`actualEndTime: -1`).
+    - Excludes only vehicles currently active on in-progress trips (`In Progress`, `On Transit`, `Enroute`, `Reach Pickup`), releasing vehicles from stale/orphaned trip statuses once marked `Available`.
+  - Verified local vehicle match returns `isNearbyFallback: false` with vehicle `GJ 05 TR 3302` in Tirupati.
+- **Fleet-wide Driver & Vehicle Current Location Synchronization**:
+  - Resolved issue where driver profile displayed previous/default location instead of the destination of the latest completed trip.
+  - Created central location helper utility [driverLocationHelper.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/utils/driverLocationHelper.js) enforcing mandatory business rules:
+    - Upon trip completion (`updateTripStatus`, `checkAndCompleteTripIfApproved`, `updateTrip`), updates both `Driver.currentLocation` and `Driver.driverLocation` to `trip.endLocation || trip.destination`.
+    - Updates `Vehicle.currentLocation` and `Vehicle.branch` to `trip.endLocation || trip.destination`.
+    - Resets `Driver.driverStatus` to `AVAILABLE` and `Vehicle.currentStatus` to `Available`.
+  - Added dynamic fallback location sync `syncDriverLocationFromLatestTrip` to `getDriverDetails`, `getDriverProfile`, `listDrivers`, and `getAvailableDrivers` ensuring all queries return the destination of the driver's most recent completed trip.
+  - Broadcasts real-time Socket.io events (`profile:updated`, `driver:status-changed`, `trip:status-updated`, `trip:completed`) with updated location payloads.
+- **Driver Dashboard Active Trip Card Data Binding & Empty State**:
+  - Fixed issue where the Driver Dashboard rendered a dummy Active Trip card (`#TRP-846708`) even when the driver was `Unassigned` or had no active trip.
+  - Updated `getCurrentTrip` (`GET /api/driver/trips/current`) in [driverApi.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driverApi.controller.js) to filter strictly by logged-in driver ID and active statuses (`Assigned`, `Scheduled`, `In Progress`, `Accepted`, `On Transit`, `Enroute`, `Reach Pickup`, `Pickup Completed`).
+  - Added `_buildEmptyActiveTripCard` in [DashboardScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) displaying:
+    - Title: **No Active Trip**
+    - Message: *You don't have any assigned trips yet. Please wait for your manager to assign a trip.*
+  - Removed all hardcoded dummy fallback values (`#TRP-846708`, `Hyderabad`, `Chennai`, `10:00 AM`).
+  - Hides Trip Number, Pickup, Destination, ETA, Progress bar, and View Details button when no active trip exists.
+  - Preserved independent availability status (`Available` / `Online` does not force trip display).
+- **Weighbridge Slip & POD Approval Fix**:
+  - Resolved `Failed to approve Weighbridge Slip` issue on Manager Dashboard.
+  - Enhanced `updateWeighbridgeSlipStatus` and `updatePODStatus` in [manager.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/manager.controller.js) to resolve target documents by either document `_id` OR `Trip` `_id` / `tripNumber`, dynamically creating missing `WeighbridgeSlip` / `ProofOfDelivery` records when documents exist on the single-source-of-truth `Trip` object.
+  - Updated approval endpoints to sync `weighbridgeStatus` and `proofOfDelivery.status` on the `Trip` document in MongoDB and trigger automated trip completion (`checkAndCompleteTripIfApproved`).
+  - Updated approval handlers `handleWeighbridgeApprove` and `handlePODApprove` in [TripDetailsPage.jsx](file:///c:/Users/Dell/Desktop/Fleet-management-system/frontend/src/roles/manager/pages/TripDetailsPage.jsx) with ID fallback handling (`weighbridge._id || trip._id`).
+- **Single Source of Truth Document Sync for Driver & Manager Dashboards**:
+  - Enforced the MongoDB `Trip` document as the single source of truth for all trip documents.
+  - Added embedded `proofOfDelivery`, `weighbridgeSlip`, and `tripInvoice` schemas to [Trip.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/models/Trip.js).
+  - Updated driver upload controllers (`uploadProofOfDelivery`, `uploadWeighbridgeSlip` in [driverApi.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driverApi.controller.js)) to save Cloudinary URLs and metadata directly into the corresponding `Trip` document under `proofOfDelivery` and `weighbridgeSlip` and return the updated `Trip` object.
+  - Configured dynamic document status determination across backend endpoints (`getTripDetails` in [manager.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/manager.controller.js) and `getDriverTripById` in [driverApi.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driverApi.controller.js)): Status is determined dynamically (`Uploaded` if document URL exists, `Not Uploaded` if missing).
+  - Standardized field names across Driver and Manager APIs: `proofOfDelivery`, `weighbridgeSlip`, `tripInvoice`.
+  - Updated [TripDetailsPage.jsx](file:///c:/Users/Dell/Desktop/Fleet-management-system/frontend/src/roles/manager/pages/TripDetailsPage.jsx) to immediately bind fresh document data from the `Trip` object upon Socket.IO events (`pod:uploaded`, `weighbridge:uploaded`, `trip:status-updated`).
+- **Mandatory Validation Flow for Trip Completion**:
+  - Enforced dual-document upload business rule requiring both **Proof of Delivery (POD)** and **Weighbridge Slip** before a trip can be completed.
+  - Added backend mandatory document verification in `updateTripStatus` (`PATCH /api/driver/trips/:id/status` in [driverApi.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driverApi.controller.js)), returning HTTP 400 with `"Please upload both Proof of Delivery and Weighbridge Slip before completing the trip."` if either document is missing.
+  - Configured automated completion actions on the backend: updates Trip Status to `Completed`, records `actualEndTime`, updates Driver Status to `AVAILABLE`, sets Driver `currentLocation` to `endLocation`, updates Vehicle Status to `Available`, computes distance/toll/fuel/expense summaries, and emits socket events & completion notifications.
+  - Implemented dynamic Complete Trip button lock & helper info box in [TripDetailsScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart):
+    - Button remains disabled, greyed out (`#8E9CAE`), not clickable, with a forbidden cursor state until both documents are uploaded.
+    - Displays a clear yellow helper box listing missing document requirements (`• Proof of Delivery (POD)`, `• Weighbridge Slip`).
+    - Added instant inline upload triggers for POD and Weighbridge slips on `TripDetailsScreen`.
+    - Automatically unlocks button immediately to primary orange theme (`AppColors.primary`) upon document upload without page reload.
+- **Interactive Header Profile Dropdown & Dynamic Availability Indicator**:
+  - Integrated [DriverProfileDropdown](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/widgets/driver_profile_dropdown.dart) into the top header of [DashboardScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart).
+  - Configured top-right profile icon click action to launch a smooth overlay menu with driver name/role, **My Profile** navigation button, **Availability Status Toggle Switch**, and **Logout** button.
+  - Linked availability switch directly to backend `isOnline` & `driverStatus` updates (`AVAILABLE` vs `OFFLINE`).
+  - Added real-time reactive status dot updating on both the header profile avatar icon and inside the dropdown menu: dynamically transitions to green (`#22C55E`) when Online and grey (`#9CA3AF`) when Offline.
+
+### Fixed
+- **ApiService Syntax Fix**: Removed duplicate declaration of the static `put` method in [ApiService](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/services/api_service.dart) (`"The name 'put' is already defined"`), resolving the compilation error.
+
 ## [1.52.11] - 2026-08-03
 
 ### Fixed & Enhanced

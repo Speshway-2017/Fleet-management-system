@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../services/socket_service.dart';
 import 'notification_details_screen.dart';
 import '../main_navigation_screen.dart';
+import '../trip_details_screen.dart';
 import '../../utils/date_formatter.dart';
 
 class NotificationItem {
@@ -16,6 +17,8 @@ class NotificationItem {
   final String category; // 'TODAY' or 'YESTERDAY'
   bool isRead;
   final IconData icon;
+  final String? tripId;
+  final String? type;
 
   NotificationItem({
     required this.id,
@@ -25,6 +28,8 @@ class NotificationItem {
     required this.category,
     required this.isRead,
     required this.icon,
+    this.tripId,
+    this.type,
   });
 }
 
@@ -64,6 +69,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         final List list = res['data'];
         if (list.isNotEmpty) {
           final fetched = list.map((item) {
+            final typeStr = item['type']?.toString() ?? '';
+            final tId = item['metadata']?['tripId']?.toString() ?? item['referenceId']?.toString() ?? '';
+            IconData iconData = Icons.notifications_none_outlined;
+            if (typeStr == 'trip_assigned') {
+              iconData = Icons.assignment_ind_outlined;
+            } else if (typeStr == 'trip_updated') {
+              iconData = Icons.edit_calendar_outlined;
+            } else if (typeStr == 'trip_status_changed') {
+              iconData = Icons.sync_outlined;
+            }
+
             return NotificationItem(
               id: item['_id'] ?? item['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
               title: item['title'] ?? 'Fleet Notification',
@@ -71,7 +87,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               timestamp: formatNotificationTime(item['createdAt']),
               category: getNotificationCategory(item['createdAt']),
               isRead: item['isRead'] ?? false,
-              icon: item['type'] == 'trip_assigned' ? Icons.assignment_ind_outlined : Icons.notifications_none_outlined,
+              icon: iconData,
+              tripId: tId,
+              type: typeStr,
             );
           }).toList();
           if (mounted) {
@@ -349,23 +367,34 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return GestureDetector(
       onTap: () {
         _toggleReadStatus(item);
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => NotificationDetailsScreen(
-              title: item.title,
-              message: item.description,
-              time: item.timestamp,
-              type: item.title,
-              icon: item.icon,
-              onOpened: () => _toggleReadStatus(item),
+        ApiService.patch('/driver/notifications/${item.id}/read', {}).catchError((_) {});
+
+        if (item.tripId != null && item.tripId!.isNotEmpty) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TripDetailsScreen(tripId: item.tripId!),
             ),
-          ),
-        ).then((_) {
-          if (mounted) {
-            setState(() {});
-          }
-        });
+          ).then((_) {
+            if (mounted) setState(() {});
+          });
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => NotificationDetailsScreen(
+                title: item.title,
+                message: item.description,
+                time: item.timestamp,
+                type: item.title,
+                icon: item.icon,
+                onOpened: () => _toggleReadStatus(item),
+              ),
+            ),
+          ).then((_) {
+            if (mounted) setState(() {});
+          });
+        }
       },
       child: Container(
         padding: const EdgeInsets.all(16.0),

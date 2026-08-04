@@ -8,6 +8,8 @@ import {
   getDriverDashboard,
   getDriverNotifications,
   respondToTripAssignment,
+  acceptTrip,
+  rejectTrip,
   markDriverNotificationRead,
   markAllDriverNotificationsRead,
   updateTripStatus,
@@ -54,6 +56,9 @@ router.get('/trips/:id/tolls', getDriverTripTolls);
 router.get('/dashboard', getDriverDashboard);
 router.get('/notifications', getDriverNotifications);
 router.patch('/trips/:id/respond', respondToTripAssignment);
+router.post('/trips/:id/respond', respondToTripAssignment);
+router.post('/trips/:id/accept', acceptTrip);
+router.post('/trips/:id/reject', rejectTrip);
 router.patch('/notifications/read-all', markAllDriverNotificationsRead);
 router.patch('/notifications/:id/read', markDriverNotificationRead);
 router.patch('/trips/:id/status', updateTripStatus);

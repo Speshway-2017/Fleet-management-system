@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { resolveLocationName, isCoordinateString } from '../utils/reverseGeocoder.js';
-import { geocodeCity, getDistanceKm, getRoadDistanceAndEta } from '../utils/geocodingHelper.js';
+import { geocodeCity, getDistanceKm, getRoadDistanceAndEta, isSameLocation } from '../utils/geocodingHelper.js';
 import {
   getVehicles,
   getVehicleById,
@@ -14,6 +14,7 @@ import { uploadBase64ImageToCloudinary, deleteImageFromCloudinary } from '../uti
 import Trip from '../models/Trip.js';
 import Vehicle from '../models/Vehicle.js';
 import { logActivity } from '../utils/activityLogger.js';
+import { syncVehicleLocationFromLatestTrip } from '../utils/driverLocationHelper.js';
 
 /**
  * List all vehicles belonging to the logged-in manager
@@ -23,6 +24,7 @@ export const listVehicles = async (req, res, next) => {
   try {
     const vehicles = await getVehicles({ assignedManager: req.user._id });
     for (const v of vehicles) {
+      await syncVehicleLocationFromLatestTrip(v);
       const rawLoc = v.currentLocation;
       if (isCoordinateString(rawLoc)) {
         const resolvedName = await resolveLocationName(rawLoc, v.branch || v.branchDepot);
@@ -30,7 +32,7 @@ export const listVehicles = async (req, res, next) => {
         Vehicle.findByIdAndUpdate(v._id, { currentLocation: resolvedName }).catch(() => {});
       }
     }
-    return sendSuccess(res, 200, vehicles, 'Vehicles fetched successfully');
+    return sendSuccess(res, 200, vehicles, 'Vehicles retrieved successfully');
   } catch (error) {
     next(error);
   }
@@ -42,26 +44,32 @@ export const listVehicles = async (req, res, next) => {
  */
 export const getAvailableVehicles = async (req, res, next) => {
   try {
+    // 1. Exclude vehicles on active in-progress trips
     const activeTrips = await Trip.find({
-      status: { $nin: ['Completed', 'Cancelled'] }
+      status: { $in: ['In Progress', 'On Transit', 'Enroute', 'Reach Pickup', 'Pickup Completed'] }
     });
 
-    const allocatedVehicleIds = activeTrips.map(t => t.vehicle).filter(Boolean);
+    const activeVehicleIds = activeTrips.map(t => String(t.vehicle)).filter(Boolean);
 
-    const allAvailable = await Vehicle.find({
+    // 2. Query vehicles assigned to manager that are currently available
+    let allAvailable = await Vehicle.find({
       assignedManager: req.user._id,
-      _id: { $nin: allocatedVehicleIds },
-      currentStatus: { $in: ['Available', 'Active'] }
+      _id: { $nin: activeVehicleIds },
+      currentStatus: { $in: ['Available', 'Active', 'ASSIGNED', 'Assigned'] }
     }).populate('assignedDriver');
 
-    for (const v of allAvailable) {
-      const rawLoc = v.currentLocation;
+    // 3. For each available vehicle, ensure currentLocation & branch are synced with the destination of its most recently completed trip
+    allAvailable = await Promise.all(allAvailable.map(async (v) => {
+      await syncVehicleLocationFromLatestTrip(v);
+      const rawLoc = v.currentLocation || v.branch;
       if (isCoordinateString(rawLoc)) {
         const resolvedName = await resolveLocationName(rawLoc, v.branch || v.branchDepot);
         v.currentLocation = resolvedName;
-        Vehicle.findByIdAndUpdate(v._id, { currentLocation: resolvedName }).catch(() => {});
+        v.branch = resolvedName;
+        Vehicle.findByIdAndUpdate(v._id, { currentLocation: resolvedName, branch: resolvedName }).catch(() => {});
       }
-    }
+      return v;
+    }));
 
     const targetLoc = (req.query.location || req.query.startLocation || '').trim();
     if (!targetLoc) {
@@ -71,19 +79,13 @@ export const getAvailableVehicles = async (req, res, next) => {
     const normTarget = targetLoc.toLowerCase();
     const targetFirstWord = normTarget.split(/[\s,]+/)[0];
 
-    const getVehicleEffectiveLocation = (v) => {
-      if (v.currentLocation && v.currentLocation.trim()) return v.currentLocation.trim();
-      if (v.branchDepot && v.branchDepot.trim()) return v.branchDepot.trim();
-      if (v.branch && v.branch.trim()) return v.branch.trim();
-      return '';
+    const getVehicleLocation = (v) => {
+      return (v.currentLocation || v.branch || '').trim();
     };
 
     const isMatch = (v) => {
-      const vLoc = getVehicleEffectiveLocation(v);
-      if (!vLoc) return false;
-      const norm = vLoc.trim().toLowerCase();
-      const firstWord = norm.split(/[\s,]+/)[0];
-      return norm === normTarget || norm.includes(targetFirstWord) || targetFirstWord.includes(firstWord);
+      const vLoc = getVehicleLocation(v);
+      return isSameLocation(targetLoc, vLoc);
     };
 
     const localVehicles = [];
@@ -119,11 +121,7 @@ export const getAvailableVehicles = async (req, res, next) => {
     console.log(`No available Vehicles found in ${targetLoc}. Searching nearest available Vehicles...`);
     const nearbyVehicles = await Promise.all(
       nearbyRawVehicles.map(async (v) => {
-        const rawEffective = getVehicleEffectiveLocation(v);
-        const vLoc = await resolveLocationName(rawEffective || 'Pune', v.branch || v.branchDepot);
-        if (isCoordinateString(rawEffective)) {
-          Vehicle.findByIdAndUpdate(v._id, { currentLocation: vLoc }).catch(() => {});
-        }
+        const vLoc = getVehicleLocation(v) || 'Pune';
         const routeData = await getRoadDistanceAndEta(targetLoc, vLoc);
         const vObj = v.toObject ? v.toObject() : { ...v };
         return {
@@ -131,7 +129,7 @@ export const getAvailableVehicles = async (req, res, next) => {
           isNearby: true,
           distanceKm: routeData.distanceKm,
           estimatedTravelTime: routeData.estimatedTravelTime,
-          currentBranch: v.branchDepot || v.branch || vLoc,
+          currentBranch: vLoc,
           currentLocation: vLoc
         };
       })
@@ -143,7 +141,7 @@ export const getAvailableVehicles = async (req, res, next) => {
     if (nearbyVehicles.length > 0) {
       console.log(`Nearest Vehicles for ${targetLoc} sorted by distance:`);
       nearbyVehicles.slice(0, 5).forEach((v, idx) => {
-        console.log(`${idx + 1}. ${v.vehicleName || v.name} (${v.vehicleNumber || v.plateNumber}) - Loc: ${v.currentLocation} - ${v.distanceKm} km away (${v.estimatedTravelTime})`);
+        console.log(`${idx + 1}. ${v.vehicleName || v.name} (${v.registrationNumber || v.plateNumber || v.vehicleNumber}) - Loc: ${v.currentLocation} - ${v.distanceKm} km away (${v.estimatedTravelTime})`);
       });
     }
     console.log('===================================\n');

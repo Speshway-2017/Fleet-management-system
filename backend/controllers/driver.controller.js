@@ -1,5 +1,5 @@
 import { resolveLocationName, isCoordinateString } from '../utils/reverseGeocoder.js';
-import { geocodeCity, getDistanceKm, getRoadDistanceAndEta } from '../utils/geocodingHelper.js';
+import { geocodeCity, getDistanceKm, getRoadDistanceAndEta, isSameLocation } from '../utils/geocodingHelper.js';
 import {
   getDrivers,
   getDriverById,
@@ -17,6 +17,7 @@ import Document from '../models/Document.js';
 import mongoose from 'mongoose';
 import { generateEmployeeId, generateTempPassword } from '../utils/driverAuthHelper.js';
 import { hashPassword } from '../utils/hashPassword.js';
+import { syncDriverLocationFromLatestTrip } from '../utils/driverLocationHelper.js';
 
 /**
  * Fetch Driver Statistics
@@ -167,6 +168,7 @@ export const listDrivers = async (req, res, next) => {
       .limit(limit);
 
     for (const d of drivers) {
+      await syncDriverLocationFromLatestTrip(d);
       const rawLoc = d.currentLocation || d.driverLocation;
       if (isCoordinateString(rawLoc)) {
         const resolvedName = await resolveLocationName(rawLoc, d.branch);
@@ -250,6 +252,7 @@ export const getAvailableDrivers = async (req, res, next) => {
     });
 
     for (const d of allAvailable) {
+      await syncDriverLocationFromLatestTrip(d);
       const rawLoc = d.currentLocation || d.driverLocation;
       if (isCoordinateString(rawLoc)) {
         const resolvedName = await resolveLocationName(rawLoc, d.branch);
@@ -264,9 +267,6 @@ export const getAvailableDrivers = async (req, res, next) => {
       return sendSuccess(res, 200, allAvailable, 'Available drivers fetched successfully');
     }
 
-    const normTarget = targetLoc.toLowerCase();
-    const targetFirstWord = normTarget.split(/[\s,]+/)[0];
-
     const getDriverEffectiveLocation = (d) => {
       if (d.currentLocation && d.currentLocation.trim()) return d.currentLocation.trim();
       if (d.driverLocation && d.driverLocation.trim()) return d.driverLocation.trim();
@@ -274,38 +274,33 @@ export const getAvailableDrivers = async (req, res, next) => {
       return '';
     };
 
-    const isMatch = (d) => {
-      const dLoc = getDriverEffectiveLocation(d);
-      if (!dLoc) return false;
-      const norm = dLoc.trim().toLowerCase();
-      const firstWord = norm.split(/[\s,]+/)[0];
-      return norm === normTarget || norm.includes(targetFirstWord) || targetFirstWord.includes(firstWord);
-    };
-
     const localDrivers = [];
     const nearbyRawDrivers = [];
 
     for (const d of allAvailable) {
-      if (isMatch(d)) {
-        localDrivers.push(d);
+      const rawEffective = getDriverEffectiveLocation(d);
+      const dLoc = await resolveLocationName(rawEffective || 'Visakhapatnam', d.branch);
+      if (isSameLocation(targetLoc, dLoc)) {
+        const dObj = d.toObject ? d.toObject() : { ...d };
+        localDrivers.push({
+          ...dObj,
+          isNearby: false,
+          isAtPickupLocation: true,
+          distanceKm: 0,
+          estimatedTravelTime: '0 mins',
+          currentBranch: d.branch || d.currentLocation || dLoc,
+          currentLocation: dLoc
+        });
       } else {
-        nearbyRawDrivers.push(d);
+        nearbyRawDrivers.push({ driver: d, dLoc });
       }
     }
 
-    // Priority 1: If local drivers exist, use local drivers only and skip nearby search
-    console.log('\n===================================');
-    console.log('Start Location:');
-    console.log(`${targetLoc}\n`);
-    console.log('Searching local Drivers...');
-    console.log('Drivers Found:');
-    console.log(`${localDrivers.length}\n`);
+    // Sort local drivers by rating / availability
+    localDrivers.sort((a, b) => (b.rating || 5) - (a.rating || 5));
 
     if (localDrivers.length > 0) {
-      console.log('Using local Drivers.');
-      console.log('Skipping nearby Driver search.');
-      console.log('===================================\n');
-
+      console.log(`\nAvailable Drivers for "${targetLoc}": ${localDrivers.length} local matching drivers found. Skipping nearby search.`);
       return sendSuccess(res, 200, {
         drivers: localDrivers,
         localDrivers,
@@ -316,20 +311,15 @@ export const getAvailableDrivers = async (req, res, next) => {
       }, 'Available drivers fetched successfully');
     }
 
-    // Priority 2: Only if local drivers count is 0, execute nearest driver search sorted by road distance
-    console.log(`No available Drivers found in ${targetLoc}. Searching nearest available Drivers...`);
+    console.log(`\nNo drivers available at "${targetLoc}". Searching nearest drivers...`);
     const nearbyDrivers = await Promise.all(
-      nearbyRawDrivers.map(async (d) => {
-        const rawEffective = getDriverEffectiveLocation(d);
-        const dLoc = await resolveLocationName(rawEffective || 'Pune', d.branch);
-        if (isCoordinateString(rawEffective)) {
-          Driver.findByIdAndUpdate(d._id, { currentLocation: dLoc, driverLocation: dLoc }).catch(() => {});
-        }
+      nearbyRawDrivers.map(async ({ driver: d, dLoc }) => {
         const routeData = await getRoadDistanceAndEta(targetLoc, dLoc);
         const dObj = d.toObject ? d.toObject() : { ...d };
         return {
           ...dObj,
           isNearby: true,
+          isAtPickupLocation: false,
           distanceKm: routeData.distanceKm,
           estimatedTravelTime: routeData.estimatedTravelTime,
           currentBranch: d.branch || d.currentLocation || dLoc,
@@ -338,16 +328,7 @@ export const getAvailableDrivers = async (req, res, next) => {
       })
     );
 
-    // Sort in ascending order based on road distance
     nearbyDrivers.sort((a, b) => a.distanceKm - b.distanceKm);
-
-    if (nearbyDrivers.length > 0) {
-      console.log(`Nearest Drivers for ${targetLoc} sorted by distance:`);
-      nearbyDrivers.slice(0, 5).forEach((d, idx) => {
-        console.log(`${idx + 1}. ${d.fullName || d.name} (${d.employeeId || 'N/A'}) - Loc: ${d.currentLocation} - ${d.distanceKm} km away (${d.estimatedTravelTime})`);
-      });
-    }
-    console.log('===================================\n');
 
     return sendSuccess(res, 200, {
       drivers: nearbyDrivers,

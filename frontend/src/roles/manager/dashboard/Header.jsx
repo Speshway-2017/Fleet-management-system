@@ -105,27 +105,58 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
   };
 
   const resolveTargetUrl = (notif) => {
+    if (notif.actionUrl) return notif.actionUrl;
+    if (notif.metadata?.actionUrl) return notif.metadata.actionUrl;
     if (notif.metadata?.targetUrl) return notif.metadata.targetUrl;
-    
-    const tripId = notif.metadata?.tripId || notif.referenceId;
-    const driverId = notif.metadata?.driverId;
-    const type = (notif.type || '').toUpperCase();
 
-    if (type.includes("MESSAGE") || type.includes("CALL")) {
-      return tripId ? `/manager/trip-details/${tripId}?tab=communication` : `/manager/trips`;
+    const tripId = notif.metadata?.tripId || (['trip', 'Trip'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
+    const driverId = notif.metadata?.driverId || (['driver', 'Driver'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
+    const vehicleId = notif.metadata?.vehicleId || (['vehicle', 'Vehicle'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
+
+    const type = (notif.type || '').toLowerCase();
+    const title = (notif.title || '').toLowerCase();
+    const message = (notif.message || notif.description || '').toLowerCase();
+    const refType = (notif.referenceType || notif.entityType || '').toLowerCase();
+
+    // 1. Trip Notifications
+    if (refType === 'trip' || type.includes('trip') || title.includes('trip') || message.includes('trip')) {
+      const targetId = tripId || notif.referenceId;
+      return targetId ? `/manager/trip-details/${targetId}` : `/manager/trips`;
     }
-    if (type.includes("MAINTENANCE")) {
+
+    // 2. Vehicle Issue & Maintenance
+    if (type.includes('vehicle_issue') || type.includes('ticket') || title.includes('vehicle issue') || title.includes('ticket')) {
+      return `/manager/view-tickets`;
+    }
+    if (type.includes('maintenance') || title.includes('maintenance')) {
       return `/manager/maintenance`;
     }
-    if (type.includes("FUEL")) {
+
+    // 3. Driver Notifications
+    if (refType === 'driver' || type.includes('driver') || title.includes('driver')) {
+      return driverId ? `/manager/driver-profile/${driverId}` : `/manager/drivers`;
+    }
+
+    // 4. Vehicle Notifications
+    if (refType === 'vehicle' || type.includes('vehicle') || title.includes('vehicle')) {
+      return vehicleId ? `/manager/vehicle-details/${vehicleId}` : `/manager/vehicles`;
+    }
+
+    // 5. Fuel Notifications
+    if (type.includes('fuel') || title.includes('fuel')) {
       return `/manager/fuel-management`;
     }
-    if (tripId) {
-      return `/manager/trip-details/${tripId}`;
+
+    // 6. Subscription
+    if (type.includes('subscription') || title.includes('subscription')) {
+      return `/manager/subscription`;
     }
-    if (driverId) {
-      return `/manager/driver-profile/${driverId}`;
-    }
+
+    // Fallbacks based on IDs
+    if (tripId) return `/manager/trip-details/${tripId}`;
+    if (driverId) return `/manager/driver-profile/${driverId}`;
+    if (vehicleId) return `/manager/vehicle-details/${vehicleId}`;
+
     return `/manager/notifications`;
   };
 

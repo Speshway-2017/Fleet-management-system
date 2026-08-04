@@ -611,8 +611,11 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                         } catch (e) {
                           if (mounted) {
                             setState(() => _isUploadingPod = false);
+                            final errStr = e.toString().replaceAll('Exception: ', '');
+                            final isTechError = errStr.contains('is not defined') || errStr.contains('ReferenceError') || errStr.contains('TypeError') || errStr.contains('500');
+                            final msg = isTechError ? 'Unable to upload document. Please try again.' : errStr;
                             messenger.showSnackBar(
-                              SnackBar(content: Text('POD Upload failed: $e')),
+                              SnackBar(content: Text(msg)),
                             );
                           }
                         }
@@ -695,8 +698,11 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                         } catch (e) {
                           if (mounted) {
                             setState(() => _isUploadingWeighbridge = false);
+                            final errStr = e.toString().replaceAll('Exception: ', '');
+                            final isTechError = errStr.contains('is not defined') || errStr.contains('ReferenceError') || errStr.contains('TypeError') || errStr.contains('500');
+                            final msg = isTechError ? 'Unable to upload document. Please try again.' : errStr;
                             messenger.showSnackBar(
-                              SnackBar(content: Text('Weighbridge upload failed: $e')),
+                              SnackBar(content: Text(msg)),
                             );
                           }
                         }

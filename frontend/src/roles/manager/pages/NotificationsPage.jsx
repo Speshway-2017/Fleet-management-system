@@ -86,15 +86,20 @@ export default function NotificationsPage() {
     fetchNotifications();
   }, []);
 
-  const filteredNotifications = notifications.filter((notif) => {
-    if (activeTab === "Critical") return notif.type === "alert" || notif.type === "warning";
-    if (activeTab === "Maintenance") return notif.type === "info";
-    if (activeTab === "System") return notif.type === "success" || notif.type === "system";
-    if (activeTab === "Alert Overview" && priorityFilter) {
-      return notif.priority === priorityFilter;
-    }
-    return true;
-  });
+  const filteredNotifications = notifications
+    .filter((notif) => {
+      const type = (notif.type || '').toLowerCase();
+      const priority = (notif.priority || '').toLowerCase();
+
+      if (activeTab === "Critical") return type.includes("alert") || type.includes("warning") || type.includes("critical") || priority === "high";
+      if (activeTab === "Maintenance") return type.includes("info") || type.includes("maintenance") || type.includes("vehicle");
+      if (activeTab === "System") return type.includes("success") || type.includes("system");
+      if (activeTab === "Alert Overview" && priorityFilter) {
+        return priority === priorityFilter.toLowerCase();
+      }
+      return true;
+    })
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
   const [showDispatchWarningModal, setShowDispatchWarningModal] = useState(false);
   const [showContactDriverModal, setShowContactDriverModal] = useState(false);
@@ -173,29 +178,59 @@ export default function NotificationsPage() {
   };
 
   const resolveTargetUrl = (notif) => {
+    if (notif.actionUrl) return notif.actionUrl;
+    if (notif.metadata?.actionUrl) return notif.metadata.actionUrl;
     if (notif.metadata?.targetUrl) return notif.metadata.targetUrl;
-    
-    const tripId = notif.metadata?.tripId || notif.referenceId || notif.relatedId;
-    const driverId = notif.metadata?.driverId;
-    const type = (notif.type || '').toUpperCase();
-    const title = (notif.title || '').toLowerCase();
 
-    if (type.includes("MESSAGE") || type.includes("CALL") || title.includes("message") || title.includes("call")) {
-      return tripId ? `/manager/trip-details/${tripId}?tab=communication` : `/manager/trips`;
+    const tripId = notif.metadata?.tripId || (['trip', 'Trip'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
+    const driverId = notif.metadata?.driverId || (['driver', 'Driver'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
+    const vehicleId = notif.metadata?.vehicleId || (['vehicle', 'Vehicle'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
+
+    const type = (notif.type || '').toLowerCase();
+    const title = (notif.title || '').toLowerCase();
+    const message = (notif.message || notif.description || '').toLowerCase();
+    const refType = (notif.referenceType || notif.entityType || '').toLowerCase();
+
+    // 1. Trip Notifications
+    if (refType === 'trip' || type.includes('trip') || title.includes('trip') || message.includes('trip')) {
+      const targetId = tripId || notif.referenceId;
+      return targetId ? `/manager/trip-details/${targetId}` : `/manager/trips`;
     }
-    if (type.includes("MAINTENANCE") || title.includes("maintenance")) {
+
+    // 2. Vehicle Issue & Maintenance
+    if (type.includes('vehicle_issue') || type.includes('ticket') || title.includes('vehicle issue') || title.includes('ticket')) {
+      return `/manager/view-tickets`;
+    }
+    if (type.includes('maintenance') || title.includes('maintenance')) {
       return `/manager/maintenance`;
     }
-    if (type.includes("FUEL") || title.includes("fuel")) {
+
+    // 3. Driver Notifications
+    if (refType === 'driver' || type.includes('driver') || title.includes('driver')) {
+      return driverId ? `/manager/driver-profile/${driverId}` : `/manager/drivers`;
+    }
+
+    // 4. Vehicle Notifications
+    if (refType === 'vehicle' || type.includes('vehicle') || title.includes('vehicle')) {
+      return vehicleId ? `/manager/vehicle-details/${vehicleId}` : `/manager/vehicles`;
+    }
+
+    // 5. Fuel Notifications
+    if (type.includes('fuel') || title.includes('fuel')) {
       return `/manager/fuel-management`;
     }
-    if (tripId) {
-      return `/manager/trip-details/${tripId}`;
+
+    // 6. Subscription
+    if (type.includes('subscription') || title.includes('subscription')) {
+      return `/manager/subscription`;
     }
-    if (driverId) {
-      return `/manager/driver-profile/${driverId}`;
-    }
-    return `/manager/notifications/${notif._id || notif.id}`;
+
+    // Fallbacks based on IDs
+    if (tripId) return `/manager/trip-details/${tripId}`;
+    if (driverId) return `/manager/driver-profile/${driverId}`;
+    if (vehicleId) return `/manager/vehicle-details/${vehicleId}`;
+
+    return `/manager/trips`;
   };
 
   const handleNotificationClick = async (notif) => {
@@ -321,9 +356,9 @@ export default function NotificationsPage() {
               <div className="w-14 h-14 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Icon icon="mdi:bell-off-outline" className="w-7 h-7" />
               </div>
-              <h4 className="text-gray-700 font-bold text-sm">No Alerts Found</h4>
+              <h4 className="text-gray-700 font-bold text-sm">No Notifications</h4>
               <p className="text-xs text-gray-450 mt-1 max-w-xs mx-auto leading-relaxed">
-                You have no active notifications or priority updates matching this category.
+                You're all caught up.
               </p>
             </div>
           ) : (

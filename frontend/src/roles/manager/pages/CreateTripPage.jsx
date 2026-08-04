@@ -373,10 +373,6 @@ export default function CreateTripPage() {
           errorMessage: "",
           success: true
         });
-        if (res.durationSeconds > 0 && departureTime) {
-          const autoEta = calculateEtaFromDuration(departureTime, res.durationSeconds);
-          setEta(autoEta);
-        }
       } else {
         setRouteInfo({
           loading: false,
@@ -474,11 +470,7 @@ export default function CreateTripPage() {
     setDepartureTime(val);
 
     let updatedEta = eta;
-    if (val && routeInfo.durationSeconds > 0 && (!eta || new Date(val) >= new Date(eta))) {
-      const autoEta = calculateEtaFromDuration(val, routeInfo.durationSeconds);
-      setEta(autoEta);
-      updatedEta = autoEta;
-    } else if (val && eta) {
+    if (val && eta) {
       const depDate = new Date(val);
       const etaDate = new Date(eta);
       if (depDate.getTime() >= etaDate.getTime()) {
@@ -581,16 +573,7 @@ export default function CreateTripPage() {
           if (matchedVehs.length > 0) finalVehicles = matchedVehs;
         }
 
-        let finalDrivers = driversData;
-        if (cleanStartCity && !isDrvFallback) {
-          const matchedDrvs = driversData.filter(d => {
-            const dLoc = (d.currentLocation || d.branch || '').toLowerCase();
-            return dLoc.includes(cleanStartCity) || cleanStartCity.includes(dLoc.split(',')[0].trim());
-          });
-          if (matchedDrvs.length > 0) finalDrivers = matchedDrvs;
-        }
-
-        setDrivers(finalDrivers);
+        setDrivers(driversData);
         setVehicles(finalVehicles);
 
         // Auto-clear selection if it is not in the new filtered location list
@@ -1108,8 +1091,8 @@ export default function CreateTripPage() {
               <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0">
                 <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold block">No available Vehicles found in {startLocation}.</span>
-                  <span className="text-[11px] text-amber-700 font-medium">Showing the nearest available Vehicles.</span>
+                  <span className="font-bold block">No vehicles are available at {startLocation}.</span>
+                  <span className="text-[11px] text-amber-700 font-medium">Showing the nearest available vehicles.</span>
                 </div>
               </div>
             )}
@@ -1221,8 +1204,8 @@ export default function CreateTripPage() {
               <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0">
                 <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold block">No drivers are available in {startLocation}.</span>
-                  <span className="text-[11px] text-amber-700 font-medium">Showing the nearest available drivers sorted by distance.</span>
+                  <span className="font-bold block">No drivers are available at {startLocation}.</span>
+                  <span className="text-[11px] text-amber-700 font-medium">Showing the nearest available drivers.</span>
                 </div>
               </div>
             )}
@@ -1271,9 +1254,11 @@ export default function CreateTripPage() {
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
-                          {(d.isNearby || isNearbyDriversFallback) && (
+                          {(d.isAtPickupLocation || d.distanceKm === 0) ? (
+                            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
+                          ) : (d.isNearby || isNearbyDriversFallback) ? (
                             <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
-                          )}
+                          ) : null}
                         </div>
                         <span className="text-[10px] text-[#64748B] block mt-0.5 font-semibold">Emp ID: {formatEmployeeId(d.employeeId)}</span>
                         <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
@@ -1281,11 +1266,11 @@ export default function CreateTripPage() {
                           <span>|</span>
                           <span>Location: <strong className="text-[#1E293B]">{formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch)}</strong></span>
                         </div>
-                        {(d.isNearby || isNearbyDriversFallback || (d.distanceKm !== undefined && d.distanceKm > 0)) && (
+                        {d.distanceKm !== undefined && (
                           <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
                             <span>📍 {d.distanceKm || 0} km away</span>
                             <span>•</span>
-                            <span>⏱️ {d.estimatedTravelTime || "35 mins"}</span>
+                            <span>⏱️ {d.estimatedTravelTime || "0 mins"}</span>
                           </div>
                         )}
                         <div className="flex gap-1.5 mt-2">
