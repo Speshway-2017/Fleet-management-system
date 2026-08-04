@@ -875,6 +875,69 @@ export const updateTripStatus = async (req, res, next) => {
 };
 
 /**
+ * End Trip (Destination Reached / Journey Ended)
+ * PATCH /api/driver/trips/:id/end-trip
+ */
+export const endTrip = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const trip = await Trip.findById(id);
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    if (trip.status !== 'In Progress') {
+      return sendError(res, 400, 'Trip must be In Progress to end journey.');
+    }
+
+    trip.tripEnded = true;
+    trip.endedAt = new Date();
+    trip.customerLocationReached = true;
+    trip.customerLocationReachedAt = new Date();
+    await trip.save();
+
+    const io = req.app.get('socketio') || req.app.locals?.io;
+    const managerId = trip.assignedManager;
+    const driverDoc = await Driver.findById(req.user._id);
+
+    if (managerId) {
+      await createAndEmitNotification({
+        io,
+        recipient: managerId,
+        recipientRole: 'FLEET_MANAGER',
+        type: 'trip_ended',
+        title: `Trip Journey Ended: ${trip.tripNumber}`,
+        message: `Driver ${driverDoc?.fullName || 'Driver'} has arrived at destination and ended trip #${trip.tripNumber}. Document uploads are now unlocked.`,
+        priority: 'normal',
+        metadata: { tripId: trip._id, driverId: req.user._id }
+      });
+
+      if (io) {
+        io.to(`manager:${managerId}`).emit('trip:ended', {
+          tripId: trip._id,
+          tripNumber: trip.tripNumber,
+          driverId: req.user._id
+        });
+        io.to(`manager:${managerId}`).emit('trip:status-updated', {
+          tripId: trip._id,
+          tripNumber: trip.tripNumber,
+          status: 'In Progress',
+          tripEnded: true
+        });
+      }
+    }
+
+    if (io) {
+      io.to(`driver:${req.user._id}`).emit('trip:updated', trip);
+    }
+
+    return sendSuccess(res, 200, trip, 'Trip ended successfully. You can now upload Proof of Delivery and Weighbridge Slip.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Toggle Customer Location Reached
  * PATCH /api/driver/trips/:id/customer-location
  */

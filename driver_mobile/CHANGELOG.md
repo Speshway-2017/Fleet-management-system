@@ -2,6 +2,54 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.36.0] - 2026-08-04
+
+### Fixed & Enhanced
+- **Cargo Weight Unit Consistency (KG)**:
+  - Updated [TripDetailsScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart) to format and display cargo weight in `KG` (e.g. `9845 KG`) under **CARGO & SHIPMENT**, matching the Fleet Manager Portal unit standards.
+  - Updated weighbridge slip input labels in [ActiveTripsScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/active_trips_screen.dart) (`Net Weight (KG)`) and assignment summaries in [AssignmentDetailsScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/assignment_details_screen.dart) to display units in `KG`.
+
+## [1.35.0] - 2026-08-04
+
+### Fixed & Enhanced
+- **End Trip "Route Not Found" Resolution**:
+  - Registered HTTP verb & route path aliases (`POST`, `PUT`, `PATCH`) for `/api/driver/trips/:id/end-trip`, `/api/driver/trips/:id/end`, and `/api/driver/trips/:id/customer-location` in [driverApi.routes.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/routes/driverApi.routes.js).
+  - Added multi-stage fallback mechanism to [ApiService.endTrip](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/services/api_service.dart) (`PATCH /end-trip` ➔ `POST /end-trip` ➔ `PATCH /customer-location`), ensuring high availability and resolving any 404 "Route not found" exceptions when ending a trip journey.
+
+## [1.34.0] - 2026-08-04
+
+### Added & Enhanced
+- **Driver Mobile Trip Invoice Popup Updates**:
+  - **Removed Trip Status**: Completely removed the `Trip Status` row from the trip invoice modal and HTML print layout ([TripDetailsScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart)).
+  - **Complete Delivery Address**: Replaced the single `Destination` city string with the full multi-line `Delivery Address` fetched directly from `trip['deliveryAddress']` / `trip['toAddress']` containing Company Name, Contact Person, Mobile Number, Street Address, Area/Locality, City, and State - Pincode.
+  - **Preserved Schema**: Maintained all other trip invoice fields (`Invoice Number`, `Invoice Date`, `Trip ID`, `Pickup Location`, `Departure Time`, `ETA`, `Distance`, `Cargo Type`, `Cargo Weight` in kg only, `Vehicle Name`, `Vehicle Plate`, `Driver Name`, `Driver Phone`).
+
+## [1.33.0] - 2026-08-04
+
+### Added & Enhanced
+- **Comprehensive Trip Completion Lifecycle Workflow**:
+  - Implemented 6-stage trip completion lifecycle state machine across [TripDetailsScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart), [driverApi.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driverApi.controller.js), and [manager.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/manager.controller.js):
+    - **Scheduled Stage**: Displays status `Not Uploaded`. Only "Start Trip" button is enabled; POD Upload, Weighbridge Upload, End Trip, and Complete Trip buttons are locked.
+    - **In Progress Stage**: Clicking "Start Trip" transitions trip status to `In Progress` and unlocks ONLY the "End Trip (Destination Reached)" button. Document uploads remain locked.
+    - **End Trip Stage**: Clicking "End Trip" sets `tripEnded: true` and unlocks POD Upload and Weighbridge Upload buttons.
+    - **Document Upload Stage**: Displays status `Uploaded ✅`. Replaces "Upload" button with "View / Replace" once uploaded. Unlocks "Complete Trip" button ONLY when BOTH POD and Weighbridge documents are uploaded successfully.
+    - **Waiting for Manager Approval Stage**: Clicking "Complete Trip" updates trip status to `Waiting for Manager Approval`, disables all driver action buttons, and notifies the manager.
+    - **Manager Approval / Rejection Workflow**: Manager reviews uploaded documents on Manager Portal. If approved, status updates to `Completed` and notifies driver. If rejected, status returns to `In Progress`, displays red rejection reason banner, allows driver to re-upload ONLY the rejected document(s), and disables trip completion until all rejected documents are re-uploaded.
+
+## [1.32.0] - 2026-08-04
+
+### Added & Enhanced
+- **Fuel and Maintenance (Issues) Modules Visibility & Action Rules Matrix**:
+  - Ensured Fuel and Maintenance (Support / Issues) quick action cards on [DashboardScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) and navigation tabs are ALWAYS visible and accessible regardless of vehicle assignment status.
+  - Enabled continuous fetching and viewing of historical fuel entries ([FuelOverviewScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/fuel_overview_screen.dart), [FuelHistoryScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/fuel_history_screen.dart)) and support tickets ([SupportHistoryScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/support_history_screen.dart)) regardless of vehicle assignment status.
+  - Implemented exact feature permission rules:
+    - **No Assigned Vehicle**: History viewable; "Add Fuel Entry" and "Raise New Ticket" buttons disabled with module-specific informative banners:
+      - Fuel Module: `"No vehicle is currently assigned. You can view your previous records, but new fuel entries will be available once a vehicle is assigned."`
+      - Maintenance/Issues Module: `"No vehicle is currently assigned. You can view your previous records, but new maintenance tickets will be available once a vehicle is assigned."`
+      - Dashboard Overview: `"No vehicle is currently assigned. You can view your previous records, but new fuel entries and maintenance tickets will be available once a vehicle is assigned."`
+    - **Vehicle Assigned, No Active Trip**: History viewable; "Add Fuel Entry" disabled with banner `"Adding fuel entries is only permitted during an active trip."`; "Raise Maintenance Ticket" enabled.
+    - **Vehicle Assigned, Active Trip Exists**: History viewable; "Add Fuel Entry" enabled; "Raise Maintenance Ticket" enabled.
+
 ## [1.31.0] - 2026-08-03
 
 ### Added & Enhanced
@@ -123,6 +171,19 @@ All notable changes to the Fleet Driver Mobile application will be documented in
 
 ### Fixed
 - **ApiService Syntax Fix**: Removed duplicate declaration of the static `put` method in [ApiService](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/services/api_service.dart) (`"The name 'put' is already defined"`), resolving the compilation error.
+
+## [1.31.0] - 2026-08-03
+
+### Added & Enhanced
+- **Conditional Vehicle Feature Display based on Backend Assignment Data**:
+  - Implemented dynamic vehicle assignment checking via `ApiService.getAssignedVehicle()` across all driver mobile modules.
+  - Hides "Vehicle", "Fuel", and vehicle-related quick action cards on the Dashboard when no vehicle is assigned to the logged-in driver.
+  - Displays friendly notice message banner on Dashboard and across all vehicle screens: `"No vehicle has been assigned yet. Vehicle-related features will become available once your manager assigns a vehicle."`
+  - Prevents API calls to maintenance and fuel record endpoints (`/api/driver/maintenance`, `/api/driver/fuel`) when no vehicle is assigned, reducing network traffic and eliminating errors.
+  - Added real-time socket event listeners (`vehicle:assigned`, `vehicle:unassigned`, `driver:vehicle-updated`, `trip:assigned`, `trip:status-updated`) to automatically update dashboard quick actions whenever vehicle assignment changes in real time.
+  - Restricted creating fuel entries and submitting vehicle maintenance tickets when no vehicle is assigned.
+- **Trip Details Screen Deprecation Fixes**:
+  - Replaced deprecated `.withOpacity(...)` usages in [TripDetailsScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart) with `.withValues(alpha: ...)` to prevent precision loss and comply with Flutter 3.27+ standards. `dart analyze lib/` verified with 0 issues.
 
 ## [1.30.0] - 2026-07-31
 

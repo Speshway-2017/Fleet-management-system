@@ -32,6 +32,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? _driverProfile;
   Map<String, dynamic>? _currentTrip;
   Map<String, dynamic>? _dashboardData;
+  bool _isVehicleAssigned = false;
+  Map<String, dynamic>? _assignedVehicle;
 
   @override
   void initState() {
@@ -43,6 +45,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     SocketService.onEvent('notification:new', _onSocketEvent);
     SocketService.onEvent('trip:assigned', _onSocketEvent);
     SocketService.onEvent('trip:status-updated', _onSocketEvent);
+    SocketService.onEvent('vehicle:assigned', _onSocketEvent);
+    SocketService.onEvent('vehicle:unassigned', _onSocketEvent);
+    SocketService.onEvent('driver:vehicle-updated', _onSocketEvent);
   }
 
   void _onSocketEvent(dynamic data) {
@@ -57,6 +62,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final profile = await AuthService.fetchProfile();
       final currentTripRes = await ApiService.get('/driver/trips/current');
       final dashRes = await ApiService.get('/driver/dashboard');
+      
+      bool vehicleAssigned = false;
+      Map<String, dynamic>? vehObj;
+      try {
+        final vehRes = await ApiService.getAssignedVehicle();
+        if (vehRes != null && vehRes['success'] == true) {
+          final data = vehRes['data'];
+          if (data != null && data['assigned'] == true && data['vehicle'] != null) {
+            vehicleAssigned = true;
+            vehObj = Map<String, dynamic>.from(data['vehicle']);
+          }
+        }
+      } catch (e) {
+        debugPrint('Error fetching assigned vehicle: $e');
+      }
 
       if (mounted) {
         if (profile != null && profile['profileImage'] != null) {
@@ -69,6 +89,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _driverProfile = profile;
           _currentTrip = currentTripRes['data'];
           _dashboardData = dashRes['data'];
+          _isVehicleAssigned = vehicleAssigned;
+          _assignedVehicle = vehObj;
         });
 
         if (_currentTrip != null && _currentTrip!['tripId'] != null) {
@@ -153,7 +175,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                '${_driverProfile?['vehicle'] ?? 'Vehicle AX-452'} • ID: ${_driverProfile?['driverId'] ?? 'EMP-1002'}',
+                                _isVehicleAssigned
+                                    ? '${_assignedVehicle?['vehicleNumber'] ?? _driverProfile?['vehicle'] ?? 'Assigned Vehicle'} • ID: ${_driverProfile?['driverId'] ?? 'EMP-1002'}'
+                                    : 'No Vehicle Assigned • ID: ${_driverProfile?['driverId'] ?? 'EMP-1002'}',
                                 style: GoogleFonts.nunito(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
@@ -964,47 +988,86 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Quick Actions Grid Builder (3 columns, 2 rows)
+  // Quick Actions Grid Builder
   Widget _buildQuickActionsRow(BuildContext context) {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 3,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1.15,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildActionCard(context, Icons.local_shipping_outlined, 'Vehicle', () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const VehicleOverviewScreen()),
-          );
-        }),
-        _buildActionCard(context, Icons.local_gas_station_outlined, 'Fuel', () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const FuelOverviewScreen()),
-          );
-        }),
-        _buildActionCard(context, Icons.warning_amber_rounded, 'Issue', () {
-          MainNavigationScreen.selectedTabNotifier.value = 2;
-        }),
-        _buildActionCard(context, Icons.calendar_month_outlined, 'Schedule', () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ScheduleScreen()),
-          );
-        }),
-        _buildActionCard(context, Icons.route_outlined, 'Trips', () {
-          MainNavigationScreen.selectedTabNotifier.value = 1;
-        }),
-        _buildActionCard(context, Icons.settings_outlined, 'Settings', () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const SettingsScreen()),
-          );
-        }),
+        if (!_isVehicleAssigned) ...[
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+            padding: const EdgeInsets.all(14.0),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF), // Light blue box
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.info_outline_rounded,
+                  color: Color(0xFF2563EB),
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'No vehicle is currently assigned. You can view your previous records, but new fuel entries and maintenance tickets will be available once a vehicle is assigned.',
+                    style: GoogleFonts.nunito(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1E40AF),
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 3,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.15,
+          children: [
+            _buildActionCard(context, Icons.local_shipping_outlined, 'Vehicle', () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const VehicleOverviewScreen()),
+              );
+            }),
+            _buildActionCard(context, Icons.local_gas_station_outlined, 'Fuel', () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const FuelOverviewScreen()),
+              );
+            }),
+            _buildActionCard(context, Icons.warning_amber_rounded, 'Issue', () {
+              MainNavigationScreen.selectedTabNotifier.value = 2;
+            }),
+            _buildActionCard(context, Icons.calendar_month_outlined, 'Schedule', () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ScheduleScreen()),
+              );
+            }),
+            _buildActionCard(context, Icons.route_outlined, 'Trips', () {
+              MainNavigationScreen.selectedTabNotifier.value = 1;
+            }),
+            _buildActionCard(context, Icons.settings_outlined, 'Settings', () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            }),
+          ],
+        ),
       ],
     );
   }
