@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../providers/auth_provider.dart';
 import '../utils/date_formatter.dart';
 import 'profile/profile_screen.dart';
 import 'trip_details_screen.dart';
@@ -12,6 +10,7 @@ import 'completed_trips_screen.dart';
 import 'vehicle_overview_screen.dart';
 import 'main_navigation_screen.dart';
 import 'notifications/notifications_screen.dart';
+import 'notifications/notification_details_screen.dart';
 import 'settings/settings_screen.dart';
 import 'fuel_overview_screen.dart';
 import '../widgets/driver_profile_dropdown.dart';
@@ -32,8 +31,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? _driverProfile;
   Map<String, dynamic>? _currentTrip;
   Map<String, dynamic>? _dashboardData;
-  bool _isVehicleAssigned = false;
-  Map<String, dynamic>? _assignedVehicle;
 
   @override
   void initState() {
@@ -45,9 +42,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     SocketService.onEvent('notification:new', _onSocketEvent);
     SocketService.onEvent('trip:assigned', _onSocketEvent);
     SocketService.onEvent('trip:status-updated', _onSocketEvent);
-    SocketService.onEvent('vehicle:assigned', _onSocketEvent);
-    SocketService.onEvent('vehicle:unassigned', _onSocketEvent);
-    SocketService.onEvent('driver:vehicle-updated', _onSocketEvent);
   }
 
   void _onSocketEvent(dynamic data) {
@@ -59,30 +53,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadDashboardData() async {
     try {
-      debugPrint('[DEBUG] Dashboard reloading data from backend...');
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      await authProvider.refreshProfile();
-
       final profile = await AuthService.fetchProfile();
       final currentTripRes = await ApiService.get('/driver/trips/current');
       final dashRes = await ApiService.get('/driver/dashboard');
-
-      debugPrint('[DEBUG] Dashboard reload data finished. Driver isOnline = ${authProvider.driver?.isOnline}, driverStatus = ${authProvider.driver?.driverStatus}');
-      
-      bool vehicleAssigned = false;
-      Map<String, dynamic>? vehObj;
-      try {
-        final vehRes = await ApiService.getAssignedVehicle();
-        if (vehRes != null && vehRes['success'] == true) {
-          final data = vehRes['data'];
-          if (data != null && data['assigned'] == true && data['vehicle'] != null) {
-            vehicleAssigned = true;
-            vehObj = Map<String, dynamic>.from(data['vehicle']);
-          }
-        }
-      } catch (e) {
-        debugPrint('Error fetching assigned vehicle: $e');
-      }
 
       if (mounted) {
         if (profile != null && profile['profileImage'] != null) {
@@ -95,8 +68,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _driverProfile = profile;
           _currentTrip = currentTripRes['data'];
           _dashboardData = dashRes['data'];
-          _isVehicleAssigned = vehicleAssigned;
-          _assignedVehicle = vehObj;
         });
 
         if (_currentTrip != null && _currentTrip!['tripId'] != null) {
@@ -170,7 +141,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Good Morning, ${_driverProfile?['fullName'] ?? 'Driver'} 👋',
+                                'Good Morning, ${(_driverProfile?['fullName'] ?? 'Driver').toString().split(' ')[0]} 👋',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
@@ -181,9 +152,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                _isVehicleAssigned
-                                    ? '${_assignedVehicle?['vehicleNumber'] ?? _driverProfile?['vehicle'] ?? 'Assigned Vehicle'} • ID: ${_driverProfile?['driverId'] ?? 'EMP-1002'}'
-                                    : 'No Vehicle Assigned • ID: ${_driverProfile?['driverId'] ?? 'EMP-1002'}',
+                                '${_driverProfile?['vehicle'] ?? 'Unassigned'} • ID: ${_driverProfile?['driverId'] ?? 'N/A'}',
                                 style: GoogleFonts.nunito(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
@@ -262,33 +231,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   color: const Color(0xFF1B2430),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const TripsScreen(),
-                                    ),
-                                  );
-                                },
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      'View Trips',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: const Color(0xFFFF6A00),
-                                      ),
-                                    ),
-                                    const Icon(
-                                      Icons.chevron_right,
-                                      color: Color(0xFFFF6A00),
-                                      size: 16,
-                                    ),
-                                  ],
                                 ),
                               ),
                             ],
@@ -954,87 +896,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Quick Actions Grid Builder
+  // Quick Actions Row (5 items)
   Widget _buildQuickActionsRow(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (!_isVehicleAssigned) ...[
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-            padding: const EdgeInsets.all(14.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF), // Light blue box
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFBFDBFE)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.info_outline_rounded,
-                  color: Color(0xFF2563EB),
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'No vehicle is currently assigned. You can view your previous records, but new fuel entries and maintenance tickets will be available once a vehicle is assigned.',
-                    style: GoogleFonts.nunito(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1E40AF),
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 3,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 1.15,
-          children: [
-            _buildActionCard(context, Icons.local_shipping_outlined, 'Vehicle', () {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildActionCard(context, Icons.local_shipping_outlined, 'Vehicle', () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const VehicleOverviewScreen()),
               );
             }),
-            _buildActionCard(context, Icons.local_gas_station_outlined, 'Fuel', () {
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildActionCard(context, Icons.local_gas_station_outlined, 'Fuel', () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const FuelOverviewScreen()),
               );
             }),
-            _buildActionCard(context, Icons.warning_amber_rounded, 'Issue', () {
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildActionCard(context, Icons.warning_amber_rounded, 'Issue', () {
               MainNavigationScreen.selectedTabNotifier.value = 2;
             }),
-            _buildActionCard(context, Icons.calendar_month_outlined, 'Schedule', () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const UpcomingTripsScreen()),
-              );
-            }),
-            _buildActionCard(context, Icons.route_outlined, 'Trips', () {
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildActionCard(context, Icons.route_outlined, 'Trips', () {
               MainNavigationScreen.selectedTabNotifier.value = 1;
             }),
-            _buildActionCard(context, Icons.settings_outlined, 'Settings', () {
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildActionCard(context, Icons.settings_outlined, 'Settings', () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
               );
             }),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1170,8 +1077,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-
-
   // Recent Notifications Builder
   Widget _buildRecentNotifications(BuildContext context) {
     final List serverNotifs = _dashboardData?['notifications'] ?? [];
@@ -1194,20 +1099,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final itemsToDisplay = serverNotifs.isNotEmpty
         ? serverNotifs.take(3).map((item) {
             return {
+              'id': item['_id'] ?? item['id'] ?? '',
               'title': item['title'] ?? 'Fleet Notification',
               'subtitle': item['message'] ?? item['description'] ?? '',
               'time': formatNotificationTime(item['createdAt']),
               'isUnread': !(item['isRead'] ?? false),
               'icon': item['type'] == 'trip_assigned' ? Icons.inventory_2_outlined : Icons.notifications_none_outlined,
+              'type': item['type']?.toString() ?? '',
+              'tripId': item['metadata']?['tripId']?.toString() ?? item['referenceId']?.toString() ?? '',
             };
           }).toList()
         : NotificationsScreen.notifications.take(3).map((item) {
             return {
+              'id': item.id,
               'title': item.title,
               'subtitle': item.description,
               'time': item.timestamp,
               'isUnread': !item.isRead,
               'icon': item.icon,
+              'type': item.type ?? item.title,
+              'tripId': item.tripId ?? '',
             };
           }).toList();
 
@@ -1223,7 +1134,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           time: notif['time'] as String,
           isUnread: notif['isUnread'] as bool,
           onTap: () {
-            MainNavigationScreen.selectedTabNotifier.value = 3;
+            NotificationsScreen.markAsReadStatic(notif['id'] as String);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => NotificationDetailsScreen(
+                  title: notif['title'] as String,
+                  message: notif['subtitle'] as String,
+                  time: notif['time'] as String,
+                  type: (notif['type'] as String).isNotEmpty ? notif['type'] as String : notif['title'] as String,
+                  icon: notif['icon'] as IconData,
+                  comingFromDashboard: false,
+                ),
+              ),
+            ).then((_) {
+              if (mounted) {
+                _loadDashboardData();
+              }
+            });
           },
         );
       }).toList(),

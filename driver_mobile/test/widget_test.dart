@@ -124,6 +124,14 @@ void main() {
           }
         }
       },
+      '/driver/notifications': {
+        'success': true,
+        'data': []
+      },
+      '/driver/tickets': {
+        'success': true,
+        'data': []
+      },
       '/driver/logout': {
         'success': true,
         'message': 'Logged out successfully'
@@ -468,5 +476,37 @@ void main() {
     // Verify success snackbar is shown and we return to Profile Screen
     expect(find.text('Profile updated successfully!'), findsOneWidget);
     expect(find.text("Driver's License Details"), findsOneWidget);
+  });
+
+  testWidgets('Vehicle Overview Screen unassigned vehicle state test', (
+    WidgetTester tester,
+  ) async {
+    ApiService.mockResponses['/driver/vehicle'] = {
+      'success': true,
+      'data': {
+        'assigned': false,
+        'vehicle': null
+      }
+    };
+
+    await tester.pumpWidget(const MaterialApp(home: VehicleOverviewScreen()));
+    await tester.idle();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    // Verify App Bar Title is present
+    expect(find.text('Vehicle Overview'), findsOneWidget);
+
+    // Verify correct empty state message is shown
+    expect(
+      find.text('No vehicle is currently assigned to you. Please contact your Fleet Manager.'),
+      findsOneWidget,
+    );
+
+    // Verify vehicle action cards and headers are hidden
+    expect(find.text('Vehicle Details'), findsNothing);
+    expect(find.text('Vehicle Status'), findsNothing);
+    expect(find.text('Maintenance Alerts'), findsNothing);
+    expect(find.text('Vehicle Documents'), findsNothing);
   });
 }

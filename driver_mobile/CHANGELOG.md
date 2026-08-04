@@ -2,6 +2,81 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.31.8] - 2026-08-04
+
+### Removed
+- **Proof of Delivery Available Lock Button**:
+  - Removed the `Proof of Delivery Available` container and lock icon from the delivery confirmation section of the [completed_trip_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/completed_trip_details_screen.dart).
+
+### Fixed
+- **Download and Share Trip Report Actions**:
+  - Fully implemented the `_downloadTripReport()` helper method to dynamically generate and download a printer-friendly HTML trip report containing trip, asset, driver, and financial summaries.
+  - Fully implemented the `_shareTripReport()` helper method to copy a clean plain text summary of the completed trip to the system clipboard and trigger WhatsApp/Email share intents.
+
+## [1.31.7] - 2026-08-04
+
+### Fixed
+- **Complete Elimination of Hardcoded Vehicle Data Fallbacks**:
+  - Refactored `getDriverProfile` in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) to dynamically check the `Vehicle` collection for any explicit assignment (`assignedDriver: driver._id`), rather than returning the stale/mock string field `driver.assignedVehicle`.
+  - Removed the fallback static string `'Vehicle AX-452'` from the dashboard greeting in [dashboard_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) and replaced it with `'Unassigned'`.
+  - Replaced the fallback static string `'AX-452'` inside the active trip card of [active_trips_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/active_trips_screen.dart) with a dynamic mapping that parses the trip's populated vehicle document, returning `'Unassigned'` if missing.
+
+## [1.31.6] - 2026-08-04
+
+### Fixed
+- **Vehicle Overview Backend Query Logic**:
+  - Removed all fallback vehicle queries (e.g. `driver.assignedVehicle` string checks and `activeTrip` vehicle populates) from `getAssignedVehicle` in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js).
+  - Configured `getAssignedVehicle` to query **only** the vehicle explicitly assigned via `assignedDriver: driverId`, ensuring the backend correctly returns a `null` vehicle and `assigned: false` when no active assignment exists.
+
+## [1.31.5] - 2026-08-04
+
+### Added
+- **Dynamic Vehicle Overview Integration**:
+  - Integrated real-time backend data fetching in [vehicle_overview_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/vehicle_overview_screen.dart) from `/driver/vehicle`.
+  - Added a clean empty state with the exact message: `"No vehicle is currently assigned to you. Please contact your Fleet Manager."` when no active vehicle assignment exists, completely hiding all operational cards and disabled action tiles.
+  - Implemented auto-refresh on route return to `VehicleOverviewScreen` from details, status, maintenance alerts, and document sub-screens.
+  - Added a dedicated widget test (`Vehicle Overview Screen unassigned vehicle state test`) inside [widget_test.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/test/widget_test.dart) to verify unassigned messaging and UI card hiding rules.
+
+## [1.31.4] - 2026-08-04
+
+### Added
+- **Fuel Submission Workflow Upgrades**:
+  - Expanded `Fuel` schema in [Fuel.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/models/Fuel.js) to store new fields: `fuelType`, `dateTime`, and `notes`.
+  - Updated `createDriverFuelEntry` in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) to extract and persist these new fields.
+  - Upgraded state and rendering logic in [TripDetailsPage.jsx](file:///c:/Users/user/Downloads/Fleet-management-system/frontend/src/roles/manager/pages/TripDetailsPage.jsx) to display a total fuel cost sum badge and a full scrolling history list of all logged fuel entries (with station, quantity, cost, odometer, type, notes, date/time, status, and receipt triggers).
+  - Modified [api_service.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/api_service.dart)'s `createFuelEntry` method to accept and serialize the extra parameters.
+  - Parameterized [add_fuel_entry_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/add_fuel_entry_screen.dart) with `tripId` to link recorded fuel to trips. Also added a multi-line Notes text input, auto-fetched the current active trip if no Trip ID was passed, and bypassed the strict receipt requirement to make receipt uploads optional.
+  - Added a "Record Fuel Purchase" action button in [trip_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart) (for active trips) and [completed_trip_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/completed_trip_details_screen.dart) (for completed trips) linking to the updated form.
+
+## [1.31.3] - 2026-08-04
+
+### Fixed
+- **Notification Read Status Persistence**:
+  - Corrected backend notification query filters in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) (`getDriverNotifications`, `markDriverNotificationRead`, and `markAllDriverNotificationsRead`) to query by `recipientRole` instead of the non-existent `targetRole` schema field.
+  - Preloaded driver notifications on app startup within [main_navigation_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/main_navigation_screen.dart) by invoking `NotificationsScreen.fetchNotificationsFromServer()`, initializing the unread badge count immediately.
+  - Linked `_toggleReadStatus` and `_markAllAsRead` in [notifications_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notifications_screen.dart) directly to the backend PATCH routes to persist notification status permanently.
+  - Added a `RefreshIndicator` layout wrap in [notifications_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notifications_screen.dart) for pull-to-refresh behavior.
+- **Dashboard Layout and Notification Navigation Updates**:
+  - Removed "View Trips" button from the Dashboard Overview section in [dashboard_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart).
+  - Updated recent notification items in [dashboard_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/dashboard_screen.dart) to parse ID, type, and tripId attributes and navigate directly to the [NotificationDetailsScreen](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notification_details_screen.dart) upon tapping them.
+  - Implemented `NotificationsScreen.markAsReadStatic` in [notifications_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/notifications/notifications_screen.dart) to synchronize Dashboard notification clicks with the local count/static feed and the backend database.
+
+## [1.31.2] - 2026-08-04
+
+### Fixed
+- **Mobile Compile Errors in Toll Fee Receipt and Trip Completion Screens**:
+  - Implemented missing REST methods `getDriverTripTolls`, `createTripTollEntry`, `uploadTripPod`, and `createTripFuelEntry` in [api_service.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/api_service.dart) to resolve undefined method compile errors.
+  - Aligned parameter names (`imageFile`, `imageName`, and path/bytes types) in `uploadProofOfDelivery` and `uploadWeighbridgeSlip` inside [api_service.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/api_service.dart) to support the dynamic invocations from [trip_completion_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/trip_completion_screen.dart).
+  - Restored `mockResponses` static testing hooks in [api_service.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/services/api_service.dart) to ensure widget and integration tests compile and run properly.
+
+## [1.31.1] - 2026-08-04
+
+### Fixed
+- **Toll Endpoints Restoration and Backend Backward Compatibility**:
+  - Restored `createDriverTollTransaction` and `getDriverTripTolls` controller functions in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) that were accidentally removed during recent merge conflicts.
+  - Re-imported `TollTransaction` model inside [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) to resolve node server syntax crashes.
+  - Enhanced the backend [getDriverTripById](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) endpoint to dynamically resolve and include fuel and toll details (`fuelDetails`, `tollDetails`, `totalTollsAmount`, `fuelStatus`, `tollStatus`, etc.) to match the expected state variables of the driver mobile screens ([trip_completion_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/trip_completion_screen.dart), [completed_trip_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/completed_trip_details_screen.dart)).
+
 ## [1.36.0] - 2026-08-04
 
 ### Fixed & Enhanced
