@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../providers/auth_provider.dart';
 import '../utils/date_formatter.dart';
 import 'profile/profile_screen.dart';
 import 'trip_details_screen.dart';
@@ -10,8 +12,6 @@ import 'completed_trips_screen.dart';
 import 'vehicle_overview_screen.dart';
 import 'main_navigation_screen.dart';
 import 'notifications/notifications_screen.dart';
-import 'schedule_screen.dart';
-import 'todays_schedule_screen.dart';
 import 'settings/settings_screen.dart';
 import 'fuel_overview_screen.dart';
 import '../widgets/driver_profile_dropdown.dart';
@@ -59,9 +59,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadDashboardData() async {
     try {
+      debugPrint('[DEBUG] Dashboard reloading data from backend...');
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.refreshProfile();
+
       final profile = await AuthService.fetchProfile();
       final currentTripRes = await ApiService.get('/driver/trips/current');
       final dashRes = await ApiService.get('/driver/dashboard');
+
+      debugPrint('[DEBUG] Dashboard reload data finished. Driver isOnline = ${authProvider.driver?.isOnline}, driverStatus = ${authProvider.driver?.driverStatus}');
       
       bool vehicleAssigned = false;
       Map<String, dynamic>? vehObj;
@@ -290,46 +296,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(height: 12),
                         _buildStatsOverview(context),
-
-                        const SizedBox(height: 24),
-
-                        // 4. Today's Schedule Header & Timeline Card
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "Today's Schedule",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1B2430),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const TodaysScheduleScreen(),
-                                    ),
-                                  );
-                                },
-                                child: Text(
-                                  'View All',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFFFF6A00),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildScheduleTimeline(context),
 
                         const SizedBox(height: 24),
 
@@ -1054,7 +1020,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _buildActionCard(context, Icons.calendar_month_outlined, 'Schedule', () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ScheduleScreen()),
+                MaterialPageRoute(builder: (context) => const UpcomingTripsScreen()),
               );
             }),
             _buildActionCard(context, Icons.route_outlined, 'Trips', () {
@@ -1204,133 +1170,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Timeline Schedule Builder
-  Widget _buildScheduleTimeline(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildTimelineRow(
-            context,
-            time: '08:00 AM',
-            title: 'Warehouse Pickup',
-            location: 'Industrial Area, Hub 7',
-            isColorActive: true,
-            isLineActive: true,
-            isLast: false,
-          ),
-          _buildTimelineRow(
-            context,
-            time: '09:30 AM',
-            title: 'Cargo Loading',
-            location: 'Dock C, Section 22',
-            isColorActive: false,
-            isLineActive: false,
-            isLast: false,
-          ),
-          _buildTimelineRow(
-            context,
-            time: '11:00 AM',
-            title: 'Main Delivery',
-            location: 'Logistics Center North',
-            isColorActive: false,
-            isLineActive: false,
-            isLast: true,
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildTimelineRow(
-    BuildContext context, {
-    required String time,
-    required String title,
-    required String location,
-    required bool isColorActive,
-    required bool isLineActive,
-    required bool isLast,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 65,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 2.0),
-            child: Text(
-              time,
-              style: GoogleFonts.poppins(
-                color: const Color(0xFF667085),
-                fontWeight: FontWeight.w500,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ),
-        Column(
-          children: [
-            Container(
-              width: 14,
-              height: 14,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isColorActive ? const Color(0xFFFF6A00) : Colors.white,
-                border: Border.all(
-                  color: isColorActive ? const Color(0xFFFF6A00) : const Color(0xFFCBD5E1),
-                  width: 3,
-                ),
-              ),
-            ),
-            if (!isLast)
-              Container(
-                width: 2,
-                height: 40,
-                color: isLineActive ? const Color(0xFFFF6A00) : const Color(0xFFE2E8F0),
-              ),
-          ],
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: const Color(0xFF1B2430),
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                location,
-                style: GoogleFonts.nunito(
-                  color: const Color(0xFF667085),
-                  fontSize: 11,
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 
   // Recent Notifications Builder
   Widget _buildRecentNotifications(BuildContext context) {

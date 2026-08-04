@@ -28,6 +28,7 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  bool? _isOnlineOverride;
 
   @override
   void initState() {
@@ -151,7 +152,7 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
                         final driverName = (driver?.fullName != null && driver!.fullName.trim().isNotEmpty)
                             ? driver.fullName
                             : 'Driver';
-                        final isOnline = driver?.isOnline ?? (driver?.driverStatus != 'OFFLINE');
+                        final isOnline = _isOnlineOverride ?? (driver?.isOnline ?? (driver?.driverStatus != 'OFFLINE'));
 
                         return Column(
                           mainAxisSize: MainAxisSize.min,
@@ -295,27 +296,57 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
     );
   }
 
-  Future<void> _handleStatusToggle(BuildContext context, AuthProvider authProvider, bool isOnline) async {
-    final newStatus = isOnline ? 'AVAILABLE' : 'OFFLINE';
+  Future<void> _handleStatusToggle(BuildContext context, AuthProvider authProvider, bool newValue) async {
+    final currentIsOnline = _isOnlineOverride ?? (authProvider.driver?.isOnline ?? (authProvider.driver?.driverStatus != 'OFFLINE'));
+    debugPrint('[DEBUG] Availability Switch onChanged triggered: newValue = $newValue');
+    debugPrint('[DEBUG] Local state before update: isOnline = $currentIsOnline -> target update: isOnline = $newValue');
+
+    // 1. Immediately update local state & rebuild overlay entry
+    setState(() {
+      _isOnlineOverride = newValue;
+    });
+    _overlayEntry?.markNeedsBuild();
+
+    final newStatus = newValue ? 'AVAILABLE' : 'OFFLINE';
+    debugPrint('[DEBUG] Availability API request payload: { isOnline: $newValue, driverStatus: $newStatus }');
+
+    // 2. Execute profile update API call
     final success = await authProvider.updateProfile({
-      'isOnline': isOnline,
+      'isOnline': newValue,
       'driverStatus': newStatus,
     });
 
+    final returnedIsOnline = authProvider.driver?.isOnline;
+    debugPrint('[DEBUG] Availability API response: success = $success, returned isOnline = $returnedIsOnline');
+
     if (context.mounted) {
       if (success) {
+        // 3. Update local state with returned backend value
+        setState(() {
+          _isOnlineOverride = returnedIsOnline ?? newValue;
+        });
+        _overlayEntry?.markNeedsBuild();
+        debugPrint('[DEBUG] Local state after successful update: isOnline = $_isOnlineOverride');
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              isOnline ? 'Status updated to Online 🟢' : 'Status updated to Offline ⚪',
+              newValue ? 'Status updated to Online 🟢' : 'Status updated to Offline ⚪',
               style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500),
             ),
-            backgroundColor: isOnline ? const Color(0xFF15803D) : const Color(0xFF374151),
+            backgroundColor: newValue ? const Color(0xFF15803D) : const Color(0xFF374151),
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
           ),
         );
       } else {
+        // Revert local state on failure
+        setState(() {
+          _isOnlineOverride = currentIsOnline;
+        });
+        _overlayEntry?.markNeedsBuild();
+        debugPrint('[DEBUG] Local state reverted after failed update: isOnline = $_isOnlineOverride');
+
         final err = authProvider.errorMessage ?? 'Failed to update availability status';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -430,7 +461,7 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
             ? driver.fullName
             : 'Driver';
         final photoUrl = driver?.profileImage;
-        final isOnline = driver?.isOnline ?? (driver?.driverStatus != 'OFFLINE');
+        final isOnline = _isOnlineOverride ?? (driver?.isOnline ?? (driver?.driverStatus != 'OFFLINE'));
 
         final textColor = widget.isDarkBackground ? Colors.white : const Color(0xFF1B2430);
         final roleColor = widget.isDarkBackground ? const Color(0xFF98A2B3) : const Color(0xFF6B7280);
