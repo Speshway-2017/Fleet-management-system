@@ -208,6 +208,20 @@ class ApiService {
     });
   }
 
+  static Future<dynamic> endTrip(String tripId) async {
+    try {
+      return await patch('/driver/trips/$tripId/end-trip', {});
+    } catch (e1) {
+      try {
+        return await post('/driver/trips/$tripId/end-trip', {});
+      } catch (e2) {
+        return await patch('/driver/trips/$tripId/customer-location', {
+          'reached': true,
+        });
+      }
+    }
+  }
+
   static Future<dynamic> getCurrentTrip() async {
     return await get('/driver/trips/current');
   }

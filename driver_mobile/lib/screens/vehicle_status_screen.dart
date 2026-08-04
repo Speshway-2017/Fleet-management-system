@@ -173,7 +173,7 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Live vehicle telemetry and operational status are unavailable because no vehicle is currently assigned to your driver profile.',
+                  'No vehicle has been assigned yet. Vehicle-related features will become available once your manager assigns a vehicle.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.nunito(fontSize: 14, color: textSecondary),
                 ),

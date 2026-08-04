@@ -13,6 +13,7 @@ import {
   markDriverNotificationRead,
   markAllDriverNotificationsRead,
   updateTripStatus,
+  endTrip,
   toggleCustomerLocation,
   updateDriverLocation,
   getDriverDocuments,
@@ -60,9 +61,15 @@ router.post('/trips/:id/respond', respondToTripAssignment);
 router.post('/trips/:id/accept', acceptTrip);
 router.post('/trips/:id/reject', rejectTrip);
 router.patch('/notifications/read-all', markAllDriverNotificationsRead);
-router.patch('/notifications/:id/read', markDriverNotificationRead);
 router.patch('/trips/:id/status', updateTripStatus);
+router.patch('/trips/:id/end-trip', endTrip);
+router.post('/trips/:id/end-trip', endTrip);
+router.put('/trips/:id/end-trip', endTrip);
+router.patch('/trips/:id/end', endTrip);
+router.post('/trips/:id/end', endTrip);
+router.put('/trips/:id/end', endTrip);
 router.patch('/trips/:id/customer-location', toggleCustomerLocation);
+router.post('/trips/:id/customer-location', toggleCustomerLocation);
 router.post('/location', updateDriverLocation);
 router.get('/documents', getDriverDocuments);
 router.get('/documents/:id', getDriverDocumentById);

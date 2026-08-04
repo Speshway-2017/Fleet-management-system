@@ -32,10 +32,94 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   bool _isUploadingWeighbridge = false;
   Map<String, dynamic>? _trip;
 
+  Map<String, String> _getFormattedDeliveryAddress(Map<String, dynamic> trip) {
+    final addr = (trip['deliveryAddress'] is Map ? trip['deliveryAddress'] : null) ??
+                 (trip['toAddress'] is Map ? trip['toAddress'] : null);
+
+    final companyName = addr?['companyName']?.toString().trim() ?? '';
+    final contactPerson = addr?['contactPerson']?.toString().trim() ?? '';
+    final mobile = addr?['mobile']?.toString().trim() ?? addr?['mobileNumber']?.toString().trim() ?? '';
+    final streetAddress = addr?['streetAddress']?.toString().trim() ?? '';
+    final area = addr?['area']?.toString().trim() ?? addr?['areaLocality']?.toString().trim() ?? '';
+    final city = addr?['city']?.toString().trim() ?? trip['endLocation']?.toString().trim() ?? trip['destination']?.toString().trim() ?? '';
+    final state = addr?['state']?.toString().trim() ?? '';
+    final pincode = addr?['pincode']?.toString().trim() ?? '';
+
+    List<String> lines = [];
+    if (companyName.isNotEmpty) lines.add(companyName);
+    if (contactPerson.isNotEmpty) lines.add('Contact: $contactPerson');
+    if (mobile.isNotEmpty) lines.add('Mobile: $mobile');
+    if (streetAddress.isNotEmpty) lines.add(streetAddress);
+    if (area.isNotEmpty) lines.add(area);
+    if (city.isNotEmpty) lines.add(city);
+
+    String statePin = '';
+    if (state.isNotEmpty && pincode.isNotEmpty) {
+      statePin = '$state - $pincode';
+    } else if (state.isNotEmpty) {
+      statePin = state;
+    } else if (pincode.isNotEmpty) {
+      statePin = pincode;
+    }
+    if (statePin.isNotEmpty) lines.add(statePin);
+
+    if (lines.isEmpty) {
+      lines.add(city.isNotEmpty ? city : 'N/A');
+    }
+
+    return {
+      'companyName': companyName,
+      'contactPerson': contactPerson,
+      'mobile': mobile,
+      'streetAddress': streetAddress,
+      'area': area,
+      'city': city,
+      'state': state,
+      'pincode': pincode,
+      'fullText': lines.join('\n'),
+    };
+  }
+
+  Widget _buildDeliveryAddressRow(Map<String, dynamic> trip) {
+    final addrInfo = _getFormattedDeliveryAddress(trip);
+    final fullText = addrInfo['fullText']!;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Delivery Address',
+            style: GoogleFonts.nunito(
+              fontSize: 12,
+              color: AppColors.secondaryText,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              fullText,
+              textAlign: TextAlign.right,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryText,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> printInvoice(Map<String, dynamic> trip, String invoiceNumber) async {
     final invoiceDateStr = DateTime.now().toString().split(' ')[0];
     final startLocation = trip['startLocation'] ?? trip['pickup'] ?? 'N/A';
-    final endLocation = trip['endLocation'] ?? trip['destination'] ?? 'N/A';
+    final deliveryAddressText = _getFormattedDeliveryAddress(trip)['fullText']!;
     final departureTime = trip['departureTime'] != null ? formatIndianDateTime(trip['departureTime']) : 'N/A';
     final eta = trip['eta'] != null ? formatIndianDateTime(trip['eta']) : 'N/A';
     final distance = trip['estimatedDistance'] != null ? '${trip['estimatedDistance']} KM' : (trip['distance'] ?? 'N/A');
@@ -59,7 +143,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     .logo { font-size: 24px; font-weight: bold; color: #1e3a8a; }
     .logo span { color: #2563eb; }
     .company-details { text-align: right; font-size: 12px; color: #666; }
-    .invoice-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: #f3f4f6; padding: 15px; border-radius: 6px; margin-bottom: 20px; font-size: 12px; }
+    .invoice-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: #f3f4f6; padding: 15px; border-radius: 6px; margin-bottom: 20px; font-size: 12px; }
     .meta-item { display: flex; flex-direction: column; }
     .meta-label { font-weight: bold; color: #4b5563; font-size: 10px; text-transform: uppercase; }
     .meta-val { font-weight: bold; color: #111827; margin-top: 4px; }
@@ -96,17 +180,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         <span class="meta-label">Trip ID</span>
         <span class="meta-val">${trip['tripNumber']}</span>
       </div>
-      <div class="meta-item">
-        <span class="meta-label">Status</span>
-        <span class="meta-val">${trip['status']}</span>
-      </div>
     </div>
 
     <div class="grid">
       <div>
         <div class="section-title">Trip Information</div>
         <div class="detail-row"><span class="detail-label">Pickup Location</span><span class="detail-val">$startLocation</span></div>
-        <div class="detail-row"><span class="detail-label">Destination</span><span class="detail-val">$endLocation</span></div>
+        <div class="detail-row" style="align-items: flex-start; margin-top: 4px; margin-bottom: 4px;"><span class="detail-label">Delivery Address</span><span class="detail-val" style="text-align: right; white-space: pre-line; line-height: 1.35;">$deliveryAddressText</span></div>
         <div class="detail-row"><span class="detail-label">Departure</span><span class="detail-val">$departureTime</span></div>
         <div class="detail-row"><span class="detail-label">ETA</span><span class="detail-val">$eta</span></div>
         <div class="detail-row"><span class="detail-label">Distance</span><span class="detail-val">$distance</span></div>
@@ -162,7 +242,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       context: context,
       builder: (context) {
         final startLocation = trip['startLocation'] ?? trip['pickup'] ?? 'N/A';
-        final endLocation = trip['endLocation'] ?? trip['destination'] ?? 'N/A';
         final departureTime = trip['departureTime'] != null ? formatIndianDateTime(trip['departureTime']) : 'N/A';
         final eta = trip['eta'] != null ? formatIndianDateTime(trip['eta']) : 'N/A';
         final distance = trip['estimatedDistance'] != null ? '${trip['estimatedDistance']} KM' : (trip['distance'] ?? 'N/A');
@@ -227,8 +306,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         _buildRowItem('Invoice Date', DateTime.now().toString().split(' ')[0]),
                         const SizedBox(height: 4),
                         _buildRowItem('Trip ID', trip['tripNumber'] ?? 'N/A'),
-                        const SizedBox(height: 4),
-                        _buildRowItem('Trip Status', trip['status'] ?? 'N/A', isBoldValue: true),
                       ],
                     ),
                   ),
@@ -244,7 +321,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ),
                   const Divider(height: 12, color: AppColors.divider),
                   _buildRowItem('Pickup Location', startLocation),
-                  _buildRowItem('Destination', endLocation),
+                  _buildDeliveryAddressRow(trip),
                   _buildRowItem('Departure', departureTime),
                   _buildRowItem('ETA', eta),
                   _buildRowItem('Distance', distance),
@@ -312,68 +389,135 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
   Widget _buildDocumentRow(
     String label,
-    String status, {
-    required bool isUploaded,
+    String statusStr, {
+    required bool canUpload,
     required bool isUploading,
+    required String? rejectionReason,
     required VoidCallback onUpload,
   }) {
+    final statusLower = statusStr.toLowerCase();
+    final isUploaded = ['uploaded', 'pending'].contains(statusLower);
+    final isApproved = statusLower == 'approved';
+    final isRejected = statusLower == 'rejected';
+
+    Color statusColor = const Color(0xFFD97706);
+    String statusText = 'Status: Not Uploaded ⚠️';
+
+    if (isApproved) {
+      statusColor = AppColors.success;
+      statusText = 'Status: Approved ✅';
+    } else if (isUploaded) {
+      statusColor = AppColors.success;
+      statusText = 'Status: Uploaded ✅';
+    } else if (isRejected) {
+      statusColor = AppColors.error;
+      statusText = 'Status: Rejected ❌';
+    }
+
+    String buttonLabel = 'Upload';
+    if (isRejected) {
+      buttonLabel = 'Re-upload';
+    } else if (isUploaded || isApproved) {
+      buttonLabel = 'View / Replace';
+    }
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: GoogleFonts.nunito(
-                    fontSize: 13,
-                    color: AppColors.secondaryText,
-                    fontWeight: FontWeight.w500,
-                  ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: GoogleFonts.nunito(
+                        fontSize: 13,
+                        color: AppColors.secondaryText,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      statusText,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: statusColor,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  isUploaded ? 'Status: Uploaded ✅' : 'Status: Pending Upload ⚠️',
+              ),
+              ElevatedButton.icon(
+                onPressed: (isUploading || !canUpload) ? null : onUpload,
+                icon: isUploading
+                    ? const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Icon(
+                        isApproved
+                            ? Icons.check_circle
+                            : (isUploaded
+                                ? Icons.visibility_rounded
+                                : (isRejected ? Icons.refresh_rounded : Icons.upload_file_rounded)),
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                label: Text(
+                  buttonLabel,
                   style: GoogleFonts.poppins(
                     fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isUploaded ? AppColors.success : const Color(0xFFD97706),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ElevatedButton.icon(
-            onPressed: (isUploading || isUploaded) ? null : onUpload,
-            icon: isUploading
-                ? const SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : Icon(
-                    isUploaded ? Icons.check_circle : Icons.upload_file_rounded,
-                    size: 14,
+                    fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
-            label: Text(
-              isUploaded ? 'Uploaded' : 'Upload',
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isRejected
+                      ? AppColors.error
+                      : (isUploaded || isApproved ? const Color(0xFF2563EB) : AppColors.secondary),
+                  disabledBackgroundColor: const Color(0xFF9CA3AF),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                ),
+              ),
+            ],
+          ),
+          if (isRejected && rejectionReason != null && rejectionReason.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(6.0),
+                border: Border.all(color: const Color(0xFFFCA5A5)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Rejection Reason: $rejectionReason',
+                      style: GoogleFonts.nunito(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF991B1B),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isUploaded ? AppColors.success : AppColors.secondary,
-              disabledBackgroundColor: isUploaded ? AppColors.success : const Color(0xFF9CA3AF),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-            ),
-          ),
+          ],
         ],
       ),
     );
@@ -702,6 +846,44 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
+  Future<void> _handleEndTrip() async {
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final rawId = _trip?['tripId'] ?? _trip?['_id'] ?? widget.tripId;
+      final cleanId = rawId.toString().replaceAll('#', '').trim();
+      await ApiService.endTrip(cleanId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🏁 Destination reached! Document uploads (POD & Weighbridge) are now unlocked.'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _fetchTripDetails();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
   Future<void> _handleCompleteTrip() async {
     final podStatus = (_trip?['podStatus'] ?? 'Not Uploaded').toString();
     final weighbridgeStatus = (_trip?['weighbridgeStatus'] ?? 'Not Uploaded').toString();
@@ -726,11 +908,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     try {
       final rawId = _trip?['tripId'] ?? _trip?['_id'] ?? widget.tripId;
       final cleanId = rawId.toString().replaceAll('#', '').trim();
-      await ApiService.updateTripStatus(cleanId, 'Completed');
+      await ApiService.updateTripStatus(cleanId, 'Waiting for Manager Approval');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Trip completed successfully!'),
+            content: Text('✅ Trip completion request submitted! Waiting for Manager Approval.'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -868,7 +1050,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final truckId = (vehicleName.isNotEmpty && vehiclePlate.isNotEmpty)
         ? '$vehicleName ($vehiclePlate)'
         : (vehiclePlate.isNotEmpty ? vehiclePlate : (vehicleName.isNotEmpty ? vehicleName : (_trip?['vehicle'] ?? 'Unassigned')));
-    final weight = _trip?['cargoWeight'] != null ? '${_trip!['cargoWeight']} Tons' : 'N/A';
+    final weight = _trip?['cargoWeight'] != null ? '${_trip!['cargoWeight']} KG' : 'N/A';
     final managerName = _trip?['manager'] != null ? _trip!['manager']['name'] : 'N/A';
 
     // Manifest nodes
@@ -1218,25 +1400,36 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           const Divider(height: 24, color: AppColors.divider),
                           Builder(
                             builder: (context) {
+                              final rawStatus = (_trip?['status'] ?? 'Scheduled').toString();
+                              final isTripEnded = _trip?['tripEnded'] == true || _trip?['customerLocationReached'] == true;
+                              final isWaitingApproval = rawStatus.toLowerCase() == 'waiting for manager approval';
+                              final isCompleted = rawStatus.toLowerCase() == 'completed';
+
                               final podStatusStr = (_trip?['podStatus'] ?? 'Not Uploaded').toString();
                               final wbStatusStr = (_trip?['weighbridgeStatus'] ?? 'Not Uploaded').toString();
-                              final hasPod = ['uploaded', 'pending', 'approved'].contains(podStatusStr.toLowerCase());
-                              final hasWb = ['uploaded', 'pending', 'approved'].contains(wbStatusStr.toLowerCase());
+
+                              final podRejectionReason = _trip?['proofOfDelivery']?['rejectionReason'] ?? _trip?['rejectionReason'];
+                              final wbRejectionReason = _trip?['weighbridgeSlip']?['rejectionReason'] ?? _trip?['rejectionReason'];
+
+                              final canUploadPod = isTripEnded && !isWaitingApproval && !isCompleted;
+                              final canUploadWb = isTripEnded && !isWaitingApproval && !isCompleted;
 
                               return Column(
                                 children: [
                                   _buildDocumentRow(
                                     'Proof of Delivery (POD)',
                                     podStatusStr,
-                                    isUploaded: hasPod,
+                                    canUpload: canUploadPod,
                                     isUploading: _isUploadingPod,
+                                    rejectionReason: podRejectionReason,
                                     onUpload: _uploadPodFromDetails,
                                   ),
                                   _buildDocumentRow(
                                     'Weighbridge Slip',
                                     wbStatusStr,
-                                    isUploaded: hasWb,
+                                    canUpload: canUploadWb,
                                     isUploading: _isUploadingWeighbridge,
+                                    rejectionReason: wbRejectionReason,
                                     onUpload: _uploadWeighbridgeFromDetails,
                                   ),
                                 ],
@@ -1394,16 +1587,79 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       const SizedBox(height: 24),
                       Builder(
                         builder: (context) {
+                          final isTripEnded = _trip?['tripEnded'] == true || _trip?['customerLocationReached'] == true;
                           final podStatusStr = (_trip?['podStatus'] ?? 'Not Uploaded').toString();
                           final wbStatusStr = (_trip?['weighbridgeStatus'] ?? 'Not Uploaded').toString();
                           final hasPod = ['uploaded', 'pending', 'approved'].contains(podStatusStr.toLowerCase());
                           final hasWb = ['uploaded', 'pending', 'approved'].contains(wbStatusStr.toLowerCase());
-                          final canComplete = hasPod && hasWb;
+                          final isPodRejected = podStatusStr.toLowerCase() == 'rejected';
+                          final isWbRejected = wbStatusStr.toLowerCase() == 'rejected';
+                          final hasRejection = isPodRejected || isWbRejected;
+
+                          final canComplete = isTripEnded && hasPod && hasWb && !hasRejection;
+
+                          if (!isTripEnded) {
+                            return ElevatedButton.icon(
+                              onPressed: _isSubmitting ? null : _handleEndTrip,
+                              icon: const Icon(
+                                Icons.flag_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                              label: _isSubmitting
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                    )
+                                  : Text(
+                                      'End Trip (Destination Reached)',
+                                      style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2563EB),
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(double.infinity, 50),
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            );
+                          }
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              if (!canComplete) ...[
+                              if (hasRejection) ...[
+                                Container(
+                                  padding: const EdgeInsets.all(14.0),
+                                  margin: const EdgeInsets.only(bottom: 12.0),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF2F2),
+                                    borderRadius: BorderRadius.circular(10.0),
+                                    border: Border.all(color: const Color(0xFFFCA5A5)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 22),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'Document(s) rejected by Manager. Please re-upload the rejected document(s) above before completing the trip.',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: const Color(0xFF991B1B),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ] else if (!canComplete) ...[
                                 Container(
                                   padding: const EdgeInsets.all(14.0),
                                   margin: const EdgeInsets.only(bottom: 12.0),
@@ -1421,7 +1677,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
-                                              'Mandatory Uploads Required',
+                                              'Mandatory Uploads Required Before Completion',
                                               style: GoogleFonts.poppins(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.bold,
@@ -1441,7 +1697,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                           ),
                                           const SizedBox(width: 8),
                                           Text(
-                                            '• Proof of Delivery (POD)${hasPod ? ' (Uploaded)' : ''}',
+                                            '• Proof of Delivery (POD)${hasPod ? ' (Uploaded ✅)' : ''}',
                                             style: GoogleFonts.nunito(
                                               fontSize: 12,
                                               fontWeight: hasPod ? FontWeight.bold : FontWeight.w600,
@@ -1460,7 +1716,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                           ),
                                           const SizedBox(width: 8),
                                           Text(
-                                            '• Weighbridge Slip${hasWb ? ' (Uploaded)' : ''}',
+                                            '• Weighbridge Slip${hasWb ? ' (Uploaded ✅)' : ''}',
                                             style: GoogleFonts.nunito(
                                               fontSize: 12,
                                               fontWeight: hasWb ? FontWeight.bold : FontWeight.w600,

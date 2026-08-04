@@ -260,7 +260,7 @@ class AssignmentDetailsScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              isCompleted ? '22.5 Tons' : '14.2 Tons',
+                              isCompleted ? '22500 KG' : '14200 KG',
                               style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,

@@ -212,7 +212,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                'You currently do not have a vehicle assigned to your driver profile. Please contact your Fleet Manager for vehicle allocation.',
+                'No vehicle is currently assigned. You can view your previous records, but new maintenance tickets will be available once a vehicle is assigned.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.nunito(
                   fontSize: 14,

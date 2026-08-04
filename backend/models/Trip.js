@@ -49,6 +49,8 @@ const tripSchema = new mongoose.Schema(
     actualDistance: { type: Number, default: 0 },
     customerLocationReached: { type: Boolean, default: false },
     customerLocationReachedAt: { type: Date },
+    tripEnded: { type: Boolean, default: false },
+    endedAt: { type: Date },
     podStatus: { type: String, enum: ['Not Uploaded', 'Uploaded', 'Pending', 'Approved', 'Rejected'], default: 'Not Uploaded' },
     weighbridgeStatus: { type: String, enum: ['Not Uploaded', 'Uploaded', 'Pending', 'Approved', 'Rejected'], default: 'Not Uploaded' },
     proofOfDelivery: {
@@ -58,7 +60,8 @@ const tripSchema = new mongoose.Schema(
       customerName: { type: String, default: '' },
       receiverName: { type: String, default: '' },
       uploadedAt: { type: Date },
-      status: { type: String, default: 'Not Uploaded' }
+      status: { type: String, default: 'Not Uploaded' },
+      rejectionReason: { type: String, default: '' }
     },
     weighbridgeSlip: {
       url: { type: String, default: '' },
@@ -68,7 +71,8 @@ const tripSchema = new mongoose.Schema(
       netWeight: { type: Number, default: 0 },
       location: { type: String, default: '' },
       uploadedAt: { type: Date },
-      status: { type: String, default: 'Not Uploaded' }
+      status: { type: String, default: 'Not Uploaded' },
+      rejectionReason: { type: String, default: '' }
     },
     tripInvoice: {
       invoiceNumber: { type: String, default: '' },
