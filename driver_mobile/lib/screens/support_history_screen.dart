@@ -3,8 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import 'raise_ticket_screen.dart';
 import 'ticket_details_screen.dart';
-import 'calling_fleet_manager_screen.dart';
-import 'message_fleet_manager_screen.dart';
+import '../widgets/external_contact_modal.dart';
 
 /// Representation of a Support Ticket data item.
 class SupportTicketItem {
@@ -58,6 +57,11 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
   void initState() {
     super.initState();
     _loadTickets();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   Future<void> _loadTickets() async {
@@ -136,14 +140,18 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         );
       }).toList();
 
-      setState(() {
-        _tickets = fetched;
-      });
+      if (mounted) {
+        setState(() {
+          _tickets = fetched;
+        });
+      }
     } catch (e) {
       debugPrint('Failed to load driver tickets from API: $e');
-      setState(() {
-        _tickets = [];
-      });
+      if (mounted) {
+        setState(() {
+          _tickets = [];
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -290,10 +298,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                       label: 'Call Manager',
                       color: const Color(0xFF10B981),
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const CallingFleetManagerScreen()),
-                        );
+                        showExternalContactOptionsModal(context);
                       },
                     ),
                   ),
@@ -305,10 +310,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                       label: 'Message Manager',
                       color: primaryOrange,
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const MessageFleetManagerScreen()),
-                        );
+                        showExternalContactOptionsModal(context);
                       },
                     ),
                   ),

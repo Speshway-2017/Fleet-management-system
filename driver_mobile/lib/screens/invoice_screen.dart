@@ -4,19 +4,194 @@ import '../constants/app_radius.dart';
 import '../constants/app_spacing.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
+import '../services/api_service.dart';
 
-class InvoiceScreen extends StatelessWidget {
+class InvoiceScreen extends StatefulWidget {
   final String invoiceNumber;
   final String tripId;
+  final Map<String, dynamic>? tripData;
 
   const InvoiceScreen({
     super.key,
     this.invoiceNumber = 'INV-2023-8842',
     this.tripId = '#TRP-9921',
+    this.tripData,
   });
 
   @override
+  State<InvoiceScreen> createState() => _InvoiceScreenState();
+}
+
+class _InvoiceScreenState extends State<InvoiceScreen> {
+  bool _isLoading = true;
+  Map<String, dynamic>? _trip;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.tripData != null) {
+      _trip = widget.tripData;
+      _isLoading = false;
+    } else {
+      _fetchTripDetails();
+    }
+  }
+
+  Future<void> _fetchTripDetails() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = _trip == null;
+    });
+    try {
+      final cleanId = widget.tripId.replaceAll('#', '').trim();
+      final res = await ApiService.getTripDetails(cleanId);
+      if (res != null && res['data'] != null) {
+        if (mounted) {
+          setState(() {
+            _trip = res['data'];
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return 'N/A';
+    try {
+      final dt = DateTime.parse(dateStr).toLocal();
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
+  String _formatDateTime(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return 'N/A';
+    try {
+      final dt = DateTime.parse(dateStr).toLocal();
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      int hour = dt.hour;
+      final minute = dt.minute.toString().padLeft(2, '0');
+      final period = hour >= 12 ? 'PM' : 'AM';
+      hour = hour % 12;
+      if (hour == 0) hour = 12;
+      return '${dt.day} ${months[dt.month - 1]} ${dt.year}, ${hour.toString().padLeft(2, '0')}:$minute $period';
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
+  String _formatAddress(Map<String, dynamic>? address) {
+    if (address == null || address.isEmpty) {
+      return 'Warehouse 7, Sector 18, Okhla Industrial Area, Delhi - 110020';
+    }
+    final street = address['streetAddress'] ?? '';
+    final area = address['areaLocality'] ?? address['area'] ?? '';
+    final city = address['city'] ?? '';
+    final state = address['state'] ?? '';
+    final pin = address['pincode'] ?? '';
+    
+    final parts = [street, area, city, state].where((p) => p.toString().trim().isNotEmpty).toList();
+    if (parts.isEmpty) {
+      return 'Warehouse 7, Sector 18, Okhla Industrial Area, Delhi - 110020';
+    }
+    
+    final addrStr = parts.join(', ');
+    return pin.toString().trim().isNotEmpty ? '$addrStr - $pin' : addrStr;
+  }
+
+  String _formatCurrency(num value) {
+    final str = value.round().toString();
+    final RegExp reg = RegExp(r'(\d)(?=(\d{3})+(?!\d))');
+    return '₹${str.replaceAllMapped(reg, (Match match) => '${match[1]},')}';
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading && _trip == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: CustomAppBar(
+          centerTitle: false,
+          title: Text(
+            'Invoice',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.background,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+          ),
+        ),
+      );
+    }
+
+    final trip = _trip ?? {};
+    final invoiceNumber = trip['invoiceNumber'] ?? widget.invoiceNumber;
+    final tripDisplayId = trip['tripNumber'] != null 
+        ? (trip['tripNumber'].toString().startsWith('#') ? trip['tripNumber'] : '#${trip['tripNumber']}')
+        : widget.tripId;
+        
+    final dateStr = _formatDate(trip['actualEndTime'] ?? trip['createdAt']);
+    
+    final deliveryAddress = trip['deliveryAddress'] != null 
+        ? Map<String, dynamic>.from(trip['deliveryAddress']) 
+        : (trip['toAddress'] != null ? Map<String, dynamic>.from(trip['toAddress']) : null);
+        
+    final customer = deliveryAddress?['companyName'] ?? 'Northern Retail Ltd';
+    final address = _formatAddress(deliveryAddress);
+    final contact = deliveryAddress?['mobileNumber'] ?? deliveryAddress?['mobile'] ?? '+91 98765 43210';
+    final gst = '07BBBBB1111B2Z6';
+
+    double distanceVal = 0.0;
+    if (trip['actualDistance'] != null) {
+      distanceVal = double.tryParse(trip['actualDistance'].toString()) ?? 0.0;
+    }
+    if (distanceVal == 0.0 && trip['estimatedDistance'] != null) {
+      distanceVal = double.tryParse(trip['estimatedDistance'].toString()) ?? 0.0;
+    }
+    if (distanceVal == 0.0) {
+      distanceVal = 190.0;
+    }
+
+    final freight = (distanceVal * 230 / 100).round() * 100;
+    final loading = 2500;
+    final unloading = 2500;
+
+    final fuelDetails = trip['fuelDetails'] as Map<String, dynamic>?;
+    final fuel = fuelDetails != null
+        ? (double.tryParse(fuelDetails['amount']?.toString() ?? '')?.round() ?? 0)
+        : (distanceVal * 42 / 100).round() * 100;
+
+    final double rawTollAmount = double.tryParse(trip['totalTollsAmount']?.toString() ?? '') ?? 0.0;
+    final toll = rawTollAmount > 0.0
+        ? rawTollAmount.round()
+        : (distanceVal * 6 / 100).round() * 100;
+
+    final subtotal = freight + loading + unloading + toll + fuel;
+    final tax = (subtotal * 0.18).round();
+    final grandTotal = subtotal + tax;
+
+    final transactionId = 'TXN-${tripDisplayId.replaceAll('#', '')}';
+    final paidOnStr = _formatDateTime(trip['actualEndTime'] ?? trip['createdAt']);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: CustomAppBar(
@@ -30,42 +205,61 @@ class InvoiceScreen extends StatelessWidget {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 1. Invoice Number & Date/Trip Card
-              _buildInvoiceHeaderCard(context),
-              AppSpacing.verticalSm,
+        child: RefreshIndicator(
+          onRefresh: _fetchTripDetails,
+          color: AppColors.primary,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 1. Invoice Number & Date/Trip Card
+                _buildInvoiceHeaderCard(context, invoiceNumber, dateStr, tripDisplayId),
+                AppSpacing.verticalSm,
 
-              // 2. Billing Information Card
-              _buildBillingInfoCard(context),
-              AppSpacing.verticalSm,
+                // 2. Billing Information Card
+                _buildBillingInfoCard(context, customer, address, gst, contact),
+                AppSpacing.verticalSm,
 
-              // 3. Summary Table Card
-              _buildSummaryCard(context),
-              AppSpacing.verticalSm,
+                // 3. Summary Table Card
+                _buildSummaryCard(
+                  context,
+                  _formatCurrency(freight),
+                  _formatCurrency(loading),
+                  _formatCurrency(unloading),
+                  _formatCurrency(toll),
+                  _formatCurrency(fuel),
+                  _formatCurrency(tax),
+                  _formatCurrency(grandTotal),
+                ),
+                AppSpacing.verticalSm,
 
-              // 4. Document Preview Card
-              _buildDocumentPreviewCard(context),
-              AppSpacing.verticalSm,
+                // 4. Document Preview Card
+                _buildDocumentPreviewCard(context, invoiceNumber),
+                AppSpacing.verticalSm,
 
-              // 5. Payment Details Card
-              _buildPaymentDetailsCard(context),
-              AppSpacing.verticalLg,
+                // 5. Payment Details Card
+                _buildPaymentDetailsCard(context, 'Bank Transfer', transactionId, paidOnStr),
+                AppSpacing.verticalLg,
 
-              // 6. Action Buttons
-              _buildFooterActions(context),
-              const SizedBox(height: 40),
-            ],
+                // 6. Action Buttons
+                _buildFooterActions(context, invoiceNumber),
+                const SizedBox(height: 40),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildInvoiceHeaderCard(BuildContext context) {
+  Widget _buildInvoiceHeaderCard(
+    BuildContext context,
+    String invoiceNum,
+    String date,
+    String tripDisplayId,
+  ) {
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -87,7 +281,7 @@ class InvoiceScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    invoiceNumber,
+                    invoiceNum,
                     style: const TextStyle(
                       color: AppColors.primaryText,
                       fontWeight: FontWeight.bold,
@@ -120,8 +314,8 @@ class InvoiceScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoRow('Date', '25 Oct 2023'),
-              _buildInfoRow('Trip ID', tripId, alignRight: true),
+              _buildInfoRow('Date', date),
+              _buildInfoRow('Trip ID', tripDisplayId, alignRight: true),
             ],
           ),
         ],
@@ -129,7 +323,13 @@ class InvoiceScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBillingInfoCard(BuildContext context) {
+  Widget _buildBillingInfoCard(
+    BuildContext context,
+    String customer,
+    String address,
+    String gst,
+    String contact,
+  ) {
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -150,18 +350,15 @@ class InvoiceScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _buildInfoLabelValue('Customer', 'Northern Retail Ltd'),
+          _buildInfoLabelValue('Customer', customer),
           const SizedBox(height: 12),
-          _buildInfoLabelValue(
-            'Address',
-            'Warehouse 7, Sector 18, Okhla Industrial Area, Delhi - 110020',
-          ),
+          _buildInfoLabelValue('Address', address),
           const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoRow('GST', '07BBBBB1111B2Z6'),
-              _buildInfoRow('Contact', '+91 98765 43210', alignRight: true),
+              _buildInfoRow('GST', gst),
+              _buildInfoRow('Contact', contact, alignRight: true),
             ],
           ),
         ],
@@ -169,7 +366,16 @@ class InvoiceScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryCard(BuildContext context) {
+  Widget _buildSummaryCard(
+    BuildContext context,
+    String freight,
+    String loading,
+    String unloading,
+    String toll,
+    String fuel,
+    String tax,
+    String grandTotal,
+  ) {
     return CustomCard(
       padding: EdgeInsets.zero,
       child: Column(
@@ -197,20 +403,20 @@ class InvoiceScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                _buildSummaryRow('Freight', '₹45,000'),
+                _buildSummaryRow('Freight', freight),
                 const SizedBox(height: 10),
-                _buildSummaryRow('Loading', '₹2,500'),
+                _buildSummaryRow('Loading', loading),
                 const SizedBox(height: 10),
-                _buildSummaryRow('Unloading', '₹2,500'),
+                _buildSummaryRow('Unloading', unloading),
                 const SizedBox(height: 10),
-                _buildSummaryRow('Toll', '₹1,200'),
+                _buildSummaryRow('Toll', toll),
                 const SizedBox(height: 10),
-                _buildSummaryRow('Fuel', '₹8,000'),
+                _buildSummaryRow('Fuel', fuel),
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 12.0),
                   child: Divider(color: AppColors.divider),
                 ),
-                _buildSummaryRow('Tax (18% GST)', '₹10,656'),
+                _buildSummaryRow('Tax (18% GST)', tax),
                 const SizedBox(height: 14),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -223,9 +429,9 @@ class InvoiceScreen extends StatelessWidget {
                         fontSize: 16,
                       ),
                     ),
-                    const Text(
-                      '₹69,856',
-                      style: TextStyle(
+                    Text(
+                      grandTotal,
+                      style: const TextStyle(
                         color: AppColors.secondary,
                         fontWeight: FontWeight.bold,
                         fontSize: 20,
@@ -241,7 +447,7 @@ class InvoiceScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDocumentPreviewCard(BuildContext context) {
+  Widget _buildDocumentPreviewCard(BuildContext context, String invoiceNum) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -284,7 +490,7 @@ class InvoiceScreen extends StatelessWidget {
                 Icon(Icons.picture_as_pdf, color: Colors.blue.shade400, size: 48),
                 const SizedBox(height: 10),
                 Text(
-                  'Invoice_$invoiceNumber.pdf',
+                  'Invoice_$invoiceNum.pdf',
                   style: TextStyle(
                     color: Colors.blue.shade800,
                     fontWeight: FontWeight.bold,
@@ -307,7 +513,12 @@ class InvoiceScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPaymentDetailsCard(BuildContext context) {
+  Widget _buildPaymentDetailsCard(
+    BuildContext context,
+    String method,
+    String txnId,
+    String paidOn,
+  ) {
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -322,23 +533,23 @@ class InvoiceScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          _buildPaymentRow('Method', 'Bank Transfer'),
+          _buildPaymentRow('Method', method),
           const SizedBox(height: 8),
-          _buildPaymentRow('Transaction ID', 'TXN-982104552'),
+          _buildPaymentRow('Transaction ID', txnId),
           const SizedBox(height: 8),
-          _buildPaymentRow('Paid On', '25 Oct 2023, 16:45'),
+          _buildPaymentRow('Paid On', paidOn),
         ],
       ),
     );
   }
 
-  Widget _buildFooterActions(BuildContext context) {
+  Widget _buildFooterActions(BuildContext context, String invoiceNum) {
     return Column(
       children: [
         ElevatedButton.icon(
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Downloading Invoice PDF...')),
+              SnackBar(content: Text('Downloading Invoice $invoiceNum PDF...')),
             );
           },
           icon: const Icon(Icons.download_outlined, color: Colors.white, size: 20),

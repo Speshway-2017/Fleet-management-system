@@ -380,6 +380,8 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
         VehicleActionTile(
           icon: Icons.notifications_active_outlined,
           title: 'Maintenance Alerts',
+          subtitle: '1 CRITICAL',
+          subtitleColor: const Color(0xFFEF4444),
           onTap: () {
             Navigator.push(
               context,
