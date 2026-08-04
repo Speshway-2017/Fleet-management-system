@@ -557,6 +557,9 @@ export default function CreateTripPage() {
 
         const driversData = rawDrivers.map(d => {
           const isAvailable = d.driverStatus === 'AVAILABLE' || d.status === 'Available';
+          let veh = d.assignedVehicle || d.vehiclePlate || d.vehicleRegistration || d.vehicle || "";
+          if (veh === "Unassigned") veh = "";
+
           return {
             ...d,
             id: d._id || d.id,
@@ -566,7 +569,8 @@ export default function CreateTripPage() {
             isNearby: d.isNearby || isDrvFallback,
             distanceKm: d.distanceKm,
             estimatedTravelTime: d.estimatedTravelTime,
-            currentLocation: formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch)
+            currentLocation: formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch),
+            assignedVehicle: veh
           };
         });
 
@@ -1245,10 +1249,13 @@ export default function CreateTripPage() {
                 <p className="text-xs text-gray-400 py-8 text-center font-semibold font-poppins">No drivers available in the selected location.</p>
               ) : (
                 (filterAvailableDrivers 
-                  ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
+                  ? drivers.filter(d => (d.driverStatus === "AVAILABLE" || d.status === "Available") && d.isDuty !== false && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
                   : drivers
                 ).map(d => {
                   const isExpired = d.licenseExpiry && new Date(d.licenseExpiry) < new Date();
+                  const isOffline = d.driverStatus === "OFFLINE" || d.driverStatus === "OFF_DUTY" || d.isDuty === false || d.status === "Offline";
+                  const isAvailable = (d.driverStatus === "AVAILABLE" || d.status === "Available") && !isOffline;
+
                   return (
                     <div
                       key={d.id}
@@ -1257,11 +1264,15 @@ export default function CreateTripPage() {
                           toast.error("This driver has an expired license and cannot be assigned.");
                           return;
                         }
+                        if (isOffline) {
+                          toast.error("This driver is currently Offline / Off Duty and cannot be assigned to a trip.");
+                          return;
+                        }
                         if (d.status === "Not Available") return;
                         handleDriverSelection(d);
                       }}
                       className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${
-                        (isExpired || d.status === "Not Available")
+                        (isExpired || isOffline || d.status === "Not Available")
                           ? "border-red-150 bg-red-50/10 opacity-60 cursor-not-allowed"
                           : String(selectedDriverId) === String(d.id)
                           ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
@@ -1275,7 +1286,9 @@ export default function CreateTripPage() {
                             <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
                           )}
                         </div>
-                        <span className="text-[10px] text-[#64748B] block mt-0.5 font-semibold">Emp ID: {formatEmployeeId(d.employeeId)}</span>
+                        <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                          <span className="text-[10px] text-[#64748B] font-semibold">Emp ID: {formatEmployeeId(d.employeeId)}</span>
+                        </div>
                         <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
                           <span>Lic Validity: <strong className={isExpired ? "text-red-500" : "text-[#1E293B]"}>{d.licenseExpiry ? new Date(d.licenseExpiry).toLocaleDateString() : "Valid"}</strong></span>
                           <span>|</span>
@@ -1289,31 +1302,43 @@ export default function CreateTripPage() {
                           </div>
                         )}
                         <div className="flex gap-1.5 mt-2">
-                          <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
+                          <span className={`inline-block px-2.5 py-0.5 rounded-[6px] text-[9px] font-extrabold uppercase font-poppins ${
                             isExpired
-                              ? "bg-red-50 text-red-600 border border-red-100"
-                              : d.status === "Available"
-                              ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                              : "bg-rose-50 text-rose-600 border border-rose-100"
+                              ? "bg-red-50 text-red-600 border border-red-200"
+                              : isOffline
+                              ? "bg-red-50 text-red-600 border border-red-200 font-bold"
+                              : isAvailable
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold"
+                              : "bg-amber-50 text-amber-700 border border-amber-200 font-bold"
                           }`}>
-                            {isExpired ? "Expired License" : d.status}
+                            {isExpired
+                              ? "EXPIRED LICENSE 🔴"
+                              : isOffline
+                              ? "OFFLINE 🔴"
+                              : isAvailable
+                              ? "ONLINE 🟢"
+                              : "OFFLINE 🔴"}
                           </span>
                         </div>
                       </div>
                       
                       <button
                         type="button"
-                        disabled={isExpired || d.status === "Not Available"}
+                        disabled={isExpired || isOffline || d.status === "Not Available"}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (isExpired) {
                             toast.error("This driver has an expired license and cannot be assigned.");
                             return;
                           }
+                          if (isOffline) {
+                            toast.error("This driver is currently Offline / Off Duty and cannot be assigned to a trip.");
+                            return;
+                          }
                           handleDriverSelection(d);
                         }}
                         className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
-                          (isExpired || d.status === "Not Available")
+                          (isExpired || isOffline || d.status === "Not Available")
                             ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
                             : String(selectedDriverId) === String(d.id)
                             ? "bg-[#B45A0A] text-white shadow-sm font-poppins"

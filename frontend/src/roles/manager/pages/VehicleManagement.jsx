@@ -45,8 +45,9 @@ export default function VehicleManagement() {
    * Backend uses: _id, brand, vehicleNumber, currentStatus (Available/Active/etc.)
    */
   const normaliseVehicle = (v) => {
-    let mappedStatus = v.currentStatus || 'Available';
-    if (mappedStatus === 'Under Maintenance') {
+    let rawStatus = v.currentStatus || v.status || 'Available';
+    let mappedStatus = rawStatus;
+    if (rawStatus === 'Under Maintenance' || rawStatus === 'Need Maintenance' || rawStatus === 'Out of Service' || rawStatus === 'In Maintenance') {
       mappedStatus = 'Maintenance';
     }
 
@@ -62,16 +63,17 @@ export default function VehicleManagement() {
     return {
       ...v,
       id:           v._id,
-      name:         v.vehicleName || `${v.brand} ${v.model}`,
+      name:         v.vehicleName || `${v.brand || ''} ${v.model || ''}`.trim() || v.vehicleNumber,
       manufacturer: v.brand || "",
       plateNumber:  v.vehicleNumber || "",
       type:         v.vehicleType || 'Truck',
-      driver:       'N/A',
+      driver:       v.assignedDriver?.fullName || v.assignedDriver?.name || 'Unassigned',
       fuelLevel:    v.fuelCapacity ? Math.round((v.odometer % v.fuelCapacity) || 50) : 50,
       fastagBalance:v.fastagBalance ?? 0,
       branch:       v.branch       || 'Pune',
       dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
       status:       mappedStatus,
+      currentStatus: rawStatus,
       insuranceExpiry: insExp,
       assignedDriver: v.assignedDriver || v.driverId || v.driver,
     };
@@ -81,6 +83,7 @@ export default function VehicleManagement() {
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [activities, setActivities] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
+  const [complaints, setComplaints] = useState([]);
 
   // Filter States
   const [search, setSearch] = useState("");
@@ -206,6 +209,15 @@ export default function VehicleManagement() {
         } catch (maintErr) {
           console.error("Failed to fetch maintenance logs:", maintErr);
         }
+
+        // Fetch vehicle issue tickets / complaints
+        try {
+          const compRes = await managerApi.getVehicleComplaints();
+          const rawComp = compRes.data?.data || compRes.data || [];
+          setComplaints(rawComp);
+        } catch (compErr) {
+          console.error("Failed to fetch vehicle complaints:", compErr);
+        }
       } catch (err) {
         console.error('Failed to fetch data:', err);
         if (isInitial) toast.error('Failed to load vehicles from server.');
@@ -327,9 +339,31 @@ export default function VehicleManagement() {
 
   // KPIs
   const totalVehicles = vehicles.length;
-  const activeVehicles = vehicles.filter(v => v.status === "On Trip" || v.status === "Available").length;
-  const idleVehicles = vehicles.filter(v => v.status === "Idle").length;
-  const maintVehicles = vehicles.filter(v => v.status === "Maintenance").length;
+  const activeVehicles = vehicles.filter(v => {
+    const s = (v.status || v.currentStatus || "").toLowerCase();
+    return s === "on trip" || s === "available" || s === "assigned" || s === "active";
+  }).length;
+  const idleVehicles = vehicles.filter(v => {
+    const s = (v.status || v.currentStatus || "").toLowerCase();
+    return s === "idle" || s === "out of service";
+  }).length;
+  const activeMaintenancePlates = new Set(
+    complaints
+      .filter(c => {
+        const s = (c.status || "").toLowerCase();
+        return s !== "resolved" && s !== "completed" && s !== "closed" && s !== "cancelled" && s !== "cancelled (accident)";
+      })
+      .map(c => (c.vehiclePlate || c.vehicleNumber || c.metadata?.vehiclePlate || "").toUpperCase().replace(/\s+/g, "").trim())
+      .filter(Boolean)
+  );
+
+  const maintVehicles = vehicles.filter(v => {
+    const s = (v.status || v.currentStatus || "").toLowerCase();
+    const isMaintStatus = s.includes("maintenance") || s.includes("repair") || s.includes("service") || s === "need maintenance" || s === "under maintenance";
+    const plate = (v.plateNumber || v.vehicleNumber || "").toUpperCase().replace(/\s+/g, "").trim();
+    const hasActiveTicket = plate && activeMaintenancePlates.has(plate);
+    return isMaintStatus || hasActiveTicket;
+  }).length;
 
   const overdueRepairsCount = maintenance.filter(m => {
     if (m.status === "Completed") return false;

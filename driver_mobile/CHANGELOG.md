@@ -2,6 +2,198 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.67.0] - 2026-08-04
+
+### Enhanced (Manager Dashboard Real Maintenance Alerts & Click Navigation)
+- **Real Database Maintenance Alerts & Deep Link Navigation (`ManagerDashboard.jsx`, `ViewTicketsPage.jsx`)**:
+  - Removed mock/fallback alerts from Manager Dashboard Maintenance Alerts section; integrated live querying of active driver vehicle issue tickets (`managerApi.getVehicleComplaints()`) and scheduled vehicle service orders (`managerApi.getMaintenance()`).
+  - Added click-to-navigate action on every alert card, linking directly to `/manager/maintenance?ticketId=TKT-...` to filter and highlight ticket details upon click.
+- **Removed Vehicle Tag & Simplified Driver Status (`CreateTripPage.jsx`, `DriversListPage.jsx`)**:
+  - Removed assigned vehicle display (`🚚 Vehicle: ...`) next to driver Employee ID in Create Trip page driver assignment card.
+  - Simplified driver duty status indicators to display clean `ONLINE 🟢` and `OFFLINE 🔴` tags across Create Trip and Drivers List pages.
+
+
+## [1.66.0] - 2026-08-04
+
+### Fixed (Driver Creation ReferenceError Fix)
+- **Resolved Driver Creation ReferenceError (`driver.controller.js`)**:
+  - Defined `generatedEmpId`, `temporaryPassword`, and `hashedPassword` variables before `createDriverRecord()` invocation in `driver.controller.js`.
+  - Drivers can now be successfully added from the Manager Driver Creation portal (`POST /api/drivers`).
+
+## [1.65.0] - 2026-08-04
+
+### Fixed (Weighbridge 500 Error, OSRM Error Spam & Leaflet Map Cleanup)
+- **Resolved Weighbridge 500 Error (`manager.controller.js`)**:
+  - Imported missing `WeighbridgeSlip` model in `manager.controller.js`.
+  - Updated `getWeighbridgeByTripId` handler to safely query by ObjectId or string without throwing 500 Internal Server Error when weighbridge slips are missing.
+- **Resolved OSRM Route Fetch Error Flood (`routingService.js`)**:
+  - Silenced console error spam on network/SSL errors when OSRM API is unreachable.
+  - Automatically caches calculated Haversine fallback distance to prevent duplicate network calls.
+- **Resolved Leaflet `_leaflet_pos` Error (`LiveMap.jsx`, `FleetMapPage.jsx`)**:
+  - Added safe cleanup checks and `map._loaded` validations before removing map layers, rendering markers, or zooming.
+
+## [1.64.0] - 2026-08-04
+
+### Fixed & Enhanced (Driver Notification Click Navigation & Vehicle In Maintenance Counter Sync)
+- **Resolved Driver Notification Click ReferenceError (`NotificationCard.jsx`)**:
+  - Fixed `ReferenceError: ticketId is not defined` in `NotificationCard.jsx` handleCardClick by replacing invalid variable reference with `extractedTicketId`.
+  - Resolved issue where clicking driver notifications threw runtime JavaScript errors causing fallback redirects to `/driver/dashboard`. All notification clicks now route directly to their target pages (`/driver/maintenance?ticketId=...`, `/driver/trips`, `/driver/fuel`).
+- **Refactored Driver Socket Hook (`useDriverSocket.js`)**:
+  - Wrapped callback handlers in `useRef` to maintain stable socket listeners and prevent room disconnects/thrashing.
+- **In Maintenance Vehicle Counter Sync (`VehicleManagement.jsx`, `driverApi.controller.js`)**:
+  - Integrated `getVehicleComplaints()` in Manager Vehicle Management page.
+  - Automatically includes vehicles with active issue tickets (`Need Maintenance`, `Open`, `In Progress`, `Mechanic Assigned`, `Repair In Progress`) into the **IN MAINTENANCE** vehicle KPI count and updates MongoDB vehicle `currentStatus` to `Need Maintenance` upon ticket creation.
+
+## [1.63.0] - 2026-08-04
+
+### Added & Enhanced (Ticket Highlight Navigation, Dynamic Vehicle Maintenance Counts & Fuel Sorting)
+- **Ticket ID Deep Linking & Glowing Card Highlight (`NotificationCard.jsx`, `Maintenance.jsx`, `IssueCard.jsx`, `ViewTicketsPage.jsx`)**:
+  - Configured ticket-based notification clicks to attach target `ticketId` as a query parameter (`/driver/maintenance?ticketId=TKT-...` & `/manager/view-tickets?ticketId=TKT-...`).
+  - Driver Maintenance page auto-scrolls to and highlights the target ticket card with a high-contrast animated glowing ring (`ring-4 ring-amber-500`).
+  - Manager Ticket Resolution page (`ViewTicketsPage.jsx`) auto-filters and opens the matching ticket details drawer, resolving Vite transform syntax errors.
+- **Dynamic Vehicle Fleet Query & Maintenance Count Sync (`vehicle.controller.js`, `VehicleManagement.jsx`)**:
+  - Fixed backend `listVehicles` query to fetch manager's vehicles across `assignedManager`, `createdBy`, and `organization` filters.
+  - Dynamically updates **IN MAINTENANCE** vehicle count (e.g., vehicles with `Need Maintenance`, `Under Maintenance`, `Maintenance`, or `Out of Service` status).
+- **Newest First Fuel Log Sorting (`FuelManagementPage.jsx`, `Fuel.jsx`)**:
+  - Enforced date-descending sort (`(a, b) => new Date(b.createdAt) - new Date(a.createdAt)`) across both Manager and Driver Fuel Management tables/cards so recent refills immediately appear at the top.
+
+## [1.62.0] - 2026-08-04
+
+### Added & Enhanced (Driver Support Real Manager Data, Notification Click Navigation & Manager Dynamic Analytics)
+- **Real Assigned Fleet Manager Support Info (`driverApi.controller.js`, `Support.jsx`)**:
+  - Updated `getDriverSupportInfo` in backend controller to populate the exact assigned Fleet Manager (`G Sai Kiran`, phone: `9876543210`, email: `sai@fleet.com`) for the authenticated driver.
+  - Resolved fallback to static default contact, displaying live assigned manager details, direct call, email, and WhatsApp links on the Driver Support page.
+- **Smart Notification Click Navigation (`NotificationCard.jsx`, `NotificationsPage.jsx`, `Header.jsx`)**:
+  - Configured intelligent keyword & metadata routing across Driver and Manager Notification cards.
+  - Clicking maintenance, ticket, or mechanic alerts routes to `/driver/maintenance` or `/manager/maintenance`; trip assignments and trip alerts route to `/driver/trips` or `/manager/trip-details/:id`; fuel alerts route to `/driver/fuel` or `/manager/fuel-management`.
+- **Dynamic Manager Analytics Engine (`AnalyticsPage.jsx`)**:
+  - Integrated dynamic date range (`Last 7 Days`, `30 Days`, `Year to Date`) and branch filter query logic in Manager `AnalyticsPage.jsx`.
+  - Dynamically calculates Fleet Utilization, Dispatch Activity Heatmap grid, Operational Costs (Fuel + Maintenance), Top Spender vehicle plate, Overdue Maintenance Anomalies, and AI Operational Insights directly from MongoDB collections.
+
+## [1.61.0] - 2026-08-04
+
+### Changed & Refined (Super Admin Dynamic Database Analytics & Real Dashboard Metrics)
+- **Dynamic Database Analytics & Timeframe Filter (`admin.controller.js`, `adminApi.js`, `Analytics.jsx`)**:
+  - Connected `adminApi.getAnalytics` with query timeframe parameter (`filter`: `today`, `week`, `month`, `year`) to fetch dynamic live database statistics.
+  - Completely eliminated static artificial scaling multiplier (`multiplier`) and fake calculations in `Analytics.jsx`.
+  - Displaying real database count metrics for Active Trips, Completed Trips, Fuel Usage, Organization Growth, Fleet Manager Growth, Subscription Distribution, and System Activity directly from MongoDB collections (`Trip`, `Organization`, `User`, `AuditLog`, `Fuel`).
+- **Real Database Dashboard Statistics & Correct Pending Requests Count (`admin.service.js`, `Dashboard.jsx`)**:
+  - Updated `getAdminDashboardData` in backend to fetch real pending organization requests via `getPendingRequestsCount()` (`Organization.countDocuments({ status: 'Pending' })`), accurately categorizing Organization Status distribution into Active, Pending, and Suspended orgs.
+  - Ensured all Revenue Trend line charts, Organization Status doughnut charts, and Fleet Manager bar charts render 100% dynamic MongoDB database data without dummy values.
+
+## [1.60.0] - 2026-08-04
+
+### Added & Enhanced (Mechanic Arrived Step-Gated Service Complete & Need Maintenance)
+- **Real-Time Driver Duty Status Sync & Color Indicators (`driverApi.controller.js`, `DriversListPage.jsx`, `CreateTripPage.jsx`)**:
+  - Integrated `isDuty` and `driverStatus` updates in `updateDriverProfile` endpoint with real-time Socket.io triggers (`driver:status-updated`).
+  - Added Green **`ON DUTY (AVAILABLE) 🟢`** and Red **`OFFLINE (OFF DUTY) 🔴`** status badges across Manager Drivers List and Trip Creation driver assignment cards.
+  - Disabled trip allocation for drivers who are Offline/Off Duty, displaying a clear red warning note.
+- **Restricted Awaiting Mechanic Assignment Banner strictly to Open Tickets (`IssueCard.jsx`)**:
+  - Updated `IssueCard.jsx` so `Awaiting Manager Mechanic Assignment ⏳` banner is displayed **ONLY** for tickets in `Open` stage.
+  - Resolved issue where cancelled tickets (`Cancelled (Accident)`) or completed tickets were displaying the mechanic assignment waiting banner.
+- **Assigned Vehicle Badge on Driver Assignment Cards (`CreateTripPage.jsx`, `driver.controller.js`)**:
+  - Enhanced `getAvailableDrivers` controller to populate assigned/recent vehicle registration numbers for drivers.
+  - Added **`🚚 Vehicle: [REG-NO]`** badge next to driver Emp ID on `Create Trip` driver assignment cards when creating trips.
+- **Removed Mechanic Buttons on Repair Completed Services (`IssueCard.jsx`, `ViewTicketsPage.jsx`)**:
+  - Updated `isResolvedOrCompleted` logic in `IssueCard.jsx` to include `Repair Completed` stage so the blue `Mechanic Arrived 📍` button is completely hidden for tickets with `Repair Completed` status.
+  - Removed `Assign Mechanic / Edit Ticket` action button (`🔧`) from manager ticket tables for services with status `Completed`, `Resolved`, `Closed`, or `Repair Completed`.
+- **Step-Gated Driver Action Buttons (`IssueCard.jsx`)**:
+  - Configured ticket action buttons so **`Service Completed ✅`** and **`Need Maintenance 🔧`** buttons are displayed **ONLY AFTER** the driver clicks **`Mechanic Arrived 📍`**.
+  - Before mechanic arrives, the card displays **`Mechanic Arrived 📍`** action trigger once a mechanic is assigned by the manager.
+- **Manager Alert Notification on Need Maintenance (`driverApi.controller.js`, `IssueCard.jsx`)**:
+  - Clicking **`Need Maintenance`** flags ticket status as `Need Maintenance` and sends real-time high-priority notification (`🚨 Need Maintenance Alert`) to Fleet Manager.
+- **Resolved Ticket & Service Bill Upload (`driverApi.controller.js`, `driverApi.js`, `IssueCard.jsx`)**:
+  - Clicking **`Service Completed ✅`** or resolving `Need Maintenance` status opens the **Resolved & Upload Service Bill 📄** modal for uploading workshop bill receipts (Image/PDF), actual costs (₹), and resolution notes.
+
+## [1.59.0] - 2026-08-03
+
+### Fixed & Enhanced (View Ticket Details Modal & MapPin Icon Import)
+- **Resolved Blank Screen & ReferenceError on Eye Icon Click (`ViewTicketsPage.jsx`)**:
+  - Imported missing `MapPin` icon from `lucide-react` to fix `ReferenceError: MapPin is not defined`.
+  - Implemented `formatDateSafe` helper function to handle invalid date values and prevent `RangeError: Invalid time value` crashes.
+  - Ensured the View Details modal opens cleanly for all ticket records with complete issue details, driver location, and service completion receipts.
+
+## [1.58.0] - 2026-08-03
+
+### Changed & Refined (Issue-Based Dynamic Forms, Driver Location & Service Bills)
+- **Category-Specific Dynamic Forms (`ViewTicketsPage.jsx`)**:
+  - Restructured `getCategoryKey` and `renderDynamicCategoryForm` so the Emergency Accident form renders strictly when issue category is `Accident / Emergency`.
+  - Configured Mechanic Breakdown & Repair form for general vehicle maintenance (Engine, Tyre, Brake, Mechanical repairs) with mechanic details, garage location, labor cost, and parts replaced notes.
+- **Driver Location Visibility (`ViewTicketsPage.jsx`)**:
+  - Added **`Driver Reported Location 📍`** to ticket details and update modals, displaying captured GPS coordinates or highway landmark when ticket was raised.
+- **Completed Service Bill & Invoice Attachment (`ViewTicketsPage.jsx`)**:
+  - Added **Service Bill No.** and **Bill Receipt Date** fields to manager update modal.
+  - Displays verified **`Service Bill & Maintenance Receipt 🧾`** section upon service completion (`Completed` / `Repair Completed` / `Resolved`).
+
+## [1.57.0] - 2026-08-03
+
+### Changed & Enforced (Manager Mechanic Assignment & Driver Maintenance Actions)
+- **Required Manager Mechanic Assignment Before Driver Service Start (`IssueCard.jsx`)**:
+  - Enforced that drivers cannot click `Start Service` until the manager assigns a mechanic.
+  - Displays `Awaiting Manager Mechanic Assignment ⏳` banner on driver cards until mechanic details are logged by manager.
+- **Sequential Driver Maintenance Progress Actions (`IssueCard.jsx`)**:
+  - Unlocks step-by-step progress buttons once mechanic is assigned: **`Mechanic Arrived 📍`** -> **`Start Service 🔧`** -> **`Service In Progress ⚙️`** -> **`Mark Service Completed ✅`**.
+  - All status transitions sync live to Manager Web (`ViewTicketsPage.jsx` / `MaintenanceManagementPage.jsx`) with distinct status badges.
+
+## [1.56.0] - 2026-08-03
+
+### Changed & Unified (Manager Maintenance Page Layout & Single Ticket Table Replica)
+- **Replicated Vehicle Issue Tickets Table on Manager Maintenance (`MaintenanceManagementPage.jsx`)**:
+  - Replaced all legacy tables and widgets on `/manager/maintenance` with the exact **Vehicle Issue Tickets** table replicated from the ticket overview screenshot.
+  - Retained strictly the 6 ticket summary metric cards (`Total Tickets`, `Open`, `In Progress`, `Resolved`, `Total Cost`, `Avg Cost`), eliminating all old cards (calendar widget, 4 old metric cards) and secondary tables.
+- **Real-Time 5s Polling & Interactive Modals**:
+  - Configured 5-second background interval polling for live ticket status synchronization.
+  - Enabled interactive View Details (`👁`) and Assign Mechanic / Edit Ticket (`🔧`) modals for every ticket row.
+
+
+### Changed & Redesigned (Manager Maintenance Table & Pagination)
+- **Header Button Cleanup (`MaintenanceManagementPage.jsx`)**:
+  - Removed `Upcoming Services` button and `View Driver Tickets` button from the top right of the Maintenance Management page header, retaining a single clean header.
+- **Embedded Vehicle Issue Tickets Table & 10-Record Pagination (`MaintenanceManagementPage.jsx`, `ViewTicketsPage.jsx`)**:
+  - Replaced old mock Service History table with the complete **Vehicle Issue Tickets** table displaying driver-reported vehicle maintenance tickets and fault logs.
+  - Implemented 10-records-per-page pagination with functional **`Prev`** and **`Next`** buttons, page number counters, and auto-reset page behavior upon search/filter changes across Manager Web.
+
+## [1.54.0] - 2026-08-03
+
+### Changed & Streamlined (Ticket Issue Maintenance & Driver Action Buttons)
+- **Focused Manager Maintenance Views on Ticket Issues (`MaintenanceManagementPage.jsx`, `UpcomingServicesPage.jsx`)**:
+  - Filtered Manager Maintenance Overview and Services lists to display strictly driver-raised issue tickets and needed maintenance, eliminating non-ticket upcoming dummy work orders.
+- **Enhanced 3-Stage Driver Progress Action Buttons (`IssueCard.jsx`)**:
+  - Added step-by-step progress buttons for drivers on Driver Web: **`Start Service 🔧`** -> **`Service In Progress ⚙️`** -> **`Mark Service Completed ✅`**.
+  - Clicking these buttons updates the backend ticket status live, allowing managers to monitor maintenance progress in real time.
+- **Active Needed Maintenance Filter on Driver Vehicles (`Vehicles.jsx`)**:
+  - Filtered Driver Vehicles `Maintenance Alerts` list to display strictly active/needed maintenance issues, hiding completed/closed tickets from the active queue.
+
+## [1.53.0] - 2026-08-03
+
+### Changed & Enforced (Read-Only Manager Services & Driver Maintenance Alerts)
+- **Removed Action Execution Buttons (`Start Service`, `Complete`) from Manager Services Tables (`MaintenanceManagementPage.jsx`, `UpcomingServicesPage.jsx`)**:
+  - Removed `Start Service` and `Complete` action buttons from Manager Web maintenance tables, rendering the Manager Services views as read-only monitor hubs.
+  - Manager tracks live driver progress statuses (`Need Maintenance`, `Mechanic Assigned`, `Mechanic Arrived`, `Repair In Progress`, `Repair Completed`, `Resolved`, `Completed`).
+- **Driver Vehicles Maintenance Alerts & Health Status Sync (`Vehicles.jsx`)**:
+  - Integrated driver issue tickets (`driverApi.getTickets()`) with `Maintenance Alerts` tab in Driver Web (`Vehicles.jsx`), displaying active reported tickets and maintenance alerts when drivers report issues or mark "Need Maintenance".
+  - Dynamically updates Operational Health card in Driver Web to **`Under Maintenance`** whenever active maintenance tickets are reported by the driver.
+
+## [1.52.0] - 2026-08-03
+
+### Changed & Restricted (Maintenance Management Workflow)
+- **Disabled Manager Service Schedule Creation (`MaintenanceManagementPage.jsx`, `UpcomingServicesPage.jsx`, `ScheduleServicePage.jsx`, `AnalyticsPage.jsx`, `NotificationsPage.jsx`)**:
+  - Removed `+ Schedule Service` creation buttons and modals across Manager Web portal.
+  - Restricted service creation so managers cannot create services directly.
+  - Configured `ScheduleServicePage.jsx` to automatically redirect managers to the Maintenance Overview page with an informative notice.
+- **Enforced Driver-Raised Maintenance Pipeline**:
+  - Configured Manager Web Maintenance Overview (`/manager/maintenance`) and Tickets view (`/manager/maintenance/tickets`) to display and manage driver-raised vehicle issue tickets and maintenance logs.
+  - Drivers raise maintenance issues/tickets via Driver Web (`/driver/maintenance`), which flow directly into Manager Web for mechanic assignment and resolution tracking.
+
+## [1.51.0] - 2026-08-03
+
+### Removed & Simplified (Admin & Manager Portals)
+- **Removed Subscription Plan and Status Dropdowns from Admin Organization Forms (`AddOrganization.jsx`, `EditOrganization.jsx`)**:
+  - Removed Subscription Plan and Status select inputs from the Admin Organization creation (`AddOrganization.jsx`) and editing (`EditOrganization.jsx`) forms.
+- **Removed Communication Workspace & Navigation from Manager Portal (`TripDetailsPage.jsx`, `TripsManagementPage.jsx`, `TripsListPage.jsx`, `NotificationsPage.jsx`, `Header.jsx`)**:
+  - Removed Communication tab from top tab bar navigation and detail rendering section in Manager Trip Details page (`TripDetailsPage.jsx`).
+  - Removed unread chat message badge buttons and `tab=communication` URL parameters from Manager Trips lists (`TripsManagementPage.jsx`, `TripsListPage.jsx`) and Notifications page / Header navigation (`NotificationsPage.jsx`, `Header.jsx`).
+
 ## [1.50.0] - 2026-08-03
 
 ### Fixed

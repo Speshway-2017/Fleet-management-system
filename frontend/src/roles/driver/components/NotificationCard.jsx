@@ -14,20 +14,29 @@ export default function NotificationCard({ notification, onMarkRead }) {
     }
 
     const type = (notification.type || "").toLowerCase();
+    const title = (notification.title || "").toLowerCase();
+    const message = (notification.message || notification.body || notification.description || "").toLowerCase();
     const tripId = notification.metadata?.tripId || notification.tripId;
+    let extractedTicketId = notification.metadata?.ticketId || notification.metadata?.complaintId;
+    if (!extractedTicketId) {
+      const match = (title + " " + message).match(/TKT-VEH-[\w-]+/i);
+      if (match) extractedTicketId = match[0];
+    }
 
-    if (tripId) {
-      navigate(`/driver/trips/${tripId}`);
-    } else if (type.includes("trip")) {
+    if (extractedTicketId || title.includes("ticket") || title.includes("mechanic") || title.includes("maintenance") || message.includes("tkt-") || message.includes("mechanic") || type.includes("maintenance") || type.includes("issue") || type.includes("complaint") || type.includes("ticket")) {
+      navigate(extractedTicketId ? `/driver/maintenance?ticketId=${encodeURIComponent(extractedTicketId)}` : "/driver/maintenance");
+    } else if (tripId) {
       navigate("/driver/trips");
-    } else if (type.includes("maintenance") || type.includes("issue") || type.includes("complaint") || type.includes("ticket")) {
-      navigate("/driver/maintenance");
-    } else if (type.includes("fuel")) {
+    } else if (type.includes("trip") || title.includes("trip") || message.includes("trip") || message.includes("trp-") || title.includes("assigned")) {
+      navigate("/driver/trips");
+    } else if (type.includes("fuel") || title.includes("fuel") || message.includes("fuel")) {
       navigate("/driver/fuel");
-    } else if (type.includes("support")) {
+    } else if (type.includes("support") || title.includes("support") || message.includes("support")) {
       navigate("/driver/support");
+    } else if (type.includes("vehicle") || title.includes("vehicle") || message.includes("vehicle")) {
+      navigate("/driver/vehicle");
     } else {
-      navigate("/driver/dashboard");
+      navigate("/driver/trips");
     }
   };
 

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { getSocket } from "@/api/socket";
 import { useAuth } from "@/context/AuthContext";
 
@@ -11,6 +11,15 @@ export function useDriverSocket({
 } = {}) {
   const { user } = useAuth();
   const driverId = user?._id || user?.id;
+
+  const callbacksRef = useRef({});
+  callbacksRef.current = {
+    onTripAssigned,
+    onTripStatusUpdated,
+    onTicketStatusUpdated,
+    onNotification,
+    on15MinReminder
+  };
 
   useEffect(() => {
     if (!driverId) return;
@@ -29,24 +38,24 @@ export function useDriverSocket({
     }
 
     const handleTripAssigned = (data) => {
-      if (onTripAssigned) onTripAssigned(data);
+      if (callbacksRef.current.onTripAssigned) callbacksRef.current.onTripAssigned(data);
     };
 
     const handleTripStatus = (data) => {
-      if (onTripStatusUpdated) onTripStatusUpdated(data);
+      if (callbacksRef.current.onTripStatusUpdated) callbacksRef.current.onTripStatusUpdated(data);
     };
 
     const handleTicketStatus = (data) => {
-      if (onTicketStatusUpdated) onTicketStatusUpdated(data);
-      else if (onTripStatusUpdated) onTripStatusUpdated(data);
+      if (callbacksRef.current.onTicketStatusUpdated) callbacksRef.current.onTicketStatusUpdated(data);
+      else if (callbacksRef.current.onTripStatusUpdated) callbacksRef.current.onTripStatusUpdated(data);
     };
 
     const handleNewNotification = (data) => {
-      if (onNotification) onNotification(data);
+      if (callbacksRef.current.onNotification) callbacksRef.current.onNotification(data);
     };
 
     const handle15MinReminder = (data) => {
-      if (on15MinReminder) on15MinReminder(data);
+      if (callbacksRef.current.on15MinReminder) callbacksRef.current.on15MinReminder(data);
     };
 
     socket.on("trip:assigned", handleTripAssigned);
@@ -69,7 +78,7 @@ export function useDriverSocket({
       socket.off("pod:rejected", handleTripStatus);
       socket.off("weighbridge:rejected", handleTripStatus);
     };
-  }, [driverId, onTripAssigned, onTripStatusUpdated, onTicketStatusUpdated, onNotification, on15MinReminder]);
+  }, [driverId]);
 }
 
 export default useDriverSocket;

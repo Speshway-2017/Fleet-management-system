@@ -26,7 +26,12 @@ export default function DriverFuelPage() {
     try {
       const res = await driverApi.getFuelRecords();
       if (res?.success && Array.isArray(res.data)) {
-        setFuelRecords(res.data);
+        const sorted = [...res.data].sort((a, b) => {
+          const tA = new Date(a.createdAt || a.date || a.timestamp || 0).getTime();
+          const tB = new Date(b.createdAt || b.date || b.timestamp || 0).getTime();
+          return tB - tA;
+        });
+        setFuelRecords(sorted);
       }
     } catch (err) {
       console.error("Error fetching fuel records:", err);

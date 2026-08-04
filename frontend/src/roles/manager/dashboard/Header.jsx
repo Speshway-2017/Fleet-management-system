@@ -108,24 +108,29 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
     
     const tripId = notif.metadata?.tripId || notif.referenceId;
     const driverId = notif.metadata?.driverId;
-    const type = (notif.type || '').toUpperCase();
+    let extractedTicketId = notif.metadata?.ticketId || notif.metadata?.complaintId;
+    if (!extractedTicketId) {
+      const match = (title + " " + message).match(/TKT-VEH-[\w-]+/i);
+      if (match) extractedTicketId = match[0];
+    }
 
-    if (type.includes("MESSAGE") || type.includes("CALL")) {
-      return tripId ? `/manager/trip-details/${tripId}?tab=communication` : `/manager/trips`;
+    if (extractedTicketId || ticketId || title.includes("ticket") || title.includes("mechanic") || title.includes("maintenance") || message.includes("tkt-") || type.includes("MAINTENANCE")) {
+      const target = extractedTicketId || ticketId;
+      return target ? `/manager/view-tickets?ticketId=${encodeURIComponent(target)}` : `/manager/maintenance`;
     }
-    if (type.includes("MAINTENANCE")) {
-      return `/manager/maintenance`;
+    if (type.includes("MESSAGE") || type.includes("CALL") || title.includes("message") || title.includes("call")) {
+      return tripId ? `/manager/trip-details/${tripId}` : `/manager/trips`;
     }
-    if (type.includes("FUEL")) {
+    if (type.includes("FUEL") || title.includes("fuel") || message.includes("fuel")) {
       return `/manager/fuel-management`;
     }
-    if (tripId) {
-      return `/manager/trip-details/${tripId}`;
+    if (tripId || type.includes("TRIP") || title.includes("trip") || message.includes("trp-")) {
+      return tripId ? `/manager/trip-details/${tripId}` : `/manager/trips`;
     }
-    if (driverId) {
-      return `/manager/driver-profile/${driverId}`;
+    if (driverId || type.includes("DRIVER") || title.includes("driver")) {
+      return driverId ? `/manager/driver-profile/${driverId}` : `/manager/drivers`;
     }
-    return `/manager/notifications`;
+    return `/manager/maintenance`;
   };
 
   const handleNotificationClick = async (notif) => {
