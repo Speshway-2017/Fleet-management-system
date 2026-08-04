@@ -275,7 +275,9 @@ export const getDriverProfile = async (req, res, next) => {
       language: driver.language || 'English (US)',
       isDarkMode: driver.isDarkMode || false,
       driverStatus: driver.driverStatus || 'AVAILABLE',
-      isOnline: driver.isOnline !== undefined ? driver.isOnline : (driver.driverStatus !== 'OFFLINE'),
+      isOnline: (driver.isOnline !== undefined && driver.isOnline !== null)
+        ? (driver.isOnline === true || driver.isOnline === 'true' || driver.isOnline === 1)
+        : (driver.driverStatus !== 'OFFLINE'),
       notificationPreferences: driver.notificationPreferences || {
         routeChanges: true,
         trafficWarnings: true,
@@ -302,6 +304,16 @@ export const getDriverProfile = async (req, res, next) => {
 export const updateDriverProfile = async (req, res, next) => {
   try {
     const driverId = req.user._id;
+
+    console.log('[DEBUG] [Availability Update] Request Body:', req.body);
+
+    const driverBefore = await Driver.findById(driverId).lean();
+    console.log('[DEBUG] [Availability Update] Driver Before Update:', {
+      _id: driverBefore?._id,
+      isOnline: driverBefore?.isOnline,
+      driverStatus: driverBefore?.driverStatus
+    });
+
     const allowedFields = [
       'fullName',
       'phoneNumber',
@@ -330,23 +342,37 @@ export const updateDriverProfile = async (req, res, next) => {
       if (req.body[key] !== undefined) {
         if (key === 'phone') {
           updateData['phoneNumber'] = req.body[key];
+        } else if (key === 'isOnline') {
+          const val = req.body.isOnline;
+          updateData['isOnline'] = (val === true || val === 'true' || val === 1 || val === '1');
         } else {
           updateData[key] = req.body[key];
         }
       }
     }
 
-    if (req.body.isOnline !== undefined) {
-      if (req.body.isOnline === false || req.body.driverStatus === 'OFFLINE') {
+    if (req.body.isOnline !== undefined || req.body.driverStatus !== undefined) {
+      const rawIsOnline = req.body.isOnline;
+      const isOff = (
+        rawIsOnline === false ||
+        rawIsOnline === 'false' ||
+        rawIsOnline === 0 ||
+        rawIsOnline === '0' ||
+        req.body.driverStatus === 'OFFLINE'
+      );
+
+      if (isOff) {
         updateData.driverStatus = 'OFFLINE';
         updateData.isOnline = false;
-      } else if (req.body.isOnline === true || req.body.driverStatus === 'AVAILABLE') {
+      } else {
         updateData.isOnline = true;
-        if (req.user.driverStatus !== 'ON_TRIP') {
+        if (driverBefore && driverBefore.driverStatus !== 'ON_TRIP') {
           updateData.driverStatus = 'AVAILABLE';
         }
       }
     }
+
+    console.log('[DEBUG] [Availability Update] MongoDB updateData:', updateData);
 
     // If profileImage is a base64 string, upload to Cloudinary!
     if (updateData.profileImage && updateData.profileImage.startsWith('data:image')) {
@@ -359,13 +385,19 @@ export const updateDriverProfile = async (req, res, next) => {
 
     const updatedDriver = await Driver.findByIdAndUpdate(
       driverId,
-      updateData,
-      { new: true }
+      { $set: updateData },
+      { new: true, runValidators: true }
     ).lean();
 
     if (!updatedDriver) {
       return sendError(res, 404, 'Driver profile not found');
     }
+
+    console.log('[DEBUG] [Availability Update] Driver After Update in MongoDB:', {
+      _id: updatedDriver._id,
+      isOnline: updatedDriver.isOnline,
+      driverStatus: updatedDriver.driverStatus
+    });
 
     if (updatedDriver.assignedManager) {
       try {
@@ -382,7 +414,17 @@ export const updateDriverProfile = async (req, res, next) => {
       } catch (_) {}
     }
 
-    return sendSuccess(res, 200, updatedDriver, 'Driver profile updated successfully');
+    const responsePayload = {
+      ...updatedDriver,
+      driverId: updatedDriver.employeeId || updatedDriver._id,
+      id: updatedDriver._id,
+      isOnline: updatedDriver.isOnline,
+      driverStatus: updatedDriver.driverStatus,
+    };
+
+    console.log('[DEBUG] [Availability Update] API Response payload isOnline:', responsePayload.isOnline);
+
+    return sendSuccess(res, 200, responsePayload, 'Driver profile updated successfully');
   } catch (error) {
     next(error);
   }

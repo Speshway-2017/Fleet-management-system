@@ -3,8 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import 'raise_ticket_screen.dart';
 import 'ticket_details_screen.dart';
-import 'calling_fleet_manager_screen.dart';
-import 'message_fleet_manager_screen.dart';
+import 'contact_fleet_manager_screen.dart';
 
 /// Representation of a Support Ticket data item.
 class SupportTicketItem {
@@ -342,7 +341,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const CallingFleetManagerScreen()),
+                          MaterialPageRoute(builder: (context) => const ContactFleetManagerScreen()),
                         );
                       },
                     ),
@@ -357,7 +356,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const MessageFleetManagerScreen()),
+                          MaterialPageRoute(builder: (context) => const ContactFleetManagerScreen()),
                         );
                       },
                     ),

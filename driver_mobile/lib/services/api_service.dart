@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
   static Function()? onUnauthorized;
+  static Map<String, dynamic>? mockResponses;
 
   static void initialize() {
     // Initialization setup if required
@@ -350,6 +351,24 @@ class ApiService {
     return await post('/driver/pod', body);
   }
 
+  static Future<dynamic> uploadTripPod({
+    required String tripId,
+    String? customerName,
+    String? receiverName,
+    dynamic imageFile,
+    String? imageName,
+    dynamic fileBytes,
+    String? fileName,
+  }) async {
+    return await uploadProofOfDelivery(
+      tripId: tripId,
+      customerName: customerName,
+      receiverName: receiverName,
+      fileBytes: fileBytes ?? (imageFile is List<int> ? imageFile : null),
+      fileName: fileName ?? imageName,
+    );
+  }
+
   static Future<dynamic> uploadWeighbridgeSlip({
     required String tripId,
     double? grossWeight,
@@ -359,13 +378,18 @@ class ApiService {
     String? documentUrl,
     dynamic fileBytes,
     String? fileName,
+    dynamic imageFile,
+    String? imageName,
   }) async {
+    final effectiveBytes = fileBytes ?? (imageFile is List<int> ? imageFile : null);
+    final effectiveName = fileName ?? imageName;
+
     final baseUrl = await getBaseUrl();
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token') ?? '';
     final uri = Uri.parse('$baseUrl/driver/weighbridge');
 
-    if (fileBytes != null && fileBytes is List<int>) {
+    if (effectiveBytes != null && effectiveBytes is List<int>) {
       final request = http.MultipartRequest('POST', uri);
       if (token.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $token';
@@ -380,8 +404,8 @@ class ApiService {
       request.files.add(
         http.MultipartFile.fromBytes(
           'file',
-          fileBytes,
-          filename: fileName ?? 'weighbridge_slip.pdf',
+          effectiveBytes,
+          filename: effectiveName ?? 'weighbridge_slip.pdf',
         ),
       );
       final streamedResponse = await request.send();
@@ -399,6 +423,44 @@ class ApiService {
     if (location != null) body['location'] = location;
     if (documentUrl != null) body['documentUrl'] = documentUrl;
     return await post('/driver/weighbridge', body);
+  }
+
+  static Future<dynamic> createTripFuelEntry({
+    required String fuelStation,
+    required double liters,
+    double? amount,
+    double? odometer,
+    String? tripId,
+    String? dateTime,
+    dynamic imageFile,
+    String? imageName,
+  }) async {
+    return await createFuelEntry(
+      fuelStation: fuelStation,
+      amount: amount ?? 0,
+      liters: liters,
+      imageFile: imageFile,
+      imageName: imageName,
+    );
+  }
+
+  static Future<dynamic> getDriverTripTolls(String tripId) async {
+    return await get('/driver/trips/$tripId/tolls');
+  }
+
+  static Future<dynamic> createTripTollEntry({
+    required String tollPlazaName,
+    required double amountPaid,
+    required String tripId,
+    String? dateTime,
+    List<dynamic>? imageFiles,
+    List<String>? imageNames,
+  }) async {
+    return await post('/driver/trips/$tripId/tolls', {
+      'tollPlazaName': tollPlazaName,
+      'amountPaid': amountPaid,
+      'dateTime': dateTime ?? DateTime.now().toIso8601String(),
+    });
   }
 
   static Future<dynamic> createDriverTicket({
