@@ -24,6 +24,7 @@ import {
   getDriverTrips,
   getDriverTripById,
   getDriverTripTolls,
+  getDriverInvoiceByTripId,
   getAssignedVehicle,
   getDriverMaintenance,
   createDriverFuelEntry,
@@ -54,6 +55,8 @@ router.get('/trips/current', getCurrentTrip);
 router.get('/trips', getDriverTrips);
 router.get('/trips/:id', getDriverTripById);
 router.get('/trips/:id/tolls', getDriverTripTolls);
+router.get('/trips/:tripId/invoice', getDriverInvoiceByTripId);
+router.get('/invoices/trip/:tripId', getDriverInvoiceByTripId);
 router.get('/dashboard', getDriverDashboard);
 router.get('/notifications', getDriverNotifications);
 router.patch('/trips/:id/respond', respondToTripAssignment);

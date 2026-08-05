@@ -212,6 +212,10 @@ class ApiService {
     return await patch('/driver/trips/$tripId/status', {'status': status});
   }
 
+  static Future<dynamic> endTrip(String tripId) async {
+    return await patch('/driver/trips/$tripId/end-trip', {});
+  }
+
   static Future<dynamic> toggleCustomerLocation(
     String tripId, {
     bool reached = true,
@@ -227,6 +231,10 @@ class ApiService {
 
   static Future<dynamic> getTripDetails(String tripId) async {
     return await get('/driver/trips/$tripId');
+  }
+
+  static Future<dynamic> getInvoiceByTripId(String tripId) async {
+    return await get('/driver/invoices/trip/$tripId');
   }
 
   static Future<dynamic> getAssignedVehicle() async {

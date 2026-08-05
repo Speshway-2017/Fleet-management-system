@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:convert';
 import '../constants/app_colors.dart';
 import '../constants/app_radius.dart';
 import '../constants/app_spacing.dart';
@@ -72,18 +73,18 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
   }
 
   String _formatDate(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) return 'N/A';
+    if (dateStr == null || dateStr.toString().trim().isEmpty) return '--';
     try {
       final dt = DateTime.parse(dateStr).toLocal();
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+      return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
     } catch (_) {
-      return dateStr;
+      return '--';
     }
   }
 
   String _formatTime(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) return 'N/A';
+    if (dateStr == null || dateStr.toString().trim().isEmpty) return '--';
     try {
       final dt = DateTime.parse(dateStr).toLocal();
       int hour = dt.hour;
@@ -93,157 +94,85 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
       if (hour == 0) hour = 12;
       return '${hour.toString().padLeft(2, '0')}:$minute $period';
     } catch (_) {
-      return dateStr;
+      return '--';
     }
   }
 
   String _calculateDuration(String? startStr, String? endStr) {
-    if (startStr == null || endStr == null || startStr.isEmpty || endStr.isEmpty) return '2h 10m';
+    if (startStr == null || endStr == null || startStr.toString().trim().isEmpty || endStr.toString().trim().isEmpty) return '--';
     try {
       final start = DateTime.parse(startStr);
       final end = DateTime.parse(endStr);
       final diff = end.difference(start);
-      final hours = diff.inHours;
-      final minutes = diff.inMinutes % 60;
-      if (hours == 0) {
-        return '${minutes}m';
-      }
+      final hours = diff.inHours.abs();
+      final minutes = (diff.inMinutes.abs()) % 60;
+      if (hours == 0 && minutes == 0) return '0m';
+      if (hours == 0) return '${minutes}m';
       return '${hours}h ${minutes}m';
     } catch (_) {
-      return '2h 10m';
+      return '--';
     }
   }
 
-  String _calculateAvgSpeed(double distance, String durationStr) {
+  String _calculateAvgSpeed(double distance, String? startStr, String? endStr) {
+    if (distance <= 0 || startStr == null || endStr == null || startStr.toString().trim().isEmpty || endStr.toString().trim().isEmpty) {
+      return '--';
+    }
     try {
-      final regExp = RegExp(r'(?:(\d+)h)?\s*(?:(\d+)m)?');
-      final match = regExp.firstMatch(durationStr);
-      double hours = 0;
-      if (match != null) {
-        if (match.group(1) != null) {
-          hours += double.parse(match.group(1)!);
+      final start = DateTime.parse(startStr);
+      final end = DateTime.parse(endStr);
+      final minutes = end.difference(start).inMinutes.abs();
+      if (minutes > 0) {
+        final hours = minutes / 60.0;
+        final speed = distance / hours;
+        if (speed > 0 && speed < 200) {
+          return '${speed.toStringAsFixed(0)} km/h';
         }
-        if (match.group(2) != null) {
-          hours += double.parse(match.group(2)!) / 60.0;
-        }
-      }
-      if (hours > 0) {
-        return '${(distance / hours).toStringAsFixed(0)} km/h';
       }
     } catch (_) {}
-    return '88 km/h';
-  }
-
-  String _formatTimeOnly(DateTime? dt) {
-    if (dt == null) return 'N/A';
-    int hour = dt.hour;
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final period = hour >= 12 ? 'PM' : 'AM';
-    hour = hour % 12;
-    if (hour == 0) hour = 12;
-    return '${hour.toString().padLeft(2, '0')}:$minute $period';
-  }
-
-  Future<void> _downloadTripReport() async {
-    if (_trip == null) return;
-    try {
-      final baseUrl = await ApiService.getBaseUrl();
-      final cleanId = widget.tripId.replaceAll('#', '').trim();
-      final reportUrl = '${baseUrl.replaceAll('/api', '')}/api/public/trips/$cleanId/report';
-      final uri = Uri.parse(reportUrl);
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error generating report: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _shareTripReport() async {
-    if (_trip == null) return;
-
-    final trip = _trip!;
-    final tripNumber = trip['tripNumber'] ?? widget.tripId;
-    final startLocation = trip['startLocation'] ?? trip['pickup'] ?? 'N/A';
-    final endLocation = trip['endLocation'] ?? trip['destination'] ?? 'N/A';
-    final distance = trip['actualDistance'] != null ? '${trip['actualDistance']} KM' : (trip['estimatedDistance'] != null ? '${trip['estimatedDistance']} KM' : 'N/A');
-    final driverName = trip['driverName'] ?? 'N/A';
-
-    String vehiclePlate = 'N/A';
-    if (trip['vehicle'] != null) {
-      if (trip['vehicle'] is Map) {
-        vehiclePlate = trip['vehicle']['vehicleNumber'] ?? trip['vehicle']['registrationNumber'] ?? 'N/A';
-      } else {
-        vehiclePlate = trip['vehicle'].toString();
-      }
-    }
-    if (vehiclePlate == 'N/A' && trip['vehiclePlate'] != null) {
-      vehiclePlate = trip['vehiclePlate'];
-    }
-
-    final shareText = 'Speshway Logistics - Trip Report #$tripNumber\n'
-        'Driver: $driverName\n'
-        'Vehicle: $vehiclePlate\n'
-        'From: $startLocation\n'
-        'To: $endLocation\n'
-        'Distance: $distance\n'
-        'Status: Completed';
-
-    final encodedText = Uri.encodeComponent(shareText);
-    
-    // Copy to clipboard
-    await Clipboard.setData(ClipboardData(text: shareText));
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('📋 Trip Report summary copied to clipboard! Opening share options...'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-
-    final whatsappUri = Uri.parse('https://wa.me/?text=$encodedText');
-    final emailUri = Uri.parse('mailto:?subject=Trip%20Report%20$tripNumber&body=$encodedText');
-    try {
-      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      try {
-        await launchUrl(emailUri, mode: LaunchMode.externalApplication);
-      } catch (_) {}
-    }
+    return '--';
   }
 
   List<Map<String, dynamic>> _buildTimelineEvents(Map<String, dynamic> trip) {
-    final createdStr = trip['createdAt'];
-    final startStr = trip['actualStartTime'] ?? trip['departureTime'];
-    final endStr = trip['actualEndTime'] ?? trip['eta'];
+    final List<Map<String, dynamic>> events = [];
 
-    DateTime createdTime = createdStr != null ? DateTime.parse(createdStr).toLocal() : DateTime.now().subtract(const Duration(hours: 10));
-    DateTime startTime = startStr != null ? DateTime.parse(startStr).toLocal() : DateTime.now().subtract(const Duration(hours: 8));
-    DateTime endTime = endStr != null ? DateTime.parse(endStr).toLocal() : DateTime.now();
-
-    if (startTime.isBefore(createdTime)) {
-      createdTime = startTime.subtract(const Duration(hours: 1));
+    void addEvent(String title, dynamic timestamp, bool isDone) {
+      if (timestamp != null && timestamp.toString().trim().isNotEmpty) {
+        final formattedTime = _formatTime(timestamp.toString());
+        if (formattedTime != '--') {
+          events.add({
+            'title': title,
+            'time': formattedTime,
+            'done': isDone,
+          });
+        }
+      }
     }
-    if (endTime.isBefore(startTime)) {
-      endTime = startTime.add(const Duration(hours: 4));
+
+    final pod = trip['proofOfDelivery'] as Map<String, dynamic>?;
+    final wb = trip['weighbridgeSlip'] as Map<String, dynamic>?;
+
+    addEvent('Trip Assigned', trip['createdAt'] ?? trip['assignedAt'], true);
+    addEvent('Driver Accepted', trip['acceptedAt'], true);
+    addEvent('Journey Started', trip['actualStartTime'] ?? trip['departureTime'], true);
+    addEvent('Pickup Reached', trip['customerLocationReachedAt'] ?? trip['pickupReachedAt'], true);
+    addEvent('En Route', trip['enRouteAt'], true);
+    addEvent('Destination Reached', trip['endedAt'] ?? trip['destinationReachedAt'], true);
+    addEvent('POD Uploaded', pod?['uploadedAt'] ?? trip['podUploadedAt'], true);
+    addEvent('Weighbridge Uploaded', wb?['uploadedAt'] ?? trip['weighbridgeUploadedAt'], true);
+    addEvent('Manager Approved', trip['managerApprovedAt'] ?? trip['approvedAt'], true);
+    addEvent('Trip Completed', trip['completedAt'] ?? trip['actualEndTime'] ?? trip['updatedAt'], true);
+
+    if (events.isEmpty) {
+      events.add({
+        'title': 'Trip Completed',
+        'time': _formatTime(trip['completedAt'] ?? trip['createdAt']),
+        'done': true,
+      });
     }
 
-    final duration = endTime.difference(startTime);
-    final pickupTime = startTime.add(Duration(minutes: (duration.inMinutes * 0.2).round()));
-    final enRouteTime = startTime.add(Duration(minutes: (duration.inMinutes * 0.35).round()));
-    final destTime = endTime.subtract(const Duration(minutes: 15));
-
-    return [
-      {'title': 'Trip Assigned', 'time': _formatTimeOnly(createdTime), 'done': true},
-      {'title': 'Journey Started', 'time': _formatTimeOnly(startTime), 'done': true},
-      {'title': 'Pickup Reached', 'time': _formatTimeOnly(pickupTime), 'done': true},
-      {'title': 'En Route', 'time': _formatTimeOnly(enRouteTime), 'done': true},
-      {'title': 'Destination Reached', 'time': _formatTimeOnly(destTime), 'done': true},
-      {'title': 'Trip Completed', 'time': _formatTimeOnly(endTime), 'done': true, 'isLast': true},
-    ];
+    events.last['isLast'] = true;
+    return events;
   }
 
   @override
@@ -295,12 +224,30 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     final rawTripNumber = trip['tripNumber'] ?? widget.tripId;
     final displayId = rawTripNumber.toString().startsWith('#') ? rawTripNumber.toString() : '#$rawTripNumber';
     
-    final dateStr = _formatDate(trip['actualEndTime'] ?? trip['createdAt']);
-    final timeStr = _formatTime(trip['actualEndTime'] ?? trip['createdAt']);
+    final dateStr = _formatDate(trip['completedAt'] ?? trip['actualEndTime'] ?? trip['createdAt']);
+    final timeStr = _formatTime(trip['completedAt'] ?? trip['actualEndTime'] ?? trip['createdAt']);
     
-    final pickupLoc = trip['pickup'] ?? trip['startLocation'] ?? 'Origin';
-    final destLoc = trip['destination'] ?? trip['endLocation'] ?? 'Destination';
+    // Pickup Location Resolution
+    String pickupLoc = '--';
+    if (trip['startLocation'] != null && trip['startLocation'].toString().trim().isNotEmpty) {
+      pickupLoc = trip['startLocation'].toString();
+    } else if (trip['pickup'] != null && trip['pickup'].toString().trim().isNotEmpty) {
+      pickupLoc = trip['pickup'].toString();
+    } else if (trip['pickupAddress'] is Map && trip['pickupAddress']['city'] != null && trip['pickupAddress']['city'].toString().trim().isNotEmpty) {
+      pickupLoc = '${trip['pickupAddress']['city']}, ${trip['pickupAddress']['state'] ?? ''}';
+    }
 
+    // Destination Location Resolution
+    String destLoc = '--';
+    if (trip['endLocation'] != null && trip['endLocation'].toString().trim().isNotEmpty) {
+      destLoc = trip['endLocation'].toString();
+    } else if (trip['destination'] != null && trip['destination'].toString().trim().isNotEmpty) {
+      destLoc = trip['destination'].toString();
+    } else if (trip['deliveryAddress'] is Map && trip['deliveryAddress']['city'] != null && trip['deliveryAddress']['city'].toString().trim().isNotEmpty) {
+      destLoc = '${trip['deliveryAddress']['city']}, ${trip['deliveryAddress']['state'] ?? ''}';
+    }
+
+    // Distance Resolution
     double distanceVal = 0.0;
     if (trip['actualDistance'] != null) {
       distanceVal = double.tryParse(trip['actualDistance'].toString()) ?? 0.0;
@@ -308,30 +255,88 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     if (distanceVal == 0.0 && trip['estimatedDistance'] != null) {
       distanceVal = double.tryParse(trip['estimatedDistance'].toString()) ?? 0.0;
     }
-    if (distanceVal == 0.0) {
-      distanceVal = 190.0;
+
+    final distanceStr = distanceVal > 0 ? '${distanceVal.toStringAsFixed(0)} km' : '--';
+    final startTimestamp = trip['actualStartTime']?.toString() ?? trip['departureTime']?.toString() ?? trip['createdAt']?.toString();
+    final endTimestamp = trip['actualEndTime']?.toString() ?? trip['completedAt']?.toString() ?? trip['endedAt']?.toString() ?? trip['updatedAt']?.toString();
+    final durationStr = _calculateDuration(startTimestamp, endTimestamp);
+    
+    // Fuel Consumed Resolution
+    String fuelTotal = '--';
+    if (trip['totalFuelLiters'] != null && (double.tryParse(trip['totalFuelLiters'].toString()) ?? 0) > 0) {
+      fuelTotal = '${double.parse(trip['totalFuelLiters'].toString()).toStringAsFixed(0)}L';
+    } else if (trip['fuelDetails'] is Map && trip['fuelDetails']['liters'] != null) {
+      final l = double.tryParse(trip['fuelDetails']['liters'].toString());
+      if (l != null && l > 0) {
+        fuelTotal = '${l.toStringAsFixed(0)}L';
+      }
+    } else if (trip['fuelUsed'] != null && trip['fuelUsed'].toString().trim().isNotEmpty) {
+      fuelTotal = '${trip['fuelUsed']}L'.replaceAll('LL', 'L');
     }
 
-    final distanceStr = '${distanceVal.toStringAsFixed(0)} km';
-    final durationStr = _calculateDuration(trip['actualStartTime'] ?? trip['departureTime'], trip['actualEndTime'] ?? trip['createdAt']);
+    // Stops Count Resolution
+    String stopsCount = '0';
+    if (trip['stopCount'] != null) {
+      stopsCount = trip['stopCount'].toString();
+    } else if (trip['stops'] is List && (trip['stops'] as List).isNotEmpty) {
+      stopsCount = (trip['stops'] as List).length.toString();
+    } else if (trip['customerLocationReached'] == true) {
+      stopsCount = '1';
+    } else if (distanceVal > 0) {
+      stopsCount = distanceVal > 200 ? '2' : (distanceVal > 100 ? '1' : '0');
+    }
+
+    final avgSpeed = _calculateAvgSpeed(distanceVal, startTimestamp, endTimestamp);
+
+    // Vehicle Display Resolution
+    final vehicleName = (trip['vehicleName'] != null && trip['vehicleName'].toString().trim().isNotEmpty)
+        ? trip['vehicleName'].toString()
+        : (trip['vehicle'] is Map ? (trip['vehicle']['vehicleModel'] ?? trip['vehicle']['brand'] ?? trip['vehicle']['vehicleName'] ?? trip['vehicle']['name'] ?? '') : '');
+    final vehiclePlate = (trip['vehiclePlate'] != null && trip['vehiclePlate'].toString().trim().isNotEmpty)
+        ? trip['vehiclePlate'].toString()
+        : (trip['vehicle'] is Map ? (trip['vehicle']['vehicleNumber'] ?? trip['vehicle']['registrationNumber'] ?? '') : '');
     
-    final fuelDetails = trip['fuelDetails'] as Map<String, dynamic>?;
-    final fuelTotal = fuelDetails != null
-        ? '${double.tryParse(fuelDetails['liters'].toString())?.toStringAsFixed(0) ?? fuelDetails['liters']}L'
-        : (trip['fuelUsed'] ?? '30L');
-    final stopsCount = distanceVal > 200 ? '2' : (distanceVal > 100 ? '1' : '0');
-    final avgSpeed = _calculateAvgSpeed(distanceVal, durationStr);
+    String vehicleDisplay = '--';
+    if (vehicleName.toString().isNotEmpty && vehiclePlate.toString().isNotEmpty) {
+      vehicleDisplay = '$vehicleName • $vehiclePlate';
+    } else if (vehicleName.toString().isNotEmpty) {
+      vehicleDisplay = vehicleName.toString();
+    } else if (vehiclePlate.toString().isNotEmpty) {
+      vehicleDisplay = vehiclePlate.toString();
+    }
 
-    final vehicleName = trip['vehicleName'] ?? 'AX 452';
-    final vehiclePlate = trip['vehiclePlate'] ?? 'Heavy Duty';
-    final vehicleDisplay = vehiclePlate.isNotEmpty ? '$vehicleName • $vehiclePlate' : vehicleName;
+    // Driver Resolution
+    final driverName = (trip['driverName'] != null && trip['driverName'].toString().trim().isNotEmpty)
+        ? trip['driverName'].toString()
+        : (trip['driver'] is Map && (trip['driver']['fullName'] ?? trip['driver']['name']) != null)
+            ? (trip['driver']['fullName'] ?? trip['driver']['name']).toString()
+            : '--';
 
-    final driverName = trip['driverName'] ?? 'Marcus Sterling';
-    final managerName = trip['manager'] != null ? (trip['manager']['name'] ?? 'Sarah Jenkins') : 'Sarah Jenkins';
+    // Manager Resolution
+    final managerObj = trip['manager'] ?? trip['assignedManager'];
+    final managerName = (trip['managerName'] != null && trip['managerName'].toString().trim().isNotEmpty)
+        ? trip['managerName'].toString()
+        : (managerObj is Map && (managerObj['name'] ?? managerObj['fullName']) != null && (managerObj['name'] ?? managerObj['fullName']).toString().trim().isNotEmpty)
+            ? (managerObj['name'] ?? managerObj['fullName']).toString()
+            : '--';
 
-    final podDetails = trip['podDetails'] as Map<String, dynamic>?;
-    final notes = trip['tripNotes'] ?? trip['description'] ?? 'Delivery completed successfully. Goods handed over without any damage.';
-    final receiver = podDetails != null ? (podDetails['receiverName'] ?? 'John Doe') : 'John Doe';
+    // POD & Notes & Receiver Resolution
+    final podDetails = (trip['podDetails'] as Map<String, dynamic>?) ?? (trip['proofOfDelivery'] as Map<String, dynamic>?);
+    final notes = (trip['tripNotes'] != null && trip['tripNotes'].toString().trim().isNotEmpty)
+        ? trip['tripNotes'].toString()
+        : (trip['description'] != null && trip['description'].toString().trim().isNotEmpty)
+            ? trip['description'].toString()
+            : 'No additional notes provided for this trip.';
+    
+    final receiver = (trip['receiverName'] != null && trip['receiverName'].toString().trim().isNotEmpty)
+        ? trip['receiverName'].toString()
+        : (podDetails != null && podDetails['receiverName'] != null && podDetails['receiverName'].toString().trim().isNotEmpty)
+            ? podDetails['receiverName'].toString()
+            : (podDetails != null && podDetails['customerName'] != null && podDetails['customerName'].toString().trim().isNotEmpty)
+                ? podDetails['customerName'].toString()
+                : (trip['deliveryAddress'] is Map && trip['deliveryAddress']['contactPerson'] != null && trip['deliveryAddress']['contactPerson'].toString().trim().isNotEmpty)
+                    ? trip['deliveryAddress']['contactPerson'].toString()
+                    : '--';
 
     final timelineEvents = _buildTimelineEvents(trip);
 
@@ -844,7 +849,7 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                     switch (doc['name']) {
                       case 'Invoice':
                         targetScreen = InvoiceScreen(
-                          invoiceNumber: trip['invoiceNumber'] ?? 'INV-2023-8842',
+                          invoiceNumber: trip['invoiceNumber'] ?? (trip['tripInvoice'] is Map ? trip['tripInvoice']['invoiceNumber'] : 'INV-${displayId.replaceAll('#', '')}'),
                           tripId: displayId,
                           tripData: trip,
                         );
@@ -1025,6 +1030,95 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
         ],
       ),
     );
+  }
+
+  Future<void> _downloadTripReport() async {
+    if (_trip == null) return;
+
+    final trip = _trip!;
+    final rawTripNumber = trip['tripNumber'] ?? widget.tripId;
+    final displayId = rawTripNumber.toString().startsWith('#') ? rawTripNumber.toString() : '#$rawTripNumber';
+    
+    final pickupLoc = trip['pickup'] ?? trip['startLocation'] ?? '--';
+    final destLoc = trip['destination'] ?? trip['endLocation'] ?? '--';
+    final distanceStr = trip['actualDistance'] != null ? '${trip['actualDistance']} km' : (trip['estimatedDistance'] != null ? '${trip['estimatedDistance']} km' : '--');
+
+    final htmlContent = '''
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Trip Report $displayId</title>
+  <style>
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; padding: 20px; line-height: 1.4; }
+    .report-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, .15); border-radius: 8px; background: #fff; }
+    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #f97316; padding-bottom: 20px; margin-bottom: 20px; }
+    .logo { font-size: 24px; font-weight: bold; color: #101c2c; }
+    .logo span { color: #f97316; }
+    .company-details { text-align: right; font-size: 12px; color: #666; }
+    .footer { text-align: center; font-size: 11px; color: #999; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="report-box">
+    <div class="header">
+      <div class="logo">Speshway <span>Logistics</span></div>
+      <div class="company-details">
+        <strong>Speshway Logistics Pvt Ltd</strong><br>
+        Trip Report $displayId<br>
+        Pickup: $pickupLoc | Destination: $destLoc<br>
+        Distance: $distanceStr
+      </div>
+    </div>
+    <div class="footer">
+      System-generated Completed Trip Report from Speshway Logistics.
+    </div>
+  </div>
+  <script>
+    window.onload = function() {
+      setTimeout(function() { window.print(); }, 500);
+    }
+  </script>
+</body>
+</html>
+''';
+
+    final bytes = utf8.encode(htmlContent);
+    final base64Str = base64.encode(bytes);
+    final urlStr = 'data:text/html;base64,$base64Str';
+    final uri = Uri.parse(urlStr);
+    
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _shareTripReport() async {
+    if (_trip == null) return;
+
+    final trip = _trip!;
+    final rawTripNumber = trip['tripNumber'] ?? widget.tripId;
+    final displayId = rawTripNumber.toString().startsWith('#') ? rawTripNumber.toString() : '#$rawTripNumber';
+    final pickupLoc = trip['pickup'] ?? trip['startLocation'] ?? '--';
+    final destLoc = trip['destination'] ?? trip['endLocation'] ?? '--';
+    final distanceStr = trip['actualDistance'] != null ? '${trip['actualDistance']} km' : '--';
+
+    final shareText = 'Speshway Logistics - Completed Trip Report $displayId\n'
+        'From: $pickupLoc\n'
+        'To: $destLoc\n'
+        'Distance: $distanceStr\n'
+        'Status: Completed';
+
+    await Clipboard.setData(ClipboardData(text: shareText));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('📋 Trip Report summary copied to clipboard!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   // 9. Bottom Actions
