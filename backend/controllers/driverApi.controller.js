@@ -17,7 +17,7 @@ import { generateToken } from '../utils/jwt.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import cloudinary from '../utils/cloudinary.js';
 import { createAndEmitNotification } from '../utils/notification.js';
-import { getClosestCity } from '../utils/distanceCalculator.js';
+import { getClosestCity, calculateDistance } from '../utils/distanceCalculator.js';
 import { syncDriverLocationFromLatestTrip, updateDriverAndVehicleOnCompletion } from '../utils/driverLocationHelper.js';
 
 // Helper to resolve trip by ObjectId or Trip Number
@@ -455,13 +455,19 @@ export const getCurrentTrip = async (req, res, next) => {
       'Pickup Completed'
     ];
 
-    const currentTrip = await Trip.findOne({
+    let currentTrip = await Trip.findOne({
       driver: driverId,
       status: { $in: activeStatuses }
     }).populate('vehicle').populate('driver').sort({ createdAt: -1 });
 
     if (!currentTrip) {
-      return sendSuccess(res, 200, null, 'No active trip assigned');
+      currentTrip = await Trip.findOne({
+        driver: driverId
+      }).populate('vehicle').populate('driver').sort({ createdAt: -1 });
+    }
+
+    if (!currentTrip) {
+      return sendSuccess(res, 200, null, 'No trip assigned');
     }
 
     let managerInfo = null;
@@ -832,7 +838,15 @@ export const updateTripStatus = async (req, res, next) => {
     if (targetStatus === 'In Progress') {
       const allowedStartStatuses = ['Scheduled', 'Accepted', 'Assigned'];
       if (!allowedStartStatuses.includes(trip.status)) {
-        return sendError(res, 400, `Cannot start trip with status '${trip.status}'. Trip must be in Scheduled status before starting.`);
+        return sendError(res, 400, `Cannot start trip with status '${trip.status}'. Trip must be in Scheduled/Accepted status before starting.`);
+      }
+      if (trip.departureTime) {
+        const departureTime = new Date(trip.departureTime);
+        const now = new Date();
+        const fifteenMinBefore = new Date(departureTime.getTime() - 15 * 60 * 1000);
+        if (now < fifteenMinBefore) {
+          return sendError(res, 400, 'Cannot start trip before the 15-minute departure window.');
+        }
       }
       if (!trip.actualStartTime) trip.actualStartTime = new Date();
       trip.status = 'In Progress';
@@ -1131,6 +1145,16 @@ export const uploadProofOfDelivery = async (req, res, next) => {
     const tripDoc = await resolveTripHelper(tripId);
     const resolvedTripId = tripDoc ? tripDoc._id : (mongoose.Types.ObjectId.isValid(tripId) ? tripId : null);
 
+    if (tripDoc) {
+      if (['Waiting for Manager Approval', 'Completed'].includes(tripDoc.status)) {
+        return sendError(res, 400, 'Document uploads are locked after submitting for manager approval.');
+      }
+      const isEnded = tripDoc.tripEnded || tripDoc.customerLocationReached || ['reached destination', 'trip ended', 'ended', 'waiting for manager approval', 'completed'].includes(tripDoc.status?.toLowerCase());
+      if (!isEnded) {
+        return sendError(res, 400, 'Cannot upload documents before ending the trip. Please click End Trip first.');
+      }
+    }
+
     let secureUrl = deliveryPhotoUrl || podDocumentUrl || '';
     if (req.file) {
       try {
@@ -1266,6 +1290,16 @@ export const uploadWeighbridgeSlip = async (req, res, next) => {
 
     const tripDoc = await resolveTripHelper(tripId);
     const resolvedTripId = tripDoc ? tripDoc._id : (mongoose.Types.ObjectId.isValid(tripId) ? tripId : null);
+
+    if (tripDoc) {
+      if (['Waiting for Manager Approval', 'Completed'].includes(tripDoc.status)) {
+        return sendError(res, 400, 'Document uploads are locked after submitting for manager approval.');
+      }
+      const isEnded = tripDoc.tripEnded || tripDoc.customerLocationReached || ['reached destination', 'trip ended', 'ended', 'waiting for manager approval', 'completed'].includes(tripDoc.status?.toLowerCase());
+      if (!isEnded) {
+        return sendError(res, 400, 'Cannot upload documents before ending the trip. Please click End Trip first.');
+      }
+    }
 
     let secureUrl = documentUrl || '';
     if (req.file) {
@@ -2049,9 +2083,26 @@ export const getDriverTripById = async (req, res, next) => {
 
     let managerInfo = null;
     if (trip.assignedManager) {
-      const manager = await User.findById(trip.assignedManager).select('name phone email');
-      if (manager) managerInfo = manager;
+      const manager = await User.findById(trip.assignedManager).select('name fullName phone email');
+      if (manager) {
+        managerInfo = {
+          _id: manager._id,
+          name: manager.name || manager.fullName || '',
+          fullName: manager.fullName || manager.name || '',
+          phone: manager.phone || '',
+          email: manager.email || ''
+        };
+      }
     }
+
+    // Distance calculation fallback matching Manager controller
+    const calculatedDist = calculateDistance(trip.startLocation, trip.endLocation);
+    const estimatedDistance = (trip.estimatedDistance && trip.estimatedDistance > 0 && trip.estimatedDistance !== 120 && trip.estimatedDistance !== 584)
+      ? trip.estimatedDistance
+      : calculatedDist;
+    const actualDistance = (trip.actualDistance && trip.actualDistance > 0 && trip.actualDistance !== 120 && trip.actualDistance !== 584)
+      ? trip.actualDistance
+      : estimatedDistance;
 
     let invoice = await Invoice.findOne({ trip: trip._id });
     if (!invoice) {
@@ -2072,20 +2123,30 @@ export const getDriverTripById = async (req, res, next) => {
     }
 
     // Dynamic document resolution and status determination
-    const podDoc = (trip.proofOfDelivery && trip.proofOfDelivery.url) ? trip.proofOfDelivery : await ProofOfDelivery.findOne({ trip: trip._id });
+    const podDoc = (trip.proofOfDelivery && trip.proofOfDelivery.url)
+      ? trip.proofOfDelivery
+      : await ProofOfDelivery.findOne({
+          $or: [{ trip: trip._id }, { tripId: trip._id.toString() }, { tripId: trip.tripNumber }]
+        });
     const podUrl = trip.proofOfDelivery?.url || podDoc?.podDocumentUrl || podDoc?.deliveryPhotoUrl;
     const resolvedPodStatus = podUrl ? (trip.podStatus === 'Approved' ? 'Approved' : 'Uploaded') : 'Not Uploaded';
 
-    const wbDoc = (trip.weighbridgeSlip && trip.weighbridgeSlip.url) ? trip.weighbridgeSlip : await WeighbridgeSlip.findOne({ trip: trip._id });
+    const wbDoc = (trip.weighbridgeSlip && trip.weighbridgeSlip.url)
+      ? trip.weighbridgeSlip
+      : await WeighbridgeSlip.findOne({
+          $or: [{ trip: trip._id }, { tripId: trip._id.toString() }, { tripId: trip.tripNumber }]
+        });
     const wbUrl = trip.weighbridgeSlip?.url || wbDoc?.documentUrl;
     const resolvedWbStatus = wbUrl ? (trip.weighbridgeStatus === 'Approved' ? 'Approved' : 'Uploaded') : 'Not Uploaded';
+
+    const resolvedReceiverName = podDoc?.receiverName || podDoc?.customerName || trip.proofOfDelivery?.receiverName || trip.deliveryAddress?.contactPerson || '';
 
     const proofOfDeliveryObj = {
       url: podUrl || '',
       deliveryPhotoUrl: podDoc?.deliveryPhotoUrl || podUrl || '',
       customerSignatureUrl: podDoc?.customerSignatureUrl || '',
       customerName: podDoc?.customerName || '',
-      receiverName: podDoc?.receiverName || '',
+      receiverName: resolvedReceiverName,
       status: resolvedPodStatus
     };
 
@@ -2105,15 +2166,25 @@ export const getDriverTripById = async (req, res, next) => {
       generatedAt: invoice?.createdAt || new Date()
     };
 
-    // Compatibility Lookups for Fuel and Toll details
-    let fuel = await Fuel.findOne({
+    // Calculate total fuel liters across all fuel entries for this trip
+    const fuelEntries = await Fuel.find({
       $or: [
         { tripId: trip._id.toString() },
         { tripId: trip.tripNumber },
-        { tripId: trip.tripNumber.replace('#', '') },
-        { tripId: '#' + trip.tripNumber.replace('#', '') }
+        { tripId: trip.tripNumber?.replace('#', '') },
+        { tripId: '#' + trip.tripNumber?.replace('#', '') }
       ]
     });
+    
+    let totalFuelLiters = 0;
+    for (const f of fuelEntries) {
+      totalFuelLiters += (Number(f.liters) || 0);
+    }
+    if (totalFuelLiters === 0 && trip.totalFuelLiters) {
+      totalFuelLiters = Number(trip.totalFuelLiters) || 0;
+    }
+
+    const fuel = fuelEntries.length > 0 ? fuelEntries[fuelEntries.length - 1] : null;
 
     const tollsList = await TollTransaction.find({ trip: trip._id }).sort({ dateTime: 1 });
     let totalTollsAmount = 0;
@@ -2125,7 +2196,7 @@ export const getDriverTripById = async (req, res, next) => {
     const podDetailsObj = {
       podNumber: podDoc?.podNumber || '',
       customerName: podDoc?.customerName || '',
-      receiverName: podDoc?.receiverName || '',
+      receiverName: resolvedReceiverName,
       status: resolvedPodStatus,
       rejectionReason: podDoc?.rejectionReason || '',
       deliveryDate: podDoc?.deliveryDate || null,
@@ -2163,6 +2234,21 @@ export const getDriverTripById = async (req, res, next) => {
       receiptUrl: toll.receiptUrl,
     } : null;
 
+    // Vehicle and Driver resolution
+    let vehicleObj = trip.vehicle;
+    if (vehicleObj && typeof vehicleObj !== 'object') {
+      vehicleObj = await Vehicle.findById(vehicleObj);
+    }
+    const resolvedVehicleName = trip.vehicleName || vehicleObj?.vehicleModel || vehicleObj?.brand || vehicleObj?.vehicleName || vehicleObj?.name || '';
+    const resolvedVehiclePlate = trip.vehiclePlate || vehicleObj?.vehicleNumber || vehicleObj?.registrationNumber || '';
+
+    let driverObj = trip.driver;
+    if (driverObj && typeof driverObj !== 'object') {
+      driverObj = await Driver.findById(driverObj);
+    }
+    const resolvedDriverName = trip.driverName || driverObj?.fullName || driverObj?.name || `${driverObj?.firstName || ''} ${driverObj?.lastName || ''}`.trim() || '';
+    const resolvedDriverPhone = trip.driverPhone || driverObj?.phone || driverObj?.phoneNumber || driverObj?.mobile || '';
+
     return sendSuccess(res, 200, {
       tripId: trip._id,
       _id: trip._id,
@@ -2176,14 +2262,18 @@ export const getDriverTripById = async (req, res, next) => {
       departureTime: trip.departureTime,
       cargoType: trip.cargoType,
       cargoWeight: trip.cargoWeight,
-      vehicleName: trip.vehicleName || (trip.vehicle ? trip.vehicle.vehicleName : ''),
-      vehiclePlate: trip.vehiclePlate || (trip.vehicle ? trip.vehicle.vehicleNumber : ''),
-      driverName: trip.driverName || (trip.driver ? trip.driver.fullName : ''),
-      driverPhone: trip.driverPhone || (trip.driver ? trip.driver.phoneNumber : ''),
+      vehicleName: resolvedVehicleName,
+      vehiclePlate: resolvedVehiclePlate,
+      vehicle: vehicleObj,
+      driverName: resolvedDriverName,
+      driverPhone: resolvedDriverPhone,
+      driver: driverObj,
       tripNotes: trip.tripNotes || trip.description || '',
       description: trip.description || '',
-      estimatedDistance: trip.estimatedDistance || 0,
-      actualDistance: trip.actualDistance || 0,
+      estimatedDistance: estimatedDistance,
+      actualDistance: actualDistance,
+      totalFuelLiters: totalFuelLiters,
+      fuelUsed: totalFuelLiters > 0 ? `${totalFuelLiters}L` : (trip.fuelUsed || ''),
       actualStartTime: trip.actualStartTime || null,
       actualEndTime: trip.actualEndTime || null,
       podStatus: resolvedPodStatus,
@@ -2194,13 +2284,16 @@ export const getDriverTripById = async (req, res, next) => {
       customerLocationReached: trip.customerLocationReached || false,
       invoiceNumber: invoice.invoiceNumber,
       manager: managerInfo,
+      assignedManager: managerInfo,
+      managerName: managerInfo ? (managerInfo.name || managerInfo.fullName) : '',
+      receiverName: resolvedReceiverName,
 
       // Compatibility fields for mobile screens
       podUrl: podUrl || '',
       podDetails: podDetailsObj,
       weighbridgeUrl: wbUrl || '',
       weighbridgeDetails: weighbridgeDetailsObj,
-      fuelStatus: fuel ? fuel.billStatus : 'Not Uploaded',
+      fuelStatus: fuel ? (fuel.approvalStatus || fuel.billStatus) : 'Not Uploaded',
       fuelUrl: fuel ? (fuel.billUrl || fuel.receiptImage) : '',
       fuelDetails: fuelDetailsObj,
       tollStatus: toll ? 'Uploaded' : 'Not Uploaded',
@@ -2331,6 +2424,193 @@ export const getDriverTripTolls = async (req, res, next) => {
     }
     const tolls = await TollTransaction.find({ trip: trip._id }).sort({ dateTime: 1 });
     return sendSuccess(res, 200, tolls, 'Toll transactions fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get Invoice for a Trip (Driver API)
+ * GET /api/driver/invoices/trip/:tripId
+ * GET /api/driver/trips/:tripId/invoice
+ */
+export const getDriverInvoiceByTripId = async (req, res, next) => {
+  try {
+    const { tripId } = req.params;
+    let trip;
+    const mongoose = (await import('mongoose')).default;
+    if (mongoose.Types.ObjectId.isValid(tripId)) {
+      trip = await Trip.findById(tripId).populate('vehicle').populate('driver');
+    }
+    if (!trip) {
+      trip = await Trip.findOne({ tripNumber: tripId }).populate('vehicle').populate('driver');
+    }
+    if (!trip && !tripId.startsWith('#')) {
+      trip = await Trip.findOne({ tripNumber: `#${tripId}` }).populate('vehicle').populate('driver');
+    }
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    let invoice = await Invoice.findOne({ trip: trip._id })
+      .populate('driver')
+      .populate('vehicle')
+      .populate('createdBy', 'name fullName email phone');
+
+    if (!invoice) {
+      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
+      const seq = String(count + 1).padStart(4, '0');
+      const invoiceNumber = `INV-${datePart}-${seq}`;
+
+      invoice = new Invoice({
+        invoiceNumber,
+        invoiceDate: new Date(),
+        trip: trip._id,
+        driver: trip.driver ? (trip.driver._id || trip.driver) : null,
+        vehicle: trip.vehicle ? (trip.vehicle._id || trip.vehicle) : null,
+        createdBy: trip.assignedManager
+      });
+      await invoice.save();
+
+      invoice = await Invoice.findById(invoice._id)
+        .populate('driver')
+        .populate('vehicle')
+        .populate('createdBy', 'name fullName email phone');
+    }
+
+    // Distance calculation fallback matching Manager controller
+    const calculatedDist = calculateDistance(trip.startLocation, trip.endLocation);
+    const actualDistance = (trip.actualDistance && trip.actualDistance > 0 && trip.actualDistance !== 120 && trip.actualDistance !== 584)
+      ? trip.actualDistance
+      : ((trip.estimatedDistance && trip.estimatedDistance > 0 && trip.estimatedDistance !== 120 && trip.estimatedDistance !== 584) ? trip.estimatedDistance : calculatedDist);
+
+    // Fuel and Toll calculation
+    const fuelEntries = await Fuel.find({
+      $or: [
+        { tripId: trip._id.toString() },
+        { tripId: trip.tripNumber },
+        { tripId: trip.tripNumber?.replace('#', '') },
+        { tripId: '#' + trip.tripNumber?.replace('#', '') }
+      ]
+    });
+    let fuelAmount = 0;
+    for (const f of fuelEntries) {
+      fuelAmount += (Number(f.amount) || 0);
+    }
+    if (fuelAmount === 0 && trip.totalFuelAmount) {
+      fuelAmount = Number(trip.totalFuelAmount) || 0;
+    }
+
+    const tollsList = await TollTransaction.find({ trip: trip._id });
+    let tollAmount = 0;
+    for (const t of tollsList) {
+      tollAmount += (Number(t.amountPaid) || 0);
+    }
+
+    const freightCharges = Math.round((actualDistance * 230 / 100) * 100) || 5000;
+    const loadingCharges = 2500;
+    const unloadingCharges = 2500;
+    const subtotal = freightCharges + loadingCharges + unloadingCharges + tollAmount + fuelAmount;
+    const gstTax = Math.round(subtotal * 0.18);
+    const totalAmount = subtotal + gstTax;
+
+    let managerInfo = null;
+    if (trip.assignedManager) {
+      const manager = await User.findById(trip.assignedManager).select('name fullName phone email');
+      if (manager) {
+        managerInfo = {
+          _id: manager._id,
+          name: manager.name || manager.fullName || '',
+          fullName: manager.fullName || manager.name || '',
+          phone: manager.phone || '',
+          email: manager.email || ''
+        };
+      }
+    }
+
+    let vehicleObj = trip.vehicle;
+    if (vehicleObj && typeof vehicleObj !== 'object') {
+      vehicleObj = await Vehicle.findById(vehicleObj);
+    }
+    const resolvedVehicleName = trip.vehicleName || vehicleObj?.vehicleModel || vehicleObj?.brand || vehicleObj?.vehicleName || vehicleObj?.name || '';
+    const resolvedVehiclePlate = trip.vehiclePlate || vehicleObj?.vehicleNumber || vehicleObj?.registrationNumber || '';
+
+    let driverObj = trip.driver;
+    if (driverObj && typeof driverObj !== 'object') {
+      driverObj = await Driver.findById(driverObj);
+    }
+    const resolvedDriverName = trip.driverName || driverObj?.fullName || driverObj?.name || `${driverObj?.firstName || ''} ${driverObj?.lastName || ''}`.trim() || '';
+    const resolvedDriverPhone = trip.driverPhone || driverObj?.phone || driverObj?.phoneNumber || driverObj?.mobile || '';
+
+    const pickupAddress = trip.pickupAddress || trip.fromAddress || {
+      companyName: `${trip.startLocation || 'Pickup'} Logistics Hub`,
+      contactPerson: 'Dispatch Desk',
+      mobile: resolvedDriverPhone,
+      streetAddress: trip.startLocation || '',
+      city: trip.startLocation || '',
+      state: ''
+    };
+
+    const podDoc = (trip.proofOfDelivery && trip.proofOfDelivery.url)
+      ? trip.proofOfDelivery
+      : await ProofOfDelivery.findOne({
+          $or: [{ trip: trip._id }, { tripId: trip._id.toString() }, { tripId: trip.tripNumber }]
+        });
+    const resolvedReceiverName = podDoc?.receiverName || podDoc?.customerName || trip.proofOfDelivery?.receiverName || trip.deliveryAddress?.contactPerson || '';
+
+    const deliveryAddress = trip.deliveryAddress || trip.toAddress || {
+      companyName: `${trip.endLocation || 'Destination'} Depot`,
+      contactPerson: resolvedReceiverName || 'Receiving Manager',
+      mobile: '',
+      streetAddress: trip.endLocation || '',
+      city: trip.endLocation || '',
+      state: ''
+    };
+
+    const pdfUrl = invoice.pdfUrl || invoice.invoiceUrl || trip.tripInvoice?.url || '';
+
+    return sendSuccess(res, 200, {
+      invoiceId: invoice._id,
+      _id: invoice._id,
+      invoiceNumber: invoice.invoiceNumber,
+      invoiceDate: invoice.invoiceDate || invoice.createdAt,
+      pdfUrl: pdfUrl,
+      documentUrl: pdfUrl,
+      status: trip.status === 'Completed' ? 'Paid' : (invoice.status || 'Pending'),
+      paymentStatus: trip.status === 'Completed' ? 'Paid' : (invoice.status || 'Pending'),
+      paymentMethod: 'Bank Transfer',
+      trip: {
+        _id: trip._id,
+        tripNumber: trip.tripNumber,
+        status: trip.status,
+        startLocation: trip.startLocation,
+        endLocation: trip.endLocation,
+        departureTime: trip.departureTime,
+        eta: trip.eta,
+        cargoType: trip.cargoType || 'General Cargo',
+        cargoWeight: trip.cargoWeight || 0,
+        actualDistance: actualDistance,
+        vehicleName: resolvedVehicleName,
+        vehiclePlate: resolvedVehiclePlate,
+        driverName: resolvedDriverName,
+        driverPhone: resolvedDriverPhone,
+        pickupAddress: pickupAddress,
+        deliveryAddress: deliveryAddress,
+        manager: managerInfo
+      },
+      charges: {
+        freightCharges,
+        loadingCharges,
+        unloadingCharges,
+        fuelCharges: fuelAmount,
+        tollCharges: tollAmount,
+        subtotal,
+        gstTax,
+        totalAmount
+      },
+      createdBy: invoice.createdBy || managerInfo
+    }, 'Invoice fetched successfully');
   } catch (error) {
     next(error);
   }

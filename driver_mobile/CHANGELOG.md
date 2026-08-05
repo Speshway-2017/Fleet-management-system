@@ -2,6 +2,70 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.31.15] - 2026-08-04
+
+### Added
+- **Mandatory Required Documents Popup Modal for Trip Completion**:
+  - Created `UploadRequiredDocumentsDialog` widget (`upload_required_documents_dialog.dart`) as a centered popup dialog titled *"Upload Required Trip Documents"*.
+  - Added two mandatory upload cards for **Proof of Delivery (POD)** and **Weighbridge Slip**, displaying document name, upload status (`Not Uploaded` / `✓ Uploaded`), and action buttons (`Upload`, `View`, `Replace`).
+  - Added modern modal bottom sheet (`_showImageSourcePicker`) supporting **Camera** (`ImageSource.camera`), **Gallery** (`ImageSource.gallery`), and **Cancel** options.
+  - Implemented upload progress indicator and full image document preview modal (`_showDocumentPreview`).
+  - Added strict validation preventing popup closure and keeping *"Submit Documents"* disabled until BOTH POD and Weighbridge Slip are uploaded, displaying validation toasts (*"Please upload Proof of Delivery."* / *"Please upload Weighbridge Slip."*).
+  - Configured *"Submit Documents"* to update trip status to *"Waiting for Manager Approval"*, lock driver edits, and show floating success toast (*"Trip documents submitted successfully. Waiting for Manager Approval."*).
+
+## [1.31.14] - 2026-08-04
+
+### Fixed
+- **Restoration of Original 7-Step Trip Lifecycle Rules**:
+  1. **Pre-departure Start Trip Lock**: Locked "Start Trip" button until current time is within 15 minutes of scheduled departure across `trip_details_screen.dart`, `upcoming_trip_details_screen.dart`, `upcoming_trips_screen.dart`, `dashboard_screen.dart`, and `updateTripStatus` in `driverApi.controller.js`.
+  2. **Pre-start Document Lock**: Disabled Upload POD and Upload Weighbridge buttons and forced status display to "Not Uploaded" prior to starting the trip.
+  3. **In-Progress Document Lock**: Kept Upload POD and Upload Weighbridge disabled after clicking "Start Trip" while trip is in progress.
+  4. **Post-End Trip Document Unlock**: Enabled Upload POD and Upload Weighbridge buttons after driver clicks "End Trip" (`endTrip`).
+  5. **Completion Prerequisite Enforcer**: Enabled "Complete Trip" button strictly after both POD and Weighbridge documents are uploaded.
+  6. **Manager Approval Transition & Document Lock**: Transitioned trip status to "Waiting for Manager Approval" upon completing trip and locked all further document edits.
+  7. **Manager Completion Finalizer**: Maintained status transition to "Completed" strictly upon Fleet Manager document review and approval.
+
+## [1.31.13] - 2026-08-04
+
+### Fixed
+- **Dynamic Manager Invoice Integration for Driver Mobile App**:
+  - Created `getDriverInvoiceByTripId` in [driverApi.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driverApi.controller.js) and registered endpoints `GET /api/driver/invoices/trip/:tripId` & `GET /api/driver/trips/:tripId/invoice` in [driverApi.routes.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/routes/driverApi.routes.js).
+  - Added `ApiService.getInvoiceByTripId` in `api_service.dart`.
+  - Replaced all dummy mock values in `InvoiceScreen` (`invoice_screen.dart`) with dynamic backend invoice fields (Invoice Number, Invoice Date, Trip Number, Pickup & Delivery Addresses, Customer & Contact Details, Cargo Type & Weight, Charges breakdown for Freight/Loading/Unloading/Fuel/Tolls, 18% GST/Tax, Grand Total, and Payment Status).
+  - Added PDF URL launcher (`url_launcher`) for attached invoice document preview and `_buildNoInvoiceCard` empty state displaying *"No invoice has been generated for this trip."* when no invoice document exists.
+
+## [1.31.12] - 2026-08-04
+
+### Fixed
+- **Removal of Hardcoded Dummy Data from Recent Trip Section**:
+  - Enhanced `getCurrentTrip` in [driverApi.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driverApi.controller.js) to fall back to the driver's most recent trip (e.g. `Completed`) when no active trip exists.
+  - Removed hardcoded fallback strings (`#TRP-8842`, `Downtown Hub`, `North Port Center`) from `TripsScreen` (`trips_screen.dart`).
+  - Added `_buildEmptyRecentTripCard(context)` empty state card to render cleanly when the driver genuinely has zero trips in the database.
+  - Configured **View Details** button to navigate dynamically to `CompletedTripDetailsScreen` for completed trips and `TripDetailsScreen` for active/scheduled trips.
+
+## [1.31.11] - 2026-08-04
+
+### Fixed
+- **Backend & Mobile Parity for Completed Trip Details Payload**:
+  - Aligned `getDriverTripById` in [driverApi.controller.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/controllers/driverApi.controller.js) with manager controller standards: added distance calculation fallback via `calculateDistance(startLocation, endLocation)`, summed total fuel liters across all associated `Fuel` entries (`totalFuelLiters`), and dynamically populated `driver`, `driverName`, `driverPhone`, `vehicle`, `vehicleName`, `vehiclePlate`, `assignedManager`, `managerName`, `receiverName`, `podDetails`, and `weighbridgeDetails`.
+  - Enhanced field key extraction in `CompletedTripDetailsScreen` (`completed_trip_details_screen.dart`) to inspect `driverName`, `managerName`, `assignedManager`, `vehicleModel`, `totalFuelLiters`, `receiverName`, and `contactPerson`, eliminating unwanted `'--'` fallbacks when backend data exists.
+
+## [1.31.10] - 2026-08-04
+
+### Fixed
+- **Cleaned All Linter Warnings in Trip Completion and Completed Trip Details Screens**:
+  - Removed unnecessary `package:flutter/foundation.dart` import from `completed_trip_details_screen.dart`.
+  - Resolved all `use_build_context_synchronously` async gap warnings across `trip_completion_screen.dart` by capturing `ScaffoldMessenger` and `Navigator` references prior to asynchronous navigation and dialog invocations.
+  - Achieved 0 static analysis issues across `driver_mobile`.
+
+## [1.31.9] - 2026-08-04
+
+### Changed
+- **Complete Elimination of Hardcoded Mock Data in Completed Trip Details**:
+  - Replaced all hardcoded fallback values in `CompletedTripDetailsScreen` (`completed_trip_details_screen.dart`) with `--` fallback markers for missing data.
+  - Dynamically populated Trip Information, Route Information (Pickup, Destination, Actual Distance, Duration), Vehicle Information, Driver Name, Assigned Manager Name, Performance Metrics (Distance, Total Fuel Consumed, Calculated Average Speed, Stop Counts), and Delivery Confirmation Receiver from live backend API payloads.
+  - Dynamically constructed all 10 timeline stages (`Trip Assigned`, `Driver Accepted`, `Journey Started`, `Pickup Reached`, `En Route`, `Destination Reached`, `POD Uploaded`, `Weighbridge Uploaded`, `Manager Approved`, `Trip Completed`) using real backend event timestamps.
+
 ## [1.31.8] - 2026-08-04
 
 ### Removed

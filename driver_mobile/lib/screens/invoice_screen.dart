@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_radius.dart';
 import '../constants/app_spacing.dart';
@@ -7,14 +8,14 @@ import '../widgets/custom_card.dart';
 import '../services/api_service.dart';
 
 class InvoiceScreen extends StatefulWidget {
-  final String invoiceNumber;
-  final String tripId;
+  final String? invoiceNumber;
+  final String? tripId;
   final Map<String, dynamic>? tripData;
 
   const InvoiceScreen({
     super.key,
-    this.invoiceNumber = 'INV-2023-8842',
-    this.tripId = '#TRP-9921',
+    this.invoiceNumber,
+    this.tripId,
     this.tripData,
   });
 
@@ -24,52 +25,130 @@ class InvoiceScreen extends StatefulWidget {
 
 class _InvoiceScreenState extends State<InvoiceScreen> {
   bool _isLoading = true;
-  Map<String, dynamic>? _trip;
+  bool _noInvoiceExists = false;
+  Map<String, dynamic>? _invoiceData;
 
   @override
   void initState() {
     super.initState();
-    if (widget.tripData != null) {
-      _trip = widget.tripData;
-      _isLoading = false;
-    } else {
-      _fetchTripDetails();
-    }
+    _fetchInvoiceDetails();
   }
 
-  Future<void> _fetchTripDetails() async {
+  Future<void> _fetchInvoiceDetails() async {
     if (!mounted) return;
     setState(() {
-      _isLoading = _trip == null;
+      _isLoading = true;
+      _noInvoiceExists = false;
     });
+
     try {
-      final cleanId = widget.tripId.replaceAll('#', '').trim();
-      final res = await ApiService.getTripDetails(cleanId);
-      if (res != null && res['data'] != null) {
-        if (mounted) {
-          setState(() {
-            _trip = res['data'];
-            _isLoading = false;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
+      final targetId = (widget.tripId != null && widget.tripId!.trim().isNotEmpty)
+          ? widget.tripId!
+          : (widget.tripData?['tripNumber'] ?? widget.tripData?['_id'] ?? widget.invoiceNumber ?? '');
+      final cleanId = targetId.toString().replaceAll('#', '').trim();
+
+      if (cleanId.isNotEmpty) {
+        final invRes = await ApiService.getInvoiceByTripId(cleanId);
+        if (invRes != null && invRes['data'] != null) {
+          if (mounted) {
+            setState(() {
+              _invoiceData = Map<String, dynamic>.from(invRes['data']);
+              _isLoading = false;
+              _noInvoiceExists = false;
+            });
+          }
+          return;
         }
       }
-    } catch (_) {
+
+      if (widget.tripData != null) {
+        final trip = widget.tripData!;
+        final invNum = trip['invoiceNumber'] ?? (trip['tripInvoice'] is Map ? trip['tripInvoice']['invoiceNumber'] : null);
+        if (invNum != null && invNum.toString().trim().isNotEmpty) {
+          if (mounted) {
+            setState(() {
+              _invoiceData = _buildInvoiceFromTrip(trip);
+              _isLoading = false;
+              _noInvoiceExists = false;
+            });
+          }
+          return;
+        }
+      }
+
+      if (cleanId.isNotEmpty) {
+        final tripRes = await ApiService.getTripDetails(cleanId);
+        if (tripRes != null && tripRes['data'] != null) {
+          final trip = Map<String, dynamic>.from(tripRes['data']);
+          final invNum = trip['invoiceNumber'] ?? (trip['tripInvoice'] is Map ? trip['tripInvoice']['invoiceNumber'] : null);
+          if (invNum != null && invNum.toString().trim().isNotEmpty) {
+            if (mounted) {
+              setState(() {
+                _invoiceData = _buildInvoiceFromTrip(trip);
+                _isLoading = false;
+                _noInvoiceExists = false;
+              });
+            }
+            return;
+          }
+        }
+      }
+
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _noInvoiceExists = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _noInvoiceExists = true;
         });
       }
     }
   }
 
+  Map<String, dynamic> _buildInvoiceFromTrip(Map<String, dynamic> trip) {
+    final invNum = trip['invoiceNumber'] ?? (trip['tripInvoice'] is Map ? trip['tripInvoice']['invoiceNumber'] : 'INV-${trip['tripNumber'] ?? '001'}');
+    double dist = 0.0;
+    if (trip['actualDistance'] != null) {
+      dist = double.tryParse(trip['actualDistance'].toString()) ?? 0.0;
+    }
+    if (dist == 0.0 && trip['estimatedDistance'] != null) {
+      dist = double.tryParse(trip['estimatedDistance'].toString()) ?? 0.0;
+    }
+    final freight = (dist * 230 / 100).round() * 100;
+    final loading = 2500;
+    final unloading = 2500;
+    final fuel = (dist * 42 / 100).round() * 100;
+    final toll = (dist * 6 / 100).round() * 100;
+    final subtotal = freight + loading + unloading + fuel + toll;
+    final tax = (subtotal * 0.18).round();
+    final grandTotal = subtotal + tax;
+
+    return {
+      'invoiceNumber': invNum,
+      'invoiceDate': trip['createdAt'] ?? trip['actualEndTime'],
+      'pdfUrl': trip['tripInvoice'] is Map ? (trip['tripInvoice']['url'] ?? '') : '',
+      'status': trip['status'] == 'Completed' ? 'Paid' : 'Pending',
+      'trip': trip,
+      'charges': {
+        'freightCharges': freight,
+        'loadingCharges': loading,
+        'unloadingCharges': unloading,
+        'fuelCharges': fuel,
+        'tollCharges': toll,
+        'subtotal': subtotal,
+        'gstTax': tax,
+        'totalAmount': grandTotal,
+      }
+    };
+  }
+
   String _formatDate(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) return 'N/A';
+    if (dateStr == null || dateStr.isEmpty) return '--';
     try {
       final dt = DateTime.parse(dateStr).toLocal();
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -79,125 +158,42 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     }
   }
 
-  String _formatDateTime(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) return 'N/A';
-    try {
-      final dt = DateTime.parse(dateStr).toLocal();
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      int hour = dt.hour;
-      final minute = dt.minute.toString().padLeft(2, '0');
-      final period = hour >= 12 ? 'PM' : 'AM';
-      hour = hour % 12;
-      if (hour == 0) hour = 12;
-      return '${dt.day} ${months[dt.month - 1]} ${dt.year}, ${hour.toString().padLeft(2, '0')}:$minute $period';
-    } catch (_) {
-      return dateStr;
-    }
-  }
-
-  String _formatAddress(Map<String, dynamic>? address) {
-    if (address == null || address.isEmpty) {
-      return 'Warehouse 7, Sector 18, Okhla Industrial Area, Delhi - 110020';
-    }
-    final street = address['streetAddress'] ?? '';
-    final area = address['areaLocality'] ?? address['area'] ?? '';
-    final city = address['city'] ?? '';
-    final state = address['state'] ?? '';
-    final pin = address['pincode'] ?? '';
-    
-    final parts = [street, area, city, state].where((p) => p.toString().trim().isNotEmpty).toList();
-    if (parts.isEmpty) {
-      return 'Warehouse 7, Sector 18, Okhla Industrial Area, Delhi - 110020';
-    }
-    
-    final addrStr = parts.join(', ');
-    return pin.toString().trim().isNotEmpty ? '$addrStr - $pin' : addrStr;
-  }
-
   String _formatCurrency(num value) {
     final str = value.round().toString();
     final RegExp reg = RegExp(r'(\d)(?=(\d{3})+(?!\d))');
     return '₹${str.replaceAllMapped(reg, (Match match) => '${match[1]},')}';
   }
 
+  Future<void> _openPdfUrl(String url) async {
+    if (url.isEmpty) return;
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open document URL.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error launching document: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_isLoading && _trip == null) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: CustomAppBar(
-          centerTitle: false,
-          title: Text(
-            'Invoice',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppColors.background,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-          ),
-        ),
-      );
-    }
-
-    final trip = _trip ?? {};
-    final invoiceNumber = trip['invoiceNumber'] ?? widget.invoiceNumber;
-    final tripDisplayId = trip['tripNumber'] != null 
-        ? (trip['tripNumber'].toString().startsWith('#') ? trip['tripNumber'] : '#${trip['tripNumber']}')
-        : widget.tripId;
-        
-    final dateStr = _formatDate(trip['actualEndTime'] ?? trip['createdAt']);
-    
-    final deliveryAddress = trip['deliveryAddress'] != null 
-        ? Map<String, dynamic>.from(trip['deliveryAddress']) 
-        : (trip['toAddress'] != null ? Map<String, dynamic>.from(trip['toAddress']) : null);
-        
-    final customer = deliveryAddress?['companyName'] ?? 'Northern Retail Ltd';
-    final address = _formatAddress(deliveryAddress);
-    final contact = deliveryAddress?['mobileNumber'] ?? deliveryAddress?['mobile'] ?? '+91 98765 43210';
-    final gst = '07BBBBB1111B2Z6';
-
-    double distanceVal = 0.0;
-    if (trip['actualDistance'] != null) {
-      distanceVal = double.tryParse(trip['actualDistance'].toString()) ?? 0.0;
-    }
-    if (distanceVal == 0.0 && trip['estimatedDistance'] != null) {
-      distanceVal = double.tryParse(trip['estimatedDistance'].toString()) ?? 0.0;
-    }
-    if (distanceVal == 0.0) {
-      distanceVal = 190.0;
-    }
-
-    final freight = (distanceVal * 230 / 100).round() * 100;
-    final loading = 2500;
-    final unloading = 2500;
-
-    final fuelDetails = trip['fuelDetails'] as Map<String, dynamic>?;
-    final fuel = fuelDetails != null
-        ? (double.tryParse(fuelDetails['amount']?.toString() ?? '')?.round() ?? 0)
-        : (distanceVal * 42 / 100).round() * 100;
-
-    final double rawTollAmount = double.tryParse(trip['totalTollsAmount']?.toString() ?? '') ?? 0.0;
-    final toll = rawTollAmount > 0.0
-        ? rawTollAmount.round()
-        : (distanceVal * 6 / 100).round() * 100;
-
-    final subtotal = freight + loading + unloading + toll + fuel;
-    final tax = (subtotal * 0.18).round();
-    final grandTotal = subtotal + tax;
-
-    final transactionId = 'TXN-${tripDisplayId.replaceAll('#', '')}';
-    final paidOnStr = _formatDateTime(trip['actualEndTime'] ?? trip['createdAt']);
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: CustomAppBar(
         centerTitle: false,
         title: Text(
-          'Invoice',
+          'Trip Invoice',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             color: AppColors.background,
             fontWeight: FontWeight.bold,
@@ -206,50 +202,174 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: _fetchTripDetails,
+          onRefresh: _fetchInvoiceDetails,
           color: AppColors.primary,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 1. Invoice Number & Date/Trip Card
-                _buildInvoiceHeaderCard(context, invoiceNumber, dateStr, tripDisplayId),
-                AppSpacing.verticalSm,
+          child: _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  ),
+                )
+              : _noInvoiceExists || _invoiceData == null
+                  ? SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: Container(
+                        height: MediaQuery.of(context).size.height * 0.75,
+                        alignment: Alignment.center,
+                        child: _buildNoInvoiceCard(context),
+                      ),
+                    )
+                  : _buildInvoiceContent(context),
+        ),
+      ),
+    );
+  }
 
-                // 2. Billing Information Card
-                _buildBillingInfoCard(context, customer, address, gst, contact),
-                AppSpacing.verticalSm,
-
-                // 3. Summary Table Card
-                _buildSummaryCard(
-                  context,
-                  _formatCurrency(freight),
-                  _formatCurrency(loading),
-                  _formatCurrency(unloading),
-                  _formatCurrency(toll),
-                  _formatCurrency(fuel),
-                  _formatCurrency(tax),
-                  _formatCurrency(grandTotal),
-                ),
-                AppSpacing.verticalSm,
-
-                // 4. Document Preview Card
-                _buildDocumentPreviewCard(context, invoiceNumber),
-                AppSpacing.verticalSm,
-
-                // 5. Payment Details Card
-                _buildPaymentDetailsCard(context, 'Bank Transfer', transactionId, paidOnStr),
-                AppSpacing.verticalLg,
-
-                // 6. Action Buttons
-                _buildFooterActions(context, invoiceNumber),
-                const SizedBox(height: 40),
-              ],
+  Widget _buildNoInvoiceCard(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.receipt_long_outlined,
+              size: 40,
+              color: AppColors.primary,
             ),
           ),
-        ),
+          const SizedBox(height: 16),
+          Text(
+            'No Invoice Found',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.primaryText,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'No invoice has been generated for this trip.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.secondaryText,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInvoiceContent(BuildContext context) {
+    final inv = _invoiceData!;
+    final trip = (inv['trip'] is Map) ? Map<String, dynamic>.from(inv['trip']) : <String, dynamic>{};
+    final charges = (inv['charges'] is Map) ? Map<String, dynamic>.from(inv['charges']) : <String, dynamic>{};
+
+    final invoiceNumber = inv['invoiceNumber']?.toString() ?? '--';
+    final dateStr = _formatDate(inv['invoiceDate']?.toString());
+    final status = (inv['status'] ?? inv['paymentStatus'] ?? (trip['status'] == 'Completed' ? 'Paid' : 'Pending')).toString();
+    final pdfUrl = (inv['pdfUrl'] ?? inv['documentUrl'] ?? inv['url'] ?? '').toString();
+
+    final rawTripNum = trip['tripNumber'] ?? widget.tripId ?? '--';
+    final tripDisplayId = rawTripNum.toString().startsWith('#') ? rawTripNum.toString() : '#$rawTripNum';
+
+    // Addresses
+    final pickupAddr = trip['pickupAddress'] is Map
+        ? Map<String, dynamic>.from(trip['pickupAddress'])
+        : (trip['fromAddress'] is Map ? Map<String, dynamic>.from(trip['fromAddress']) : null);
+    final deliveryAddr = trip['deliveryAddress'] is Map
+        ? Map<String, dynamic>.from(trip['deliveryAddress'])
+        : (trip['toAddress'] is Map ? Map<String, dynamic>.from(trip['toAddress']) : null);
+
+    final fromCompanyName = pickupAddr?['companyName'] ?? '${trip['startLocation'] ?? 'Pickup'} Hub';
+    final fromContactPerson = pickupAddr?['contactPerson'] ?? 'Dispatch Desk';
+    final fromMobile = pickupAddr?['mobile'] ?? pickupAddr?['mobileNumber'] ?? trip['driverPhone'] ?? '--';
+    final fromStreet = pickupAddr?['streetAddress'] ?? trip['startLocation'] ?? '--';
+    final fromCity = pickupAddr?['city'] ?? trip['startLocation'] ?? '--';
+    final fromState = pickupAddr?['state'] ?? '';
+
+    final toCompanyName = deliveryAddr?['companyName'] ?? '${trip['endLocation'] ?? 'Destination'} Depot';
+    final toContactPerson = deliveryAddr?['contactPerson'] ?? trip['receiverName'] ?? 'Receiving Desk';
+    final toMobile = deliveryAddr?['mobile'] ?? deliveryAddr?['mobileNumber'] ?? '--';
+    final toStreet = deliveryAddr?['streetAddress'] ?? trip['endLocation'] ?? '--';
+    final toCity = deliveryAddr?['city'] ?? trip['endLocation'] ?? '--';
+    final toState = deliveryAddr?['state'] ?? '';
+
+    // Charges
+    final num freight = charges['freightCharges'] ?? 0;
+    final num loading = charges['loadingCharges'] ?? 0;
+    final num unloading = charges['unloadingCharges'] ?? 0;
+    final num fuel = charges['fuelCharges'] ?? 0;
+    final num toll = charges['tollCharges'] ?? 0;
+    final num subtotal = charges['subtotal'] ?? (freight + loading + unloading + fuel + toll);
+    final num tax = charges['gstTax'] ?? (subtotal * 0.18);
+    final num total = charges['totalAmount'] ?? (subtotal + tax);
+
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 1. Invoice Header Card
+          _buildInvoiceHeaderCard(context, invoiceNumber, dateStr, tripDisplayId, status),
+          AppSpacing.verticalSm,
+
+          // 2. Pickup & Delivery Addresses Card
+          _buildAddressesCard(
+            context,
+            fromCompanyName,
+            fromContactPerson,
+            fromMobile,
+            fromStreet,
+            fromCity,
+            fromState,
+            toCompanyName,
+            toContactPerson,
+            toMobile,
+            toStreet,
+            toCity,
+            toState,
+          ),
+          AppSpacing.verticalSm,
+
+          // 3. Cargo & Vehicle Information Card
+          _buildCargoVehicleCard(context, trip),
+          AppSpacing.verticalSm,
+
+          // 4. Financial Summary Card
+          _buildSummaryCard(
+            context,
+            _formatCurrency(freight),
+            _formatCurrency(loading),
+            _formatCurrency(unloading),
+            _formatCurrency(fuel),
+            _formatCurrency(toll),
+            _formatCurrency(tax),
+            _formatCurrency(total),
+          ),
+          AppSpacing.verticalSm,
+
+          // 5. PDF Document Preview Card (If PDF URL exists)
+          if (pdfUrl.isNotEmpty) ...[
+            _buildDocumentPreviewCard(context, invoiceNumber, pdfUrl),
+            AppSpacing.verticalSm,
+          ],
+
+          // 6. Action Footer
+          _buildFooterActions(context, invoiceNumber, pdfUrl),
+          const SizedBox(height: 40),
+        ],
       ),
     );
   }
@@ -259,7 +379,9 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     String invoiceNum,
     String date,
     String tripDisplayId,
+    String status,
   ) {
+    final isPaid = status.toLowerCase() == 'paid';
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -293,13 +415,13 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
+                  color: isPaid ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
                   borderRadius: BorderRadius.circular(AppRadius.round),
                 ),
-                child: const Text(
-                  'Paid',
+                child: Text(
+                  status,
                   style: TextStyle(
-                    color: Color(0xFF2E7D32),
+                    color: isPaid ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
                     fontWeight: FontWeight.bold,
                     fontSize: 11,
                   ),
@@ -314,7 +436,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoRow('Date', date),
+              _buildInfoRow('Invoice Date', date),
               _buildInfoRow('Trip ID', tripDisplayId, alignRight: true),
             ],
           ),
@@ -323,12 +445,20 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     );
   }
 
-  Widget _buildBillingInfoCard(
+  Widget _buildAddressesCard(
     BuildContext context,
-    String customer,
-    String address,
-    String gst,
-    String contact,
+    String fromCompany,
+    String fromContact,
+    String fromMobile,
+    String fromStreet,
+    String fromCity,
+    String fromState,
+    String toCompany,
+    String toContact,
+    String toMobile,
+    String toStreet,
+    String toCity,
+    String toState,
   ) {
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
@@ -337,10 +467,10 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         children: [
           const Row(
             children: [
-              Icon(Icons.receipt_long_outlined, color: AppColors.secondary, size: 20),
+              Icon(Icons.location_on_outlined, color: AppColors.secondary, size: 20),
               SizedBox(width: 8),
               Text(
-                'Billing Information',
+                'Route & Address Details',
                 style: TextStyle(
                   color: AppColors.primaryText,
                   fontWeight: FontWeight.bold,
@@ -350,15 +480,151 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             ],
           ),
           const SizedBox(height: 14),
-          _buildInfoLabelValue('Customer', customer),
+          _buildAddressBox(
+            title: 'FROM ADDRESS',
+            company: fromCompany,
+            contact: fromContact,
+            mobile: fromMobile,
+            street: fromStreet,
+            city: fromCity,
+            state: fromState,
+            titleColor: AppColors.secondary,
+          ),
           const SizedBox(height: 12),
-          _buildInfoLabelValue('Address', address),
-          const SizedBox(height: 14),
+          _buildAddressBox(
+            title: 'TO ADDRESS',
+            company: toCompany,
+            contact: toContact,
+            mobile: toMobile,
+            street: toStreet,
+            city: toCity,
+            state: toState,
+            titleColor: AppColors.primary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddressBox({
+    required String title,
+    required String company,
+    required String contact,
+    required String mobile,
+    required String street,
+    required String city,
+    required String state,
+    required Color titleColor,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: titleColor,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            company,
+            style: const TextStyle(
+              color: AppColors.primaryText,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 6),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoRow('GST', gst),
-              _buildInfoRow('Contact', contact, alignRight: true),
+              Expanded(child: _buildMiniDetail('Contact', contact)),
+              Expanded(child: _buildMiniDetail('Mobile', mobile)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _buildMiniDetail('Address', '$street, $city ${state.isNotEmpty ? "- $state" : ""}'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniDetail(String label, String val) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(
+            color: AppColors.secondaryText,
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 1),
+        Text(
+          val,
+          style: const TextStyle(
+            color: AppColors.primaryText,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCargoVehicleCard(BuildContext context, Map<String, dynamic> trip) {
+    final cargoType = trip['cargoType'] ?? 'General Freight';
+    final cargoWeight = trip['cargoWeight'] != null ? '${trip['cargoWeight']} kg' : '--';
+    final vehicleName = trip['vehicleName'] ?? (trip['vehicle'] is Map ? trip['vehicle']['vehicleName'] : '--');
+    final vehiclePlate = trip['vehiclePlate'] ?? (trip['vehicle'] is Map ? trip['vehicle']['vehicleNumber'] : '--');
+    final driverName = trip['driverName'] ?? (trip['driver'] is Map ? trip['driver']['fullName'] : '--');
+
+    return CustomCard(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.inventory_2_outlined, color: AppColors.secondary, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Cargo & Asset Info',
+                style: TextStyle(
+                  color: AppColors.primaryText,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _buildInfoRow('Cargo Type', cargoType.toString())),
+              Expanded(child: _buildInfoRow('Cargo Weight', cargoWeight.toString(), alignRight: true)),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10.0),
+            child: Divider(color: AppColors.divider),
+          ),
+          Row(
+            children: [
+              Expanded(child: _buildInfoRow('Vehicle', '$vehicleName ($vehiclePlate)')),
+              Expanded(child: _buildInfoRow('Driver', driverName.toString(), alignRight: true)),
             ],
           ),
         ],
@@ -371,8 +637,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     String freight,
     String loading,
     String unloading,
-    String toll,
     String fuel,
+    String toll,
     String tax,
     String grandTotal,
   ) {
@@ -391,7 +657,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               ),
             ),
             child: const Text(
-              'Summary',
+              'Charges Summary',
               style: TextStyle(
                 color: AppColors.primaryText,
                 fontWeight: FontWeight.bold,
@@ -403,26 +669,26 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                _buildSummaryRow('Freight', freight),
+                _buildSummaryRow('Freight Charges', freight),
                 const SizedBox(height: 10),
-                _buildSummaryRow('Loading', loading),
+                _buildSummaryRow('Loading Charges', loading),
                 const SizedBox(height: 10),
-                _buildSummaryRow('Unloading', unloading),
+                _buildSummaryRow('Unloading Charges', unloading),
                 const SizedBox(height: 10),
-                _buildSummaryRow('Toll', toll),
+                _buildSummaryRow('Fuel Expenses', fuel),
                 const SizedBox(height: 10),
-                _buildSummaryRow('Fuel', fuel),
+                _buildSummaryRow('Toll Charges', toll),
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 12.0),
                   child: Divider(color: AppColors.divider),
                 ),
-                _buildSummaryRow('Tax (18% GST)', tax),
+                _buildSummaryRow('GST / Tax (18%)', tax),
                 const SizedBox(height: 14),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Grand Total',
+                      'Total Amount',
                       style: TextStyle(
                         color: AppColors.primaryText,
                         fontWeight: FontWeight.bold,
@@ -447,64 +713,60 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     );
   }
 
-  Widget _buildDocumentPreviewCard(BuildContext context, String invoiceNum) {
+  Widget _buildDocumentPreviewCard(BuildContext context, String invoiceNum, String pdfUrl) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'DOCUMENT PREVIEW',
-                style: TextStyle(
-                  color: AppColors.secondaryText,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(AppRadius.xs),
-                ),
-                child: Icon(Icons.zoom_in, color: Colors.blue.shade700, size: 16),
-              ),
-            ],
+        const Padding(
+          padding: EdgeInsets.only(left: 4.0, bottom: 8.0),
+          child: Text(
+            'ATTACHED INVOICE DOCUMENT',
+            style: TextStyle(
+              color: AppColors.secondaryText,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
-        Container(
-          height: 380,
-          decoration: BoxDecoration(
-            color: Colors.blue.shade50.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: Colors.blue.shade100, style: BorderStyle.solid),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+        InkWell(
+          onTap: () => _openPdfUrl(pdfUrl),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: Container(
+            padding: const EdgeInsets.all(20.0),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Row(
               children: [
-                Icon(Icons.picture_as_pdf, color: Colors.blue.shade400, size: 48),
-                const SizedBox(height: 10),
-                Text(
-                  'Invoice_$invoiceNum.pdf',
-                  style: TextStyle(
-                    color: Colors.blue.shade800,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                Icon(Icons.picture_as_pdf, color: Colors.blue.shade700, size: 36),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Invoice_$invoiceNum.pdf',
+                        style: TextStyle(
+                          color: Colors.blue.shade900,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Tap to open PDF document',
+                        style: TextStyle(
+                          color: AppColors.secondaryText,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Tap to zoom or download to view',
-                  style: TextStyle(
-                    color: AppColors.secondaryText,
-                    fontSize: 11,
-                  ),
-                ),
+                Icon(Icons.open_in_new, color: Colors.blue.shade700, size: 20),
               ],
             ),
           ),
@@ -513,90 +775,33 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     );
   }
 
-  Widget _buildPaymentDetailsCard(
-    BuildContext context,
-    String method,
-    String txnId,
-    String paidOn,
-  ) {
-    return CustomCard(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Payment Details',
-            style: TextStyle(
-              color: AppColors.primaryText,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildPaymentRow('Method', method),
-          const SizedBox(height: 8),
-          _buildPaymentRow('Transaction ID', txnId),
-          const SizedBox(height: 8),
-          _buildPaymentRow('Paid On', paidOn),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFooterActions(BuildContext context, String invoiceNum) {
+  Widget _buildFooterActions(BuildContext context, String invoiceNum, String pdfUrl) {
     return Column(
       children: [
-        ElevatedButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Downloading Invoice $invoiceNum PDF...')),
-            );
-          },
-          icon: const Icon(Icons.download_outlined, color: Colors.white, size: 20),
-          label: const Text(
-            'Download Invoice',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+        if (pdfUrl.isNotEmpty) ...[
+          ElevatedButton.icon(
+            onPressed: () => _openPdfUrl(pdfUrl),
+            icon: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 20),
+            label: const Text(
+              'Open PDF Invoice',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              minimumSize: const Size(double.infinity, 48),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
             ),
           ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            minimumSize: const Size(double.infinity, 48),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Opening Share Dialog for Invoice...')),
-            );
-          },
-          icon: const Icon(Icons.share_outlined, color: AppColors.secondary, size: 20),
-          label: const Text(
-            'Share Invoice',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: AppColors.secondary,
-            ),
-          ),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: AppColors.secondary, width: 1.5),
-            minimumSize: const Size(double.infinity, 48),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-          ),
-        ),
+        ],
       ],
     );
   }
@@ -624,29 +829,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     );
   }
 
-  Widget _buildPaymentRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.secondaryText,
-            fontSize: 13,
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppColors.primaryText,
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildInfoRow(String label, String value, {bool alignRight = false}) {
     return Column(
       crossAxisAlignment: alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -666,31 +848,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             color: AppColors.primaryText,
             fontWeight: FontWeight.bold,
             fontSize: 13,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoLabelValue(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.secondaryText,
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppColors.primaryText,
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
           ),
         ),
       ],
