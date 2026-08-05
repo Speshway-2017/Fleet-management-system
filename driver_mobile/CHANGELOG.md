@@ -2,6 +2,16 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.31.16] - 2026-08-05
+
+### Fixed & Updated
+- **Updated Application Launcher Icon**:
+  - Replaced launcher icons across **Android** (`mipmap-*`), **iOS** (`AppIcon.appiconset`), and **Web** (`icons/`) with the newly uploaded Fleet Management logo image.
+  - Updated `assets/logo.png` and `assets/images/logo.png` image assets in `driver_mobile`.
+  - Added `flutter_launcher_icons` configuration to `pubspec.yaml`.
+- **Fixed BuildContext Across Async Gaps**:
+  - Resolved all `use_build_context_synchronously` linter info issues in `trip_completion_screen.dart` by adding `context.mounted` checks to ensure safe BuildContext usage after async operations (`uploadTripPod`, `createTripFuelEntry`, `uploadWeighbridgeSlip`, `showDialog`, `createTripTollEntry`).
+
 ## [1.31.15] - 2026-08-04
 
 ### Added

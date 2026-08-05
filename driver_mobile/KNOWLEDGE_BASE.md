@@ -12,8 +12,10 @@ The application is structured following clean coding principles and modularity. 
 
 | Path | Purpose |
 | :--- | :--- |
-| `assets/` | Static project assets (images, icons, vectors). |
+| `assets/` | Static project assets (images, icons, vectors, e.g. `logo.png`). |
 | `assets/images/` | General images (e.g., logos, illustration graphics). |
+| `android/app/src/main/res/` | Native Android app launcher icons (`ic_launcher.png` generated via `flutter_launcher_icons`). |
+| `ios/Runner/Assets.xcassets/` | Native iOS app launcher icons (`AppIcon.appiconset`). |
 | `lib/` | Main application Dart source code. |
 | `lib/models/` | Strong-typed model definitions (`driver_model.dart`). |
 | `lib/providers/` | State management provider notifier controllers (`auth_provider.dart`). |
