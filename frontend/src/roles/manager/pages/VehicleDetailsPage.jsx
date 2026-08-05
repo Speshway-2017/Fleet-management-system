@@ -89,8 +89,28 @@ export default function VehicleDetailsPage() {
     "Ahmedabad": [23.0225, 72.5714]
   };
 
+  const isObjectIdString = (val) => typeof val === 'string' && /^[0-9a-fA-F]{24}$/.test(val);
+
   const normaliseVehicle = (v) => {
     if (!v) return null;
+
+    const isAvailableStatus = v.currentStatus === 'Available' || v.status === 'Available' || v.currentStatus === 'Under Maintenance' || v.currentStatus === 'Out of Service';
+
+    let resolvedDriver = null;
+    if (!isAvailableStatus) {
+      if (v.assignedDriver && typeof v.assignedDriver === 'object') {
+        resolvedDriver = v.assignedDriver.fullName || v.assignedDriver.name || v.assignedDriver.email;
+      } else if (v.assignedDriverName || v.driverName) {
+        resolvedDriver = v.assignedDriverName || v.driverName;
+      } else if (typeof v.assignedDriver === 'string' && !isObjectIdString(v.assignedDriver)) {
+        resolvedDriver = v.assignedDriver;
+      }
+    }
+
+    if (isObjectIdString(resolvedDriver)) {
+      resolvedDriver = null;
+    }
+
     return {
       ...v,
       id:           v._id,
@@ -98,9 +118,7 @@ export default function VehicleDetailsPage() {
       manufacturer: v.manufacturer || v.brand || "",
       plateNumber:  v.vehicleNumber || "",
       type:         v.vehicleType || "Truck",
-      driver:       v.assignedDriver && typeof v.assignedDriver === 'object'
-        ? v.assignedDriver.fullName
-        : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
+      driver:       resolvedDriver || 'Unassigned',
       manager:      v.assignedManager && typeof v.assignedManager === 'object'
         ? v.assignedManager.name || v.assignedManager.fullName || v.assignedManager.email
         : (typeof v.assignedManager === 'string' ? v.assignedManager : 'N/A'),
@@ -129,7 +147,43 @@ export default function VehicleDetailsPage() {
         const res = await vehicleApi.getById(id);
         const found = res.data?.data;
         if (found) {
-          setVehicle(normaliseVehicle(found));
+          const norm = normaliseVehicle(found);
+          const isAvailableStatus = found.currentStatus === 'Available' || found.status === 'Available' || found.currentStatus === 'Under Maintenance' || found.currentStatus === 'Out of Service';
+
+          if (isAvailableStatus) {
+            norm.driver = 'Unassigned';
+          } else if (!norm.driver || norm.driver === 'Unassigned' || norm.driver === 'N/A' || isObjectIdString(norm.driver)) {
+            try {
+              const rawDriverId = found.assignedDriver?._id || found.assignedDriver;
+              if (rawDriverId && isObjectIdString(String(rawDriverId))) {
+                const driverRes = await managerApi.getDrivers();
+                const driversList = driverRes.data?.data || driverRes.data || [];
+                const matchedDriver = driversList.find(d => String(d._id || d.id) === String(rawDriverId));
+                if (matchedDriver) {
+                  norm.driver = matchedDriver.fullName || matchedDriver.name || matchedDriver.email;
+                }
+              }
+            } catch (_) {}
+
+            if (!norm.driver || norm.driver === 'Unassigned' || norm.driver === 'N/A' || isObjectIdString(norm.driver)) {
+              try {
+                const tripsRes = await managerApi.getTrips({ vehicle: id });
+                const tripsData = tripsRes.data?.data || [];
+                const activeTrip = tripsData.find(t =>
+                  (t.status === 'In Progress' || t.status === 'On Transit' || t.status === 'Enroute' || t.status === 'Assigned') &&
+                  (String(t.vehicle?._id || t.vehicle) === String(id) || (found.vehicleNumber && t.vehiclePlate === found.vehicleNumber))
+                );
+                if (activeTrip && (activeTrip.driverName || activeTrip.driver?.fullName || activeTrip.driver?.name)) {
+                  norm.driver = activeTrip.driverName || activeTrip.driver?.fullName || activeTrip.driver?.name;
+                }
+              } catch (_) {}
+            }
+          }
+
+          if (isAvailableStatus || isObjectIdString(norm.driver)) {
+            norm.driver = 'Unassigned';
+          }
+          setVehicle(norm);
         } else {
           toast.error("Vehicle not found");
           navigate("/manager/vehicles-list");
@@ -411,7 +465,7 @@ export default function VehicleDetailsPage() {
               </div>
               <div>
                 <p className="text-xs text-[#64748B] font-bold uppercase">Driver</p>
-                <p className="text-sm font-bold text-[#1E293B] mt-2">N/A</p>
+                <p className="text-sm font-bold text-[#1E293B] mt-2">{vehicle.driver && vehicle.driver !== 'Unassigned' ? vehicle.driver : "N/A"}</p>
               </div>
             </div>
           </div>

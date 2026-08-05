@@ -791,36 +791,6 @@ export default function TripDetailsPage() {
         </div>
 
         <div className="flex items-center gap-2.5 w-full md:w-auto">
-          {trip.status === "Scheduled" || trip.status === "Assigned" ? (
-            <button
-              onClick={() => handleUpdateStatus("In Progress")}
-              className="flex-1 md:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer text-center"
-            >
-              Start Trip
-            </button>
-          ) : trip.status === "In Progress" ? (
-            <button
-              onClick={() => handleUpdateStatus("Completed")}
-              disabled={!canCompleteTrip}
-              className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md text-center ${
-                canCompleteTrip
-                  ? "bg-[#B45A0A] hover:bg-[#9A4D08] cursor-pointer"
-                  : "bg-gray-400 cursor-not-allowed opacity-60"
-              }`}
-              title={
-                !canCompleteTrip
-                  ? (!isWeighbridgeApproved && !isPodApproved)
-                    ? "Trip cannot be completed. Please approve both the Weighbridge and Proof of Delivery documents first."
-                    : !isWeighbridgeApproved
-                    ? "Trip cannot be completed. Please approve the Weighbridge document first."
-                    : "Trip cannot be completed. Please approve the Proof of Delivery document first."
-                  : ""
-              }
-            >
-              Complete Trip
-            </button>
-          ) : null}
-
           {(trip.status === "Scheduled" || trip.status === "Assigned") && (
             <button
               onClick={() => setShowCancelConfirm(true)}
