@@ -780,16 +780,7 @@ export default function TripsManagementPage() {
 
 
 
-                            {/* End Trip */}
-                            {t.status === "In Progress" && (
-                              <button
-                                onClick={() => handleEndTrip(t.id)}
-                                title="End Trip"
-                                className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl active:scale-95 transition-all cursor-pointer"
-                              >
-                                <CheckCircle2 className="w-4 h-4" />
-                              </button>
-                            )}
+
 
                             {/* Edit */}
                             {(t.status === "Scheduled" || t.status === "Assigned") && (
