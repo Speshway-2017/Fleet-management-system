@@ -60,6 +60,18 @@ export const listOrganizations = async (_req, res, next) => {
         role: 'FLEET_MANAGER',
         organization: org._id
       });
+      const subscribedManagers = await User.countDocuments({
+        role: 'FLEET_MANAGER',
+        organization: org._id,
+        subscriptionStatus: 'ACTIVE'
+      });
+
+      let currentStatus = org.status || 'Pending';
+      if (subscribedManagers > 0 && currentStatus === 'Pending') {
+        currentStatus = 'Active';
+        await Organization.findByIdAndUpdate(org._id, { status: 'Active' });
+      }
+
       return {
         id: org._id.toString(),
         name: org.name,
@@ -68,7 +80,7 @@ export const listOrganizations = async (_req, res, next) => {
         phone: org.phone,
         industry: org.industry,
         subscription: org.plan || 'Standard',
-        status: org.status || 'Pending',
+        status: currentStatus,
         createdAt: new Date(org.createdAt).toLocaleDateString(),
         activeManagers,
         managers: activeManagers, // support details page
@@ -163,6 +175,18 @@ export const getOrganizationDetails = async (req, res, next) => {
     const totalRevenue = managersWithStats.reduce((sum, m) => sum + m.stats.totalRevenue, 0);
     const totalVehiclesCount = managersWithStats.reduce((sum, m) => sum + m.stats.vehiclesManaged, 0);
 
+    const subscribedManagers = await User.countDocuments({
+      role: 'FLEET_MANAGER',
+      organization: org._id,
+      subscriptionStatus: 'ACTIVE'
+    });
+
+    let currentStatus = org.status || 'Pending';
+    if (subscribedManagers > 0 && currentStatus === 'Pending') {
+      currentStatus = 'Active';
+      await Organization.findByIdAndUpdate(org._id, { status: 'Active' });
+    }
+
     const formattedOrg = {
       id: org._id.toString(),
       name: org.name,
@@ -171,7 +195,7 @@ export const getOrganizationDetails = async (req, res, next) => {
       phone: org.phone,
       industry: org.industry,
       subscription: org.plan || 'Standard',
-      status: org.status || 'Pending',
+      status: currentStatus,
       createdAt: new Date(org.createdAt).toLocaleDateString(),
       activeManagers,
       stats: {

@@ -389,16 +389,6 @@ export default function AppLayout() {
                       <span>Settings</span>
                     </button>
                     <button
-                      onClick={() => {
-                        setProfileOpen(false);
-                        navigate(role === "admin" ? "/admin/notifications" : "/manager/notifications");
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-xs font-bold text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                    >
-                      <Bell className="w-4 h-4 text-gray-500" />
-                      <span>Help & Support</span>
-                    </button>
-                    <button
                       onClick={handleLogoutRequest}
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
                     >

@@ -2,6 +2,28 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.75.0] - 2026-08-05
+
+### Fixed & Enhanced (Manager Data Isolation, Profile Organization Details & Org Status Auto-Sync)
+- **Backend Data Access Tenancy & Fallback Fix (`manager.controller.js`, `driverApi.controller.js`)**:
+  - Scoped `listActivities` in `manager.controller.js` to return `[]` when a manager has 0 active fleet entities (vehicles, drivers, trips) and filter logs by active vehicles.
+  - Enforced strict driver data access isolation in `driverApi.controller.js` (`/trips`, `/vehicle`, `/maintenance`, `/fuel`, `/tickets`, `/documents`).
+  - Removed global `User.findOne({ role: 'FLEET_MANAGER' })` fallback in `getDriverSupportInfo` to prevent unassigned drivers from receiving arbitrary system managers. Added document ownership checks to `getDriverDocumentById`.
+  - Removed global fallback queries (`getMaintenances({})`, `getFuelRecords({})`, `listVehicleComplaints` `{}`) in `manager.controller.js` so newly added managers only see their own fuel, maintenance, and ticket data.
+  - Removed mock ticket fallback in `ViewTicketsPage.jsx` so empty ticket lists remain strictly 0 tickets without rendering default mock issues.
+- **Organization Status Auto-Activation (`subscription.controller.js`, `admin.controller.js`)**:
+  - Updated `approveRequest` in `subscription.controller.js` to automatically update the manager's associated `Organization` status to `Active` and update its active subscription plan name upon approval.
+  - Added auto-sync check in `listOrganizations` and `getOrganizationDetails` in `admin.controller.js` to verify if an organization has active subscribed managers and update its status from `Pending` to `Active`.
+- **Server & Client Connection Fix (`axiosClient.js`, `server.js`, `SettingsContext.jsx`)**:
+  - Dynamically resolved hostname in `axiosClient.js` (`http://${window.location.hostname}:5000/api`) to prevent `net::ERR_CONNECTION_REFUSED` cross-origin/IPv6 resolution errors.
+  - Explicitly bound Express server to `0.0.0.0` in `backend/server.js` for reliable cross-platform localhost connectivity.
+  - Gracefully handled network exception errors in `SettingsContext.jsx` fallback state.
+- **Manager Profile Organization Details (`ProfilePage.jsx`, `auth.repository.js`)**:
+  - Updated `findUserById` in `backend/repositories/auth.repository.js` to populate `organization` on the user object.
+  - Added an **Organization Details** section in `frontend/src/roles/manager/pages/ProfilePage.jsx` displaying Organization Name, Industry, Contact Email/Phone, Active Plan, Status badge, and Address. Format resolved 24-character ObjectId strings to clean plan names.
+- **Frontend Analytics Data Scoping (`AnalyticsPage.jsx`)**:
+  - Refined `branchFuel`, `branchMaint`, and `branchTrips` vehicle matching so managers with 0 vehicles evaluate to clean `₹0` operational costs and `None` top spender without pulling foreign records.
+
 ## [1.74.0] - 2026-08-05
 
 ### Fixed & Enhanced (Vehicle Ticket Number & Plate Resolution)

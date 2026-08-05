@@ -183,22 +183,101 @@ export default function NotificationsPage() {
       if (match) extractedTicketId = match[0];
     }
 
-    if (extractedTicketId || title.includes("ticket") || title.includes("mechanic") || title.includes("maintenance") || message.includes("tkt-") || message.includes("mechanic") || type.includes("MAINTENANCE")) {
-      return extractedTicketId ? `/manager/maintenance?ticketId=${encodeURIComponent(extractedTicketId)}` : `/manager/maintenance`;
+    // 1. Subscription Notifications (MUST BE FIRST)
+    if (
+      type.includes("SUB") ||
+      title.includes("subscription") ||
+      title.includes("plan") ||
+      title.includes("billing") ||
+      title.includes("invoice") ||
+      message.includes("subscription") ||
+      message.includes("plan") ||
+      message.includes("renew")
+    ) {
+      return `/manager/subscription`;
     }
-    if (type.includes("MESSAGE") || type.includes("CALL") || title.includes("message") || title.includes("call")) {
-      return tripId ? `/manager/trip-details/${tripId}` : `/manager/trips`;
+
+    // 2. Ticket & Maintenance Notifications
+    if (
+      extractedTicketId ||
+      title.includes("ticket") ||
+      title.includes("mechanic") ||
+      title.includes("maintenance") ||
+      title.includes("issue") ||
+      title.includes("breakdown") ||
+      message.includes("tkt-") ||
+      message.includes("mechanic") ||
+      message.includes("maintenance") ||
+      message.includes("breakdown") ||
+      type.includes("MAINTENANCE") ||
+      type.includes("COMPLAINT")
+    ) {
+      return extractedTicketId
+        ? `/manager/maintenance?ticketId=${encodeURIComponent(extractedTicketId)}`
+        : `/manager/maintenance`;
     }
-    if (type.includes("FUEL") || title.includes("fuel") || message.includes("fuel")) {
+
+    // 3. Fuel Notifications
+    if (
+      type.includes("FUEL") ||
+      title.includes("fuel") ||
+      message.includes("fuel") ||
+      message.includes("diesel") ||
+      message.includes("petrol")
+    ) {
       return `/manager/fuel-management`;
     }
-    if (tripId || type.includes("TRIP") || title.includes("trip") || message.includes("trp-")) {
+
+    // 4. Trip, Dispatch, POD & Weighbridge Notifications
+    if (
+      tripId ||
+      type.includes("TRIP") ||
+      type.includes("POD") ||
+      type.includes("WEIGHBRIDGE") ||
+      title.includes("trip") ||
+      title.includes("dispatch") ||
+      title.includes("delivery") ||
+      title.includes("pod") ||
+      title.includes("weighbridge") ||
+      message.includes("trp-") ||
+      message.includes("dispatch") ||
+      message.includes("delivery")
+    ) {
       return tripId ? `/manager/trip-details/${tripId}` : `/manager/trips`;
     }
-    if (driverId || type.includes("DRIVER") || title.includes("driver")) {
+
+    // 5. Driver Notifications
+    if (
+      driverId ||
+      type.includes("DRIVER") ||
+      title.includes("driver") ||
+      message.includes("driver")
+    ) {
       return driverId ? `/manager/driver-profile/${driverId}` : `/manager/drivers`;
     }
-    return `/manager/maintenance`;
+
+    // 6. Vehicle & Live Tracking Notifications
+    if (
+      type.includes("VEHICLE") ||
+      title.includes("vehicle") ||
+      title.includes("truck") ||
+      message.includes("vehicle") ||
+      message.includes("tracking")
+    ) {
+      return `/manager/vehicles`;
+    }
+
+    // 7. Document Notifications
+    if (
+      type.includes("DOCUMENT") ||
+      title.includes("document") ||
+      title.includes("insurance") ||
+      message.includes("document")
+    ) {
+      return `/manager/settings`;
+    }
+
+    return `/manager/dashboard`;
   };
 
   const handleNotificationClick = async (notif) => {

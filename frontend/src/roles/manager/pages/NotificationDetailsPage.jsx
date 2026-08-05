@@ -136,10 +136,16 @@ export default function NotificationDetailsPage() {
       navigate("/manager/analytics");
     } else if (actType === "Schedule Now") {
       navigate("/manager/maintenance/tickets");
+    } else if (actType === "Manage Subscription" || actType === "View Subscription" || actType === "Upgrade Plan") {
+      navigate("/manager/subscription");
     } else if (actType === "Download PDF") {
       toast.success(`Downloading PDF for ${notification.title}...`);
     } else {
-      toast.success(`${actType || 'Action'} triggered!`);
+      if (isSubscriptionNotification) {
+        navigate("/manager/subscription");
+      } else {
+        toast.success(`${actType || 'Action'} triggered!`);
+      }
     }
   };
 
