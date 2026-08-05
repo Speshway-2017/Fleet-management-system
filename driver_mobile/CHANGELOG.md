@@ -2,9 +2,116 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.74.0] - 2026-08-05
+
+### Fixed & Enhanced (Vehicle Ticket Number & Plate Resolution)
+- **Vehicle Complaint Model & Controller Resolution (`manager.controller.js`, `driverApi.controller.js`)**:
+  - Updated `listVehicleComplaints` in `backend/controllers/manager.controller.js` to populate `vehicleNumber` alongside `registrationNumber`, `brand`, `model`, `vehicleName`, and `plateNumber`.
+  - Added multi-level vehicle plate resolution fallback in backend controller: `doc.vehicle?.vehicleNumber` -> `doc.vehicle?.registrationNumber` -> `doc.trip?.vehiclePlate` -> `doc.driver?.assignedVehicle`.
+  - Added background MongoDB auto-healing update (`VehicleComplaint.updateOne(...)`) to permanently fix legacy `VEH-UNKNOWN` records in the database.
+  - Enhanced `createDriverTicket` in `backend/controllers/driverApi.controller.js` to prioritize `vehicle.vehicleNumber` and active `trip.vehiclePlate` before falling back to `VEH-ASSIGNED`.
+- **Frontend Ticket Vehicle Display Fix (`ViewTicketsPage.jsx`)**:
+  - Added `resolveVehiclePlate` helper in `frontend/src/roles/manager/pages/ViewTicketsPage.jsx` to dynamically render valid vehicle registration/plate numbers in ticket tables, search filters, and view/edit detail modals instead of `VEH-UNKNOWN`.
+
+## [1.73.0] - 2026-08-04
+
+### Fixed & Enhanced (Real-Time GPS Live Tracking & Location History Persistence)
+- **Created TripLocationHistory Model (`TripLocationHistory.js`)**:
+  - Created `TripLocationHistory` Mongoose schema and model in `backend/models/TripLocationHistory.js`.
+  - Added location history recording inside `updateDriverLocation` (`POST /api/driver/location`), logging every coordinate update to the `triplocationhistories` collection in MongoDB Atlas.
+- **Updated Schema & Controller GPS Coordinate Sync (`Vehicle.js`, `Trip.js`, `driverApi.controller.js`)**:
+  - Added `currentLatitude`, `currentLongitude`, `speed`, `heading`, and `lastLocationUpdate` to `Vehicle` and `Trip` Mongoose models.
+  - Enhanced `updateDriverLocation` to update coordinates simultaneously on `Driver`, assigned `Vehicle`, and active `Trip` records.
+  - Broadcasts unified Socket.io events (`driverLocationUpdated` and `driver:location-update`) to `manager:${managerId}`, `trip:${tripId}`, and global subscribers.
+- **Backend Simulated Location Overwrite Fix (`manager.controller.js`)**:
+  - Prevented `getLiveTracking` from overwriting valid real GPS coordinates in MongoDB with fake simulated city linear interpolation.
+  - Prioritizes real GPS coordinates from Vehicle, Driver, or active Trip before using city geocoding fallbacks.
+- **Frontend Driver GPS Integration (`TripDetails.jsx`)**:
+  - Connected browser Geolocation API (`navigator.geolocation.watchPosition` & `getCurrentPosition`) to `driverApi.updateLocation(...)` when a trip is active.
+  - Coordinates are continuously sent to the backend as the driver moves.
+- **Manager Real-Time Socket Synchronization (`FleetMapPage.jsx`)**:
+  - Added `socket.emit("joinManagerRoom", managerId)` on component mount.
+  - Added dual socket event handlers for `'driverLocationUpdated'` and `'driver:location-update'`, triggering live map marker movement instantly without manual refresh.
+
+## [1.72.0] - 2026-08-04
+
+### Enhanced & Refactored (POD & Weighbridge Lock Rule + Manager OSRM Polyline Truck Animation)
+- **Driver Side POD & Weighbridge Lock (`TripDetails.jsx`, `driverApi.controller.js`)**:
+  - Disabled "Delivered" and "Completed" status buttons on Driver side until driver uploads both Proof of Delivery (POD) and Weighbridge Slip.
+  - Added backend validation blocking driver status update to Delivered/Completed if documents are missing (Manager can still override and update directly).
+- **Manager Live Tracking OSRM Truck Animation (`FleetMapPage.jsx`)**:
+  - Implemented 100% real-time truck movement point-by-point along OSRM road route polyline for active transit trips.
+  - Placed 3 markers: Pickup (🚩 Green), Destination (🏁 Red), and Truck (🚚 Moving pulse marker strictly on polyline).
+  - Continuous live calculation of Distance Remaining, ETA Remaining, and Percentage Completed (% Progress).
+  - Map auto-pans to track moving vehicle smoothly. Stops animation and updates status to `DELIVERED` when destination is reached.
+
+## [1.71.0] - 2026-08-04
+
+### Fixed & Enhanced (Notification Navigation & Maintenance Trip Reschedule Workflow)
+- **Resolved Notification Target URL ReferenceError (`NotificationsPage.jsx`, `Header.jsx`)**:
+  - Fixed unhandled runtime `ReferenceError: title is not defined` inside `resolveTargetUrl` when clicking notifications in the Notifications Center and Header bell dropdown.
+  - Notifications now navigate directly to corresponding detail views (`/manager/maintenance`, `/manager/trip-details/:id`, `/manager/fuel-management`, etc.).
+- **Enhanced Maintenance Ticket Reschedule & Offline Customer Update (`ViewTicketsPage.jsx`)**:
+  - **Removed Actual Repair Cost**: Removed the `Actual Repair Cost (₹)` input field from the Update Issue Ticket form as requested.
+  - **New Estimated Delivery Date & Time**: Added `New Estimated Delivery Date & Time` input field allowing managers to update trip delivery schedules when a vehicle requires maintenance.
+  - **Customer Informed Offline**: Added `Informed Customer Offline (Phone / Call) regarding revised delivery schedule ✓` checkbox.
+
+## [1.70.0] - 2026-08-04
+
+### Fixed & Enhanced (Driver Map Real Location Geocoding & Zero Mumbai/Pune Fallbacks)
+- **Resolved Driver Map Misplacement (`TripDetails.jsx`, `MapView.jsx`)**:
+  - Removed all hardcoded Mumbai (`19.076, 72.8777`) and Pune (`18.5204, 73.8567`) fallback coordinates from Driver Trip Details page.
+  - Dynamically resolves trip origin and destination locations (e.g., Dwaraka Tirumala ➔ Eluru) via `calculateDrivingRoute` service.
+  - Passes real OSRM driving geometry and geocoded coordinates to Leaflet map, centering strictly on actual trip locations (e.g. Andhra Pradesh highways) with real distance in KM and ETA.
+
+## [1.69.0] - 2026-08-04
+
+### Refactored & Enhanced (Zero Hardcoded Coordinates, Syntax Error Fix & Clean Live Tracking UI)
+- **Resolved Backend Controller Syntax Error (`manager.controller.js`)**:
+  - Fixed syntax error and duplicate `await v.save()` statements around lines 2100-2105 in `manager.controller.js`. Backend server compiles and connects to MongoDB cleanly.
+- **Zero Hardcoded Coordinates & Real MongoDB Geocoding (`manager.controller.js`, `FleetMapPage.jsx`)**:
+  - Removed all static hardcoded city coordinate tables (`CITY_COORDINATES`, `CORRIDOR_VILLAGES`) and default fallbacks.
+  - Dynamically resolves vehicle location strictly from MongoDB `vehicle.currentLocation` or `vehicle.branch` using Nominatim/OpenStreetMap with caching.
+  - Skips marker placement and displays `"Location unavailable"` if geocoding fails, preventing fake marker placement at (0,0) or default cities.
+- **Clean Production-Ready Live Tracking UI (`FleetMapPage.jsx`, `MapView.jsx`)**:
+  - Completely removed dummy speed widgets (`54 km/h`, `0 km/h`), speedometer cards, fuel gauges (`88%`), temperature indicators, and dummy placeholders.
+  - Live tracking view clean display: Map vehicle markers, vehicle info, driver info, trip origin, trip destination, OSRM route polyline, ETA, and remaining distance.
+
+## [1.68.0] - 2026-08-04
+
+### Enhanced (Uber/Rapido Style Dynamic Live GPS Route Tracking & Middle Platform/Village Markers)
+- **Dynamic Real Data GPS Tracking (`manager.controller.js`, `driverApi.controller.js`)**:
+  - Refactored `getLiveTracking` in `manager.controller.js` to fetch real active trip start/destination locations, geocoded coordinates, vehicle GPS updates, total road distance, ETA, and dynamic progress along route.
+  - Enhanced `updateDriverLocation` in `driverApi.controller.js` to automatically sync driver GPS updates (`latitude`, `longitude`, `speed`) into assigned `Vehicle` and active `Trip` MongoDB documents in real time.
+- **Uber / Rapido Style Map Visualization (`FleetMapPage.jsx`, `MapView.jsx`)**:
+  - Upgraded Leaflet map rendering in both Manager Live Tracking (`FleetMapPage.jsx`) and Driver Trip Map (`MapView.jsx`).
+  - **OSRM Road Route Geometry**: Fetches driving route polyline from Open Source Routing Machine (`router.project-osrm.org`) rendering smooth road geometry instead of linear dashed lines.
+  - **Custom Start & Destination Pin Markers**: Added high-visibility Green Origin Pin (`🚩 Start`) and Red Destination Pin (`🏁 Dest`) with location name badges.
+  - **Middle Platform & Village Badges**: Renders intermediate village and platform markers along the route corridor (e.g., Shadnagar, Mahbubnagar, Kurnool, Dhone, Gooty for Hyderabad-Guntakal; Panvel, Khandala, Lonavala for Mumbai-Pune, etc.).
+  - **Pulsing Dynamic Vehicle Marker**: Displays vehicle position on the road route with live speed (`54 km/h`), distance left (KM), and arrival ETA.
+
 ## [1.67.0] - 2026-08-04
 
-### Enhanced (Manager Dashboard Real Maintenance Alerts & Click Navigation)
+### Enhanced (Vibrant Full-Color Maps, Marker Hover Location Tooltips & Driver Password Reset)
+- **Vibrant Full-Color Maps & Hover Location Tooltips (`FleetMapPage.jsx`, `LiveMap.jsx`, `manager.css`)**:
+  - Removed grayscale filters and upgraded map tiles to vibrant CartoDB Voyager / OpenStreetMap full-color vector tiles.
+  - Added dynamic location hover tooltips (`custom-map-tooltip`) on all vehicle markers displaying `📍 Location: {locationName}`, vehicle plate number, model, assigned driver, and current status upon hover.
+- **Driver Credentials Recovery**:
+  - Reset password for driver `bunny02@fleet.com` (`EMP-916117`) to `Fleet@123`.
+- **Production Geocoding Refactor & Zero Fake Coords (`geocodingHelper.js`)**:
+  - Removed string hash fallback completely. Zero fake or random coordinates are generated.
+  - Expanded master local coordinate dictionary to cover all Andhra Pradesh, Telangana, and major Indian cities & towns (Eluru, Dwaraka Tirumala, Vijayawada, Guntur, Rajahmundry, Bhimavaram, Tadepalligudem, Tanuku, Gudivada, Machilipatnam, Kakinada, Visakhapatnam, Tirupati, etc.).
+  - Added query normalization (`normalizeLocationString`) ignoring case, commas, hyphens, and district suffixes.
+  - Validated longitude/latitude order (`lon1,lat1;lon2,lat2`) in OSRM driving API requests. Added dev logging for geocoding coordinates, OSRM request URLs, and travel times.
+- **Driver Current Location Preservation & Sync (`DriverProfilePage.jsx`, `syncDriverLocations.js`, `server.js`)**:
+  - Fixed issue where driver profile displayed `'Pune'` instead of manager-specified city (e.g. `'Hyderabad'`).
+  - Added `syncDriverLocations` startup sync utility in `server.js` to update legacy database records.
+- **Two-Tier Location Allocation Logic (`driver.controller.js`, `vehicle.controller.js`, `CreateTripPage.jsx`)**:
+  - Implemented 50 km preferred radius search for available drivers and vehicles.
+  - If no drivers/vehicles are found within 50 km of pickup location, displays a clear notification (`❌ No nearby drivers/vehicles found within 50 km`) followed by all available drivers/vehicles sorted from nearest to farthest (e.g., 51 km, 180 km, 250 km, 320 km).
+  - Allows fleet manager to manually pick the closest available driver/vehicle even if outside the preferred 50 km radius.
+- **Resolved Driver Creation Default Location Issue (`manager.controller.js`, `driver.controller.js`, `Driver.js`)**:
+  - Fixed issue where newly created drivers were assigned `'Pune'` by default regardless of input location. Extracted `driverLocation`, `currentLocation`, and `branch` from request body and updated model default.
 - **Real Database Maintenance Alerts & Deep Link Navigation (`ManagerDashboard.jsx`, `ViewTicketsPage.jsx`)**:
   - Removed mock/fallback alerts from Manager Dashboard Maintenance Alerts section; integrated live querying of active driver vehicle issue tickets (`managerApi.getVehicleComplaints()`) and scheduled vehicle service orders (`managerApi.getMaintenance()`).
   - Added click-to-navigate action on every alert card, linking directly to `/manager/maintenance?ticketId=TKT-...` to filter and highlight ticket details upon click.

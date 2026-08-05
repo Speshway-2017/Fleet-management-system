@@ -6,6 +6,7 @@ import Document from '../models/Document.js';
 import ProofOfDelivery from '../models/ProofOfDelivery.js';
 import WeighbridgeSlip from '../models/WeighbridgeSlip.js';
 import Vehicle from '../models/Vehicle.js';
+import TripLocationHistory from '../models/TripLocationHistory.js';
 import Maintenance from '../models/Maintenance.js';
 import Fuel from '../models/Fuel.js';
 import VehicleComplaint from '../models/VehicleComplaint.js';
@@ -530,6 +531,20 @@ export const updateTripStatus = async (req, res, next) => {
 
     const targetStatus = status === 'Start Trip' ? 'In Progress' : (status === 'Complete Trip' ? 'Completed' : status);
 
+    // Enforce POD & Weighbridge Upload rule for Driver before marking Delivered or Completed
+    const isDriverRequest = !req.user || req.user.role === 'driver' || req.user.role === 'DRIVER';
+    if (isDriverRequest && ['Delivered', 'Completed', 'Complete Trip'].includes(targetStatus)) {
+      const isPodUploaded = Boolean(trip.podUploaded || trip.podUrl || trip.podFile);
+      const isWeighbridgeUploaded = Boolean(trip.weighbridgeUploaded || trip.weighbridgeUrl || trip.weighbridgeFile);
+
+      if (!isPodUploaded || !isWeighbridgeUploaded) {
+        const missing = [];
+        if (!isPodUploaded) missing.push('Proof of Delivery (POD)');
+        if (!isWeighbridgeUploaded) missing.push('Weighbridge Slip');
+        return sendError(res, 400, `🔒 Cannot mark trip as ${targetStatus}. Missing required documents: ${missing.join(' and ')}. Please upload them first.`);
+      }
+    }
+
     // Validate 15 min start restriction for starting active progress
     if (['In Progress', 'En Route', 'At Loading', 'In Transit'].includes(targetStatus) && trip.status === 'Assigned') {
       const departure = new Date(trip.departureTime);
@@ -673,31 +688,120 @@ export const updateDriverLocation = async (req, res, next) => {
   try {
     const { latitude, longitude, speed, heading, tripId } = req.body;
 
-    if (!latitude || !longitude) {
-      return sendError(res, 400, 'Latitude and longitude are required');
+    const latNum = parseFloat(latitude);
+    const lngNum = parseFloat(longitude);
+
+    if (isNaN(latNum) || isNaN(lngNum)) {
+      return sendError(res, 400, 'Valid latitude and longitude are required');
     }
 
-    const locationStr = `${latitude},${longitude}`;
+    const locationStr = `${latNum},${lngNum}`;
+    const speedNum = speed ? parseFloat(speed) : 0;
+    const headingNum = heading ? parseFloat(heading) : 0;
+
     const driver = await Driver.findByIdAndUpdate(
       req.user._id,
-      { currentLocation: locationStr, driverLocation: locationStr },
+      { 
+        currentLocation: locationStr, 
+        driverLocation: locationStr,
+        currentLatitude: latNum,
+        currentLongitude: lngNum,
+        speed: speedNum,
+        heading: headingNum,
+        lastLocationUpdate: new Date()
+      },
       { new: true }
     );
 
-    const io = req.app.get('socketio') || req.app.locals?.io;
-    if (io && driver?.assignedManager) {
-      io.to(`manager:${driver.assignedManager}`).emit('driver:location-update', {
-        driverId: req.user._id,
-        latitude,
-        longitude,
-        speed: speed || 0,
-        heading: heading || 0,
-        tripId: tripId || null,
-        updatedAt: new Date()
-      });
+    // Update assigned vehicle coordinates
+    let vehicleDoc = null;
+    if (driver?.assignedVehicle && driver.assignedVehicle !== 'Unassigned') {
+      vehicleDoc = await Vehicle.findOneAndUpdate(
+        { $or: [{ _id: driver.assignedVehicle }, { vehicleNumber: driver.assignedVehicle }, { assignedDriver: req.user._id }] },
+        {
+          currentLatitude: latNum,
+          currentLongitude: lngNum,
+          currentLocation: locationStr,
+          speed: speedNum,
+          heading: headingNum,
+          lastLocationUpdate: new Date()
+        },
+        { new: true }
+      ).catch(() => null);
     }
 
-    return sendSuccess(res, 200, { latitude, longitude }, 'Driver location updated');
+    if (!vehicleDoc) {
+      vehicleDoc = await Vehicle.findOneAndUpdate(
+        { assignedDriver: req.user._id },
+        {
+          currentLatitude: latNum,
+          currentLongitude: lngNum,
+          currentLocation: locationStr,
+          speed: speedNum,
+          heading: headingNum,
+          lastLocationUpdate: new Date()
+        },
+        { new: true }
+      ).catch(() => null);
+    }
+
+    // Find active trip
+    const activeTripQuery = tripId 
+      ? { _id: tripId } 
+      : { driver: req.user._id, status: { $in: ['In Progress', 'On Transit', 'On Trip', 'En Route', 'Started', 'Delayed', 'Dispatched', 'In Transit'] } };
+
+    const activeTrip = await Trip.findOneAndUpdate(
+      activeTripQuery,
+      {
+        currentLatitude: latNum,
+        currentLongitude: lngNum,
+        speed: speedNum,
+        heading: headingNum,
+        lastLocationUpdate: new Date()
+      },
+      { new: true }
+    ).catch(() => null);
+
+    // Save location to TripLocationHistory collection
+    const historyEntry = await TripLocationHistory.create({
+      trip: activeTrip?._id || (tripId ? tripId : null),
+      driver: req.user._id,
+      vehicle: vehicleDoc?._id || null,
+      latitude: latNum,
+      longitude: lngNum,
+      speed: speedNum,
+      heading: headingNum,
+      timestamp: new Date()
+    }).catch(err => {
+      console.error('Error inserting TripLocationHistory:', err);
+    });
+
+    const payload = {
+      driverId: req.user._id,
+      vehicleId: vehicleDoc?._id || null,
+      tripId: activeTrip?._id || tripId || null,
+      latitude: latNum,
+      longitude: lngNum,
+      speed: speedNum,
+      heading: headingNum,
+      updatedAt: new Date()
+    };
+
+    const io = req.app.get('socketio') || req.app.locals?.io;
+    if (io) {
+      if (driver?.assignedManager) {
+        io.to(`manager:${driver.assignedManager}`).emit('driverLocationUpdated', payload);
+        io.to(`manager:${driver.assignedManager}`).emit('driver:location-update', payload);
+      }
+      if (activeTrip?._id) {
+        io.to(`trip:${activeTrip._id}`).emit('driverLocationUpdated', payload);
+        io.to(`trip:${activeTrip._id}`).emit('driver:location-update', payload);
+      }
+      io.emit('driverLocationUpdated', payload);
+      io.emit('driver:location-update', payload);
+    }
+
+    return sendSuccess(res, 200, { latitude: latNum, longitude: lngNum, historyId: historyEntry?._id }, 'Driver location updated');
   } catch (error) {
     next(error);
   }
@@ -1405,15 +1509,29 @@ export const createDriverTicket = async (req, res, next) => {
     }
 
     // Determine Vehicle Plate string safely
-    let vehiclePlateStr = 'VEH-UNKNOWN';
+    let vehiclePlateStr = '';
     if (vehicle) {
-      vehiclePlateStr = vehicle.registrationNumber || vehicle.plateNumber || vehicle.vehicleNumber || 'VEH-UNKNOWN';
-    } else if (typeof vehicleId === 'string' && vehicleId.trim()) {
-      vehiclePlateStr = vehicleId.trim();
-    } else if (driver && typeof driver.assignedVehicle === 'string' && driver.assignedVehicle.trim()) {
+      vehiclePlateStr = vehicle.vehicleNumber || vehicle.registrationNumber || vehicle.plateNumber || vehicle.vehicleName || '';
+    }
+    if (!vehiclePlateStr && trip) {
+      if (typeof trip.vehiclePlate === 'string' && trip.vehiclePlate.trim() && trip.vehiclePlate !== 'VEH-UNKNOWN') {
+        vehiclePlateStr = trip.vehiclePlate.trim();
+      } else if (trip.vehicle) {
+        if (typeof trip.vehicle === 'object') {
+          vehiclePlateStr = trip.vehicle.vehicleNumber || trip.vehicle.registrationNumber || trip.vehicle.vehicleName || '';
+        } else if (typeof trip.vehicle === 'string' && trip.vehicle !== 'VEH-UNKNOWN') {
+          vehiclePlateStr = trip.vehicle;
+        }
+      }
+    }
+    if (!vehiclePlateStr && driver && typeof driver.assignedVehicle === 'string' && driver.assignedVehicle.trim() && driver.assignedVehicle !== 'Unassigned') {
       vehiclePlateStr = driver.assignedVehicle.trim();
-    } else if (trip && trip.vehiclePlate) {
-      vehiclePlateStr = trip.vehiclePlate;
+    }
+    if (!vehiclePlateStr && typeof vehicleId === 'string' && vehicleId.trim() && !vehicleId.includes('UNKNOWN') && !mongoose.Types.ObjectId.isValid(vehicleId)) {
+      vehiclePlateStr = vehicleId.trim();
+    }
+    if (!vehiclePlateStr || vehiclePlateStr === 'VEH-UNKNOWN') {
+      vehiclePlateStr = 'VEH-ASSIGNED';
     }
 
     // Attachments / Image Upload

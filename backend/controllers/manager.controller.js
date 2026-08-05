@@ -801,10 +801,10 @@ export const listTrips = async (req, res, next) => {
       const tripObj = t.toObject ? t.toObject() : t;
       const calculatedDist = calculateDistance(tripObj.startLocation, tripObj.endLocation);
       const isUnrealistic = tripObj.estimatedDistance > 4000 && calculatedDist < 3000;
-      
+
       if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120 || tripObj.estimatedDistance === 584 || isUnrealistic) {
         tripObj.estimatedDistance = calculatedDist;
-        Trip.findByIdAndUpdate(t._id, { estimatedDistance: calculatedDist }).catch(() => {});
+        Trip.findByIdAndUpdate(t._id, { estimatedDistance: calculatedDist }).catch(() => { });
       }
       if (!tripObj.actualDistance || tripObj.actualDistance === 120 || tripObj.actualDistance === 584 || (tripObj.actualDistance > 4000 && calculatedDist < 3000)) {
         tripObj.actualDistance = calculatedDist;
@@ -835,7 +835,7 @@ export const getTripDetails = async (req, res, next) => {
 
     if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120 || tripObj.estimatedDistance === 584 || isUnrealistic) {
       tripObj.estimatedDistance = calculatedDist;
-      Trip.findByIdAndUpdate(trip._id, { estimatedDistance: calculatedDist }).catch(() => {});
+      Trip.findByIdAndUpdate(trip._id, { estimatedDistance: calculatedDist }).catch(() => { });
     }
     if (!tripObj.actualDistance || tripObj.actualDistance === 120 || tripObj.actualDistance === 584 || (tripObj.actualDistance > 4000 && calculatedDist < 3000)) {
       tripObj.actualDistance = calculatedDist;
@@ -1264,7 +1264,7 @@ export const updateTrip = async (req, res, next) => {
     // Send notifications to the driver if changed or if status changed
     try {
       const ioInstance = req.app.get('socketio') || req.app.locals?.io;
-      
+
       // If driver is changed
       if (req.body.driver && String(req.body.driver) !== String(existingTrip.driver)) {
         // Notify new driver
@@ -2022,59 +2022,90 @@ export const getLiveTracking = async (req, res, next) => {
           assignmentStatus = "Maintenance";
         } else if (v.currentStatus === "Inactive" || v.currentStatus === "Out of Service") {
           assignmentStatus = "Inactive";
-        } else if (v.currentStatus === "Assigned") {
-          assignmentStatus = "Assigned";
         } else if (v.currentStatus === "On Trip") {
           assignmentStatus = "On Trip";
         }
       }
 
-      let currentLocation = v.currentLocation || v.branchDepot || v.branch || 'Guntakal';
-      let currentLat = 15.1602;
-      let currentLng = 77.3715;
+      let locString = v.currentLocation || v.branchDepot || v.branch;
+      let currentLocation = locString || "Location unavailable";
+      
+      // Check real GPS coordinates on Vehicle, Driver, or recent Trip
+      let realLat = (v.currentLatitude && !isNaN(v.currentLatitude)) ? v.currentLatitude : null;
+      let realLng = (v.currentLongitude && !isNaN(v.currentLongitude)) ? v.currentLongitude : null;
+
+      if (!realLat || !realLng) {
+        if (v.assignedDriver?.currentLatitude && v.assignedDriver?.currentLongitude) {
+          realLat = v.assignedDriver.currentLatitude;
+          realLng = v.assignedDriver.currentLongitude;
+        } else if (recentTrip?.currentLatitude && recentTrip?.currentLongitude) {
+          realLat = recentTrip.currentLatitude;
+          realLng = recentTrip.currentLongitude;
+        }
+      }
+
+      let currentLat = realLat;
+      let currentLng = realLng;
+      let isSimulated = false;
+      let startCoords = null;
+      let endCoords = null;
+
+      if (!currentLat || !currentLng) {
+        if (locString) {
+          const resolved = await geocodeCity(locString);
+          if (resolved) {
+            currentLat = resolved[0];
+            currentLng = resolved[1];
+          }
+        }
+      }
 
       if (recentTrip) {
+        if (recentTrip.startLocation) {
+          startCoords = await geocodeCity(recentTrip.startLocation);
+        }
+        if (recentTrip.endLocation) {
+          endCoords = await geocodeCity(recentTrip.endLocation);
+        }
+
         if (recentTrip.status === 'Completed') {
           currentLocation = recentTrip.endLocation;
           assignmentStatus = "Available";
-          const coords = await geocodeCity(recentTrip.endLocation);
-          currentLat = coords[0];
-          currentLng = coords[1];
-        } else if (['In Progress', 'On Transit', 'On Trip', 'Delayed'].includes(recentTrip.status)) {
+          if (endCoords && (!realLat || !realLng)) {
+            currentLat = endCoords[0];
+            currentLng = endCoords[1];
+          }
+        } else if (['In Progress', 'On Transit', 'On Trip', 'Delayed', 'Started', 'En Route'].includes(recentTrip.status)) {
           currentLocation = `En route to ${recentTrip.endLocation}`;
-          const startCoords = await geocodeCity(recentTrip.startLocation);
-          const endCoords = await geocodeCity(recentTrip.endLocation);
-
-          // Simulated coordinates along the active route (45% along line from Start to Destination)
-          const progress = 0.45;
-          currentLat = Number((startCoords[0] + (endCoords[0] - startCoords[0]) * progress).toFixed(4));
-          currentLng = Number((startCoords[1] + (endCoords[1] - startCoords[1]) * progress).toFixed(4));
-
-          console.log(`Trip:\n${recentTrip.startLocation} → ${recentTrip.endLocation}\n`);
-          console.log(`Current Coordinates:\n${currentLat}\n${currentLng}\n`);
-          console.log(`Vehicle Marker Updated\n`);
+          
+          if (realLat && realLng) {
+            currentLat = realLat;
+            currentLng = realLng;
+          } else if (startCoords && endCoords) {
+            const startTime = recentTrip.actualStartTime ? new Date(recentTrip.actualStartTime).getTime() : (recentTrip.createdAt ? new Date(recentTrip.createdAt).getTime() : Date.now());
+            const elapsedMinutes = Math.max(1, (Date.now() - startTime) / (60 * 1000));
+            const progress = Math.min(0.85, Math.max(0.15, (elapsedMinutes % 45) / 45 * 0.7 + 0.15));
+            currentLat = Number((startCoords[0] + (endCoords[0] - startCoords[0]) * progress).toFixed(4));
+            currentLng = Number((startCoords[1] + (endCoords[1] - startCoords[1]) * progress).toFixed(4));
+            isSimulated = true;
+          }
         } else if (['Scheduled', 'Assigned', 'Ready to Dispatch'].includes(recentTrip.status)) {
           currentLocation = recentTrip.startLocation;
-          const coords = await geocodeCity(recentTrip.startLocation);
-          currentLat = coords[0];
-          currentLng = coords[1];
-
-          console.log(`Trip:\n${recentTrip.startLocation} → ${recentTrip.endLocation}\n`);
-          console.log(`Current Coordinates:\n${currentLat}\n${currentLng}\n`);
-          console.log(`Vehicle Marker Updated\n`);
+          if (startCoords && (!realLat || !realLng)) {
+            currentLat = startCoords[0];
+            currentLng = startCoords[1];
+          }
         }
-      } else {
-        const coords = await geocodeCity(currentLocation);
-        currentLat = coords[0];
-        currentLng = coords[1];
       }
 
-      // Persist updated location & coordinates in DB if modified
-      if (v.currentLocation !== currentLocation || v.currentLatitude !== currentLat || v.currentLongitude !== currentLng) {
-        v.currentLocation = currentLocation;
-        v.currentLatitude = currentLat;
-        v.currentLongitude = currentLng;
-        await v.save();
+      // Only persist real GPS coordinates in DB (never save simulated coordinates back)
+      if (realLat !== null && realLng !== null && !isSimulated) {
+        if (v.currentLocation !== currentLocation || v.currentLatitude !== realLat || v.currentLongitude !== realLng) {
+          v.currentLocation = currentLocation;
+          v.currentLatitude = realLat;
+          v.currentLongitude = realLng;
+          await v.save().catch(() => {});
+        }
       }
 
       const driverName = v.assignedDriver?.fullName || (activeTrip ? (activeTrip.driver?.fullName || activeTrip.driverName) : "Unassigned");
@@ -2117,6 +2148,8 @@ export const getLiveTracking = async (req, res, next) => {
           routeDistance: activeTrip.estimatedDistance || 374,
           driverName: driverName,
           driverPhone: driverPhone,
+          startCoords: startCoords,
+          endCoords: endCoords,
           currentLatitude: currentLat,
           currentLongitude: currentLng
         } : null
@@ -2615,7 +2648,7 @@ export const getWeighbridgeByTripId = async (req, res, next) => {
     const query = mongoose.Types.ObjectId.isValid(tripId)
       ? { trip: tripId }
       : { $or: [{ trip: tripId }, { slipNumber: tripId }] };
-      
+
     const slip = await WeighbridgeSlip.findOne(query).populate('driver').catch(() => null);
     if (!slip) {
       return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
@@ -2961,20 +2994,52 @@ export const listVehicleComplaints = async (req, res, next) => {
     }
 
     let complaints = await VehicleComplaint.find(filter)
-      .populate('driver', 'fullName email phoneNumber')
-      .populate('vehicle', 'registrationNumber make model plateNumber')
-      .populate('trip', 'tripNumber origin destination')
+      .populate('driver', 'fullName email phoneNumber assignedVehicle')
+      .populate('vehicle', 'vehicleNumber registrationNumber brand model vehicleName plateNumber')
+      .populate('trip', 'tripNumber origin destination vehiclePlate vehicle')
       .sort({ createdAt: -1 });
 
     if (complaints.length === 0 && !tripId) {
       complaints = await VehicleComplaint.find({})
-        .populate('driver', 'fullName email phoneNumber')
-        .populate('vehicle', 'registrationNumber make model plateNumber')
-        .populate('trip', 'tripNumber origin destination')
+        .populate('driver', 'fullName email phoneNumber assignedVehicle')
+        .populate('vehicle', 'vehicleNumber registrationNumber brand model vehicleName plateNumber')
+        .populate('trip', 'tripNumber origin destination vehiclePlate vehicle')
         .sort({ createdAt: -1 });
     }
 
-    return sendSuccess(res, 200, complaints, 'Vehicle complaints retrieved successfully');
+    // Sanitize and resolve vehiclePlate if it is missing, empty, or 'VEH-UNKNOWN'
+    const formattedComplaints = complaints.map(c => {
+      const doc = c.toObject ? c.toObject() : { ...c };
+      if (!doc.vehiclePlate || doc.vehiclePlate === 'VEH-UNKNOWN' || doc.vehiclePlate === 'UNKNOWN') {
+        let resolved = '';
+        if (doc.vehicle && typeof doc.vehicle === 'object') {
+          resolved = doc.vehicle.vehicleNumber || doc.vehicle.registrationNumber || doc.vehicle.plateNumber || doc.vehicle.vehicleName;
+        }
+        if (!resolved && doc.trip && typeof doc.trip === 'object') {
+          resolved = doc.trip.vehiclePlate;
+          if (!resolved && doc.trip.vehicle) {
+            if (typeof doc.trip.vehicle === 'object') {
+              resolved = doc.trip.vehicle.vehicleNumber || doc.trip.vehicle.registrationNumber;
+            } else if (typeof doc.trip.vehicle === 'string' && doc.trip.vehicle !== 'VEH-UNKNOWN') {
+              resolved = doc.trip.vehicle;
+            }
+          }
+        }
+        if (!resolved && doc.driver && typeof doc.driver === 'object' && doc.driver.assignedVehicle && doc.driver.assignedVehicle !== 'Unassigned') {
+          resolved = doc.driver.assignedVehicle;
+        }
+        if (resolved && resolved !== 'VEH-UNKNOWN' && resolved !== 'UNKNOWN') {
+          doc.vehiclePlate = resolved;
+          // Asynchronously update MongoDB document so DB record is permanently fixed
+          VehicleComplaint.updateOne({ _id: doc._id }, { vehiclePlate: resolved }).exec().catch(() => {});
+        } else {
+          doc.vehiclePlate = 'VEH-ASSIGNED';
+        }
+      }
+      return doc;
+    });
+
+    return sendSuccess(res, 200, formattedComplaints, 'Vehicle complaints retrieved successfully');
   } catch (error) {
     next(error);
   }

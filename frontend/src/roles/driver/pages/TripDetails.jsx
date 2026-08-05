@@ -20,6 +20,7 @@ import {
   CheckCircle,
   AlertCircle
 } from "lucide-react";
+import { calculateDrivingRoute } from "../../manager/services/routingService";
 
 export default function DriverTripDetailsPage() {
   const { id } = useParams();
@@ -33,6 +34,7 @@ export default function DriverTripDetailsPage() {
   const [togglingLocation, setTogglingLocation] = useState(false);
   const [simulatedLat, setSimulatedLat] = useState(null);
   const [simulatedLng, setSimulatedLng] = useState(null);
+  const [routeInfo, setRouteInfo] = useState(null);
 
   useEffect(() => {
     fetchTripDetails();
@@ -57,7 +59,6 @@ export default function DriverTripDetailsPage() {
         if (found) {
           setTrip(found);
         } else {
-          // Try fetching current trip as fallback
           const curRes = await driverApi.getCurrentTrip();
           if (curRes?.success && curRes.data) {
             setTrip(curRes.data);
@@ -75,31 +76,99 @@ export default function DriverTripDetailsPage() {
 
   const tripId = trip?._id || trip?.id || trip?.tripId || id;
 
-  // Live truck position simulation along route when trip is active
+  // Calculate driving route for real start & end locations
+  useEffect(() => {
+    if (!trip) return;
+    const startLoc = trip.startLocation || trip.origin?.address || (typeof trip.origin === 'string' ? trip.origin : null);
+    const endLoc = trip.endLocation || trip.destination?.address || (typeof trip.destination === 'string' ? trip.destination : null);
+
+    if (startLoc && endLoc) {
+      calculateDrivingRoute(startLoc, endLoc).then((res) => {
+        if (res && res.success) {
+          setRouteInfo(res);
+        }
+      }).catch((err) => {
+        console.warn("TripDetails route calculation failed:", err);
+      });
+    }
+  }, [trip]);
+
+  // Live truck position GPS tracking & API sync when trip is active
   useEffect(() => {
     if (!trip) return;
     const rawSt = (trip.status || "").toUpperCase();
     const isActive = ["IN PROGRESS", "STARTED", "DISPATCHED", "EN_ROUTE", "IN_TRANSIT", "ON TRANSIT"].includes(rawSt);
 
-    if (isActive) {
-      const startLat = trip.origin?.coordinates ? trip.origin.coordinates[1] : 19.076;
-      const startLng = trip.origin?.coordinates ? trip.origin.coordinates[0] : 72.8777;
-      const endLat = trip.destination?.coordinates ? trip.destination.coordinates[1] : 18.5204;
-      const endLng = trip.destination?.coordinates ? trip.destination.coordinates[0] : 73.8567;
+    if (!isActive) return;
+
+    let watchId = null;
+    let fallbackInterval = null;
+
+    const sendLocationToBackend = (lat, lng, speed = 0, heading = 0) => {
+      setSimulatedLat(lat);
+      setSimulatedLng(lng);
+      driverApi.updateLocation({
+        latitude: lat,
+        longitude: lng,
+        speed: speed || 0,
+        heading: heading || 0,
+        tripId: trip._id || trip.id || tripId
+      }).catch(err => {
+        console.warn("Failed to post driver location:", err);
+      });
+    };
+
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          sendLocationToBackend(pos.coords.latitude, pos.coords.longitude, pos.coords.speed, pos.coords.heading);
+        },
+        (err) => {
+          console.warn("Initial Geolocation error:", err.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          sendLocationToBackend(pos.coords.latitude, pos.coords.longitude, pos.coords.speed, pos.coords.heading);
+        },
+        (err) => {
+          console.warn("Geolocation watch error:", err.message);
+        },
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+      );
+    }
+
+    // Fallback simulation if routeInfo exists and Geolocation is stationary or in dev mode
+    if (routeInfo?.startCoords && routeInfo?.endCoords) {
+      const startLat = routeInfo.startCoords[0];
+      const startLng = routeInfo.startCoords[1];
+      const endLat = routeInfo.endCoords[0];
+      const endLng = routeInfo.endCoords[1];
 
       let step = 0;
-      const interval = setInterval(() => {
-        step = (step + 1) % 100;
-        const ratio = step / 100;
-        const currentLat = startLat + (endLat - startLat) * ratio;
-        const currentLng = startLng + (endLng - startLng) * ratio;
-        setSimulatedLat(currentLat);
-        setSimulatedLng(currentLng);
-      }, 3000);
-
-      return () => clearInterval(interval);
+      fallbackInterval = setInterval(() => {
+        // If watchId didn't get real location or for simulation preview
+        if (!navigator.geolocation) {
+          step = (step + 1) % 100;
+          const ratio = step / 100;
+          const currentLat = startLat + (endLat - startLat) * ratio;
+          const currentLng = startLng + (endLng - startLng) * ratio;
+          sendLocationToBackend(currentLat, currentLng);
+        }
+      }, 10000);
     }
-  }, [trip]);
+
+    return () => {
+      if (watchId !== null && "geolocation" in navigator) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+      if (fallbackInterval) {
+        clearInterval(fallbackInterval);
+      }
+    };
+  }, [trip, routeInfo]);
 
   const handleRespond = async (action) => {
     if (!tripId) return;
@@ -119,8 +188,20 @@ export default function DriverTripDetailsPage() {
     }
   };
 
+  const isDocsUploaded = Boolean(
+    (trip?.podUploaded || trip?.podUrl || trip?.podFile) &&
+    (trip?.weighbridgeUploaded || trip?.weighbridgeUrl || trip?.weighbridgeFile)
+  );
+
   const handleStatusChange = async (newStatus) => {
     if (!tripId) return;
+
+    const isDeliveryStep = ["Delivered", "Completed", "Complete Trip"].includes(newStatus);
+    if (isDeliveryStep && !isDocsUploaded) {
+      toast.error("🔒 Cannot set status to " + newStatus + ". Please upload BOTH Proof of Delivery (POD) and Weighbridge Slip first.");
+      return;
+    }
+
     try {
       const res = await driverApi.updateTripStatus(tripId, { status: newStatus });
       if (res?.success) {
@@ -234,7 +315,6 @@ export default function DriverTripDetailsPage() {
   const rawStatus = (trip.status || "DISPATCHED").toUpperCase();
   const departureTime = trip.departureTime || trip.scheduledDate;
 
-  // 15-minute start restriction rule
   const checkIsStartEnabled = (departureTimeStr) => {
     if (!departureTimeStr) return true;
     try {
@@ -264,20 +344,21 @@ export default function DriverTripDetailsPage() {
 
   const unlockTimeStr = getLockTimeText(departureTime);
 
-  // Map Coordinates & Live Position
-  const originCoord = trip.origin?.coordinates
-    ? { lat: trip.origin.coordinates[1], lng: trip.origin.coordinates[0], address: trip.origin.address || trip.startLocation }
-    : { lat: 19.076, lng: 72.8777, address: trip.startLocation || trip.origin?.address || "Origin" };
+  // Dynamic Real Map Coordinates
+  const startLocationName = trip.startLocation || trip.origin?.address || (typeof trip.origin === 'string' ? trip.origin : "Origin");
+  const endLocationName = trip.endLocation || trip.destination?.address || (typeof trip.destination === 'string' ? trip.destination : "Destination");
 
-  const destCoord = trip.destination?.coordinates
-    ? { lat: trip.destination.coordinates[1], lng: trip.destination.coordinates[0], address: trip.destination.address || trip.endLocation }
-    : { lat: 18.5204, lng: 73.8567, address: trip.endLocation || trip.destination?.address || "Destination" };
+  const startCoords = routeInfo?.startCoords || (trip.origin?.coordinates ? [trip.origin.coordinates[1], trip.origin.coordinates[0]] : null);
+  const endCoords = routeInfo?.endCoords || (trip.destination?.coordinates ? [trip.destination.coordinates[1], trip.destination.coordinates[0]] : null);
 
-  const currentLoc = simulatedLat && simulatedLng
+  const originCoord = startCoords ? { lat: startCoords[0], lng: startCoords[1], address: startLocationName } : null;
+  const destCoord = endCoords ? { lat: endCoords[0], lng: endCoords[1], address: endLocationName } : null;
+
+  const currentLoc = (simulatedLat && simulatedLng)
     ? { lat: simulatedLat, lng: simulatedLng }
-    : trip.currentLocation?.coordinates
-    ? { lat: trip.currentLocation.coordinates[1], lng: trip.currentLocation.coordinates[0] }
-    : originCoord;
+    : (trip.currentLatitude && trip.currentLongitude)
+      ? { lat: trip.currentLatitude, lng: trip.currentLongitude }
+      : (startCoords ? { lat: startCoords[0], lng: startCoords[1] } : null);
 
   const statusPipeline = [
     { key: "In Progress", label: "Start / In Progress" },
@@ -344,11 +425,10 @@ export default function DriverTripDetailsPage() {
             <button
               onClick={() => handleStatusChange("Start Trip")}
               disabled={!isStartEnabled}
-              className={`py-2.5 px-6 rounded-xl text-xs font-bold font-poppins flex items-center gap-2 transition shadow-sm ${
-                isStartEnabled
+              className={`py-2.5 px-6 rounded-xl text-xs font-bold font-poppins flex items-center gap-2 transition shadow-sm ${isStartEnabled
                   ? "bg-[#B45A0A] hover:bg-[#9A4D08] text-white cursor-pointer"
                   : "bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed"
-              }`}
+                }`}
             >
               {isStartEnabled ? (
                 <>
@@ -416,9 +496,9 @@ export default function DriverTripDetailsPage() {
               driverLocation={currentLoc}
               origin={originCoord}
               destination={destCoord}
-              speed={rawStatus === "ACCEPTED" || rawStatus === "ASSIGNED" ? 0 : 54}
-              eta={trip.eta || "1h 15m"}
-              distance={trip.remainingDistance || "38 km"}
+              eta={routeInfo?.durationFormatted || trip.eta || "In transit"}
+              distance={routeInfo?.distanceKm ? `${routeInfo.distanceKm} km` : (trip.remainingDistance || "N/A")}
+              routeCoordinates={routeInfo?.routeGeometry || []}
             />
           </div>
 
@@ -426,7 +506,7 @@ export default function DriverTripDetailsPage() {
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
             <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center justify-between">
               <span>GPS Tracking & Route Stops</span>
-              <span className="text-xs font-semibold text-[#B45A0A] lowercase font-nunito">Live Route GPS</span>
+              <span className="text-xs font-semibold text-[#B45A0A] lowercase font-nunito">live route gps</span>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -435,7 +515,7 @@ export default function DriverTripDetailsPage() {
                 <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-400 font-poppins">Stop 1 - Pickup</span>
-                  <p className="text-xs font-bold text-slate-900 line-clamp-1">{trip.startLocation || originCoord.address}</p>
+                  <p className="text-xs font-bold text-slate-900 line-clamp-1">{startLocationName}</p>
                   <span className="text-[10px] text-emerald-700 font-semibold">Completed ✓</span>
                 </div>
               </div>
@@ -459,7 +539,7 @@ export default function DriverTripDetailsPage() {
                 )}
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-400 font-poppins">Stop 3 - Destination</span>
-                  <p className="text-xs font-bold text-slate-900 line-clamp-1">{trip.endLocation || destCoord.address}</p>
+                  <p className="text-xs font-bold text-slate-900 line-clamp-1">{endLocationName}</p>
                   <span className={`text-[10px] font-semibold ${customerReached ? "text-emerald-700" : "text-amber-800"}`}>
                     {customerReached ? "Customer Reached ✓" : "Pending Arrival"}
                   </span>
@@ -476,17 +556,24 @@ export default function DriverTripDetailsPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
               {statusPipeline.map((step) => {
                 const isActiveStep = rawStatus === step.key.toUpperCase();
+                const isDeliveryStep = step.key === "Delivered" || step.key === "Completed";
+                const isStepDisabled = isDeliveryStep && !isDocsUploaded;
+
                 return (
                   <button
                     key={step.key}
+                    disabled={isStepDisabled}
                     onClick={() => handleStatusChange(step.key)}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-semibold font-poppins transition text-center ${
-                      isActiveStep
+                    title={isStepDisabled ? "🔒 Upload both POD & Weighbridge Slip to unlock Delivered & Completed" : ""}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-semibold font-poppins transition text-center flex flex-col items-center justify-center gap-0.5 ${isActiveStep
                         ? "bg-[#B45A0A] text-white font-bold shadow-sm"
-                        : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200"
-                    }`}
+                        : isStepDisabled
+                        ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+                        : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 cursor-pointer"
+                      }`}
                   >
-                    {step.label}
+                    <span>{step.label}</span>
+                    {isStepDisabled && <span className="text-[9px] text-amber-700 font-extrabold">🔒 Need POD & Slip</span>}
                   </button>
                 );
               })}
@@ -501,131 +588,109 @@ export default function DriverTripDetailsPage() {
             <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center gap-2">
               <Truck className="w-4 h-4 text-[#B45A0A]" /> Assigned Vehicle Details
             </h3>
-
             <div className="space-y-3 text-xs">
-              <div className="flex items-center justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Plate / Registration:</span>
-                <span className="font-bold text-slate-900 font-mono">{vehiclePlate}</span>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-slate-500 font-semibold">Plate / Registration:</span>
+                <span className="font-extrabold font-mono text-slate-900">{vehiclePlate}</span>
               </div>
-              <div className="flex items-center justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Vehicle Model:</span>
-                <span className="font-semibold text-slate-900 font-poppins">{vehicleModel}</span>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-slate-500 font-semibold">Vehicle Model:</span>
+                <span className="font-bold text-slate-800">{vehicleModel}</span>
               </div>
-              <div className="flex items-center justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Vehicle Status:</span>
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">{vehicleStatus}</span>
-              </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-slate-500">Fuel Level:</span>
-                <span className="font-semibold text-slate-900 font-poppins">{vehicleFuel}</span>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-slate-500 font-semibold">Vehicle Status:</span>
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-poppins">
+                  {vehicleStatus}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Cargo & Route Details */}
+          {/* Cargo Specs */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
             <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-100">
               Trip Specs & Cargo Info
             </h3>
-
             <div className="space-y-3 text-xs">
-              <div className="flex items-start gap-2 py-1 border-b border-slate-100">
-                <MapPin className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
-                <div>
-                  <span className="text-slate-400 uppercase font-bold text-[10px]">Origin</span>
-                  <p className="font-semibold text-slate-900 font-poppins">{trip.startLocation || originCoord.address}</p>
-                </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins block">Origin</span>
+                <p className="font-bold text-slate-900 text-xs mt-0.5">{startLocationName}</p>
               </div>
-
-              <div className="flex items-start gap-2 py-1 border-b border-slate-100">
-                <Navigation className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  <span className="text-slate-400 uppercase font-bold text-[10px]">Destination</span>
-                  <p className="font-semibold text-slate-900 font-poppins">{trip.endLocation || destCoord.address}</p>
-                </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins block">Destination</span>
+                <p className="font-bold text-slate-900 text-xs mt-0.5">{endLocationName}</p>
               </div>
-
-              <div className="flex items-center justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Cargo Type:</span>
-                <span className="font-semibold text-slate-900 font-poppins">{trip.cargoDetails?.cargoType || trip.cargoType || "Standard Freight"}</span>
+              <div className="pt-2 border-t border-slate-100 flex justify-between">
+                <span className="text-slate-500 font-semibold">Cargo Type:</span>
+                <span className="font-bold text-slate-800">{trip.cargoType || "Standard Freight"}</span>
               </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-slate-500">Weight:</span>
-                <span className="font-semibold text-slate-900 font-poppins">{trip.cargoDetails?.weight ? `${trip.cargoDetails.weight} Tons` : "15 Tons"}</span>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-semibold">Weight:</span>
+                <span className="font-bold text-slate-800">{trip.weight ? `${trip.weight} Tons` : "15 Tons"}</span>
               </div>
             </div>
           </div>
 
-          {/* POD Document Upload Form */}
-          <div className={`bg-white border rounded-2xl p-6 shadow-sm transition ${customerReached ? "border-slate-200" : "border-slate-200 bg-slate-50/50"}`}>
-            <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider mb-2 flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <FileCheck className="w-4 h-4 text-[#B45A0A]" /> Upload Proof of Delivery (POD)
+          {/* Proof of Delivery (POD) & Weighbridge Upload Forms */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
+            <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center justify-between">
+              <span>Trip Documents Upload</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded font-poppins font-bold ${customerReached ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>
+                {customerReached ? "UNLOCKED 🔓" : "LOCKED 🔒"}
               </span>
-              {customerReached ? (
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">UNLOCKED</span>
-              ) : (
-                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">LOCKED</span>
-              )}
             </h3>
 
-            {!customerReached && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl my-3 text-[11px] text-amber-800 font-medium">
-                🔒 Lock: Please switch ON "Arrived at Customer Location" toggle above to enable POD file upload.
+            {/* POD Upload Box */}
+            <form onSubmit={handlePodUpload} className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 font-poppins flex items-center gap-1.5">
+                  <FileCheck className="w-4 h-4 text-[#B45A0A]" /> Proof of Delivery (POD)
+                </label>
+                {trip.podUploaded && (
+                  <span className="text-[10px] text-emerald-600 font-extrabold font-poppins">Uploaded ✓</span>
+                )}
               </div>
-            )}
-
-            <form onSubmit={handlePodUpload} className="space-y-3 mt-4">
               <input
                 type="file"
                 accept="image/*,.pdf"
-                disabled={!customerReached}
+                disabled={!customerReached || uploadingPod}
                 onChange={(e) => setPodFile(e.target.files[0])}
-                className="block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-[#B45A0A] hover:file:bg-amber-100 disabled:opacity-40 cursor-pointer"
+                className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-[#B45A0A] hover:file:bg-amber-100 disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={!customerReached || uploadingPod || !podFile}
-                className="w-full py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-sm"
+                disabled={!customerReached || !podFile || uploadingPod}
+                className="w-full py-2 bg-[#B45A0A] hover:bg-[#9A4D08] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm"
               >
-                {uploadingPod ? "Uploading POD..." : "Submit Proof of Delivery"}
+                {uploadingPod ? "Uploading POD..." : "Upload POD Document"}
               </button>
             </form>
-          </div>
 
-          {/* Weighbridge Slip Form */}
-          <div className={`bg-white border rounded-2xl p-6 shadow-sm transition ${customerReached ? "border-slate-200" : "border-slate-200 bg-slate-50/50"}`}>
-            <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider mb-2 flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Scale className="w-4 h-4 text-[#B45A0A]" /> Upload Weighbridge Slip
-              </span>
-              {customerReached ? (
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">UNLOCKED</span>
-              ) : (
-                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">LOCKED</span>
-              )}
-            </h3>
+            <hr className="border-slate-100" />
 
-            {!customerReached && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl my-3 text-[11px] text-amber-800 font-medium">
-                🔒 Lock: Please switch ON "Arrived at Customer Location" toggle above to enable Weighbridge slip upload.
+            {/* Weighbridge Upload Box */}
+            <form onSubmit={handleWeighbridgeUpload} className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 font-poppins flex items-center gap-1.5">
+                  <Scale className="w-4 h-4 text-blue-600" /> Weighbridge Slip
+                </label>
+                {trip.weighbridgeUploaded && (
+                  <span className="text-[10px] text-emerald-600 font-extrabold font-poppins">Uploaded ✓</span>
+                )}
               </div>
-            )}
-
-            <form onSubmit={handleWeighbridgeUpload} className="space-y-3 mt-4">
               <input
                 type="file"
                 accept="image/*,.pdf"
-                disabled={!customerReached}
+                disabled={!customerReached || uploadingWeighbridge}
                 onChange={(e) => setWeighbridgeFile(e.target.files[0])}
-                className="block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-[#B45A0A] hover:file:bg-amber-100 disabled:opacity-40 cursor-pointer"
+                className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={!customerReached || uploadingWeighbridge || !weighbridgeFile}
-                className="w-full py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-sm"
+                disabled={!customerReached || !weighbridgeFile || uploadingWeighbridge}
+                className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm"
               >
-                {uploadingWeighbridge ? "Uploading Slip..." : "Submit Weighbridge Slip"}
+                {uploadingWeighbridge ? "Uploading Weighbridge..." : "Upload Weighbridge Slip"}
               </button>
             </form>
           </div>
@@ -634,4 +699,3 @@ export default function DriverTripDetailsPage() {
     </div>
   );
 }
-

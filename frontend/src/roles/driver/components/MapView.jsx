@@ -1,41 +1,59 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Gauge, Clock, Flag } from "lucide-react";
+import { Clock, Flag } from "lucide-react";
 
 export default function MapView({
   driverLocation,
   origin,
   destination,
-  speed = 45,
-  eta = "1h 20m",
-  distance = "42 km",
+  eta = "In transit",
+  distance = "N/A",
   routeCoordinates = [],
 }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersGroupRef = useRef(null);
   const polylineRef = useRef(null);
+  const glowPolylineRef = useRef(null);
+
+  const [osrmRoute, setOsrmRoute] = useState([]);
+
+  // Fetch OSRM driving geometry if origin & destination lat/lng are provided
+  useEffect(() => {
+    if (!origin?.lat || !origin?.lng || !destination?.lat || !destination?.lng) return;
+
+    const fetchOsrmRoute = async () => {
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.routes?.[0]?.geometry?.coordinates) {
+            const coords = data.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon]);
+            setOsrmRoute(coords);
+          }
+        }
+      } catch (err) {
+        console.warn("Driver Map OSRM route fetch fallback:", err.message);
+      }
+    };
+
+    fetchOsrmRoute();
+  }, [origin?.lat, origin?.lng, destination?.lat, destination?.lng]);
 
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // Default center (India center if no loc)
-    const defaultCenter = [17.385, 78.4867];
-    const initialCenter = driverLocation?.lat && driverLocation?.lng
-      ? [driverLocation.lat, driverLocation.lng]
-      : origin?.lat && origin?.lng
-      ? [origin.lat, origin.lng]
-      : defaultCenter;
-
     if (!mapInstanceRef.current) {
       mapInstanceRef.current = L.map(mapRef.current, {
         zoomControl: true,
-      }).setView(initialCenter, 12);
+        attributionControl: false
+      }).setView([20.5937, 78.9629], 6);
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; OpenStreetMap contributors',
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
         maxZoom: 19,
+        subdomains: 'abcd'
       }).addTo(mapInstanceRef.current);
 
       markersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
@@ -47,39 +65,55 @@ export default function MapView({
 
     const boundsPoints = [];
 
-    // Custom Icons (Manager/Admin amber accent)
+    // Driver Vehicle Marker with pulsing halo
     const driverIcon = L.divIcon({
       className: "custom-driver-marker",
-      html: `<div style="background-color: #B45A0A; border: 3px solid #78350F; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(180,90,10,0.6);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-             </div>`,
-      iconSize: [28, 28],
-      iconAnchor: [14, 14],
+      html: `<div class="relative w-9 h-9 rounded-full bg-[#B45A0A] border-2 border-white text-white flex items-center justify-center shadow-xl">
+        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10M21 16v-4a1 1 0 00-1-1h-7m8 5h-8" />
+        </svg>
+        <span class="absolute -top-1 -right-1 flex h-3.5 w-3.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-orange-500 border border-white"></span></span>
+      </div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
     });
 
+    // Start Marker Icon
     const originIcon = L.divIcon({
       className: "custom-origin-marker",
-      html: `<div style="background-color: #2563EB; border: 3px solid #1E3A8A; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-              <div style="width: 8px; height: 8px; background: white; border-radius: 50%;"></div>
-             </div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
+      html: `<div class="relative flex flex-col items-center select-none cursor-pointer">
+        <div class="w-7 h-7 rounded-full bg-emerald-600 border-2 border-white text-white flex items-center justify-center font-black text-xs shadow-lg">
+          🚩
+        </div>
+        <div class="mt-0.5 bg-emerald-950/90 text-emerald-100 border border-emerald-500/60 text-[9px] font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap shadow-md font-poppins">
+          Start: ${origin?.address || "Origin"}
+        </div>
+      </div>`,
+      iconSize: [100, 45],
+      iconAnchor: [50, 14],
     });
 
+    // Destination Marker Icon
     const destIcon = L.divIcon({
       className: "custom-dest-marker",
-      html: `<div style="background-color: #DC2626; border: 3px solid #991B1B; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-              <div style="width: 8px; height: 8px; background: white; border-radius: 50%;"></div>
-             </div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
+      html: `<div class="relative flex flex-col items-center select-none cursor-pointer">
+        <div class="w-7 h-7 rounded-full bg-red-600 border-2 border-white text-white flex items-center justify-center font-black text-xs shadow-lg">
+          🏁
+        </div>
+        <div class="mt-0.5 bg-red-950/90 text-red-100 border border-red-500/60 text-[9px] font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap shadow-md font-poppins">
+          Dest: ${destination?.address || "Destination"}
+        </div>
+      </div>`,
+      iconSize: [100, 45],
+      iconAnchor: [50, 14],
     });
 
     // Add Driver Marker
     if (driverLocation?.lat && driverLocation?.lng) {
       const driverPos = [driverLocation.lat, driverLocation.lng];
       L.marker(driverPos, { icon: driverIcon })
-        .bindPopup("<b>Current Location</b><br/>Speed: " + speed + " km/h")
+        .bindPopup("<b>Current GPS Location</b>")
         .addTo(markersGroup);
       boundsPoints.push(driverPos);
     }
@@ -103,46 +137,41 @@ export default function MapView({
     }
 
     // Polyline Route
-    if (polylineRef.current) {
-      map.removeLayer(polylineRef.current);
-    }
+    if (polylineRef.current) map.removeLayer(polylineRef.current);
+    if (glowPolylineRef.current) map.removeLayer(glowPolylineRef.current);
 
-    let linePoints = routeCoordinates;
+    let linePoints = osrmRoute.length > 0 ? osrmRoute : routeCoordinates;
     if (linePoints.length === 0 && boundsPoints.length >= 2) {
       linePoints = boundsPoints;
     }
 
     if (linePoints.length >= 2) {
-      polylineRef.current = L.polyline(linePoints, {
-        color: "#B45A0A",
-        weight: 4,
-        dashArray: "8, 8",
+      glowPolylineRef.current = L.polyline(linePoints, {
+        color: "#3B82F6",
+        weight: 8,
+        opacity: 0.35,
         lineCap: "round",
       }).addTo(map);
 
-      map.fitBounds(L.latLngBounds(boundsPoints), { padding: [50, 50] });
+      polylineRef.current = L.polyline(linePoints, {
+        color: "#B45A0A",
+        weight: 5,
+        opacity: 0.95,
+        lineCap: "round",
+      }).addTo(map);
+
+      map.fitBounds(L.latLngBounds(linePoints), { padding: [50, 50] });
     } else if (boundsPoints.length === 1) {
-      map.setView(boundsPoints[0], 13);
+      map.setView(boundsPoints[0], 12);
     }
-  }, [driverLocation, origin, destination, routeCoordinates, speed]);
+  }, [driverLocation, origin, destination, osrmRoute, routeCoordinates]);
 
   return (
-    <div className="relative w-full h-full min-h-[400px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm font-nunito bg-white">
-      {/* Map Container */}
-      <div ref={mapRef} className="w-full h-full min-h-[400px] z-0" />
+    <div className="relative w-full h-full min-h-[420px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm font-nunito bg-slate-100">
+      <div ref={mapRef} className="w-full h-full min-h-[420px] z-0" />
 
       {/* Floating HUD Bar */}
-      <div className="absolute top-4 left-4 right-4 z-10 grid grid-cols-3 gap-3 pointer-events-none">
-        <div className="bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl p-3 shadow-md pointer-events-auto flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-amber-50 text-[#B45A0A]">
-            <Gauge className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[10px] text-slate-500 uppercase font-bold font-poppins">Speed</p>
-            <p className="text-sm font-bold text-slate-900 font-poppins">{speed} <span className="text-xs font-normal text-slate-500">km/h</span></p>
-          </div>
-        </div>
-
+      <div className="absolute top-4 left-4 right-4 z-10 grid grid-cols-2 gap-3 pointer-events-none max-w-sm ml-auto">
         <div className="bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl p-3 shadow-md pointer-events-auto flex items-center gap-3">
           <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
             <Clock className="w-5 h-5" />
@@ -158,7 +187,7 @@ export default function MapView({
             <Flag className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] text-slate-500 uppercase font-bold font-poppins">Distance</p>
+            <p className="text-[10px] text-slate-500 uppercase font-bold font-poppins">Remaining</p>
             <p className="text-sm font-bold text-slate-900 font-poppins">{distance}</p>
           </div>
         </div>

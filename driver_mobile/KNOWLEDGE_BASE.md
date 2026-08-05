@@ -27,6 +27,10 @@ The application is structured following clean coding principles and modularity. 
 | `frontend/src/roles/driver/api/driverApi.js` | Driver Web REST API Axios integration module. |
 | `frontend/src/roles/driver/hooks/` | Custom hooks (`useDriverSocket.js`, `useDriverAuth.js`). |
 | `frontend/src/roles/driver/layouts/DriverLayout.jsx` | Desktop Sidebar + Header layout wrapper. |
+| `backend/models/TripLocationHistory.js` | Mongoose schema logging historical trip GPS breadcrumbs (`trip`, `driver`, `vehicle`, `latitude`, `longitude`, `speed`, `heading`, `timestamp`). |
+| `frontend/src/roles/manager/pages/FleetMapPage.jsx` | Manager Live Tracking screen featuring real-time OSRM polyline truck movement animation, instant socket listener (`driverLocationUpdated`, `driver:location-update`), manager room subscription, and live progress metrics. |
+| `frontend/src/roles/driver/pages/TripDetails.jsx` | Driver Trip Details page with live browser `navigator.geolocation` tracking, continuous API sync (`POST /api/driver/location`), and POD/Weighbridge upload rules. |
+| `frontend/src/roles/manager/pages/ViewTicketsPage.jsx` | Manager Maintenance Management screen with `resolveVehiclePlate` dynamic lookup, ticket severity/status filtering, search capabilities, and ticket resolution/edit modals. |
 | `frontend/src/roles/driver/pages/` | Desktop driver pages (Dashboard, Trips, TripDetails, Vehicles, Fuel, Maintenance, Documents, Notifications, Support, Profile, Settings). |
 
 ### 1.2. Application Screens
@@ -45,7 +49,7 @@ The application includes the following key authentication screens:
 - **[MessageFleetManagerScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/message_fleet_manager_screen.dart)** - Message Fleet Manager screen delivering an enterprise chat interface for Rajesh Sharma featuring compact profile header, WhatsApp-styled bottom attachment options modal (Document, Camera, Gallery, Audio, Location, Slips), file picker integration, incoming white bubbles, outgoing orange `#FF7A1A` bubbles, document attachment cards, and interactive text input bar.
 - **[UpcomingTripsScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/upcoming_trips_screen.dart)** - Upcoming Trips screen displaying assigned/scheduled trips with Accept/Reject actions for assigned trips, departure time-gated **Start Trip** button (unlocked 15 minutes before departure), and real-time socket updates (`trip:assigned`, `trip:status-updated`, `trip:15min-reminder`).
 - **[UpcomingTripDetailsScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/upcoming_trip_details_screen.dart)** - Detailed upcoming trip screen showing pickup/destination timeline, vehicle info, departure schedule, trip instructions, and time-gated Start Trip execution.
-- **[ActiveTripsScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/active_trips_screen.dart)** - Active Trips management screen featuring real OpenStreetMap live tracking map with interactive Reroute button, **"Customer Location Reached"** arrival toggle switch (`PATCH /api/driver/trips/:id/customer-location`), unlocked Proof of Delivery (POD) Slip & Weighbridge Slip upload boxes (`POST /api/driver/pod`, `POST /api/driver/weighbridge`), real-time socket events, and instant Manager notification & approval flow.
+- **[ActiveTripsScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/active_trips_screen.dart)** - Active Trips management screen featuring real OSRM OpenStreetMap live tracking map with Uber/Rapido style road polyline, Start (`🚩 Start`) & Destination (`🏁 Dest`) markers, middle platform/village badges, interactive Reroute button, **"Customer Location Reached"** arrival toggle switch (`PATCH /api/driver/trips/:id/customer-location`), unlocked Proof of Delivery (POD) Slip & Weighbridge Slip upload boxes (`POST /api/driver/pod`, `POST /api/driver/weighbridge`), real-time socket events, and instant Manager notification & approval flow.
 - **[UpdateTripStatusScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/update_trip_status_screen.dart)** - Trip status update screen connected to `ApiService.uploadProofOfDelivery` and `ApiService.uploadWeighbridgeSlip`, saving uploaded image metadata to MongoDB, triggering real-time notifications to the assigned manager, and enabling manager approval to complete the trip.
 - **[SupportHistoryScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/support_history_screen.dart)** - Support History screen displaying Dark Navy header, search bar, 50/50 horizontal action buttons Row ("Call Manager" and "Message Manager"), full-width scrollable filter chips (`All`, `Open`, `In Progress`, `Resolved`, `Rejected`), dynamic MongoDB ticket cards loaded via `ApiService.getDriverTickets()`, vehicle registrations, trip numbers, status badges (`Mechanic Assigned`, `Mechanic Arrived`, `Repair In Progress`, `Repair Completed`, `Resolved`), and an orange `+` FAB opening RaiseTicketScreen.
 - **[RaiseTicketScreen](file:///c:/Users/Satya/Desktop/Fleet-management-system/driver_mobile/lib/screens/raise_ticket_screen.dart)** & **[Driver Web Maintenance Page](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/driver/pages/Maintenance.jsx)** - Vehicle Issue reporting interface supporting structured issue selection (**Tyre / Brake Issue**, **Mechanic / Engine Breakdown**, **Severe Accident / Emergency**, **Fuel / Payment Issue**, **Electrical Issue**, **Custom / Manual Entry**) and manual text input field. Submits ticket to `POST /api/driver/tickets` with photo attachments. Auto-binds active trip and assigned vehicle.
@@ -371,6 +375,21 @@ The application connects to a Node.js/Express backend API for session operations
   - Dynamically combines active vehicle complaint tickets (`managerApi.getVehicleComplaints()`) and service orders (`managerApi.getMaintenance()`).
   - Displays real overdue and active maintenance alerts sorted by urgency with `Overdue 🚨` badges, high/medium/low priority tags, and exact vehicle registration plates.
   - Interactive alert cards feature click handlers (`onClick={() => navigate(alert.link)}`) that navigate directly to `/manager/maintenance?ticketId=...` to filter and highlight ticket details.
+
+* **Vibrant Full-Color Maps & Marker Hover Location Tooltips (`FleetMapPage.jsx`, `LiveMap.jsx`, `manager.css`)**:
+  - Removed grayscale filters and upgraded map tiles to CartoDB Voyager full-color vector tiles.
+  - Implemented custom location hover tooltips (`custom-map-tooltip`) on Leaflet markers displaying `📍 Location: {resolvedLocationName}`, vehicle plate number, model name, assigned driver, and operational status on hover.
+
+* **Production Geocoding & Road Distance Engine (`geocodingHelper.js`, `reverseGeocoder.js`)**:
+  - Removed string hash fallback completely. Zero fake or random coordinates are generated.
+  - Master dictionary (`LOCAL_COORDINATES`) covering AP & Telangana hubs (Eluru, Dwaraka Tirumala, Vijayawada, Guntur, Rajahmundry, Bhimavaram, Tadepalligudem, Tanuku, Gudivada, Machilipatnam, Kakinada, Visakhapatnam, Tirupati, Hyderabad, etc.).
+  - Query normalization (`normalizeLocationString`) handles spelling variations (`"Dwaraka Tirumala"`, `"Dwarka Tirumala"`, `"Dwaraka-Tirumala"` -> `[17.0036, 81.2453]`).
+  - OSRM route distance queries formatted strictly as `lon,lat;lon,lat` with dev logging.
+
+* **Two-Tier Location Resource Allocation Flow (`driver.controller.js`, `vehicle.controller.js`, `CreateTripPage.jsx`)**:
+  - **Tier 1 (Preferred 50 km Radius)**: Searches for drivers and vehicles within 50 km of the trip's pickup location. If found, displays them with a `Nearby` badge sorted by distance.
+  - **Tier 2 (Extended Sorted Fallback)**: If no driver/vehicle is found within 50 km, displays a clear notification (`❌ No nearby drivers/vehicles found within 50 km of {startLocation}`) and renders all active and available drivers/vehicles sorted from nearest to farthest (e.g. 51 km, 180 km, 250 km, 320 km).
+  - Enables fleet managers to assign the closest available operator/asset even when outside the preferred radius.
 
 
 
