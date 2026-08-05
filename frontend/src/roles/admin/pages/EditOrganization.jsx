@@ -270,35 +270,12 @@ export default function EditOrganization() {
             </div>
           </div>
 
-          {/* Country + Plan */}
+          {/* Country */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Country</label>
               <input type="text" name="country" value={form.country} onChange={handleChange}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all" />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Subscription Plan</label>
-              <select name="plan" value={form.plan} onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-white rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all appearance-none">
-                <option value="">Select plan</option>
-                <option value="Enterprise">Enterprise</option>
-                <option value="Professional">Professional</option>
-                <option value="Standard">Standard</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Status */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Status</label>
-              <select name="status" value={form.status} onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all">
-                <option value="Active">Active</option>
-                <option value="Pending">Pending</option>
-                <option value="Suspended">Suspended</option>
-              </select>
             </div>
           </div>
 

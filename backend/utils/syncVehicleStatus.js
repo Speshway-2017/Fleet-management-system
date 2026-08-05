@@ -30,7 +30,7 @@ export const syncVehicleStatus = async (vehicleId) => {
     if (newStatus === 'Available') {
       const activeTrip = await Trip.findOne({
         vehicle: vehicleId,
-        status: { $in: ['Scheduled', 'Assigned', 'In Progress', 'On Transit', 'Delayed', 'On Trip', 'Ready to Dispatch'] }
+        status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
       });
       if (activeTrip) {
         newStatus = ['Scheduled', 'Assigned', 'Ready to Dispatch'].includes(activeTrip.status) ? 'Assigned' : 'On Trip';

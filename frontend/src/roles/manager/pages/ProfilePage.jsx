@@ -10,7 +10,8 @@ import {
   Edit3,
   FileDown,
   MessageSquare,
-  Loader
+  Loader,
+  Building2
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -78,6 +79,7 @@ export default function ProfilePage() {
   const phoneVal = profile?.phone || "—";
   const hubVal = profile?.primaryHub || "—";
   const titleVal = profile?.jobTitle || "Fleet Manager";
+  const orgObj = profile?.organization || (typeof user?.organization === 'object' ? user?.organization : null);
 
   return (
     <div className="p-6 lg:p-8 space-y-6 animate-fade-in font-nunito text-gray-800">
@@ -142,11 +144,11 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* ── ROW 2: PERSONAL INFO, PERFORMANCE, DISPATCHES ── */}
+      {/* ── ROW 2: PERSONAL INFO, ORGANIZATION DETAILS, DISPATCHES ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* Card A: Personal Info */}
-        <div className="lg:col-span-7 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
           <div className="flex items-center gap-2.5 mb-6 border-b border-gray-100 pb-3">
             <User className="w-4 h-4 text-[#B45A0A]" />
             <h3 className="font-poppins font-black text-sm text-gray-900">Personal Info</h3>
@@ -176,8 +178,61 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* Card B: Organization Details */}
+        <div className="lg:col-span-5 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-6">
+            <div className="flex items-center gap-2.5">
+              <Building2 className="w-4 h-4 text-[#B45A0A]" />
+              <h3 className="font-poppins font-black text-sm text-gray-900">Organization Details</h3>
+            </div>
+            {orgObj?.status && (
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                orgObj.status === 'Active' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+              }`}>
+                {orgObj.status}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">Organization Name</span>
+              <p className="text-xs font-bold text-gray-800 mt-1 font-poppins">{orgObj?.name || "Not Assigned"}</p>
+            </div>
+
+            <div>
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">Industry</span>
+              <p className="text-xs font-bold text-gray-800 mt-1 font-poppins">{orgObj?.industry || "Logistics"}</p>
+            </div>
+
+            <div>
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">Org Contact Email</span>
+              <p className="text-xs font-bold text-gray-800 mt-1 font-poppins truncate">{orgObj?.email || "—"}</p>
+            </div>
+
+            <div>
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">Active Plan</span>
+              <p className="text-xs font-bold text-[#B45A0A] mt-1 font-poppins font-semibold">
+                {(() => {
+                  const p = orgObj?.plan || (typeof user?.subscriptionPlan === 'object' ? user?.subscriptionPlan?.name : user?.subscriptionPlan);
+                  if (!p) return "Standard";
+                  if (typeof p === 'string' && p.length === 24) return "Standard";
+                  return p;
+                })()}
+              </p>
+            </div>
+
+            <div className="sm:col-span-2">
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">Headquarters / Address</span>
+              <p className="text-xs font-bold text-gray-800 mt-1 font-poppins truncate">
+                {[orgObj?.address, orgObj?.city, orgObj?.state, orgObj?.country].filter(Boolean).join(", ") || "—"}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Card C: Total Dispatches */}
-        <div className="lg:col-span-5 bg-[#1A1A1E] rounded-2xl p-6 text-white shadow-sm flex flex-col justify-between relative overflow-hidden group">
+        <div className="lg:col-span-3 bg-[#1A1A1E] rounded-2xl p-6 text-white shadow-sm flex flex-col justify-between relative overflow-hidden group">
           <div className="flex justify-between items-start z-10">
             <div className="p-3 bg-white/10 rounded-xl">
               <Truck className="w-6 h-6 text-white" />

@@ -1,31 +1,47 @@
-String formatIndianDateTime(String? dateTimeStr) {
-  if (dateTimeStr == null || dateTimeStr.isEmpty) return 'N/A';
+// Indian Date & Time Formatter Utilities
+
+String formatIndianDate(dynamic dateInput) {
+  if (dateInput == null) return 'N/A';
   try {
-    // If it already matches custom words, return as is
-    if (dateTimeStr.toLowerCase().contains('tomorrow') ||
-        dateTimeStr.toLowerCase().contains('yesterday') ||
-        dateTimeStr.toLowerCase().contains('today') ||
-        dateTimeStr.toLowerCase().contains('scheduled')) {
-      return dateTimeStr;
+    final DateTime dt = dateInput is DateTime
+        ? dateInput
+        : DateTime.parse(dateInput.toString()).toLocal();
+    final day = dt.day.toString().padLeft(2, '0');
+    final month = dt.month.toString().padLeft(2, '0');
+    final year = dt.year;
+    return '$day/$month/$year';
+  } catch (_) {
+    return dateInput.toString();
+  }
+}
+
+String formatIndianDateTime(dynamic dateInput) {
+  if (dateInput == null || dateInput.toString().isEmpty) return 'N/A';
+  try {
+    final str = dateInput.toString();
+    if (str.toLowerCase().contains('tomorrow') ||
+        str.toLowerCase().contains('yesterday') ||
+        str.toLowerCase().contains('today') ||
+        str.toLowerCase().contains('scheduled')) {
+      return str;
     }
-    
-    // Support parsing strings like "2026-07-31T21:00"
-    final parsedDate = DateTime.parse(dateTimeStr).toLocal();
-    final day = parsedDate.day.toString().padLeft(2, '0');
-    final month = parsedDate.month.toString().padLeft(2, '0');
-    final year = parsedDate.year;
-    
-    int hour = parsedDate.hour;
-    final minutes = parsedDate.minute.toString().padLeft(2, '0');
+    final DateTime dt = dateInput is DateTime
+        ? dateInput
+        : DateTime.parse(str).toLocal();
+    final day = dt.day.toString().padLeft(2, '0');
+    final month = dt.month.toString().padLeft(2, '0');
+    final year = dt.year;
+
+    int hour = dt.hour;
     final period = hour >= 12 ? 'PM' : 'AM';
-    
     hour = hour % 12;
     if (hour == 0) hour = 12;
     final hourStr = hour.toString().padLeft(2, '0');
-    
-    return '$day-$month-$year $hourStr:$minutes $period';
-  } catch (e) {
-    return dateTimeStr;
+    final minuteStr = dt.minute.toString().padLeft(2, '0');
+
+    return '$day/$month/$year $hourStr:$minuteStr $period';
+  } catch (_) {
+    return dateInput.toString();
   }
 }
 
@@ -37,9 +53,8 @@ String formatNotificationTime(String? dateStr) {
     final minutes = parsedDate.minute.toString().padLeft(2, '0');
     final period = hour >= 12 ? 'pm' : 'am';
     hour = hour % 12;
-    if (hour == 0) hour = 12;
     final hourStr = hour.toString().padLeft(2, '0');
-    
+
     final now = DateTime.now();
     if (parsedDate.year == now.year && parsedDate.month == now.month && parsedDate.day == now.day) {
       return '$hourStr:$minutes $period';

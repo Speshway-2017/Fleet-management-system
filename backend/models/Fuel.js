@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const fuelSchema = new mongoose.Schema(
   {
-    vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
+    vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: false },
     vehicleId: { type: String, default: '' }, // Plate number
     vehicleName: { type: String, default: '' },
     driver: { type: String, default: '' },

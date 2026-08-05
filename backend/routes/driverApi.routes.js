@@ -119,7 +119,22 @@ router.post('/tolls', (req, res, next) => {
 
 router.get('/tickets', getDriverTickets);
 router.get('/tickets/:id', getDriverTicketById);
-router.patch('/tickets/:id/status', updateDriverTicketStatus);
+router.patch('/tickets/:id/status', (req, res, next) => {
+  memoryUpload.single('file')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    next();
+  });
+}, updateDriverTicketStatus);
+router.post('/tickets/:id/resolve', (req, res, next) => {
+  memoryUpload.single('file')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    next();
+  });
+}, updateDriverTicketStatus);
 router.post('/tickets', (req, res, next) => {
   memoryUpload.single('file')(req, res, (err) => {
     if (err) {

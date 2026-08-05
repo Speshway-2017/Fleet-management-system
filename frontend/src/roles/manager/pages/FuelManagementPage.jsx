@@ -93,16 +93,21 @@ export default function FuelManagementPage() {
       const response = await managerApi.getFuelRecords();
       const result = response.data?.data || response.data;
       if (Array.isArray(result)) {
-        setLogs(result.map(l => ({
+        const sorted = [...result].sort((a, b) => {
+          const tA = new Date(a.createdAt || a.date || a.timestamp || 0).getTime();
+          const tB = new Date(b.createdAt || b.date || b.timestamp || 0).getTime();
+          return tB - tA;
+        });
+        setLogs(sorted.map(l => ({
           ...l,
           id: l._id,
-          vehicleId: l.vehicleId || (l.vehicle && l.vehicle.plateNumber) || "MH-12-AB-5678",
+          vehicleId: l.vehicleId || (l.vehicle && (l.vehicle.vehicleNumber || l.vehicle.registrationNumber || l.vehicle.plateNumber)) || "Unassigned",
           vehicleName: l.vehicleName || (l.vehicle && l.vehicle.name) || "Fleet Vehicle",
           qty: `${l.liters} L`,
           total: `₹${(l.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
           receiptImage: l.receiptImage || l.billUrl || "",
           billUrl: l.billUrl || l.receiptImage || "",
-          timestamp: new Date(l.createdAt).toLocaleDateString("en-IN", {
+          timestamp: new Date(l.createdAt || l.date || Date.now()).toLocaleDateString("en-IN", {
             month: 'short',
             day: 'numeric',
             hour: '2-digit',

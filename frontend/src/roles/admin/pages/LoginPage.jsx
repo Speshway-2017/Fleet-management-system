@@ -28,10 +28,17 @@ export default function LoginPage() {
   useEffect(() => {
     if (isAuthenticated) {
       const selectedPlanId = localStorage.getItem("selectedPlanId");
-      if (selectedPlanId && (role === "FLEET_MANAGER" || role === "manager")) {
+      const userRole = role;
+      if (selectedPlanId && (userRole === "FLEET_MANAGER" || userRole === "manager")) {
         navigate("/manager/subscription", { state: { selectedPlanId }, replace: true });
+      } else if (userRole === "SUPER_ADMIN" || userRole === "admin" || userRole === "ADMIN") {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (userRole === "FLEET_MANAGER" || userRole === "manager") {
+        navigate("/manager", { replace: true });
+      } else if (userRole === "DRIVER" || userRole === "driver") {
+        navigate("/driver/dashboard", { replace: true });
       } else {
-        navigate(role === "SUPER_ADMIN" || role === "admin" ? "/admin/dashboard" : "/manager", { replace: true });
+        navigate("/manager", { replace: true });
       }
     }
   }, [isAuthenticated, role, navigate]);
@@ -54,10 +61,7 @@ export default function LoginPage() {
     let isValid = true;
 
     if (!form.email) {
-      setEmailError("Email is required.");
-      isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
-      setEmailError("Please enter a valid email address.");
+      setEmailError("Email, Phone Number or Employee ID is required.");
       isValid = false;
     } else {
       setEmailError("");
@@ -84,10 +88,17 @@ export default function LoginPage() {
       const user = await login(form, rememberMe);
       toast.success(`Welcome back, ${user.name || "User"}!`);
       const selectedPlanId = localStorage.getItem("selectedPlanId");
-      if (selectedPlanId && (user.role === "FLEET_MANAGER" || user.role === "manager")) {
+      const userRole = user.role;
+      if (selectedPlanId && (userRole === "FLEET_MANAGER" || userRole === "manager")) {
         navigate("/manager/subscription", { state: { selectedPlanId } });
+      } else if (userRole === "SUPER_ADMIN" || userRole === "admin" || userRole === "ADMIN") {
+        navigate("/admin/dashboard");
+      } else if (userRole === "FLEET_MANAGER" || userRole === "manager") {
+        navigate("/manager");
+      } else if (userRole === "DRIVER" || userRole === "driver") {
+        navigate("/driver/dashboard");
       } else {
-        navigate(user.role === "SUPER_ADMIN" || user.role === "admin" ? "/admin/dashboard" : "/manager");
+        navigate("/manager");
       }
     } catch (error) {
       const message = error.response?.data?.message;

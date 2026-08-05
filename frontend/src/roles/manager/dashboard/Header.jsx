@@ -18,7 +18,7 @@ const getImageUrl = (url) => {
 export default function Header({ onMenuToggle, showMenuButton = true }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  
+
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -46,7 +46,7 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
       if (user?._id) {
         socket.emit("joinManagerRoom", user._id);
       }
-      
+
       const handleNewNotification = (newNotif) => {
         toast.custom(
           (t) => (
@@ -55,9 +55,8 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
                 toast.dismiss(t.id);
                 handleNotificationClick(newNotif);
               }}
-              className={`${
-                t.visible ? 'animate-enter' : 'animate-leave'
-              } max-w-sm w-full bg-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-black/5 p-4 cursor-pointer hover:bg-orange-50/50 transition-all font-poppins border-l-4 border-[#B45A0A]`}
+              className={`${t.visible ? 'animate-enter' : 'animate-leave'
+                } max-w-sm w-full bg-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-black/5 p-4 cursor-pointer hover:bg-orange-50/50 transition-all font-poppins border-l-4 border-[#B45A0A]`}
             >
               <div className="flex-1">
                 <p className="text-xs font-bold text-[#B45A0A] uppercase tracking-wider">{newNotif.title || "Driver Update"}</p>
@@ -105,59 +104,119 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
   };
 
   const resolveTargetUrl = (notif) => {
+    if (!notif) return "/manager/dashboard";
     if (notif.actionUrl) return notif.actionUrl;
     if (notif.metadata?.actionUrl) return notif.metadata.actionUrl;
     if (notif.metadata?.targetUrl) return notif.metadata.targetUrl;
 
-    const tripId = notif.metadata?.tripId || (['trip', 'Trip'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
-    const driverId = notif.metadata?.driverId || (['driver', 'Driver'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
-    const vehicleId = notif.metadata?.vehicleId || (['vehicle', 'Vehicle'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
+    const title = (notif.title || "").toLowerCase();
+    const message = (notif.message || notif.description || "").toLowerCase();
+    const type = (notif.type || "").toUpperCase();
 
-    const type = (notif.type || '').toLowerCase();
-    const title = (notif.title || '').toLowerCase();
-    const message = (notif.message || notif.description || '').toLowerCase();
-    const refType = (notif.referenceType || notif.entityType || '').toLowerCase();
-
-    // 1. Trip Notifications
-    if (refType === 'trip' || type.includes('trip') || title.includes('trip') || message.includes('trip')) {
-      const targetId = tripId || notif.referenceId;
-      return targetId ? `/manager/trip-details/${targetId}` : `/manager/trips`;
+    const tripId = notif.metadata?.tripId || notif.referenceId || notif.relatedId;
+    const driverId = notif.metadata?.driverId;
+    let extractedTicketId = notif.metadata?.ticketId || notif.metadata?.complaintId;
+    if (!extractedTicketId) {
+      const fullText = (notif.title || "") + " " + (notif.message || notif.description || "");
+      const match = fullText.match(/TKT-VEH-[\w-]+/i);
+      if (match) extractedTicketId = match[0];
     }
 
-    // 2. Vehicle Issue & Maintenance
-    if (type.includes('vehicle_issue') || type.includes('ticket') || title.includes('vehicle issue') || title.includes('ticket')) {
-      return `/manager/view-tickets`;
-    }
-    if (type.includes('maintenance') || title.includes('maintenance')) {
-      return `/manager/maintenance`;
-    }
-
-    // 3. Driver Notifications
-    if (refType === 'driver' || type.includes('driver') || title.includes('driver')) {
-      return driverId ? `/manager/driver-profile/${driverId}` : `/manager/drivers`;
-    }
-
-    // 4. Vehicle Notifications
-    if (refType === 'vehicle' || type.includes('vehicle') || title.includes('vehicle')) {
-      return vehicleId ? `/manager/vehicle-details/${vehicleId}` : `/manager/vehicles`;
-    }
-
-    // 5. Fuel Notifications
-    if (type.includes('fuel') || title.includes('fuel')) {
-      return `/manager/fuel-management`;
-    }
-
-    // 6. Subscription
-    if (type.includes('subscription') || title.includes('subscription')) {
+    // 1. Subscription Notifications
+    if (
+      type.includes("SUB") ||
+      title.includes("subscription") ||
+      title.includes("plan") ||
+      title.includes("billing") ||
+      title.includes("invoice") ||
+      message.includes("subscription") ||
+      message.includes("plan") ||
+      message.includes("renew")
+    ) {
       return `/manager/subscription`;
     }
 
-    // Fallbacks based on IDs
-    if (tripId) return `/manager/trip-details/${tripId}`;
-    if (driverId) return `/manager/driver-profile/${driverId}`;
-    if (vehicleId) return `/manager/vehicle-details/${vehicleId}`;
+    // 2. Ticket & Maintenance Notifications
+    if (
+      extractedTicketId ||
+      title.includes("ticket") ||
+      title.includes("mechanic") ||
+      title.includes("maintenance") ||
+      title.includes("issue") ||
+      title.includes("breakdown") ||
+      message.includes("tkt-") ||
+      message.includes("mechanic") ||
+      message.includes("maintenance") ||
+      message.includes("breakdown") ||
+      type.includes("MAINTENANCE") ||
+      type.includes("COMPLAINT")
+    ) {
+      return extractedTicketId
+        ? `/manager/maintenance?ticketId=${encodeURIComponent(extractedTicketId)}`
+        : `/manager/maintenance`;
+    }
 
-    return `/manager/notifications`;
+    // 3. Fuel Notifications
+    if (
+      type.includes("FUEL") ||
+      title.includes("fuel") ||
+      message.includes("fuel") ||
+      message.includes("diesel") ||
+      message.includes("petrol")
+    ) {
+      return `/manager/fuel-management`;
+    }
+
+    // 4. Trip, Dispatch, POD & Weighbridge Notifications
+    if (
+      tripId ||
+      type.includes("TRIP") ||
+      type.includes("POD") ||
+      type.includes("WEIGHBRIDGE") ||
+      title.includes("trip") ||
+      title.includes("dispatch") ||
+      title.includes("delivery") ||
+      title.includes("pod") ||
+      title.includes("weighbridge") ||
+      message.includes("trp-") ||
+      message.includes("dispatch") ||
+      message.includes("delivery")
+    ) {
+      return tripId ? `/manager/trip-details/${tripId}` : `/manager/trips`;
+    }
+
+    // 5. Driver Notifications
+    if (
+      driverId ||
+      type.includes("DRIVER") ||
+      title.includes("driver") ||
+      message.includes("driver")
+    ) {
+      return driverId ? `/manager/driver-profile/${driverId}` : `/manager/drivers`;
+    }
+
+    // 6. Vehicle & Live Tracking Notifications
+    if (
+      type.includes("VEHICLE") ||
+      title.includes("vehicle") ||
+      title.includes("truck") ||
+      message.includes("vehicle") ||
+      message.includes("tracking")
+    ) {
+      return `/manager/vehicles`;
+    }
+
+    // 7. Document Notifications
+    if (
+      type.includes("DOCUMENT") ||
+      title.includes("document") ||
+      title.includes("insurance") ||
+      message.includes("document")
+    ) {
+      return `/manager/settings`;
+    }
+
+    return `/manager/dashboard`;
   };
 
   const handleNotificationClick = async (notif) => {
@@ -176,9 +235,8 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
   };
 
   return (
-    <header className={`sticky top-0 z-40 bg-white border-b border-[#E5E7EB] px-6 py-4 flex items-center justify-between transition-shadow duration-300 ${
-      isScrolled ? "shadow-md" : "shadow-none"
-    }`}>
+    <header className={`sticky top-0 z-40 bg-white border-b border-[#E5E7EB] px-6 py-4 flex items-center justify-between transition-shadow duration-300 ${isScrolled ? "shadow-md" : "shadow-none"
+      }`}>
       {/* Mobile Menu Toggler and Title */}
       <div className="flex items-center gap-4">
         {showMenuButton && (
@@ -196,7 +254,7 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
 
       {/* Notifications & Profile Area */}
       <div className="flex items-center gap-6">
-        
+
         {/* Bell Button & Dropdown */}
         <div className="relative">
           <button
@@ -249,9 +307,8 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
                       <div
                         key={notif._id || notif.id}
                         onClick={() => handleNotificationClick(notif)}
-                        className={`p-3.5 hover:bg-orange-50/40 transition-colors cursor-pointer flex items-start gap-3 ${
-                          !notif.isRead ? "bg-amber-50/30 font-semibold" : "bg-white"
-                        }`}
+                        className={`p-3.5 hover:bg-orange-50/40 transition-colors cursor-pointer flex items-start gap-3 ${!notif.isRead ? "bg-amber-50/30 font-semibold" : "bg-white"
+                          }`}
                       >
                         <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${!notif.isRead ? "bg-[#B45A0A]" : "bg-gray-300"}`} />
                         <div className="flex-1 min-w-0">
@@ -292,67 +349,6 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
           supportPath="/manager/notifications"
           onLogout={handleLogout}
         />
-
-      </div>
-    </header>
-  );
-}
-              setUserMenuOpen(!userMenuOpen);
-              setNotifDropdownOpen(false);
-            }}
-            className="flex items-center gap-3 p-1 hover:bg-gray-100 rounded-2xl focus:outline-none transition-colors"
-          >
-            <div className="w-9 h-9 rounded-full bg-[#B45A0A]/10 border border-[#B45A0A]/20 flex items-center justify-center overflow-hidden">
-              {user?.profileImage ? (
-                <img
-                  src={getImageUrl(user.profileImage)}
-                  alt={user?.name || "Profile"}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <User className="w-5 h-5 text-[#B45A0A]" />
-              )}
-            </div>
-            <div className="hidden sm:block text-left leading-tight pr-1">
-              <p className="font-poppins font-semibold text-sm text-[#1B2430] leading-none">
-                {user?.name || "Alex Thompson"}
-              </p>
-              <span className="text-[10px] text-[#6B7280] font-nunito font-medium mt-0.5 block">
-                Fleet Manager
-              </span>
-            </div>
-            <ChevronDown className="hidden sm:block w-4 h-4 text-gray-500" />
-          </button>
-
-          {userMenuOpen && (
-            <>
-              <div className="fixed inset-0 z-30" onClick={() => setUserMenuOpen(false)} />
-              <div className="absolute right-0 mt-3.5 w-48 bg-white rounded-2xl shadow-xl border border-[#E5E7EB] py-2 z-40 font-poppins text-sm">
-                <div className="px-4 py-2.5 border-b border-gray-100 sm:hidden">
-                  <p className="font-semibold text-sm text-[#1B2430]">{user?.name || "Alex Thompson"}</p>
-                  <span className="text-xs text-[#6B7280]">Fleet Manager</span>
-                </div>
-                <button
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    navigate("/manager/profile");
-                  }}
-                  className="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-gray-700 flex items-center gap-2"
-                >
-                  <User className="w-4 h-4" />
-                  Profile
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-100"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Sign Out
-                </button>
-              </div>
-            </>
-          )}
-        </div>
 
       </div>
     </header>

@@ -14,8 +14,23 @@ export const createUser = async (userData) => {
   return user.save();
 };
 
-export const findUserById = async (id) => User.findById(id).select('-password');
+export const findUserById = async (id) => {
+  let user = await User.findById(id).populate('organization').select('-password');
+  if (!user) {
+    const driver = await Driver.findById(id).select('-password');
+    if (driver) {
+      user = driver.toObject();
+      user.id = driver._id;
+      user.role = 'DRIVER';
+    }
+  }
+  return user;
+};
 
 export const updateUser = async (userId, updateData) => {
-  return User.findByIdAndUpdate(userId, updateData, { new: true });
+  let user = await User.findByIdAndUpdate(userId, updateData, { new: true });
+  if (!user) {
+    user = await Driver.findByIdAndUpdate(userId, updateData, { new: true }).select('-password');
+  }
+  return user;
 };

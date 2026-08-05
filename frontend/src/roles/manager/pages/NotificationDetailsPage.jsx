@@ -63,6 +63,10 @@ export default function NotificationDetailsPage() {
         const found = list.find(n => n._id === id || n.id === id);
         if (found) {
           setNotification(found);
+          if (!found.isRead) {
+            managerApi.markNotificationRead(id).catch(err => console.error("Failed to mark read", err));
+            setNotification(prev => prev ? { ...prev, isRead: true } : prev);
+          }
         } else {
           toast.error("Notification not found");
           navigate("/manager/notifications");
@@ -131,17 +135,17 @@ export default function NotificationDetailsPage() {
     } else if (actType === "View Analytics") {
       navigate("/manager/analytics");
     } else if (actType === "Schedule Now") {
-      navigate("/manager/maintenance/schedule", {
-        state: {
-          vehicleNumber: notification.vehicle,
-          maintenanceType: "Brake Check",
-          dueMileage: "150 miles"
-        }
-      });
+      navigate("/manager/maintenance/tickets");
+    } else if (actType === "Manage Subscription" || actType === "View Subscription" || actType === "Upgrade Plan") {
+      navigate("/manager/subscription");
     } else if (actType === "Download PDF") {
       toast.success(`Downloading PDF for ${notification.title}...`);
     } else {
-      toast.success(`${actType || 'Action'} triggered!`);
+      if (isSubscriptionNotification) {
+        navigate("/manager/subscription");
+      } else {
+        toast.success(`${actType || 'Action'} triggered!`);
+      }
     }
   };
 
@@ -216,7 +220,7 @@ export default function NotificationDetailsPage() {
 
             {/* Actions */}
             {notification.actions && notification.actions.length > 0 && (
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-3 mb-6">
                 {notification.actions.map((act, i) => (
                   <button
                     key={i}
