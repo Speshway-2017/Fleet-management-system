@@ -499,7 +499,7 @@ void main() {
 
     // Verify correct empty state message is shown
     expect(
-      find.text('No vehicle is currently assigned to you. Please contact your Fleet Manager.'),
+      find.text('A Fleet Manager has not assigned a vehicle to you yet.'),
       findsOneWidget,
     );
 

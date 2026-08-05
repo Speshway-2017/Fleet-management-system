@@ -110,11 +110,6 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            onPressed: _fetchVehicleData,
-            tooltip: 'Refresh Vehicle Data',
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Container(
@@ -212,7 +207,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'No vehicle is currently assigned to you. Please contact your Fleet Manager.',
+                'A Fleet Manager has not assigned a vehicle to you yet.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.nunito(
                   fontSize: 14,
