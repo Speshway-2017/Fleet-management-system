@@ -89,7 +89,7 @@ const driverSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-driverSchema.pre('validate', function(next) {
+driverSchema.pre('validate', function (next) {
   if (this.isModified('driverLocation') && !this.isModified('currentLocation')) {
     this.currentLocation = this.driverLocation;
   } else if (this.isModified('currentLocation') && !this.isModified('driverLocation')) {

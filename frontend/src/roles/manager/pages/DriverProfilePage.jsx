@@ -418,7 +418,7 @@ export default function DriverProfilePage() {
 
               <div>
                 <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Current Location</span>
-                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{formatDisplayLocation(driver.driverLocation || driver.currentLocation, driver.branch)}</span>
+                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{formatDisplayLocation(driver.driverLocation || driver.currentLocation || driver.city, driver.branch || driver.city)}</span>
               </div>
             </div>
           </div>

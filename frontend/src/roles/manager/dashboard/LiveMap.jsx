@@ -37,9 +37,9 @@ export default function LiveMap({ vehicles = [], center = [77.2090, 28.6139], zo
       }).setView(leafletCenter, zoom);
 
       // Add OpenStreetMap tile layer
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
         maxZoom: 19,
-        className: "map-tiles-grayscale", // Clean styling filters
+        subdomains: 'abcd'
       }).addTo(mapRef.current);
       
     } catch (e) {

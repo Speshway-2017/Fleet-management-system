@@ -71,7 +71,12 @@ const tripSchema = new mongoose.Schema(
     customerLocationReachedAt: { type: Date },
     podStatus: { type: String, enum: ['Not Uploaded', 'Uploaded', 'Pending', 'Approved', 'Rejected'], default: 'Not Uploaded' },
     weighbridgeStatus: { type: String, enum: ['Not Uploaded', 'Uploaded', 'Pending', 'Approved', 'Rejected'], default: 'Not Uploaded' },
-    notified15MinBefore: { type: Boolean, default: false }
+    notified15MinBefore: { type: Boolean, default: false },
+    currentLatitude: { type: Number, default: null },
+    currentLongitude: { type: Number, default: null },
+    speed: { type: Number, default: 0 },
+    heading: { type: Number, default: 0 },
+    lastLocationUpdate: { type: Date, default: Date.now }
   },
   { timestamps: true }
 );

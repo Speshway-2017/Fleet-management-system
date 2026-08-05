@@ -15,6 +15,7 @@ import { connectDB } from './config/db.config.js';
 import { seedPlans } from './utils/seedPlans.js';
 import { seedTolls } from './utils/seedTolls.js';
 import { syncAllVehicleStatuses } from './utils/syncVehicleStatus.js';
+import { syncDriverLocations } from './utils/syncDriverLocations.js';
 import cloudinary from './config/cloudinary.config.js';
 import http from 'http';
 import { Server } from 'socket.io';
@@ -30,6 +31,7 @@ const startServer = async () => {
   await seedPlans();
   await seedTolls();
   await syncAllVehicleStatuses();
+  await syncDriverLocations();
 
   // 3. Verify Cloudinary config loaded correctly
   const { cloud_name } = cloudinary.config();

@@ -172,7 +172,7 @@ export const listDrivers = async (req, res, next) => {
         const resolvedName = await resolveLocationName(rawLoc, d.branch);
         d.currentLocation = resolvedName;
         d.driverLocation = resolvedName;
-        Driver.findByIdAndUpdate(d._id, { currentLocation: resolvedName, driverLocation: resolvedName }).catch(() => {});
+        Driver.findByIdAndUpdate(d._id, { currentLocation: resolvedName, driverLocation: resolvedName }).catch(() => { });
       }
     }
 
@@ -255,7 +255,7 @@ export const getAvailableDrivers = async (req, res, next) => {
         const resolvedName = await resolveLocationName(rawLoc, d.branch);
         d.currentLocation = resolvedName;
         d.driverLocation = resolvedName;
-        Driver.findByIdAndUpdate(d._id, { currentLocation: resolvedName, driverLocation: resolvedName }).catch(() => {});
+        Driver.findByIdAndUpdate(d._id, { currentLocation: resolvedName, driverLocation: resolvedName }).catch(() => { });
       }
 
       // Populate assignedVehicle from assignmentHistory, Vehicle model, or recent completed trip if empty
@@ -273,7 +273,7 @@ export const getAvailableDrivers = async (req, res, next) => {
           if (vDoc) {
             vehStr = vDoc.registrationNumber || vDoc.vehicleNumber || '';
           }
-        } catch (e) {}
+        } catch (e) { }
       }
       if (!vehStr) {
         try {
@@ -282,7 +282,7 @@ export const getAvailableDrivers = async (req, res, next) => {
           if (lastTrip && (lastTrip.vehiclePlate || lastTrip.vehicleName)) {
             vehStr = lastTrip.vehiclePlate || lastTrip.vehicleName;
           }
-        } catch (e) {}
+        } catch (e) { }
       }
       if (vehStr) {
         d.assignedVehicle = vehStr;
@@ -316,51 +316,40 @@ export const getAvailableDrivers = async (req, res, next) => {
     const nearbyRawDrivers = [];
 
     for (const d of allAvailable) {
+      const dObj = d.toObject ? d.toObject() : { ...d };
       if (isMatch(d)) {
-        localDrivers.push(d);
+        localDrivers.push({
+          ...dObj,
+          isNearby: true,
+          distanceKm: 0,
+          estimatedTravelTime: 'Local',
+          currentBranch: d.branch || d.currentLocation || targetLoc,
+          currentLocation: d.currentLocation || d.driverLocation || targetLoc
+        });
       } else {
         nearbyRawDrivers.push(d);
       }
     }
 
-    // Priority 1: If local drivers exist, use local drivers only and skip nearby search
     console.log('\n===================================');
-    console.log('Start Location:');
-    console.log(`${targetLoc}\n`);
-    console.log('Searching local Drivers...');
-    console.log('Drivers Found:');
-    console.log(`${localDrivers.length}\n`);
+    console.log(`Start Location: ${targetLoc}`);
+    console.log(`Local Drivers Found: ${localDrivers.length}`);
 
-    if (localDrivers.length > 0) {
-      console.log('Using local Drivers.');
-      console.log('Skipping nearby Driver search.');
-      console.log('===================================\n');
-
-      return sendSuccess(res, 200, {
-        drivers: localDrivers,
-        localDrivers,
-        nearbyDrivers: [],
-        localCount: localDrivers.length,
-        nearbyCount: 0,
-        isNearbyFallback: false
-      }, 'Available drivers fetched successfully');
-    }
-
-    // Priority 2: Only if local drivers count is 0, execute nearest driver search sorted by road distance
-    console.log(`No available Drivers found in ${targetLoc}. Searching nearest available Drivers...`);
-    const nearbyDrivers = await Promise.all(
+    // Compute road distance for non-local drivers
+    const mappedNearbyDrivers = await Promise.all(
       nearbyRawDrivers.map(async (d) => {
         const rawEffective = getDriverEffectiveLocation(d);
-        const dLoc = await resolveLocationName(rawEffective || 'Pune', d.branch);
+        const dLoc = await resolveLocationName(rawEffective || 'Hyderabad', d.branch);
         if (isCoordinateString(rawEffective)) {
           Driver.findByIdAndUpdate(d._id, { currentLocation: dLoc, driverLocation: dLoc }).catch(() => {});
         }
         const routeData = await getRoadDistanceAndEta(targetLoc, dLoc);
         const dObj = d.toObject ? d.toObject() : { ...d };
+        const dist = routeData.distanceKm || 0;
         return {
           ...dObj,
-          isNearby: true,
-          distanceKm: routeData.distanceKm,
+          isNearby: dist <= 50,
+          distanceKm: dist,
           estimatedTravelTime: routeData.estimatedTravelTime,
           currentBranch: d.branch || d.currentLocation || dLoc,
           currentLocation: dLoc
@@ -368,24 +357,46 @@ export const getAvailableDrivers = async (req, res, next) => {
       })
     );
 
-    // Sort in ascending order based on road distance
-    nearbyDrivers.sort((a, b) => a.distanceKm - b.distanceKm);
+    // Combine all drivers and sort by distance (nearest to farthest)
+    const allSortedDrivers = [...localDrivers, ...mappedNearbyDrivers].sort((a, b) => a.distanceKm - b.distanceKm);
 
-    if (nearbyDrivers.length > 0) {
-      console.log(`Nearest Drivers for ${targetLoc} sorted by distance:`);
-      nearbyDrivers.slice(0, 5).forEach((d, idx) => {
+    // Filter drivers within 50km
+    const driversWithin50 = allSortedDrivers.filter(d => d.distanceKm <= 50);
+    const hasNearby = driversWithin50.length > 0;
+
+    let finalDriversToReturn = [];
+    let isNearbyFallback = false;
+    let isExtendedFallback = false;
+
+    if (hasNearby) {
+      console.log(`✓ Found ${driversWithin50.length} drivers within 50km of ${targetLoc}.`);
+      finalDriversToReturn = driversWithin50;
+      isNearbyFallback = localDrivers.length === 0;
+    } else {
+      console.log(`❌ No nearby drivers found within 50km of ${targetLoc}. Displaying all available drivers sorted by distance.`);
+      finalDriversToReturn = allSortedDrivers;
+      isExtendedFallback = true;
+      isNearbyFallback = true;
+    }
+
+    if (finalDriversToReturn.length > 0) {
+      console.log(`Drivers list for ${targetLoc}:`);
+      finalDriversToReturn.slice(0, 5).forEach((d, idx) => {
         console.log(`${idx + 1}. ${d.fullName || d.name} (${d.employeeId || 'N/A'}) - Loc: ${d.currentLocation} - ${d.distanceKm} km away (${d.estimatedTravelTime})`);
       });
     }
     console.log('===================================\n');
 
     return sendSuccess(res, 200, {
-      drivers: nearbyDrivers,
-      localDrivers: [],
-      nearbyDrivers,
-      localCount: 0,
-      nearbyCount: nearbyDrivers.length,
-      isNearbyFallback: true
+      drivers: finalDriversToReturn,
+      localDrivers,
+      nearbyDrivers: driversWithin50,
+      allDriversSorted: allSortedDrivers,
+      localCount: localDrivers.length,
+      nearbyCount: driversWithin50.length,
+      hasNearby,
+      isNearbyFallback,
+      isExtendedFallback
     }, 'Available drivers fetched successfully');
   } catch (error) {
     next(error);
@@ -577,8 +588,8 @@ export const updateDriver = async (req, res, next) => {
         field === 'licenseNumber'
           ? 'A driver with this license number already exists'
           : field === 'employeeId'
-          ? 'A driver with this Employee ID already exists'
-          : 'A driver with this email already exists';
+            ? 'A driver with this Employee ID already exists'
+            : 'A driver with this email already exists';
       return sendError(res, 409, message);
     }
     next(error);
@@ -662,7 +673,7 @@ export const uploadDriverDocument = async (req, res, next) => {
       secure_url: result.secure_url,
       originalName: req.file.originalname
     });
-    
+
     await doc.save();
     console.log("MongoDB Document saved successfully:", doc);
 

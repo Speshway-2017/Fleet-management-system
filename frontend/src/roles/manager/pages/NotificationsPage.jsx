@@ -167,19 +167,24 @@ export default function NotificationsPage() {
   };
 
   const resolveTargetUrl = (notif) => {
+    if (!notif) return "/manager/dashboard";
     if (notif.metadata?.targetUrl) return notif.metadata.targetUrl;
     
+    const title = (notif.title || "").toLowerCase();
+    const message = (notif.message || notif.description || "").toLowerCase();
+    const type = (notif.type || "").toUpperCase();
+
     const tripId = notif.metadata?.tripId || notif.referenceId || notif.relatedId;
     const driverId = notif.metadata?.driverId;
     let extractedTicketId = notif.metadata?.ticketId || notif.metadata?.complaintId;
     if (!extractedTicketId) {
-      const match = (title + " " + message).match(/TKT-VEH-[\w-]+/i);
+      const fullText = (notif.title || "") + " " + (notif.message || notif.description || "");
+      const match = fullText.match(/TKT-VEH-[\w-]+/i);
       if (match) extractedTicketId = match[0];
     }
 
-    if (extractedTicketId || ticketId || title.includes("ticket") || title.includes("mechanic") || title.includes("maintenance") || message.includes("tkt-") || message.includes("mechanic") || type.includes("MAINTENANCE")) {
-      const target = extractedTicketId || ticketId;
-      return target ? `/manager/view-tickets?ticketId=${encodeURIComponent(target)}` : `/manager/maintenance`;
+    if (extractedTicketId || title.includes("ticket") || title.includes("mechanic") || title.includes("maintenance") || message.includes("tkt-") || message.includes("mechanic") || type.includes("MAINTENANCE")) {
+      return extractedTicketId ? `/manager/maintenance?ticketId=${encodeURIComponent(extractedTicketId)}` : `/manager/maintenance`;
     }
     if (type.includes("MESSAGE") || type.includes("CALL") || title.includes("message") || title.includes("call")) {
       return tripId ? `/manager/trip-details/${tripId}` : `/manager/trips`;

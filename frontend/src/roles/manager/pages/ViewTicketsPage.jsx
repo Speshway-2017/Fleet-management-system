@@ -23,6 +23,34 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
 
+const resolveVehiclePlate = (t) => {
+  if (!t) return "VEH-ASSIGNED";
+  if (t.vehiclePlate && t.vehiclePlate !== "VEH-UNKNOWN" && t.vehiclePlate !== "UNKNOWN") {
+    return t.vehiclePlate;
+  }
+  if (t.vehicle) {
+    if (typeof t.vehicle === "object") {
+      const vNum = t.vehicle.vehicleNumber || t.vehicle.registrationNumber || t.vehicle.plateNumber || t.vehicle.vehicleName;
+      if (vNum) return vNum;
+    } else if (typeof t.vehicle === "string" && t.vehicle !== "VEH-UNKNOWN" && t.vehicle !== "UNKNOWN") {
+      return t.vehicle;
+    }
+  }
+  if (t.trip && typeof t.trip === "object") {
+    if (t.trip.vehiclePlate && t.trip.vehiclePlate !== "VEH-UNKNOWN" && t.trip.vehiclePlate !== "UNKNOWN") {
+      return t.trip.vehiclePlate;
+    }
+    if (t.trip.vehicle && typeof t.trip.vehicle === "object") {
+      const tvNum = t.trip.vehicle.vehicleNumber || t.trip.vehicle.registrationNumber;
+      if (tvNum) return tvNum;
+    }
+  }
+  if (t.driver && typeof t.driver === "object" && t.driver.assignedVehicle && t.driver.assignedVehicle !== "Unassigned") {
+    return t.driver.assignedVehicle;
+  }
+  return "VEH-ASSIGNED";
+};
+
 export default function ViewTicketsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -338,23 +366,28 @@ export default function ViewTicketsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                  New Estimated Delivery Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={data.revisedDeliveryDateTime || data.categoryData?.revisedDeliveryDateTime || ''}
+                  onChange={(e) => setData(prev => ({
+                    ...prev,
+                    revisedDeliveryDateTime: e.target.value,
+                    categoryData: { ...prev.categoryData, revisedDeliveryDateTime: e.target.value, newEta: e.target.value }
+                  }))}
+                  className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none"
+                />
+              </div>
               <div>
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Est. Damage Cost (₹)</label>
                 <input
                   type="number"
                   value={data.estimatedCost}
                   onChange={(e) => setData(prev => ({ ...prev, estimatedCost: e.target.value }))}
-                  placeholder="0"
-                  className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Actual Repair Cost (₹)</label>
-                <input
-                  type="number"
-                  value={data.actualCost}
-                  onChange={(e) => setData(prev => ({ ...prev, actualCost: e.target.value }))}
                   placeholder="0"
                   className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
                 />
@@ -429,26 +462,55 @@ export default function ViewTicketsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <div>
-                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Est. Repair Cost (₹)</label>
-                <input
-                  type="number"
-                  value={data.estimatedCost}
-                  onChange={(e) => setData(prev => ({ ...prev, estimatedCost: e.target.value }))}
-                  placeholder="0"
-                  className="w-full p-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none"
-                />
+            {/* New Estimated Delivery Date & Time & Offline Customer Notification */}
+            <div className="p-3 bg-purple-50/80 border border-purple-200/80 rounded-xl space-y-2 font-nunito">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-purple-600" />
+                <span className="text-xs font-bold text-purple-900 font-poppins">Trip Reschedule & Customer Notification</span>
               </div>
-              <div>
-                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Actual Repair Cost (₹)</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                    New Estimated Delivery Date & Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={data.revisedDeliveryDateTime || data.categoryData?.revisedDeliveryDateTime || ''}
+                    onChange={(e) => setData(prev => ({
+                      ...prev,
+                      revisedDeliveryDateTime: e.target.value,
+                      categoryData: { ...prev.categoryData, revisedDeliveryDateTime: e.target.value, newEta: e.target.value }
+                    }))}
+                    className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Est. Repair Cost (₹)</label>
+                  <input
+                    type="number"
+                    value={data.estimatedCost}
+                    onChange={(e) => setData(prev => ({ ...prev, estimatedCost: e.target.value }))}
+                    placeholder="0"
+                    className="w-full p-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
                 <input
-                  type="number"
-                  value={data.actualCost}
-                  onChange={(e) => setData(prev => ({ ...prev, actualCost: e.target.value }))}
-                  placeholder="0"
-                  className="w-full p-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none"
+                  type="checkbox"
+                  id="customerInformedOfflineCheck"
+                  checked={!!(data.customerInformedOffline || data.categoryData?.customerInformedOffline)}
+                  onChange={(e) => setData(prev => ({
+                    ...prev,
+                    customerInformedOffline: e.target.checked,
+                    categoryData: { ...prev.categoryData, customerInformedOffline: e.target.checked, customerInformed: e.target.checked }
+                  }))}
+                  className="w-4 h-4 text-purple-600 rounded cursor-pointer"
                 />
+                <label htmlFor="customerInformedOfflineCheck" className="text-xs font-bold text-slate-700 cursor-pointer">
+                  Informed Customer Offline (Phone / Call) regarding revised delivery schedule ✓
+                </label>
               </div>
             </div>
 
@@ -509,8 +571,12 @@ export default function ViewTicketsPage() {
       let finalTickets = [];
 
       if (Array.isArray(data) && data.length > 0) {
-        finalTickets = data;
-        setTickets(data);
+        const sanitized = data.map(t => ({
+          ...t,
+          vehiclePlate: resolveVehiclePlate(t)
+        }));
+        finalTickets = sanitized;
+        setTickets(sanitized);
       } else {
         // Intercept/Fallback: Load from localStorage or populate mock list if empty
         const localNotifsStr = localStorage.getItem("local_complaints_notifications");
@@ -731,7 +797,7 @@ export default function ViewTicketsPage() {
     const dName = t.driver?.fullName || t.driverName || "";
     const matchesSearch =
       t.ticketId.toLowerCase().includes(q) ||
-      t.vehiclePlate.toLowerCase().includes(q) ||
+      (t.vehiclePlate || resolveVehiclePlate(t)).toLowerCase().includes(q) ||
       dName.toLowerCase().includes(q) ||
       t.issueType.toLowerCase().includes(q);
 
@@ -895,7 +961,7 @@ export default function ViewTicketsPage() {
                     <th className="py-3 px-4">Issue Category</th>
                     <th className="py-3 px-4">Severity Level</th>
                     <th className="py-3 px-4">Reported Date & Time</th>
-                    <th className="py-3 px-4">Actual Repair Cost (₹)</th>
+                    <th className="py-3 px-4">Est. Repair Cost (₹)</th>
                     <th className="py-3 px-4">Current Status</th>
                     <th className="py-3 px-4 text-center">Actions</th>
                   </tr>
@@ -905,7 +971,7 @@ export default function ViewTicketsPage() {
                     <tr key={t._id} className="hover:bg-[#F8FAFC]/30 transition-colors">
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <span className="font-bold text-indigo-650 bg-indigo-50/55 border border-indigo-150 px-2 py-0.5 rounded uppercase text-[10px] tracking-wide">
-                          {t.vehiclePlate}
+                          {resolveVehiclePlate(t)}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-gray-700 font-bold whitespace-nowrap">{t.driver?.fullName || t.driverName}</td>
@@ -926,7 +992,7 @@ export default function ViewTicketsPage() {
                         {formatDateSafe(t.reportedAt || t.createdAt, { dateStyle: 'short', timeStyle: 'short' })}
                       </td>
                       <td className="py-3.5 px-4 font-bold text-indigo-650 whitespace-nowrap">
-                        {t.actualCost > 0 ? `₹${t.actualCost.toLocaleString('en-IN')}` : "-"}
+                        {t.estimatedCost > 0 ? `₹${t.estimatedCost.toLocaleString('en-IN')}` : "-"}
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-extrabold uppercase ${t.status === 'Resolved' || t.status === 'Completed' || t.status === 'Repair Completed'
@@ -1057,7 +1123,7 @@ export default function ViewTicketsPage() {
                 <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs space-y-2.5 font-nunito">
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Vehicle Plate:</span>
-                    <span className="font-bold text-slate-700 uppercase">{selectedTicket.vehiclePlate}</span>
+                    <span className="font-bold text-slate-700 uppercase">{resolveVehiclePlate(selectedTicket)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Driver Name:</span>
@@ -1209,7 +1275,7 @@ export default function ViewTicketsPage() {
                 <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs space-y-1.5 font-nunito">
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Vehicle Plate:</span>
-                    <span className="font-bold text-slate-700 uppercase">{selectedTicket.vehiclePlate}</span>
+                    <span className="font-bold text-slate-700 uppercase">{resolveVehiclePlate(selectedTicket)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Driver Name:</span>
