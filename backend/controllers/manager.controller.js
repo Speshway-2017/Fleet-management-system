@@ -1430,9 +1430,6 @@ export const listFuelRecords = async (req, res, next) => {
     }
 
     let records = await getFuelRecords(filter);
-    if ((!records || records.length === 0) && !req.query.vehicle) {
-      records = await getFuelRecords({});
-    }
 
     const formatted = records.map(r => {
       const obj = r.toObject ? r.toObject() : r;
@@ -1528,9 +1525,6 @@ export const listMaintenance = async (req, res, next) => {
     }
 
     let maintenance = await getMaintenances(filter);
-    if ((!maintenance || maintenance.length === 0) && !req.query.vehicle) {
-      maintenance = await getMaintenances({});
-    }
     return sendSuccess(res, 200, maintenance, 'Maintenance list fetched');
   } catch (error) {
     next(error);
@@ -2423,20 +2417,36 @@ export const listActivities = async (req, res, next) => {
   try {
     const managerId = req.user._id;
 
-    console.log(`\n====================================`);
-    console.log(`Fetching Recent Vehicle Activities...`);
+    // Check if manager currently has any vehicles, drivers, or trips
+    const vehicleCount = await Vehicle.countDocuments({ assignedManager: managerId });
+    const driverCount = await Driver.countDocuments({ assignedManager: managerId });
+    const tripCount = await Trip.countDocuments({ assignedManager: managerId });
+
+    if (vehicleCount === 0 && driverCount === 0 && tripCount === 0) {
+      return sendSuccess(res, 200, [], 'No recent vehicle activities');
+    }
+
+    const managerVehicles = await Vehicle.find({ assignedManager: managerId }, '_id vehicleNumber registrationNumber');
+    const vehicleRegs = new Set(managerVehicles.map(v => (v.vehicleNumber || v.registrationNumber || '').toUpperCase()).filter(Boolean));
+    const vehicleIds = new Set(managerVehicles.map(v => String(v._id)));
 
     const limit = parseInt(req.query.limit) || 10;
     const activities = await ActivityLog.find({ assignedManager: managerId })
       .sort({ createdAt: -1 })
-      .limit(limit)
+      .limit(limit * 3)
       .lean();
 
-    console.log(`\nLatest Activities Found: ${activities.length}`);
-    console.log(`\nReturning Activity Logs...`);
-    console.log(`====================================\n`);
+    const filtered = activities.filter(act => {
+      if (act.vehicleNumber && act.vehicleNumber !== 'N/A') {
+        const vNum = act.vehicleNumber.toUpperCase();
+        if (vehicleRegs.size > 0 && !vehicleRegs.has(vNum) && !vehicleIds.has(act.relatedId)) {
+          return false;
+        }
+      }
+      return true;
+    }).slice(0, limit);
 
-    return sendSuccess(res, 200, activities, 'Recent vehicle activities fetched successfully');
+    return sendSuccess(res, 200, filtered, 'Recent vehicle activities fetched successfully');
   } catch (error) {
     next(error);
   }
@@ -2998,14 +3008,6 @@ export const listVehicleComplaints = async (req, res, next) => {
       .populate('vehicle', 'vehicleNumber registrationNumber brand model vehicleName plateNumber')
       .populate('trip', 'tripNumber origin destination vehiclePlate vehicle')
       .sort({ createdAt: -1 });
-
-    if (complaints.length === 0 && !tripId) {
-      complaints = await VehicleComplaint.find({})
-        .populate('driver', 'fullName email phoneNumber assignedVehicle')
-        .populate('vehicle', 'vehicleNumber registrationNumber brand model vehicleName plateNumber')
-        .populate('trip', 'tripNumber origin destination vehiclePlate vehicle')
-        .sort({ createdAt: -1 });
-    }
 
     // Sanitize and resolve vehiclePlate if it is missing, empty, or 'VEH-UNKNOWN'
     const formattedComplaints = complaints.map(c => {

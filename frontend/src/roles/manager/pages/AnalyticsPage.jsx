@@ -91,25 +91,25 @@ export default function AnalyticsPage() {
     const vehicleNumbers = new Set(filteredVehicles.map(v => v.vehicleNumber));
     const vehicleIds = new Set(filteredVehicles.map(v => String(v._id)));
     
-    const branchFuel = fuelRecords.filter(f => {
+    const branchFuel = filteredVehicles.length === 0 ? [] : fuelRecords.filter(f => {
       const vId = f.vehicle?._id || f.vehicle;
-      const matchVehicle = branchName === "All Branches" || vehicleIds.has(String(vId)) || vehicleNumbers.has(f.vehicleId);
+      const matchVehicle = vehicleIds.has(String(vId)) || vehicleNumbers.has(f.vehicleId) || vehicleNumbers.has(f.vehiclePlate);
       const fDate = new Date(f.date || f.createdAt);
       const matchDate = startDate ? (!isNaN(fDate.getTime()) && fDate >= startDate) : true;
       return matchVehicle && matchDate;
     });
     
-    const branchMaint = maintenance.filter(m => {
+    const branchMaint = filteredVehicles.length === 0 ? [] : maintenance.filter(m => {
       const vId = m.vehicle?._id || m.vehicle;
-      const matchVehicle = branchName === "All Branches" || vehicleIds.has(String(vId)) || vehicleNumbers.has(m.vehicleId);
+      const matchVehicle = vehicleIds.has(String(vId)) || vehicleNumbers.has(m.vehicleId) || vehicleNumbers.has(m.vehiclePlate);
       const mDate = new Date(m.scheduledDate || m.serviceDate || m.createdAt);
       const matchDate = startDate ? (!isNaN(mDate.getTime()) && mDate >= startDate) : true;
       return matchVehicle && matchDate;
     });
 
-    const branchTrips = trips.filter(t => {
+    const branchTrips = filteredVehicles.length === 0 ? [] : trips.filter(t => {
       const vId = t.vehicle?._id || t.vehicle;
-      const matchVehicle = branchName === "All Branches" || vehicleIds.has(String(vId));
+      const matchVehicle = vehicleIds.has(String(vId)) || vehicleNumbers.has(t.vehiclePlate);
       const tDate = new Date(t.actualStartTime || t.departureTime || t.createdAt);
       const matchDate = startDate ? (!isNaN(tDate.getTime()) && tDate >= startDate) : true;
       return matchVehicle && matchDate;
@@ -158,8 +158,8 @@ export default function AnalyticsPage() {
     const anomalies = overdueMaintCount < 10 ? `0${overdueMaintCount}` : String(overdueMaintCount);
 
     // Top Spender Vehicle Plate Number
-    let topSpender = filteredVehicles[0]?.vehicleNumber || "None";
-    let maxSpend = -1;
+    let topSpender = "None";
+    let maxSpend = 0;
     filteredVehicles.forEach(v => {
       const vFuel = branchFuel.filter(f => String(f.vehicle?._id || f.vehicle) === String(v._id) || f.vehicleId === v.vehicleNumber);
       const vMaint = branchMaint.filter(m => String(m.vehicle?._id || m.vehicle) === String(v._id) || m.vehicleId === v.vehicleNumber);

@@ -570,116 +570,13 @@ export default function ViewTicketsPage() {
       const data = res.data?.data || res.data;
       let finalTickets = [];
 
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         const sanitized = data.map(t => ({
           ...t,
           vehiclePlate: resolveVehiclePlate(t)
         }));
         finalTickets = sanitized;
         setTickets(sanitized);
-      } else {
-        // Intercept/Fallback: Load from localStorage or populate mock list if empty
-        const localNotifsStr = localStorage.getItem("local_complaints_notifications");
-        let localNotifs = [];
-        if (localNotifsStr) {
-          localNotifs = JSON.parse(localNotifsStr).map(n => ({
-            _id: n._id || n.id,
-            ticketId: n.metadata?.ticketId || n.id,
-            trip: n.metadata?.tripId || '',
-            vehiclePlate: n.metadata?.vehiclePlate || '',
-            driverName: n.metadata?.driverName || '',
-            issueType: n.metadata?.issueType || '',
-            severity: n.metadata?.severity || 'Medium',
-            description: n.description || n.message || '',
-            status: n.metadata?.status || n.status || 'Open',
-            estimatedCost: n.metadata?.estimatedCost || 0,
-            actualCost: n.metadata?.actualCost || 0,
-            notes: n.metadata?.notes || '',
-            reportedAt: n.createdAt || new Date().toISOString(),
-            completionDate: n.metadata?.completionDate
-          }));
-        }
-
-        if (localNotifs.length === 0) {
-          const defaultMocks = [
-            {
-              _id: "mock-complaint-1",
-              ticketId: "TKT-VEH-20260717-1002",
-              trip: "6458b94bb460e8f625bc5bc9",
-              vehiclePlate: "MH-12-AB-5678",
-              driverName: "Dayanand M",
-              issueType: "Brakes",
-              severity: "High",
-              description: "Brake pad warning light on. Squealing noise when braking on descent.",
-              status: "In Progress",
-              estimatedCost: 3500,
-              actualCost: 0,
-              notes: "Scheduled brake pad inspection. Mechanic Karan assigned.",
-              reportedAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString()
-            },
-            {
-              _id: "mock-complaint-2",
-              ticketId: "TKT-VEH-20260716-2041",
-              trip: "6458b94bb460e8f625bc5bc9",
-              vehiclePlate: "KA-02-AB-1456",
-              driverName: "Marcus Read",
-              issueType: "Engine",
-              severity: "Critical",
-              description: "Engine overheating indicator turned red during Mumbai highway run. Had to pull over.",
-              status: "Resolved",
-              estimatedCost: 12000,
-              actualCost: 11500,
-              notes: "Radiator coolant leak repaired, coolant refilled, thermostat replaced.",
-              reportedAt: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
-              completionDate: new Date(Date.now() - 24 * 3600 * 1000).toISOString()
-            },
-            {
-              _id: "mock-complaint-3",
-              ticketId: "TKT-VEH-20260717-3102",
-              trip: "6458b94bb460e8f625bc5bc9",
-              vehiclePlate: "AP-39-EP-9465",
-              driverName: "Ramesh P",
-              issueType: "Electrical",
-              severity: "Low",
-              description: "Cabin dome light flickers. Right side tail-light bulb is fused.",
-              status: "Open",
-              estimatedCost: 500,
-              actualCost: 0,
-              notes: "",
-              reportedAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString()
-            }
-          ];
-          finalTickets = defaultMocks;
-          setTickets(defaultMocks);
-
-          const mappedNotifications = defaultMocks.map(m => ({
-            _id: m._id,
-            id: m._id,
-            title: `Vehicle Issue Ticket: ${m.ticketId}`,
-            description: m.description,
-            type: 'alert',
-            priority: m.severity === 'Critical' || m.severity === 'High' ? 'high' : 'normal',
-            isRead: m.status === 'Resolved' || m.status === 'Closed',
-            unread: !(m.status === 'Resolved' || m.status === 'Closed'),
-            createdAt: m.reportedAt,
-            metadata: {
-              ticketId: m.ticketId,
-              vehiclePlate: m.vehiclePlate,
-              driverName: m.driverName,
-              issueType: m.issueType,
-              severity: m.severity,
-              tripId: m.trip,
-              status: m.status,
-              estimatedCost: m.estimatedCost,
-              actualCost: m.actualCost,
-              notes: m.notes
-            }
-          }));
-          localStorage.setItem("local_complaints_notifications", JSON.stringify(mappedNotifications));
-        } else {
-          finalTickets = localNotifs;
-          setTickets(localNotifs);
-        }
       }
 
       if (highlightedTicketId && finalTickets.length > 0) {

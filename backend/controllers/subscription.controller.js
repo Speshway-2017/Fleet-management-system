@@ -1,6 +1,7 @@
 import SubscriptionPlan from '../models/SubscriptionPlan.js';
 import SubscriptionRequest from '../models/SubscriptionRequest.js';
 import User from '../models/User.js';
+import Organization from '../models/Organization.js';
 import { createNotificationInRepo } from '../repositories/admin.repository.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
@@ -196,6 +197,13 @@ export const approveRequest = async (req, res, next) => {
       },
       { new: true }
     );
+
+    if (manager && manager.organization) {
+      await Organization.findByIdAndUpdate(manager.organization, {
+        status: 'Active',
+        plan: plan.name || 'Standard'
+      });
+    }
 
     // Create Notification for the Manager
     const notification = await createNotificationInRepo({

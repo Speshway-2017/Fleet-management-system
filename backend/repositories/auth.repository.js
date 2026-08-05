@@ -15,7 +15,7 @@ export const createUser = async (userData) => {
 };
 
 export const findUserById = async (id) => {
-  let user = await User.findById(id).select('-password');
+  let user = await User.findById(id).populate('organization').select('-password');
   if (!user) {
     const driver = await Driver.findById(id).select('-password');
     if (driver) {

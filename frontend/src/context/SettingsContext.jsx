@@ -22,7 +22,14 @@ export function SettingsProvider({ children }) {
         logoUrl: data.logoUrl || "/logo.png",
       });
     } catch (error) {
-      console.warn("Failed to fetch public platform settings:", error?.response?.status);
+      if (error?.response?.status) {
+        console.warn("Failed to fetch public platform settings:", error.response.status);
+      }
+      setPlatformSettings((prev) => ({
+        ...prev,
+        platformName: prev.platformName || "Fleet Management",
+        logoUrl: prev.logoUrl || "/logo.png",
+      }));
     }
   };
 

@@ -828,6 +828,9 @@ export const getDriverDocumentById = async (req, res, next) => {
   try {
     const doc = await Document.findById(req.params.id);
     if (!doc) return sendError(res, 404, 'Document not found');
+    if (String(doc.uploadedBy) !== String(req.user._id)) {
+      return sendError(res, 403, 'Access denied: document belongs to another driver');
+    }
     return sendSuccess(res, 200, doc, 'Document fetched');
   } catch (error) {
     next(error);
@@ -851,9 +854,6 @@ export const getDriverSupportInfo = async (req, res, next) => {
       if (trip && trip.assignedManager) {
         manager = trip.assignedManager;
       }
-    }
-    if (!manager) {
-      manager = await User.findOne({ role: 'FLEET_MANAGER' });
     }
 
     return sendSuccess(res, 200, {
