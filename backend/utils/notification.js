@@ -1,5 +1,7 @@
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
+import Driver from '../models/Driver.js';
+import { sendPushNotification } from '../config/firebaseAdmin.js';
 
 /**
  * Create a notification and emit it via Socket.IO
@@ -78,6 +80,57 @@ export const createAndEmitNotification = async (params) => {
       for (const manager of managers) {
         io.to(`manager:${manager._id}`).emit('notification:new', savedNotification.toObject());
       }
+    }
+
+    // FCM push notification integration
+    try {
+      const sendPushToUser = async (userId, role) => {
+        let targetToken = null;
+        if (role === 'DRIVER') {
+          const driverDoc = await Driver.findById(userId);
+          targetToken = driverDoc?.fcmToken;
+        } else {
+          const userDoc = await User.findById(userId);
+          targetToken = userDoc?.fcmToken;
+        }
+
+        if (targetToken) {
+          const pushData = {};
+          if (metadata) {
+            Object.keys(metadata).forEach(key => {
+              pushData[key] = String(metadata[key]);
+            });
+          }
+          if (type) pushData.type = String(type);
+          if (referenceId) pushData.referenceId = String(referenceId);
+          if (referenceType) pushData.referenceType = String(referenceType);
+
+          const result = await sendPushNotification(targetToken, title, message, pushData);
+
+          console.log(`[FCM Notification Log]
+Recipient: ${userId} (${role})
+Token: ${targetToken}
+Title: "${title}"
+Body: "${message}"
+Status: ${result.success ? 'Success' : 'Failure'}
+Timestamp: ${new Date().toISOString()}
+Firebase Response: ${JSON.stringify(result)}
+==================================================`);
+        } else {
+          console.log(`[FCM Notification Info] No FCM Token found for ${userId} (${role}). Push notification skipped.`);
+        }
+      };
+
+      if (recipient) {
+        await sendPushToUser(recipient, recipientRole);
+      } else if (recipientRole === 'FLEET_MANAGER' && organization) {
+        const managers = await User.find({ organization, role: 'FLEET_MANAGER' });
+        for (const manager of managers) {
+          await sendPushToUser(manager._id, 'FLEET_MANAGER');
+        }
+      }
+    } catch (pushError) {
+      console.error('[FCM Notification Error] Failed to send push notification:', pushError.message);
     }
 
     return savedNotification;

@@ -522,9 +522,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         tripId: cleanId,
         customerName: _trip?['deliveryAddress']?['contactPerson'] ?? 'Customer Receiver',
         receiverName: 'Verified Receiver',
-        customerSignatureUrl: 'https://via.placeholder.com/300x100.png?text=Signature',
-        deliveryPhotoUrl: 'https://via.placeholder.com/300x300.png?text=Delivery+Photo',
-        podDocumentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        customerSignatureUrl: '',
+        deliveryPhotoUrl: '',
+        podDocumentUrl: '',
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -566,7 +566,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         tareWeight: 10000,
         netWeight: 15000,
         location: _trip?['endLocation'] ?? 'Highway Weighbridge Station',
-        documentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        documentUrl: '',
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
