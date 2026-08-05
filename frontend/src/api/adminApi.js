@@ -97,8 +97,8 @@ export const adminApi = {
   },
 
   // Analytics
-  getAnalytics: async () => {
-    return axiosClient.get('/admin/analytics');
+  getAnalytics: async (filter) => {
+    return axiosClient.get('/admin/analytics', { params: filter ? { filter } : {} });
   },
   getSystemHealth: async () => {
     // Mock system health data since backend doesn't have this endpoint yet

@@ -27,7 +27,7 @@ const vehicleComplaintSchema = new mongoose.Schema(
     canContinueTrip: { type: String, enum: ['Yes', 'No', 'After Repair'], default: 'After Repair' },
     status: {
       type: String,
-      enum: ['Open', 'Mechanic Assigned', 'Mechanic Arrived', 'Repair In Progress', 'Repair Completed', 'Resolved', 'Closed', 'In Progress', 'Rejected'],
+      enum: ['Open', 'Mechanic Assigned', 'Mechanic Arrived', 'Repair In Progress', 'Repair Completed', 'Need Maintenance', 'Resolved', 'Closed', 'In Progress', 'Rejected', 'Cancelled (Accident)'],
       default: 'Open'
     },
     assignedMechanic: {

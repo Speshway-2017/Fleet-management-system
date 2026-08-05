@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
@@ -18,11 +20,7 @@ class TripDetailsScreen extends StatefulWidget {
   final String tripId;
   final Map<String, dynamic>? tripData;
 
-  const TripDetailsScreen({
-    super.key,
-    required this.tripId,
-    this.tripData,
-  });
+  const TripDetailsScreen({super.key, required this.tripId, this.tripData});
 
   @override
   State<TripDetailsScreen> createState() => _TripDetailsScreenState();
@@ -47,7 +45,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final vehicleName = trip['vehicleName'] ?? 'N/A';
     final vehiclePlate = trip['vehiclePlate'] ?? 'N/A';
     final driverName = trip['driverName'] ?? 'N/A';
-    final driverPhone = trip['driverPhone'] ?? 'N/A';
     final managerName = trip['manager'] != null ? trip['manager']['name'] ?? 'N/A' : 'N/A';
 
     final htmlContent = '''
@@ -66,87 +63,54 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     .meta-item { display: flex; flex-direction: column; }
     .meta-label { font-weight: bold; color: #4b5563; font-size: 10px; text-transform: uppercase; }
     .meta-val { font-weight: bold; color: #111827; margin-top: 4px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-    .section-title { font-size: 14px; font-weight: bold; color: #1e3a8a; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 10px; text-transform: uppercase; }
-    .detail-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
-    .detail-label { color: #666; }
-    .detail-val { font-weight: bold; color: #333; }
-    .footer { text-align: center; font-size: 11px; color: #999; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; }
+    .details-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
+    .details-table th { background: #1e293b; color: #fff; text-align: left; padding: 10px; font-weight: 600; }
+    .details-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
+    .footer { border-top: 1px solid #e2e8f0; padding-top: 15px; text-align: center; font-size: 11px; color: #94a3b8; }
   </style>
 </head>
 <body>
   <div class="invoice-box">
     <div class="header">
-      <div class="logo">Speshway <span>Logistics</span></div>
+      <div class="logo">FLEET<span>LOGIX</span></div>
       <div class="company-details">
-        <strong>Speshway Logistics Pvt Ltd</strong><br>
-        Plot 45, Industrial Depot, Sector 3<br>
-        Pune, Maharashtra, 411018<br>
-        Phone: +91 20 5566 7788 | billing@speshway.com
+        <strong>Fleet Management System</strong><br>
+        Trip Electronic Receipt & Manifest<br>
+        Date: $invoiceDateStr
       </div>
     </div>
-    
     <div class="invoice-meta">
-      <div class="meta-item">
-        <span class="meta-label">Invoice Number</span>
-        <span class="meta-val">$invoiceNumber</span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Invoice Date</span>
-        <span class="meta-val">$invoiceDateStr</span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Trip ID</span>
-        <span class="meta-val">${trip['tripNumber']}</span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Status</span>
-        <span class="meta-val">${trip['status']}</span>
-      </div>
+      <div class="meta-item"><span class="meta-label">Invoice No</span><span class="meta-val">$invoiceNumber</span></div>
+      <div class="meta-item"><span class="meta-label">Vehicle</span><span class="meta-val">$vehicleName ($vehiclePlate)</span></div>
+      <div class="meta-item"><span class="meta-label">Driver</span><span class="meta-val">$driverName</span></div>
+      <div class="meta-item"><span class="meta-label">Manager</span><span class="meta-val">$managerName</span></div>
     </div>
-
-    <div class="grid">
-      <div>
-        <div class="section-title">Trip Information</div>
-        <div class="detail-row"><span class="detail-label">Pickup Location</span><span class="detail-val">$startLocation</span></div>
-        <div class="detail-row"><span class="detail-label">Destination</span><span class="detail-val">$endLocation</span></div>
-        <div class="detail-row"><span class="detail-label">Departure</span><span class="detail-val">$departureTime</span></div>
-        <div class="detail-row"><span class="detail-label">ETA</span><span class="detail-val">$eta</span></div>
-        <div class="detail-row"><span class="detail-label">Distance</span><span class="detail-val">$distance</span></div>
-        <div class="detail-row"><span class="detail-label">Cargo Type</span><span class="detail-val">$cargoType</span></div>
-        <div class="detail-row"><span class="detail-label">Cargo Weight</span><span class="detail-val">$cargoWeight</span></div>
-      </div>
-      
-      <div>
-        <div class="section-title">Asset & Driver Information</div>
-        <div class="detail-row"><span class="detail-label">Vehicle Name</span><span class="detail-val">$vehicleName</span></div>
-        <div class="detail-row"><span class="detail-label">Registration Number</span><span class="detail-val">$vehiclePlate</span></div>
-        <div class="detail-row"><span class="detail-label">Driver Name</span><span class="detail-val">$driverName</span></div>
-        <div class="detail-row"><span class="detail-label">Mobile Number</span><span class="detail-val">$driverPhone</span></div>
-        <div class="detail-row"><span class="detail-label">Manager</span><span class="detail-val">$managerName</span></div>
-      </div>
-    </div>
-
+    <table class="details-table">
+      <thead>
+        <tr><th>Description</th><th>Details</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Origin</td><td>$startLocation</td></tr>
+        <tr><td>Destination</td><td>$endLocation</td></tr>
+        <tr><td>Departure Time</td><td>$departureTime</td></tr>
+        <tr><td>ETA</td><td>$eta</td></tr>
+        <tr><td>Distance</td><td>$distance</td></tr>
+        <tr><td>Cargo Type</td><td>$cargoType</td></tr>
+        <tr><td>Cargo Weight</td><td>$cargoWeight</td></tr>
+      </tbody>
+    </table>
     <div class="footer">
       Thank you for your business. This is an auto-generated electronic document.
     </div>
   </div>
-  <script>
-    window.onload = function() {
-      setTimeout(function() {
-        window.print();
-      }, 500);
-    }
-  </script>
 </body>
 </html>
-  ''';
+''';
 
     final bytes = utf8.encode(htmlContent);
     final base64Str = base64.encode(bytes);
     final urlStr = 'data:text/html;base64,$base64Str';
     final uri = Uri.parse(urlStr);
-    
     try {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
@@ -159,8 +123,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       await launchUrl(textUri);
     }
   }
-
-
 
   Widget _buildDocumentRow(
     String label,
@@ -187,51 +149,40 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ),
                 ),
                 Text(
-                  isUploaded ? 'Status: Uploaded ✅' : 'Status: Pending Upload ⚠️',
+                  status,
                   style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isUploaded ? AppColors.success : const Color(0xFFD97706),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: isUploaded ? const Color(0xFF16A34A) : Colors.orange,
                   ),
                 ),
               ],
             ),
           ),
-          ElevatedButton.icon(
-            onPressed: (isUploading || isUploaded) ? null : onUpload,
-            icon: isUploading
-                ? const SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : Icon(
-                    isUploaded ? Icons.check_circle : Icons.upload_file_rounded,
-                    size: 14,
-                    color: Colors.white,
-                  ),
-            label: Text(
-              isUploaded ? 'Uploaded' : 'Upload',
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+          if (onUpload != null)
+            ElevatedButton(
+              onPressed: isUploading ? null : onUpload,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isUploaded ? AppColors.secondary : AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                minimumSize: const Size(80, 32),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               ),
+              child: isUploading
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : Text(
+                      isUploaded ? 'Re-upload' : 'Upload',
+                      style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isUploaded ? AppColors.success : AppColors.secondary,
-              disabledBackgroundColor: isUploaded ? AppColors.success : const Color(0xFF9CA3AF),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-            ),
-          ),
         ],
       ),
     );
   }
-
-
 
   Widget _buildInvoiceDetailRow(String label, String value) {
     final hasInvoice = value != 'N/A' && value.isNotEmpty;
@@ -617,7 +568,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final cleanId = rawId.toString().replaceAll('#', '');
 
     try {
-      await ApiService.respondToTripAssignment(cleanId, action);
+      if (action == 'accept') {
+        await ApiService.acceptTrip(cleanId);
+      } else {
+        await ApiService.rejectTrip(cleanId);
+      }
       if (mounted) {
         if (action == 'accept') {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -766,144 +721,65 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'TRIP ID',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.secondaryText,
-                                      ),
-                                    ),
-                                    Text(
-                                      activeId.startsWith('#') ? activeId : '#$activeId',
-                                      overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primaryText,
-                                      ),
-                                    ),
-                                  ],
+                              Text(
+                                'TRIP ID: $activeId',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.secondaryText,
                                 ),
                               ),
-                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: statusColor.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
                                   statusText,
                                   style: GoogleFonts.poppins(
-                                    color: statusColor,
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
+                                    color: statusColor,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          AppSpacing.verticalMd,
-                          // Path display (Origin to Destination)
-                          Stack(
+                          const SizedBox(height: 12),
+                          Row(
                             children: [
-                              Positioned(
-                                left: 5,
-                                top: 10,
-                                bottom: 10,
-                                child: Container(
-                                  width: 1,
-                                  color: AppColors.divider,
-                                  child: const VerticalDivider(
-                                    color: Colors.grey,
-                                    thickness: 1,
-                                    indent: 4,
-                                    endIndent: 4,
+                              const Icon(Icons.my_location, color: AppColors.primary, size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  origin,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primaryText,
                                   ),
                                 ),
                               ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFF3B82F6),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Origin',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 9,
-                                                color: AppColors.secondaryText,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            Text(
-                                              origin,
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                                color: AppColors.primaryText,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
+                            ],
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8),
+                            child: Icon(Icons.more_vert, color: AppColors.secondaryText, size: 16),
+                          ),
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on, color: AppColors.secondary, size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  destination,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primaryText,
                                   ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFEF4444),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Destination',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 9,
-                                                color: AppColors.secondaryText,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            Text(
-                                              destination,
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                                color: AppColors.primaryText,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                ),
                               ),
                             ],
                           ),
@@ -950,7 +826,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 width: 42,
                                 height: 42,
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.white24, width: 1.5),
+                                  border: Border.all(
+                                    color: Colors.white24,
+                                    width: 1.5,
+                                  ),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: const Icon(
@@ -1148,16 +1027,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     CustomCard(
                       padding: const EdgeInsets.all(16),
                       child: Column(
-                        children: List.generate(
-                          manifestNodes.length,
-                          (index) {
-                            final node = manifestNodes[index];
-                            return _buildManifestNodeItem(
-                              node: node,
-                              isLast: index == manifestNodes.length - 1,
-                            );
-                          },
-                        ),
+                        children: List.generate(manifestNodes.length, (index) {
+                          final node = manifestNodes[index];
+                          return _buildManifestNodeItem(
+                            node: node,
+                            isLast: index == manifestNodes.length - 1,
+                          );
+                        }),
                       ),
                     ),
 
@@ -1168,11 +1044,18 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         children: [
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: _isSubmitting ? null : () => _handleRespond('reject'),
+                              onPressed: _isSubmitting
+                                  ? null
+                                  : () => _handleRespond('reject'),
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: AppColors.error, width: 1.5),
+                                side: const BorderSide(
+                                  color: AppColors.error,
+                                  width: 1.5,
+                                ),
                                 foregroundColor: AppColors.error,
-                                padding: const EdgeInsets.symmetric(vertical: 14.0),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14.0,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10.0),
                                 ),
@@ -1189,12 +1072,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: _isSubmitting ? null : () => _handleRespond('accept'),
+                              onPressed: _isSubmitting
+                                  ? null
+                                  : () => _handleRespond('accept'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.success,
                                 foregroundColor: Colors.white,
                                 elevation: 0,
-                                padding: const EdgeInsets.symmetric(vertical: 14.0),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14.0,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10.0),
                                 ),
@@ -1203,7 +1090,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                   ? const SizedBox(
                                       width: 20,
                                       height: 20,
-                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
                                     )
                                   : Text(
                                       'Accept Trip',
@@ -1552,10 +1442,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             left: 10,
             top: 20,
             bottom: 0,
-            child: Container(
-              width: 1.5,
-              color: AppColors.secondary,
-            ),
+            child: Container(width: 1.5, color: AppColors.secondary),
           ),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1566,14 +1453,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: node.isCompleted ? AppColors.secondary : AppColors.divider,
+                color: node.isCompleted
+                    ? AppColors.secondary
+                    : AppColors.divider,
               ),
               child: node.isCompleted
-                  ? const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 14,
-                    )
+                  ? const Icon(Icons.check, color: Colors.white, size: 14)
                   : const SizedBox(),
             ),
             const SizedBox(width: 14),
@@ -1612,7 +1497,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: node.isCompleted ? AppColors.secondary : AppColors.secondaryText,
+                        color: node.isCompleted
+                            ? AppColors.secondary
+                            : AppColors.secondaryText,
                       ),
                     ),
                   ],

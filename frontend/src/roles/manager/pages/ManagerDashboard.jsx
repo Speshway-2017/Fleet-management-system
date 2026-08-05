@@ -15,6 +15,7 @@ export default function ManagerDashboard() {
   const [dbStats, setDbStats] = useState(null);
   const [fuelRecords, setFuelRecords] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
+  const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activities, setActivities] = useState([]);
 
@@ -89,23 +90,25 @@ export default function ManagerDashboard() {
     const fetchAllData = async (isInitial = false) => {
       try {
         if (isInitial) setLoading(true);
-        const [dashRes, vehRes, fuelRes, maintRes, actRes] = await Promise.all([
-          managerApi.getDashboard(),
-          managerApi.getVehicles(),
-          managerApi.getFuelRecords(),
-          managerApi.getMaintenance(),
-          managerApi.getActivities()
+        const [dashRes, vehRes, fuelRes, maintRes, actRes, complaintsRes] = await Promise.all([
+          managerApi.getDashboard().catch(() => null),
+          managerApi.getVehicles().catch(() => null),
+          managerApi.getFuelRecords().catch(() => null),
+          managerApi.getMaintenance().catch(() => null),
+          managerApi.getActivities().catch(() => null),
+          managerApi.getVehicleComplaints().catch(() => null)
         ]);
         
-        const rawVeh = vehRes.data?.data || vehRes.data || [];
+        const rawVeh = vehRes?.data?.data || vehRes?.data || [];
         setVehicles(rawVeh.map(normaliseVehicle));
         
-        const rawDash = dashRes.data?.data || dashRes.data || {};
+        const rawDash = dashRes?.data?.data || dashRes?.data || {};
         setDbStats(rawDash);
 
-        setFuelRecords(fuelRes.data?.data || fuelRes.data || []);
-        setMaintenance(maintRes.data?.data || maintRes.data || []);
-        setActivities(actRes.data?.data || actRes.data || []);
+        setFuelRecords(fuelRes?.data?.data || fuelRes?.data || []);
+        setMaintenance(maintRes?.data?.data || maintRes?.data || []);
+        setActivities(actRes?.data?.data || actRes?.data || []);
+        setComplaints(complaintsRes?.data?.data || complaintsRes?.data || []);
       } catch (err) {
         console.error("Failed to load dashboard data", err);
       } finally {
@@ -424,46 +427,108 @@ export default function ManagerDashboard() {
 
           {/* Maintenance Alerts */}
           {(() => {
-            const getPriorityBadge = (type) => {
-              const lowerType = (type || "").toLowerCase();
-              if (lowerType.includes("engine") || lowerType.includes("brake") || lowerType.includes("transmission") || lowerType.includes("gearbox") || lowerType.includes("clutch")) {
-                return { label: "High", className: "bg-red-50 text-red-700 border-red-100" };
+            const getPriorityBadge = (type = "", severity = "") => {
+              const lowerType = type.toString().toLowerCase();
+              const lowerSev = severity.toString().toLowerCase();
+              if (
+                lowerSev === "critical" ||
+                lowerSev === "high" ||
+                lowerType.includes("engine") ||
+                lowerType.includes("brake") ||
+                lowerType.includes("transmission") ||
+                lowerType.includes("gearbox") ||
+                lowerType.includes("clutch") ||
+                lowerType.includes("accident")
+              ) {
+                return { label: "High", className: "bg-red-50 text-red-700 border-red-200 font-bold" };
               }
-              if (lowerType.includes("oil") || lowerType.includes("tyre") || lowerType.includes("tire") || lowerType.includes("battery") || lowerType.includes("coolant") || lowerType.includes("filter")) {
-                return { label: "Medium", className: "bg-amber-50 text-amber-700 border-amber-100" };
+              if (
+                lowerSev === "medium" ||
+                lowerType.includes("oil") ||
+                lowerType.includes("tyre") ||
+                lowerType.includes("tire") ||
+                lowerType.includes("battery") ||
+                lowerType.includes("coolant") ||
+                lowerType.includes("filter")
+              ) {
+                return { label: "Medium", className: "bg-amber-50 text-amber-700 border-amber-200 font-bold" };
               }
-              return { label: "Low", className: "bg-green-50 text-green-700 border-green-100" };
+              return { label: "Low", className: "bg-emerald-50 text-emerald-700 border-emerald-200 font-bold" };
             };
 
-            const alerts = maintenance
+            const rawComplaints = Array.isArray(complaints) ? complaints : [];
+            const complaintAlerts = rawComplaints
+              .filter(c => {
+                const s = c.status || 'Open';
+                return s !== 'Resolved' && s !== 'Closed' && s !== 'Completed' && s !== 'Repair Completed';
+              })
+              .map(c => {
+                const ticketId = c.ticketId || c._id;
+                const vehName = c.vehiclePlate || c.vehicleNumber || (c.vehicle ? (c.vehicle.vehicleNumber || c.vehicle.plateNumber) : "Fleet Vehicle");
+                return {
+                  id: c._id || ticketId,
+                  ticketId,
+                  vehicle: vehName,
+                  type: c.issueType || c.title || "Vehicle Fault / Issue",
+                  dueDate: c.reportedAt || c.createdAt || new Date().toISOString(),
+                  isOverdue: c.severity === "Critical" || c.severity === "High" || c.status === "Need Maintenance",
+                  badge: getPriorityBadge(c.issueType || "", c.severity || ""),
+                  status: c.status || "Open",
+                  link: `/manager/maintenance?ticketId=${encodeURIComponent(ticketId)}`
+                };
+              });
+
+            const rawMaint = Array.isArray(maintenance) ? maintenance : [];
+            const maintAlerts = rawMaint
               .filter(m => m.status !== "Completed")
               .map(m => {
-                const due = new Date(m.scheduledDate);
+                const due = m.scheduledDate ? new Date(m.scheduledDate) : new Date();
                 const now = new Date();
                 due.setHours(0,0,0,0);
                 now.setHours(0,0,0,0);
                 const isOverdue = due < now;
-                const badge = getPriorityBadge(m.serviceType);
-                
+                const vehName = m.vehicleName || m.vehicleId || (m.vehicle ? m.vehicle.vehicleNumber : "Unassigned");
+                const mId = m._id || m.id;
                 return {
-                  id: m._id || m.id,
-                  vehicle: m.vehicleName || m.vehicleId || "Unassigned",
-                  type: m.serviceType,
-                  dueDate: m.scheduledDate,
+                  id: mId,
+                  ticketId: mId,
+                  vehicle: vehName,
+                  type: m.serviceType || m.type || "Scheduled Maintenance",
+                  dueDate: m.scheduledDate || m.createdAt || new Date().toISOString(),
                   isOverdue,
-                  badge
+                  badge: getPriorityBadge(m.serviceType || ""),
+                  status: isOverdue ? "Overdue" : (m.status || "Pending"),
+                  link: `/manager/maintenance?id=${encodeURIComponent(mId)}`
                 };
-              })
-              .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+              });
+
+            const combinedAlerts = [...complaintAlerts, ...maintAlerts];
+            const uniqueAlertsMap = new Map();
+            combinedAlerts.forEach(a => {
+              if (!uniqueAlertsMap.has(a.id)) {
+                uniqueAlertsMap.set(a.id, a);
+              }
+            });
+
+            const alerts = Array.from(uniqueAlertsMap.values()).sort((a, b) => {
+              if (a.isOverdue && !b.isOverdue) return -1;
+              if (!a.isOverdue && b.isOverdue) return 1;
+              return new Date(b.dueDate) - new Date(a.dueDate);
+            });
 
             const displayedAlerts = alerts.slice(0, 5);
 
             return (
               <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col h-[380px]">
-                <div className="p-5 flex items-center justify-between border-b border-[#E5E7EB] shrink-0">
+                <div className="p-5 flex items-center justify-between border-b border-[#E5E7EB] shrink-0 select-none">
                   <div className="flex items-center gap-2">
                     <Icon icon="material-symbols:warning-outline" className="w-5 h-5 text-[#C65D0E]" />
                     <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Maintenance Alerts</h3>
+                    {alerts.length > 0 && (
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 rounded-full font-poppins">
+                        {alerts.length}
+                      </span>
+                    )}
                   </div>
                   <button
                     onClick={() => navigate("/manager/maintenance")}
@@ -477,42 +542,48 @@ export default function ManagerDashboard() {
                   {displayedAlerts.map(alert => (
                     <div 
                       key={alert.id} 
-                      className={`p-3 rounded-xl border flex items-center justify-between transition-all duration-300 hover:shadow-sm ${
+                      onClick={() => navigate(alert.link)}
+                      title="Click to view maintenance ticket details"
+                      className={`p-3 rounded-xl border flex items-center justify-between transition-all duration-200 cursor-pointer hover:shadow-sm ${
                         alert.isOverdue 
-                          ? "bg-red-50/40 border-red-100 hover:border-red-200" 
-                          : "bg-gray-50/50 border-gray-100 hover:border-gray-200"
+                          ? "bg-red-50/50 border-red-200 hover:border-red-300 hover:bg-red-50/80" 
+                          : "bg-gray-50/60 border-gray-200/80 hover:border-amber-300 hover:bg-amber-50/30"
                       }`}
                     >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-poppins font-bold text-gray-900 text-xs truncate">
+                      <div className="min-w-0 flex-1 pr-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-poppins font-bold text-gray-900 text-xs truncate max-w-[150px]">
                             {alert.vehicle}
                           </span>
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide border ${alert.badge.className}`}>
                             {alert.badge.label}
                           </span>
                           {alert.isOverdue && (
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-600 text-white shadow-sm">
-                              Overdue
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-600 text-white shadow-2xs">
+                              Overdue 🚨
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-gray-500 font-medium font-poppins mt-1 truncate">
+                        <p className="text-[11px] text-gray-600 font-semibold font-poppins mt-1 truncate">
                           {alert.type}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className={`text-[11px] font-poppins font-bold ${alert.isOverdue ? "text-red-600" : "text-gray-600"}`}>
+                        <span className={`text-[11px] font-poppins font-bold block ${alert.isOverdue ? "text-red-600" : "text-gray-600"}`}>
                           {new Date(alert.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                        </span>
+                        <span className="text-[9px] text-[#B45A0A] font-bold underline font-poppins mt-0.5 block">
+                          View →
                         </span>
                       </div>
                     </div>
                   ))}
 
                   {displayedAlerts.length === 0 && (
-                    <div className="h-full flex flex-col items-center justify-center text-center py-12">
-                      <Icon icon="material-symbols:check-circle-outline" className="w-12 h-12 text-green-500 mb-2" />
-                      <p className="text-xs font-semibold text-gray-500 font-poppins">No pending maintenance alerts.</p>
+                    <div className="h-full flex flex-col items-center justify-center text-center py-12 select-none">
+                      <Icon icon="material-symbols:check-circle-outline" className="w-12 h-12 text-emerald-500 mb-2" />
+                      <p className="text-xs font-bold text-gray-600 font-poppins">No pending maintenance alerts.</p>
+                      <p className="text-[11px] text-gray-400 font-medium font-poppins mt-0.5">All fleet vehicles are in good working condition.</p>
                     </div>
                   )}
                 </div>

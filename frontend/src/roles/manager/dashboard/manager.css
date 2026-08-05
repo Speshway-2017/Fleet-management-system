@@ -104,9 +104,17 @@ body {
   margin: 0 !important;
 }
 
-/* Grayscale filter for OpenStreetMap tiles */
+/* Vibrant Full-Color Map Styling */
 .map-tiles-grayscale {
-  filter: grayscale(100%) brightness(95%) contrast(90%);
+  filter: none !important;
+}
+
+.custom-map-tooltip {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 1px solid #E7EAF0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  padding: 8px 12px !important;
 }
 
 /* Slide in from right animation */

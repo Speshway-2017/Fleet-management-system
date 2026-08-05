@@ -235,7 +235,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                             imageName: data['imageName'],
                           );
                           await _fetchTripDetails();
-                          if (mounted) {
+                          if (mounted && context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('✅ POD uploaded successfully!'),
@@ -244,7 +244,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                             );
                           }
                         } catch (e) {
-                          if (mounted) {
+                          if (mounted && context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text('POD upload failed: $e'),
@@ -294,7 +294,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                             imageName: data['imageName'],
                           );
                           await _fetchTripDetails();
-                          if (mounted) {
+                          if (mounted && context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('✅ Fuel entry uploaded successfully!'),
@@ -303,7 +303,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                             );
                           }
                         } catch (e) {
-                          if (mounted) {
+                          if (mounted && context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text('Fuel upload failed: $e'),
@@ -356,7 +356,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                                   imageName: data['imageName'],
                                 );
                                 await _fetchTripDetails();
-                                if (mounted) {
+                                if (mounted && context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text('✅ Weighbridge Slip uploaded successfully!'),
@@ -365,7 +365,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                                   );
                                 }
                               } catch (e) {
-                                if (mounted) {
+                                if (mounted && context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text('Weighbridge upload failed: $e'),
@@ -401,7 +401,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                       );
 
                       if (result == 'upload_manual') {
-                        if (!mounted) return;
+                        if (!mounted || !context.mounted) return;
                         final data = await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -422,7 +422,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                               imageNames: data['imageNames'],
                             );
                             await _fetchTripDetails();
-                            if (mounted) {
+                            if (mounted && context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('✅ Toll Receipt uploaded successfully!'),
@@ -431,7 +431,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                               );
                             }
                           } catch (e) {
-                            if (mounted) {
+                            if (mounted && context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text('Toll upload failed: $e'),

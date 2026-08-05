@@ -213,26 +213,6 @@ export default function AddOrganization() {
                     <label className="text-xs font-bold text-slate-700 block">Country</label>
                     <input type="text" name="country" placeholder="Country" value={form.country} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
                   </div>
-                  {/* Subscription Plan */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 block">Subscription Plan</label>
-                    <select name="plan" value={form.plan} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50 appearance-none">
-                      <option value="" disabled className="text-slate-400">Select plan</option>
-                      <option value="Enterprise">Enterprise</option>
-                      <option value="Professional">Professional</option>
-                      <option value="Standard">Standard</option>
-                    </select>
-                  </div>
-                  {/* Status */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 block">Status</label>
-                    <select name="status" value={form.status} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50 appearance-none">
-                      <option value="" disabled className="text-slate-400">Select status</option>
-                      <option value="Active">Active</option>
-                      <option value="Pending">Pending Approval</option>
-                      <option value="Suspended">Suspended</option>
-                    </select>
-                  </div>
                 </div>
 
               </div>

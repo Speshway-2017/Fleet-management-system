@@ -80,16 +80,7 @@ export default function Analytics() {
     { label: 'This Year', value: 'year' },
   ];
 
-  // Dynamic multipliers based on filter
-  const getMultiplier = () => {
-    switch(filter) {
-      case 'today': return 1 / 365;
-      case 'week': return 7 / 365;
-      case 'month': return 30 / 365;
-      case 'year': default: return 1;
-    }
-  };
-  const multiplier = getMultiplier();  return (
+  return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
       <NewAdminSidebar activeItem="analytics" />
       
@@ -141,9 +132,8 @@ export default function Analytics() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-8">
             <KPICard title="Organizations" value={kpis?.organizations?.total || 0} icon={Building2} />
             <KPICard title="Fleet Managers" value={kpis?.managers?.total || 0} icon={Users} />
-            
-            <KPICard title="Active Trips" value={Math.round(((kpis?.organizations?.active || 0) * 8 + 3) * multiplier * 10)} icon={MapPin} />
-            <KPICard title="Completed Trips" value={Math.round(((kpis?.organizations?.total || 0) * 120 + 45) * multiplier)} icon={CheckCircle2} />
+            <KPICard title="Active Trips" value={kpis?.activeTrips ?? 0} icon={MapPin} />
+            <KPICard title="Completed Trips" value={kpis?.completedTrips ?? 0} icon={CheckCircle2} />
           </div>
 
           {/* Charts Row 1 */}
@@ -153,7 +143,7 @@ export default function Analytics() {
               <h3 className="text-sm font-extrabold text-slate-800 mb-6 tracking-wide">Organization Growth</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={charts?.orgGrowthData?.map(d => ({ ...d, value: Math.max(1, Math.round(d.value * multiplier)) }))} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <LineChart data={charts?.orgGrowthData || []} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dx={-10} allowDecimals={false} />
@@ -169,7 +159,7 @@ export default function Analytics() {
               <h3 className="text-sm font-extrabold text-slate-800 mb-6 tracking-wide">Fleet Manager Growth</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={charts?.managerGrowthData?.map(d => ({ ...d, value: Math.max(1, Math.round(d.value * multiplier)) }))} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <LineChart data={charts?.managerGrowthData || []} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dx={-10} allowDecimals={false} />
@@ -183,12 +173,12 @@ export default function Analytics() {
 
           {/* Charts Row 2 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Login Activity */}
+            {/* System Activity */}
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
               <h3 className="text-sm font-extrabold text-slate-800 mb-6 tracking-wide">System Activity</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={charts?.loginActivityData?.map(d => ({ ...d, value: Math.max(1, Math.round(d.value * (multiplier === 1 ? 1 : multiplier * 150))) }))} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <BarChart data={charts?.loginActivityData || []} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dx={-10} allowDecimals={false} />

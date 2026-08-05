@@ -22,14 +22,23 @@ import { syncVehicleLocationFromLatestTrip } from '../utils/driverLocationHelper
  */
 export const listVehicles = async (req, res, next) => {
   try {
-    const vehicles = await getVehicles({ assignedManager: req.user._id });
+    const managerId = req.user._id;
+    const orgId = req.user.organization;
+    const filter = {
+      $or: [
+        { assignedManager: managerId },
+        { createdBy: managerId },
+        ...(orgId ? [{ organization: orgId }] : [])
+      ]
+    };
+    const vehicles = await getVehicles(filter);
     for (const v of vehicles) {
       await syncVehicleLocationFromLatestTrip(v);
       const rawLoc = v.currentLocation;
       if (isCoordinateString(rawLoc)) {
         const resolvedName = await resolveLocationName(rawLoc, v.branch || v.branchDepot);
         v.currentLocation = resolvedName;
-        Vehicle.findByIdAndUpdate(v._id, { currentLocation: resolvedName }).catch(() => {});
+        Vehicle.findByIdAndUpdate(v._id, { currentLocation: resolvedName }).catch(() => { });
       }
     }
     return sendSuccess(res, 200, vehicles, 'Vehicles retrieved successfully');
@@ -46,7 +55,7 @@ export const getAvailableVehicles = async (req, res, next) => {
   try {
     // 1. Exclude vehicles on active in-progress trips
     const activeTrips = await Trip.find({
-      status: { $in: ['In Progress', 'On Transit', 'Enroute', 'Reach Pickup', 'Pickup Completed'] }
+      status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
     });
 
     const activeVehicleIds = activeTrips.map(t => String(t.vehicle)).filter(Boolean);
@@ -66,7 +75,7 @@ export const getAvailableVehicles = async (req, res, next) => {
         const resolvedName = await resolveLocationName(rawLoc, v.branch || v.branchDepot);
         v.currentLocation = resolvedName;
         v.branch = resolvedName;
-        Vehicle.findByIdAndUpdate(v._id, { currentLocation: resolvedName, branch: resolvedName }).catch(() => {});
+        Vehicle.findByIdAndUpdate(v._id, { currentLocation: resolvedName, branch: resolvedName }).catch(() => { });
       }
       return v;
     }));
@@ -92,42 +101,40 @@ export const getAvailableVehicles = async (req, res, next) => {
     const nearbyRawVehicles = [];
 
     for (const v of allAvailable) {
+      const vObj = v.toObject ? v.toObject() : { ...v };
       if (isMatch(v)) {
-        localVehicles.push(v);
+        localVehicles.push({
+          ...vObj,
+          isNearby: true,
+          distanceKm: 0,
+          estimatedTravelTime: 'Local',
+          currentBranch: v.branchDepot || v.branch || targetLoc,
+          currentLocation: v.currentLocation || targetLoc
+        });
       } else {
         nearbyRawVehicles.push(v);
       }
     }
 
-    // Priority 1: If local vehicles exist, return local vehicles only and skip nearby search
-    console.log('Searching local Vehicles...');
-    console.log(`Vehicles Found in ${targetLoc}: ${localVehicles.length}\n`);
+    console.log('\n===================================');
+    console.log(`Start Location: ${targetLoc}`);
+    console.log(`Local Vehicles Found: ${localVehicles.length}`);
 
-    if (localVehicles.length > 0) {
-      console.log(`Using local Vehicles for ${targetLoc}. Skipping nearby Vehicle search.`);
-      console.log('===================================\n');
-
-      return sendSuccess(res, 200, {
-        vehicles: localVehicles,
-        localVehicles,
-        nearbyVehicles: [],
-        localCount: localVehicles.length,
-        nearbyCount: 0,
-        isNearbyFallback: false
-      }, 'Available vehicles fetched successfully');
-    }
-
-    // Priority 2: Only if local vehicles count is 0, execute nearest vehicle search sorted by road distance
-    console.log(`No available Vehicles found in ${targetLoc}. Searching nearest available Vehicles...`);
-    const nearbyVehicles = await Promise.all(
+    // Compute road distance for non-local vehicles
+    const mappedNearbyVehicles = await Promise.all(
       nearbyRawVehicles.map(async (v) => {
-        const vLoc = getVehicleLocation(v) || 'Pune';
+        const rawEffective = getVehicleEffectiveLocation(v);
+        const vLoc = await resolveLocationName(rawEffective || 'Hyderabad', v.branch || v.branchDepot);
+        if (isCoordinateString(rawEffective)) {
+          Vehicle.findByIdAndUpdate(v._id, { currentLocation: vLoc }).catch(() => {});
+        }
         const routeData = await getRoadDistanceAndEta(targetLoc, vLoc);
         const vObj = v.toObject ? v.toObject() : { ...v };
+        const dist = routeData.distanceKm || 0;
         return {
           ...vObj,
-          isNearby: true,
-          distanceKm: routeData.distanceKm,
+          isNearby: dist <= 50,
+          distanceKm: dist,
           estimatedTravelTime: routeData.estimatedTravelTime,
           currentBranch: vLoc,
           currentLocation: vLoc
@@ -135,24 +142,45 @@ export const getAvailableVehicles = async (req, res, next) => {
       })
     );
 
-    // Sort in ascending order based on road distance
-    nearbyVehicles.sort((a, b) => a.distanceKm - b.distanceKm);
+    // Combine all vehicles and sort by distance (nearest to farthest)
+    const allSortedVehicles = [...localVehicles, ...mappedNearbyVehicles].sort((a, b) => a.distanceKm - b.distanceKm);
 
-    if (nearbyVehicles.length > 0) {
-      console.log(`Nearest Vehicles for ${targetLoc} sorted by distance:`);
-      nearbyVehicles.slice(0, 5).forEach((v, idx) => {
-        console.log(`${idx + 1}. ${v.vehicleName || v.name} (${v.registrationNumber || v.plateNumber || v.vehicleNumber}) - Loc: ${v.currentLocation} - ${v.distanceKm} km away (${v.estimatedTravelTime})`);
+    const vehiclesWithin50 = allSortedVehicles.filter(v => v.distanceKm <= 50);
+    const hasNearby = vehiclesWithin50.length > 0;
+
+    let finalVehiclesToReturn = [];
+    let isNearbyFallback = false;
+    let isExtendedFallback = false;
+
+    if (hasNearby) {
+      console.log(`✓ Found ${vehiclesWithin50.length} vehicles within 50km of ${targetLoc}.`);
+      finalVehiclesToReturn = vehiclesWithin50;
+      isNearbyFallback = localVehicles.length === 0;
+    } else {
+      console.log(`❌ No nearby vehicles found within 50km of ${targetLoc}. Displaying all available vehicles sorted by distance.`);
+      finalVehiclesToReturn = allSortedVehicles;
+      isExtendedFallback = true;
+      isNearbyFallback = true;
+    }
+
+    if (finalVehiclesToReturn.length > 0) {
+      console.log(`Vehicles list for ${targetLoc}:`);
+      finalVehiclesToReturn.slice(0, 5).forEach((v, idx) => {
+        console.log(`${idx + 1}. ${v.vehicleName || v.name} (${v.vehicleNumber || v.plateNumber}) - Loc: ${v.currentLocation} - ${v.distanceKm} km away (${v.estimatedTravelTime})`);
       });
     }
     console.log('===================================\n');
 
     return sendSuccess(res, 200, {
-      vehicles: nearbyVehicles,
-      localVehicles: [],
-      nearbyVehicles,
-      localCount: 0,
-      nearbyCount: nearbyVehicles.length,
-      isNearbyFallback: true
+      vehicles: finalVehiclesToReturn,
+      localVehicles,
+      nearbyVehicles: vehiclesWithin50,
+      allVehiclesSorted: allSortedVehicles,
+      localCount: localVehicles.length,
+      nearbyCount: vehiclesWithin50.length,
+      hasNearby,
+      isNearbyFallback,
+      isExtendedFallback
     }, 'Available vehicles fetched successfully');
   } catch (error) {
     next(error);
