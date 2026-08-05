@@ -2787,9 +2787,9 @@ export const updatePODStatus = async (req, res, next) => {
           driver: tripDoc.driver,
           customerName: tripDoc.proofOfDelivery?.customerName || 'Customer Receiver',
           receiverName: tripDoc.proofOfDelivery?.receiverName || 'Verified Receiver',
-          customerSignatureUrl: tripDoc.proofOfDelivery?.customerSignatureUrl || 'https://via.placeholder.com/300x100.png?text=Signature',
-          deliveryPhotoUrl: tripDoc.proofOfDelivery?.deliveryPhotoUrl || 'https://via.placeholder.com/300x300.png?text=Delivery+Photo',
-          podDocumentUrl: tripDoc.proofOfDelivery?.url || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+          customerSignatureUrl: tripDoc.proofOfDelivery?.customerSignatureUrl || '',
+          deliveryPhotoUrl: tripDoc.proofOfDelivery?.deliveryPhotoUrl || '',
+          podDocumentUrl: tripDoc.proofOfDelivery?.url || '',
           status: status
         });
       }
@@ -3313,7 +3313,7 @@ export const updateWeighbridgeSlipStatus = async (req, res, next) => {
           netWeight: tripDoc.weighbridgeSlip?.netWeight || 15000,
           location: tripDoc.weighbridgeSlip?.location || 'Highway Weighbridge Station',
           status: status,
-          documentUrl: tripDoc.weighbridgeSlip?.url || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+          documentUrl: tripDoc.weighbridgeSlip?.url || ''
         });
       }
     }

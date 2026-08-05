@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/api_service.dart';
 
 /// Represents a Vehicle Document item data structure.
 class VehicleDocumentItem {
@@ -169,27 +170,116 @@ class VehicleDocumentsScreen extends StatelessWidget {
 
   void _showDocumentAction(BuildContext context, String action, VehicleDocumentItem doc) async {
     final messenger = ScaffoldMessenger.of(context);
-    if (doc.fileUrl.isNotEmpty && doc.fileUrl.startsWith('http')) {
-      final uri = Uri.parse(doc.fileUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        return;
+    final originalUrl = doc.fileUrl;
+    debugPrint('[Vehicle Documents] Received action: $action, doc: ${doc.title}, Original URL: $originalUrl');
+    
+    if (originalUrl.isEmpty) {
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('No document file uploaded for ${doc.title}'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.0),
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF97316)),
+                  ),
+                  SizedBox(width: 16),
+                  Text('Verifying document...'),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    // Resolve relative path if needed
+    String resolvedUrl = originalUrl;
+    if (originalUrl.startsWith('/')) {
+      try {
+        final baseUrl = await ApiService.getBaseUrl();
+        final serverUrl = baseUrl.replaceAll('/api', '');
+        resolvedUrl = '$serverUrl$originalUrl';
+      } catch (e) {
+        debugPrint('[Vehicle Documents] Error resolving relative path: $e');
       }
     }
 
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(doc.fileUrl.isNotEmpty
-            ? '$action ${doc.title}...'
-            : 'No document file uploaded for ${doc.title}'),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.0),
+    debugPrint('[Vehicle Documents] Final Resolved URL: $resolvedUrl');
+
+    bool isValid = false;
+    // Check if it is a valid HTTP/HTTPS URL
+    if (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) {
+      // Check if it looks like a dummy/placeholder URL
+      final lowerUrl = resolvedUrl.toLowerCase();
+      if (!lowerUrl.contains('placeholder') && 
+          !lowerUrl.contains('dummy') && 
+          !lowerUrl.contains('example') && 
+          !lowerUrl.contains('broken')) {
+        isValid = true;
+      }
+    }
+
+    // Dismiss loading dialog
+    if (context.mounted) {
+      Navigator.of(context).pop();
+    }
+
+    if (isValid) {
+      try {
+        final uri = Uri.parse(resolvedUrl);
+        debugPrint('[Vehicle Documents] Launching URL: $resolvedUrl');
+        final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (success) {
+          return;
+        }
+        debugPrint('[Vehicle Documents] launchUrl returned false');
+      } catch (launchError) {
+        debugPrint('[Vehicle Documents] Error calling launchUrl: $launchError');
+      }
+    }
+
+    // If not valid or launch fails
+    if (context.mounted) {
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.error_outline_rounded, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Document unavailable'),
+            ],
+          ),
+          backgroundColor: const Color(0xFFDC2626), // red color for error
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.0),
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   @override

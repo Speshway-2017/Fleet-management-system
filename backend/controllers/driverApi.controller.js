@@ -569,7 +569,7 @@ export const getDriverDashboard = async (req, res, next) => {
       $or: [
         { recipient: driverId },
         { user: driverId },
-        { targetRole: 'DRIVER' }
+        { recipientRole: 'DRIVER' }
       ]
     }).sort({ createdAt: -1 }).limit(5);
 
@@ -1245,7 +1245,15 @@ export const updateDriverLocation = async (req, res, next) => {
  */
 export const getDriverDocuments = async (req, res, next) => {
   try {
-    const docs = await Document.find({ uploadedBy: req.user._id }).sort({ createdAt: -1 });
+    const driverId = req.user._id;
+    const vehicle = await Vehicle.findOne({ assignedDriver: driverId });
+    
+    const orConditions = [{ driver: driverId.toString() }];
+    if (vehicle) {
+      orConditions.push({ vehicle: vehicle._id.toString() });
+    }
+    
+    const docs = await Document.find({ $or: orConditions }).sort({ createdAt: -1 });
     return sendSuccess(res, 200, docs, 'Documents fetched');
   } catch (error) {
     next(error);
@@ -1344,10 +1352,10 @@ export const uploadProofOfDelivery = async (req, res, next) => {
     }
 
     if (!secureUrl) {
-      secureUrl = 'https://via.placeholder.com/300x300.png?text=POD+Uploaded';
+      secureUrl = '';
     }
 
-    const finalSigUrl = customerSignatureUrl || 'https://via.placeholder.com/300x100.png?text=Signature';
+    const finalSigUrl = customerSignatureUrl || '';
     const finalDocUrl = podDocumentUrl || secureUrl;
 
     let pod = null;
@@ -1493,7 +1501,7 @@ export const uploadWeighbridgeSlip = async (req, res, next) => {
     const tare = Number(tareWeight) || 10000;
     const calculatedNet = Number(netWeight) || (gross - tare);
 
-    const finalWbUrl = secureUrl || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+    const finalWbUrl = secureUrl || '';
 
     let slip = null;
     if (resolvedTripId) {

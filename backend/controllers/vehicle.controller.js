@@ -9,10 +9,11 @@ import {
   deleteVehicle as deleteVehicleInRepo,
 } from '../repositories/vehicle.repository.js';
 import { sendSuccess, sendError } from '../utils/response.js';
-import { processVehicleDocuments } from '../utils/documentHelper.js';
-import { uploadBase64ImageToCloudinary, deleteImageFromCloudinary } from '../utils/cloudinary.js';
+import { processVehicleDocuments, syncVehicleDocumentsToCollection } from '../utils/documentHelper.js';
+import cloudinary, { uploadBase64ImageToCloudinary, deleteImageFromCloudinary } from '../utils/cloudinary.js';
 import Trip from '../models/Trip.js';
 import Vehicle from '../models/Vehicle.js';
+import path from 'path';
 import { logActivity } from '../utils/activityLogger.js';
 import { syncVehicleLocationFromLatestTrip } from '../utils/driverLocationHelper.js';
 
@@ -380,6 +381,8 @@ export const createVehicle = async (req, res, next) => {
       branchDepot: resolvedBranch,
     });
 
+    await syncVehicleDocumentsToCollection(vehicle, req.user);
+
     console.log(`✓ Vehicle Saved Successfully\n=================================\n`);
 
     await logActivity({
@@ -567,6 +570,7 @@ export const updateVehicle = async (req, res, next) => {
     console.log(`Updating vehicle...\n`);
     const prevStatus = existingVehicle.currentStatus;
     const vehicle = await updateVehicleInRepo(vehicleId, updateData);
+    await syncVehicleDocumentsToCollection(vehicle, req.user);
     console.log(`✓ Vehicle updated successfully\n`);
     console.log(`=================================\n`);
 
@@ -701,25 +705,44 @@ export const uploadVehicleDocument = async (req, res, next) => {
       return sendError(res, 400, 'No file uploaded');
     }
 
-    const fileUrl = `/uploads/${req.file.filename}`;
+    const lowerName = (req.file.originalname || '').toLowerCase();
+    const isPdf = lowerName.endsWith('.pdf') || req.file.mimetype === 'application/pdf';
+
+    const originalNameWithoutExt = path.parse(req.file.originalname || '').name || 'document';
+    let publicId = `${originalNameWithoutExt.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
+    if (isPdf && !publicId.toLowerCase().endsWith('.pdf')) {
+      publicId = `${publicId}.pdf`;
+    }
+
+    const uploadResult = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'fleet_documents',
+          resource_type: isPdf ? 'raw' : 'auto',
+          public_id: publicId
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(req.file.buffer);
+    });
 
     return sendSuccess(
       res,
       201,
       {
-        url: fileUrl,
+        url: uploadResult.secure_url,
         originalName: req.file.originalname,
         size: req.file.size,
-        filename: req.file.filename,
+        filename: req.file.originalname,
+        public_id: uploadResult.public_id,
+        secure_url: uploadResult.secure_url
       },
       'Document uploaded successfully'
     );
   } catch (error) {
-    if (req.file && req.file.path) {
-      fs.unlink(req.file.path, (err) => {
-        if (err) console.error('Error deleting file:', err);
-      });
-    }
     next(error);
   }
 };

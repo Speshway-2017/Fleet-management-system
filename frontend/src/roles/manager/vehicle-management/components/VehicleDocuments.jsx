@@ -83,8 +83,24 @@ export default function VehicleDocuments({ vehicleId }) {
   };
 
   const handleViewDocument = (doc) => {
-    setSelectedDocument(doc);
-    setPreviewModalOpen(true);
+    const url = doc.fileData;
+    if (!url || typeof url !== "string" || !url.startsWith("http")) {
+      toast.error("Document unavailable");
+      return;
+    }
+
+    const lowerUrl = url.toLowerCase();
+    if (
+      lowerUrl.includes("placeholder") ||
+      lowerUrl.includes("dummy") ||
+      lowerUrl.includes("example") ||
+      lowerUrl.includes("broken")
+    ) {
+      toast.error("Document unavailable");
+      return;
+    }
+
+    window.open(url, "_blank");
   };
 
   const handleDownloadDocument = (doc) => {

@@ -2,6 +2,42 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.32.6] - 2026-08-05
+
+### Fixed
+- **Vehicle Documents Verification & Direct Cloudinary Uploads**:
+  - Refactored the `/upload-document` endpoint for vehicles in [vehicle.routes.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/routes/vehicle.routes.js) and [vehicle.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/vehicle.controller.js) to use memory uploads and stream directly to Cloudinary. Added `resource_type: 'raw'` and preserved the `.pdf` extension in `public_id` for PDF files.
+  - Updated base64 uploads in [documentHelper.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/utils/documentHelper.js) to upload PDFs to Cloudinary with `resource_type: 'raw'` and preserve the `.pdf` extension.
+  - Updated document launching logic in [vehicle_documents_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/vehicle_documents_screen.dart) to bypass `canLaunchUrl` checking for Cloudinary and HTTP/HTTPS URLs (avoiding platform constraints), resolve relative URLs, directly open via `launchUrl` in external application mode, and add detailed debug logging.
+  - Implemented dynamic static file redirect middleware in [app.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/app.js). If a client requests a missing local file from the `/uploads/` route, it gracefully redirects to a corresponding Cloudinary document or placeholder image, preventing "Route not found" 404 errors.
+  - Fixed syntax/import error in [vehicle.routes.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/routes/vehicle.routes.js) by using the default import of `memoryUpload` instead of a named import.
+  - Refactored manager portal frontend [documentService.js](file:///c:/Users/user/Downloads/Fleet-management-system/frontend/src/roles/manager/vehicle-management/services/documentService.js) to correctly map MongoDB vehicle documents schema properties into the frontend array items, and updated `uploadVehicleDocument` / `replaceVehicleDocument` methods to perform Cloudinary uploads first via `vehicleApi.uploadDocument` before saving document metadata.
+  - Refactored manager portal frontend [VehicleDocuments.jsx](file:///c:/Users/user/Downloads/Fleet-management-system/frontend/src/roles/manager/vehicle-management/components/VehicleDocuments.jsx) View handler to validate URLs and directly open Cloudinary files in a new browser tab, showing a "Document unavailable" toast if broken or empty.
+  - Refactored [UploadDocumentModal.jsx](file:///c:/Users/user/Downloads/Fleet-management-system/frontend/src/roles/manager/vehicle-management/components/UploadDocumentModal.jsx) to append the raw File object directly instead of using a base64 reader to prevent object serialization bugs when retrieving files.
+  - Registered missing `/notifications/:id/read` PATCH and PUT routes in the driver API router [driverApi.routes.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/routes/driverApi.routes.js), allowing the mobile client's mark-as-read calls to execute successfully instead of returning 404.
+  - Aligned driver dashboard notifications query in [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) to match `recipientRole: 'DRIVER'` instead of `targetRole: 'DRIVER'`.
+  - Implemented `syncVehicleDocumentsToCollection` in [documentHelper.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/utils/documentHelper.js) to sync Fleet Manager's uploaded/replaced vehicle documents from the `Vehicle` collection into the `Document` collection in MongoDB, including all properties (`title`, `type`, `category`, `vehicle` ID, `fileUrl`, `public_id`, `originalName`, `fileType`, `fileSize`, `status`, `expiry`, and `uploadedBy`).
+  - Modified [Vehicle.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/models/Vehicle.js) schema to declare `public_id` on all document subdocuments.
+  - Updated [vehicle.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/vehicle.controller.js) to call `syncVehicleDocumentsToCollection` on new vehicle creation and updates.
+  - Refactored `getDriverDocuments` API inside [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js) to fetch documents using the driver's assigned vehicle ID and personal driver documents.
+  - Removed all hardcoded dummy PDF and placeholder URLs from [driverApi.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/driverApi.controller.js), [manager.controller.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/controllers/manager.controller.js), [update_trip_status_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/update_trip_status_screen.dart), and [trip_details_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart).
+  - Updated [AddVehiclePage.jsx](file:///c:/Users/user/Downloads/Fleet-management-system/frontend/src/roles/manager/pages/AddVehiclePage.jsx) and [VehicleEditPage.jsx](file:///c:/Users/user/Downloads/Fleet-management-system/frontend/src/roles/manager/pages/VehicleEditPage.jsx) to preserve and send the Cloudinary `public_id` in the vehicle document schema properties to the backend.
+  - Added a placeholder check (`isPlaceholder`) in the backend documents synchronization logic [documentHelper.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/utils/documentHelper.js) to filter out and automatically delete any dummy or placeholder URLs (such as `dummy-document-file.pdf`) from the `Document` collection, ensuring only authentic secure URLs are returned by the Driver Documents API.
+  - Installed `firebase-admin` and configured it using the newer modular v10+ Admin SDK (`getMessaging` and `getApps`/`getApp` API checks).
+  - Placed the Firebase service account credentials JSON safely under [service-account.json](file:///c:/Users/user/Downloads/Fleet-management-system/backend/service-account.json) and added it to `.gitignore`.
+  - Created a reusable singleton config and helper utility [firebaseAdmin.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/config/firebaseAdmin.js) with methods `sendPushNotification`, `sendMulticastNotification`, and `sendTopicNotification`.
+  - Added test endpoints inside [notification.routes.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/routes/notification.routes.js) and registered it inside [app.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/app.js) to allow easy testing of FCM push notifications.
+  - Added new environment variable `FIREBASE_SERVICE_ACCOUNT_PATH` to [backend/.env](file:///c:/Users/user/Downloads/Fleet-management-system/backend/.env) and [backend/.env.example](file:///c:/Users/user/Downloads/Fleet-management-system/backend/.env.example).
+  - Added the `fcmToken` field to the `User` model schema [User.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/models/User.js) to support registering manager tokens in the future.
+  - Integrated auto FCM push notifications inside the central `createAndEmitNotification` helper [notification.js](file:///c:/Users/user/Downloads/Fleet-management-system/backend/utils/notification.js) to dispatch FCM push notifications to drivers/managers when trip assignments occur, statuses change, or completion is requested. Added structured console logging for sent notifications showing status and Firebase responses.
+
+## [1.32.5] - 2026-08-05
+
+### Changed
+- **Unconditional Fuel History Display**:
+  - Refactored [fuel_history_screen.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/lib/screens/fuel_history_screen.dart) to show fuel history records regardless of whether a vehicle is currently assigned to the driver, replacing the blocking "No Vehicle Assigned" view with the actual fuel history list or empty state.
+
+## [1.31.15] - 2026-08-04
 ## [1.31.17] - 2026-08-05
 
 ### Fixed & Updated
