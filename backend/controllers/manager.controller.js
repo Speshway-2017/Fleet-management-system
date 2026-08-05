@@ -976,7 +976,7 @@ export const createTrip = async (req, res, next) => {
 
     const inProgressTripWithVehicle = await Trip.findOne({
       vehicle,
-      status: { $in: ['In Progress', 'On Transit', 'Enroute', 'Reach Pickup', 'Pickup Completed'] }
+      status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
     });
     if (inProgressTripWithVehicle) {
       return sendError(res, 400, 'This Vehicle is already assigned to an active trip in progress.');
@@ -986,7 +986,7 @@ export const createTrip = async (req, res, next) => {
     await Trip.updateMany(
       { vehicle, status: { $in: ['Assigned', 'Scheduled', 'Accepted'] } },
       { $set: { status: 'Cancelled', isActive: false } }
-    ).catch(() => {});
+    ).catch(() => { });
 
     // B. Verify driver license and availability in database
     const driverDoc = await Driver.findById(driver);
@@ -1002,7 +1002,7 @@ export const createTrip = async (req, res, next) => {
 
     const inProgressTripWithDriver = await Trip.findOne({
       driver,
-      status: { $in: ['In Progress', 'On Transit', 'Enroute', 'Reach Pickup', 'Pickup Completed'] }
+      status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
     });
     if (inProgressTripWithDriver) {
       return sendError(res, 400, 'This Driver is already assigned to an active trip in progress.');
@@ -1012,7 +1012,7 @@ export const createTrip = async (req, res, next) => {
     await Trip.updateMany(
       { driver, status: { $in: ['Assigned', 'Scheduled', 'Accepted'] } },
       { $set: { status: 'Cancelled', isActive: false } }
-    ).catch(() => {});
+    ).catch(() => { });
 
     console.log(`\nCreating Trip...`);
     console.log(`Saving Pickup Address...`);
@@ -1324,7 +1324,7 @@ export const updateTrip = async (req, res, next) => {
     // Send notifications to the driver if operational fields or driver/status changed
     try {
       const ioInstance = req.app.get('socketio') || req.app.locals?.io;
-      const targetDriverId = req.body.driver || existingTrip.driver;
+
       // If driver is changed
       if (req.body.driver && String(req.body.driver) !== String(existingTrip.driver)) {
         // Notify new driver
@@ -1369,7 +1369,7 @@ export const updateTrip = async (req, res, next) => {
       } else if (targetDriverId) {
         // Detect Operational Field Changes for Driver
         const fieldChanges = [];
-        
+
         if (req.body.departureTime !== undefined && String(req.body.departureTime) !== String(existingTrip.departureTime)) {
           fieldChanges.push(`Pickup Time changed from ${existingTrip.departureTime || 'N/A'} → ${req.body.departureTime}`);
         }
@@ -1567,7 +1567,6 @@ export const listFuelRecords = async (req, res, next) => {
     }
 
     let records = await getFuelRecords(filter);
-
     const formatted = records.map(r => {
       const obj = r.toObject ? r.toObject() : r;
       const img = obj.billUrl || obj.receiptImage || '';
@@ -2160,7 +2159,7 @@ export const getLiveTracking = async (req, res, next) => {
 
       let locString = v.currentLocation || v.branchDepot || v.branch;
       let currentLocation = locString || "Location unavailable";
-      
+
       // Check real GPS coordinates on Vehicle, Driver, or recent Trip
       let realLat = (v.currentLatitude && !isNaN(v.currentLatitude)) ? v.currentLatitude : null;
       let realLng = (v.currentLongitude && !isNaN(v.currentLongitude)) ? v.currentLongitude : null;
@@ -2208,7 +2207,7 @@ export const getLiveTracking = async (req, res, next) => {
           }
         } else if (['In Progress', 'On Transit', 'On Trip', 'Delayed', 'Started', 'En Route'].includes(recentTrip.status)) {
           currentLocation = `En route to ${recentTrip.endLocation}`;
-          
+
           if (realLat && realLng) {
             currentLat = realLat;
             currentLng = realLng;
@@ -2235,7 +2234,7 @@ export const getLiveTracking = async (req, res, next) => {
           v.currentLocation = currentLocation;
           v.currentLatitude = realLat;
           v.currentLongitude = realLng;
-          await v.save().catch(() => {});
+          await v.save().catch(() => { });
         }
       }
 
@@ -2691,9 +2690,9 @@ const checkAndCompleteTripIfApproved = async (tripId, req) => {
   const weighbridge = await WeighbridgeSlip.findOne({ trip: tripId });
 
   const isPodApproved = (pod && (pod.status === 'Approved' || pod.status === 'APPROVED')) ||
-                        (trip.proofOfDelivery && (trip.proofOfDelivery.status === 'Approved' || trip.podStatus === 'Approved'));
+    (trip.proofOfDelivery && (trip.proofOfDelivery.status === 'Approved' || trip.podStatus === 'Approved'));
   const isWeighbridgeApproved = (weighbridge && (weighbridge.status === 'Approved' || weighbridge.status === 'APPROVED')) ||
-                                (trip.weighbridgeSlip && (trip.weighbridgeSlip.status === 'Approved' || trip.weighbridgeStatus === 'Approved'));
+    (trip.weighbridgeSlip && (trip.weighbridgeSlip.status === 'Approved' || trip.weighbridgeStatus === 'Approved'));
 
   if (isPodApproved && isWeighbridgeApproved) {
     const endLoc = (trip.endLocation || trip.destination || '').trim();
@@ -2862,21 +2861,16 @@ export const getWeighbridgeByTripId = async (req, res, next) => {
     if (!tripId) {
       return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
     }
-    let tripDoc = null;
-    if (mongoose.Types.ObjectId.isValid(tripId)) {
-      tripDoc = await Trip.findById(tripId).populate('driver');
-    } else {
-      const cleanId = String(tripId).replaceAll('#', '').trim();
-      tripDoc = await Trip.findOne({
-        $or: [
-          { tripNumber: cleanId },
-          { tripNumber: `#${cleanId}` },
-          { tripNumber: cleanId.startsWith('TRP-') ? cleanId : `TRP-${cleanId}` }
-        ]
-      }).populate('driver');
+    const query = mongoose.Types.ObjectId.isValid(tripId)
+      ? { trip: tripId }
+      : { $or: [{ trip: tripId }, { slipNumber: tripId }] };
+
+    const slip = await WeighbridgeSlip.findOne(query).populate('driver').catch(() => null);
+    if (!slip) {
+      return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
     }
 
-    if (tripDoc && tripDoc.weighbridgeSlip && (tripDoc.weighbridgeSlip.url || tripDoc.weighbridgeSlip.documentUrl)) {
+    if (slip && (slip.url || slip.documentUrl)) {
       const wbData = {
         _id: tripDoc.weighbridgeSlip._id || tripDoc._id,
         trip: tripDoc._id,
@@ -2888,15 +2882,6 @@ export const getWeighbridgeByTripId = async (req, res, next) => {
         status: tripDoc.weighbridgeSlip.status || tripDoc.weighbridgeStatus || 'Uploaded'
       };
       return sendSuccess(res, 200, wbData, 'Weighbridge slip fetched successfully');
-    }
-
-    const query = mongoose.Types.ObjectId.isValid(tripId)
-      ? { trip: tripId }
-      : { $or: [{ trip: tripId }, { slipNumber: tripId }] };
-
-    const slip = await WeighbridgeSlip.findOne(query).populate('driver').catch(() => null);
-    if (slip) {
-      return sendSuccess(res, 200, slip, 'Weighbridge slip fetched successfully');
     }
 
     return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
@@ -3269,7 +3254,7 @@ export const listVehicleComplaints = async (req, res, next) => {
         if (resolved && resolved !== 'VEH-UNKNOWN' && resolved !== 'UNKNOWN') {
           doc.vehiclePlate = resolved;
           // Asynchronously update MongoDB document so DB record is permanently fixed
-          VehicleComplaint.updateOne({ _id: doc._id }, { vehiclePlate: resolved }).exec().catch(() => {});
+          VehicleComplaint.updateOne({ _id: doc._id }, { vehiclePlate: resolved }).exec().catch(() => { });
         } else {
           doc.vehiclePlate = 'VEH-ASSIGNED';
         }

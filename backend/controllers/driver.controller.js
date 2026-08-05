@@ -326,26 +326,16 @@ export const getAvailableDrivers = async (req, res, next) => {
       }
     }
 
-    localDrivers.sort((a, b) => (b.rating || 5) - (a.rating || 5));
-
-    console.log('\n===================================');
-    console.log(`Start Location: ${targetLoc}`);
-    console.log(`Local Drivers Found: ${localDrivers.length}`);
-
-    // Compute road distance for non-local drivers
+    console.log(`\nAvailable Drivers for "${targetLoc}": ${localDrivers.length} local matching drivers found.`);
     const mappedNearbyDrivers = await Promise.all(
       nearbyRawDrivers.map(async ({ driver: d, dLoc }) => {
-        const rawEffective = getDriverEffectiveLocation(d);
-        if (isCoordinateString(rawEffective)) {
-          Driver.findByIdAndUpdate(d._id, { currentLocation: dLoc, driverLocation: dLoc }).catch(() => {});
-        }
         const routeData = await getRoadDistanceAndEta(targetLoc, dLoc);
         const dObj = d.toObject ? d.toObject() : { ...d };
         const dist = routeData.distanceKm || 0;
         return {
           ...dObj,
           isNearby: dist <= 50,
-          isAtPickupLocation: false,
+          isAtPickupLocation: dist === 0,
           distanceKm: dist,
           estimatedTravelTime: routeData.estimatedTravelTime,
           currentBranch: d.branch || d.currentLocation || dLoc,
@@ -354,35 +344,13 @@ export const getAvailableDrivers = async (req, res, next) => {
       })
     );
 
-    // Combine all drivers and sort by distance (nearest to farthest)
     const allSortedDrivers = [...localDrivers, ...mappedNearbyDrivers].sort((a, b) => a.distanceKm - b.distanceKm);
-
-    // Filter drivers within 50km
     const driversWithin50 = allSortedDrivers.filter(d => d.distanceKm <= 50);
-    const hasNearby = driversWithin50.length > 0;
 
-    let finalDriversToReturn = [];
-    let isNearbyFallback = false;
-    let isExtendedFallback = false;
-
-    if (hasNearby) {
-      console.log(`✓ Found ${driversWithin50.length} drivers within 50km of ${targetLoc}.`);
+    let finalDriversToReturn = allSortedDrivers;
+    if (driversWithin50.length > 0) {
       finalDriversToReturn = driversWithin50;
-      isNearbyFallback = localDrivers.length === 0;
-    } else {
-      console.log(`❌ No nearby drivers found within 50km of ${targetLoc}. Displaying all available drivers sorted by distance.`);
-      finalDriversToReturn = allSortedDrivers;
-      isExtendedFallback = true;
-      isNearbyFallback = true;
     }
-
-    if (finalDriversToReturn.length > 0) {
-      console.log(`Drivers list for ${targetLoc}:`);
-      finalDriversToReturn.slice(0, 5).forEach((d, idx) => {
-        console.log(`${idx + 1}. ${d.fullName || d.name} (${d.employeeId || 'N/A'}) - Loc: ${d.currentLocation} - ${d.distanceKm} km away (${d.estimatedTravelTime})`);
-      });
-    }
-    console.log('===================================\n');
 
     return sendSuccess(res, 200, {
       drivers: finalDriversToReturn,

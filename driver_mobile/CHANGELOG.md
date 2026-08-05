@@ -2,6 +2,26 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.31.17] - 2026-08-05
+
+### Fixed & Updated
+- **Flutter App Launcher Icon Updated**:
+  - Replaced application icons for Android (`mipmap-*`), iOS (`AppIcon.appiconset`), and Web (`icons/`) with the uploaded logo image (`media__1785918133650.jpg`).
+- **Resolved Flutter Mobile & Full Workspace Conflicts**:
+  - Fully resolved all IDE errors, missing REST endpoints, and named parameter mismatches in `ApiService` (`api_service.dart`) and `SocketService` (`socket_service.dart`).
+  - Cleared leftover merge conflict markers across backend controllers (`manager.controller.js`, `driver.controller.js`, `driverApi.controller.js`, `vehicle.controller.js`, `Trip.js`, `Driver.js`, `geocodingHelper.js`) and frontend components (`Header.jsx`, `AppLayout.jsx`, `CreateTripPage.jsx`, `NotificationsPage.jsx`, `ViewTicketsPage.jsx`).
+  - Verified clean static analysis via `flutter analyze` (0 errors, 0 warnings) and workspace integrity via `git diff --check`.
+
+## [1.75.0] - 2026-08-05
+
+### Fixed & Enhanced (Manager Data Isolation, Profile Organization Details & Org Status Auto-Sync)
+- **Backend Data Access Tenancy & Fallback Fix (`manager.controller.js`, `driverApi.controller.js`)**:
+  - Scoped `listActivities` in `manager.controller.js` to return `[]` when a manager has 0 active fleet entities (vehicles, drivers, trips) and filter logs by active vehicles.
+  - Enforced strict driver data access isolation in `driverApi.controller.js` (`/trips`, `/vehicle`, `/maintenance`, `/fuel`, `/tickets`, `/documents`).
+  - Removed global `User.findOne({ role: 'FLEET_MANAGER' })` fallback in `getDriverSupportInfo` to prevent unassigned drivers from receiving arbitrary system managers. Added document ownership checks to `getDriverDocumentById`.
+  - Removed global fallback queries (`getMaintenances({})`, `getFuelRecords({})`, `listVehicleComplaints` `{}`) in `manager.controller.js` so newly added managers only see their own fuel, maintenance, and ticket data.
+  - Removed mock ticket fallback in `ViewTicketsPage.jsx` so empty ticket lists remain strictly 0 tickets without rendering default mock issues.
+
 ## [1.31.16] - 2026-08-05
 
 ### Fixed & Updated
@@ -11,36 +31,6 @@ All notable changes to the Fleet Driver Mobile application will be documented in
   - Added `flutter_launcher_icons` configuration to `pubspec.yaml`.
 - **Fixed BuildContext Across Async Gaps**:
   - Resolved all `use_build_context_synchronously` linter info issues in `trip_completion_screen.dart` by adding `context.mounted` checks to ensure safe BuildContext usage after async operations (`uploadTripPod`, `createTripFuelEntry`, `uploadWeighbridgeSlip`, `showDialog`, `createTripTollEntry`).
-
-## [1.36.0] - 2026-08-04
-
-### Fixed & Enhanced
-- **Cargo Weight Unit Consistency (KG)**:
-  - Updated [TripDetailsScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/trip_details_screen.dart) to format and display cargo weight in `KG` (e.g. `9845 KG`) under **CARGO & SHIPMENT**, matching the Fleet Manager Portal unit standards.
-  - Updated weighbridge slip input labels in [ActiveTripsScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/active_trips_screen.dart) (`Net Weight (KG)`) and assignment summaries in [AssignmentDetailsScreen](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/screens/assignment_details_screen.dart) to display units in `KG`.
-
-## [1.35.0] - 2026-08-04
-
-### Fixed & Enhanced
-- **End Trip "Route Not Found" Resolution**:
-  - Registered HTTP verb & route path aliases (`POST`, `PUT`, `PATCH`) for `/api/driver/trips/:id/end-trip`, `/api/driver/trips/:id/end`, and `/api/driver/trips/:id/customer-location` in [driverApi.routes.js](file:///c:/Users/Dell/Desktop/Fleet-management-system/backend/routes/driverApi.routes.js).
-  - Added multi-stage fallback mechanism to [ApiService.endTrip](file:///c:/Users/Dell/Desktop/Fleet-management-system/driver_mobile/lib/services/api_service.dart) (`PATCH /end-trip` ➔ `POST /end-trip` ➔ `PATCH /customer-location`), ensuring high availability and resolving any 404 "Route not found" exceptions when ending a trip journey.
-
-## [1.31.15] - 2026-08-04
-
-### Added
-- **Mandatory Required Documents Popup Modal for Trip Completion**:
-  - Created `UploadRequiredDocumentsDialog` widget (`upload_required_documents_dialog.dart`) as a centered popup dialog titled *"Upload Required Trip Documents"*.
-  - Added two mandatory upload cards for **Proof of Delivery (POD)** and **Weighbridge Slip**, displaying document name, upload status (`Not Uploaded` / `✓ Uploaded`), and action buttons (`Upload`, `View`, `Replace`).
-  - Added modern modal bottom sheet (`_showImageSourcePicker`) supporting **Camera** (`ImageSource.camera`), **Gallery** (`ImageSource.gallery`), and **Cancel** options.
-  - Implemented upload progress indicator and full image document preview modal (`_showDocumentPreview`).
-  - Added strict validation preventing popup closure and keeping *"Submit Documents"* disabled until BOTH POD and Weighbridge Slip are uploaded, displaying validation toasts (*"Please upload Proof of Delivery."* / *"Please upload Weighbridge Slip."*).
-  - Configured *"Submit Documents"* to update trip status to *"Waiting for Manager Approval"*, lock driver edits, and show floating success toast (*"Trip documents submitted successfully. Waiting for Manager Approval."*).
-
-## [1.31.14] - 2026-08-04
-
-### Fixed
-- **Restoration of Original 7-Step Trip Lifecycle Rules**:
   1. **Pre-departure Start Trip Lock**: Locked "Start Trip" button until current time is within 15 minutes of scheduled departure across `trip_details_screen.dart`, `upcoming_trip_details_screen.dart`, `upcoming_trips_screen.dart`, `dashboard_screen.dart`, and `updateTripStatus` in `driverApi.controller.js`.
   2. **Pre-start Document Lock**: Disabled Upload POD and Upload Weighbridge buttons and forced status display to "Not Uploaded" prior to starting the trip.
   3. **In-Progress Document Lock**: Kept Upload POD and Upload Weighbridge disabled after clicking "Start Trip" while trip is in progress.
@@ -621,16 +611,6 @@ All notable changes to the Fleet Driver Mobile application will be documented in
 - **Corrected `driverApi` Import Path in `UserProfileCard.jsx`**:
   - Updated import path from `@/roles/manager/api/driverApi` to `@/api/driverApi` in `frontend/src/components/common/UserProfileCard.jsx`.
   - Resolved Vite dev server import resolution error (`Failed to resolve import "@/roles/manager/api/driverApi"`).
-
-## [1.75.0] - 2026-08-05
-
-### Fixed & Enhanced (Manager Data Isolation, Profile Organization Details & Org Status Auto-Sync)
-- **Backend Data Access Tenancy & Fallback Fix (`manager.controller.js`, `driverApi.controller.js`)**:
-  - Scoped `listActivities` in `manager.controller.js` to return `[]` when a manager has 0 active fleet entities (vehicles, drivers, trips) and filter logs by active vehicles.
-  - Enforced strict driver data access isolation in `driverApi.controller.js` (`/trips`, `/vehicle`, `/maintenance`, `/fuel`, `/tickets`, `/documents`).
-  - Removed global `User.findOne({ role: 'FLEET_MANAGER' })` fallback in `getDriverSupportInfo` to prevent unassigned drivers from receiving arbitrary system managers. Added document ownership checks to `getDriverDocumentById`.
-  - Removed global fallback queries (`getMaintenances({})`, `getFuelRecords({})`, `listVehicleComplaints` `{}`) in `manager.controller.js` so newly added managers only see their own fuel, maintenance, and ticket data.
-  - Removed mock ticket fallback in `ViewTicketsPage.jsx` so empty ticket lists remain strictly 0 tickets without rendering default mock issues.
 - **Organization Status Auto-Activation (`subscription.controller.js`, `admin.controller.js`)**:
   - Updated `approveRequest` in `subscription.controller.js` to automatically update the manager's associated `Organization` status to `Active` and update its active subscription plan name upon approval.
   - Added auto-sync check in `listOrganizations` and `getOrganizationDetails` in `admin.controller.js` to verify if an organization has active subscribed managers and update its status from `Pending` to `Active`.

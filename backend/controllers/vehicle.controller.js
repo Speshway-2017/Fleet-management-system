@@ -55,7 +55,7 @@ export const getAvailableVehicles = async (req, res, next) => {
   try {
     // 1. Exclude vehicles on active in-progress trips
     const activeTrips = await Trip.find({
-      status: { $in: ['In Progress', 'On Transit', 'Enroute', 'Reach Pickup', 'Pickup Completed'] }
+      status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
     });
 
     const activeVehicleIds = activeTrips.map(t => String(t.vehicle)).filter(Boolean);
@@ -75,7 +75,7 @@ export const getAvailableVehicles = async (req, res, next) => {
         const resolvedName = await resolveLocationName(rawLoc, v.branch || v.branchDepot);
         v.currentLocation = resolvedName;
         v.branch = resolvedName;
-        Vehicle.findByIdAndUpdate(v._id, { currentLocation: resolvedName, branch: resolvedName }).catch(() => {});
+        Vehicle.findByIdAndUpdate(v._id, { currentLocation: resolvedName, branch: resolvedName }).catch(() => { });
       }
       return v;
     }));
@@ -123,7 +123,11 @@ export const getAvailableVehicles = async (req, res, next) => {
     // Compute road distance for non-local vehicles
     const mappedNearbyVehicles = await Promise.all(
       nearbyRawVehicles.map(async (v) => {
-        const vLoc = getVehicleLocation(v) || 'Pune';
+        const rawEffective = getVehicleEffectiveLocation(v);
+        const vLoc = await resolveLocationName(rawEffective || 'Hyderabad', v.branch || v.branchDepot);
+        if (isCoordinateString(rawEffective)) {
+          Vehicle.findByIdAndUpdate(v._id, { currentLocation: vLoc }).catch(() => {});
+        }
         const routeData = await getRoadDistanceAndEta(targetLoc, vLoc);
         const vObj = v.toObject ? v.toObject() : { ...v };
         const dist = routeData.distanceKm || 0;
@@ -141,7 +145,6 @@ export const getAvailableVehicles = async (req, res, next) => {
     // Combine all vehicles and sort by distance (nearest to farthest)
     const allSortedVehicles = [...localVehicles, ...mappedNearbyVehicles].sort((a, b) => a.distanceKm - b.distanceKm);
 
-    // Filter vehicles within 50km
     const vehiclesWithin50 = allSortedVehicles.filter(v => v.distanceKm <= 50);
     const hasNearby = vehiclesWithin50.length > 0;
 
@@ -163,9 +166,7 @@ export const getAvailableVehicles = async (req, res, next) => {
     if (finalVehiclesToReturn.length > 0) {
       console.log(`Vehicles list for ${targetLoc}:`);
       finalVehiclesToReturn.slice(0, 5).forEach((v, idx) => {
-        console.log(`${idx + 1}. ${v.vehicleName || v.name} (${v.registrationNumber || v.vehicleNumber || v.plateNumber}) - Loc: ${v.currentLocation} - ${v.distanceKm} km away (${v.estimatedTravelTime})`);
-      });
-    }
+        console.log(`${idx + 1}. ${v.vehicleName || v.name} (${v.vehicleNumber || v.plateNumber}) - Loc: ${v.currentLocation} - ${v.distanceKm} km away (${v.estimatedTravelTime})`);
       });
     }
     console.log('===================================\n');

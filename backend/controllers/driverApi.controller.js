@@ -175,7 +175,7 @@ export const loginDriver = async (req, res, next) => {
           const { hashPassword } = await import('../utils/hashPassword.js');
           driver.password = await hashPassword(password);
           await driver.save();
-        } catch (_) {}
+        } catch (_) { }
       }
     }
 
@@ -339,13 +339,9 @@ export const updateDriverProfile = async (req, res, next) => {
       'isDarkMode',
       'notificationPreferences',
       'fcmToken',
-<<<<<<< HEAD
+      'isDuty',
       'driverStatus',
       'isOnline'
-=======
-      'isDuty',
-      'driverStatus'
->>>>>>> development
     ];
     const updateData = {};
     for (const key of allowedFields) {
@@ -361,51 +357,48 @@ export const updateDriverProfile = async (req, res, next) => {
       }
     }
 
-<<<<<<< HEAD
-    if (req.body.isOnline !== undefined || req.body.driverStatus !== undefined) {
-      const rawIsOnline = req.body.isOnline;
-      const isOff = (
-        rawIsOnline === false ||
-        rawIsOnline === 'false' ||
-        rawIsOnline === 0 ||
-        rawIsOnline === '0' ||
-        req.body.driverStatus === 'OFFLINE'
-      );
-
-      if (isOff) {
-        updateData.driverStatus = 'OFFLINE';
-        updateData.isOnline = false;
-      } else {
-        updateData.isOnline = true;
-        if (driverBefore && driverBefore.driverStatus !== 'ON_TRIP') {
-          updateData.driverStatus = 'AVAILABLE';
-=======
     if (req.body.isDuty !== undefined) {
       const isDutyBool = Boolean(req.body.isDuty);
       updateData['isDuty'] = isDutyBool;
       if (!isDutyBool) {
         updateData['driverStatus'] = 'OFFLINE';
+        updateData['isOnline'] = false;
       } else {
+        updateData['isOnline'] = true;
         const currentDriver = await Driver.findById(driverId).select('driverStatus');
         if (currentDriver && currentDriver.driverStatus !== 'ON_TRIP' && currentDriver.driverStatus !== 'ASSIGNED') {
           updateData['driverStatus'] = 'AVAILABLE';
->>>>>>> development
         }
       }
     }
 
-<<<<<<< HEAD
-    console.log('[DEBUG] [Availability Update] MongoDB updateData:', updateData);
-=======
+    if (req.body.isOnline !== undefined) {
+      const rawIsOnline = req.body.isOnline;
+      const isOff = (rawIsOnline === false || rawIsOnline === 'false' || rawIsOnline === 0 || rawIsOnline === '0');
+      if (isOff) {
+        updateData.driverStatus = 'OFFLINE';
+        updateData.isOnline = false;
+        updateData.isDuty = false;
+      } else {
+        updateData.isOnline = true;
+        updateData.isDuty = true;
+        const currentDriver = await Driver.findById(driverId).select('driverStatus');
+        if (currentDriver && currentDriver.driverStatus !== 'ON_TRIP' && currentDriver.driverStatus !== 'ASSIGNED') {
+          updateData.driverStatus = 'AVAILABLE';
+        }
+      }
+    }
+
     if (req.body.driverStatus !== undefined) {
       updateData['driverStatus'] = req.body.driverStatus;
       if (req.body.driverStatus === 'OFFLINE' || req.body.driverStatus === 'OFF_DUTY') {
         updateData['isDuty'] = false;
+        updateData['isOnline'] = false;
       } else if (req.body.driverStatus === 'AVAILABLE' || req.body.driverStatus === 'ON_TRIP') {
         updateData['isDuty'] = true;
+        updateData['isOnline'] = true;
       }
     }
->>>>>>> development
 
     // If profileImage is a base64 string, upload to Cloudinary!
     if (updateData.profileImage && updateData.profileImage.startsWith('data:image')) {
@@ -426,26 +419,26 @@ export const updateDriverProfile = async (req, res, next) => {
       return sendError(res, 404, 'Driver profile not found');
     }
 
-<<<<<<< HEAD
-    console.log('[DEBUG] [Availability Update] Driver After Update in MongoDB:', {
-      _id: updatedDriver._id,
-      isOnline: updatedDriver.isOnline,
-      driverStatus: updatedDriver.driverStatus
-    });
-
     if (updatedDriver.assignedManager) {
       try {
         const { getIO } = await import('../server.js');
-        if (getIO()) {
-          const managerRoom = `manager:${updatedDriver.assignedManager._id || updatedDriver.assignedManager}`;
-          getIO().to(managerRoom).emit('driver:status-changed', {
+        const io = getIO() || req.app.get('io');
+        if (io) {
+          const payload = {
             driverId: updatedDriver._id,
+            id: updatedDriver._id,
             driverName: updatedDriver.fullName,
             driverStatus: updatedDriver.driverStatus,
             isOnline: updatedDriver.isOnline,
-          });
+            isDuty: updatedDriver.isDuty,
+            fullName: updatedDriver.fullName
+          };
+          const managerRoom = `manager:${updatedDriver.assignedManager._id || updatedDriver.assignedManager}`;
+          io.to(managerRoom).emit('driver:status-changed', payload);
+          io.to(`user_${updatedDriver.assignedManager}`).emit('driver:status-updated', payload);
+          io.emit('driver:status-updated', payload);
         }
-      } catch (_) {}
+      } catch (_) { }
     }
 
     const responsePayload = {
@@ -454,34 +447,10 @@ export const updateDriverProfile = async (req, res, next) => {
       id: updatedDriver._id,
       isOnline: updatedDriver.isOnline,
       driverStatus: updatedDriver.driverStatus,
+      isDuty: updatedDriver.isDuty,
     };
 
-    console.log('[DEBUG] [Availability Update] API Response payload isOnline:', responsePayload.isOnline);
-
     return sendSuccess(res, 200, responsePayload, 'Driver profile updated successfully');
-=======
-    // Emit real-time status update to assigned manager & global manager socket room
-    try {
-      const io = req.app.get('io');
-      if (io) {
-        const payload = {
-          driverId: updatedDriver._id,
-          id: updatedDriver._id,
-          driverStatus: updatedDriver.driverStatus,
-          isDuty: updatedDriver.isDuty,
-          fullName: updatedDriver.fullName
-        };
-        if (updatedDriver.assignedManager) {
-          io.to(`user_${updatedDriver.assignedManager}`).emit('driver:status-updated', payload);
-        }
-        io.emit('driver:status-updated', payload);
-      }
-    } catch (sockErr) {
-      console.error('Socket emit error on driver status update:', sockErr);
-    }
-
-    return sendSuccess(res, 200, updatedDriver, 'Driver profile updated successfully');
->>>>>>> development
   } catch (error) {
     next(error);
   }
@@ -549,23 +518,18 @@ export const getCurrentTrip = async (req, res, next) => {
       departureTime: currentTrip.departureTime,
       cargoType: currentTrip.cargoType,
       cargoWeight: currentTrip.cargoWeight,
-<<<<<<< HEAD
-      vehicle: currentTrip.vehiclePlate || currentTrip.vehicleName || 'Vehicle',
+      vehicle: currentTrip.vehicle || currentTrip.vehiclePlate || currentTrip.vehicleName || 'Vehicle',
       vehicleName: currentTrip.vehicleName || (currentTrip.vehicle ? currentTrip.vehicle.vehicleName : ''),
-      vehiclePlate: currentTrip.vehiclePlate || (currentTrip.vehicle ? currentTrip.vehicle.vehicleNumber : ''),
+      vehiclePlate: currentTrip.vehiclePlate || (currentTrip.vehicle ? (currentTrip.vehicle.vehicleNumber || currentTrip.vehicle.registrationNumber) : ''),
       driverName: currentTrip.driverName || (currentTrip.driver ? currentTrip.driver.fullName : ''),
       driverPhone: currentTrip.driverPhone || (currentTrip.driver ? currentTrip.driver.phoneNumber : ''),
       estimatedDistance: currentTrip.estimatedDistance || 0,
       actualDistance: currentTrip.actualDistance || 0,
       invoiceNumber,
-=======
-      vehicle: currentTrip.vehicle || currentTrip.vehiclePlate || currentTrip.vehicleName || 'Vehicle',
-      vehiclePlate: currentTrip.vehiclePlate || currentTrip.vehicle?.registrationNumber || 'Vehicle',
       podStatus: currentTrip.podStatus,
       weighbridgeStatus: currentTrip.weighbridgeStatus,
       customerLocationReached: currentTrip.customerLocationReached || false,
       customerLocationReachedAt: currentTrip.customerLocationReachedAt || null,
->>>>>>> development
       manager: managerInfo
     }, 'Current trip retrieved');
   } catch (error) {
@@ -707,16 +671,12 @@ export const markAllDriverNotificationsRead = async (req, res, next) => {
 export const acceptTrip = async (req, res, next) => {
   try {
     const { id } = req.params;
-<<<<<<< HEAD
-=======
-    const rawAction = req.body.action || req.body.status;
+    const rawAction = req.body.action || req.body.status || 'accept';
     const action = rawAction?.toLowerCase() === 'accepted' ? 'accept' : rawAction?.toLowerCase() === 'rejected' ? 'reject' : rawAction;
 
     if (!action || !['accept', 'reject'].includes(action.toLowerCase())) {
       return sendError(res, 400, 'Valid action (accept or reject) is required');
     }
-
->>>>>>> development
     const trip = await Trip.findById(id).populate('vehicle').populate('driver');
     if (!trip) {
       return sendError(res, 404, 'Trip not found');
@@ -914,9 +874,8 @@ export const updateTripStatus = async (req, res, next) => {
 
     const targetStatus = status === 'Start Trip' ? 'In Progress' : (status === 'Complete Trip' ? 'Completed' : status);
 
-<<<<<<< HEAD
     // Validate backend restrictions for starting trip
-    if (targetStatus === 'In Progress') {
+    if (['In Progress', 'Start Trip', 'En Route', 'At Loading', 'In Transit'].includes(targetStatus)) {
       const allowedStartStatuses = ['Scheduled', 'Accepted', 'Assigned'];
       if (!allowedStartStatuses.includes(trip.status)) {
         return sendError(res, 400, `Cannot start trip with status '${trip.status}'. Trip must be in Scheduled/Accepted status before starting.`);
@@ -926,7 +885,8 @@ export const updateTripStatus = async (req, res, next) => {
         const now = new Date();
         const fifteenMinBefore = new Date(departureTime.getTime() - 15 * 60 * 1000);
         if (now < fifteenMinBefore) {
-          return sendError(res, 400, 'Cannot start trip before the 15-minute departure window.');
+          const diffMins = Math.ceil((departureTime.getTime() - now.getTime()) / 60000);
+          return sendError(res, 400, `Trip start is locked until 15 minutes before scheduled departure time. Scheduled departure is in ${diffMins} minutes.`);
         }
       }
       if (!trip.actualStartTime) trip.actualStartTime = new Date();
@@ -936,11 +896,14 @@ export const updateTripStatus = async (req, res, next) => {
       const podDoc = await ProofOfDelivery.findOne({ trip: trip._id });
       const weighbridgeDoc = await WeighbridgeSlip.findOne({ trip: trip._id });
 
-      const hasPod = (podDoc && (podDoc.podDocumentUrl || podDoc.deliveryPhotoUrl)) || ['Uploaded', 'Approved'].includes(trip.podStatus);
-      const hasWeighbridge = (weighbridgeDoc && weighbridgeDoc.documentUrl) || ['Uploaded', 'Approved'].includes(trip.weighbridgeStatus);
+      const hasPod = (podDoc && (podDoc.podDocumentUrl || podDoc.deliveryPhotoUrl)) || ['Uploaded', 'Approved'].includes(trip.podStatus) || Boolean(trip.podUploaded || trip.podUrl || trip.podFile);
+      const hasWeighbridge = (weighbridgeDoc && weighbridgeDoc.documentUrl) || ['Uploaded', 'Approved'].includes(trip.weighbridgeStatus) || Boolean(trip.weighbridgeUploaded || trip.weighbridgeUrl || trip.weighbridgeFile);
 
       if (!hasPod || !hasWeighbridge) {
-        return sendError(res, 400, 'Please upload both Proof of Delivery and Weighbridge Slip before requesting trip completion.');
+        const missing = [];
+        if (!hasPod) missing.push('Proof of Delivery (POD)');
+        if (!hasWeighbridge) missing.push('Weighbridge Slip');
+        return sendError(res, 400, `🔒 Cannot request trip completion. Missing required documents: ${missing.join(' and ')}. Please upload them first.`);
       }
 
       // Transition to Waiting for Manager Approval
@@ -948,49 +911,12 @@ export const updateTripStatus = async (req, res, next) => {
       trip.completionRequestedAt = new Date();
     } else {
       trip.status = targetStatus;
-=======
-    // Enforce POD & Weighbridge Upload rule for Driver before marking Delivered or Completed
-    const isDriverRequest = !req.user || req.user.role === 'driver' || req.user.role === 'DRIVER';
-    if (isDriverRequest && ['Delivered', 'Completed', 'Complete Trip'].includes(targetStatus)) {
-      const isPodUploaded = Boolean(trip.podUploaded || trip.podUrl || trip.podFile);
-      const isWeighbridgeUploaded = Boolean(trip.weighbridgeUploaded || trip.weighbridgeUrl || trip.weighbridgeFile);
-
-      if (!isPodUploaded || !isWeighbridgeUploaded) {
-        const missing = [];
-        if (!isPodUploaded) missing.push('Proof of Delivery (POD)');
-        if (!isWeighbridgeUploaded) missing.push('Weighbridge Slip');
-        return sendError(res, 400, `🔒 Cannot mark trip as ${targetStatus}. Missing required documents: ${missing.join(' and ')}. Please upload them first.`);
-      }
-    }
-
-    // Validate 15 min start restriction for starting active progress
-    if (['In Progress', 'En Route', 'At Loading', 'In Transit'].includes(targetStatus) && trip.status === 'Assigned') {
-      const departure = new Date(trip.departureTime);
-      const now = new Date();
-      // Enable start if current time is within 15 minutes of departure or later
-      if (trip.departureTime && !isNaN(departure.getTime())) {
-        const marginMs = 15 * 60 * 1000;
-        if (now.getTime() + marginMs < departure.getTime()) {
-          const diffMins = Math.ceil((departure.getTime() - now.getTime()) / 60000);
-          return sendError(res, 400, `Trip start is locked until 15 minutes before scheduled departure time. Scheduled departure is in ${diffMins} minutes.`);
-        }
-      }
-      if (!trip.actualStartTime) trip.actualStartTime = new Date();
-    } else if (['In Progress', 'En Route', 'At Loading', 'In Transit', 'Delivered'].includes(targetStatus)) {
-      if (!trip.actualStartTime) trip.actualStartTime = new Date();
-    } else if (['Completed', 'Complete Trip'].includes(targetStatus)) {
-      trip.actualEndTime = new Date();
->>>>>>> development
     }
 
     await trip.save();
 
-<<<<<<< HEAD
-    // Update Driver and Vehicle status if applicable
-    if (trip.status === 'In Progress') {
-=======
     // Update Driver & Vehicle status and locations if applicable
-    if (['Completed', 'Complete Trip'].includes(targetStatus)) {
+    if (['Completed', 'Complete Trip'].includes(targetStatus) || trip.status === 'Completed') {
       const destLocation = trip.endLocation || trip.destination?.address || trip.destinationObj?.address || 'Customer Location';
       await Driver.findByIdAndUpdate(req.user._id, {
         driverStatus: 'AVAILABLE',
@@ -1007,8 +933,7 @@ export const updateTripStatus = async (req, res, next) => {
           branch: destLocation
         });
       }
-    } else {
->>>>>>> development
+    } else if (trip.status === 'In Progress' || ['In Progress', 'En Route', 'At Loading', 'In Transit'].includes(targetStatus)) {
       await Driver.findByIdAndUpdate(req.user._id, { driverStatus: 'ON_TRIP' });
       if (trip.vehicle && mongoose.Types.ObjectId.isValid(trip.vehicle)) {
         await Vehicle.findByIdAndUpdate(trip.vehicle, { currentStatus: 'On Trip' });
@@ -1021,44 +946,8 @@ export const updateTripStatus = async (req, res, next) => {
       const managerId = trip.assignedManager;
       const driverDoc = await Driver.findById(req.user._id);
 
-<<<<<<< HEAD
-    if (managerId) {
-      if (trip.status === 'In Progress') {
-        await createAndEmitNotification({
-          io,
-          recipient: managerId,
-          recipientRole: 'FLEET_MANAGER',
-          type: 'trip_started',
-          title: `Trip Started: ${trip.tripNumber}`,
-          message: `Driver ${driverDoc?.fullName || 'Driver'} has started trip #${trip.tripNumber} (${trip.startLocation} ➔ ${trip.endLocation}). Live GPS tracking activated.`,
-          priority: 'normal',
-          metadata: { tripId: trip._id, driverId: req.user._id }
-        });
-      } else if (trip.status === 'Waiting for Manager Approval') {
-        await createAndEmitNotification({
-          io,
-          recipient: managerId,
-          recipientRole: 'FLEET_MANAGER',
-          type: 'trip_completion_requested',
-          title: `Trip Completion Request`,
-          message: `Driver ${driverDoc?.fullName || 'Driver'} has submitted POD and Weighbridge documents for Trip #${trip.tripNumber}. Please review and approve.`,
-          priority: 'high',
-          metadata: { tripId: trip._id, tripNumber: trip.tripNumber, driverId: req.user._id }
-        });
-
-        if (io) {
-          io.to(`manager:${managerId}`).emit('trip:completion-requested', {
-            tripId: trip._id,
-            tripNumber: trip.tripNumber,
-            driverName: driverDoc?.fullName || 'Driver',
-            status: 'Waiting for Manager Approval'
-          });
-          io.emit('trip:updated', trip);
-        }
-      }
-=======
       if (managerId) {
-        if (targetStatus === 'In Progress') {
+        if (trip.status === 'In Progress' || targetStatus === 'In Progress') {
           await createAndEmitNotification({
             io,
             recipient: managerId,
@@ -1069,8 +958,28 @@ export const updateTripStatus = async (req, res, next) => {
             priority: 'normal',
             metadata: { tripId: trip._id, driverId: req.user._id }
           });
+        } else if (trip.status === 'Waiting for Manager Approval') {
+          await createAndEmitNotification({
+            io,
+            recipient: managerId,
+            recipientRole: 'FLEET_MANAGER',
+            type: 'trip_completion_requested',
+            title: `Trip Completion Request`,
+            message: `Driver ${driverDoc?.fullName || 'Driver'} has submitted POD and Weighbridge documents for Trip #${trip.tripNumber}. Please review and approve.`,
+            priority: 'high',
+            metadata: { tripId: trip._id, tripNumber: trip.tripNumber, driverId: req.user._id }
+          });
+
+          if (io) {
+            io.to(`manager:${managerId}`).emit('trip:completion-requested', {
+              tripId: trip._id,
+              tripNumber: trip.tripNumber,
+              driverName: driverDoc?.fullName || 'Driver',
+              status: 'Waiting for Manager Approval'
+            });
+            io.emit('trip:updated', trip);
+          }
         }
->>>>>>> development
 
         if (io) {
           io.to(`manager:${managerId}`).emit('trip:status-updated', {
@@ -1218,21 +1127,14 @@ export const updateDriverLocation = async (req, res, next) => {
       return sendError(res, 400, 'Valid latitude and longitude are required');
     }
 
-<<<<<<< HEAD
-    const locationStr = `${latitude},${longitude}`;
-    const closestCity = getClosestCity(Number(latitude), Number(longitude));
-    const driver = await Driver.findByIdAndUpdate(
-      req.user._id,
-      { currentLocation: closestCity, driverLocation: locationStr },
-=======
     const locationStr = `${latNum},${lngNum}`;
     const speedNum = speed ? parseFloat(speed) : 0;
     const headingNum = heading ? parseFloat(heading) : 0;
 
     const driver = await Driver.findByIdAndUpdate(
       req.user._id,
-      { 
-        currentLocation: locationStr, 
+      {
+        currentLocation: locationStr,
         driverLocation: locationStr,
         currentLatitude: latNum,
         currentLongitude: lngNum,
@@ -1240,7 +1142,6 @@ export const updateDriverLocation = async (req, res, next) => {
         heading: headingNum,
         lastLocationUpdate: new Date()
       },
->>>>>>> development
       { new: true }
     );
 
@@ -1277,8 +1178,8 @@ export const updateDriverLocation = async (req, res, next) => {
     }
 
     // Find active trip
-    const activeTripQuery = tripId 
-      ? { _id: tripId } 
+    const activeTripQuery = tripId
+      ? { _id: tripId }
       : { driver: req.user._id, status: { $in: ['In Progress', 'On Transit', 'On Trip', 'En Route', 'Started', 'Delayed', 'Dispatched', 'In Transit'] } };
 
     const activeTrip = await Trip.findOneAndUpdate(
@@ -1743,17 +1644,17 @@ export const getDriverTrips = async (req, res, next) => {
         actualEndTime: trip.actualEndTime,
         cargoType: trip.cargoType,
         cargoWeight: trip.cargoWeight,
-        vehicle: trip.vehicle || trip.vehiclePlate || trip.vehicleName || 'Vehicle',
+        vehicle: trip.vehiclePlate || trip.vehicleName || (trip.vehicle ? (trip.vehicle.vehicleNumber || trip.vehicle.registrationNumber) : 'Vehicle'),
         vehicleName: trip.vehicleName || (trip.vehicle ? trip.vehicle.vehicleName : ''),
-        vehiclePlate: trip.vehiclePlate || (trip.vehicle ? trip.vehicle.registrationNumber || trip.vehicle.vehicleNumber : ''),
+        vehiclePlate: trip.vehiclePlate || (trip.vehicle ? (trip.vehicle.vehicleNumber || trip.vehicle.registrationNumber) : ''),
         driverName: trip.driverName || (trip.driver ? trip.driver.fullName : ''),
         driverPhone: trip.driverPhone || (trip.driver ? trip.driver.phoneNumber : ''),
         podStatus: trip.podStatus,
         weighbridgeStatus: trip.weighbridgeStatus,
-        estimatedDistance: trip.estimatedDistance || 0,
-        actualDistance: trip.actualDistance || 0,
         customerLocationReached: trip.customerLocationReached || false,
         customerLocationReachedAt: trip.customerLocationReachedAt || null,
+        estimatedDistance: trip.estimatedDistance || 0,
+        actualDistance: trip.actualDistance || 0,
         invoiceNumber: invoice ? invoice.invoiceNumber : 'N/A'
       };
     }));
@@ -1777,7 +1678,6 @@ export const getAssignedVehicle = async (req, res, next) => {
       return sendError(res, 404, 'Driver profile not found');
     }
 
-    // 1. Direct query on Vehicle by assignedDriver
     let vehicle = await Vehicle.findOne({
       $or: [
         { assignedDriver: driverId },
@@ -1785,7 +1685,6 @@ export const getAssignedVehicle = async (req, res, next) => {
       ]
     }).populate('assignedManager', 'name email phone');
 
-    // 2. Check driver's assignedVehicle property
     if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '') {
       const orConditions = [
         { vehicleNumber: driver.assignedVehicle },
@@ -1797,7 +1696,6 @@ export const getAssignedVehicle = async (req, res, next) => {
       vehicle = await Vehicle.findOne({ $or: orConditions }).populate('assignedManager', 'name email phone');
     }
 
-    // 3. Fallback to active trip vehicle ONLY (not completed/cancelled trips)
     if (!vehicle) {
       const activeTrip = await Trip.findOne({
         driver: driverId,
@@ -1966,7 +1864,7 @@ export const getDriverMaintenance = async (req, res, next) => {
 export const createDriverFuelEntry = async (req, res, next) => {
   try {
     const driverId = req.user._id;
-    const { fuelStation, station, stationName, amount, totalCost, liters, quantity, odometer, odometerReading, tripId, fuelType, dateTime, notes } = req.body;
+    const { fuelStation, station, stationName, amount, totalCost, cost, liters, quantity, odometer, odometerReading, tripId, fuelType, dateTime, notes, paymentMode } = req.body;
 
     const driver = await Driver.findById(driverId);
     if (!driver) {
@@ -2294,7 +2192,7 @@ export const createDriverTicket = async (req, res, next) => {
       await Vehicle.findOneAndUpdate(
         { vehicleNumber: complaint.vehiclePlate },
         { currentStatus: 'Need Maintenance' }
-      ).catch(() => {});
+      ).catch(() => { });
     }
 
     // Create & emit notification for assigned manager
@@ -2540,21 +2438,21 @@ export const updateDriverTicketStatus = async (req, res, next) => {
 export const getDriverTripById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    
+
     let trip;
     const mongoose = (await import('mongoose')).default;
     if (mongoose.Types.ObjectId.isValid(id)) {
       trip = await Trip.findById(id).populate('vehicle').populate('driver');
     }
-    
+
     if (!trip) {
       trip = await Trip.findOne({ tripNumber: id }).populate('vehicle').populate('driver');
     }
-    
+
     if (!trip && !id.startsWith('#')) {
       trip = await Trip.findOne({ tripNumber: `#${id}` }).populate('vehicle').populate('driver');
     }
-    
+
     if (!trip) {
       return sendError(res, 404, 'Trip not found');
     }
@@ -2604,16 +2502,16 @@ export const getDriverTripById = async (req, res, next) => {
     const podDoc = (trip.proofOfDelivery && trip.proofOfDelivery.url)
       ? trip.proofOfDelivery
       : await ProofOfDelivery.findOne({
-          $or: [{ trip: trip._id }, { tripId: trip._id.toString() }, { tripId: trip.tripNumber }]
-        });
+        $or: [{ trip: trip._id }, { tripId: trip._id.toString() }, { tripId: trip.tripNumber }]
+      });
     const podUrl = trip.proofOfDelivery?.url || podDoc?.podDocumentUrl || podDoc?.deliveryPhotoUrl;
     const resolvedPodStatus = podUrl ? (trip.podStatus === 'Approved' ? 'Approved' : 'Uploaded') : 'Not Uploaded';
 
     const wbDoc = (trip.weighbridgeSlip && trip.weighbridgeSlip.url)
       ? trip.weighbridgeSlip
       : await WeighbridgeSlip.findOne({
-          $or: [{ trip: trip._id }, { tripId: trip._id.toString() }, { tripId: trip.tripNumber }]
-        });
+        $or: [{ trip: trip._id }, { tripId: trip._id.toString() }, { tripId: trip.tripNumber }]
+      });
     const wbUrl = trip.weighbridgeSlip?.url || wbDoc?.documentUrl;
     const resolvedWbStatus = wbUrl ? (trip.weighbridgeStatus === 'Approved' ? 'Approved' : 'Uploaded') : 'Not Uploaded';
 
@@ -2653,7 +2551,7 @@ export const getDriverTripById = async (req, res, next) => {
         { tripId: '#' + trip.tripNumber?.replace('#', '') }
       ]
     });
-    
+
     let totalFuelLiters = 0;
     for (const f of fuelEntries) {
       totalFuelLiters += (Number(f.liters) || 0);
@@ -3033,8 +2931,8 @@ export const getDriverInvoiceByTripId = async (req, res, next) => {
     const podDoc = (trip.proofOfDelivery && trip.proofOfDelivery.url)
       ? trip.proofOfDelivery
       : await ProofOfDelivery.findOne({
-          $or: [{ trip: trip._id }, { tripId: trip._id.toString() }, { tripId: trip.tripNumber }]
-        });
+        $or: [{ trip: trip._id }, { tripId: trip._id.toString() }, { tripId: trip.tripNumber }]
+      });
     const resolvedReceiverName = podDoc?.receiverName || podDoc?.customerName || trip.proofOfDelivery?.receiverName || trip.deliveryAddress?.contactPerson || '';
 
     const deliveryAddress = trip.deliveryAddress || trip.toAddress || {
