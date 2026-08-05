@@ -47,7 +47,17 @@ export default function AnalyticsPage() {
     toast.success("Analytics report exported successfully!");
   };
 
-  const getBranchStats = (branchName) => {
+  const getBranchStats = (branchName, range) => {
+    let startDate = null;
+    const now = new Date();
+    if (range === "Last 7 Days") {
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (range === "30 Days") {
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else if (range === "Year to Date") {
+      startDate = new Date(now.getFullYear(), 0, 1);
+    }
+
     // Filter vehicles by branch
     const filteredVehicles = branchName === "All Branches" 
       ? vehicles 
@@ -77,18 +87,32 @@ export default function AnalyticsPage() {
     const activeStroke = Math.round(251.2 * utilization / 100);
     const strokeDash = `${activeStroke} ${252 - activeStroke}`;
 
-    // Filter fuel/maintenance records associated with these vehicles
+    // Filter fuel/maintenance/trips records associated with these vehicles and date range
     const vehicleNumbers = new Set(filteredVehicles.map(v => v.vehicleNumber));
     const vehicleIds = new Set(filteredVehicles.map(v => String(v._id)));
     
-    const branchFuel = fuelRecords.filter(f => {
+    const branchFuel = filteredVehicles.length === 0 ? [] : fuelRecords.filter(f => {
       const vId = f.vehicle?._id || f.vehicle;
-      return vehicleIds.has(String(vId)) || vehicleNumbers.has(f.vehicleId);
+      const matchVehicle = vehicleIds.has(String(vId)) || vehicleNumbers.has(f.vehicleId) || vehicleNumbers.has(f.vehiclePlate);
+      const fDate = new Date(f.date || f.createdAt);
+      const matchDate = startDate ? (!isNaN(fDate.getTime()) && fDate >= startDate) : true;
+      return matchVehicle && matchDate;
     });
     
-    const branchMaint = maintenance.filter(m => {
+    const branchMaint = filteredVehicles.length === 0 ? [] : maintenance.filter(m => {
       const vId = m.vehicle?._id || m.vehicle;
-      return vehicleIds.has(String(vId)) || vehicleNumbers.has(m.vehicleId);
+      const matchVehicle = vehicleIds.has(String(vId)) || vehicleNumbers.has(m.vehicleId) || vehicleNumbers.has(m.vehiclePlate);
+      const mDate = new Date(m.scheduledDate || m.serviceDate || m.createdAt);
+      const matchDate = startDate ? (!isNaN(mDate.getTime()) && mDate >= startDate) : true;
+      return matchVehicle && matchDate;
+    });
+
+    const branchTrips = filteredVehicles.length === 0 ? [] : trips.filter(t => {
+      const vId = t.vehicle?._id || t.vehicle;
+      const matchVehicle = vehicleIds.has(String(vId)) || vehicleNumbers.has(t.vehiclePlate);
+      const tDate = new Date(t.actualStartTime || t.departureTime || t.createdAt);
+      const matchDate = startDate ? (!isNaN(tDate.getTime()) && tDate >= startDate) : true;
+      return matchVehicle && matchDate;
     });
 
     const fuelCostSum = branchFuel.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
@@ -100,8 +124,8 @@ export default function AnalyticsPage() {
     const totalCostsNum = fuelCostSum + maintCostSum;
     const totalCosts = `₹${totalCostsNum.toLocaleString("en-IN")}`;
 
-    const fuelPct = totalCostsNum > 0 ? Math.round((fuelCostSum / totalCostsNum) * 100) : 0;
-    const maintPct = totalCostsNum > 0 ? Math.round((maintCostSum / totalCostsNum) * 100) : 0;
+    const fuelPct = totalCostsNum > 0 ? Math.round((fuelCostSum / totalCostsNum) * 100) : (branchFuel.length > 0 ? 50 : 0);
+    const maintPct = totalCostsNum > 0 ? Math.round((maintCostSum / totalCostsNum) * 100) : (branchMaint.length > 0 ? 50 : 0);
 
     // Filter drivers of this branch
     const branchDrivers = branchName === "All Branches"
@@ -112,7 +136,7 @@ export default function AnalyticsPage() {
         });
 
     const avgScore = branchDrivers.length > 0
-      ? Math.round(branchDrivers.reduce((sum, d) => sum + (d.performanceScore || 0), 0) / branchDrivers.length)
+      ? Math.round(branchDrivers.reduce((sum, d) => sum + (d.performanceScore || 85), 0) / branchDrivers.length)
       : 85;
 
     // Calculate actual 6 axes for safety radar chart
@@ -128,14 +152,14 @@ export default function AnalyticsPage() {
 
     // Count overdue maintenance for anomalies
     const overdueMaintCount = branchMaint.filter(m => {
-      const isOverdue = new Date(m.scheduledDate) < new Date();
-      return isOverdue && m.status !== "Completed";
+      const isOverdue = new Date(m.scheduledDate || m.createdAt) < new Date();
+      return isOverdue && m.status !== "Completed" && m.status !== "Resolved";
     }).length;
     const anomalies = overdueMaintCount < 10 ? `0${overdueMaintCount}` : String(overdueMaintCount);
 
     // Top Spender Vehicle Plate Number
     let topSpender = "None";
-    let maxSpend = -1;
+    let maxSpend = 0;
     filteredVehicles.forEach(v => {
       const vFuel = branchFuel.filter(f => String(f.vehicle?._id || f.vehicle) === String(v._id) || f.vehicleId === v.vehicleNumber);
       const vMaint = branchMaint.filter(m => String(m.vehicle?._id || m.vehicle) === String(v._id) || m.vehicleId === v.vehicleNumber);
@@ -148,18 +172,11 @@ export default function AnalyticsPage() {
       }
     });
 
-    // Heatmap Grid: 5 days x 24 hours
-    // Initialize empty grid
+    // Heatmap Grid: 5 days (Mon-Fri) x 24 hours
     const heatmapGrid = Array.from({ length: 5 }, () => Array(24).fill(0));
-    
-    // Filter trips for this branch
-    const branchTrips = trips.filter(t => {
-      const vId = t.vehicle?._id || t.vehicle;
-      return vehicleIds.has(String(vId));
-    });
 
     branchTrips.forEach(t => {
-      const departureDate = new Date(t.actualStartTime || t.createdAt);
+      const departureDate = new Date(t.actualStartTime || t.departureTime || t.createdAt);
       if (!isNaN(departureDate.getTime())) {
         const day = departureDate.getDay(); // 0 (Sun) to 6 (Sat)
         const hour = departureDate.getHours(); // 0 to 23
@@ -186,7 +203,7 @@ export default function AnalyticsPage() {
       idleDepot,
       safetyIndexPoints,
       totalCosts,
-      costChange: fuelCostSum > 0 ? "+4.2% vs last month" : "0% vs last month",
+      costChange: fuelCostSum > 0 ? "+4.2% vs last period" : "0% vs last period",
       fuelCost: `₹${fuelCostSum.toLocaleString("en-IN")}`,
       fuelPct,
       maintCost: `₹${maintCostSum.toLocaleString("en-IN")}`,
@@ -202,7 +219,7 @@ export default function AnalyticsPage() {
     };
   };
 
-  const data = getBranchStats(branchFilter);
+  const data = getBranchStats(branchFilter, timeRange);
   const uniqueBranches = Array.from(new Set(vehicles.map(v => v.branchDepot || v.branch).filter(Boolean)));
 
   if (loading) {
@@ -484,7 +501,7 @@ export default function AnalyticsPage() {
                       )}
                     </p>
                     <button onClick={() => { navigate("/manager/maintenance"); setShowInsights(false); }} className="text-[10px] font-bold text-amber-700 hover:underline cursor-pointer">
-                      Schedule Service →
+                      View Maintenance →
                     </button>
                   </div>
                 );

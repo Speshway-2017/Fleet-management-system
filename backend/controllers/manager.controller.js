@@ -803,10 +803,10 @@ export const listTrips = async (req, res, next) => {
       const tripObj = t.toObject ? t.toObject() : t;
       const calculatedDist = calculateDistance(tripObj.startLocation, tripObj.endLocation);
       const isUnrealistic = tripObj.estimatedDistance > 4000 && calculatedDist < 3000;
-      
+
       if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120 || tripObj.estimatedDistance === 584 || isUnrealistic) {
         tripObj.estimatedDistance = calculatedDist;
-        Trip.findByIdAndUpdate(t._id, { estimatedDistance: calculatedDist }).catch(() => {});
+        Trip.findByIdAndUpdate(t._id, { estimatedDistance: calculatedDist }).catch(() => { });
       }
       if (!tripObj.actualDistance || tripObj.actualDistance === 120 || tripObj.actualDistance === 584 || (tripObj.actualDistance > 4000 && calculatedDist < 3000)) {
         tripObj.actualDistance = calculatedDist;
@@ -881,7 +881,7 @@ export const getTripDetails = async (req, res, next) => {
 
     if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120 || tripObj.estimatedDistance === 584 || isUnrealistic) {
       tripObj.estimatedDistance = calculatedDist;
-      Trip.findByIdAndUpdate(trip._id, { estimatedDistance: calculatedDist }).catch(() => {});
+      Trip.findByIdAndUpdate(trip._id, { estimatedDistance: calculatedDist }).catch(() => { });
     }
     if (!tripObj.actualDistance || tripObj.actualDistance === 120 || tripObj.actualDistance === 584 || (tripObj.actualDistance > 4000 && calculatedDist < 3000)) {
       tripObj.actualDistance = calculatedDist;
@@ -1325,7 +1325,6 @@ export const updateTrip = async (req, res, next) => {
     try {
       const ioInstance = req.app.get('socketio') || req.app.locals?.io;
       const targetDriverId = req.body.driver || existingTrip.driver;
-      
       // If driver is changed
       if (req.body.driver && String(req.body.driver) !== String(existingTrip.driver)) {
         // Notify new driver
@@ -1536,18 +1535,39 @@ export const deleteTrip = async (req, res, next) => {
 // Fuel Controllers
 export const listFuelRecords = async (req, res, next) => {
   try {
-    // 1. Fetch total vehicles assigned to this manager
-    const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id');
+    const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id vehicleNumber registrationNumber');
     const vehicleIds = managerVehicles.map(v => v._id);
+    const vehicleRegs = managerVehicles.map(v => v.vehicleNumber || v.registrationNumber).filter(Boolean);
 
-    const filter = { vehicle: { $in: vehicleIds } };
+    const managerDrivers = await Driver.find({
+      $or: [
+        { assignedManager: req.user._id },
+        { assignedVehicle: { $in: vehicleRegs } }
+      ]
+    }, '_id employeeId');
+    const driverUserIds = managerDrivers.map(d => d._id);
+    const employeeIds = managerDrivers.map(d => d.employeeId).filter(Boolean);
+
+    const filter = {
+      $or: [
+        { vehicle: { $in: vehicleIds } },
+        { vehicleId: { $in: vehicleRegs } },
+        { recordedBy: req.user._id },
+        { recordedBy: { $in: driverUserIds } },
+        { driverId: { $in: [...employeeIds, ...driverUserIds.map(id => String(id))] } }
+      ]
+    };
+
     if (req.query.vehicle) {
       filter.vehicle = req.query.vehicle;
+      delete filter.$or;
     }
     if (req.query.tripId) {
       filter.tripId = req.query.tripId;
     }
-    const records = await getFuelRecords(filter);
+
+    let records = await getFuelRecords(filter);
+
     const formatted = records.map(r => {
       const obj = r.toObject ? r.toObject() : r;
       const img = obj.billUrl || obj.receiptImage || '';
@@ -1566,14 +1586,6 @@ export const getFuelRecordDetails = async (req, res, next) => {
     const record = await getFuelRecordById(req.params.id);
     if (!record) {
       return sendError(res, 404, 'Fuel record not found');
-    }
-    // Ownership check via vehicle's assignedManager
-    if (record.vehicle && String(record.vehicle.assignedManager || record.vehicle) !== String(req.user._id)) {
-      const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id');
-      const managerVehicleIds = managerVehicles.map(v => String(v._id));
-      if (!managerVehicleIds.includes(String(record.vehicle._id || record.vehicle))) {
-        return sendError(res, 403, 'Access denied: this fuel record belongs to another manager');
-      }
     }
     return sendSuccess(res, 200, record, 'Fuel record details fetched');
   } catch (error) {
@@ -1633,11 +1645,23 @@ export const deleteFuelRecord = async (req, res, next) => {
 // Maintenance Controllers
 export const listMaintenance = async (req, res, next) => {
   try {
-    const filter = { recordedBy: req.user._id };
+    const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id vehicleNumber registrationNumber');
+    const vehicleIds = managerVehicles.map(v => v._id);
+    const vehicleRegs = managerVehicles.map(v => v.vehicleNumber || v.registrationNumber).filter(Boolean);
+
+    const filter = {
+      $or: [
+        { recordedBy: req.user._id },
+        { vehicle: { $in: vehicleIds } },
+        { vehicleId: { $in: vehicleRegs } }
+      ]
+    };
     if (req.query.vehicle) {
       filter.vehicle = req.query.vehicle;
+      delete filter.$or;
     }
-    const maintenance = await getMaintenances(filter);
+
+    let maintenance = await getMaintenances(filter);
     return sendSuccess(res, 200, maintenance, 'Maintenance list fetched');
   } catch (error) {
     next(error);
@@ -1649,10 +1673,6 @@ export const getMaintenanceDetails = async (req, res, next) => {
     const maintenance = await getMaintenanceById(req.params.id);
     if (!maintenance) {
       return sendError(res, 404, 'Maintenance not found');
-    }
-    // Ownership check
-    if (String(maintenance.recordedBy) !== String(req.user._id)) {
-      return sendError(res, 403, 'Access denied: this maintenance record belongs to another manager');
     }
     return sendSuccess(res, 200, maintenance, 'Maintenance details fetched');
   } catch (error) {
@@ -2133,59 +2153,90 @@ export const getLiveTracking = async (req, res, next) => {
           assignmentStatus = "Maintenance";
         } else if (v.currentStatus === "Inactive" || v.currentStatus === "Out of Service") {
           assignmentStatus = "Inactive";
-        } else if (v.currentStatus === "Assigned") {
-          assignmentStatus = "Assigned";
         } else if (v.currentStatus === "On Trip") {
           assignmentStatus = "On Trip";
         }
       }
 
-      let currentLocation = v.currentLocation || v.branchDepot || v.branch || 'Guntakal';
-      let currentLat = 15.1602;
-      let currentLng = 77.3715;
+      let locString = v.currentLocation || v.branchDepot || v.branch;
+      let currentLocation = locString || "Location unavailable";
+      
+      // Check real GPS coordinates on Vehicle, Driver, or recent Trip
+      let realLat = (v.currentLatitude && !isNaN(v.currentLatitude)) ? v.currentLatitude : null;
+      let realLng = (v.currentLongitude && !isNaN(v.currentLongitude)) ? v.currentLongitude : null;
+
+      if (!realLat || !realLng) {
+        if (v.assignedDriver?.currentLatitude && v.assignedDriver?.currentLongitude) {
+          realLat = v.assignedDriver.currentLatitude;
+          realLng = v.assignedDriver.currentLongitude;
+        } else if (recentTrip?.currentLatitude && recentTrip?.currentLongitude) {
+          realLat = recentTrip.currentLatitude;
+          realLng = recentTrip.currentLongitude;
+        }
+      }
+
+      let currentLat = realLat;
+      let currentLng = realLng;
+      let isSimulated = false;
+      let startCoords = null;
+      let endCoords = null;
+
+      if (!currentLat || !currentLng) {
+        if (locString) {
+          const resolved = await geocodeCity(locString);
+          if (resolved) {
+            currentLat = resolved[0];
+            currentLng = resolved[1];
+          }
+        }
+      }
 
       if (recentTrip) {
+        if (recentTrip.startLocation) {
+          startCoords = await geocodeCity(recentTrip.startLocation);
+        }
+        if (recentTrip.endLocation) {
+          endCoords = await geocodeCity(recentTrip.endLocation);
+        }
+
         if (recentTrip.status === 'Completed') {
           currentLocation = recentTrip.endLocation;
           assignmentStatus = "Available";
-          const coords = await geocodeCity(recentTrip.endLocation);
-          currentLat = coords[0];
-          currentLng = coords[1];
-        } else if (['In Progress', 'On Transit', 'On Trip', 'Delayed'].includes(recentTrip.status)) {
+          if (endCoords && (!realLat || !realLng)) {
+            currentLat = endCoords[0];
+            currentLng = endCoords[1];
+          }
+        } else if (['In Progress', 'On Transit', 'On Trip', 'Delayed', 'Started', 'En Route'].includes(recentTrip.status)) {
           currentLocation = `En route to ${recentTrip.endLocation}`;
-          const startCoords = await geocodeCity(recentTrip.startLocation);
-          const endCoords = await geocodeCity(recentTrip.endLocation);
-
-          // Simulated coordinates along the active route (45% along line from Start to Destination)
-          const progress = 0.45;
-          currentLat = Number((startCoords[0] + (endCoords[0] - startCoords[0]) * progress).toFixed(4));
-          currentLng = Number((startCoords[1] + (endCoords[1] - startCoords[1]) * progress).toFixed(4));
-
-          console.log(`Trip:\n${recentTrip.startLocation} → ${recentTrip.endLocation}\n`);
-          console.log(`Current Coordinates:\n${currentLat}\n${currentLng}\n`);
-          console.log(`Vehicle Marker Updated\n`);
+          
+          if (realLat && realLng) {
+            currentLat = realLat;
+            currentLng = realLng;
+          } else if (startCoords && endCoords) {
+            const startTime = recentTrip.actualStartTime ? new Date(recentTrip.actualStartTime).getTime() : (recentTrip.createdAt ? new Date(recentTrip.createdAt).getTime() : Date.now());
+            const elapsedMinutes = Math.max(1, (Date.now() - startTime) / (60 * 1000));
+            const progress = Math.min(0.85, Math.max(0.15, (elapsedMinutes % 45) / 45 * 0.7 + 0.15));
+            currentLat = Number((startCoords[0] + (endCoords[0] - startCoords[0]) * progress).toFixed(4));
+            currentLng = Number((startCoords[1] + (endCoords[1] - startCoords[1]) * progress).toFixed(4));
+            isSimulated = true;
+          }
         } else if (['Scheduled', 'Assigned', 'Ready to Dispatch'].includes(recentTrip.status)) {
           currentLocation = recentTrip.startLocation;
-          const coords = await geocodeCity(recentTrip.startLocation);
-          currentLat = coords[0];
-          currentLng = coords[1];
-
-          console.log(`Trip:\n${recentTrip.startLocation} → ${recentTrip.endLocation}\n`);
-          console.log(`Current Coordinates:\n${currentLat}\n${currentLng}\n`);
-          console.log(`Vehicle Marker Updated\n`);
+          if (startCoords && (!realLat || !realLng)) {
+            currentLat = startCoords[0];
+            currentLng = startCoords[1];
+          }
         }
-      } else {
-        const coords = await geocodeCity(currentLocation);
-        currentLat = coords[0];
-        currentLng = coords[1];
       }
 
-      // Persist updated location & coordinates in DB if modified
-      if (v.currentLocation !== currentLocation || v.currentLatitude !== currentLat || v.currentLongitude !== currentLng) {
-        v.currentLocation = currentLocation;
-        v.currentLatitude = currentLat;
-        v.currentLongitude = currentLng;
-        await v.save();
+      // Only persist real GPS coordinates in DB (never save simulated coordinates back)
+      if (realLat !== null && realLng !== null && !isSimulated) {
+        if (v.currentLocation !== currentLocation || v.currentLatitude !== realLat || v.currentLongitude !== realLng) {
+          v.currentLocation = currentLocation;
+          v.currentLatitude = realLat;
+          v.currentLongitude = realLng;
+          await v.save().catch(() => {});
+        }
       }
 
       const driverName = v.assignedDriver?.fullName || (activeTrip ? (activeTrip.driver?.fullName || activeTrip.driverName) : "Unassigned");
@@ -2228,6 +2279,8 @@ export const getLiveTracking = async (req, res, next) => {
           routeDistance: activeTrip.estimatedDistance || 374,
           driverName: driverName,
           driverPhone: driverPhone,
+          startCoords: startCoords,
+          endCoords: endCoords,
           currentLatitude: currentLat,
           currentLongitude: currentLng
         } : null
@@ -2501,20 +2554,36 @@ export const listActivities = async (req, res, next) => {
   try {
     const managerId = req.user._id;
 
-    console.log(`\n====================================`);
-    console.log(`Fetching Recent Vehicle Activities...`);
+    // Check if manager currently has any vehicles, drivers, or trips
+    const vehicleCount = await Vehicle.countDocuments({ assignedManager: managerId });
+    const driverCount = await Driver.countDocuments({ assignedManager: managerId });
+    const tripCount = await Trip.countDocuments({ assignedManager: managerId });
+
+    if (vehicleCount === 0 && driverCount === 0 && tripCount === 0) {
+      return sendSuccess(res, 200, [], 'No recent vehicle activities');
+    }
+
+    const managerVehicles = await Vehicle.find({ assignedManager: managerId }, '_id vehicleNumber registrationNumber');
+    const vehicleRegs = new Set(managerVehicles.map(v => (v.vehicleNumber || v.registrationNumber || '').toUpperCase()).filter(Boolean));
+    const vehicleIds = new Set(managerVehicles.map(v => String(v._id)));
 
     const limit = parseInt(req.query.limit) || 10;
     const activities = await ActivityLog.find({ assignedManager: managerId })
       .sort({ createdAt: -1 })
-      .limit(limit)
+      .limit(limit * 3)
       .lean();
 
-    console.log(`\nLatest Activities Found: ${activities.length}`);
-    console.log(`\nReturning Activity Logs...`);
-    console.log(`====================================\n`);
+    const filtered = activities.filter(act => {
+      if (act.vehicleNumber && act.vehicleNumber !== 'N/A') {
+        const vNum = act.vehicleNumber.toUpperCase();
+        if (vehicleRegs.size > 0 && !vehicleRegs.has(vNum) && !vehicleIds.has(act.relatedId)) {
+          return false;
+        }
+      }
+      return true;
+    }).slice(0, limit);
 
-    return sendSuccess(res, 200, activities, 'Recent vehicle activities fetched successfully');
+    return sendSuccess(res, 200, filtered, 'Recent vehicle activities fetched successfully');
   } catch (error) {
     next(error);
   }
@@ -2790,10 +2859,13 @@ export const updatePODStatus = async (req, res, next) => {
 export const getWeighbridgeByTripId = async (req, res, next) => {
   try {
     const { tripId } = req.params;
+    if (!tripId) {
+      return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
+    }
     let tripDoc = null;
-    if (tripId && mongoose.Types.ObjectId.isValid(tripId)) {
+    if (mongoose.Types.ObjectId.isValid(tripId)) {
       tripDoc = await Trip.findById(tripId).populate('driver');
-    } else if (tripId) {
+    } else {
       const cleanId = String(tripId).replaceAll('#', '').trim();
       tripDoc = await Trip.findOne({
         $or: [
@@ -2818,9 +2890,18 @@ export const getWeighbridgeByTripId = async (req, res, next) => {
       return sendSuccess(res, 200, wbData, 'Weighbridge slip fetched successfully');
     }
 
+    const query = mongoose.Types.ObjectId.isValid(tripId)
+      ? { trip: tripId }
+      : { $or: [{ trip: tripId }, { slipNumber: tripId }] };
+
+    const slip = await WeighbridgeSlip.findOne(query).populate('driver').catch(() => null);
+    if (slip) {
+      return sendSuccess(res, 200, slip, 'Weighbridge slip fetched successfully');
+    }
+
     return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
   } catch (error) {
-    next(error);
+    return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
   }
 };
 
@@ -3159,20 +3240,44 @@ export const listVehicleComplaints = async (req, res, next) => {
     }
 
     let complaints = await VehicleComplaint.find(filter)
-      .populate('driver', 'fullName email phoneNumber')
-      .populate('vehicle', 'registrationNumber make model plateNumber')
-      .populate('trip', 'tripNumber origin destination')
+      .populate('driver', 'fullName email phoneNumber assignedVehicle')
+      .populate('vehicle', 'vehicleNumber registrationNumber brand model vehicleName plateNumber')
+      .populate('trip', 'tripNumber origin destination vehiclePlate vehicle')
       .sort({ createdAt: -1 });
 
-    if (complaints.length === 0 && !tripId) {
-      complaints = await VehicleComplaint.find({})
-        .populate('driver', 'fullName email phoneNumber')
-        .populate('vehicle', 'registrationNumber make model plateNumber')
-        .populate('trip', 'tripNumber origin destination')
-        .sort({ createdAt: -1 });
-    }
+    // Sanitize and resolve vehiclePlate if it is missing, empty, or 'VEH-UNKNOWN'
+    const formattedComplaints = complaints.map(c => {
+      const doc = c.toObject ? c.toObject() : { ...c };
+      if (!doc.vehiclePlate || doc.vehiclePlate === 'VEH-UNKNOWN' || doc.vehiclePlate === 'UNKNOWN') {
+        let resolved = '';
+        if (doc.vehicle && typeof doc.vehicle === 'object') {
+          resolved = doc.vehicle.vehicleNumber || doc.vehicle.registrationNumber || doc.vehicle.plateNumber || doc.vehicle.vehicleName;
+        }
+        if (!resolved && doc.trip && typeof doc.trip === 'object') {
+          resolved = doc.trip.vehiclePlate;
+          if (!resolved && doc.trip.vehicle) {
+            if (typeof doc.trip.vehicle === 'object') {
+              resolved = doc.trip.vehicle.vehicleNumber || doc.trip.vehicle.registrationNumber;
+            } else if (typeof doc.trip.vehicle === 'string' && doc.trip.vehicle !== 'VEH-UNKNOWN') {
+              resolved = doc.trip.vehicle;
+            }
+          }
+        }
+        if (!resolved && doc.driver && typeof doc.driver === 'object' && doc.driver.assignedVehicle && doc.driver.assignedVehicle !== 'Unassigned') {
+          resolved = doc.driver.assignedVehicle;
+        }
+        if (resolved && resolved !== 'VEH-UNKNOWN' && resolved !== 'UNKNOWN') {
+          doc.vehiclePlate = resolved;
+          // Asynchronously update MongoDB document so DB record is permanently fixed
+          VehicleComplaint.updateOne({ _id: doc._id }, { vehiclePlate: resolved }).exec().catch(() => {});
+        } else {
+          doc.vehiclePlate = 'VEH-ASSIGNED';
+        }
+      }
+      return doc;
+    });
 
-    return sendSuccess(res, 200, complaints, 'Vehicle complaints retrieved successfully');
+    return sendSuccess(res, 200, formattedComplaints, 'Vehicle complaints retrieved successfully');
   } catch (error) {
     next(error);
   }
@@ -3346,7 +3451,58 @@ export const updateVehicleComplaint = async (req, res, next) => {
         notes: notes || `Manager updated status to ${status}`
       });
 
-      if (status === 'Resolved' || status === 'Closed') {
+      if (status === 'Cancelled (Accident)' || req.body.cancelTrip) {
+        complaint.status = 'Cancelled (Accident)';
+        complaint.completionDate = new Date();
+
+        // 1. Cancel Trip if associated
+        if (complaint.trip) {
+          try {
+            await Trip.findByIdAndUpdate(complaint.trip, { status: 'Cancelled', cancellationReason: notes || 'Cancelled due to severe vehicle accident' });
+          } catch (tripErr) {
+            console.warn('Failed to cancel trip on accident ticket update:', tripErr.message);
+          }
+        }
+
+        // 2. Set Vehicle to Maintenance
+        try {
+          let vehicleIdToUpdate = complaint.vehicle;
+          if (!vehicleIdToUpdate && complaint.vehiclePlate) {
+            const vDoc = await Vehicle.findOne({
+              $or: [
+                { registrationNumber: complaint.vehiclePlate.trim() },
+                { plateNumber: complaint.vehiclePlate.trim() },
+                { vehicleNumber: complaint.vehiclePlate.trim() }
+              ]
+            });
+            if (vDoc) vehicleIdToUpdate = vDoc._id;
+          }
+          if (vehicleIdToUpdate) {
+            await Vehicle.findByIdAndUpdate(vehicleIdToUpdate, { status: 'Maintenance', operationalStatus: 'Maintenance' });
+          }
+        } catch (vehErr) {
+          console.warn('Failed to set vehicle to maintenance on accident ticket:', vehErr.message);
+        }
+
+        // 3. Set Driver to AVAILABLE
+        if (complaint.driver) {
+          try {
+            await Driver.findByIdAndUpdate(complaint.driver, { driverStatus: 'AVAILABLE' });
+            await createAndEmitNotification({
+              io: req.io,
+              recipient: complaint.driver,
+              recipientRole: 'DRIVER',
+              title: `Trip Cancelled (Severe Accident) 🚨`,
+              message: `Manager has cancelled trip associated with ticket ${complaint.ticketId} due to severe accident. Please park safely and follow emergency instructions.`,
+              type: 'alert',
+              priority: 'high',
+              metadata: { ticketId: complaint.ticketId, complaintId: complaint._id, status: 'Cancelled (Accident)' }
+            });
+          } catch (notifErr) {
+            console.warn('Failed to notify driver on accident trip cancellation:', notifErr.message);
+          }
+        }
+      } else if (status === 'Resolved' || status === 'Closed') {
         complaint.completionDate = new Date();
 
         // 1. Auto Vehicle Status Transition: Maintenance -> Active
@@ -3414,6 +3570,35 @@ export const updateVehicleComplaint = async (req, res, next) => {
     }
 
     await complaint.save();
+
+    // If newEta is set by manager (customer called), update associated trip's ETA and notify driver
+    const io = req.io || (req.app && req.app.get('socketio')) || (req.app && req.app.locals && req.app.locals.io);
+
+    if (categoryData?.newEta && complaint.driver) {
+      try {
+        if (complaint.trip) {
+          await Trip.findByIdAndUpdate(complaint.trip, { eta: categoryData.newEta });
+        }
+        await createAndEmitNotification({
+          io,
+          recipient: complaint.driver,
+          recipientRole: 'DRIVER',
+          title: `Delivery Schedule Updated 🕒`,
+          message: `Manager informed customer of maintenance delay. Revised delivery time: ${categoryData.newEta}`,
+          type: 'trip',
+          priority: 'normal',
+          metadata: { ticketId: complaint.ticketId, complaintId: complaint._id, newEta: categoryData.newEta }
+        });
+      } catch (etaErr) {
+        console.warn('Failed to update trip ETA or notify driver:', etaErr.message);
+      }
+    }
+
+    // Always emit real-time socket events to driver room so Driver Web updates instantly without manual refresh
+    if (io && complaint.driver) {
+      io.to(`driver:${complaint.driver}`).emit('ticket:status-updated', complaint.toObject());
+      io.to(`driver:${complaint.driver}`).emit('trip:status-updated', { ticketId: complaint.ticketId, status: complaint.status });
+    }
 
     // Log manager activity
     await logActivity({

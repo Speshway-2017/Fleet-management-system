@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Wrench,
   Search,
@@ -16,19 +16,56 @@ import {
   Clock,
   ShieldAlert,
   ArrowLeft,
-  Cpu
+  Cpu,
+  MapPin
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
 
+const resolveVehiclePlate = (t) => {
+  if (!t) return "VEH-ASSIGNED";
+  if (t.vehiclePlate && t.vehiclePlate !== "VEH-UNKNOWN" && t.vehiclePlate !== "UNKNOWN") {
+    return t.vehiclePlate;
+  }
+  if (t.vehicle) {
+    if (typeof t.vehicle === "object") {
+      const vNum = t.vehicle.vehicleNumber || t.vehicle.registrationNumber || t.vehicle.plateNumber || t.vehicle.vehicleName;
+      if (vNum) return vNum;
+    } else if (typeof t.vehicle === "string" && t.vehicle !== "VEH-UNKNOWN" && t.vehicle !== "UNKNOWN") {
+      return t.vehicle;
+    }
+  }
+  if (t.trip && typeof t.trip === "object") {
+    if (t.trip.vehiclePlate && t.trip.vehiclePlate !== "VEH-UNKNOWN" && t.trip.vehiclePlate !== "UNKNOWN") {
+      return t.trip.vehiclePlate;
+    }
+    if (t.trip.vehicle && typeof t.trip.vehicle === "object") {
+      const tvNum = t.trip.vehicle.vehicleNumber || t.trip.vehicle.registrationNumber;
+      if (tvNum) return tvNum;
+    }
+  }
+  if (t.driver && typeof t.driver === "object" && t.driver.assignedVehicle && t.driver.assignedVehicle !== "Unassigned") {
+    return t.driver.assignedVehicle;
+  }
+  return "VEH-ASSIGNED";
+};
+
 export default function ViewTicketsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const highlightedTicketId = searchParams.get("ticketId") || searchParams.get("id");
+
   const [tickets, setTickets] = useState([]);
   const [loadingTickets, setLoadingTickets] = useState(false);
-  const [ticketSearch, setTicketSearch] = useState("");
+  const [ticketSearch, setTicketSearch] = useState(highlightedTicketId || "");
   const [ticketStatusFilter, setTicketStatusFilter] = useState("All");
   const [ticketSeverityFilter, setTicketSeverityFilter] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [ticketSearch, ticketStatusFilter, ticketSeverityFilter]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [updatingTicketId, setUpdatingTicketId] = useState(null);
   const [modalMode, setModalMode] = useState("view"); // "view" | "edit"
@@ -50,8 +87,22 @@ export default function ViewTicketsPage() {
     }
   });
 
+  const formatDateSafe = (dateVal, options = { dateStyle: 'medium', timeStyle: 'short' }) => {
+    if (!dateVal) return "Recently";
+    try {
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return "Recently";
+      return d.toLocaleString('en-IN', options);
+    } catch (e) {
+      return "Recently";
+    }
+  };
+
   const getCategoryKey = (issueTypeStr = '') => {
     const s = issueTypeStr.toString().toLowerCase();
+    if (s.includes('accident') || s.includes('emergency')) {
+      return 'accident';
+    }
     if (s.includes('fuel') || s.includes('payment') || s.includes('amount') || s.includes('receipt')) {
       return 'fuel';
     }
@@ -61,10 +112,10 @@ export default function ViewTicketsPage() {
     if (s.includes('delay') || s.includes('route') || s.includes('traffic') || s.includes('eta')) {
       return 'delay';
     }
-    if (s.includes('breakdown') || s.includes('tow') || s.includes('accident')) {
-      return 'breakdown';
+    if (s.includes('mechanic') || s.includes('engine') || s.includes('tyre') || s.includes('brake') || s.includes('breakdown') || s.includes('repair')) {
+      return 'mechanic';
     }
-    return 'maintenance';
+    return 'mechanic';
   };
 
   const renderDynamicCategoryForm = (ticket, data, setData) => {
@@ -88,22 +139,20 @@ export default function ViewTicketsPage() {
                 <button
                   type="button"
                   onClick={() => setData(prev => ({ ...prev, status: 'Resolved' }))}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    data.status === 'Resolved'
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${data.status === 'Resolved'
                       ? 'bg-emerald-600 text-white shadow-sm'
                       : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   ✓ Approve & Resolve
                 </button>
                 <button
                   type="button"
                   onClick={() => setData(prev => ({ ...prev, status: 'Rejected' }))}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    data.status === 'Rejected'
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${data.status === 'Rejected'
                       ? 'bg-red-600 text-white shadow-sm'
                       : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   ✕ Reject Issue
                 </button>
@@ -244,18 +293,27 @@ export default function ViewTicketsPage() {
           </div>
         );
 
-      case 'breakdown':
+      case 'accident':
         return (
           <div className="space-y-3 p-3.5 bg-red-50/60 border border-red-200/70 rounded-xl font-nunito">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-600" />
-              <span className="text-xs font-bold text-red-900 font-poppins">Emergency Breakdown & Towing Assistance</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600" />
+                <span className="text-xs font-bold text-red-900 font-poppins">Emergency Accident & Towing Assistance</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setData(prev => ({ ...prev, status: 'Cancelled (Accident)' }))}
+                className="py-1 px-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold transition shadow-sm cursor-pointer"
+              >
+                🚨 Severe Accident - Cancel Trip
+              </button>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <input
                 type="text"
-                placeholder="Mechanic Name"
+                placeholder="Mechanic / Rescue Contact Name"
                 value={data.mechanicName}
                 onChange={(e) => setData(prev => ({
                   ...prev,
@@ -296,11 +354,11 @@ export default function ViewTicketsPage() {
               </div>
               <div>
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
-                  Workshop / Location
+                  Workshop / Accident Yard Location
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Sri Ram Service Bay"
+                  placeholder="e.g. Highway Police Station / City Bay Yard"
                   value={data.mechanicLocation}
                   onChange={(e) => setData(prev => ({ ...prev, mechanicLocation: e.target.value }))}
                   className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
@@ -308,9 +366,24 @@ export default function ViewTicketsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Est. Repair Cost (₹)</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                  New Estimated Delivery Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={data.revisedDeliveryDateTime || data.categoryData?.revisedDeliveryDateTime || ''}
+                  onChange={(e) => setData(prev => ({
+                    ...prev,
+                    revisedDeliveryDateTime: e.target.value,
+                    categoryData: { ...prev.categoryData, revisedDeliveryDateTime: e.target.value, newEta: e.target.value }
+                  }))}
+                  className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Est. Damage Cost (₹)</label>
                 <input
                   type="number"
                   value={data.estimatedCost}
@@ -319,23 +392,13 @@ export default function ViewTicketsPage() {
                   className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
                 />
               </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Actual Repair Cost (₹)</label>
-                <input
-                  type="number"
-                  value={data.actualCost}
-                  onChange={(e) => setData(prev => ({ ...prev, actualCost: e.target.value }))}
-                  placeholder="0"
-                  className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
-                />
-              </div>
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Breakdown & Repair Notes</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Accident Incident Notes</label>
               <textarea
                 rows="2"
-                placeholder="Breakdown cause, towing details, parts replaced..."
+                placeholder="Accident details, vehicle damage report, insurance claim notes..."
                 value={data.notes}
                 onChange={(e) => setData(prev => ({ ...prev, notes: e.target.value }))}
                 className="w-full p-2.5 bg-white border border-red-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
@@ -344,107 +407,200 @@ export default function ViewTicketsPage() {
           </div>
         );
 
-      case 'maintenance':
+      case 'mechanic':
       default:
         return (
           <div className="space-y-3.5 p-3.5 bg-blue-50/50 border border-blue-100 rounded-xl font-nunito">
             <div className="flex items-center gap-2">
               <Wrench className="w-4 h-4 text-blue-600" />
-              <span className="text-xs font-bold text-blue-900 font-poppins">Vehicle Maintenance & Offline Mechanic</span>
+              <span className="text-xs font-bold text-blue-900 font-poppins">Vehicle Maintenance & Mechanic Assignment</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                placeholder="Mechanic Name (e.g. Ramesh)"
-                value={data.mechanicName}
-                onChange={(e) => setData(prev => ({
-                  ...prev,
-                  mechanicName: e.target.value,
-                  status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
-                }))}
-                className="w-full p-2 bg-white border border-blue-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
-              />
-              <input
-                type="text"
-                placeholder="Phone Number (e.g. 9876543210)"
-                value={data.mechanicPhone}
-                onChange={(e) => setData(prev => ({
-                  ...prev,
-                  mechanicPhone: e.target.value,
-                  status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
-                }))}
-                className="w-full p-2 bg-white border border-blue-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
-              />
-            </div>
-
-            <input
-              type="text"
-              placeholder="Workshop / Location (e.g. Bay 4 / Near Highway Toll)"
-              value={data.mechanicLocation}
-              onChange={(e) => setData(prev => ({
-                ...prev,
-                mechanicLocation: e.target.value,
-                status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
-              }))}
-              className="w-full p-2 bg-white border border-blue-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
-            />
-
-            <div className="grid grid-cols-2 gap-3 pt-1">
               <div>
-                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Est. Repair Cost (₹)</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Mechanic Name</label>
                 <input
-                  type="number"
-                  value={data.estimatedCost}
-                  onChange={(e) => setData(prev => ({ ...prev, estimatedCost: e.target.value }))}
-                  placeholder="0"
-                  className="w-full p-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none"
+                  type="text"
+                  placeholder="e.g. Satya Mechanics"
+                  value={data.mechanicName}
+                  onChange={(e) => setData(prev => ({
+                    ...prev,
+                    mechanicName: e.target.value,
+                    status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
+                  }))}
+                  className="w-full p-2 bg-white border border-blue-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Actual Repair Cost (₹)</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Mechanic Phone</label>
                 <input
-                  type="number"
-                  value={data.actualCost}
-                  onChange={(e) => setData(prev => ({ ...prev, actualCost: e.target.value }))}
-                  placeholder="0"
-                  className="w-full p-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none"
+                  type="text"
+                  placeholder="e.g. 9876543210"
+                  value={data.mechanicPhone}
+                  onChange={(e) => setData(prev => ({
+                    ...prev,
+                    mechanicPhone: e.target.value,
+                    status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
+                  }))}
+                  className="w-full p-2 bg-white border border-blue-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Maintenance Notes</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Garage / Workshop Location</label>
+              <input
+                type="text"
+                placeholder="e.g. Sri Durga Auto Service Bay, Bay 4"
+                value={data.mechanicLocation}
+                onChange={(e) => setData(prev => ({
+                  ...prev,
+                  mechanicLocation: e.target.value,
+                  status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
+                }))}
+                className="w-full p-2 bg-white border border-blue-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+              />
+            </div>
+
+            {/* New Estimated Delivery Date & Time & Offline Customer Notification */}
+            <div className="p-3 bg-purple-50/80 border border-purple-200/80 rounded-xl space-y-2 font-nunito">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-purple-600" />
+                <span className="text-xs font-bold text-purple-900 font-poppins">Trip Reschedule & Customer Notification</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                    New Estimated Delivery Date & Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={data.revisedDeliveryDateTime || data.categoryData?.revisedDeliveryDateTime || ''}
+                    onChange={(e) => setData(prev => ({
+                      ...prev,
+                      revisedDeliveryDateTime: e.target.value,
+                      categoryData: { ...prev.categoryData, revisedDeliveryDateTime: e.target.value, newEta: e.target.value }
+                    }))}
+                    className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Est. Repair Cost (₹)</label>
+                  <input
+                    type="number"
+                    value={data.estimatedCost}
+                    onChange={(e) => setData(prev => ({ ...prev, estimatedCost: e.target.value }))}
+                    placeholder="0"
+                    className="w-full p-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="customerInformedOfflineCheck"
+                  checked={!!(data.customerInformedOffline || data.categoryData?.customerInformedOffline)}
+                  onChange={(e) => setData(prev => ({
+                    ...prev,
+                    customerInformedOffline: e.target.checked,
+                    categoryData: { ...prev.categoryData, customerInformedOffline: e.target.checked, customerInformed: e.target.checked }
+                  }))}
+                  className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                />
+                <label htmlFor="customerInformedOfflineCheck" className="text-xs font-bold text-slate-700 cursor-pointer">
+                  Informed Customer Offline (Phone / Call) regarding revised delivery schedule ✓
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Breakdown & Repair Notes</label>
               <textarea
                 value={data.notes}
                 onChange={(e) => setData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Mechanic diagnosis notes, part replacement details..."
+                placeholder="Mechanic diagnosis notes, engine/tyre repair details, parts replaced..."
                 rows="2"
                 className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-medium text-[#1E293B] placeholder-gray-400 focus:outline-none"
               ></textarea>
+            </div>
+
+            {/* Service Bill & Invoice Attachment Section */}
+            <div className="pt-3 border-t border-blue-200/80 space-y-2 font-nunito">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-emerald-600" />
+                <span className="text-xs font-bold text-emerald-900 font-poppins">Service Completion Bill & Invoice Receipt</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                    Service Bill / Invoice No.
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. INV-2026-0803-88"
+                    value={data.serviceBillNo || ''}
+                    onChange={(e) => setData(prev => ({ ...prev, serviceBillNo: e.target.value }))}
+                    className="w-full p-2 bg-white border border-emerald-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                    Bill Receipt Date
+                  </label>
+                  <input
+                    type="date"
+                    value={data.serviceBillDate || new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setData(prev => ({ ...prev, serviceBillDate: e.target.value }))}
+                    className="w-full p-2 bg-white border border-emerald-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         );
     }
   };
 
-  const fetchTickets = async () => {
+  const fetchTickets = async (isInitial = false) => {
     try {
-      setLoadingTickets(true);
+      if (isInitial) setLoadingTickets(true);
       const res = await managerApi.getVehicleComplaints();
       const data = res.data?.data || res.data;
+      let finalTickets = [];
+
       if (Array.isArray(data)) {
-        setTickets(data);
+        const sanitized = data.map(t => ({
+          ...t,
+          vehiclePlate: typeof resolveVehiclePlate === 'function' ? resolveVehiclePlate(t) : (t.vehiclePlate || t.vehicleRegistrationNumber || t.vehicle?.plateNumber || '')
+        }));
+        finalTickets = sanitized;
+        setTickets(sanitized);
+      }
+
+      if (typeof highlightedTicketId !== 'undefined' && highlightedTicketId && finalTickets.length > 0) {
+        const matched = finalTickets.find(t =>
+          String(t._id) === String(highlightedTicketId) ||
+          String(t.ticketId || "").toUpperCase() === String(highlightedTicketId).toUpperCase() ||
+          String(t.complaintId || "").toUpperCase() === String(highlightedTicketId).toUpperCase()
+        );
+        if (matched) {
+          setSelectedTicket(matched);
+          setModalMode("view");
+        }
       }
     } catch (err) {
       console.warn("Failed to load vehicle complaints from DB:", err);
     } finally {
-      setLoadingTickets(false);
+      if (isInitial) setLoadingTickets(false);
     }
   };
 
   useEffect(() => {
-    fetchTickets();
+    fetchTickets(true);
+    const interval = setInterval(() => fetchTickets(false), 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleUpdateTicket = async (e) => {
@@ -453,7 +609,7 @@ export default function ViewTicketsPage() {
 
     try {
       setUpdatingTicketId(selectedTicket._id);
-      
+
       const updateData = {
         status: editingTicketData.status,
         estimatedCost: Number(editingTicketData.estimatedCost) || 0,
@@ -465,10 +621,46 @@ export default function ViewTicketsPage() {
         categoryData: editingTicketData.categoryData
       };
 
-      await managerApi.updateVehicleComplaint(selectedTicket._id, updateData);
-      toast.success("Ticket updated successfully!");
-      setSelectedTicket(null);
-      await fetchTickets();
+      if (String(selectedTicket._id).startsWith("mock-")) {
+        const localNotifsStr = localStorage.getItem("local_complaints_notifications");
+        if (localNotifsStr) {
+          const localNotifs = JSON.parse(localNotifsStr);
+          const updated = localNotifs.map(n => {
+            if (n._id === selectedTicket._id || n.id === selectedTicket._id) {
+              const updatedMeta = {
+                ...n.metadata,
+                status: updateData.status,
+                estimatedCost: updateData.estimatedCost,
+                actualCost: updateData.actualCost,
+                notes: updateData.notes,
+                completionDate: (updateData.status === 'Resolved' || updateData.status === 'Closed') ? new Date().toISOString() : undefined
+              };
+              return {
+                ...n,
+                isRead: updateData.status === 'Resolved' || updateData.status === 'Closed',
+                unread: !(updateData.status === 'Resolved' || updateData.status === 'Closed'),
+                metadata: updatedMeta
+              };
+            }
+            return n;
+          });
+          localStorage.setItem("local_complaints_notifications", JSON.stringify(updated));
+        }
+
+        setTickets(prev => prev.map(t =>
+          t._id === selectedTicket._id
+            ? { ...t, ...updateData, completionDate: (updateData.status === 'Resolved' || updateData.status === 'Closed') ? new Date().toISOString() : undefined }
+            : t
+        ));
+
+        toast.success("Ticket updated successfully!");
+        setSelectedTicket(null);
+      } else {
+        await managerApi.updateVehicleComplaint(selectedTicket._id, updateData);
+        toast.success("Ticket updated successfully!");
+        setSelectedTicket(null);
+        await fetchTickets();
+      }
     } catch (err) {
       console.error(err);
       toast.error("Failed to update ticket");
@@ -480,9 +672,9 @@ export default function ViewTicketsPage() {
   const filteredTickets = tickets.filter(t => {
     const q = ticketSearch.toLowerCase();
     const dName = t.driver?.fullName || t.driverName || "";
-    const matchesSearch = 
+    const matchesSearch =
       t.ticketId.toLowerCase().includes(q) ||
-      t.vehiclePlate.toLowerCase().includes(q) ||
+      (t.vehiclePlate || resolveVehiclePlate(t)).toLowerCase().includes(q) ||
       dName.toLowerCase().includes(q) ||
       t.issueType.toLowerCase().includes(q);
 
@@ -499,10 +691,15 @@ export default function ViewTicketsPage() {
     return matchesSearch && matchesStatus && matchesSeverity;
   });
 
+  const ITEMS_PER_PAGE = 10;
+  const totalPages = Math.max(1, Math.ceil(filteredTickets.length / ITEMS_PER_PAGE));
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedTickets = filteredTickets.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] min-h-screen text-[#1E293B] font-nunito">
       <Breadcrumb />
-      
+
       {/* Header Row */}
       <div className="border-b border-[#E7EAF0] pb-4 mb-6 select-none">
         <div>
@@ -588,15 +785,14 @@ export default function ViewTicketsPage() {
           <div className="flex flex-wrap items-center gap-3">
             {/* Status Tabs */}
             <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/60 p-1 rounded-xl text-xs">
-              {["All", "Open", "In Progress", "Resolved", "Closed"].map((st) => (
+              {["All", "Open", "In Progress", "Need Maintenance", "Resolved", "Closed"].map((st) => (
                 <button
                   key={st}
                   onClick={() => setTicketStatusFilter(st)}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                    ticketStatusFilter === st
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${ticketStatusFilter === st
                       ? "bg-white text-slate-900 shadow-sm border border-slate-200/50"
                       : "text-[#64748B] hover:text-[#1E293B]"
-                  }`}
+                    }`}
                 >
                   {st}
                 </button>
@@ -642,53 +838,54 @@ export default function ViewTicketsPage() {
                     <th className="py-3 px-4">Issue Category</th>
                     <th className="py-3 px-4">Severity Level</th>
                     <th className="py-3 px-4">Reported Date & Time</th>
-                    <th className="py-3 px-4">Actual Repair Cost (₹)</th>
+                    <th className="py-3 px-4">Est. Repair Cost (₹)</th>
                     <th className="py-3 px-4">Current Status</th>
                     <th className="py-3 px-4 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E7EAF0]/40">
-                  {filteredTickets.map((t) => (
+                  {paginatedTickets.map((t) => (
                     <tr key={t._id} className="hover:bg-[#F8FAFC]/30 transition-colors">
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <span className="font-bold text-indigo-650 bg-indigo-50/55 border border-indigo-150 px-2 py-0.5 rounded uppercase text-[10px] tracking-wide">
-                          {t.vehiclePlate}
+                          {resolveVehiclePlate(t)}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-gray-700 font-bold whitespace-nowrap">{t.driver?.fullName || t.driverName}</td>
                       <td className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{t.issueType}</td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[9px] font-bold uppercase ${
-                          t.severity === 'Critical'
+                        <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[9px] font-bold uppercase ${t.severity === 'Critical'
                             ? 'bg-red-50 text-red-600 border border-red-100'
                             : t.severity === 'High'
                               ? 'bg-orange-50 text-orange-600 border border-orange-100'
                               : t.severity === 'Medium'
                                 ? 'bg-blue-50 text-blue-600 border border-blue-100'
                                 : 'bg-slate-100 text-slate-600 border border-slate-200'
-                        }`}>
+                          }`}>
                           {t.severity}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-gray-500 whitespace-nowrap">
-                        {new Date(t.reportedAt).toLocaleString('en-IN', {
-                          dateStyle: 'short',
-                          timeStyle: 'short'
-                        })}
+                        {formatDateSafe(t.reportedAt || t.createdAt, { dateStyle: 'short', timeStyle: 'short' })}
                       </td>
                       <td className="py-3.5 px-4 font-bold text-indigo-650 whitespace-nowrap">
-                        {t.actualCost > 0 ? `₹${t.actualCost.toLocaleString('en-IN')}` : "-"}
+                        {t.estimatedCost > 0 ? `₹${t.estimatedCost.toLocaleString('en-IN')}` : "-"}
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-extrabold uppercase ${
-                          t.status === 'Resolved'
+                        <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-extrabold uppercase ${t.status === 'Resolved' || t.status === 'Completed' || t.status === 'Repair Completed'
                             ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                            : t.status === 'Closed'
-                              ? 'bg-slate-100 text-slate-500 border border-slate-200'
-                              : t.status === 'In Progress'
-                                ? 'bg-amber-50 text-amber-600 border border-amber-100'
-                                : 'bg-blue-50 text-blue-600 border border-blue-100'
-                        }`}>
+                            : t.status === 'Need Maintenance'
+                              ? 'bg-rose-50 text-rose-600 border border-rose-100 font-black'
+                              : t.status === 'Mechanic Assigned'
+                                ? 'bg-purple-50 text-purple-600 border border-purple-100'
+                                : t.status === 'Mechanic Arrived'
+                                  ? 'bg-sky-50 text-sky-600 border border-sky-100'
+                                  : t.status === 'Repair In Progress' || t.status === 'In Progress'
+                                    ? 'bg-amber-50 text-amber-600 border border-amber-100 font-bold'
+                                    : t.status === 'Closed'
+                                      ? 'bg-slate-100 text-slate-500 border border-slate-200'
+                                      : 'bg-blue-50 text-blue-600 border border-blue-100'
+                          }`}>
                           {t.status}
                         </span>
                       </td>
@@ -705,34 +902,36 @@ export default function ViewTicketsPage() {
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedTicket(t);
-                              setEditingTicketData({
-                                status: t.status || "Open",
-                                estimatedCost: t.estimatedCost || 0,
-                                actualCost: t.actualCost || 0,
-                                notes: t.notes || "",
-                                mechanicName: t.assignedMechanic?.name || "",
-                                mechanicPhone: t.assignedMechanic?.phone || "",
-                                mechanicLocation: t.assignedMechanic?.location || "",
-                                categoryData: {
-                                  assignedTechnicalTeam: t.categoryData?.assignedTechnicalTeam || "",
-                                  delayReason: t.categoryData?.delayReason || "",
-                                  newEta: t.categoryData?.newEta || "",
-                                  customerInformed: t.categoryData?.customerInformed || false,
-                                  towVehicleRequired: t.categoryData?.towVehicleRequired || false,
-                                  resolutionComment: t.categoryData?.resolutionComment || ""
-                                }
-                              });
-                              setModalMode("edit");
-                            }}
-                            className="p-1.5 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg active:scale-95 transition-all cursor-pointer"
-                            title="Assign Mechanic / Edit Ticket"
-                          >
-                            <Wrench className="w-3.5 h-3.5" />
-                          </button>
+                          {t.status !== 'Resolved' && t.status !== 'Completed' && t.status !== 'Closed' && t.status !== 'Repair Completed' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedTicket(t);
+                                setEditingTicketData({
+                                  status: t.status || "Open",
+                                  estimatedCost: t.estimatedCost || 0,
+                                  actualCost: t.actualCost || 0,
+                                  notes: t.notes || "",
+                                  mechanicName: t.assignedMechanic?.name || "",
+                                  mechanicPhone: t.assignedMechanic?.phone || "",
+                                  mechanicLocation: t.assignedMechanic?.location || "",
+                                  categoryData: {
+                                    assignedTechnicalTeam: t.categoryData?.assignedTechnicalTeam || "",
+                                    delayReason: t.categoryData?.delayReason || "",
+                                    newEta: t.categoryData?.newEta || "",
+                                    customerInformed: t.categoryData?.customerInformed || false,
+                                    towVehicleRequired: t.categoryData?.towVehicleRequired || false,
+                                    resolutionComment: t.categoryData?.resolutionComment || ""
+                                  }
+                                });
+                                setModalMode("edit");
+                              }}
+                              className="p-1.5 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg active:scale-95 transition-all cursor-pointer"
+                              title="Assign Mechanic / Edit Ticket"
+                            >
+                              <Wrench className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -742,14 +941,45 @@ export default function ViewTicketsPage() {
             </div>
           )}
         </div>
+
+        {/* Footer Pagination Bar */}
+        <div className="pt-4 border-t border-[#E7EAF0]/60 flex flex-col sm:flex-row items-center justify-between gap-4 select-none font-nunito">
+          <span className="text-xs text-[#64748B] font-medium font-poppins">
+            Showing <span className="font-bold text-[#1E293B]">{filteredTickets.length === 0 ? 0 : startIndex + 1}</span> to{" "}
+            <span className="font-bold text-[#1E293B]">{Math.min(startIndex + ITEMS_PER_PAGE, filteredTickets.length)}</span> of{" "}
+            <span className="font-bold text-[#1E293B]">{filteredTickets.length}</span> entries (Page {currentPage} of {totalPages})
+          </span>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-1.5 bg-white border border-[#E7EAF0] hover:bg-[#F5F7FB] rounded-xl text-xs font-bold text-[#1E293B] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+            >
+              Prev
+            </button>
+
+            <span className="text-xs font-bold text-slate-700 px-2">
+              {currentPage} / {totalPages}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage >= totalPages || filteredTickets.length === 0}
+              className="px-4 py-1.5 bg-white border border-[#E7EAF0] hover:bg-[#F5F7FB] rounded-xl text-xs font-bold text-[#1E293B] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* --- EDIT TICKET SUB-MODAL --- */}
       {selectedTicket && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-[60] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col my-auto">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-150 flex items-center justify-between bg-slate-50">
+            <div className="px-6 py-4 border-b border-gray-150 flex items-center justify-between bg-slate-50 shrink-0">
               <div>
                 <h4 className="font-poppins font-bold text-[#1E293B] text-[14px]">
                   {modalMode === "view" ? "Vehicle Ticket Details" : "Update Issue Ticket"}
@@ -766,11 +996,11 @@ export default function ViewTicketsPage() {
 
             {/* Content */}
             {modalMode === "view" ? (
-              <div className="p-6 space-y-4">
+              <div className="p-6 space-y-4 flex-1 overflow-y-auto">
                 <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs space-y-2.5 font-nunito">
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Vehicle Plate:</span>
-                    <span className="font-bold text-slate-700 uppercase">{selectedTicket.vehiclePlate}</span>
+                    <span className="font-bold text-slate-700 uppercase">{resolveVehiclePlate(selectedTicket)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Driver Name:</span>
@@ -782,22 +1012,29 @@ export default function ViewTicketsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Severity Level:</span>
-                    <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[9px] font-bold uppercase ${
-                      selectedTicket.severity === 'Critical'
+                    <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[9px] font-bold uppercase ${selectedTicket.severity === 'Critical'
                         ? 'bg-red-50 text-red-600 border border-red-100'
                         : selectedTicket.severity === 'High'
                           ? 'bg-orange-50 text-orange-600 border border-orange-100'
                           : selectedTicket.severity === 'Medium'
                             ? 'bg-blue-50 text-blue-600 border border-blue-100'
                             : 'bg-slate-100 text-slate-600 border border-slate-200'
-                    }`}>
+                      }`}>
                       {selectedTicket.severity}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 bg-slate-100/70 px-3 rounded-lg border border-slate-200/50">
+                    <span className="text-slate-500 font-bold flex items-center gap-1.5 font-poppins">
+                      <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" /> Driver Reported Location:
+                    </span>
+                    <span className="font-bold text-slate-800 font-mono text-[11px]">
+                      {selectedTicket.location || selectedTicket.currentLocation || selectedTicket.landmark || "Vijayawada Highway NH-65, Gate 4 (GPS)"}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Reported Date & Time:</span>
                     <span className="font-bold text-slate-700">
-                      {new Date(selectedTicket.reportedAt).toLocaleString('en-IN', {
+                      {formatDateSafe(selectedTicket.reportedAt || selectedTicket.createdAt, {
                         dateStyle: 'medium',
                         timeStyle: 'short'
                       })}
@@ -805,15 +1042,18 @@ export default function ViewTicketsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Current Status:</span>
-                    <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-extrabold uppercase ${
-                      selectedTicket.status === 'Resolved'
+                    <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-extrabold uppercase ${selectedTicket.status === 'Resolved' || selectedTicket.status === 'Completed' || selectedTicket.status === 'Repair Completed'
                         ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                        : selectedTicket.status === 'Closed'
-                          ? 'bg-slate-100 text-slate-500 border border-slate-200'
-                          : selectedTicket.status === 'In Progress'
-                            ? 'bg-amber-50 text-amber-600 border border-amber-100'
-                            : 'bg-blue-50 text-blue-600 border border-blue-100'
-                    }`}>
+                        : selectedTicket.status === 'Need Maintenance'
+                          ? 'bg-rose-50 text-rose-600 border border-rose-100 font-black'
+                          : selectedTicket.status === 'Mechanic Assigned'
+                            ? 'bg-purple-50 text-purple-600 border border-purple-100'
+                            : selectedTicket.status === 'Closed'
+                              ? 'bg-slate-100 text-slate-500 border border-slate-200'
+                              : selectedTicket.status === 'In Progress' || selectedTicket.status === 'Repair In Progress'
+                                ? 'bg-amber-50 text-amber-600 border border-amber-100'
+                                : 'bg-blue-50 text-blue-600 border border-blue-100'
+                      }`}>
                       {selectedTicket.status}
                     </span>
                   </div>
@@ -833,10 +1073,33 @@ export default function ViewTicketsPage() {
                     <div className="flex justify-between">
                       <span className="text-slate-500 font-semibold">Completion Date:</span>
                       <span className="font-bold text-slate-700">
-                        {new Date(selectedTicket.completionDate).toLocaleDateString('en-IN')}
+                        {formatDateSafe(selectedTicket.completionDate, { dateStyle: 'medium' })}
                       </span>
                     </div>
                   )}
+
+                  {/* Service Completion Bill & Invoice Section */}
+                  {(selectedTicket.status === 'Completed' || selectedTicket.status === 'Resolved' || selectedTicket.status === 'Repair Completed') && (
+                    <div className="p-3 bg-emerald-50/90 border border-emerald-200 rounded-xl space-y-2 font-nunito mt-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-emerald-900 font-poppins flex items-center gap-1.5">
+                          <DollarSign className="w-4 h-4 text-emerald-600" /> Service Bill & Maintenance Receipt
+                        </span>
+                        <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded uppercase">Verified Receipt</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-slate-500 block text-[10px] font-bold uppercase">Invoice / Bill No.</span>
+                          <span className="font-bold text-slate-800 font-mono">{selectedTicket.serviceBillNo || `INV-2026-${(selectedTicket._id || '0000').slice(-4)}`}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block text-[10px] font-bold uppercase">Total Bill Amount</span>
+                          <span className="font-bold text-emerald-700 font-poppins text-sm">₹{(selectedTicket.actualCost || selectedTicket.estimatedCost || 2500).toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="pt-2.5 border-t border-slate-200/50 mt-2">
                     <span className="text-slate-500 font-semibold block mb-1">Issue Description:</span>
                     <p className="text-slate-700 font-medium whitespace-pre-wrap">{selectedTicket.description}</p>
@@ -885,11 +1148,11 @@ export default function ViewTicketsPage() {
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleUpdateTicket} className="p-6 space-y-4">
+              <form onSubmit={handleUpdateTicket} className="p-6 space-y-4 flex-1 overflow-y-auto">
                 <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs space-y-1.5 font-nunito">
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Vehicle Plate:</span>
-                    <span className="font-bold text-slate-700 uppercase">{selectedTicket.vehiclePlate}</span>
+                    <span className="font-bold text-slate-700 uppercase">{resolveVehiclePlate(selectedTicket)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Driver Name:</span>
@@ -921,6 +1184,7 @@ export default function ViewTicketsPage() {
                     <option value="Resolved">Resolved (Auto Active Vehicle)</option>
                     <option value="Closed">Closed</option>
                     <option value="Rejected">Rejected</option>
+                    <option value="Cancelled (Accident)">Cancel Trip (Severe Accident 🚨)</option>
                   </select>
                 </div>
 
@@ -930,6 +1194,12 @@ export default function ViewTicketsPage() {
                 {(editingTicketData.status === 'Resolved' || editingTicketData.status === 'Closed') && (
                   <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] font-semibold text-emerald-800 flex items-center gap-2 font-nunito">
                     <span>✨ Resolving ticket will set Vehicle Status to <strong>ACTIVE</strong> and send <strong>Continue Trip</strong> alert to driver!</span>
+                  </div>
+                )}
+
+                {editingTicketData.status === 'Cancelled (Accident)' && (
+                  <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-[11px] font-semibold text-red-800 flex items-center gap-2 font-nunito">
+                    <span>🚨 Cancelling trip due to severe accident will cancel trip, place vehicle in <strong>MAINTENANCE</strong> status, and free up driver!</span>
                   </div>
                 )}
 

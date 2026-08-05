@@ -28,6 +28,15 @@ migrate_working_dir/
 /build/
 /coverage/
 
-# Documentation
-CHANGELOG.md
-changelog.md
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+/android/build/
+flutter_*.png

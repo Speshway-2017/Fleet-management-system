@@ -4,6 +4,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../services/api_service.dart';
 import '../../services/socket_service.dart';
+import '../../repositories/notification_repository.dart';
 import 'notification_details_screen.dart';
 import '../main_navigation_screen.dart';
 import '../trip_details_screen.dart';
@@ -127,28 +128,41 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  void _markAllAsRead() {
+  void _markAllAsRead() async {
     setState(() {
       for (var item in _notifications) {
         item.isRead = true;
       }
       NotificationsScreen.unreadCountNotifier.value = 0;
     });
-    ApiService.patch('/driver/notifications/read-all', {}).catchError((_) {});
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('All notifications marked as read.'),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    try {
+      await NotificationRepository().markAllAsRead();
+    } catch (_) {
+      ApiService.patch('/driver/notifications/read-all', {}).catchError((_) {});
+    }
+    if (mounted && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('All notifications marked as read.'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
-  void _toggleReadStatus(NotificationItem item) {
-    if (item.isRead) return;
-    setState(() {
-      NotificationsScreen.markAsReadStatic(item.id);
-    });
+  void _toggleReadStatus(NotificationItem item) async {
+    if (!item.isRead) {
+      setState(() {
+        item.isRead = true;
+        NotificationsScreen.markAsReadStatic(item.id);
+      });
+      try {
+        await NotificationRepository().markAsRead(item.id);
+      } catch (e) {
+        debugPrint('Failed to mark notification as read: $e');
+      }
+    }
   }
 
   Widget _buildFilterBar() {

@@ -557,18 +557,6 @@ export default function TripsListPage() {
                           <span className="font-bold text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg w-max font-poppins">
                             {t.tripNumber}
                           </span>
-                          {unreadCounts[t._id || t.id] > 0 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/manager/trip-details/${t._id || t.id}?tab=communication`);
-                              }}
-                              title="Unread chat messages - click to open conversation"
-                              className="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white font-black text-[10px] rounded-full shadow-sm flex items-center gap-1 animate-bounce cursor-pointer"
-                            >
-                              💬 {unreadCounts[t._id || t.id]}
-                            </button>
-                          )}
                         </div>
                         <span className="text-[10px] text-[#64748B] mt-1 block font-semibold max-w-[150px] truncate">
                           {t.description}

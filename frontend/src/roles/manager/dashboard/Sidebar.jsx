@@ -98,7 +98,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
   return (
     <>
       {/* --- Desktop Sidebar --- */}
-      <aside className="hidden lg:block w-64 shrink-0 h-screen sticky top-0">
+      <aside className="hidden lg:block w-64 shrink-0 h-screen sticky top-0 overflow-hidden">
         {navContent}
       </aside>
 

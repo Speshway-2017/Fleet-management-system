@@ -1,0 +1,10 @@
+# Workspace gitignore
+CHANGELOG.md
+**/CHANGELOG.md
+driver_mobile/CHANGELOG.md
+node_modules/
+dist/
+.env
+.env.local
+.env.*
+*.log

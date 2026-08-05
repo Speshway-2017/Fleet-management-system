@@ -33,7 +33,33 @@ const tripSchema = new mongoose.Schema(
     toAddress: { type: addressSchema, default: () => ({}) },
     departureTime: { type: String, required: true },
     eta: { type: String, required: true },
-    status: { type: String, enum: ['Pending Driver Acceptance', 'Scheduled', 'Assigned', 'Accepted', 'Rejected', 'In Progress', 'Waiting for Manager Approval', 'Completed', 'Cancelled'], default: 'Pending Driver Acceptance' },
+    status: {
+      type: String,
+      enum: [
+        'Pending Driver Acceptance',
+        'Scheduled',
+        'Assigned',
+        'Accepted',
+        'Rejected',
+        'In Progress',
+        'Start Trip',
+        'En Route',
+        'At Loading',
+        'Loading',
+        'In Transit',
+        'On Transit',
+        'Dispatched',
+        'Delivered',
+        'Waiting for Manager Approval',
+        'Completed',
+        'Complete Trip',
+        'Cancelled',
+        'Delayed',
+        'On Trip',
+        'Ready to Dispatch'
+      ],
+      default: 'Pending Driver Acceptance'
+    },
     completionRequestedAt: { type: Date },
     description: { type: String, default: '' },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -81,7 +107,12 @@ const tripSchema = new mongoose.Schema(
     },
     notified15MinBefore: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
-    completedAt: { type: Date }
+    completedAt: { type: Date },
+    currentLatitude: { type: Number, default: null },
+    currentLongitude: { type: Number, default: null },
+    speed: { type: Number, default: 0 },
+    heading: { type: Number, default: 0 },
+    lastLocationUpdate: { type: Date, default: Date.now }
   },
   { timestamps: true }
 );

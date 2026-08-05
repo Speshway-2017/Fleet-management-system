@@ -163,13 +163,7 @@ export default function NotificationsPage() {
     } else if (actType === "View Analytics") {
       navigate("/manager/analytics");
     } else if (actType === "Schedule Now") {
-      navigate("/manager/maintenance/schedule", {
-        state: {
-          vehicleNumber: notification.vehicle,
-          maintenanceType: "Brake Check",
-          dueMileage: "150 miles"
-        }
-      });
+      navigate("/manager/maintenance/tickets");
     } else if (actType === "Download PDF") {
       toast.success(`Downloading PDF for ${notification.title}...`);
     } else {
@@ -178,75 +172,101 @@ export default function NotificationsPage() {
   };
 
   const resolveTargetUrl = (notif) => {
+    if (!notif) return "/manager/dashboard";
     if (notif.actionUrl) return notif.actionUrl;
     if (notif.metadata?.actionUrl) return notif.metadata.actionUrl;
     if (notif.metadata?.targetUrl) return notif.metadata.targetUrl;
 
-    const tripId = notif.metadata?.tripId || (['trip', 'Trip'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
-    const driverId = notif.metadata?.driverId || (['driver', 'Driver'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
-    const vehicleId = notif.metadata?.vehicleId || (['vehicle', 'Vehicle'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
+    const title = (notif.title || "").toLowerCase();
+    const message = (notif.message || notif.description || "").toLowerCase();
+    const type = (notif.type || "").toUpperCase();
 
-    const type = (notif.type || '').toLowerCase();
-    const title = (notif.title || '').toLowerCase();
-    const message = (notif.message || notif.description || '').toLowerCase();
-    const refType = (notif.referenceType || notif.entityType || '').toLowerCase();
-
-    // 1. Trip Notifications
-    if (refType === 'trip' || type.includes('trip') || title.includes('trip') || message.includes('trip')) {
-      const targetId = tripId || notif.referenceId;
-      return targetId ? `/manager/trip-details/${targetId}` : `/manager/trips`;
+    const tripId = notif.metadata?.tripId || notif.referenceId || notif.relatedId;
+    const driverId = notif.metadata?.driverId;
+    const vehicleId = notif.metadata?.vehicleId;
+    let extractedTicketId = notif.metadata?.ticketId || notif.metadata?.complaintId;
+    if (!extractedTicketId) {
+      const fullText = (notif.title || "") + " " + (notif.message || notif.description || "");
+      const match = fullText.match(/TKT-VEH-[\w-]+/i);
+      if (match) extractedTicketId = match[0];
     }
 
-    // 2. Vehicle Issue & Maintenance
-    if (type.includes('vehicle_issue') || type.includes('ticket') || title.includes('vehicle issue') || title.includes('ticket')) {
-      return `/manager/view-tickets`;
-    }
-    if (type.includes('maintenance') || title.includes('maintenance')) {
-      return `/manager/maintenance`;
-    }
-
-    // 3. Driver Notifications
-    if (refType === 'driver' || type.includes('driver') || title.includes('driver')) {
-      return driverId ? `/manager/driver-profile/${driverId}` : `/manager/drivers`;
-    }
-
-    // 4. Vehicle Notifications
-    if (refType === 'vehicle' || type.includes('vehicle') || title.includes('vehicle')) {
-      return vehicleId ? `/manager/vehicle-details/${vehicleId}` : `/manager/vehicles`;
-    }
-
-    // 5. Fuel Notifications
-    if (type.includes('fuel') || title.includes('fuel')) {
-      return `/manager/fuel-management`;
-    }
-
-    // 6. Subscription
-    if (type.includes('subscription') || title.includes('subscription')) {
+    if (
+      type.includes("SUB") ||
+      title.includes("subscription") ||
+      title.includes("plan") ||
+      title.includes("billing") ||
+      title.includes("invoice") ||
+      message.includes("subscription")
+    ) {
       return `/manager/subscription`;
     }
 
-    // Fallbacks based on IDs
-    if (tripId) return `/manager/trip-details/${tripId}`;
-    if (driverId) return `/manager/driver-profile/${driverId}`;
-    if (vehicleId) return `/manager/vehicle-details/${vehicleId}`;
+    if (
+      extractedTicketId ||
+      title.includes("ticket") ||
+      title.includes("mechanic") ||
+      title.includes("maintenance") ||
+      title.includes("issue") ||
+      type.includes("MAINTENANCE") ||
+      type.includes("COMPLAINT")
+    ) {
+      return extractedTicketId
+        ? `/manager/maintenance?ticketId=${encodeURIComponent(extractedTicketId)}`
+        : `/manager/maintenance`;
+    }
 
-    return `/manager/trips`;
+    if (
+      type.includes("FUEL") ||
+      title.includes("fuel") ||
+      message.includes("fuel")
+    ) {
+      return `/manager/fuel-management`;
+    }
+
+    if (
+      tripId ||
+      type.includes("TRIP") ||
+      type.includes("POD") ||
+      type.includes("WEIGHBRIDGE") ||
+      title.includes("trip") ||
+      message.includes("trp-")
+    ) {
+      return tripId ? `/manager/trip-details/${tripId}` : `/manager/trips`;
+    }
+
+    if (
+      driverId ||
+      type.includes("DRIVER") ||
+      title.includes("driver")
+    ) {
+      return driverId ? `/manager/driver-profile/${driverId}` : `/manager/drivers`;
+    }
+
+    if (
+      vehicleId ||
+      type.includes("VEHICLE") ||
+      title.includes("vehicle")
+    ) {
+      return vehicleId ? `/manager/vehicle-details/${vehicleId}` : `/manager/vehicles`;
+    }
+
+    return `/manager/dashboard`;
   };
 
   const handleNotificationClick = async (notif) => {
+    const notifId = notif._id || notif.id;
     try {
-      if (!notif.isRead) {
-        await managerApi.markNotificationRead(notif._id || notif.id);
-        setNotifications(prev =>
-          prev.map(n => (n._id === notif._id || n.id === notif.id) ? { ...n, isRead: true } : n)
-        );
-      }
+      await managerApi.markNotificationRead(notifId);
+      setNotifications(prev =>
+        prev.map(n => (n._id === notifId || n.id === notifId) ? { ...n, isRead: true } : n)
+      );
     } catch (err) {
       console.error("Failed to mark read", err);
     }
 
-    const url = resolveTargetUrl(notif);
-    navigate(url);
+    const targetUrl = resolveTargetUrl(notif);
+    navigate(targetUrl);
   };
 
   const countByPriority = (priority) => {

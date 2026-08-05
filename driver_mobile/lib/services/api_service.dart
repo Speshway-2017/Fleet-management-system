@@ -16,6 +16,12 @@ class ApiService {
   static const String defaultLocalIp = '10.86.34.1';
   static String? _cachedBaseUrl;
 
+  static void Function()? onUnauthorized;
+
+  static Future<void> initialize() async {
+    await getBaseUrl();
+  }
+
   static Future<String> getBaseUrl() async {
     if (_cachedBaseUrl != null && _cachedBaseUrl!.isNotEmpty) {
       return _cachedBaseUrl!;
@@ -104,7 +110,6 @@ class ApiService {
           .timeout(const Duration(seconds: 10));
       return _processResponse(response);
     } catch (e) {
-      // If primary IP fails and we haven't set custom URL, try 127.0.0.1 / localhost as fallback
       if (_cachedBaseUrl == 'http://$defaultLocalIp:5000/api') {
         try {
           final fallbackUrl = 'http://127.0.0.1:5000/api';
@@ -138,7 +143,6 @@ class ApiService {
           .timeout(const Duration(seconds: 10));
       return _processResponse(response);
     } catch (e) {
-      // Fallback try for physical devices connected via ADB USB reverse
       if (_cachedBaseUrl == 'http://$defaultLocalIp:5000/api') {
         try {
           final fallbackUrl = 'http://127.0.0.1:5000/api';
@@ -636,6 +640,10 @@ class ApiService {
     return await get('/driver/tickets/$id');
   }
 
+  static Future<dynamic> getTripDetails(String tripId) async {
+    return await get('/driver/trips/$tripId');
+  }
+
   static Future<dynamic> updateDriverTicketStatus(
     String id,
     String status, {
@@ -654,9 +662,13 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
     } else {
+      if (response.statusCode == 401) {
+        onUnauthorized?.call();
+      }
       throw Exception(
         body['message'] ?? 'API Request Failed (${response.statusCode})',
       );
+    }
     }
   }
 }

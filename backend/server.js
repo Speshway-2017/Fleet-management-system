@@ -15,6 +15,7 @@ import { connectDB } from './config/db.config.js';
 import { seedPlans } from './utils/seedPlans.js';
 import { seedTolls } from './utils/seedTolls.js';
 import { syncAllVehicleStatuses } from './utils/syncVehicleStatus.js';
+import { syncDriverLocations } from './utils/syncDriverLocations.js';
 import cloudinary from './config/cloudinary.config.js';
 import http from 'http';
 import { Server } from 'socket.io';
@@ -30,6 +31,7 @@ const startServer = async () => {
   await seedPlans();
   await seedTolls();
   await syncAllVehicleStatuses();
+  await syncDriverLocations();
 
   // 3. Verify Cloudinary config loaded correctly
   const { cloud_name } = cloudinary.config();
@@ -314,6 +316,25 @@ const startServer = async () => {
               message: 'Your trip starts in 15 minutes! Start button is now enabled.'
             });
           }
+
+          if (trip.assignedManager) {
+            await createAndEmitNotification({
+              io,
+              recipient: trip.assignedManager,
+              recipientRole: 'FLEET_MANAGER',
+              type: 'trip_15min_reminder',
+              title: `Upcoming Trip Departure: #${trip.tripNumber}`,
+              message: `Trip #${trip.tripNumber} (${trip.startLocation} ➔ ${trip.endLocation}) is scheduled to start in 15 minutes.`,
+              priority: 'normal',
+              metadata: { tripId: trip._id, tripNumber: trip.tripNumber }
+            });
+
+            io.to(`manager:${trip.assignedManager}`).emit('trip:15min-reminder', {
+              tripId: trip._id,
+              tripNumber: trip.tripNumber,
+              message: `Trip #${trip.tripNumber} starts in 15 minutes.`
+            });
+          }
         }
       }
     } catch (cronErr) {
@@ -325,7 +346,7 @@ const startServer = async () => {
   app.locals.io = io;
 
   // 6. Start server
-  server.listen(PORT, () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀  Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
     console.log(`🌐  CORS allowed for: Frontend (localhost:5173), Flutter Web, and Mobile Clients`);
   });
