@@ -75,6 +75,7 @@ const tripSchema = new mongoose.Schema(
       rejectionReason: { type: String, default: '' }
     },
     tripInvoice: {
+      invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
       invoiceNumber: { type: String, default: '' },
       url: { type: String, default: '' },
       generatedAt: { type: Date }

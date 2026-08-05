@@ -19,6 +19,7 @@ const fuelSchema = new mongoose.Schema(
     rejectedAt: { type: Date },
     rejectionReason: { type: String, default: '' },
     fuelStation: { type: String, default: '' },
+    location: { type: String, default: '' },
     amount: { type: Number, required: true },
     liters: { type: Number, required: true },
     status: { type: String, enum: ['normal', 'anomaly', 'resolved'], default: 'normal' },

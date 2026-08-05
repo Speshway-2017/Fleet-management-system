@@ -43,6 +43,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
   final TextEditingController _costController = TextEditingController();
   final TextEditingController _dateTimeController = TextEditingController();
   final TextEditingController _odometerController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
 
   // Receipt Upload State
@@ -69,6 +70,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
     _costController.dispose();
     _dateTimeController.dispose();
     _odometerController.dispose();
+    _locationController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -409,6 +411,10 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
       _showWarning('Please select a Fuel Station.');
       return;
     }
+    if (_locationController.text.trim().isEmpty) {
+      _showWarning('Please enter Fuel Purchase Location (City).');
+      return;
+    }
     if (_selectedFuelType == null) {
       _showWarning('Please select a Fuel Type.');
       return;
@@ -434,6 +440,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
 
       final response = await ApiService.createFuelEntry(
         fuelStation: _selectedStation!,
+        location: _locationController.text.trim(),
         amount: amt,
         liters: ltr,
         tripId: _currentTripId,
@@ -517,6 +524,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                 children: [
                   _buildSummaryRow('Vehicle ID', _assignedVehicle),
                   _buildSummaryRow('Station', _selectedStation ?? ''),
+                  _buildSummaryRow('Purchase Location', _locationController.text.trim()),
                   _buildSummaryRow('Fuel Type', _selectedFuelType ?? ''),
                   _buildSummaryRow('Quantity', '${_quantityController.text} L'),
                   _buildSummaryRow('Cost', '₹ ${_costController.text}'),
@@ -580,6 +588,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
       _costController.clear();
       _dateTimeController.clear();
       _odometerController.clear();
+      _locationController.clear();
       _receiptUploaded = false;
     });
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -698,6 +707,17 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                 onChanged: (val) {
                   if (val != null) setState(() => _selectedStation = val);
                 },
+              ),
+
+              const SizedBox(height: 16.0),
+
+              // Field: Fuel Purchase Location (City) *
+              _buildRequiredLabel('Fuel Purchase Location (City)'),
+              const SizedBox(height: 6.0),
+              _buildStyledTextField(
+                controller: _locationController,
+                hintText: 'e.g. Vijayawada',
+                prefixIcon: Icons.location_on_rounded,
               ),
 
               const SizedBox(height: 16.0),

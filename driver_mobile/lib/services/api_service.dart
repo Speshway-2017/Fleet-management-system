@@ -13,28 +13,45 @@ class ApiService {
   }
 
   // Default fallback host: 10.86.34.1 (PC Wi-Fi IP) or 127.0.0.1 (via adb reverse) or 10.0.2.2 (Emulator)
-  static const String defaultLocalIp = '10.86.34.1';
+  static const String defaultLocalIp = '192.168.1.17';
   static String? _cachedBaseUrl;
 
   static Future<String> getBaseUrl() async {
-    if (_cachedBaseUrl != null && _cachedBaseUrl!.isNotEmpty) {
-      return _cachedBaseUrl!;
-    }
-
     final prefs = await SharedPreferences.getInstance();
-    final savedUrl = prefs.getString('server_url');
+    final savedUrl = prefs.getString('server_url')?.trim();
+
+    final cleanIp = defaultLocalIp.trim();
+    final defaultUrl =
+        kIsWeb ? 'http://localhost:5000/api' : 'http://$cleanIp:5000/api';
+
+    String selectedUrl;
 
     if (savedUrl != null && savedUrl.isNotEmpty) {
-      _cachedBaseUrl = savedUrl;
-      return savedUrl;
+      if (!kIsWeb &&
+          (savedUrl.contains('localhost') || savedUrl.contains('127.0.0.1'))) {
+        selectedUrl = defaultUrl;
+        await prefs.setString('server_url', selectedUrl);
+      } else {
+        selectedUrl = savedUrl;
+      }
+    } else {
+      selectedUrl = defaultUrl;
     }
 
-    // Default auto fallback
-    if (kIsWeb) {
-      _cachedBaseUrl = 'http://localhost:5000/api';
-    } else {
-      _cachedBaseUrl = 'http://$defaultLocalIp:5000/api';
+    if (!kIsWeb &&
+        (selectedUrl.contains('localhost') || selectedUrl.contains('127.0.0.1'))) {
+      selectedUrl = defaultUrl;
+      await prefs.setString('server_url', selectedUrl);
     }
+
+    _cachedBaseUrl = selectedUrl;
+
+    debugPrint('==================================================');
+    debugPrint('[ApiService Base URL Debug]');
+    debugPrint('  • Saved URL: ${savedUrl ?? "None"}');
+    debugPrint('  • Selected Base URL: $selectedUrl');
+    debugPrint('  • Platform: ${kIsWeb ? "Web" : "Mobile (Android/iOS)"}');
+    debugPrint('==================================================');
 
     return _cachedBaseUrl!;
   }
@@ -51,6 +68,13 @@ class ApiService {
       } else {
         formattedUrl = '$formattedUrl/api';
       }
+    }
+
+    if (!kIsWeb &&
+        (formattedUrl.contains('localhost') ||
+            formattedUrl.contains('127.0.0.1'))) {
+      final cleanIp = defaultLocalIp.trim();
+      formattedUrl = 'http://$cleanIp:5000/api';
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -98,25 +122,12 @@ class ApiService {
     }
     final baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
-    try {
-      final response = await http
-          .get(Uri.parse('$baseUrl$endpoint'), headers: headers)
-          .timeout(const Duration(seconds: 10));
-      return _processResponse(response);
-    } catch (e) {
-      // If primary IP fails and we haven't set custom URL, try 127.0.0.1 / localhost as fallback
-      if (_cachedBaseUrl == 'http://$defaultLocalIp:5000/api') {
-        try {
-          final fallbackUrl = 'http://127.0.0.1:5000/api';
-          final response = await http
-              .get(Uri.parse('$fallbackUrl$endpoint'), headers: headers)
-              .timeout(const Duration(seconds: 5));
-          _cachedBaseUrl = fallbackUrl;
-          return _processResponse(response);
-        } catch (_) {}
-      }
-      rethrow;
-    }
+    final finalApiUrl = '$baseUrl$endpoint';
+    debugPrint('[ApiService GET] Final API URL: $finalApiUrl');
+    final response = await http
+        .get(Uri.parse(finalApiUrl), headers: headers)
+        .timeout(const Duration(seconds: 10));
+    return _processResponse(response);
   }
 
   static Future<dynamic> post(
@@ -128,33 +139,16 @@ class ApiService {
     }
     final baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
-    try {
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl$endpoint'),
-            headers: headers,
-            body: jsonEncode(body),
-          )
-          .timeout(const Duration(seconds: 10));
-      return _processResponse(response);
-    } catch (e) {
-      // Fallback try for physical devices connected via ADB USB reverse
-      if (_cachedBaseUrl == 'http://$defaultLocalIp:5000/api') {
-        try {
-          final fallbackUrl = 'http://127.0.0.1:5000/api';
-          final response = await http
-              .post(
-                Uri.parse('$fallbackUrl$endpoint'),
-                headers: headers,
-                body: jsonEncode(body),
-              )
-              .timeout(const Duration(seconds: 5));
-          _cachedBaseUrl = fallbackUrl;
-          return _processResponse(response);
-        } catch (_) {}
-      }
-      rethrow;
-    }
+    final finalApiUrl = '$baseUrl$endpoint';
+    debugPrint('[ApiService POST] Final API URL: $finalApiUrl');
+    final response = await http
+        .post(
+          Uri.parse(finalApiUrl),
+          headers: headers,
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 10));
+    return _processResponse(response);
   }
 
   static Future<dynamic> patch(
@@ -253,6 +247,7 @@ class ApiService {
     required String fuelStation,
     required double amount,
     required double liters,
+    String? location,
     String? tripId,
     double? odometer,
     String? fuelType,
@@ -272,6 +267,9 @@ class ApiService {
         request.headers['Authorization'] = 'Bearer $token';
       }
       request.fields['fuelStation'] = fuelStation;
+      if (location != null && location.isNotEmpty) {
+        request.fields['location'] = location;
+      }
       request.fields['amount'] = amount.toString();
       request.fields['liters'] = liters.toString();
       if (tripId != null) request.fields['tripId'] = tripId;
@@ -306,6 +304,7 @@ class ApiService {
         'amount': amount,
         'liters': liters,
       };
+      if (location != null && location.isNotEmpty) body['location'] = location;
       if (tripId != null) body['tripId'] = tripId;
       if (odometer != null) body['odometer'] = odometer;
       if (fuelType != null) body['fuelType'] = fuelType;
@@ -347,20 +346,24 @@ class ApiService {
       request.fields['documentType'] = 'proofOfDelivery';
       if (customerName != null) request.fields['customerName'] = customerName;
       if (receiverName != null) request.fields['receiverName'] = receiverName;
-      if (customerSignatureUrl != null) request.fields['customerSignatureUrl'] = customerSignatureUrl;
+      if (customerSignatureUrl != null) {
+        request.fields['customerSignatureUrl'] = customerSignatureUrl;
+      }
 
       if (fileBytes is List<int>) {
         request.files.add(
           http.MultipartFile.fromBytes(
             'file',
             fileBytes,
-            filename: fileName ?? 'pod_document.pdf',
+            filename: fileName ?? 'pod_document.jpg',
           ),
         );
-      } else {
+      } else if (!kIsWeb) {
         request.files.add(
           await http.MultipartFile.fromPath('file', fileBytes.toString()),
         );
+      } else {
+        throw Exception('File bytes must be provided for Web uploads.');
       }
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
@@ -373,7 +376,9 @@ class ApiService {
     };
     if (customerName != null) body['customerName'] = customerName;
     if (receiverName != null) body['receiverName'] = receiverName;
-    if (customerSignatureUrl != null) body['customerSignatureUrl'] = customerSignatureUrl;
+    if (customerSignatureUrl != null) {
+      body['customerSignatureUrl'] = customerSignatureUrl;
+    }
     if (deliveryPhotoUrl != null) body['deliveryPhotoUrl'] = deliveryPhotoUrl;
     if (podDocumentUrl != null) body['podDocumentUrl'] = podDocumentUrl;
     return await post('/driver/pod', body);
@@ -422,8 +427,12 @@ class ApiService {
       }
       request.fields['tripId'] = tripId;
       request.fields['documentType'] = 'weighbridgeSlip';
-      if (grossWeight != null) request.fields['grossWeight'] = grossWeight.toString();
-      if (tareWeight != null) request.fields['tareWeight'] = tareWeight.toString();
+      if (grossWeight != null) {
+        request.fields['grossWeight'] = grossWeight.toString();
+      }
+      if (tareWeight != null) {
+        request.fields['tareWeight'] = tareWeight.toString();
+      }
       if (netWeight != null) request.fields['netWeight'] = netWeight.toString();
       if (location != null) request.fields['location'] = location;
 
@@ -432,13 +441,15 @@ class ApiService {
           http.MultipartFile.fromBytes(
             'file',
             uploadFile,
-            filename: uploadFileName ?? 'weighbridge_slip.pdf',
+            filename: uploadFileName ?? 'weighbridge_slip.jpg',
           ),
         );
-      } else {
+      } else if (!kIsWeb) {
         request.files.add(
           await http.MultipartFile.fromPath('file', uploadFile.toString()),
         );
+      } else {
+        throw Exception('File bytes must be provided for Web uploads.');
       }
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
@@ -490,11 +501,7 @@ class ApiService {
         final fileName = imageNames[i];
         if (fileData is List<int>) {
           request.files.add(
-            http.MultipartFile.fromBytes(
-              'files',
-              fileData,
-              filename: fileName,
-            ),
+            http.MultipartFile.fromBytes('files', fileData, filename: fileName),
           );
         } else {
           request.files.add(

@@ -823,13 +823,16 @@ export const updateTripStatus = async (req, res, next) => {
     const { id } = req.params;
     const { status } = req.body;
 
+    console.log(`[updateTripStatus] Request Params ID: ${id}, Body:`, req.body);
+
     if (!status) {
       return sendError(res, 400, 'Status is required');
     }
 
-    const trip = await Trip.findById(id);
+    const trip = await resolveTripHelper(id);
     if (!trip) {
-      return sendError(res, 404, 'Trip not found');
+      console.warn(`[updateTripStatus] Trip not found for ID: ${id}`);
+      return sendError(res, 404, `Trip not found for ID '${id}'`);
     }
 
     const targetStatus = status === 'Start Trip' ? 'In Progress' : (status === 'Complete Trip' ? 'Completed' : status);
@@ -855,11 +858,40 @@ export const updateTripStatus = async (req, res, next) => {
       const podDoc = await ProofOfDelivery.findOne({ trip: trip._id });
       const weighbridgeDoc = await WeighbridgeSlip.findOne({ trip: trip._id });
 
-      const hasPod = (podDoc && (podDoc.podDocumentUrl || podDoc.deliveryPhotoUrl)) || ['Uploaded', 'Approved'].includes(trip.podStatus);
-      const hasWeighbridge = (weighbridgeDoc && weighbridgeDoc.documentUrl) || ['Uploaded', 'Approved'].includes(trip.weighbridgeStatus);
+      const hasPod = Boolean(
+        (podDoc && (podDoc.podDocumentUrl || podDoc.deliveryPhotoUrl || podDoc.customerSignatureUrl)) ||
+        (trip.proofOfDelivery && (trip.proofOfDelivery.url || trip.proofOfDelivery.deliveryPhotoUrl || trip.proofOfDelivery.podDocumentUrl)) ||
+        ['uploaded', 'pending', 'approved'].includes(String(trip.podStatus || '').toLowerCase()) ||
+        ['uploaded', 'pending', 'approved'].includes(String(trip.proofOfDelivery?.status || '').toLowerCase())
+      );
+
+      const hasWeighbridge = Boolean(
+        (weighbridgeDoc && (weighbridgeDoc.documentUrl || weighbridgeDoc.url)) ||
+        (trip.weighbridgeSlip && (trip.weighbridgeSlip.url || trip.weighbridgeSlip.documentUrl)) ||
+        ['uploaded', 'pending', 'approved'].includes(String(trip.weighbridgeStatus || '').toLowerCase()) ||
+        ['uploaded', 'pending', 'approved'].includes(String(trip.weighbridgeSlip?.status || '').toLowerCase())
+      );
+
+      console.log(`[updateTripStatus] Validating docs for Trip ${trip._id} (${trip.tripNumber}):`, {
+        podDocFound: !!podDoc,
+        weighbridgeDocFound: !!weighbridgeDoc,
+        tripPodStatus: trip.podStatus,
+        tripWbStatus: trip.weighbridgeStatus,
+        hasPod,
+        hasWeighbridge
+      });
 
       if (!hasPod || !hasWeighbridge) {
-        return sendError(res, 400, 'Please upload both Proof of Delivery and Weighbridge Slip before requesting trip completion.');
+        let missingReason = '';
+        if (!hasPod && !hasWeighbridge) {
+          missingReason = 'Submission failed! Please upload both Proof of Delivery and Weighbridge Slip before requesting trip completion.';
+        } else if (!hasPod) {
+          missingReason = 'Submission failed! Please upload Proof of Delivery before requesting trip completion.';
+        } else {
+          missingReason = 'Submission failed! Please upload Weighbridge Slip before requesting trip completion.';
+        }
+        console.warn(`[updateTripStatus] Validation failed for Trip ${trip._id}: ${missingReason}`);
+        return sendError(res, 400, missingReason);
       }
 
       // Transition to Waiting for Manager Approval
@@ -1498,7 +1530,16 @@ export const getAssignedVehicle = async (req, res, next) => {
       return sendError(res, 404, 'Driver profile not found');
     }
 
-    const vehicle = await Vehicle.findOne({ assignedDriver: driverId }).populate('assignedManager', 'name email phone');
+    let vehicle = await Vehicle.findOne({ assignedDriver: driverId }).populate('assignedManager', 'name email phone');
+    if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '') {
+      vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle }).populate('assignedManager', 'name email phone');
+    }
+    if (!vehicle) {
+      const activeTrip = await Trip.findOne({ driver: driverId, status: { $nin: ['Completed', 'Cancelled'] } }).populate('vehicle');
+      if (activeTrip && activeTrip.vehicle && typeof activeTrip.vehicle === 'object') {
+        vehicle = activeTrip.vehicle;
+      }
+    }
 
     if (!vehicle) {
       return sendSuccess(res, 200, { assigned: false, vehicle: null }, 'No vehicle assigned');
@@ -1628,7 +1669,12 @@ export const getDriverMaintenance = async (req, res, next) => {
 export const createDriverFuelEntry = async (req, res, next) => {
   try {
     const driverId = req.user._id;
-    const { fuelStation, station, amount, liters, quantity, odometer, tripId, fuelType, dateTime, notes } = req.body;
+    const { fuelStation, station, location, city, fuelLocation, purchaseLocation, amount, liters, quantity, odometer, tripId, fuelType, dateTime, notes } = req.body;
+
+    const purchaseCity = (location || city || fuelLocation || purchaseLocation || '').trim();
+    if (!purchaseCity) {
+      return sendError(res, 400, 'Fuel Purchase Location (City) is required before submitting the fuel entry.');
+    }
 
     const driver = await Driver.findById(driverId);
     if (!driver) {
@@ -1681,6 +1727,7 @@ export const createDriverFuelEntry = async (req, res, next) => {
       tripId: tripId || '',
       odometer: Number(odometer) || (vehicle ? vehicle.odometer : 0) || 0,
       fuelStation: stationName,
+      location: purchaseCity,
       amount: totalAmount,
       liters: totalLiters,
       receiptImage: receiptImageUrl,
@@ -2095,32 +2142,33 @@ export const getDriverTripById = async (req, res, next) => {
       }
     }
 
-    // Distance calculation fallback matching Manager controller
-    const calculatedDist = calculateDistance(trip.startLocation, trip.endLocation);
-    const estimatedDistance = (trip.estimatedDistance && trip.estimatedDistance > 0 && trip.estimatedDistance !== 120 && trip.estimatedDistance !== 584)
-      ? trip.estimatedDistance
-      : calculatedDist;
-    const actualDistance = (trip.actualDistance && trip.actualDistance > 0 && trip.actualDistance !== 120 && trip.actualDistance !== 584)
-      ? trip.actualDistance
-      : estimatedDistance;
+    // Single source of truth for trip distance stored in MongoDB
+    const storedDistance = (trip.actualDistance && Number(trip.actualDistance) > 0)
+      ? Number(trip.actualDistance)
+      : ((trip.estimatedDistance && Number(trip.estimatedDistance) > 0)
+          ? Number(trip.estimatedDistance)
+          : calculateDistance(trip.startLocation, trip.endLocation));
 
-    let invoice = await Invoice.findOne({ trip: trip._id });
-    if (!invoice) {
-      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
-      const seq = String(count + 1).padStart(4, '0');
-      const invoiceNumber = `INV-${datePart}-${seq}`;
+    const estimatedDistance = storedDistance;
+    const actualDistance = (trip.actualDistance && Number(trip.actualDistance) > 0) ? Number(trip.actualDistance) : storedDistance;
 
-      invoice = new Invoice({
-        invoiceNumber,
-        invoiceDate: new Date(),
-        trip: trip._id,
-        driver: trip.driver ? trip.driver._id || trip.driver : null,
-        vehicle: trip.vehicle ? trip.vehicle._id || trip.vehicle : null,
-        createdBy: trip.assignedManager
-      });
-      await invoice.save();
-    }
+    console.log(`==================================================`);
+    console.log(`[Backend Distance Log - Driver getTripDetails]`);
+    console.log(`  • Trip ID: ${trip._id} (${trip.tripNumber})`);
+    console.log(`  • Origin: ${trip.startLocation}`);
+    console.log(`  • Destination: ${trip.endLocation}`);
+    console.log(`  • Stored estimatedDistance in MongoDB: ${trip.estimatedDistance}`);
+    console.log(`  • Stored actualDistance in MongoDB: ${trip.actualDistance}`);
+    console.log(`  • Distance returned to Driver API: ${storedDistance} KM`);
+    console.log(`==================================================`);
+
+    let invoice = await Invoice.findOne({
+      $or: [
+        { trip: trip._id },
+        ...(trip.tripInvoice?.invoiceId ? [{ _id: trip.tripInvoice.invoiceId }] : []),
+        ...(trip.tripInvoice?.invoiceNumber ? [{ invoiceNumber: trip.tripInvoice.invoiceNumber }] : [])
+      ]
+    });
 
     // Dynamic document resolution and status determination
     const podDoc = (trip.proofOfDelivery && trip.proofOfDelivery.url)
@@ -2161,9 +2209,10 @@ export const getDriverTripById = async (req, res, next) => {
     };
 
     const tripInvoiceObj = {
-      invoiceNumber: invoice?.invoiceNumber || `INV-${trip.tripNumber}`,
-      url: invoice?.invoiceUrl || '',
-      generatedAt: invoice?.createdAt || new Date()
+      invoiceId: invoice?._id || trip.tripInvoice?.invoiceId || null,
+      invoiceNumber: invoice?.invoiceNumber || trip.tripInvoice?.invoiceNumber || '',
+      url: invoice?.pdfUrl || invoice?.invoiceUrl || trip.tripInvoice?.url || '',
+      generatedAt: invoice?.createdAt || invoice?.invoiceDate || trip.tripInvoice?.generatedAt || null
     };
 
     // Calculate total fuel liters across all fuel entries for this trip
@@ -2217,6 +2266,7 @@ export const getDriverTripById = async (req, res, next) => {
 
     const fuelDetailsObj = fuel ? {
       fuelStation: fuel.fuelStation,
+      location: fuel.location || fuel.city || '',
       amount: fuel.amount,
       liters: fuel.liters,
       odometer: fuel.odometer,
@@ -2224,6 +2274,17 @@ export const getDriverTripById = async (req, res, next) => {
       rejectionReason: fuel.rejectionReason,
       billUrl: fuel.billUrl || fuel.receiptImage,
     } : null;
+
+    const formattedFuelEntries = fuelEntries.map(f => ({
+      _id: f._id,
+      fuelStation: f.fuelStation,
+      location: f.location || f.city || '',
+      amount: f.amount,
+      liters: f.liters,
+      odometer: f.odometer,
+      dateTime: f.dateTime || f.createdAt,
+      approvalStatus: f.approvalStatus || f.billStatus || 'Pending',
+    }));
 
     const tollDetailsObj = toll ? {
       tollPlazaName: toll.tollPlazaName,
@@ -2270,6 +2331,8 @@ export const getDriverTripById = async (req, res, next) => {
       driver: driverObj,
       tripNotes: trip.tripNotes || trip.description || '',
       description: trip.description || '',
+      distance: storedDistance,
+      totalDistance: storedDistance,
       estimatedDistance: estimatedDistance,
       actualDistance: actualDistance,
       totalFuelLiters: totalFuelLiters,
@@ -2296,6 +2359,8 @@ export const getDriverTripById = async (req, res, next) => {
       fuelStatus: fuel ? (fuel.approvalStatus || fuel.billStatus) : 'Not Uploaded',
       fuelUrl: fuel ? (fuel.billUrl || fuel.receiptImage) : '',
       fuelDetails: fuelDetailsObj,
+      fuelEntries: formattedFuelEntries,
+      fuelStops: formattedFuelEntries.map(f => f.location).filter(Boolean),
       tollStatus: toll ? 'Uploaded' : 'Not Uploaded',
       tollUrl: toll ? toll.receiptUrl : '',
       tollDetails: tollDetailsObj,
@@ -2437,53 +2502,128 @@ export const getDriverTripTolls = async (req, res, next) => {
 export const getDriverInvoiceByTripId = async (req, res, next) => {
   try {
     const { tripId } = req.params;
-    let trip;
     const mongoose = (await import('mongoose')).default;
-    if (mongoose.Types.ObjectId.isValid(tripId)) {
-      trip = await Trip.findById(tripId).populate('vehicle').populate('driver');
-    }
-    if (!trip) {
-      trip = await Trip.findOne({ tripNumber: tripId }).populate('vehicle').populate('driver');
-    }
-    if (!trip && !tripId.startsWith('#')) {
-      trip = await Trip.findOne({ tripNumber: `#${tripId}` }).populate('vehicle').populate('driver');
-    }
-    if (!trip) {
-      return sendError(res, 404, 'Trip not found');
-    }
+    const cleanId = String(tripId).replaceAll('#', '').trim();
+    const isObjectId = mongoose.Types.ObjectId.isValid(cleanId);
 
-    let invoice = await Invoice.findOne({ trip: trip._id })
+    console.log(`[Driver Invoice API] Invoice API request URL: ${req.originalUrl}`);
+    console.log(`[Driver Invoice API] Incoming tripId param: "${tripId}", cleanId: "${cleanId}"`);
+
+    let trip = await Trip.findOne({
+      $or: [
+        ...(isObjectId ? [{ _id: cleanId }] : []),
+        { tripNumber: cleanId },
+        { tripNumber: `#${cleanId}` },
+        { tripNumber: cleanId.startsWith('TRP-') ? cleanId : `TRP-${cleanId}` },
+        { tripNumber: `#${cleanId.startsWith('TRP-') ? cleanId : `TRP-${cleanId}`}` },
+        { 'tripInvoice.invoiceNumber': cleanId },
+        { 'tripInvoice.invoiceNumber': `INV-${cleanId}` }
+      ]
+    }).populate('vehicle').populate('driver');
+
+    console.log(`[Driver Invoice API] Current Trip ID: ${tripId} -> MongoDB Trip _id: ${trip?._id || 'NOT FOUND'}`);
+    console.log(`[Driver Invoice API] Invoice ID stored in Trip: ${trip?.tripInvoice?.invoiceId || 'None'}`);
+
+    let invoice = null;
+    let invoiceCount = 0;
+
+    if (trip) {
+      const invoicesFound = await Invoice.find({
+        $or: [
+          { trip: trip._id },
+          ...(trip.tripInvoice?.invoiceId ? [{ _id: trip.tripInvoice.invoiceId }] : []),
+          ...(trip.tripInvoice?.invoiceNumber ? [{ invoiceNumber: trip.tripInvoice.invoiceNumber }] : [])
+        ]
+      })
       .populate('driver')
       .populate('vehicle')
       .populate('createdBy', 'name fullName email phone');
 
-    if (!invoice) {
-      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
-      const seq = String(count + 1).padStart(4, '0');
-      const invoiceNumber = `INV-${datePart}-${seq}`;
+      invoiceCount = invoicesFound.length;
+      if (invoiceCount > 0) {
+        invoice = invoicesFound[0];
+      }
+    } else {
+      const invoicesFound = await Invoice.find({
+        $or: [
+          ...(isObjectId ? [{ _id: cleanId }, { trip: cleanId }] : []),
+          { invoiceNumber: cleanId },
+          { invoiceNumber: `INV-${cleanId}` }
+        ]
+      })
+      .populate('driver')
+      .populate('vehicle')
+      .populate('createdBy', 'name fullName email phone');
 
-      invoice = new Invoice({
-        invoiceNumber,
-        invoiceDate: new Date(),
-        trip: trip._id,
-        driver: trip.driver ? (trip.driver._id || trip.driver) : null,
-        vehicle: trip.vehicle ? (trip.vehicle._id || trip.vehicle) : null,
-        createdBy: trip.assignedManager
-      });
-      await invoice.save();
-
-      invoice = await Invoice.findById(invoice._id)
-        .populate('driver')
-        .populate('vehicle')
-        .populate('createdBy', 'name fullName email phone');
+      invoiceCount = invoicesFound.length;
+      if (invoiceCount > 0) {
+        invoice = invoicesFound[0];
+        trip = await Trip.findById(invoice.trip).populate('vehicle').populate('driver');
+      }
     }
 
-    // Distance calculation fallback matching Manager controller
-    const calculatedDist = calculateDistance(trip.startLocation, trip.endLocation);
-    const actualDistance = (trip.actualDistance && trip.actualDistance > 0 && trip.actualDistance !== 120 && trip.actualDistance !== 584)
-      ? trip.actualDistance
-      : ((trip.estimatedDistance && trip.estimatedDistance > 0 && trip.estimatedDistance !== 120 && trip.estimatedDistance !== 584) ? trip.estimatedDistance : calculatedDist);
+    console.log(`[Driver Invoice API] Number of invoices found: ${invoiceCount}`);
+
+    if (!invoice) {
+      if (trip) {
+        console.log(`[Driver Invoice API] Auto-creating missing Invoice record in DB for trip ${trip._id}`);
+        const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
+        const seq = String(count + 1).padStart(4, '0');
+        const invoiceNumber = trip.tripInvoice?.invoiceNumber || `INV-${datePart}-${seq}`;
+
+        const newInvoice = new Invoice({
+          invoiceNumber,
+          invoiceDate: new Date(),
+          trip: trip._id,
+          driver: trip.driver?._id || trip.driver,
+          vehicle: trip.vehicle?._id || trip.vehicle,
+          createdBy: trip.assignedManager || req.user?._id
+        });
+        await newInvoice.save();
+
+        trip.tripInvoice = {
+          invoiceId: newInvoice._id,
+          invoiceNumber: newInvoice.invoiceNumber,
+          url: newInvoice.pdfUrl || '',
+          generatedAt: newInvoice.createdAt || newInvoice.invoiceDate
+        };
+        await trip.save();
+
+        invoice = await Invoice.findById(newInvoice._id)
+          .populate('driver')
+          .populate('vehicle')
+          .populate('createdBy', 'name fullName email phone');
+      } else {
+        console.log(`[Driver Invoice API] No trip or manager-generated invoice exists in DB for cleanId ${cleanId}`);
+        return sendSuccess(res, 200, null, 'Invoice not generated yet.');
+      }
+    }
+
+    console.log(`==================================================`);
+    console.log(`[Backend Invoice API Log]`);
+    console.log(`  • Trip ID received: ${tripId} (cleanId: "${cleanId}")`);
+    console.log(`  • Invoice document found: ${invoice ? `YES (ID: ${invoice._id})` : 'NO'}`);
+    console.log(`  • Invoice Number: ${invoice ? invoice.invoiceNumber : 'None'}`);
+    console.log(`==================================================`);
+
+    // Single source of truth for trip distance stored in MongoDB
+    const storedDistance = (trip.actualDistance && Number(trip.actualDistance) > 0)
+      ? Number(trip.actualDistance)
+      : ((trip.estimatedDistance && Number(trip.estimatedDistance) > 0)
+          ? Number(trip.estimatedDistance)
+          : calculateDistance(trip.startLocation, trip.endLocation));
+
+    const actualDistance = storedDistance;
+
+    console.log(`==================================================`);
+    console.log(`[Backend Distance Log - Driver Invoice API]`);
+    console.log(`  • Trip ID: ${trip._id} (${trip.tripNumber})`);
+    console.log(`  • Origin: ${trip.startLocation}`);
+    console.log(`  • Destination: ${trip.endLocation}`);
+    console.log(`  • Stored distance in MongoDB: ${trip.estimatedDistance} (actual: ${trip.actualDistance})`);
+    console.log(`  • Distance used for Invoice: ${storedDistance} KM`);
+    console.log(`==================================================`);
 
     // Fuel and Toll calculation
     const fuelEntries = await Fuel.find({
@@ -2559,13 +2699,31 @@ export const getDriverInvoiceByTripId = async (req, res, next) => {
         });
     const resolvedReceiverName = podDoc?.receiverName || podDoc?.customerName || trip.proofOfDelivery?.receiverName || trip.deliveryAddress?.contactPerson || '';
 
-    const deliveryAddress = trip.deliveryAddress || trip.toAddress || {
-      companyName: `${trip.endLocation || 'Destination'} Depot`,
-      contactPerson: resolvedReceiverName || 'Receiving Manager',
-      mobile: '',
-      streetAddress: trip.endLocation || '',
-      city: trip.endLocation || '',
-      state: ''
+    const resolvedDeliveryMobile = trip.deliveryAddress?.mobile ||
+      trip.deliveryAddress?.mobileNumber ||
+      trip.deliveryAddress?.phone ||
+      trip.deliveryAddress?.contactPhone ||
+      trip.toAddress?.mobile ||
+      trip.toAddress?.mobileNumber ||
+      trip.toAddress?.phone ||
+      trip.receiverPhone ||
+      trip.customerPhone ||
+      trip.proofOfDelivery?.customerPhone ||
+      trip.proofOfDelivery?.receiverPhone ||
+      trip.assignedManager?.phoneNumber ||
+      trip.assignedManager?.phone ||
+      '';
+
+    const deliveryAddress = {
+      ...(trip.deliveryAddress || trip.toAddress || {}),
+      companyName: (trip.deliveryAddress?.companyName || trip.toAddress?.companyName || `${trip.endLocation || 'Destination'} Depot`),
+      contactPerson: (trip.deliveryAddress?.contactPerson || trip.toAddress?.contactPerson || resolvedReceiverName || 'Receiving Manager'),
+      mobile: resolvedDeliveryMobile,
+      streetAddress: (trip.deliveryAddress?.streetAddress || trip.toAddress?.streetAddress || ''),
+      area: (trip.deliveryAddress?.area || trip.deliveryAddress?.areaLocality || trip.toAddress?.area || trip.toAddress?.areaLocality || ''),
+      city: (trip.deliveryAddress?.city || trip.toAddress?.city || trip.endLocation || ''),
+      state: (trip.deliveryAddress?.state || trip.toAddress?.state || ''),
+      pincode: (trip.deliveryAddress?.pincode || trip.deliveryAddress?.postalCode || trip.toAddress?.pincode || trip.toAddress?.postalCode || '')
     };
 
     const pdfUrl = invoice.pdfUrl || invoice.invoiceUrl || trip.tripInvoice?.url || '';
@@ -2574,7 +2732,7 @@ export const getDriverInvoiceByTripId = async (req, res, next) => {
       invoiceId: invoice._id,
       _id: invoice._id,
       invoiceNumber: invoice.invoiceNumber,
-      invoiceDate: invoice.invoiceDate || invoice.createdAt,
+      invoiceDate: invoice.invoiceDate || invoice.createdAt || invoice.updatedAt || trip.createdAt || trip.departureTime || new Date().toISOString(),
       pdfUrl: pdfUrl,
       documentUrl: pdfUrl,
       status: trip.status === 'Completed' ? 'Paid' : (invoice.status || 'Pending'),

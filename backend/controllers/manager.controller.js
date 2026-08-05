@@ -798,18 +798,19 @@ export const listTrips = async (req, res, next) => {
     }
     const trips = await getTrips(filter);
 
-    // Map over trips and dynamically replace default/120/unrealistic KM distances
+    // Map over trips and preserve exact stored distance from MongoDB
     const processedTrips = trips.map(t => {
       const tripObj = t.toObject ? t.toObject() : t;
-      const calculatedDist = calculateDistance(tripObj.startLocation, tripObj.endLocation);
-      const isUnrealistic = tripObj.estimatedDistance > 4000 && calculatedDist < 3000;
-      
-      if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120 || tripObj.estimatedDistance === 584 || isUnrealistic) {
-        tripObj.estimatedDistance = calculatedDist;
-        Trip.findByIdAndUpdate(t._id, { estimatedDistance: calculatedDist }).catch(() => {});
-      }
-      if (!tripObj.actualDistance || tripObj.actualDistance === 120 || tripObj.actualDistance === 584 || (tripObj.actualDistance > 4000 && calculatedDist < 3000)) {
-        tripObj.actualDistance = calculatedDist;
+      const storedDist = (tripObj.actualDistance && Number(tripObj.actualDistance) > 0)
+        ? Number(tripObj.actualDistance)
+        : ((tripObj.estimatedDistance && Number(tripObj.estimatedDistance) > 0)
+            ? Number(tripObj.estimatedDistance)
+            : calculateDistance(tripObj.startLocation, tripObj.endLocation));
+
+      tripObj.distance = storedDist;
+      tripObj.totalDistance = storedDist;
+      if (!tripObj.estimatedDistance || Number(tripObj.estimatedDistance) <= 0) {
+        tripObj.estimatedDistance = storedDist;
       }
       return tripObj;
     });
@@ -876,15 +877,16 @@ export const getTripDetails = async (req, res, next) => {
       }
     }
 
-    const calculatedDist = calculateDistance(tripObj.startLocation, tripObj.endLocation);
-    const isUnrealistic = tripObj.estimatedDistance > 4000 && calculatedDist < 3000;
+    const storedDist = (tripObj.actualDistance && Number(tripObj.actualDistance) > 0)
+      ? Number(tripObj.actualDistance)
+      : ((tripObj.estimatedDistance && Number(tripObj.estimatedDistance) > 0)
+          ? Number(tripObj.estimatedDistance)
+          : calculateDistance(tripObj.startLocation, tripObj.endLocation));
 
-    if (!tripObj.estimatedDistance || tripObj.estimatedDistance === 120 || tripObj.estimatedDistance === 584 || isUnrealistic) {
-      tripObj.estimatedDistance = calculatedDist;
-      Trip.findByIdAndUpdate(trip._id, { estimatedDistance: calculatedDist }).catch(() => {});
-    }
-    if (!tripObj.actualDistance || tripObj.actualDistance === 120 || tripObj.actualDistance === 584 || (tripObj.actualDistance > 4000 && calculatedDist < 3000)) {
-      tripObj.actualDistance = calculatedDist;
+    tripObj.distance = storedDist;
+    tripObj.totalDistance = storedDist;
+    if (!tripObj.estimatedDistance || Number(tripObj.estimatedDistance) <= 0) {
+      tripObj.estimatedDistance = storedDist;
     }
 
     return sendSuccess(res, 200, tripObj, 'Trip details fetched');
@@ -939,7 +941,16 @@ export const createTrip = async (req, res, next) => {
     } = req.body;
 
     const finalPickupAddress = pickupAddress || fromAddress || {};
-    const finalDeliveryAddress = deliveryAddress || toAddress || {};
+    const rawDelivery = deliveryAddress || toAddress || {};
+    const finalDeliveryAddress = {
+      ...rawDelivery,
+      streetAddress: (rawDelivery.streetAddress || rawDelivery.street || rawDelivery.line1 || ''),
+      area: (rawDelivery.area || rawDelivery.areaLocality || rawDelivery.locality || rawDelivery.landmark || ''),
+      city: (rawDelivery.city || rawDelivery.town || ''),
+      state: (rawDelivery.state || ''),
+      pincode: (rawDelivery.pincode || rawDelivery.postalCode || rawDelivery.zipCode || ''),
+      mobile: (rawDelivery.mobile || rawDelivery.mobileNumber || rawDelivery.phone || rawDelivery.phoneNumber || rawDelivery.contactPhone || req.body.receiverPhone || req.body.customerPhone || req.body.deliveryPhone || req.body.receiverMobile || req.body.customerMobile || '')
+    };
 
     if (!tripNumber || !vehicle || !driver || !startLocation || !endLocation || !departureTime || !eta) {
       return sendError(res, 400, 'Trip number, vehicle, driver, route, and timing details are required');
@@ -1050,6 +1061,35 @@ export const createTrip = async (req, res, next) => {
 
     console.log(`Trip Created Successfully with status 'Pending Driver Acceptance'`);
 
+    // Auto-generate Invoice document in MongoDB upon trip creation
+    try {
+      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
+      const seq = String(count + 1).padStart(4, '0');
+      const autoInvoiceNumber = `INV-${datePart}-${seq}`;
+
+      const newInvoice = new Invoice({
+        invoiceNumber: autoInvoiceNumber,
+        invoiceDate: new Date(),
+        trip: trip._id,
+        driver: trip.driver,
+        vehicle: trip.vehicle,
+        createdBy: req.user._id
+      });
+      await newInvoice.save();
+
+      trip.tripInvoice = {
+        invoiceId: newInvoice._id,
+        invoiceNumber: newInvoice.invoiceNumber,
+        url: newInvoice.pdfUrl || '',
+        generatedAt: newInvoice.createdAt || newInvoice.invoiceDate
+      };
+      await trip.save();
+      console.log(`✓ Invoice #${autoInvoiceNumber} generated automatically for Trip #${tripNumber}`);
+    } catch (invErr) {
+      console.error(`Auto invoice generation notice: ${invErr.message}`);
+    }
+
     // D. Update vehicle status and location in MongoDB
     await Vehicle.findByIdAndUpdate(vehicle, {
       currentStatus: 'Assigned',
@@ -1133,7 +1173,14 @@ export const createTrip = async (req, res, next) => {
       createdBy: req.user._id
     });
     await invoice.save();
-    console.log(`Invoice Generated\n`);
+    trip.tripInvoice = {
+      invoiceId: invoice._id,
+      invoiceNumber: invoice.invoiceNumber,
+      url: invoice.pdfUrl || '',
+      generatedAt: invoice.createdAt || invoice.invoiceDate
+    };
+    await trip.save();
+    console.log(`Invoice Generated for Trip ${trip.tripNumber}: ${invoice.invoiceNumber}\n`);
 
     // Generate Toll Transactions for the new trip
     try {
@@ -2556,6 +2603,14 @@ export const getInvoiceByTripId = async (req, res, next) => {
         createdBy: req.user._id
       });
       await newInvoice.save();
+
+      trip.tripInvoice = {
+        invoiceId: newInvoice._id,
+        invoiceNumber: newInvoice.invoiceNumber,
+        url: newInvoice.pdfUrl || '',
+        generatedAt: newInvoice.createdAt || newInvoice.invoiceDate
+      };
+      await trip.save();
 
       invoice = await Invoice.findById(newInvoice._id)
         .populate({

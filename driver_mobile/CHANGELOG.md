@@ -2,6 +2,226 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.31.41] - 2026-08-05
+
+### Fixed
+- **Linter & Async Gap Clean-up**:
+  - Replaced ternary null check with `??` operator in `invoice_screen.dart` (`prefer_if_null_operators`).
+  - Pre-captured `ScaffoldMessenger` and `Navigator` instances in `trip_completion_screen.dart` to prevent `use_build_context_synchronously` warnings across async boundaries.
+
+## [1.31.40] - 2026-08-05
+
+### Fixed
+- **Vehicle Documents Resolution, Relative URL Sanitization & External Launching**:
+  - Upgraded `getAssignedVehicle` in `driverApi.controller.js` to use 3-tier fallback vehicle resolution (`assignedDriver`, `driver.assignedVehicle` registration number, and active trip vehicle).
+  - Converted `VehicleDocumentsScreen` (`vehicle_documents_screen.dart`) into a `StatefulWidget` that auto-fetches assigned vehicle documents via `ApiService.getAssignedVehicle()` on init and pull-to-refresh.
+  - Added `_sanitizeUrl` to convert relative `/uploads/...` paths and `localhost` addresses to full HTTP URLs using `ApiService.defaultLocalIp`.
+  - Refactored `_showDocumentAction` to attempt direct `launchUrl` in external application mode.
+
+## [1.31.39] - 2026-08-05
+
+### Fixed
+- **Invoice Date Formatting & Fallback Chain**:
+  - Implemented multi-field `rawDateStr` fallback in `_buildInvoiceContent` (`invoice_screen.dart`), evaluating `invoiceDate`, `date`, `createdAt`, `createdDate`, `trip.createdAt`, `trip.departureTime`, `trip.departureDate`, and `DateTime.now()`.
+  - Updated `_formatDate` to format output nicely as `05 Aug 2026`.
+  - Refactored `getDriverInvoiceByTripId` in `driverApi.controller.js` to ensure `invoiceDate` is never null in API responses.
+
+## [1.31.38] - 2026-08-05
+
+### Fixed
+- **Complete Receiver Address Formatting in Driver Invoice**:
+  - Implemented `formatFullAddress` helper in `InvoiceScreen` (`invoice_screen.dart`) to combine `streetAddress`, `areaLocality`, `city`, `state`, and `pincode` while deduplicating identical location strings.
+  - Updated `manager.controller.js` (`createTrip`) and `driverApi.controller.js` (`getDriverInvoiceByTripId`) to preserve and return structured address components (`streetAddress`, `area`, `city`, `state`, `pincode`).
+
+## [1.31.37] - 2026-08-05
+
+### Fixed
+- **Delivery Address Customer Phone Number Resolution**:
+  - Updated `manager.controller.js` (`createTrip`) to guarantee `finalDeliveryAddress.mobile` is populated from incoming receiver/customer phone fields (`receiverPhone`, `customerPhone`, `deliveryPhone`, `receiverMobile`).
+  - Refactored `getDriverInvoiceByTripId` in `driverApi.controller.js` to auto-resolve `deliveryAddress.mobile` from `proofOfDelivery.customerPhone` or `assignedManager.phone` if missing.
+  - Implemented `extractPhone` helper in `InvoiceScreen` (`invoice_screen.dart`) with exhaustive multi-object phone extraction across `deliveryAddress`, `toAddress`, `customer`, `proofOfDelivery`, `assignedManager`, and 10+ top-level string keys.
+
+## [1.31.36] - 2026-08-05
+
+### Fixed
+- **Driver Invoice Layout & Delivery Mobile Number Resolution**:
+  - Removed "Charges Summary" card from `InvoiceScreen` (`invoice_screen.dart`), streamlining the driver invoice view during active trips.
+  - Expanded `toMobile` resolution logic in `_buildAddressesCard` to check all potential delivery/receiver contact phone properties across `deliveryAddress` and `trip` objects (`mobile`, `mobileNumber`, `phone`, `contactPhone`, `receiverPhone`, `receiverMobile`, `deliveryPhone`, `toMobile`, `customerPhone`, `contactPhone`, `managerPhone`).
+
+## [1.31.35] - 2026-08-05
+
+### Fixed
+- **Base URL Cached Evaluation & Invoice Details Fallback**:
+  - Removed early `_cachedBaseUrl` return in `api_service.dart` (`getBaseUrl()`) so mobile platform host enforcement logic evaluates on every invocation, eliminating sticky `localhost` references.
+  - Refactored `_fetchInvoiceDetails()` in `invoice_screen.dart` to catch API exceptions gracefully and fall back to constructing structured invoice details directly from `widget.tripData`, ensuring the driver app displays invoice details even if network calls return 404 or fail.
+
+## [1.31.34] - 2026-08-05
+
+### Fixed
+- **API Service Base URL Mobile Host Enforcement & Logging**:
+  - Updated `getBaseUrl()` in `api_service.dart` to strictly ignore `localhost` and `127.0.0.1` on mobile platforms (Android/iOS).
+  - Automatically overwrites stale `localhost` / `127.0.0.1` entries in `SharedPreferences` with `http://192.168.1.17:5000/api`.
+  - Removed internal `127.0.0.1` fallback loops in `get()` and `post()` that were mutating `_cachedBaseUrl` on mobile.
+  - Added structured console debug logs (`[ApiService Base URL Debug]` and `[ApiService GET/POST] Final API URL`) displaying `Saved URL`, `Selected Base URL`, `Platform`, and `Final API URL`.
+
+## [1.31.33] - 2026-08-05
+
+### Fixed
+- **Trip Invoice Row Mobile Responsiveness & RenderFlex Overflow Fix**:
+  - Refactored `_buildInvoiceDetailRow` in `trip_details_screen.dart` to adopt a 2-row layout on mobile devices (<600px width).
+  - Row 1 features `"Trip Invoice"` label on the left (`Expanded`) and Invoice Number on the right (`Flexible` with `TextOverflow.ellipsis` and `textAlign: TextAlign.end`).
+  - Row 2 features equal-width `"View"` and `"Download"` action buttons side-by-side (`Expanded(child: buildViewButton())`, `SizedBox(width: 8)`, `Expanded(child: buildDownloadButton())`).
+  - Preserved original single-row layout on desktop/tablet views (>=600px width), completely eliminating the 68px RenderFlex overflow strip on mobile screens.
+
+## [1.31.32] - 2026-08-05
+
+### Refactored
+- **API Service Unbraced Control Flow Linter Warnings Cleaned**:
+  - Enclosed all unbraced single-line `if` statements in `driver_mobile/lib/services/api_service.dart` with block curly braces `{}` across `uploadFuelReceipt`, `uploadProofOfDelivery`, and `uploadWeighbridgeSlip`.
+  - Resolved 5 IDE/Dart linter warnings (`curly_braces_in_flow_control_structures`).
+
+## [1.31.31] - 2026-08-05
+
+### Fixed
+- **Driver Invoice Automatic MongoDB Retrieval & Detailed Logging**:
+  - Configured `manager.controller.js` (`createTrip`) to automatically generate and save `new Invoice(...)` in MongoDB upon trip creation by the Fleet Manager.
+  - Updated `driverApi.controller.js` (`getDriverInvoiceByTripId`) to query `Invoice` directly using `tripId` and added required backend console logs (`[Backend Invoice API Log]`) printing Trip ID received, Invoice document found (YES/NO), and Invoice Number.
+  - Formatted Flutter console logs (`[Flutter Invoice API Log]`) in `InvoiceScreen` (`invoice_screen.dart`) printing API URL, Response Status, and Response Body.
+
+## [1.31.30] - 2026-08-05
+
+### Fixed
+- **API Service Base URL IP Whitespace Sanitization**:
+  - Removed leading space in `defaultLocalIp` (`'192.168.1.17'`) in `api_service.dart`.
+  - Added `.trim()` sanitization in `getBaseUrl()` for both `savedUrl` and `defaultLocalIp`, preventing `%20` URI encoding FormatExceptions (`FormatException: %20192.168.1.17 is not a valid link-local address`).
+
+## [1.31.29] - 2026-08-05
+
+### Fixed
+- **Driver Invoice Screen Independent Data Display**:
+  - Refactored `getDriverInvoiceByTripId` in `driverApi.controller.js` to auto-create and persist MongoDB `Invoice` documents whenever a trip exists, ensuring an `Invoice` record is always returned to the driver.
+  - Made PDF action buttons and document preview card in `InvoiceScreen` (`invoice_screen.dart`) render conditionally based on `pdfUrl.isNotEmpty` without blocking the invoice details view.
+  - Rendered complete structured invoice details (Invoice Number, Invoice Date, Customer Details, Pickup & Delivery Addresses, Vehicle Details, Driver Details, Charges breakdown, Total Amount) even when `pdfUrl` is empty `""`.
+
+## [1.31.28] - 2026-08-05
+
+### Fixed
+- **Trip Distance Mismatch Fix & Single Source of Truth**:
+  - Removed distance recalculation overrides (`calculateDistance` & hardcoded checks like `estimatedDistance !== 120`) in `driverApi.controller.js` and `manager.controller.js`.
+  - Used exact stored `estimatedDistance` / `actualDistance` / `distance` / `totalDistance` from the backend `Trip` document as the single source of truth across all endpoints.
+  - Added structured backend console logs (`[Backend Distance Log - Driver getTripDetails]` and `[Backend Distance Log - Driver Invoice API]`) printing Trip ID, Origin, Destination, stored distance in MongoDB, and distance returned.
+  - Updated `trip_details_screen.dart`, `completed_trip_details_screen.dart`, and `invoice_screen.dart` to read stored distance directly without recalculation or fallback values, outputting `[Driver TripDetailsScreen Distance Debug]` logs.
+
+## [1.31.27] - 2026-08-05
+
+### Fixed
+- **Driver Invoice View Fix & Priority Lookup**:
+  - Unified invoice references between `TripDetailsScreen` / `CompletedTripDetailsScreen` and `InvoiceScreen` by passing `invoiceId`, `invoiceNumber`, and `tripId`.
+  - Updated `InvoiceScreen` (`invoice_screen.dart`) to perform priority lookup: `invoiceId` -> `tripId` -> `invoiceNumber`.
+  - Added formatted multi-line console debug logs (`[InvoiceScreen DEBUG LOGS]`) printing Trip ID, Invoice ID, Invoice Number, API URL, status, response body, and invoice count.
+  - Ensured `manager.controller.js` `getInvoiceByTripId` updates `trip.tripInvoice` with `invoiceId` and `invoiceNumber` when auto-generating missing manager invoices.
+
+## [1.31.26] - 2026-08-05
+
+### Fixed
+- **Driver Invoice Loading Fix & Debug Logging**:
+  - Linked driver invoice queries directly to the manager-generated `Invoice` document without creating duplicate invoices on the driver side.
+  - Added `invoiceId` to `tripInvoice` schema in `Trip.js` and stored `trip.tripInvoice` reference upon manager trip creation in `manager.controller.js`.
+  - Refactored `getDriverInvoiceByTripId` and `getTripDetails` in `driverApi.controller.js` to search invoices using `$or` across ObjectId, `tripNumber`, `invoiceId`, and `invoiceNumber`, removing driver-side `new Invoice(...)` auto-creation.
+  - Added detailed debug logs on backend (`req.originalUrl`, `tripId`, `cleanId`, `trip._id`, `invoiceId`, `invoiceCount`) and frontend (`[InvoiceScreen]` trip ID, stored invoice ID, API URL, response, invoice count).
+  - Updated `InvoiceScreen` (`invoice_screen.dart`) empty state copy to `"Invoice Not Generated"` / `"Invoice not generated yet."`.
+
+## [1.31.25] - 2026-08-05
+
+### Fixed
+- **Cross-Platform Flutter Web & Mobile Document Upload Support**:
+  - Resolved `Unsupported operation: MultipartFile is only supported where dart:io is available` exception on Flutter Web.
+  - Implemented platform-aware upload logic in `ApiService` (`api_service.dart`) using `kIsWeb` from `package:flutter/foundation.dart`.
+  - Updated `UploadRequiredDocumentsDialog` (`upload_required_documents_dialog.dart`) to extract `photo.readAsBytes()` and pass `Uint8List` bytes (`List<int>`) when `kIsWeb` is true, using `http.MultipartFile.fromBytes` for Web and `http.MultipartFile.fromPath` for Android/iOS (`!kIsWeb`).
+  - Updated document image preview dialog to render `blob:` URLs directly via `Image.network` on Web.
+
+## [1.31.24] - 2026-08-05
+
+### Fixed
+- **Responsive Scrollable Layout in UploadRequiredDocumentsDialog**:
+  - Restructured `UploadRequiredDocumentsDialog` (`upload_required_documents_dialog.dart`) using `SafeArea` -> `ConstrainedBox` capped at 85% of screen height (`maxHeight: MediaQuery.of(context).size.height * 0.85`, `maxWidth: 500`).
+  - Placed upload cards inside `Flexible(SingleChildScrollView(child: ...))` with `BouncingScrollPhysics`, eliminating all `RenderFlex` overflow errors and yellow/black striped warnings across all mobile screen dimensions (360x800, 390x844, 400x900, 412x915, and Flutter Web).
+  - Maintained sticky `"Submit Documents"` `ElevatedButton` at the bottom of the modal, ensuring it is always reachable.
+
+## [1.31.23] - 2026-08-05
+
+### Fixed
+- **Post-API `checkPendingDocumentPopup` Auto-Trigger & Debug Logging**:
+  - Refactored `TripDetailsScreen` (`trip_details_screen.dart`) to execute `checkPendingDocumentPopup()` via `WidgetsBinding.instance.addPostFrameCallback` immediately after `ApiService.getTripDetails` completes on every page load or refresh.
+  - Added comprehensive `debugPrint` logging (`trip.status`, `podStatus`, `weighbridgeStatus`, `documentsSubmitted`, `POPUP CONDITION RESULT`).
+  - Evaluates `isEnded` (`statusUpper` in `ENDED`, `REACHED DESTINATION`, `TRIP ENDED`, or `tripEnded == true`), `!tripCompletionRequested` (`statusUpper != WAITING FOR MANAGER APPROVAL`), and `missingDocs` (`!isPodUploadedOrSubmitted || !isWbUploadedOrSubmitted`).
+
+## [1.31.22] - 2026-08-05
+
+### Fixed
+- **Required Trip Documents Popup Persistence Logic in TripDetailsScreen**:
+  - Replaced one-time widget session triggers with live backend API evaluation (`_shouldAutoShowDocumentsPopup`).
+  - Automatically queries `ApiService.getTripDetails` and pops up `UploadRequiredDocumentsDialog.show` whenever `TripDetailsScreen` (`trip_details_screen.dart`) is opened, refreshed, or re-logged into while trip status is `ENDED` and required documents (POD or Weighbridge Slip) are pending submission.
+  - Ensures the modal automatically recurs on app restarts, page reloads, and page navigation until documents are submitted to the backend (`Waiting for Manager Approval`).
+  - Post-submission refresh naturally evaluates `_shouldAutoShowDocumentsPopup` to `false`, permanently closing the popup for that trip.
+
+## [1.31.21] - 2026-08-05
+
+### Changed
+- **Redesigned Trip Documents Upload UI to Match Fuel Receipt Component**:
+  - Completely removed `_showImageSourcePicker` bottom sheet modal popup.
+  - Redesigned Proof of Delivery (POD) and Weighbridge Slip upload cards in `UploadRequiredDocumentsDialog` (`upload_required_documents_dialog.dart`) using `_buildFuelStyleUploadSection`, matching the exact visual layout, typography, borders (`#CBD5E1`), colors (`#F8FAFC`), and inline **Camera** (`Icons.camera_alt_outlined`) & **Gallery** (`Icons.photo_library_outlined`) action buttons from `AddFuelEntryScreen`.
+  - Tapping **Camera** opens camera directly (`ImageSource.camera`) and tapping **Gallery** opens gallery directly (`ImageSource.gallery`) with zero popups or bottom sheets.
+  - Displayed white preview card showing document thumbnail icon, filename, file size, and upload timestamp when `isUploaded == true`, providing direct **View** and **Replace** controls.
+  - Kept **Submit Documents** CTA enabled strictly after BOTH documents evaluate to `true`.
+
+## [1.31.20] - 2026-08-05
+
+### Fixed
+- **Trip Documents Upload Status Logic in UploadRequiredDocumentsDialog**:
+  - Removed flawed fallback checks (`proofOfDelivery != null` / `weighbridgeSlip != null`) that evaluated empty Mongoose subdocument objects `{}` as uploaded.
+  - Implemented `_fetchFreshStatusFromBackend()` to query `ApiService.getTripDetails` on modal initialization and after uploads.
+  - Added strict `_computeIsUploaded` validator requiring valid Cloudinary/HTTP URL (`startsWith('http')`), non-null `uploadedAt` timestamp, or local file (`File.existsSync()`).
+  - Added structured debug console logging (`POD status from API`, `POD URL`, `Weighbridge status from API`, `Weighbridge URL`, final computed `isUploaded` values).
+  - Ensured UI correctly displays `Not Uploaded` with orange **Upload** button when documents do not exist, and displays `✓ Uploaded` with **Replace** & **View** buttons only after valid upload.
+
+## [1.31.19] - 2026-08-05
+
+### Added
+- **Fuel Purchase Location (City) Mandatory Tracking & Route Timeline Fuel Stop Highlights**:
+  - **Backend (`Fuel.js`, `driverApi.controller.js`)**:
+    - Added `location` string property to `Fuel` Mongoose schema.
+    - Updated `createDriverFuelEntry` to extract and validate mandatory `location` (City name) before saving fuel records, returning `400 Bad Request` if missing.
+    - Updated `getDriverFuelRecords` to include `location` field in fuel history API response.
+    - Updated `getDriverTripById` and `getCurrentTrip` to return `fuelEntries` array (including `location`, `fuelStation`, `liters`, `amount`, `dateTime`) and `fuelStops` array.
+  - **Driver Mobile Frontend**:
+    - Updated `ApiService.createFuelEntry` (`api_service.dart`) to send `location` in both multipart fields and JSON request payloads.
+    - Added `Fuel Purchase Location (City) *` mandatory text input field with `Icons.location_on_rounded` prefix icon and non-empty whitespace validation below `Fuel Station Name` in `AddFuelEntryScreen` (`add_fuel_entry_screen.dart`) and `FuelEntryFormScreen` (`trip_completion_screen.dart`).
+    - Updated `FuelHistoryScreen` (`fuel_history_screen.dart`) to render `Station` and `City` with location pin icon on every fuel history card.
+    - Updated `FuelEntryDetailsScreen` (`fuel_entry_details_screen.dart`) to display `Purchase Location (City)` detail row.
+    - Upgraded `TripDetailsScreen` (`trip_details_screen.dart`) route timeline to render multi-city route nodes (`Origin` → intermediate waypoints → `Destination`) and highlight fuel stop cities in chronological order with green badge indicators (`🟢 Fuel Purchased – Kodad`).
+
+## [1.31.18] - 2026-08-05
+
+### Changed
+- **Single Document Upload Entry Point Enforced in Driver App**:
+  - Removed all direct *"Upload"* buttons, View/Replace controls, and inline upload triggers from `TripDetailsScreen` (`trip_details_screen.dart`).
+  - Updated `DOCUMENTS STATUS` section in `TripDetailsScreen` to render clean status badges (`Not Uploaded`, `Uploaded`, `Pending Approval`, `Approved`, `Rejected`) using `_buildDocumentStatusRow`.
+  - Enforced single upload entry point via `End Trip` → `UploadRequiredDocumentsDialog` popup modal, automatically refreshing trip details and status badges upon document submission.
+
+## [1.31.17] - 2026-08-05
+
+### Fixed
+- **Cargo Weight Unit Standard Alignment in Trip Details**:
+  - Updated `weight` formatting in `TripDetailsScreen` (`trip_details_screen.dart`) from `Tons` to `kg` (`${_trip!['cargoWeight']} kg`) to match application-wide unit standards (`kg`).
+
+## [1.31.16] - 2026-08-05
+
+### Fixed
+- **Document Submission End-to-End Debugging & Validation Resolver**:
+  - **Backend (`driverApi.controller.js`)**: Updated `updateTripStatus` to resolve trips using `resolveTripHelper` (supporting both ObjectId and tripNumber/clean string IDs). Enhanced document validation to evaluate both Mongoose collection records (`ProofOfDelivery` & `WeighbridgeSlip`) AND embedded `Trip` subdocuments (`trip.proofOfDelivery` & `trip.weighbridgeSlip`) case-insensitively. Added detailed console logging for request payloads, document presence, and status transitions, and replaced generic 400 errors with specific messages (*"Please upload Proof of Delivery"*, *"Please upload Weighbridge Slip"*).
+  - **Frontend (`upload_required_documents_dialog.dart`)**: Updated `_handleSubmitDocuments` to dynamically re-verify backend document state via `ApiService.getTripDetails` before submitting, ensuring no stale local cache is relied upon. Passed resolved MongoDB `_id` to status update calls, displayed exact backend validation error messages on failure, and wrapped the modal body in `SingleChildScrollView` to prevent layout overflow errors on mobile screens.
+
 ## [1.31.15] - 2026-08-04
 
 ### Added
