@@ -258,7 +258,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                       const SizedBox(height: 20.0),
 
                       // 2. Fuel History List or Empty State
-                      !_isAssigned
+                      entriesToDisplay.isEmpty
                           ? Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(32),
@@ -270,10 +270,10 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.local_gas_station_outlined, size: 64, color: primaryOrange),
+                                  const Icon(Icons.local_gas_station_outlined, size: 64, color: textSecondary),
                                   const SizedBox(height: 16),
                                   Text(
-                                    'No Vehicle Assigned',
+                                    'No fuel records found.',
                                     style: GoogleFonts.poppins(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
@@ -282,45 +282,14 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'No vehicle has been assigned yet. Vehicle-related features will become available once your manager assigns a vehicle.',
+                                    'No fuel logs have been recorded for your profile.',
                                     textAlign: TextAlign.center,
-                                    style: GoogleFonts.nunito(fontSize: 14, color: textSecondary, height: 1.5),
+                                    style: GoogleFonts.nunito(fontSize: 14, color: textSecondary),
                                   ),
                                 ],
                               ),
                             )
-                          : entriesToDisplay.isEmpty
-                              ? Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(32),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: borderGray),
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.local_gas_station_outlined, size: 64, color: textSecondary),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'No fuel records found.',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'No fuel logs have been recorded for your profile.',
-                                        textAlign: TextAlign.center,
-                                        style: GoogleFonts.nunito(fontSize: 14, color: textSecondary),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : ListView.separated(
+                          : ListView.separated(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: entriesToDisplay.length,
