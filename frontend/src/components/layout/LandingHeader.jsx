@@ -49,7 +49,7 @@ export default function LandingHeader() {
           Blogs
         </NavLink>
         <NavLink to="/contact" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
-          Contact Us
+          Contact
         </NavLink>
       </nav>
  
@@ -123,7 +123,7 @@ export default function LandingHeader() {
              Blogs
            </NavLink>
            <NavLink to="/contact" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
-             Contact Us
+             Contact
            </NavLink>
          </div>
        )}
