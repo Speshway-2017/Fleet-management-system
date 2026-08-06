@@ -202,11 +202,6 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            onPressed: _loadTickets,
-            tooltip: 'Refresh Tickets',
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Container(
