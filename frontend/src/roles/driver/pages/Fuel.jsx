@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import driverApi from "../api/driverApi";
 import FuelCard from "../components/FuelCard";
 import { toast } from "react-hot-toast";
-import { Fuel, Plus, X, RefreshCw } from "lucide-react";
+import { Fuel, Plus, X, RefreshCw, Lock } from "lucide-react";
 
 export default function DriverFuelPage() {
   const [loading, setLoading] = useState(true);
   const [fuelRecords, setFuelRecords] = useState([]);
+  const [activeTrip, setActiveTrip] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -19,7 +20,22 @@ export default function DriverFuelPage() {
 
   useEffect(() => {
     fetchFuelRecords();
+    fetchActiveTrip();
   }, []);
+
+  const fetchActiveTrip = async () => {
+    try {
+      const res = await driverApi.getCurrentTrip();
+      if (res?.success && res.data) {
+        setActiveTrip(res.data);
+      } else {
+        setActiveTrip(null);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch active trip for fuel check:", err);
+      setActiveTrip(null);
+    }
+  };
 
   const fetchFuelRecords = async () => {
     setLoading(true);
@@ -40,8 +56,14 @@ export default function DriverFuelPage() {
     }
   };
 
+  const hasActiveTrip = Boolean(activeTrip && (activeTrip._id || activeTrip.id || activeTrip.tripId));
+
   const handleCreateFuelEntry = async (e) => {
     e.preventDefault();
+    if (!hasActiveTrip) {
+      toast.error("🔒 Fuel entries can only be logged during an active trip!");
+      return;
+    }
     if (!quantity || !totalCost || !stationName) {
       toast.error("Please fill in required fields (Station Name, Liters, Amount)");
       return;
@@ -53,6 +75,9 @@ export default function DriverFuelPage() {
       formData.append("quantity", quantity);
       formData.append("totalCost", totalCost);
       formData.append("stationName", stationName);
+      if (activeTrip?._id || activeTrip?.id) {
+        formData.append("tripId", activeTrip._id || activeTrip.id);
+      }
       if (odometerReading) formData.append("odometerReading", odometerReading);
       if (receiptFile) formData.append("file", receiptFile);
 
@@ -89,13 +114,42 @@ export default function DriverFuelPage() {
         </div>
 
         <button
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-sm"
+          onClick={() => {
+            if (!hasActiveTrip) {
+              toast.error("🔒 Fuel entries can only be logged during an active trip!");
+              return;
+            }
+            setShowModal(true);
+          }}
+          disabled={!hasActiveTrip}
+          title={!hasActiveTrip ? "Fuel logging disabled. You can only log fuel during an active trip." : "Log fuel refill for your active trip"}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold font-poppins flex items-center justify-center gap-2 transition shadow-sm ${
+            hasActiveTrip
+              ? "bg-[#B45A0A] hover:bg-[#9A4D08] text-white cursor-pointer"
+              : "bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed"
+          }`}
         >
-          <Plus className="w-4 h-4" />
-          <span>Log New Fuel Refill</span>
+          {hasActiveTrip ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+          <span>{hasActiveTrip ? "Log New Fuel Refill" : "Fuel Log Locked (Active Trip Only)"}</span>
         </button>
       </div>
+
+      {/* Lock Notice Banner if No Active Trip */}
+      {!hasActiveTrip && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-3 text-amber-900 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-100 text-[#B45A0A] shrink-0">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold font-poppins text-slate-900">🔒 Fuel Refill Logging Locked</h4>
+              <p className="text-xs text-amber-800 mt-0.5">
+                Fuel refill logs can only be submitted when you are on an active trip. Please accept and start an assigned trip to log fuel expenses.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Fuel Cards Grid */}
       {loading ? (

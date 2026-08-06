@@ -479,6 +479,19 @@ export const getCurrentTrip = async (req, res, next) => {
     const invoice = await Invoice.findOne({ trip: currentTrip._id });
     const invoiceNumber = invoice ? invoice.invoiceNumber : 'N/A';
 
+    let podStatus = currentTrip.podStatus || 'Not Uploaded';
+    let weighbridgeStatus = currentTrip.weighbridgeStatus || 'Not Uploaded';
+
+    const podDoc = await ProofOfDelivery.findOne({ trip: currentTrip._id });
+    if (podDoc) {
+      podStatus = podDoc.status === 'Approved' ? 'Approved' : 'Uploaded';
+    }
+
+    const wbDoc = await WeighbridgeSlip.findOne({ trip: currentTrip._id });
+    if (wbDoc) {
+      weighbridgeStatus = wbDoc.status === 'Approved' ? 'Approved' : 'Uploaded';
+    }
+
     return sendSuccess(res, 200, {
       tripId: currentTrip._id,
       driverId: currentTrip.driver?._id || currentTrip.driver,
@@ -497,6 +510,12 @@ export const getCurrentTrip = async (req, res, next) => {
       vehiclePlate: currentTrip.vehiclePlate || (currentTrip.vehicle ? currentTrip.vehicle.vehicleNumber : ''),
       driverName: currentTrip.driverName || (currentTrip.driver ? currentTrip.driver.fullName : ''),
       driverPhone: currentTrip.driverPhone || (currentTrip.driver ? currentTrip.driver.phoneNumber : ''),
+      podStatus,
+      weighbridgeStatus,
+      podUploaded: podStatus !== 'Not Uploaded',
+      weighbridgeUploaded: weighbridgeStatus !== 'Not Uploaded',
+      customerLocationReached: currentTrip.customerLocationReached || false,
+      customerLocationReachedAt: currentTrip.customerLocationReachedAt || null,
       estimatedDistance: currentTrip.estimatedDistance || 0,
       actualDistance: currentTrip.actualDistance || 0,
       invoiceNumber,
@@ -978,8 +997,31 @@ export const endTrip = async (req, res, next) => {
       return sendError(res, 404, 'Trip not found');
     }
 
-    if (trip.status !== 'In Progress') {
-      return sendError(res, 400, 'Trip must be In Progress to end journey.');
+    const targetStatus = status === 'Start Trip' ? 'In Progress' : (status === 'Complete Trip' ? 'Completed' : status);
+
+    // Enforce Pipeline Order - Prevent moving backward in status progression
+    const statusOrder = ['ASSIGNED', 'IN PROGRESS', 'EN ROUTE', 'AT LOADING', 'IN TRANSIT', 'DELIVERED', 'COMPLETED'];
+    const currentStatusUpper = (trip.status || '').toUpperCase();
+    const targetStatusUpper = (targetStatus || '').toUpperCase();
+    const currentIndex = statusOrder.indexOf(currentStatusUpper);
+    const targetIndex = statusOrder.indexOf(targetStatusUpper);
+
+    if (currentIndex !== -1 && targetIndex !== -1 && targetIndex < currentIndex) {
+      return sendError(res, 400, `🔒 Cannot move backward to '${targetStatus}'. Trip pipeline status can only move forward.`);
+    }
+
+    // Enforce POD & Weighbridge Upload rule for Driver before marking Delivered or Completed
+    const isDriverRequest = !req.user || req.user.role === 'driver' || req.user.role === 'DRIVER';
+    if (isDriverRequest && ['Delivered', 'Completed', 'Complete Trip'].includes(targetStatus)) {
+      const isPodUploaded = Boolean(trip.podUploaded || trip.podUrl || trip.podFile);
+      const isWeighbridgeUploaded = Boolean(trip.weighbridgeUploaded || trip.weighbridgeUrl || trip.weighbridgeFile);
+
+      if (!isPodUploaded || !isWeighbridgeUploaded) {
+        const missing = [];
+        if (!isPodUploaded) missing.push('Proof of Delivery (POD)');
+        if (!isWeighbridgeUploaded) missing.push('Weighbridge Slip');
+        return sendError(res, 400, `🔒 Cannot mark trip as ${targetStatus}. Missing required documents: ${missing.join(' and ')}. Please upload them first.`);
+      }
     }
 
     trip.tripEnded = true;
@@ -1017,6 +1059,54 @@ export const endTrip = async (req, res, next) => {
           tripEnded: true
         });
       }
+
+      // Auto generate Invoice in DB if missing
+      try {
+        let existingInvoice = await Invoice.findOne({ trip: trip._id });
+        if (!existingInvoice) {
+          const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+          const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
+          const seq = String(count + 1).padStart(4, '0');
+          const invoiceNumber = `INV-${datePart}-${seq}`;
+          await Invoice.create({
+            invoiceNumber,
+            invoiceDate: new Date(),
+            trip: trip._id,
+            driver: req.user?._id || trip.driver,
+            vehicle: trip.vehicle,
+            createdBy: trip.assignedManager || req.user?._id
+          });
+        }
+      } catch (invErr) {
+        console.error('Error auto-generating invoice on trip completion:', invErr);
+      }
+
+      // Auto generate TollTransaction in DB if missing
+      try {
+        let existingToll = await TollTransaction.findOne({ trip: trip._id });
+        if (!existingToll) {
+          const vehicleDoc = trip.vehicle && mongoose.Types.ObjectId.isValid(trip.vehicle) ? await Vehicle.findById(trip.vehicle) : null;
+          const plate = vehicleDoc?.registrationNumber || trip.vehiclePlate || 'AP 28 TE 4829';
+          await TollTransaction.create({
+            trip: trip._id,
+            vehiclePlate: plate,
+            tollPlazaName: 'National Highway Toll Plaza - Gate 4',
+            location: `${trip.startLocation || 'Origin'} - ${trip.endLocation || 'Destination'} Highway`,
+            dateTime: new Date(),
+            amountPaid: 350,
+            paymentMethod: 'FASTag',
+            fastagTransactionId: `FT${Date.now()}`,
+            receiptStatus: 'Paid'
+          });
+        }
+      } catch (tollErr) {
+        console.error('Error auto-generating toll receipt on trip completion:', tollErr);
+      }
+    } else {
+      await Driver.findByIdAndUpdate(req.user._id, { driverStatus: 'ON_TRIP' });
+      if (trip.vehicle && mongoose.Types.ObjectId.isValid(trip.vehicle)) {
+        await Vehicle.findByIdAndUpdate(trip.vehicle, { currentStatus: 'On Trip' });
+      }
     }
 
     if (io) {
@@ -1024,6 +1114,99 @@ export const endTrip = async (req, res, next) => {
     }
 
     return sendSuccess(res, 200, trip, 'Trip ended successfully. You can now upload Proof of Delivery and Weighbridge Slip.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get Trip Invoice
+ * GET /api/driver/trips/:id/invoice
+ */
+export const getTripInvoice = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    let invoice = await Invoice.findOne({ trip: id })
+      .populate({
+        path: 'trip',
+        populate: [
+          { path: 'driver' },
+          { path: 'vehicle' }
+        ]
+      })
+      .populate('driver')
+      .populate('vehicle')
+      .populate('createdBy', 'fullName email username');
+
+    if (!invoice) {
+      const trip = await Trip.findById(id).populate('driver').populate('vehicle');
+      if (!trip) {
+        return sendError(res, 404, 'Trip not found');
+      }
+
+      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
+      const seq = String(count + 1).padStart(4, '0');
+      const invoiceNumber = `INV-${datePart}-${seq}`;
+
+      const newInvoice = new Invoice({
+        invoiceNumber,
+        invoiceDate: new Date(),
+        trip: trip._id,
+        driver: trip.driver?._id || req.user?._id,
+        vehicle: trip.vehicle?._id || trip.vehicle,
+        createdBy: trip.assignedManager || req.user?._id
+      });
+      await newInvoice.save();
+
+      invoice = await Invoice.findById(newInvoice._id)
+        .populate({
+          path: 'trip',
+          populate: [
+            { path: 'driver' },
+            { path: 'vehicle' }
+          ]
+        })
+        .populate('driver')
+        .populate('vehicle')
+        .populate('createdBy', 'fullName email username');
+    }
+
+    return sendSuccess(res, 200, invoice, 'Invoice retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get Trip Toll Receipt
+ * GET /api/driver/trips/:id/toll-receipt
+ */
+export const getTripTollReceipt = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    let tollTx = await TollTransaction.findOne({ trip: id }).populate('trip');
+    if (!tollTx) {
+      const trip = await Trip.findById(id).populate('vehicle');
+      if (!trip) {
+        return sendError(res, 404, 'Trip not found');
+      }
+      const vehicleDoc = trip.vehicle;
+      const plate = vehicleDoc?.registrationNumber || trip.vehiclePlate || 'AP 28 TE 4829';
+      tollTx = await TollTransaction.create({
+        trip: trip._id,
+        vehiclePlate: plate,
+        tollPlazaName: 'National Highway Toll Plaza - Gate 4',
+        location: `${trip.startLocation || 'Origin'} - ${trip.endLocation || 'Destination'} Highway`,
+        dateTime: new Date(),
+        amountPaid: 350,
+        paymentMethod: 'FASTag',
+        fastagTransactionId: `FT${Date.now()}`,
+        receiptStatus: 'Paid'
+      });
+      tollTx = await TollTransaction.findById(tollTx._id).populate('trip');
+    }
+    return sendSuccess(res, 200, tollTx, 'Toll receipt retrieved successfully');
   } catch (error) {
     next(error);
   }
@@ -1303,6 +1486,7 @@ export const uploadProofOfDelivery = async (req, res, next) => {
           proofOfDelivery: updatedTrip?.proofOfDelivery,
           status: updatedTrip?.status
         });
+        io.to(`driver:${req.user._id}`).emit('trip:status-updated', { tripId, podStatus: 'Uploaded' });
       }
     }
 
@@ -1454,6 +1638,7 @@ export const uploadWeighbridgeSlip = async (req, res, next) => {
           weighbridgeSlip: updatedTrip?.weighbridgeSlip,
           status: updatedTrip?.status
         });
+        io.to(`driver:${req.user._id}`).emit('trip:status-updated', { tripId, weighbridgeStatus: 'Uploaded' });
       }
     }
 
@@ -1485,11 +1670,27 @@ export const getDriverTrips = async (req, res, next) => {
 
     const formattedTrips = await Promise.all(trips.map(async (trip) => {
       const invoice = await Invoice.findOne({ trip: trip._id });
+
+      let pStat = trip.podStatus || 'Not Uploaded';
+      let wStat = trip.weighbridgeStatus || 'Not Uploaded';
+
+      const pDoc = await ProofOfDelivery.findOne({ trip: trip._id });
+      if (pDoc) pStat = pDoc.status === 'Approved' ? 'Approved' : 'Uploaded';
+
+      const wDoc = await WeighbridgeSlip.findOne({ trip: trip._id });
+      if (wDoc) wStat = wDoc.status === 'Approved' ? 'Approved' : 'Uploaded';
+
       return {
+        _id: trip._id,
+        id: trip._id,
         tripId: trip._id,
         tripNumber: trip.tripNumber,
         pickup: trip.startLocation,
         destination: trip.endLocation,
+        startLocation: trip.startLocation,
+        endLocation: trip.endLocation,
+        origin: { address: trip.startLocation },
+        destinationObj: { address: trip.endLocation },
         status: trip.status,
         eta: trip.eta,
         departureTime: trip.departureTime,
@@ -1503,8 +1704,12 @@ export const getDriverTrips = async (req, res, next) => {
         vehiclePlate: trip.vehiclePlate || (trip.vehicle ? trip.vehicle.vehicleNumber : ''),
         driverName: trip.driverName || (trip.driver ? trip.driver.fullName : ''),
         driverPhone: trip.driverPhone || (trip.driver ? trip.driver.phoneNumber : ''),
-        podStatus: trip.podStatus,
-        weighbridgeStatus: trip.weighbridgeStatus,
+        podStatus: pStat,
+        weighbridgeStatus: wStat,
+        podUploaded: pStat !== 'Not Uploaded',
+        weighbridgeUploaded: wStat !== 'Not Uploaded',
+        customerLocationReached: trip.customerLocationReached || false,
+        customerLocationReachedAt: trip.customerLocationReachedAt || null,
         estimatedDistance: trip.estimatedDistance || 0,
         actualDistance: trip.actualDistance || 0,
         invoiceNumber: invoice ? invoice.invoiceNumber : 'N/A'
@@ -1681,15 +1886,22 @@ export const createDriverFuelEntry = async (req, res, next) => {
       return sendError(res, 404, 'Driver profile not found');
     }
 
-    let vehicle = await Vehicle.findOne({ assignedDriver: driverId });
+    // Verify driver currently has an active trip in progress
+    const activeTrip = await Trip.findOne({
+      driver: driverId,
+      status: { $in: ['Assigned', 'Accepted', 'In Progress', 'Start Trip', 'En Route', 'At Loading', 'Loading', 'In Transit', 'On Transit', 'Dispatched', 'Delivered'] }
+    }).populate('vehicle');
+
+    if (!activeTrip) {
+      return sendError(res, 400, 'Fuel refilling entries can only be logged during an active trip. Please start your trip first.');
+    }
+
+    let vehicle = activeTrip.vehicle && typeof activeTrip.vehicle === 'object' ? activeTrip.vehicle : null;
+    if (!vehicle) {
+      vehicle = await Vehicle.findOne({ assignedDriver: driverId });
+    }
     if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '') {
       vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle });
-    }
-    if (!vehicle) {
-      const activeTrip = await Trip.findOne({ driver: driverId, status: { $nin: ['Completed', 'Cancelled'] } }).populate('vehicle');
-      if (activeTrip && activeTrip.vehicle && typeof activeTrip.vehicle === 'object') {
-        vehicle = activeTrip.vehicle;
-      }
     }
 
     let receiptImageUrl = '';

@@ -554,7 +554,7 @@ export default function TripsManagementPage() {
           </div>
 
           {/* KPI Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4">
             
             {/* Card 1: Total Trips */}
             <div className="bg-white rounded-xl border-l-4 border-l-blue-600 border border-[#E7EAF0] p-5 flex items-center justify-between shadow-sm">
@@ -580,19 +580,7 @@ export default function TripsManagementPage() {
               </div>
             </div>
 
-            {/* Card 3: Urgent Trips */}
-            <div className="bg-white rounded-xl border-l-4 border-l-red-500 border border-[#E7EAF0] p-5 shadow-sm flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Urgent Trips</p>
-                <p className="text-3xl font-black text-red-600 mt-2 font-poppins">{String(urgentTripsCount).padStart(2, '0')}</p>
-                <span className="text-[10px] text-red-500 mt-1 block font-semibold">Immediate Action</span>
-              </div>
-              <div className="p-3 bg-red-50 text-red-600 rounded-xl">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-            </div>
-
-            {/* Card 4: Completed */}
+            {/* Card 3: Completed */}
             <div className="bg-white rounded-xl border-l-4 border-l-[#1E293B] border border-[#E7EAF0] p-5 shadow-sm flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Completed</p>
@@ -790,16 +778,7 @@ export default function TripsManagementPage() {
 
 
 
-                            {/* End Trip */}
-                            {t.status === "In Progress" && (
-                              <button
-                                onClick={() => handleEndTrip(t.id)}
-                                title="End Trip"
-                                className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl active:scale-95 transition-all cursor-pointer"
-                              >
-                                <CheckCircle2 className="w-4 h-4" />
-                              </button>
-                            )}
+
 
                             {/* Edit */}
                             {(t.status === "Scheduled" || t.status === "Assigned") && (

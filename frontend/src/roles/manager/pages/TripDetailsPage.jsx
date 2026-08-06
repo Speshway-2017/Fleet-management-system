@@ -433,8 +433,16 @@ export default function TripDetailsPage() {
         }
       };
 
+      const handleWeighbridgeApproved = (data) => {
+        if (String(data.tripId) === String(trip._id) || String(data.tripId) === String(trip.id)) {
+          fetchTripAndInvoice();
+          toast.success("Weighbridge Slip Approved!");
+        }
+      };
+
       socket.on("pod:uploaded", handlePodUploaded);
       socket.on("weighbridge:uploaded", handleWeighbridgeUploaded);
+      socket.on("weighbridge:approved", handleWeighbridgeApproved);
       
       const handleTripStatusUpdated = (updatedTrip) => {
         const targetId = updatedTrip?._id || updatedTrip?.id || updatedTrip?.tripId;
@@ -450,6 +458,7 @@ export default function TripDetailsPage() {
       return () => {
         socket.off("pod:uploaded", handlePodUploaded);
         socket.off("weighbridge:uploaded", handleWeighbridgeUploaded);
+        socket.off("weighbridge:approved", handleWeighbridgeApproved);
         socket.off("trip:status-updated", handleTripStatusUpdated);
       };
     }
@@ -782,8 +791,8 @@ export default function TripDetailsPage() {
   const distanceTravelled = trip.status === "Scheduled" ? 0 : isCompleted ? totalDistance : Math.round(totalDistance * 0.56);
   const distancePercent = trip.status === "Scheduled" ? "0%" : isCompleted ? "100%" : "56%";
 
-  const isWeighbridgeApproved = weighbridge && weighbridge.status === "Approved";
-  const isPodApproved = pod && pod.status === "Approved";
+  const isWeighbridgeApproved = (weighbridge && (weighbridge.status === "Approved" || weighbridge.status === "APPROVED")) || trip.weighbridgeStatus === "Approved";
+  const isPodApproved = (pod && (pod.status === "Approved" || pod.status === "APPROVED")) || trip.podStatus === "Approved";
   const canCompleteTrip = isWeighbridgeApproved && isPodApproved;
 
   const handleUpdateStatus = async (newStatus) => {
@@ -863,6 +872,22 @@ export default function TripDetailsPage() {
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
       <Breadcrumb />
 
+      {/* Read-Only Banner for Completed Trip */}
+      {isCompleted && (
+        <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-4 mt-4 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div>
+              <h4 className="font-poppins font-bold text-sm">Completed Trip - Read-Only View</h4>
+              <p className="text-xs text-slate-300">This trip has been completed successfully. All details are locked and viewable only.</p>
+            </div>
+          </div>
+          <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold rounded-lg uppercase tracking-wider">
+            Locked
+          </span>
+        </div>
+      )}
+
       {/* Heading summary header card */}
       <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-6">
         <div>
@@ -880,36 +905,6 @@ export default function TripDetailsPage() {
         </div>
 
         <div className="flex items-center gap-2.5 w-full md:w-auto">
-          {trip.status === "Scheduled" || trip.status === "Assigned" ? (
-            <button
-              onClick={() => handleUpdateStatus("In Progress")}
-              className="flex-1 md:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer text-center"
-            >
-              Start Trip
-            </button>
-          ) : trip.status === "In Progress" ? (
-            <button
-              onClick={() => handleUpdateStatus("Completed")}
-              disabled={!canCompleteTrip}
-              className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md text-center ${
-                canCompleteTrip
-                  ? "bg-[#B45A0A] hover:bg-[#9A4D08] cursor-pointer"
-                  : "bg-gray-400 cursor-not-allowed opacity-60"
-              }`}
-              title={
-                !canCompleteTrip
-                  ? (!isWeighbridgeApproved && !isPodApproved)
-                    ? "Trip cannot be completed. Please approve both the Weighbridge and Proof of Delivery documents first."
-                    : !isWeighbridgeApproved
-                    ? "Trip cannot be completed. Please approve the Weighbridge document first."
-                    : "Trip cannot be completed. Please approve the Proof of Delivery document first."
-                  : ""
-              }
-            >
-              Complete Trip
-            </button>
-          ) : null}
-
           {(trip.status === "Scheduled" || trip.status === "Assigned") && (
             <button
               onClick={() => setShowCancelConfirm(true)}
@@ -1737,7 +1732,7 @@ export default function TripDetailsPage() {
                       Download File
                     </button>
                   </div>
-                  {(pod.status === 'Pending' || pod.status === 'PENDING' || pod.status === 'Uploaded') && (
+                  {!isCompleted && (pod.status === 'Pending' || pod.status === 'PENDING' || pod.status === 'Uploaded') && (
                     <div className="grid grid-cols-2 gap-2 pt-2">
                       <button
                         type="button"
@@ -1845,7 +1840,7 @@ export default function TripDetailsPage() {
                       Download File
                     </button>
                   </div>
-                  {(weighbridge.status === 'Pending' || weighbridge.status === 'PENDING' || weighbridge.status === 'Uploaded') && (
+                  {!isCompleted && (weighbridge.status === 'Pending' || weighbridge.status === 'PENDING' || weighbridge.status === 'Uploaded') && (
                     <div className="grid grid-cols-2 gap-2 pt-2">
                       <button
                         type="button"

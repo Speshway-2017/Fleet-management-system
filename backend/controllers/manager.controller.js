@@ -3333,7 +3333,17 @@ export const updateWeighbridgeSlipStatus = async (req, res, next) => {
           });
         }
       } else if (status === 'Approved') {
-        await checkAndCompleteTripIfApproved(tripIdToUpdate, req);
+        if (io) {
+          io.to(`driver:${updatedTrip?.driver}`).emit('weighbridge:approved', {
+            tripId: slip.trip,
+            slip
+          });
+          io.to(`manager:${updatedTrip?.assignedManager}`).emit('weighbridge:approved', {
+            tripId: slip.trip,
+            slip
+          });
+        }
+        await checkAndCompleteTripIfApproved(slip.trip, req);
       }
     }
 

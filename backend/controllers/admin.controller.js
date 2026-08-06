@@ -420,6 +420,39 @@ export const deleteOrganization = async (req, res, next) => {
   }
 };
 
+export const suspendOrganization = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status = 'Suspended' } = req.body;
+
+    const org = await Organization.findById(id);
+    if (!org) return sendError(res, 404, 'Organization not found');
+
+    const newStatus = status === 'Active' ? 'Active' : 'Suspended';
+    org.status = newStatus;
+    await org.save();
+
+    // Store Admin Notification in MongoDB
+    const notification = await createNotificationInRepo({
+      title: newStatus === 'Suspended' ? 'Organization Suspended' : 'Organization Activated',
+      message: `Organization "${org.name}" status has been changed to ${newStatus}.`,
+      type: newStatus === 'Suspended' ? 'warning' : 'success',
+      recipientRole: 'SUPER_ADMIN',
+      createdBy: req.user?._id,
+      organization: org._id
+    });
+
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+    }
+
+    return sendSuccess(res, 200, org, `Organization ${newStatus === 'Suspended' ? 'suspended' : 'activated'} successfully`);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Fleet Managers
 export const listManagers = async (_req, res, next) => {
   try {

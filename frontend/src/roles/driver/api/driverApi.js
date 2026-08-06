@@ -57,6 +57,14 @@ export const driverApi = {
     const response = await axiosClient.patch(`/driver/trips/${tripId}/status`, payload);
     return response.data;
   },
+  getTripInvoice: async (tripId) => {
+    const response = await axiosClient.get(`/driver/trips/${tripId}/invoice`);
+    return response.data;
+  },
+  getTripTollReceipt: async (tripId) => {
+    const response = await axiosClient.get(`/driver/trips/${tripId}/toll-receipt`);
+    return response.data;
+  },
   toggleCustomerLocation: async (tripId, payload = { reached: true }) => {
     const response = await axiosClient.patch(`/driver/trips/${tripId}/customer-location`, payload);
     return response.data;

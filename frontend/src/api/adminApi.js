@@ -18,6 +18,9 @@ export const adminApi = {
   updateOrganization: async (id, data) => {
     return axiosClient.put(`/admin/organizations/${id}`, data);
   },
+  suspendOrganization: async (id, status = 'Suspended') => {
+    return axiosClient.patch(`/admin/organizations/${id}/suspend`, { status });
+  },
   deleteOrganization: async (id) => {
     return axiosClient.delete(`/admin/organizations/${id}`);
   },

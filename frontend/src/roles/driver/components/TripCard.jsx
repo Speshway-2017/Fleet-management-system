@@ -169,11 +169,10 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
             <button
               onClick={handleStartTripClick}
               disabled={!isStartEnabled}
-              className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold font-poppins flex items-center justify-center gap-2 transition shadow-sm ${
-                isStartEnabled
+              className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold font-poppins flex items-center justify-center gap-2 transition shadow-sm ${isStartEnabled
                   ? "bg-[#B45A0A] hover:bg-[#9A4D08] text-white cursor-pointer"
                   : "bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed"
-              }`}
+                }`}
             >
               {isStartEnabled ? (
                 <>

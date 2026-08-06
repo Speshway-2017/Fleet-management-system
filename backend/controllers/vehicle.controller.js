@@ -203,7 +203,49 @@ export const getVehicle = async (req, res, next) => {
     if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this vehicle belongs to another manager');
     }
-    return sendSuccess(res, 200, vehicle, 'Vehicle fetched successfully');
+
+    const vehObj = vehicle.toObject ? vehicle.toObject() : JSON.parse(JSON.stringify(vehicle));
+
+    const isAvailableStatus = vehObj.currentStatus === 'Available' || vehObj.status === 'Available' || vehObj.currentStatus === 'Under Maintenance' || vehObj.currentStatus === 'Out of Service';
+
+    if (isAvailableStatus) {
+      vehObj.assignedDriver = null;
+      vehObj.assignedDriverName = null;
+      vehObj.driverName = null;
+    } else {
+      // If assignedDriver is an unpopulated ObjectId string, attempt Driver lookup directly
+      if (vehObj.assignedDriver && (typeof vehObj.assignedDriver === 'string' || vehObj.assignedDriver instanceof mongoose.Types.ObjectId)) {
+        const driverIdStr = String(vehObj.assignedDriver);
+        if (/^[0-9a-fA-F]{24}$/.test(driverIdStr)) {
+          const foundDriver = await Driver.findById(driverIdStr).select('fullName name phoneNumber phone employeeId licenseNumber');
+          if (foundDriver) {
+            vehObj.assignedDriver = foundDriver;
+            vehObj.assignedDriverName = foundDriver.fullName || foundDriver.name;
+            vehObj.driverName = foundDriver.fullName || foundDriver.name;
+          }
+        }
+      }
+
+      // If assignedDriver is still missing or unpopulated, check active/in-progress trip (NOT Completed) for this vehicle
+      if (!vehObj.assignedDriver || typeof vehObj.assignedDriver !== 'object' || !vehObj.assignedDriver.fullName) {
+        const activeTrip = await Trip.findOne({
+          vehicle: vehicle._id,
+          status: { $in: ['In Progress', 'On Transit', 'Enroute', 'Assigned'] }
+        }).sort({ updatedAt: -1 }).populate('driver', 'fullName name phoneNumber phone employeeId licenseNumber');
+
+        if (activeTrip && activeTrip.driver) {
+          vehObj.assignedDriver = activeTrip.driver;
+          vehObj.assignedDriverName = activeTrip.driver.fullName || activeTrip.driver.name;
+          vehObj.driverName = activeTrip.driver.fullName || activeTrip.driver.name;
+        } else {
+          vehObj.assignedDriver = null;
+          vehObj.assignedDriverName = null;
+          vehObj.driverName = null;
+        }
+      }
+    }
+
+    return sendSuccess(res, 200, vehObj, 'Vehicle fetched successfully');
   } catch (error) {
     next(error);
   }
