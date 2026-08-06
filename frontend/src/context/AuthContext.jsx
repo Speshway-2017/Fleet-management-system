@@ -189,6 +189,16 @@ export function AuthProvider({ children }) {
         token = body.data.token;
         backendUser = body.data.user;
       } catch (authErr) {
+        const authMsg = authErr.response?.data?.message;
+
+        // Case 2: If user exists in User DB (Manager/Admin) but password was wrong,
+        // STOP immediately! Do NOT call driver/login.
+        if (authMsg === "Incorrect password" || authMsg === "Incorrect password. Please try again.") {
+          throw authErr;
+        }
+
+        // Case 3 & Case 4: Email was not found in User DB ('No account found with this email').
+        // THEN ONLY attempt driver login.
         try {
           const { data: driverBody } = await axiosClient.post("/driver/login", {
             identifier: credentials.email,
@@ -200,8 +210,8 @@ export function AuthProvider({ children }) {
           } else {
             throw authErr;
           }
-        } catch {
-          throw authErr;
+        } catch (driverErr) {
+          throw driverErr.response?.data?.message ? driverErr : authErr;
         }
       }
 

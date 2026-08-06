@@ -2,6 +2,21 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.31.43] - 2026-08-06
+
+### Fixed
+- **Fuel Log Access Restriction & Requirement Alignment**:
+  - Enforced strict requirement in Driver module (`Fuel.jsx`, `add_fuel_entry_screen.dart`, and `driverApi.controller.js`): Fuel logging is **ENABLED ONLY** when a vehicle is assigned **AND** active trips count > 0.
+  - Automatically locks fuel entry forms, disables submit triggers, and displays lock banners whenever active trips = 0 or no vehicle is assigned to the driver.
+
+## [1.31.42] - 2026-08-06
+
+### Fixed
+- **Multi-Role Login & Driver Auth Refactoring**:
+  - Refactored `login` method in `AuthContext.jsx` to prevent Manager/Admin wrong password attempts from triggering fallback requests to `POST /driver/login`.
+  - Updated `loginDriver` in `driverApi.controller.js` to return HTTP 404 (`No account found with this email`) when driver does not exist and HTTP 401 (`Incorrect password`) on password mismatch.
+  - Removed auto-creation of on-the-fly driver records and arbitrary password length fallbacks during driver authentication.
+
 ## [1.31.41] - 2026-08-05
 
 ### Fixed

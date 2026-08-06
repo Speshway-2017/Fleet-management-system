@@ -59,127 +59,20 @@ export const loginDriver = async (req, res, next) => {
     }).select('+password').populate('assignedManager');
 
     if (!driver) {
-      // Find the first manager in the database to assign to this driver
-      const manager = await User.findOne({ role: 'FLEET_MANAGER' });
-      const managerId = manager ? manager._id : new mongoose.Types.ObjectId('6a58777517516dcf32d3c121');
-
-      const isEmail = loginId.includes('@');
-      const emailVal = isEmail ? loginId.toLowerCase().trim() : `${loginId.trim().toLowerCase()}@fleet.com`;
-      const phoneVal = !isEmail ? loginId.trim() : '9876543210';
-
-      const namePart = emailVal.split('@')[0];
-      const fullName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-
-      const { hashPassword } = await import('../utils/hashPassword.js');
-      const hashedPassword = await hashPassword(password);
-
-      const licenseNum = `DL-${Math.floor(100000000000 + Math.random() * 900000000000)}`;
-
-      // Let's create a vehicle first if none exists so we can assign it
-      const VehicleModel = mongoose.model('Vehicle');
-      let vehicle = await VehicleModel.findOne({});
-      if (!vehicle) {
-        vehicle = new VehicleModel({
-          vehicleNumber: 'MH12PQ8820',
-          vehicleName: 'Mahindra Blazo X 28',
-          brand: 'Mahindra',
-          model: 'Blazo X 28',
-          type: 'Truck',
-          capacity: '28 Tons',
-          fuelType: 'Diesel',
-          status: 'Active',
-          mileage: 4.5,
-          totalDistance: 125000,
-          currentLocation: 'Pune',
-          assignedManager: managerId,
-        });
-        await vehicle.save();
-      }
-
-      driver = new Driver({
-        fullName,
-        email: emailVal,
-        phoneNumber: phoneVal,
-        password: hashedPassword,
-        licenseNumber: licenseNum,
-        licenseType: 'HMV',
-        licenseExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
-        assignedVehicle: vehicle.vehicleNumber,
-        driverStatus: 'AVAILABLE',
-        employeeId: `EMP-${Math.floor(100000 + Math.random() * 900000)}`,
-        dob: new Date('1990-01-01'),
-        gender: 'Male',
-        address: 'Pune, Maharashtra',
-        assignedManager: managerId,
-      });
-      await driver.save();
-
-      // Create an upcoming trip and complete trip to ensure their dashboard metrics are loaded!
-      const TripModel = mongoose.model('Trip');
-      let trip = await TripModel.findOne({ driver: driver._id });
-      if (!trip) {
-        // Create an upcoming trip
-        const trip1 = new TripModel({
-          tripNumber: 'TRP-131267',
-          startLocation: 'Hyderabad',
-          endLocation: 'Visakhapatnam',
-          departureTime: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 mins from now to trigger start trip!
-          eta: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
-          status: 'Accepted', // So it shows in upcoming card list!
-          estimatedDistance: 620,
-          actualDistance: 0,
-          vehicle: vehicle._id,
-          driver: driver._id,
-          assignedManager: managerId,
-          cargoType: 'Steel Coils',
-          cargoWeight: 18,
-          tripNotes: 'Deliver before evening shift.',
-          driverName: driver.fullName,
-          driverPhone: driver.phoneNumber,
-          vehicleName: vehicle.vehicleName,
-          vehiclePlate: vehicle.vehicleNumber
-        });
-        await trip1.save();
-
-        const InvoiceModel = mongoose.model('Invoice');
-        const invoice = new InvoiceModel({
-          invoiceNumber: 'INV-20260731-0001',
-          trip: trip1._id,
-          driver: driver._id,
-          vehicle: vehicle._id,
-          createdBy: managerId
-        });
-        await invoice.save();
-      }
-
-      // Re-populate driver assignedManager
-      driver = await Driver.findById(driver._id).select('+password').populate('assignedManager');
+      return sendError(res, 404, 'No account found with this email');
     }
 
-    let isMatch = await comparePassword(password, driver.password);
-    if (!isMatch) {
-      // Dev/Testing fallback: Allow login with default password, phone number, email, or name-based formats
-      const firstName = driver.fullName ? driver.fullName.split(' ')[0] : '';
-      if (
-        password === 'driver123' ||
-        password === 'Meghana@21' ||
-        password === 'Megha@12' ||
-        (firstName && password.toLowerCase() === `${firstName.toLowerCase()}@21`) ||
-        password === driver.phoneNumber ||
-        password === driver.email ||
-        password.length >= 6
-      ) {
+    let isMatch = false;
+    if (driver.password) {
+      if (password === driver.password) {
         isMatch = true;
-        try {
-          const { hashPassword } = await import('../utils/hashPassword.js');
-          driver.password = await hashPassword(password);
-          await driver.save();
-        } catch (_) {}
+      } else {
+        isMatch = await comparePassword(password, driver.password);
       }
     }
 
     if (!isMatch) {
-      return sendError(res, 401, 'Invalid driver credentials');
+      return sendError(res, 401, 'Incorrect password');
     }
 
     const managerId = driver.assignedManager?._id || driver.assignedManager || null;
@@ -1886,22 +1779,24 @@ export const createDriverFuelEntry = async (req, res, next) => {
       return sendError(res, 404, 'Driver profile not found');
     }
 
-    // Verify driver currently has an active trip in progress
+    // 1. Verify driver currently has an assigned vehicle
+    let vehicle = await Vehicle.findOne({ assignedDriver: driverId });
+    if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '' && driver.assignedVehicle !== 'No Vehicle Assigned') {
+      vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle });
+    }
+
+    if (!vehicle) {
+      return sendError(res, 400, 'Fuel logging is disabled. No vehicle is currently assigned to you.');
+    }
+
+    // 2. Verify driver currently has an active trip in progress (active trips > 0)
     const activeTrip = await Trip.findOne({
       driver: driverId,
       status: { $in: ['Assigned', 'Accepted', 'In Progress', 'Start Trip', 'En Route', 'At Loading', 'Loading', 'In Transit', 'On Transit', 'Dispatched', 'Delivered'] }
     }).populate('vehicle');
 
     if (!activeTrip) {
-      return sendError(res, 400, 'Fuel refilling entries can only be logged during an active trip. Please start your trip first.');
-    }
-
-    let vehicle = activeTrip.vehicle && typeof activeTrip.vehicle === 'object' ? activeTrip.vehicle : null;
-    if (!vehicle) {
-      vehicle = await Vehicle.findOne({ assignedDriver: driverId });
-    }
-    if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '') {
-      vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle });
+      return sendError(res, 400, 'Fuel logging is disabled. You currently have 0 active trips.');
     }
 
     let receiptImageUrl = '';
