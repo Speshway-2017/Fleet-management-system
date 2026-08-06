@@ -1,18 +1,13 @@
 import 'package:flutter/material.dart';
 import '../repositories/auth_repository.dart';
 import '../models/driver_model.dart';
-import '../services/api_service.dart';
 import '../screens/settings/notification_settings_screen.dart';
 import '../services/socket_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository = AuthRepository();
 
-  AuthProvider() {
-    ApiService.onUnauthorized = () {
-      logout();
-    };
-  }
+  AuthProvider();
 
   DriverModel? _driver;
   bool _isLoading = false;
@@ -57,7 +52,7 @@ class AuthProvider extends ChangeNotifier {
           _driver = profile;
           _syncNotificationPreferences();
           _isAuthenticated = true;
-          SocketService.connect(profile.id);
+          SocketService.initSocket();
         } else {
           _isAuthenticated = false;
           await _authRepository.logout();
@@ -89,7 +84,7 @@ class AuthProvider extends ChangeNotifier {
       }
       _isAuthenticated = true;
       if (_driver != null) {
-        SocketService.connect(_driver!.id);
+        SocketService.initSocket();
       }
       return true;
     } catch (e) {

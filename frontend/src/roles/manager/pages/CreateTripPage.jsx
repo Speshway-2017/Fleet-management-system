@@ -375,10 +375,6 @@ export default function CreateTripPage() {
           errorMessage: "",
           success: true
         });
-        if (res.durationSeconds > 0 && departureTime) {
-          const autoEta = calculateEtaFromDuration(departureTime, res.durationSeconds);
-          setEta(autoEta);
-        }
       } else {
         setRouteInfo({
           loading: false,
@@ -476,11 +472,7 @@ export default function CreateTripPage() {
     setDepartureTime(val);
 
     let updatedEta = eta;
-    if (val && routeInfo.durationSeconds > 0 && (!eta || new Date(val) >= new Date(eta))) {
-      const autoEta = calculateEtaFromDuration(val, routeInfo.durationSeconds);
-      setEta(autoEta);
-      updatedEta = autoEta;
-    } else if (val && eta) {
+    if (val && eta) {
       const depDate = new Date(val);
       const etaDate = new Date(eta);
       if (depDate.getTime() >= etaDate.getTime()) {
@@ -591,16 +583,7 @@ export default function CreateTripPage() {
           if (matchedVehs.length > 0) finalVehicles = matchedVehs;
         }
 
-        let finalDrivers = driversData;
-        if (cleanStartCity && !isDrvFallback) {
-          const matchedDrvs = driversData.filter(d => {
-            const dLoc = (d.currentLocation || d.branch || '').toLowerCase();
-            return dLoc.includes(cleanStartCity) || cleanStartCity.includes(dLoc.split(',')[0].trim());
-          });
-          if (matchedDrvs.length > 0) finalDrivers = matchedDrvs;
-        }
-
-        setDrivers(finalDrivers);
+        setDrivers(driversData);
         setVehicles(finalVehicles);
 
         // Auto-clear selection if it is not in the new filtered location list
@@ -910,8 +893,8 @@ export default function CreateTripPage() {
                   }}
                   onBlur={() => setTimeout(() => setShowStartSuggestions(false), 200)}
                   className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${isSameLocError
-                      ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
-                      : "border-[#E7EAF0] focus:border-[#B45A0A]"
+                    ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
+                    : "border-[#E7EAF0] focus:border-[#B45A0A]"
                     }`}
                   required
                 />
@@ -951,8 +934,8 @@ export default function CreateTripPage() {
                   }}
                   onBlur={() => setTimeout(() => setShowEndSuggestions(false), 200)}
                   className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${isSameLocError
-                      ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
-                      : "border-[#E7EAF0] focus:border-[#B45A0A]"
+                    ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
+                    : "border-[#E7EAF0] focus:border-[#B45A0A]"
                     }`}
                   required
                 />
@@ -1116,262 +1099,267 @@ export default function CreateTripPage() {
                 <div>
                   <span className="font-bold block text-rose-900">❌ No nearby vehicles found within 50 km of {startLocation}.</span>
                   <span className="text-[11px] text-rose-700 font-medium">Displaying all available vehicles sorted from nearest to farthest:</span>
-                </div>
-              </div>
+                </div >
+              </div >
             ) : startLocation.trim() && isNearbyVehiclesFallback ? (
-              <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0 font-poppins">
-                <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold block text-amber-900">No vehicles located directly in {startLocation}.</span>
-                  <span className="text-[11px] text-amber-700 font-medium">Showing nearest available vehicles within 50 km radius:</span>
-                </div>
-              </div>
-            ) : null}
+    <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0 font-poppins">
+      <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
+      <div>
+        <span className="font-bold block text-amber-900">No vehicles located directly in {startLocation}.</span>
+        <span className="text-[11px] text-amber-700 font-medium">Showing nearest available vehicles within 50 km radius:</span>
+      </div>
+    </div>
+  ) : null
+}
 
-            <div className="space-y-2.5 overflow-y-auto pr-1 custom-scrollbar flex-1">
-              {!startLocation.trim() ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-                  <MapPin className="w-8 h-8 text-[#94A3B8] mb-2" />
-                  <p className="text-xs text-gray-400 font-semibold font-poppins">Please select a Start Location to view available vehicles and drivers.</p>
-                </div>
-              ) : loading ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available vehicles...</p>
-                </div>
-              ) : (filterAvailableVehicles
-                ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
-                : vehicles
-              ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-8 text-center font-semibold">No available vehicles found for the selected start location.</p>
-              ) : (
-                (filterAvailableVehicles
-                  ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
-                  : vehicles
-                ).map(v => (
-                  <div
-                    key={v.id}
-                    onClick={() => {
-                      if (v.status === "Under Maintenance") return;
-                      handleVehicleSelection(v);
-                    }}
-                    className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${v.status === "Under Maintenance"
-                        ? "border-[#E7EAF0] bg-gray-50/50 opacity-60 cursor-not-allowed"
-                        : String(selectedVehicleId) === String(v.id)
-                          ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
-                          : "border-[#E7EAF0] bg-white hover:bg-gray-50 cursor-pointer"
-                      }`}
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold text-xs text-[#1E293B]">{v.name}</p>
-                        {(v.isNearby || isNearbyVehiclesFallback) && (
-                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-[#64748B] font-semibold block mt-0.5 uppercase">Reg: {v.plateNumber}</span>
-                      <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
-                        <span>Type: <strong className="text-[#1E293B]">{v.vehicleType || v.type || "Truck"}</strong></span>
-                        <span>|</span>
-                        <span>Location: <strong className="text-[#1E293B]">{formatDisplayLocation(v.currentLocation, v.branch)}</strong></span>
-                      </div>
-                      {(v.isNearby || isNearbyVehiclesFallback || (v.distanceKm !== undefined && v.distanceKm > 0)) && (
-                        <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
-                          <span>📍 {v.distanceKm || 0} km away</span>
-                          <span>•</span>
-                          <span>⏱️ {v.estimatedTravelTime || "30 mins"}</span>
-                        </div>
-                      )}
-                      <span className={`inline-block mt-2 px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${v.status === "Active" || v.status === "Available"
-                          ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                          : "bg-rose-50 text-rose-600 border border-rose-100"
-                        }`}>
-                        {v.status}
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={v.status === "Under Maintenance"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleVehicleSelection(v);
-                      }}
-                      className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${v.status === "Under Maintenance"
-                          ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
-                          : String(selectedVehicleId) === String(v.id)
-                            ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
-                            : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
-                        }`}
-                    >
-                      {String(selectedVehicleId) === String(v.id) ? "Allocated" : "Allocate"}
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
+<div className="space-y-2.5 overflow-y-auto pr-1 custom-scrollbar flex-1">
+  {!startLocation.trim() ? (
+    <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+      <MapPin className="w-8 h-8 text-[#94A3B8] mb-2" />
+      <p className="text-xs text-gray-400 font-semibold font-poppins">Please select a Start Location to view available vehicles and drivers.</p>
+    </div>
+  ) : loading ? (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available vehicles...</p>
+    </div>
+  ) : (filterAvailableVehicles
+    ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
+    : vehicles
+  ).length === 0 ? (
+    <p className="text-xs text-gray-400 py-8 text-center font-semibold">No available vehicles found for the selected start location.</p>
+  ) : (
+    (filterAvailableVehicles
+      ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
+      : vehicles
+    ).map(v => (
+      <div
+        key={v.id}
+        onClick={() => {
+          if (v.status === "Under Maintenance") return;
+          handleVehicleSelection(v);
+        }}
+        className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${v.status === "Under Maintenance"
+          ? "border-[#E7EAF0] bg-gray-50/50 opacity-60 cursor-not-allowed"
+          : String(selectedVehicleId) === String(v.id)
+            ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
+            : "border-[#E7EAF0] bg-white hover:bg-gray-50 cursor-pointer"
+          }`}
+      >
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="font-bold text-xs text-[#1E293B]">{v.name}</p>
+            {(v.isNearby || isNearbyVehiclesFallback) && (
+              <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
+            )}
           </div>
-
-          {/* Driver Assignment Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between space-y-4 font-poppins h-[420px]">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0] shrink-0">
-              <div className="flex items-center gap-2">
-                <User className="w-5 h-5 text-[#B45A0A]" />
-                <h3 className="font-bold text-[#1E293B] text-[16px]">Driver Assignment</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setFilterAvailableDrivers(!filterAvailableDrivers)}
-                className="text-[10px] font-bold text-[#B45A0A] bg-orange-50 border border-orange-100 hover:bg-orange-100/50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer select-none font-poppins"
-              >
-                {filterAvailableDrivers ? "Show All Drivers" : "Filter Available"}
-              </button>
-            </div>
-
-            {startLocation.trim() && isExtendedDriversFallback ? (
-              <div className="p-3 bg-red-50 border border-red-200/80 rounded-xl text-xs text-red-800 font-medium flex items-start gap-2.5 shrink-0 font-poppins">
-                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold block text-rose-900">❌ No nearby drivers found within 50 km of {startLocation}.</span>
-                  <span className="text-[11px] text-rose-700 font-medium">Displaying all available drivers sorted from nearest to farthest:</span>
-                </div>
-              </div>
-            ) : startLocation.trim() && isNearbyDriversFallback ? (
-              <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0 font-poppins">
-                <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold block text-amber-900">No drivers located directly in {startLocation}.</span>
-                  <span className="text-[11px] text-amber-700 font-medium">Showing nearest available drivers within 50 km radius:</span>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="space-y-2.5 overflow-y-auto pr-1 custom-scrollbar flex-1">
-              {!startLocation.trim() ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-                  <User className="w-8 h-8 text-[#94A3B8] mb-2" />
-                  <p className="text-xs text-gray-400 font-semibold font-poppins">Please select a Start Location to view available vehicles and drivers.</p>
-                </div>
-              ) : loading ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available drivers...</p>
-                </div>
-              ) : (filterAvailableDrivers
-                ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
-                : drivers
-              ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-8 text-center font-semibold font-poppins">No drivers available in the selected location.</p>
-              ) : (
-                (filterAvailableDrivers
-                  ? drivers.filter(d => (d.driverStatus === "AVAILABLE" || d.status === "Available") && d.isDuty !== false && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
-                  : drivers
-                ).map(d => {
-                  const isExpired = d.licenseExpiry && new Date(d.licenseExpiry) < new Date();
-                  const isOffline = d.driverStatus === "OFFLINE" || d.driverStatus === "OFF_DUTY" || d.isDuty === false || d.status === "Offline";
-                  const isAvailable = (d.driverStatus === "AVAILABLE" || d.status === "Available") && !isOffline;
-
-                  return (
-                    <div
-                      key={d.id}
-                      onClick={() => {
-                        if (isExpired) {
-                          toast.error("This driver has an expired license and cannot be assigned.");
-                          return;
-                        }
-                        if (isOffline) {
-                          toast.error("This driver is currently Offline / Off Duty and cannot be assigned to a trip.");
-                          return;
-                        }
-                        if (d.status === "Not Available") return;
-                        handleDriverSelection(d);
-                      }}
-                      className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${(isExpired || isOffline || d.status === "Not Available")
-                          ? "border-red-150 bg-red-50/10 opacity-60 cursor-not-allowed"
-                          : String(selectedDriverId) === String(d.id)
-                            ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
-                            : "border-[#E7EAF0] bg-white hover:bg-gray-50 cursor-pointer"
-                        }`}
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
-                          {(d.isNearby || isNearbyDriversFallback) && (
-                            <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                          <span className="text-[10px] text-[#64748B] font-semibold">Emp ID: {formatEmployeeId(d.employeeId)}</span>
-                        </div>
-                        <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
-                          <span>Lic Validity: <strong className={isExpired ? "text-red-500" : "text-[#1E293B]"}>{d.licenseExpiry ? new Date(d.licenseExpiry).toLocaleDateString() : "Valid"}</strong></span>
-                          <span>|</span>
-                          <span>Location: <strong className="text-[#1E293B]">{formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch)}</strong></span>
-                        </div>
-                        {(d.isNearby || isNearbyDriversFallback || (d.distanceKm !== undefined && d.distanceKm > 0)) && (
-                          <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
-                            <span>📍 {d.distanceKm || 0} km away</span>
-                            <span>•</span>
-                            <span>⏱️ {d.estimatedTravelTime || "35 mins"}</span>
-                          </div>
-                        )}
-                        <div className="flex gap-1.5 mt-2">
-                          <span className={`inline-block px-2.5 py-0.5 rounded-[6px] text-[9px] font-extrabold uppercase font-poppins ${isExpired
-                              ? "bg-red-50 text-red-600 border border-red-200"
-                              : isOffline
-                                ? "bg-red-50 text-red-600 border border-red-200 font-bold"
-                                : isAvailable
-                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold"
-                                  : "bg-amber-50 text-amber-700 border border-amber-200 font-bold"
-                            }`}>
-                            {isExpired
-                              ? "EXPIRED LICENSE 🔴"
-                              : isOffline
-                                ? "OFFLINE 🔴"
-                                : isAvailable
-                                  ? "ONLINE 🟢"
-                                  : "OFFLINE 🔴"}
-                          </span>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        disabled={isExpired || isOffline || d.status === "Not Available"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isExpired) {
-                            toast.error("This driver has an expired license and cannot be assigned.");
-                            return;
-                          }
-                          if (isOffline) {
-                            toast.error("This driver is currently Offline / Off Duty and cannot be assigned to a trip.");
-                            return;
-                          }
-                          handleDriverSelection(d);
-                        }}
-                        className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${(isExpired || isOffline || d.status === "Not Available")
-                            ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
-                            : String(selectedDriverId) === String(d.id)
-                              ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
-                              : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
-                          }`}
-                      >
-                        {String(selectedDriverId) === String(d.id) ? "Assigned" : "Assign"}
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+          <span className="text-[10px] text-[#64748B] font-semibold block mt-0.5 uppercase">Reg: {v.plateNumber}</span>
+          <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
+            <span>Type: <strong className="text-[#1E293B]">{v.vehicleType || v.type || "Truck"}</strong></span>
+            <span>|</span>
+            <span>Location: <strong className="text-[#1E293B]">{formatDisplayLocation(v.currentLocation, v.branch)}</strong></span>
           </div>
+          {(v.isNearby || isNearbyVehiclesFallback || (v.distanceKm !== undefined && v.distanceKm > 0)) && (
+            <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
+              <span>📍 {v.distanceKm || 0} km away</span>
+              <span>•</span>
+              <span>⏱️ {v.estimatedTravelTime || "30 mins"}</span>
+            </div>
+          )}
+          <span className={`inline-block mt-2 px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${v.status === "Active" || v.status === "Available"
+            ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+            : "bg-rose-50 text-rose-600 border border-rose-100"
+            }`}>
+            {v.status}
+          </span>
         </div>
 
-        {/* 3. Pickup & Delivery Address (Side-by-Side 2-Column Grid) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        <button
+          type="button"
+          disabled={v.status === "Under Maintenance"}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleVehicleSelection(v);
+          }}
+          className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${v.status === "Under Maintenance"
+            ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
+            : String(selectedVehicleId) === String(v.id)
+              ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
+              : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
+            }`}
+        >
+          {String(selectedVehicleId) === String(v.id) ? "Allocated" : "Allocate"}
+        </button>
+      </div>
+    ))
+  )}
+</div>
+          </div >
 
-          {/* Pickup Address Card */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm space-y-4 font-poppins flex flex-col justify-between h-full">
+  {/* Driver Assignment Card */ }
+  < div className = "bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between space-y-4 font-poppins h-[420px]" >
+    <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0] shrink-0">
+      <div className="flex items-center gap-2">
+        <User className="w-5 h-5 text-[#B45A0A]" />
+        <h3 className="font-bold text-[#1E293B] text-[16px]">Driver Assignment</h3>
+      </div>
+      <button
+        type="button"
+        onClick={() => setFilterAvailableDrivers(!filterAvailableDrivers)}
+        className="text-[10px] font-bold text-[#B45A0A] bg-orange-50 border border-orange-100 hover:bg-orange-100/50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer select-none font-poppins"
+      >
+        {filterAvailableDrivers ? "Show All Drivers" : "Filter Available"}
+      </button>
+    </div>
+
+{
+  startLocation.trim() && isExtendedDriversFallback ? (
+    <div className="p-3 bg-red-50 border border-red-200/80 rounded-xl text-xs text-red-800 font-medium flex items-start gap-2.5 shrink-0 font-poppins">
+      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+      <div>
+                  <span className="font-bold block text-rose-900">❌ No nearby drivers found within 50 km of {startLocation}.</span>
+                  <span className="text-[11px] text-rose-700 font-medium">Displaying all available drivers sorted from nearest to farthest:</span>
+                </div >
+              </div >
+            ) : startLocation.trim() && isNearbyDriversFallback ? (
+    <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0 font-poppins">
+      <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
+      <div>
+        <span className="font-bold block text-amber-900">No drivers located directly in {startLocation}.</span>
+        <span className="text-[11px] text-amber-700 font-medium">Showing nearest available drivers within 50 km radius:</span>
+      </div>
+    </div>
+  ) : null
+}
+
+<div className="space-y-2.5 overflow-y-auto pr-1 custom-scrollbar flex-1">
+  {!startLocation.trim() ? (
+    <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+      <User className="w-8 h-8 text-[#94A3B8] mb-2" />
+      <p className="text-xs text-gray-400 font-semibold font-poppins">Please select a Start Location to view available vehicles and drivers.</p>
+    </div>
+  ) : loading ? (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available drivers...</p>
+    </div>
+  ) : (filterAvailableDrivers
+    ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
+    : drivers
+  ).length === 0 ? (
+    <p className="text-xs text-gray-400 py-8 text-center font-semibold font-poppins">No drivers available in the selected location.</p>
+  ) : (
+    (filterAvailableDrivers
+      ? drivers.filter(d => (d.driverStatus === "AVAILABLE" || d.status === "Available") && d.isDuty !== false && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
+      : drivers
+    ).map(d => {
+      const isExpired = d.licenseExpiry && new Date(d.licenseExpiry) < new Date();
+      const isOffline = d.driverStatus === "OFFLINE" || d.driverStatus === "OFF_DUTY" || d.isDuty === false || d.status === "Offline";
+      const isAvailable = (d.driverStatus === "AVAILABLE" || d.status === "Available") && !isOffline;
+
+      return (
+        <div
+          key={d.id}
+          onClick={() => {
+            if (isExpired) {
+              toast.error("This driver has an expired license and cannot be assigned.");
+              return;
+            }
+            if (isOffline) {
+              toast.error("This driver is currently Offline / Off Duty and cannot be assigned to a trip.");
+              return;
+            }
+            if (d.status === "Not Available") return;
+            handleDriverSelection(d);
+          }}
+          className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${(isExpired || isOffline || d.status === "Not Available")
+            ? "border-red-150 bg-red-50/10 opacity-60 cursor-not-allowed"
+            : String(selectedDriverId) === String(d.id)
+              ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
+              : "border-[#E7EAF0] bg-white hover:bg-gray-50 cursor-pointer"
+            }`}
+        >
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
+              {(d.isAtPickupLocation || d.distanceKm === 0) ? (
+                <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
+              ) : (d.isNearby || isNearbyDriversFallback) ? (
+                <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+              <span className="text-[10px] text-[#64748B] font-semibold">Emp ID: {formatEmployeeId(d.employeeId)}</span>
+            </div>
+            <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
+              <span>Lic Validity: <strong className={isExpired ? "text-red-500" : "text-[#1E293B]"}>{d.licenseExpiry ? new Date(d.licenseExpiry).toLocaleDateString() : "Valid"}</strong></span>
+              <span>|</span>
+              <span>Location: <strong className="text-[#1E293B]">{formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch)}</strong></span>
+            </div>
+            {d.distanceKm !== undefined && (
+              <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
+                <span>📍 {d.distanceKm || 0} km away</span>
+                <span>•</span>
+                <span>⏱️ {d.estimatedTravelTime || "0 mins"}</span>
+              </div>
+            )}
+            <div className="flex gap-1.5 mt-2">
+              <span className={`inline-block px-2.5 py-0.5 rounded-[6px] text-[9px] font-extrabold uppercase font-poppins ${isExpired
+                ? "bg-red-50 text-red-600 border border-red-200"
+                : isOffline
+                  ? "bg-red-50 text-red-600 border border-red-200 font-bold"
+                  : isAvailable
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold"
+                    : "bg-amber-50 text-amber-700 border border-amber-200 font-bold"
+                }`}>
+                {isExpired
+                  ? "EXPIRED LICENSE 🔴"
+                  : isOffline
+                    ? "OFFLINE 🔴"
+                    : isAvailable
+                      ? "ONLINE 🟢"
+                      : "OFFLINE 🔴"}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={isExpired || isOffline || d.status === "Not Available"}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isExpired) {
+                toast.error("This driver has an expired license and cannot be assigned.");
+                return;
+              }
+              if (isOffline) {
+                toast.error("This driver is currently Offline / Off Duty and cannot be assigned to a trip.");
+                return;
+              }
+              handleDriverSelection(d);
+            }}
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${(isExpired || isOffline || d.status === "Not Available")
+              ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
+              : String(selectedDriverId) === String(d.id)
+                ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
+                : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
+              }`}
+          >
+            {String(selectedDriverId) === String(d.id) ? "Assigned" : "Assign"}
+          </button>
+        </div>
+      );
+    })
+  )}
+</div>
+          </div >
+        </div >
+
+  {/* 3. Pickup & Delivery Address (Side-by-Side 2-Column Grid) */ }
+  < div className = "grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch" >
+
+    {/* Pickup Address Card */ }
+    < div className = "bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm space-y-4 font-poppins flex flex-col justify-between h-full" >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E7EAF0] gap-2">
               <div>
                 <h2 className="text-base font-bold text-[#1E293B] font-poppins flex items-center gap-2">
@@ -1539,10 +1527,10 @@ export default function CreateTripPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </div >
 
-          {/* Delivery Address Card */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm space-y-4 font-poppins flex flex-col justify-between h-full">
+  {/* Delivery Address Card */ }
+  < div className = "bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm space-y-4 font-poppins flex flex-col justify-between h-full" >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E7EAF0] gap-2">
               <div>
                 <h2 className="text-base font-bold text-[#1E293B] font-poppins flex items-center gap-2">
@@ -1710,12 +1698,12 @@ export default function CreateTripPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </div >
 
-        </div>
+        </div >
 
-        {/* 4. Bottom Action Bar (Cancel & Create Trip / Dispatch Trip) */}
-        <div className="flex items-center justify-end gap-4 pt-6 border-t border-[#E7EAF0]">
+  {/* 4. Bottom Action Bar (Cancel & Create Trip / Dispatch Trip) */ }
+  < div className = "flex items-center justify-end gap-4 pt-6 border-t border-[#E7EAF0]" >
           <button
             type="button"
             onClick={() => navigate("/manager/trips")}
@@ -1734,9 +1722,9 @@ export default function CreateTripPage() {
           >
             <Navigation className="w-4 h-4" /> Create Trip
           </button>
-        </div>
+        </div >
 
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }

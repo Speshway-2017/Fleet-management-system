@@ -22,6 +22,7 @@ const userSchema = new mongoose.Schema(
     subscriptionPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null },
     subscriptionExpiry: { type: Date, default: null },
     subscriptionRequestedPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null },
+    fcmToken: { type: String, default: '' },
   },
   { timestamps: true }
 );

@@ -263,6 +263,20 @@ export default function TripsListPage() {
     }
   };
 
+  const formatDateTimeForInput = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   const handleOpenEdit = (t) => {
     fetchResources();
     setEditingTrip(t);
@@ -271,8 +285,8 @@ export default function TripsListPage() {
       vehicleId: t.vehicle?._id || t.vehicle || "",
       startLocation: t.startLocation,
       endLocation: t.endLocation,
-      departureTime: t.departureTime ? new Date(t.departureTime).toISOString().slice(0, 16) : "",
-      eta: t.eta ? new Date(t.eta).toISOString().slice(0, 16) : "",
+      departureTime: formatDateTimeForInput(t.departureTime),
+      eta: formatDateTimeForInput(t.eta),
       status: t.status,
       description: t.description || "",
       cargoType: t.cargoType || "",

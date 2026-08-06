@@ -20,3 +20,9 @@ yarn-error.log*
 
 # User Uploads
 uploads/
+
+# Temporary Scratch Files
+scratch/
+
+# Firebase credentials
+service-account.json

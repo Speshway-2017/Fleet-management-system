@@ -18,31 +18,6 @@ class VehicleStatusScreen extends StatefulWidget {
 }
 
 class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
-  bool _isRefreshing = false;
-
-  void _handleRefresh() {
-    setState(() {
-      _isRefreshing = true;
-    });
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Updating live vehicle telemetry...'),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.0),
-        ),
-      ),
-    );
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        setState(() {
-          _isRefreshing = false;
-        });
-      }
-    });
-  }
 
   Widget _buildSectionHeader(IconData icon, String title) {
     const textPrimary = Color(0xFF1F2937);
@@ -173,7 +148,7 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Live vehicle telemetry and operational status are unavailable because no vehicle is currently assigned to your driver profile.',
+                  'No vehicle has been assigned yet. Vehicle-related features will become available once your manager assigns a vehicle.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.nunito(fontSize: 14, color: textSecondary),
                 ),
@@ -216,15 +191,6 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              Icons.refresh_rounded,
-              color: Colors.white,
-              size: _isRefreshing ? 20 : 24,
-            ),
-            onPressed: _handleRefresh,
-            tooltip: 'Refresh Telemetry',
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Container(

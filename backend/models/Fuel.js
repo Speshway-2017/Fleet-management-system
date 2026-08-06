@@ -19,12 +19,16 @@ const fuelSchema = new mongoose.Schema(
     rejectedAt: { type: Date },
     rejectionReason: { type: String, default: '' },
     fuelStation: { type: String, default: '' },
+    location: { type: String, default: '' },
     amount: { type: Number, required: true },
     liters: { type: Number, required: true },
     status: { type: String, enum: ['normal', 'anomaly', 'resolved'], default: 'normal' },
     resolutionComment: { type: String, default: '' },
     hasReceipt: { type: Boolean, default: true },
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    fuelType: { type: String, default: 'Diesel' },
+    dateTime: { type: Date, default: Date.now },
+    notes: { type: String, default: '' },
   },
   { timestamps: true }
 );

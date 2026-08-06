@@ -81,6 +81,14 @@ export const managerApi = {
     return await axiosClient.delete(`/manager/trips/${id}`);
   },
 
+  approveTripCompletion: async (id) => {
+    return await axiosClient.post(`/manager/trips/${id}/approve-completion`);
+  },
+
+  rejectTripDocuments: async (id, data) => {
+    return await axiosClient.post(`/manager/trips/${id}/reject-documents`, data);
+  },
+
   getInvoiceByTripId: async (tripId) => {
     return await axiosClient.get(`/manager/invoices/trip/${tripId}`);
   },
@@ -241,58 +249,17 @@ export const managerApi = {
   },
 
   getNotifications: async () => {
-    try {
-      const res = await axiosClient.get("/manager/notifications");
-      const localNotifsStr = localStorage.getItem("local_complaints_notifications");
-      if (localNotifsStr) {
-        const localNotifs = JSON.parse(localNotifsStr);
-        const apiData = res.data?.data || res.data || [];
-        if (Array.isArray(apiData)) {
-          const merged = [...localNotifs, ...apiData];
-          if (res.data?.data) {
-            res.data.data = merged;
-          } else {
-            res.data = merged;
-          }
-        }
-      }
-      return res;
-    } catch (err) {
-      console.warn("Failed to load notifications from API, loading local mock ones:", err);
-      const localNotifsStr = localStorage.getItem("local_complaints_notifications");
-      const localNotifs = localNotifsStr ? JSON.parse(localNotifsStr) : [];
-      return { data: { data: localNotifs, success: true } };
-    }
+    localStorage.removeItem("local_complaints_notifications");
+    return await axiosClient.get("/manager/notifications");
   },
 
   markNotificationRead: async (id) => {
-    if (String(id).startsWith("mock-")) {
-      try {
-        const localNotifsStr = localStorage.getItem("local_complaints_notifications");
-        if (localNotifsStr) {
-          const localNotifs = JSON.parse(localNotifsStr);
-          const updated = localNotifs.map(n => (n._id === id || n.id === id) ? { ...n, isRead: true, unread: false } : n);
-          localStorage.setItem("local_complaints_notifications", JSON.stringify(updated));
-        }
-      } catch (e) {
-        console.error(e);
-      }
-      return { data: { success: true } };
-    }
+    localStorage.removeItem("local_complaints_notifications");
     return await axiosClient.patch(`/manager/notifications/${id}/read`);
   },
 
   markAllNotificationsRead: async () => {
-    try {
-      const localNotifsStr = localStorage.getItem("local_complaints_notifications");
-      if (localNotifsStr) {
-        const localNotifs = JSON.parse(localNotifsStr);
-        const updated = localNotifs.map(n => ({ ...n, isRead: true, unread: false }));
-        localStorage.setItem("local_complaints_notifications", JSON.stringify(updated));
-      }
-    } catch (e) {
-      console.error(e);
-    }
+    localStorage.removeItem("local_complaints_notifications");
     return await axiosClient.patch("/manager/notifications/read-all");
   },
 

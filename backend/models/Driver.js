@@ -22,6 +22,7 @@ const driverSchema = new mongoose.Schema(
       enum: ['AVAILABLE', 'ON_TRIP', 'ASSIGNED', 'SUSPENDED', 'OFFLINE', 'OFF_DUTY'],
       default: 'AVAILABLE',
     },
+    isOnline: { type: Boolean, default: true },
     employeeId: { type: String, unique: true, sparse: true },
     dob: { type: Date },
     gender: { type: String, enum: ['Male', 'Female', 'Other'], default: 'Male' },
@@ -85,6 +86,9 @@ const driverSchema = new mongoose.Schema(
       smsNotifications: { type: Boolean, default: true },
     },
     fcmToken: { type: String, default: '' },
+    isAssigned: { type: Boolean, default: false },
+    activeTripId: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip', default: null },
+    currentTripId: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip', default: null },
   },
   { timestamps: true }
 );

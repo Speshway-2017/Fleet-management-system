@@ -110,11 +110,6 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            onPressed: _fetchVehicleData,
-            tooltip: 'Refresh Vehicle Data',
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Container(
@@ -170,7 +165,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
 
     return Column(
       children: [
-        const SizedBox(height: 40),
+        const SizedBox(height: 60),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(24.0),
@@ -196,7 +191,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.directions_car_outlined,
+                  Icons.no_crash_outlined,
                   size: 42,
                   color: primaryOrange,
                 ),
@@ -210,9 +205,9 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
                   color: textPrimary,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Text(
-                'You currently do not have a vehicle assigned to your driver profile. Please contact your Fleet Manager for vehicle allocation.',
+                'A Fleet Manager has not assigned a vehicle to you yet.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.nunito(
                   fontSize: 14,
@@ -234,73 +229,6 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 32),
-        // Action tiles disabled state / explanation
-        Opacity(
-          opacity: 0.5,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Vehicle Actions (Unavailable)',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: textPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              VehicleActionTile(
-                icon: Icons.info_outline_rounded,
-                title: 'Vehicle Details',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const VehicleDetailsScreen(vehicle: null),
-                    ),
-                  );
-                },
-              ),
-              VehicleActionTile(
-                icon: Icons.bar_chart_rounded,
-                title: 'Vehicle Status',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const VehicleStatusScreen(vehicle: null),
-                    ),
-                  );
-                },
-              ),
-              VehicleActionTile(
-                icon: Icons.notifications_active_outlined,
-                title: 'Maintenance Alerts',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const VehicleMaintenanceScreen(vehicle: null),
-                    ),
-                  );
-                },
-              ),
-              VehicleActionTile(
-                icon: Icons.folder_open_outlined,
-                title: 'Vehicle Documents',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const VehicleDocumentsScreen(vehicle: null),
-                    ),
-                  );
-                },
               ),
             ],
           ),
@@ -356,49 +284,55 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
         VehicleActionTile(
           icon: Icons.info_outline_rounded,
           title: 'Vehicle Details',
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => VehicleDetailsScreen(vehicle: veh),
               ),
             );
+            _fetchVehicleData();
           },
         ),
         VehicleActionTile(
           icon: Icons.bar_chart_rounded,
           title: 'Vehicle Status',
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => VehicleStatusScreen(vehicle: veh),
               ),
             );
+            _fetchVehicleData();
           },
         ),
         VehicleActionTile(
           icon: Icons.notifications_active_outlined,
           title: 'Maintenance Alerts',
-          onTap: () {
-            Navigator.push(
+          subtitle: '1 CRITICAL',
+          subtitleColor: const Color(0xFFEF4444),
+          onTap: () async {
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => VehicleMaintenanceScreen(vehicle: veh),
               ),
             );
+            _fetchVehicleData();
           },
         ),
         VehicleActionTile(
           icon: Icons.folder_open_outlined,
           title: 'Vehicle Documents',
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => VehicleDocumentsScreen(vehicle: veh),
               ),
             );
+            _fetchVehicleData();
           },
         ),
 

@@ -30,6 +30,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
   String? _selectedImageName;
 
   bool _isSubmitting = false;
+  bool _isVehicleAssigned = true;
 
   final List<String> _categories = [
     'Vehicle Maintenance',
@@ -41,6 +42,31 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
   ];
 
   final List<String> _priorities = ['LOW', 'MEDIUM', 'HIGH'];
+
+  @override
+  void initState() {
+    super.initState();
+    _checkVehicleAssignment();
+  }
+
+  Future<void> _checkVehicleAssignment() async {
+    try {
+      final res = await ApiService.getAssignedVehicle();
+      if (mounted && res != null && res['success'] == true) {
+        final data = res['data'];
+        if (data != null && data['assigned'] == true && data['vehicle'] != null) {
+          setState(() {
+            _isVehicleAssigned = true;
+          });
+        } else {
+          setState(() {
+            _isVehicleAssigned = false;
+            _selectedCategory = 'GPS / Technical Glitch';
+          });
+        }
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -151,6 +177,17 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
   Future<void> _submitTicket() async {
     final subject = _subjectController.text.trim();
     final description = _descriptionController.text.trim();
+
+    if (!_isVehicleAssigned) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No vehicle is currently assigned. You can view your previous records, but new maintenance tickets will be available once a vehicle is assigned.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     if (subject.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -272,6 +309,36 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (!_isVehicleAssigned)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 16.0),
+                  padding: const EdgeInsets.all(14.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(16.0),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.info_outline_rounded, color: Color(0xFF2563EB), size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'No vehicle is currently assigned. You can view your previous records, but new maintenance tickets will be available once a vehicle is assigned.',
+                          style: GoogleFonts.nunito(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1E40AF),
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               // 1. Operational Support Banner Card
               Container(
                 width: double.infinity,
@@ -414,28 +481,32 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
               // 4. Subject Input Field
               _buildFieldLabel('SUBJECT'),
               const SizedBox(height: 6.0),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.0),
-                  border: Border.all(color: borderGray, width: 1.0),
+              TextField(
+                controller: _subjectController,
+                style: GoogleFonts.poppins(
+                  fontSize: 13.5,
+                  color: textPrimary,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-                child: TextField(
-                  controller: _subjectController,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13.5,
-                    color: textPrimary,
+                decoration: InputDecoration(
+                  hintText: 'Briefly summarize the issue (e.g. Engine Overheating)',
+                  hintStyle: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: textSecondary.withAlpha(180),
                   ),
-                  decoration: InputDecoration(
-                    hintText: 'Briefly summarize the issue (e.g. Engine Overheating)',
-                    hintStyle: GoogleFonts.poppins(
-                      fontSize: 13,
-                      color: textSecondary.withAlpha(180),
-                    ),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: borderGray, width: 1.0),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: primaryOrange, width: 1.5),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: borderGray, width: 1.0),
                   ),
                 ),
               ),
@@ -445,32 +516,36 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
               // 5. Detailed Description Input Field
               _buildFieldLabel('DETAILED DESCRIPTION'),
               const SizedBox(height: 6.0),
-              Container(
-                height: 110,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.0),
-                  border: Border.all(color: borderGray, width: 1.0),
+              TextField(
+                controller: _descriptionController,
+                minLines: 4,
+                maxLines: 6,
+                keyboardType: TextInputType.multiline,
+                style: GoogleFonts.nunito(
+                  fontSize: 13.5,
+                  color: textPrimary,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-                child: TextField(
-                  controller: _descriptionController,
-                  maxLines: null,
-                  keyboardType: TextInputType.multiline,
-                  style: GoogleFonts.nunito(
-                    fontSize: 13.5,
-                    color: textPrimary,
+                decoration: InputDecoration(
+                  hintText:
+                      'Please provide specific details including vehicle condition, location or breakdown symptoms...',
+                  hintStyle: GoogleFonts.nunito(
+                    fontSize: 13,
+                    color: textSecondary.withAlpha(180),
                   ),
-                  decoration: InputDecoration(
-                    hintText:
-                        'Please provide specific details including vehicle condition, location or breakdown symptoms...',
-                    hintStyle: GoogleFonts.nunito(
-                      fontSize: 13,
-                      color: textSecondary.withAlpha(180),
-                    ),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: borderGray, width: 1.0),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: primaryOrange, width: 1.5),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: borderGray, width: 1.0),
                   ),
                 ),
               ),

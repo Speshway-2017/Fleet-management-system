@@ -592,9 +592,9 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                             tripId: widget.tripId,
                             customerName: 'Acme Logistics',
                             receiverName: 'Verified Receiver',
-                            customerSignatureUrl: 'https://via.placeholder.com/300x100.png?text=Signature',
-                            deliveryPhotoUrl: 'https://via.placeholder.com/300x300.png?text=Delivery+Photo',
-                            podDocumentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                            customerSignatureUrl: '',
+                            deliveryPhotoUrl: '',
+                            podDocumentUrl: '',
                           );
                           if (mounted) {
                             setState(() {
@@ -611,8 +611,11 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                         } catch (e) {
                           if (mounted) {
                             setState(() => _isUploadingPod = false);
+                            final errStr = e.toString().replaceAll('Exception: ', '');
+                            final isTechError = errStr.contains('is not defined') || errStr.contains('ReferenceError') || errStr.contains('TypeError') || errStr.contains('500');
+                            final msg = isTechError ? 'Unable to upload document. Please try again.' : errStr;
                             messenger.showSnackBar(
-                              SnackBar(content: Text('POD Upload failed: $e')),
+                              SnackBar(content: Text(msg)),
                             );
                           }
                         }
@@ -678,7 +681,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                             tareWeight: 10000,
                             netWeight: 15000,
                             location: 'Highway Weighbridge Station',
-                            documentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                            documentUrl: '',
                           );
                           if (mounted) {
                             setState(() {
@@ -695,8 +698,11 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                         } catch (e) {
                           if (mounted) {
                             setState(() => _isUploadingWeighbridge = false);
+                            final errStr = e.toString().replaceAll('Exception: ', '');
+                            final isTechError = errStr.contains('is not defined') || errStr.contains('ReferenceError') || errStr.contains('TypeError') || errStr.contains('500');
+                            final msg = isTechError ? 'Unable to upload document. Please try again.' : errStr;
                             messenger.showSnackBar(
-                              SnackBar(content: Text('Weighbridge upload failed: $e')),
+                              SnackBar(content: Text(msg)),
                             );
                           }
                         }

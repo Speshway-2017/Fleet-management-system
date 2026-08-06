@@ -1,5 +1,3 @@
-// ignore_for_file: unused_import
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
@@ -9,14 +7,22 @@ import '../constants/app_spacing.dart';
 import '../constants/app_radius.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
+import '../widgets/upload_required_documents_dialog.dart';
 import '../services/api_service.dart';
+import '../services/socket_service.dart';
 import '../utils/date_formatter.dart';
+import 'add_fuel_entry_screen.dart';
+import 'invoice_screen.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final String tripId;
   final Map<String, dynamic>? tripData;
 
-  const TripDetailsScreen({super.key, required this.tripId, this.tripData});
+  const TripDetailsScreen({
+    super.key,
+    required this.tripId,
+    this.tripData,
+  });
 
   @override
   State<TripDetailsScreen> createState() => _TripDetailsScreenState();
@@ -27,34 +33,22 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   bool _isSubmitting = false;
   Map<String, dynamic>? _trip;
 
-  Future<void> printInvoice(
-    Map<String, dynamic> trip,
-    String invoiceNumber,
-  ) async {
+  Future<void> printInvoice(Map<String, dynamic> trip, String invoiceNumber) async {
     final invoiceDateStr = DateTime.now().toString().split(' ')[0];
     final startLocation = trip['startLocation'] ?? trip['pickup'] ?? 'N/A';
     final endLocation = trip['endLocation'] ?? trip['destination'] ?? 'N/A';
-    final departureTime = trip['departureTime'] != null
-        ? formatIndianDateTime(trip['departureTime'])
-        : 'N/A';
+    final departureTime = trip['departureTime'] != null ? formatIndianDateTime(trip['departureTime']) : 'N/A';
     final eta = trip['eta'] != null ? formatIndianDateTime(trip['eta']) : 'N/A';
-    final distance = trip['estimatedDistance'] != null
-        ? '${trip['estimatedDistance']} KM'
-        : (trip['distance'] ?? 'N/A');
+    final distance = trip['estimatedDistance'] != null ? '${trip['estimatedDistance']} KM' : (trip['distance'] ?? 'N/A');
     final cargoType = trip['cargoType'] ?? 'General Cargo';
-    final cargoWeight = trip['cargoWeight'] != null
-        ? '${trip['cargoWeight']} kg'
-        : 'N/A';
+    final cargoWeight = trip['cargoWeight'] != null ? '${trip['cargoWeight']} kg' : 'N/A';
     final vehicleName = trip['vehicleName'] ?? 'N/A';
     final vehiclePlate = trip['vehiclePlate'] ?? 'N/A';
     final driverName = trip['driverName'] ?? 'N/A';
     final driverPhone = trip['driverPhone'] ?? 'N/A';
-    final managerName = trip['manager'] != null
-        ? trip['manager']['name'] ?? 'N/A'
-        : 'N/A';
+    final managerName = trip['manager'] != null ? trip['manager']['name'] ?? 'N/A' : 'N/A';
 
-    final htmlContent =
-        '''
+    final htmlContent = '''
 <!DOCTYPE html>
 <html>
 <head>
@@ -150,242 +144,93 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final base64Str = base64.encode(bytes);
     final urlStr = 'data:text/html;base64,$base64Str';
     final uri = Uri.parse(urlStr);
-
+    
     try {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
       } else {
-        final textUri = Uri.dataFromString(
-          htmlContent,
-          mimeType: 'text/html',
-          encoding: Encoding.getByName('utf-8'),
-        );
+        final textUri = Uri.dataFromString(htmlContent, mimeType: 'text/html', encoding: Encoding.getByName('utf-8'));
         await launchUrl(textUri);
       }
     } catch (_) {
-      final textUri = Uri.dataFromString(
-        htmlContent,
-        mimeType: 'text/html',
-        encoding: Encoding.getByName('utf-8'),
-      );
+      final textUri = Uri.dataFromString(htmlContent, mimeType: 'text/html', encoding: Encoding.getByName('utf-8'));
       await launchUrl(textUri);
     }
   }
 
-  void _showInvoiceDialog(
-    BuildContext context,
-    Map<String, dynamic> trip,
-    String invoiceNo,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final startLocation = trip['startLocation'] ?? trip['pickup'] ?? 'N/A';
-        final endLocation = trip['endLocation'] ?? trip['destination'] ?? 'N/A';
-        final departureTime = trip['departureTime'] != null
-            ? formatIndianDateTime(trip['departureTime'])
-            : 'N/A';
-        final eta = trip['eta'] != null
-            ? formatIndianDateTime(trip['eta'])
-            : 'N/A';
-        final distance = trip['estimatedDistance'] != null
-            ? '${trip['estimatedDistance']} KM'
-            : (trip['distance'] ?? 'N/A');
-        final cargoType = trip['cargoType'] ?? 'General Cargo';
-        final cargoWeight = trip['cargoWeight'] != null
-            ? '${trip['cargoWeight']} kg'
-            : 'N/A';
-        final vehicleName = trip['vehicleName'] ?? 'N/A';
-        final vehiclePlate = trip['vehiclePlate'] ?? 'N/A';
-        final driverName = trip['driverName'] ?? 'N/A';
-        final driverPhone = trip['driverPhone'] ?? 'N/A';
 
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 500),
-            padding: const EdgeInsets.all(24),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Speshway Logistics',
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.secondary,
-                            ),
-                          ),
-                          Text(
-                            'Billing & Dispatch',
-                            style: GoogleFonts.nunito(
-                              fontSize: 11,
-                              color: AppColors.secondaryText,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 24, color: AppColors.divider),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.divider.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildRowItem(
-                          'Invoice Number',
-                          invoiceNo,
-                          isBoldValue: true,
-                        ),
-                        const SizedBox(height: 4),
-                        _buildRowItem(
-                          'Invoice Date',
-                          DateTime.now().toString().split(' ')[0],
-                        ),
-                        const SizedBox(height: 4),
-                        _buildRowItem('Trip ID', trip['tripNumber'] ?? 'N/A'),
-                        const SizedBox(height: 4),
-                        _buildRowItem(
-                          'Trip Status',
-                          trip['status'] ?? 'N/A',
-                          isBoldValue: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'TRIP DETAILS',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.secondaryText,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const Divider(height: 12, color: AppColors.divider),
-                  _buildRowItem('Pickup Location', startLocation),
-                  _buildRowItem('Destination', endLocation),
-                  _buildRowItem('Departure', departureTime),
-                  _buildRowItem('ETA', eta),
-                  _buildRowItem('Distance', distance),
-                  _buildRowItem('Cargo Type', cargoType),
-                  _buildRowItem('Cargo Weight', cargoWeight),
-                  const SizedBox(height: 16),
-                  Text(
-                    'ASSETS & DRIVER',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.secondaryText,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const Divider(height: 12, color: AppColors.divider),
-                  _buildRowItem('Vehicle Name', vehicleName),
-                  _buildRowItem('Vehicle Plate', vehiclePlate),
-                  _buildRowItem('Driver Name', driverName),
-                  _buildRowItem('Driver Phone', driverPhone),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.divider),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: Text(
-                            'Close',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.secondaryText,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            printInvoice(trip, invoiceNo);
-                          },
-                          icon: const Icon(
-                            Icons.download,
-                            size: 16,
-                            color: Colors.white,
-                          ),
-                          label: Text(
-                            'Download',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.success,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
 
-  Widget _buildRowItem(String label, String value, {bool isBoldValue = false}) {
+  Widget _buildDocumentStatusRow(String label, String rawStatusStr) {
+    final statusTrim = rawStatusStr.trim();
+    final statusLower = statusTrim.toLowerCase();
+
+    Color badgeBg;
+    Color badgeText;
+    String displayStatus;
+    IconData statusIcon;
+
+    if (statusLower == 'approved') {
+      displayStatus = 'Approved';
+      badgeBg = const Color(0xFFDCFCE7);
+      badgeText = const Color(0xFF15803D);
+      statusIcon = Icons.check_circle_rounded;
+    } else if (statusLower == 'rejected') {
+      displayStatus = 'Rejected';
+      badgeBg = const Color(0xFFFEE2E2);
+      badgeText = const Color(0xFFB91C1C);
+      statusIcon = Icons.cancel_rounded;
+    } else if (statusLower == 'pending' || statusLower == 'pending approval' || statusLower == 'waiting for manager approval') {
+      displayStatus = 'Pending Approval';
+      badgeBg = const Color(0xFFFEF3C7);
+      badgeText = const Color(0xFFB45309);
+      statusIcon = Icons.hourglass_top_rounded;
+    } else if (statusLower == 'uploaded') {
+      displayStatus = 'Uploaded';
+      badgeBg = const Color(0xFFDBEAFE);
+      badgeText = const Color(0xFF1D4ED8);
+      statusIcon = Icons.task_alt_rounded;
+    } else {
+      displayStatus = 'Not Uploaded';
+      badgeBg = const Color(0xFFF3F4F6);
+      badgeText = const Color(0xFF6B7280);
+      statusIcon = Icons.remove_circle_outline_rounded;
+    }
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.nunito(
-              fontSize: 12,
-              color: AppColors.secondaryText,
-              fontWeight: FontWeight.w500,
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.nunito(
+                fontSize: 13,
+                color: AppColors.primaryText,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              fontWeight: isBoldValue ? FontWeight.bold : FontWeight.w600,
-              color: AppColors.primaryText,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: badgeBg,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(statusIcon, size: 14, color: badgeText),
+                const SizedBox(width: 5),
+                Text(
+                  displayStatus,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: badgeText,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -393,8 +238,151 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
+
+
   Widget _buildInvoiceDetailRow(String label, String value) {
     final hasInvoice = value != 'N/A' && value.isNotEmpty;
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
+    Widget buildViewButton() {
+      return InkWell(
+        onTap: () {
+          String? invId;
+          if (_trip?['tripInvoice'] is Map) {
+            invId = (_trip!['tripInvoice'] as Map)['invoiceId']?.toString();
+          }
+          invId ??= _trip?['invoiceId']?.toString();
+
+          String? invNum = value.isNotEmpty ? value : _trip?['invoiceNumber']?.toString();
+          if ((invNum == null || invNum.isEmpty) && _trip?['tripInvoice'] is Map) {
+            invNum = (_trip!['tripInvoice'] as Map)['invoiceNumber']?.toString();
+          }
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => InvoiceScreen(
+                invoiceId: invId,
+                invoiceNumber: invNum,
+                tripId: widget.tripId,
+                tripData: _trip,
+              ),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.secondary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.visibility,
+                size: 13,
+                color: AppColors.secondary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'View',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.secondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget buildDownloadButton() {
+      return InkWell(
+        onTap: () => printInvoice(_trip!, value),
+        borderRadius: BorderRadius.circular(4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.success.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.download,
+                size: 13,
+                color: AppColors.success,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Download',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.success,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (isMobile) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.nunito(
+                      fontSize: 13,
+                      color: AppColors.secondaryText,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    value,
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryText,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                  ),
+                ),
+              ],
+            ),
+            if (hasInvoice) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(child: buildViewButton()),
+                  const SizedBox(width: 8),
+                  Expanded(child: buildDownloadButton()),
+                ],
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
@@ -421,79 +409,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
               if (hasInvoice) ...[
                 const SizedBox(width: 8),
-                InkWell(
-                  onTap: () => _showInvoiceDialog(context, _trip!, value),
-                  borderRadius: BorderRadius.circular(4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: AppColors.secondary.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.visibility,
-                          size: 12,
-                          color: AppColors.secondary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'View',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.secondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                buildViewButton(),
                 const SizedBox(width: 6),
-                InkWell(
-                  onTap: () => printInvoice(_trip!, value),
-                  borderRadius: BorderRadius.circular(4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: AppColors.success.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.download,
-                          size: 12,
-                          color: AppColors.success,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Download',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.success,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                buildDownloadButton(),
               ],
             ],
           ),
@@ -509,7 +427,28 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       _trip = widget.tripData;
     }
     _fetchTripDetails();
+    SocketService.onEvent('trip:updated', _onTripUpdatedSocket);
   }
+
+  void _onTripUpdatedSocket(dynamic data) {
+    if (!mounted) return;
+    final updatedId = data?['tripId']?.toString() ?? data?['trip']?['_id']?.toString() ?? '';
+    final cleanCurrentId = widget.tripId.replaceAll('#', '').trim();
+    final cleanUpdatedId = updatedId.replaceAll('#', '').trim();
+
+    if (cleanCurrentId == cleanUpdatedId || updatedId == _trip?['_id']?.toString() || updatedId == _trip?['tripId']?.toString() || updatedId.isEmpty) {
+      _fetchTripDetails();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Trip details have been updated by your Fleet Manager.'),
+          backgroundColor: Color(0xFFFF6A00),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  bool _isShowingDocumentPopup = false;
 
   Future<void> _fetchTripDetails() async {
     if (!mounted) return;
@@ -525,6 +464,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             _trip = res['data'];
             _isLoading = false;
           });
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            checkPendingDocumentPopup();
+          });
         }
       } else {
         if (mounted) {
@@ -533,7 +475,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           });
         }
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Error in _fetchTripDetails: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -542,14 +485,118 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
+  void checkPendingDocumentPopup() {
+    if (!mounted || _trip == null || _isShowingDocumentPopup) return;
+
+    final rawStatus = (_trip?['status'] ?? '').toString().trim();
+    final statusUpper = rawStatus.toUpperCase();
+    final isTripEndedFlag = _trip?['tripEnded'] == true || _trip?['customerLocationReached'] == true;
+
+    final isEnded = isTripEndedFlag ||
+        statusUpper == 'ENDED' ||
+        statusUpper == 'REACHED DESTINATION' ||
+        statusUpper == 'TRIP ENDED';
+
+    final tripCompletionRequested = _trip?['tripCompletionRequested'] == true ||
+        _trip?['documentsSubmitted'] == true ||
+        statusUpper == 'WAITING FOR MANAGER APPROVAL' ||
+        statusUpper == 'COMPLETED' ||
+        statusUpper == 'WAITING_FOR_MANAGER_APPROVAL';
+
+    final podObj = _trip?['proofOfDelivery'] is Map ? _trip!['proofOfDelivery'] as Map : {};
+    final podDetails = _trip?['podDetails'] is Map ? _trip!['podDetails'] as Map : {};
+    final podStatusRaw = (_trip?['podStatus'] ?? podObj['status'] ?? podDetails['status'] ?? '').toString().trim();
+    final podUrlRaw = (_trip?['podUrl'] ?? podObj['url'] ?? podObj['deliveryPhotoUrl'] ?? podDetails['podDocumentUrl'] ?? '').toString().trim();
+    final podStatusUpper = podStatusRaw.toUpperCase();
+    final isPodUploadedOrSubmitted = (podStatusUpper == 'UPLOADED' || podStatusUpper == 'SUBMITTED' || podStatusUpper == 'APPROVED' || podUrlRaw.isNotEmpty) && podStatusUpper != 'NOT UPLOADED';
+
+    final wbObj = _trip?['weighbridgeSlip'] is Map ? _trip!['weighbridgeSlip'] as Map : {};
+    final wbDetails = _trip?['weighbridgeDetails'] is Map ? _trip!['weighbridgeDetails'] as Map : {};
+    final wbStatusRaw = (_trip?['weighbridgeStatus'] ?? wbObj['status'] ?? wbDetails['status'] ?? '').toString().trim();
+    final wbUrlRaw = (_trip?['weighbridgeUrl'] ?? wbObj['documentUrl'] ?? wbObj['url'] ?? wbDetails['documentUrl'] ?? '').toString().trim();
+    final wbStatusUpper = wbStatusRaw.toUpperCase();
+    final isWbUploadedOrSubmitted = (wbStatusUpper == 'UPLOADED' || wbStatusUpper == 'SUBMITTED' || wbStatusUpper == 'APPROVED' || wbUrlRaw.isNotEmpty) && wbStatusUpper != 'NOT UPLOADED';
+
+    final missingDocs = (!isPodUploadedOrSubmitted || !isWbUploadedOrSubmitted);
+
+    final shouldShowPopup = isEnded && !tripCompletionRequested && missingDocs;
+
+    debugPrint('================= PENDING DOCUMENT POPUP DEBUG LOGS =================');
+    debugPrint('trip.status: "$rawStatus" (statusUpper: "$statusUpper", isTripEndedFlag: $isTripEndedFlag, isEnded: $isEnded)');
+    debugPrint('podStatus: "$podStatusRaw" (podUrl: "$podUrlRaw", isPodUploadedOrSubmitted: $isPodUploadedOrSubmitted)');
+    debugPrint('weighbridgeStatus: "$wbStatusRaw" (wbUrl: "$wbUrlRaw", isWbUploadedOrSubmitted: $isWbUploadedOrSubmitted)');
+    debugPrint('documentsSubmitted / tripCompletionRequested: $tripCompletionRequested');
+    debugPrint('missingDocs condition: $missingDocs');
+    debugPrint('POPUP CONDITION RESULT: $shouldShowPopup');
+    debugPrint('=====================================================================');
+
+    if (shouldShowPopup) {
+      _isShowingDocumentPopup = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        await UploadRequiredDocumentsDialog.show(
+          context,
+          tripId: widget.tripId,
+          tripData: _trip,
+        );
+        _isShowingDocumentPopup = false;
+        if (mounted) {
+          await _fetchTripDetails();
+        }
+      });
+    }
+  }
+
+  bool _isTripEnded(Map<String, dynamic>? trip) {
+    if (trip == null) return false;
+    final status = (trip['status'] ?? '').toString().toLowerCase();
+    if (['reached destination', 'trip ended', 'ended', 'waiting for manager approval', 'completed'].contains(status)) {
+      return true;
+    }
+    return trip['tripEnded'] == true || trip['customerLocationReached'] == true;
+  }
+
   bool _isStartEnabled(String? departureTimeStr) {
-    if (departureTimeStr == null || departureTimeStr.isEmpty) return true;
+    if (departureTimeStr == null || departureTimeStr.toString().trim().isEmpty) return true;
     try {
-      final dep = DateTime.parse(departureTimeStr);
+      final dep = DateTime.parse(departureTimeStr.toString()).toLocal();
       final now = DateTime.now();
-      return now.isAfter(dep.subtract(const Duration(minutes: 15)));
+      final windowStart = dep.subtract(const Duration(minutes: 15));
+      return now.isAfter(windowStart) || now.isAtSameMomentAs(windowStart);
     } catch (_) {
       return true;
+    }
+  }
+
+  Future<void> _handleEndTrip() async {
+    if (_isSubmitting) return;
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final rawId = _trip?['tripId'] ?? _trip?['_id'] ?? widget.tripId;
+      final cleanId = rawId.toString().replaceAll('#', '').trim();
+      final res = await ApiService.endTrip(cleanId);
+      if (res != null) {
+        await _fetchTripDetails();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to end trip: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 
@@ -558,9 +605,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     if (!_isStartEnabled(departureTime)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Start button is locked. You can start the trip 15 minutes before scheduled departure.',
-          ),
+          content: Text('Start button is locked. You can start the trip 15 minutes before scheduled departure.'),
           backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
         ),
@@ -606,40 +651,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   Future<void> _handleCompleteTrip() async {
-    setState(() {
-      _isSubmitting = true;
-    });
-
-    try {
-      final rawId = _trip?['tripId'] ?? _trip?['_id'] ?? widget.tripId;
-      final cleanId = rawId.toString().replaceAll('#', '');
-      await ApiService.updateTripStatus(cleanId, 'Completed');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Trip completed successfully!'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        _fetchTripDetails();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
+    final submitted = await UploadRequiredDocumentsDialog.show(
+      context,
+      tripId: widget.tripId,
+      tripData: _trip,
+    );
+    if (submitted == true) {
+      _fetchTripDetails();
     }
   }
 
@@ -726,35 +744,35 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   Widget build(BuildContext context) {
     final activeId = _trip?['tripNumber'] ?? widget.tripId;
     final rawStatus = (_trip?['status'] ?? 'Scheduled').toString();
-
+    
     final isCompleted = rawStatus.toLowerCase() == 'completed';
-    final isInProgress =
-        rawStatus.toLowerCase() == 'in progress' ||
-        rawStatus.toLowerCase() == 'on transit';
-    final isAccepted = rawStatus.toLowerCase() == 'accepted';
-    final isPendingOrAssigned =
-        rawStatus.toLowerCase() == 'pending' ||
-        rawStatus.toLowerCase() == 'assigned';
-
+    final isInProgress = rawStatus.toLowerCase() == 'in progress' || rawStatus.toLowerCase() == 'on transit' || rawStatus.toLowerCase() == 'enroute';
+    final isAcceptedOrScheduled = ['accepted', 'scheduled', 'assigned'].contains(rawStatus.toLowerCase());
+    final isPending = ['pending', 'pending driver acceptance'].contains(rawStatus.toLowerCase());
+    
     final statusText = rawStatus.toUpperCase();
-    final statusColor = isPendingOrAssigned
+    final statusColor = isPending
         ? Colors.orange
-        : (isAccepted
-              ? AppColors.secondary
-              : (isCompleted ? AppColors.success : Colors.blue));
+        : (isAcceptedOrScheduled ? AppColors.secondary : (isCompleted ? AppColors.success : Colors.blue));
 
     // Dynamic or fallback locations
-    final origin = _trip?['pickup'] ?? _trip?['startLocation'] ?? 'Hyderabad';
-    final destination =
-        _trip?['destination'] ?? _trip?['endLocation'] ?? 'Chennai';
-    final distanceVal = _trip?['estimatedDistance'] ?? _trip?['distance'];
-    final distance =
-        (distanceVal != null && distanceVal != 0 && distanceVal != '0')
-        ? (distanceVal.toString().endsWith('km') ||
-                  distanceVal.toString().endsWith('mi')
-              ? distanceVal.toString()
-              : '$distanceVal km')
-        : '285 km';
+    final origin = _trip?['pickup'] ?? _trip?['startLocation'] ?? 'N/A';
+    final destination = _trip?['destination'] ?? _trip?['endLocation'] ?? 'N/A';
+    final distanceVal = _trip?['distance'] ?? _trip?['totalDistance'] ?? _trip?['estimatedDistance'] ?? _trip?['actualDistance'];
+    final distance = (distanceVal != null && distanceVal != 0 && distanceVal != '0')
+        ? (distanceVal.toString().toLowerCase().endsWith('km') || distanceVal.toString().toLowerCase().endsWith('mi')
+            ? distanceVal.toString()
+            : '$distanceVal km')
+        : '0 km';
+
+    debugPrint('==================================================');
+    debugPrint('[Driver TripDetailsScreen Distance Debug]');
+    debugPrint('  • Trip ID: ${widget.tripId}');
+    debugPrint('  • Origin: $origin');
+    debugPrint('  • Destination: $destination');
+    debugPrint('  • Distance received from backend: $distanceVal');
+    debugPrint('  • Distance displayed on the UI: $distance');
+    debugPrint('==================================================');
     final estTime = formatIndianDateTime(_trip?['eta']);
 
     // Driver/Vehicle details
@@ -763,50 +781,22 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final vehicleName = _trip?['vehicleName'] ?? '';
     final truckId = (vehicleName.isNotEmpty && vehiclePlate.isNotEmpty)
         ? '$vehicleName ($vehiclePlate)'
-        : (vehiclePlate.isNotEmpty
-              ? vehiclePlate
-              : (vehicleName.isNotEmpty
-                    ? vehicleName
-                    : (_trip?['vehicle'] ?? 'Unassigned')));
-    final weight = _trip?['cargoWeight'] != null
-        ? '${_trip!['cargoWeight']} Tons'
-        : 'N/A';
-    final managerName = _trip?['manager'] != null
-        ? _trip!['manager']['name']
-        : 'N/A';
+        : (vehiclePlate.isNotEmpty ? vehiclePlate : (vehicleName.isNotEmpty ? vehicleName : (_trip?['vehicle'] ?? 'Unassigned')));
+    final weight = _trip?['cargoWeight'] != null ? '${_trip!['cargoWeight']} kg' : 'N/A';
+    final managerName = _trip?['manager'] != null ? _trip!['manager']['name'] : 'N/A';
 
     // Manifest nodes
     final manifestNodes = isCompleted
         ? [
             _ManifestNode('Regional Logistics Hub', '$origin • 06:00 AM', true),
             _ManifestNode('Warehouse B', 'Midway Point • 08:30 AM', true),
-            _ManifestNode(
-              'Distribution Center',
-              'Final Checkpoint • 12:00 PM',
-              true,
-            ),
-            _ManifestNode(
-              'Destination Terminal',
-              '$destination • 02:30 PM',
-              true,
-            ),
+            _ManifestNode('Distribution Center', 'Final Checkpoint • 12:00 PM', true),
+            _ManifestNode('Destination Terminal', '$destination • 02:30 PM', true),
           ]
         : [
-            _ManifestNode(
-              'Logistics Hub',
-              '$origin • Departure',
-              isInProgress || isCompleted,
-            ),
-            _ManifestNode(
-              'Midway Checkpoint',
-              'Enroute Terminal • Scheduled',
-              isCompleted,
-            ),
-            _ManifestNode(
-              'Destination Terminal',
-              '$destination • Arrival',
-              isCompleted,
-            ),
+            _ManifestNode('Logistics Hub', '$origin • Departure', isInProgress || isCompleted),
+            _ManifestNode('Midway Checkpoint', 'Enroute Terminal • Scheduled', isCompleted),
+            _ManifestNode('Destination Terminal', '$destination • Arrival', isCompleted),
           ];
 
     return Scaffold(
@@ -891,9 +881,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                       ),
                                     ),
                                     Text(
-                                      activeId.startsWith('#')
-                                          ? activeId
-                                          : '#$activeId',
+                                      activeId.startsWith('#') ? activeId : '#$activeId',
                                       overflow: TextOverflow.ellipsis,
                                       style: GoogleFonts.poppins(
                                         fontSize: 18,
@@ -906,10 +894,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                               ),
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: statusColor.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(12),
@@ -926,106 +911,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                             ],
                           ),
                           AppSpacing.verticalMd,
-                          // Path display (Origin to Destination)
-                          Stack(
-                            children: [
-                              Positioned(
-                                left: 5,
-                                top: 10,
-                                bottom: 10,
-                                child: Container(
-                                  width: 1,
-                                  color: AppColors.divider,
-                                  child: const VerticalDivider(
-                                    color: Colors.grey,
-                                    thickness: 1,
-                                    indent: 4,
-                                    endIndent: 4,
-                                  ),
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFF3B82F6),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Origin',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 9,
-                                                color: AppColors.secondaryText,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            Text(
-                                              origin,
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                                color: AppColors.primaryText,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFEF4444),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Destination',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 9,
-                                                color: AppColors.secondaryText,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            Text(
-                                              destination,
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                                color: AppColors.primaryText,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                          // Multi-city Route & Fuel Stops Timeline
+                          _buildRouteTimelineWidget(_trip),
                         ],
                       ),
                     ),
@@ -1069,10 +956,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 width: 42,
                                 height: 42,
                                 decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.white24,
-                                    width: 1.5,
-                                  ),
+                                  border: Border.all(color: Colors.white24, width: 1.5),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: const Icon(
@@ -1115,9 +999,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                             ),
                             child: FractionallySizedBox(
                               alignment: Alignment.centerLeft,
-                              widthFactor: isCompleted
-                                  ? 1.0
-                                  : (isInProgress ? 0.65 : 0.0),
+                              widthFactor: isCompleted ? 1.0 : (isInProgress ? 0.65 : 0.0),
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: AppColors.secondary,
@@ -1139,11 +1021,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         children: [
                           Row(
                             children: [
-                              const Icon(
-                                Icons.inventory_2_outlined,
-                                color: AppColors.secondary,
-                                size: 18,
-                              ),
+                              const Icon(Icons.inventory_2_outlined, color: AppColors.secondary, size: 18),
                               const SizedBox(width: 8),
                               Text(
                                 'CARGO & SHIPMENT',
@@ -1157,19 +1035,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                             ],
                           ),
                           const Divider(height: 24, color: AppColors.divider),
-                          _buildDetailRow(
-                            'Cargo Type',
-                            _trip?['cargoType'] ?? 'General Cargo',
-                          ),
+                          _buildDetailRow('Cargo Type', _trip?['cargoType'] ?? 'General Cargo'),
                           _buildDetailRow('Cargo Weight', weight),
                           const SizedBox(height: 16),
                           Row(
                             children: [
-                              const Icon(
-                                Icons.contact_phone_outlined,
-                                color: AppColors.secondary,
-                                size: 18,
-                              ),
+                              const Icon(Icons.contact_phone_outlined, color: AppColors.secondary, size: 18),
                               const SizedBox(width: 8),
                               Text(
                                 'CONTACT & MANAGER',
@@ -1184,22 +1055,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           ),
                           const Divider(height: 24, color: AppColors.divider),
                           _buildDetailRow('Dispatch Manager', managerName),
-                          _buildDetailRow(
-                            'Manager Phone',
-                            _trip?['manager']?['phone'] ?? 'N/A',
-                          ),
-                          _buildDetailRow(
-                            'Manager Email',
-                            _trip?['manager']?['email'] ?? 'N/A',
-                          ),
+                          _buildDetailRow('Manager Phone', _trip?['manager']?['phone'] ?? 'N/A'),
+                          _buildDetailRow('Manager Email', _trip?['manager']?['email'] ?? 'N/A'),
                           const SizedBox(height: 16),
                           Row(
                             children: [
-                              const Icon(
-                                Icons.description_outlined,
-                                color: AppColors.secondary,
-                                size: 18,
-                              ),
+                              const Icon(Icons.description_outlined, color: AppColors.secondary, size: 18),
                               const SizedBox(width: 8),
                               Text(
                                 'DOCUMENTS STATUS',
@@ -1213,28 +1074,25 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                             ],
                           ),
                           const Divider(height: 24, color: AppColors.divider),
-                          _buildDetailRow(
-                            'Proof of Delivery (POD)',
-                            _trip?['podStatus'] ?? 'Not Uploaded',
+                          Builder(
+                            builder: (context) {
+                              final podStatusStr = (_trip?['podStatus'] ?? _trip?['proofOfDelivery']?['status'] ?? 'Not Uploaded').toString();
+                              final wbStatusStr = (_trip?['weighbridgeStatus'] ?? _trip?['weighbridgeSlip']?['status'] ?? 'Not Uploaded').toString();
+
+                              return Column(
+                                children: [
+                                  _buildDocumentStatusRow('Proof of Delivery (POD)', podStatusStr),
+                                  _buildDocumentStatusRow('Weighbridge Slip', wbStatusStr),
+                                ],
+                              );
+                            },
                           ),
-                          _buildDetailRow(
-                            'Weighbridge Slip',
-                            _trip?['weighbridgeStatus'] ?? 'Not Uploaded',
-                          ),
-                          _buildInvoiceDetailRow(
-                            'Trip Invoice',
-                            _trip?['invoiceNumber'] ?? 'N/A',
-                          ),
-                          if (_trip?['tripNotes'] != null &&
-                              _trip!['tripNotes'].toString().isNotEmpty) ...[
+                          _buildInvoiceDetailRow('Trip Invoice', _trip?['invoiceNumber'] ?? 'N/A'),
+                          if (_trip?['tripNotes'] != null && _trip!['tripNotes'].toString().isNotEmpty) ...[
                             const SizedBox(height: 16),
                             Row(
                               children: [
-                                const Icon(
-                                  Icons.note_alt_outlined,
-                                  color: AppColors.secondary,
-                                  size: 18,
-                                ),
+                                const Icon(Icons.note_alt_outlined, color: AppColors.secondary, size: 18),
                                 const SizedBox(width: 8),
                                 Text(
                                   'TRIP NOTES',
@@ -1277,35 +1135,31 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     CustomCard(
                       padding: const EdgeInsets.all(16),
                       child: Column(
-                        children: List.generate(manifestNodes.length, (index) {
-                          final node = manifestNodes[index];
-                          return _buildManifestNodeItem(
-                            node: node,
-                            isLast: index == manifestNodes.length - 1,
-                          );
-                        }),
+                        children: List.generate(
+                          manifestNodes.length,
+                          (index) {
+                            final node = manifestNodes[index];
+                            return _buildManifestNodeItem(
+                              node: node,
+                              isLast: index == manifestNodes.length - 1,
+                            );
+                          },
+                        ),
                       ),
                     ),
 
                     // Accept/Reject, Start Trip or Complete Trip buttons
-                    if (isPendingOrAssigned) ...[
+                    if (isPending) ...[
                       const SizedBox(height: 24),
                       Row(
                         children: [
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: _isSubmitting
-                                  ? null
-                                  : () => _handleRespond('reject'),
+                              onPressed: _isSubmitting ? null : () => _handleRespond('reject'),
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(
-                                  color: AppColors.error,
-                                  width: 1.5,
-                                ),
+                                side: const BorderSide(color: AppColors.error, width: 1.5),
                                 foregroundColor: AppColors.error,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14.0,
-                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 14.0),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10.0),
                                 ),
@@ -1322,16 +1176,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: _isSubmitting
-                                  ? null
-                                  : () => _handleRespond('accept'),
+                              onPressed: _isSubmitting ? null : () => _handleRespond('accept'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.success,
                                 foregroundColor: Colors.white,
                                 elevation: 0,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14.0,
-                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 14.0),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10.0),
                                 ),
@@ -1340,10 +1190,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                   ? const SizedBox(
                                       width: 20,
                                       height: 20,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                     )
                                   : Text(
                                       'Accept Trip',
@@ -1356,87 +1203,283 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           ),
                         ],
                       ),
-                    ] else if (rawStatus.toLowerCase() == 'accepted') ...[
+                    ] else if (isAcceptedOrScheduled) ...[
                       const SizedBox(height: 24),
                       Builder(
                         builder: (context) {
-                          final startEnabled = _isStartEnabled(
-                            _trip?['departureTime'],
-                          );
-                          return ElevatedButton.icon(
-                            onPressed: (_isSubmitting || !startEnabled)
-                                ? null
-                                : _handleStartTrip,
-                            icon: Icon(
-                              startEnabled
-                                  ? Icons.play_arrow
-                                  : Icons.lock_clock,
-                              color: Colors.white,
-                            ),
-                            label: _isSubmitting
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Text(
-                                    startEnabled
-                                        ? 'Start Trip'
-                                        : 'Start Trip (Locked until 15m before)',
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: startEnabled
-                                  ? AppColors.secondary
-                                  : const Color(0xFF8E9CAE),
-                              disabledBackgroundColor: const Color(0xFF8E9CAE),
-                              minimumSize: const Size(double.infinity, 48),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                          final depTime = _trip?['departureTime'] ?? _trip?['scheduledDeparture'];
+                          final canStart = _isStartEnabled(depTime);
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: (_isSubmitting || !canStart) ? null : _handleStartTrip,
+                                icon: Icon(
+                                  canStart ? Icons.play_arrow_rounded : Icons.lock_clock,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                                label: _isSubmitting
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                      )
+                                    : Text(
+                                        canStart ? 'Start Trip' : 'Start Trip (Locked until 15m before departure)',
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: canStart ? const Color(0xFFFF6A00) : const Color(0xFF8E9CAE),
+                                  disabledBackgroundColor: const Color(0xFF8E9CAE),
+                                  disabledForegroundColor: Colors.white70,
+                                  minimumSize: const Size(double.infinity, 50),
+                                  elevation: 2,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
                               ),
-                            ),
+                              if (!canStart) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Departure window opens 15 minutes before scheduled start.',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 11,
+                                    color: AppColors.secondaryText,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ],
                           );
                         },
                       ),
-                    ] else if (rawStatus.toLowerCase() == 'in progress' ||
-                        rawStatus.toLowerCase() == 'on transit') ...[
+                    ] else if (rawStatus.toLowerCase() == 'in progress' || rawStatus.toLowerCase() == 'on transit') ...[
                       const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: _isSubmitting ? null : _handleCompleteTrip,
-                        icon: const Icon(
-                          Icons.check_circle,
-                          color: Colors.white,
-                        ),
-                        label: _isSubmitting
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
+                      Builder(
+                        builder: (context) {
+                          final isEnded = _isTripEnded(_trip);
+                          final podStatusStr = (_trip?['podStatus'] ?? 'Not Uploaded').toString();
+                          final wbStatusStr = (_trip?['weighbridgeStatus'] ?? 'Not Uploaded').toString();
+                          final hasPod = ['uploaded', 'pending', 'approved'].contains(podStatusStr.toLowerCase());
+                          final hasWb = ['uploaded', 'pending', 'approved'].contains(wbStatusStr.toLowerCase());
+                          final canComplete = isEnded && hasPod && hasWb;
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => AddFuelEntryScreen(
+                                        tripId: _trip?['_id']?.toString() ?? widget.tripId,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.local_gas_station_rounded, color: Colors.white),
+                                label: Text(
+                                  'Record Fuel Purchase',
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              )
-                            : Text(
-                                'Complete Trip',
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: Colors.white,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.secondary,
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size(double.infinity, 48),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                 ),
                               ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.success,
-                          minimumSize: const Size(double.infinity, 48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                              const SizedBox(height: 12),
+                              if (!isEnded) ...[
+                                ElevatedButton.icon(
+                                  onPressed: _isSubmitting ? null : _handleEndTrip,
+                                  icon: const Icon(Icons.flag_rounded, color: Colors.white, size: 20),
+                                  label: _isSubmitting
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                        )
+                                      : Text(
+                                          'End Trip',
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFDC2626),
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size(double.infinity, 50),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Note: Click "End Trip" upon arrival at destination to unlock POD & Weighbridge slip uploads.',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 11,
+                                    color: AppColors.secondaryText,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ] else ...[
+                                if (!canComplete) ...[
+                                  Container(
+                                    padding: const EdgeInsets.all(14.0),
+                                    margin: const EdgeInsets.only(bottom: 12.0),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFFBEB),
+                                      borderRadius: BorderRadius.circular(10.0),
+                                      border: Border.all(color: const Color(0xFFFCD34D)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.info_outline, color: Color(0xFFD97706), size: 18),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                'Mandatory Uploads Required',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: const Color(0xFF92400E),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              hasPod ? Icons.check_circle : Icons.radio_button_unchecked,
+                                              color: hasPod ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              '• Proof of Delivery (POD)${hasPod ? ' (Uploaded)' : ''}',
+                                              style: GoogleFonts.nunito(
+                                                fontSize: 12,
+                                                fontWeight: hasPod ? FontWeight.bold : FontWeight.w600,
+                                                color: hasPod ? const Color(0xFF16A34A) : const Color(0xFF92400E),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              hasWb ? Icons.check_circle : Icons.radio_button_unchecked,
+                                              color: hasWb ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              '• Weighbridge Slip${hasWb ? ' (Uploaded)' : ''}',
+                                              style: GoogleFonts.nunito(
+                                                fontSize: 12,
+                                                fontWeight: hasWb ? FontWeight.bold : FontWeight.w600,
+                                                color: hasWb ? const Color(0xFF16A34A) : const Color(0xFF92400E),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                ElevatedButton.icon(
+                                  onPressed: (_isSubmitting || !canComplete) ? null : _handleCompleteTrip,
+                                  icon: Icon(
+                                    canComplete ? Icons.check_circle : Icons.lock_rounded,
+                                    color: Colors.white,
+                                  ),
+                                  label: _isSubmitting
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                        )
+                                      : Text(
+                                          'Complete Trip',
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: canComplete ? AppColors.primary : const Color(0xFF8E9CAE),
+                                    disabledBackgroundColor: const Color(0xFF8E9CAE),
+                                    disabledForegroundColor: Colors.white70,
+                                    minimumSize: const Size(double.infinity, 48),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          );
+                        },
+                      ),
+                    ] else if (rawStatus.toLowerCase() == 'waiting for manager approval') ...[
+                      const SizedBox(height: 24),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFBEB),
+                          borderRadius: BorderRadius.circular(12.0),
+                          border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.hourglass_top_rounded, color: Color(0xFFD97706), size: 22),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Waiting for Manager Approval',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF92400E),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Your trip completion request has been submitted.\n\nThe Fleet Manager is reviewing your uploaded documents. You will be notified once the review is complete.',
+                              style: GoogleFonts.nunito(
+                                fontSize: 13,
+                                height: 1.4,
+                                color: const Color(0xFFB45309),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -1496,7 +1539,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             left: 10,
             top: 20,
             bottom: 0,
-            child: Container(width: 1.5, color: AppColors.secondary),
+            child: Container(
+              width: 1.5,
+              color: AppColors.secondary,
+            ),
           ),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1507,12 +1553,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: node.isCompleted
-                    ? AppColors.secondary
-                    : AppColors.divider,
+                color: node.isCompleted ? AppColors.secondary : AppColors.divider,
               ),
               child: node.isCompleted
-                  ? const Icon(Icons.check, color: Colors.white, size: 14)
+                  ? const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 14,
+                    )
                   : const SizedBox(),
             ),
             const SizedBox(width: 14),
@@ -1551,9 +1599,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: node.isCompleted
-                            ? AppColors.secondary
-                            : AppColors.secondaryText,
+                        color: node.isCompleted ? AppColors.secondary : AppColors.secondaryText,
                       ),
                     ),
                   ],
@@ -1565,13 +1611,251 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       ],
     );
   }
+
+  List<_RouteNode> _buildRouteNodesList(Map<String, dynamic>? trip) {
+    final originFull = (trip?['startLocation'] ?? trip?['pickup'] ?? 'Origin').toString();
+    final destFull = (trip?['endLocation'] ?? trip?['destination'] ?? 'Destination').toString();
+
+    final originCity = originFull.split(',')[0].trim();
+    final destCity = destFull.split(',')[0].trim();
+
+    List<String> rawWaypoints = [];
+    if (trip?['routeCities'] is List) {
+      rawWaypoints = (trip!['routeCities'] as List).map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
+    } else if (trip?['intermediateCities'] is List) {
+      rawWaypoints = (trip!['intermediateCities'] as List).map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
+    } else if (trip?['route'] is List) {
+      rawWaypoints = (trip!['route'] as List).map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
+    }
+
+    if (rawWaypoints.isEmpty) {
+      final oLower = originCity.toLowerCase();
+      final dLower = destCity.toLowerCase();
+      if (oLower.contains('hyderabad') && dLower.contains('vijayawada')) {
+        rawWaypoints = ['Suryapet', 'Kodad', 'Nandigama'];
+      } else if (oLower.contains('vijayawada') && dLower.contains('hyderabad')) {
+        rawWaypoints = ['Nandigama', 'Kodad', 'Suryapet'];
+      } else if (oLower.contains('hyderabad') && dLower.contains('khammam')) {
+        rawWaypoints = ['Suryapet'];
+      } else if (oLower.contains('chennai') && dLower.contains('bengaluru')) {
+        rawWaypoints = ['Vellore', 'Krishnagiri'];
+      }
+    }
+
+    List<Map<String, dynamic>> fuelEntries = [];
+    if (trip?['fuelEntries'] is List) {
+      fuelEntries = (trip!['fuelEntries'] as List).cast<Map<String, dynamic>>();
+    } else if (trip?['fuelDetails'] is Map<String, dynamic>) {
+      fuelEntries = [trip!['fuelDetails'] as Map<String, dynamic>];
+    }
+
+    Map<String, Map<String, dynamic>> fuelByCity = {};
+    for (final f in fuelEntries) {
+      final loc = (f['location'] ?? f['city'] ?? '').toString().trim();
+      if (loc.isNotEmpty) {
+        fuelByCity[loc.toLowerCase()] = f;
+      }
+    }
+
+    List<_RouteNode> nodes = [];
+
+    nodes.add(_RouteNode(
+      city: originCity,
+      role: 'origin',
+      fuelData: fuelByCity[originCity.toLowerCase()],
+    ));
+
+    for (final wp in rawWaypoints) {
+      if (wp.toLowerCase() == originCity.toLowerCase() || wp.toLowerCase() == destCity.toLowerCase()) continue;
+      final fData = fuelByCity[wp.toLowerCase()];
+      nodes.add(_RouteNode(
+        city: wp,
+        role: fData != null ? 'fuel_stop' : 'waypoint',
+        fuelData: fData,
+      ));
+    }
+
+    for (final f in fuelEntries) {
+      final fCity = (f['location'] ?? f['city'] ?? '').toString().trim();
+      if (fCity.isEmpty) continue;
+      final fLower = fCity.toLowerCase();
+      final alreadyIncluded = nodes.any((n) => n.city.toLowerCase() == fLower) || destCity.toLowerCase() == fLower;
+      if (!alreadyIncluded) {
+        nodes.add(_RouteNode(
+          city: fCity,
+          role: 'fuel_stop',
+          fuelData: f,
+        ));
+      }
+    }
+
+    nodes.add(_RouteNode(
+      city: destCity,
+      role: 'destination',
+      fuelData: fuelByCity[destCity.toLowerCase()],
+    ));
+
+    return nodes;
+  }
+
+  Widget _buildRouteTimelineWidget(Map<String, dynamic>? trip) {
+    final nodes = _buildRouteNodesList(trip);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.alt_route_rounded, color: AppColors.secondary, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              'ONGOING TRIP ROUTE & FUEL STOPS',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: AppColors.secondaryText,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: nodes.length,
+          itemBuilder: (context, index) {
+            final node = nodes[index];
+            final isFirst = index == 0;
+            final isLast = index == nodes.length - 1;
+            final isFuel = node.role == 'fuel_stop' || node.fuelData != null;
+
+            Color dotColor = isFirst
+                ? const Color(0xFF3B82F6)
+                : (isLast
+                    ? const Color(0xFFEF4444)
+                    : (isFuel ? AppColors.success : const Color(0xFF64748B)));
+
+            IconData iconData = isFirst
+                ? Icons.trip_origin_rounded
+                : (isLast
+                    ? Icons.location_on_rounded
+                    : (isFuel ? Icons.local_gas_station_rounded : Icons.location_city_rounded));
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: isFuel ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8) : const EdgeInsets.symmetric(vertical: 2),
+                  decoration: isFuel
+                      ? BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF86EFAC)),
+                        )
+                      : null,
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: dotColor.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(iconData, size: 16, color: dotColor),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (isFuel) ...[
+                              Row(
+                                children: [
+                                  const Icon(Icons.location_on_rounded, size: 14, color: AppColors.success),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      '🟢 Fuel Purchased – ${node.city}',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF15803D),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (node.fuelData != null) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${node.fuelData!['fuelStation'] ?? 'Fuel Station'} • ${node.fuelData!['liters'] ?? 0}L',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF166534),
+                                  ),
+                                ),
+                              ],
+                            ] else ...[
+                              Row(
+                                children: [
+                                  const Icon(Icons.location_on_outlined, size: 14, color: AppColors.secondaryText),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    isFirst ? 'Origin (${node.city})' : (isLast ? 'Destination (${node.city})' : node.city),
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13.5,
+                                      fontWeight: isFirst || isLast ? FontWeight.bold : FontWeight.w600,
+                                      color: AppColors.primaryText,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!isLast)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 14.0, top: 4.0, bottom: 4.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 2,
+                          height: 16,
+                          color: nodes[index + 1].role == 'fuel_stop' ? AppColors.success : AppColors.divider,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '↓',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: nodes[index + 1].role == 'fuel_stop' ? AppColors.success : AppColors.secondaryText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
 }
 
-extension on Object {}
+class _RouteNode {
+  final String city;
+  final String role; // 'origin', 'waypoint', 'fuel_stop', 'destination'
+  final Map<String, dynamic>? fuelData;
 
-extension on _TripDetailsScreenState {
-  // ignore: strict_top_level_inference, unused_element
-  void formatIndianDateTime(trip) {}
+  _RouteNode({required this.city, required this.role, this.fuelData});
 }
 
 class _ManifestNode {

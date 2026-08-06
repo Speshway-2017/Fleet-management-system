@@ -71,6 +71,33 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
     });
 
     try {
+      // Check vehicle assignment first to avoid unnecessary maintenance API calls when unassigned
+      final vehRes = await ApiService.getAssignedVehicle();
+      bool assigned = false;
+      Map<String, dynamic>? vehObj;
+      if (vehRes != null && vehRes['success'] == true) {
+        final data = vehRes['data'];
+        if (data != null && data['assigned'] == true && data['vehicle'] != null) {
+          assigned = true;
+          vehObj = Map<String, dynamic>.from(data['vehicle']);
+        }
+      }
+
+      if (!assigned) {
+        if (mounted) {
+          setState(() {
+            _isAssigned = false;
+            _vehicle = null;
+            _activeMaintenances = [];
+            _lastCompleted = null;
+            _upcomingCount = 0;
+            _overdueCount = 0;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
       final response = await ApiService.getDriverMaintenance();
       if (mounted) {
         if (response != null && response['success'] == true) {
@@ -78,7 +105,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
           if (data != null && data['assigned'] == true) {
             setState(() {
               _isAssigned = true;
-              _vehicle = data['vehicle'] != null ? Map<String, dynamic>.from(data['vehicle']) : widget.vehicle;
+              _vehicle = data['vehicle'] != null ? Map<String, dynamic>.from(data['vehicle']) : vehObj ?? widget.vehicle;
               _activeMaintenances = List<dynamic>.from(data['activeMaintenances'] ?? []);
               _lastCompleted = data['lastCompleted'] != null ? Map<String, dynamic>.from(data['lastCompleted']) : null;
               _upcomingCount = data['upcomingCount'] ?? 0;
@@ -188,11 +215,6 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            onPressed: _fetchMaintenanceData,
-            tooltip: 'Refresh Maintenance',
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Container(
@@ -262,7 +284,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Maintenance alerts and service schedules are unavailable because no vehicle is assigned to your profile.',
+              'No vehicle has been assigned yet. Vehicle-related features will become available once your manager assigns a vehicle.',
               textAlign: TextAlign.center,
               style: GoogleFonts.nunito(fontSize: 14, color: textSecondary),
             ),

@@ -10,8 +10,8 @@ import { getSocket, disconnectSocket } from "@/api/socket";
 import { useAuth } from "@/context/AuthContext";
 
 const mapTypeToTab = (type) => {
-  if (type === "alert")  return "Critical";
-  if (type === "info")   return "Maintenance";
+  if (type === "alert") return "Critical";
+  if (type === "info") return "Maintenance";
   if (type === "system") return "System";
   return "All";
 };
@@ -54,9 +54,9 @@ export default function NotificationsPage() {
       });
 
       socket.on("notification:read", (notification) => {
-        setNotifications(prev => prev.map(n => 
-          (n._id === (notification._id || notification.id) || n.id === (notification._id || notification.id)) 
-            ? { ...n, isRead: true } 
+        setNotifications(prev => prev.map(n =>
+          (n._id === (notification._id || notification.id) || n.id === (notification._id || notification.id))
+            ? { ...n, isRead: true }
             : n
         ));
       });
@@ -68,7 +68,7 @@ export default function NotificationsPage() {
       });
 
       socket.on("notification:delete", (data) => {
-        setNotifications(prev => prev.filter(n => 
+        setNotifications(prev => prev.filter(n =>
           n._id !== data.id && n.id !== data.id
         ));
       });
@@ -86,15 +86,20 @@ export default function NotificationsPage() {
     fetchNotifications();
   }, []);
 
-  const filteredNotifications = notifications.filter((notif) => {
-    if (activeTab === "Critical") return notif.type === "alert" || notif.type === "warning";
-    if (activeTab === "Maintenance") return notif.type === "info";
-    if (activeTab === "System") return notif.type === "success" || notif.type === "system";
-    if (activeTab === "Alert Overview" && priorityFilter) {
-      return notif.priority === priorityFilter;
-    }
-    return true;
-  });
+  const filteredNotifications = notifications
+    .filter((notif) => {
+      const type = (notif.type || '').toLowerCase();
+      const priority = (notif.priority || '').toLowerCase();
+
+      if (activeTab === "Critical") return type.includes("alert") || type.includes("warning") || type.includes("critical") || priority === "high";
+      if (activeTab === "Maintenance") return type.includes("info") || type.includes("maintenance") || type.includes("vehicle");
+      if (activeTab === "System") return type.includes("success") || type.includes("system");
+      if (activeTab === "Alert Overview" && priorityFilter) {
+        return priority === priorityFilter.toLowerCase();
+      }
+      return true;
+    })
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
   const [showDispatchWarningModal, setShowDispatchWarningModal] = useState(false);
   const [showContactDriverModal, setShowContactDriverModal] = useState(false);
@@ -135,7 +140,7 @@ export default function NotificationsPage() {
 
   const handleActionClick = async (action, notification, e) => {
     e.stopPropagation();
-    
+
     // Mark as read in DB
     try {
       await managerApi.markNotificationRead(notification._id || notification.id);
@@ -168,8 +173,10 @@ export default function NotificationsPage() {
 
   const resolveTargetUrl = (notif) => {
     if (!notif) return "/manager/dashboard";
+    if (notif.actionUrl) return notif.actionUrl;
+    if (notif.metadata?.actionUrl) return notif.metadata.actionUrl;
     if (notif.metadata?.targetUrl) return notif.metadata.targetUrl;
-    
+
     const title = (notif.title || "").toLowerCase();
     const message = (notif.message || notif.description || "").toLowerCase();
     const type = (notif.type || "").toUpperCase();
@@ -183,7 +190,7 @@ export default function NotificationsPage() {
       if (match) extractedTicketId = match[0];
     }
 
-    // 1. Subscription Notifications (MUST BE FIRST)
+    // 1. Subscription Notifications
     if (
       type.includes("SUB") ||
       title.includes("subscription") ||
@@ -317,7 +324,7 @@ export default function NotificationsPage() {
               <span className="whitespace-nowrap">Mark all as read</span>
             </button>
           )}
-          <button 
+          <button
             onClick={() => navigate("/manager/profile")}
             className="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors w-full sm:w-auto cursor-pointer"
           >
@@ -341,8 +348,8 @@ export default function NotificationsPage() {
                   setIsDropdownOpen(false);
                 }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border-none ${activeTab === tab
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-gray-500 hover:text-gray-700 bg-transparent"
+                  ? "bg-blue-100 text-blue-700"
+                  : "text-gray-500 hover:text-gray-700 bg-transparent"
                   }`}
               >
                 {tab}
@@ -354,8 +361,8 @@ export default function NotificationsPage() {
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border-none flex items-center gap-1.5 ${activeTab === "Alert Overview"
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-gray-500 hover:text-gray-700 bg-transparent"
+                  ? "bg-blue-100 text-blue-700"
+                  : "text-gray-500 hover:text-gray-700 bg-transparent"
                   }`}
               >
                 <span>Alert Overview {priorityFilter ? `(${priorityFilter.toUpperCase()})` : ''}</span>
@@ -402,20 +409,19 @@ export default function NotificationsPage() {
               <div className="w-14 h-14 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Icon icon="mdi:bell-off-outline" className="w-7 h-7" />
               </div>
-              <h4 className="text-gray-700 font-bold text-sm">No Alerts Found</h4>
+              <h4 className="text-gray-700 font-bold text-sm">No Notifications</h4>
               <p className="text-xs text-gray-450 mt-1 max-w-xs mx-auto leading-relaxed">
-                You have no active notifications or priority updates matching this category.
+                You're all caught up.
               </p>
             </div>
           ) : (
             <div className="max-h-[calc(100vh-230px)] overflow-y-auto space-y-3 pr-1.5 custom-scrollbar">
               {filteredNotifications.map((notif) => (
-                <div 
-                  key={notif._id || notif.id} 
+                <div
+                  key={notif._id || notif.id}
                   onClick={() => handleNotificationClick(notif)}
-                  className={`bg-white rounded-xl border border-[#E7EAF0] px-4 py-3.5 shadow-xs hover:shadow-md transition-all cursor-pointer relative group ${
-                    !notif.isRead ? 'border-l-4 border-l-[#B45A0A] bg-amber-50/20' : 'hover:border-gray-300'
-                  }`}
+                  className={`bg-white rounded-xl border border-[#E7EAF0] px-4 py-3.5 shadow-xs hover:shadow-md transition-all cursor-pointer relative group ${!notif.isRead ? 'border-l-4 border-l-[#B45A0A] bg-amber-50/20' : 'hover:border-gray-300'
+                    }`}
                 >
                   <div className="flex items-start gap-3.5">
                     {/* Compact Icon Badge */}
@@ -448,11 +454,10 @@ export default function NotificationsPage() {
                             <button
                               key={i}
                               onClick={(e) => handleActionClick(action, notif, e)}
-                              className={`px-3 py-1 rounded-lg text-[11px] font-bold font-poppins transition-colors cursor-pointer border ${
-                                action.bg === 'bg-white'
+                              className={`px-3 py-1 rounded-lg text-[11px] font-bold font-poppins transition-colors cursor-pointer border ${action.bg === 'bg-white'
                                   ? `${action.bg} ${action.text} border-gray-200 hover:bg-gray-50`
                                   : `${action.bg} text-white border-transparent ${action.hover}`
-                              }`}
+                                }`}
                             >
                               {action.label}
                             </button>

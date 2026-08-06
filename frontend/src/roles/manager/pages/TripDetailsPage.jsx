@@ -13,7 +13,9 @@ import {
   MapPin,
   Compass,
   AlertCircle,
+  CheckCircle,
   CheckCircle2,
+  XCircle,
   Phone,
   Mail,
   X,
@@ -60,6 +62,7 @@ export default function TripDetailsPage() {
       setActiveTab("overview");
     }
   }, [searchParams, id]);
+  const [actionLoading, setActionLoading] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [invoice, setInvoice] = useState(null);
@@ -74,6 +77,7 @@ export default function TripDetailsPage() {
   const [showWeighbridgeModal, setShowWeighbridgeModal] = useState(false);
   const [weighbridgeRejectReason, setWeighbridgeRejectReason] = useState("");
   const [showWeighbridgeRejectModal, setShowWeighbridgeRejectModal] = useState(false);
+  const [fuelRecords, setFuelRecords] = useState([]);
 
   const [tolls, setTolls] = useState([]);
   const [isTollOpen, setIsTollOpen] = useState(false);
@@ -94,6 +98,8 @@ export default function TripDetailsPage() {
   const mapInstanceRef = useRef(null);
 
   const [drivingInfo, setDrivingInfo] = useState(null);
+
+  const totalFuelCost = fuelRecords.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
 
   // Reset Trip Invoice scroll position to top whenever modal opens
   useEffect(() => {
@@ -230,7 +236,7 @@ export default function TripDetailsPage() {
       if (data) {
         setTrip({ ...data, id: data.tripNumber });
         
-        // Fetch invoice, POD, and weighbridge in parallel with error handling
+        // Fetch invoice, POD, and weighbridge in parallel with single-source-of-truth fallback from Trip document
         Promise.allSettled([
           (async () => {
             try {
@@ -238,25 +244,86 @@ export default function TripDetailsPage() {
               const invData = invRes.data?.data || invRes.data;
               if (invData) setInvoice(invData);
             } catch (invErr) {
-              console.debug("Invoice not available for this trip");
+              if (data.tripInvoice && data.tripInvoice.invoiceNumber) {
+                setInvoice(data.tripInvoice);
+              }
             }
           })(),
           (async () => {
             try {
               const podRes = await managerApi.getPODByTripId(data._id);
               const podData = podRes.data?.data || podRes.data;
-              if (podData) setPod(podData);
+              if (podData && (podData.podDocumentUrl || podData.deliveryPhotoUrl)) {
+                setPod(podData);
+              } else if (data.proofOfDelivery && (data.proofOfDelivery.url || data.proofOfDelivery.deliveryPhotoUrl)) {
+                setPod({
+                  _id: data.proofOfDelivery._id || data._id,
+                  trip: data._id,
+                  podDocumentUrl: data.proofOfDelivery.url || data.proofOfDelivery.deliveryPhotoUrl,
+                  deliveryPhotoUrl: data.proofOfDelivery.deliveryPhotoUrl || data.proofOfDelivery.url,
+                  customerSignatureUrl: data.proofOfDelivery.customerSignatureUrl,
+                  customerName: data.proofOfDelivery.customerName || 'Customer Receiver',
+                  receiverName: data.proofOfDelivery.receiverName || 'Verified Receiver',
+                  status: data.proofOfDelivery.status || data.podStatus || 'Uploaded'
+                });
+              }
             } catch (podErr) {
-              console.debug("POD not available for this trip");
+              if (data.proofOfDelivery && (data.proofOfDelivery.url || data.proofOfDelivery.deliveryPhotoUrl)) {
+                setPod({
+                  _id: data.proofOfDelivery._id || data._id,
+                  trip: data._id,
+                  podDocumentUrl: data.proofOfDelivery.url || data.proofOfDelivery.deliveryPhotoUrl,
+                  deliveryPhotoUrl: data.proofOfDelivery.deliveryPhotoUrl || data.proofOfDelivery.url,
+                  customerSignatureUrl: data.proofOfDelivery.customerSignatureUrl,
+                  customerName: data.proofOfDelivery.customerName || 'Customer Receiver',
+                  receiverName: data.proofOfDelivery.receiverName || 'Verified Receiver',
+                  status: data.proofOfDelivery.status || data.podStatus || 'Uploaded'
+                });
+              }
             }
           })(),
           (async () => {
             try {
               const wbRes = await managerApi.getWeighbridgeSlipByTripId(data._id);
               const wbData = wbRes.data?.data || wbRes.data;
-              if (wbData) setWeighbridge(wbData);
+              if (wbData && wbData.documentUrl) {
+                setWeighbridge(wbData);
+              } else if (data.weighbridgeSlip && (data.weighbridgeSlip.url || data.weighbridgeSlip.documentUrl)) {
+                setWeighbridge({
+                  _id: data.weighbridgeSlip._id || data._id,
+                  trip: data._id,
+                  documentUrl: data.weighbridgeSlip.url || data.weighbridgeSlip.documentUrl,
+                  grossWeight: data.weighbridgeSlip.grossWeight || 25000,
+                  tareWeight: data.weighbridgeSlip.tareWeight || 10000,
+                  netWeight: data.weighbridgeSlip.netWeight || 15000,
+                  location: data.weighbridgeSlip.location || 'Highway Weighbridge Station',
+                  status: data.weighbridgeSlip.status || data.weighbridgeStatus || 'Uploaded'
+                });
+              }
             } catch (wbErr) {
-              console.debug("Weighbridge slip not available for this trip");
+              if (data.weighbridgeSlip && (data.weighbridgeSlip.url || data.weighbridgeSlip.documentUrl)) {
+                setWeighbridge({
+                  _id: data.weighbridgeSlip._id || data._id,
+                  trip: data._id,
+                  documentUrl: data.weighbridgeSlip.url || data.weighbridgeSlip.documentUrl,
+                  grossWeight: data.weighbridgeSlip.grossWeight || 25000,
+                  tareWeight: data.weighbridgeSlip.tareWeight || 10000,
+                  netWeight: data.weighbridgeSlip.netWeight || 15000,
+                  location: data.weighbridgeSlip.location || 'Highway Weighbridge Station',
+                  status: data.weighbridgeSlip.status || data.weighbridgeStatus || 'Uploaded'
+                });
+              }
+            }
+          })(),
+          (async () => {
+            try {
+              const fuelRes = await managerApi.getFuelRecords({ tripId: data._id });
+              const fuelData = fuelRes.data?.data || fuelRes.data;
+              if (Array.isArray(fuelData)) {
+                setFuelRecords(fuelData);
+              }
+            } catch (fuelErr) {
+              console.debug("Fuel records not available for this trip");
             }
           })()
         ]).catch(err => {
@@ -335,19 +402,33 @@ export default function TripDetailsPage() {
       const socket = getSocket();
       socket.emit("joinManagerRoom", user._id || user.id);
 
+      // Helper to check if event trip ID matches current trip
+      const matchesCurrentTrip = (incomingId) => {
+        if (!incomingId || !trip) return false;
+        const target = String(incomingId).replaceAll('#', '').trim();
+        const currentId = String(trip._id || trip.id || '').replaceAll('#', '').trim();
+        const currentNum = String(trip.tripNumber || '').replaceAll('#', '').trim();
+        return target === currentId || target === currentNum || target === `TRP-${currentNum}` || `TRP-${target}` === currentNum;
+      };
+
       // Listen for pod upload event
-      const handlePodUploaded = (newPod) => {
-        // Only update if it's for the current trip
-        if (String(newPod.trip) === String(trip._id) || String(newPod.trip) === String(trip.id)) {
-          setPod(newPod);
+      const handlePodUploaded = (data) => {
+        const podDoc = data?.pod || data;
+        const targetId = podDoc?.trip || data?.tripId;
+        if (matchesCurrentTrip(targetId)) {
+          if (podDoc && (podDoc.podDocumentUrl || podDoc.deliveryPhotoUrl)) setPod(podDoc);
+          fetchTripAndInvoice();
           toast.success("Driver uploaded Proof of Delivery!");
         }
       };
 
       // Listen for weighbridge upload event
       const handleWeighbridgeUploaded = (data) => {
-        if (String(data.tripId) === String(trip._id) || String(data.tripId) === String(trip.id)) {
-          setWeighbridge(data.slip);
+        const slipDoc = data?.slip || data;
+        const targetId = data?.tripId || slipDoc?.trip;
+        if (matchesCurrentTrip(targetId)) {
+          if (slipDoc && (slipDoc.documentUrl || slipDoc.slipNumber)) setWeighbridge(slipDoc);
+          fetchTripAndInvoice();
           toast.success("Driver uploaded Weighbridge Slip!");
         }
       };
@@ -364,9 +445,12 @@ export default function TripDetailsPage() {
       socket.on("weighbridge:approved", handleWeighbridgeApproved);
       
       const handleTripStatusUpdated = (updatedTrip) => {
-        if (String(updatedTrip._id) === String(trip._id) || String(updatedTrip.id) === String(trip.id)) {
+        const targetId = updatedTrip?._id || updatedTrip?.id || updatedTrip?.tripId;
+        if (matchesCurrentTrip(targetId)) {
           fetchTripAndInvoice();
-          toast.success(`Trip status updated: ${updatedTrip.status}`);
+          if (updatedTrip?.status) {
+            toast.success(`Trip status updated: ${updatedTrip.status}`);
+          }
         }
       };
       socket.on("trip:status-updated", handleTripStatusUpdated);
@@ -577,9 +661,10 @@ export default function TripDetailsPage() {
 
   const handlePODApprove = async () => {
     try {
-      const response = await managerApi.updatePODStatus(pod._id, { status: "Approved" });
+      const podId = pod?._id || trip?._id || id;
+      const response = await managerApi.updatePODStatus(podId, { status: "Approved" });
       const updatedPod = response.data?.data || response.data;
-      setPod(updatedPod);
+      if (updatedPod) setPod(updatedPod);
       toast.success("POD Approved successfully");
       await fetchTripAndInvoice();
     } catch (error) {
@@ -593,9 +678,10 @@ export default function TripDetailsPage() {
       return;
     }
     try {
-      const response = await managerApi.updatePODStatus(pod._id, { status: "Rejected", rejectionReason: rejectReason });
+      const podId = pod?._id || trip?._id || id;
+      const response = await managerApi.updatePODStatus(podId, { status: "Rejected", rejectionReason: rejectReason });
       const updatedPod = response.data?.data || response.data;
-      setPod(updatedPod);
+      if (updatedPod) setPod(updatedPod);
       setShowRejectModal(false);
       setRejectReason("");
       toast.success("POD Rejected successfully");
@@ -608,9 +694,10 @@ export default function TripDetailsPage() {
 
   const handleWeighbridgeApprove = async () => {
     try {
-      const response = await managerApi.updateWeighbridgeSlipStatus(weighbridge._id, { status: "Approved" });
+      const wbId = weighbridge?._id || trip?._id || id;
+      const response = await managerApi.updateWeighbridgeSlipStatus(wbId, { status: "Approved" });
       const updatedData = response.data?.data || response.data;
-      setWeighbridge(updatedData);
+      if (updatedData) setWeighbridge(updatedData);
       toast.success("Weighbridge Slip Approved");
       await fetchTripAndInvoice();
     } catch (error) {
@@ -624,12 +711,14 @@ export default function TripDetailsPage() {
       return;
     }
     try {
-      const response = await managerApi.updateWeighbridgeSlipStatus(weighbridge._id, { status: "Rejected", rejectionReason: weighbridgeRejectReason });
+      const wbId = weighbridge?._id || trip?._id || id;
+      const response = await managerApi.updateWeighbridgeSlipStatus(wbId, { status: "Rejected", rejectionReason: weighbridgeRejectReason });
       const updatedData = response.data?.data || response.data;
-      setWeighbridge(updatedData);
+      if (updatedData) setWeighbridge(updatedData);
       setShowWeighbridgeRejectModal(false);
       setWeighbridgeRejectReason("");
       toast.success("Weighbridge Slip Rejected");
+      await fetchTripAndInvoice();
     } catch (error) {
       toast.error("Failed to reject Weighbridge Slip");
     }
@@ -859,6 +948,65 @@ export default function TripDetailsPage() {
       {/* Tab 1: Overview View */}
       {activeTab === "overview" && (
         <div className="space-y-6 mt-6">
+          {/* Manager Approval Review Banner */}
+          {trip.status === "Waiting for Manager Approval" && (
+            <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1.5 font-poppins">
+                <div className="flex items-center gap-2 text-amber-900 font-extrabold text-base">
+                  <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
+                  <span>Trip Completion Review Requested</span>
+                </div>
+                <p className="text-xs text-amber-800 font-medium">
+                  Driver <strong>{trip.driverName || 'Driver'}</strong> has uploaded Proof of Delivery and Weighbridge documents for review.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={async () => {
+                    try {
+                      setActionLoading(true);
+                      await managerApi.approveTripCompletion(trip._id);
+                      toast.success("Trip completion approved successfully!");
+                      fetchTripDetails();
+                    } catch (err) {
+                      toast.error(err.response?.data?.message || "Failed to approve trip");
+                    } finally {
+                      setActionLoading(false);
+                    }
+                  }}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-poppins font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Approve Trip
+                </button>
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={async () => {
+                    const reason = prompt("Enter rejection reason for driver:", "Uploaded documents require correction.");
+                    if (reason === null) return;
+                    try {
+                      setActionLoading(true);
+                      await managerApi.rejectTripDocuments(trip._id, { reason });
+                      toast.success("Trip documents rejected. Driver notified to re-upload.");
+                      fetchTripDetails();
+                    } catch (err) {
+                      toast.error(err.response?.data?.message || "Failed to reject documents");
+                    } finally {
+                      setActionLoading(false);
+                    }
+                  }}
+                  className="px-4 py-2.5 bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 font-poppins font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Reject Documents
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* KPI statistics cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
         
@@ -1297,19 +1445,19 @@ export default function TripDetailsPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-2">
-              <a
-                href={`tel:${trip.driverPhone}`}
-                className="px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              <button
+                onClick={() => setIsChatOpen(true)}
+                className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-[10px] font-bold text-emerald-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Phone className="w-3.5 h-3.5" />
                 Call Driver
-              </a>
+              </button>
               <button
                 onClick={() => setIsChatOpen(true)}
-                className="px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-[#E7EAF0] rounded-xl text-[10px] font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl text-[10px] font-bold text-blue-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Mail className="w-3.5 h-3.5" />
-                Message
+                Message Driver
               </button>
             </div>
           </div>
@@ -1715,6 +1863,108 @@ export default function TripDetailsPage() {
                       <strong>Reason:</strong> {weighbridge.rejectionReason}
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+
+            {/* Fuel Receipt Section */}
+            <div className="space-y-4 pt-4 border-t border-gray-100">
+              <div className="flex justify-between items-center">
+                <h5 className="font-poppins font-bold text-xs text-[#1E293B]">Fuel Entries History</h5>
+                {fuelRecords.length > 0 && (
+                  <span className="font-poppins font-bold text-xs text-[#22C55E] bg-[#22C55E]/10 px-2 py-0.5 rounded-lg">
+                    Total: ₹{totalFuelCost.toLocaleString('en-IN')}
+                  </span>
+                )}
+              </div>
+              {fuelRecords.length === 0 ? (
+                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 font-medium">Status</span>
+                    <span className="font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider bg-gray-100 text-gray-500 border border-gray-200">
+                      🔴 NOT UPLOADED
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 mt-2">
+                    <button
+                      type="button"
+                      disabled
+                      className="px-2.5 py-2 bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 flex items-center justify-center gap-1 cursor-not-allowed col-span-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-2.5 py-2 bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 flex items-center justify-center gap-1 cursor-not-allowed col-span-1"
+                    >
+                      Download
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                  {fuelRecords.map((record, index) => {
+                    const img = record.billUrl || record.receiptImage;
+                    return (
+                      <div key={record._id || index} className="p-4 bg-gray-50 border border-gray-100 rounded-xl space-y-3 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-[#1E293B] font-poppins">Entry #{index + 1} - {record.fuelStation || 'Fuel Station'}</span>
+                          <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
+                            record.approvalStatus === "Approved" || record.approvalStatus === "APPROVED" ? "bg-emerald-50 text-emerald-700" :
+                            record.approvalStatus === "Rejected" || record.approvalStatus === "REJECTED" ? "bg-red-50 text-red-600" :
+                            "bg-amber-50 text-[#B45A0A]"
+                          }`}>
+                            {record.approvalStatus === "Approved" || record.approvalStatus === "APPROVED" ? "🟢 Approved" : record.approvalStatus === "Rejected" || record.approvalStatus === "REJECTED" ? "🔴 Rejected" : "🟡 PENDING"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-y-2 pt-1 border-t border-gray-100">
+                          <div className="flex flex-col">
+                            <span className="text-gray-400 text-[10px] uppercase font-medium">Liters / Amount</span>
+                            <span className="font-bold text-[#1E293B]">{record.liters} L / ₹{record.amount}</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-400 text-[10px] uppercase font-medium">Odometer</span>
+                            <span className="font-bold text-[#1E293B]">{record.odometer} km</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-400 text-[10px] uppercase font-medium">Fuel Type</span>
+                            <span className="font-bold text-[#1E293B]">{record.fuelType || 'Diesel'}</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-400 text-[10px] uppercase font-medium">Date & Time</span>
+                            <span className="font-bold text-[#1E293B]">{record.dateTime ? new Date(record.dateTime).toLocaleString('en-IN') : new Date(record.createdAt).toLocaleString('en-IN')}</span>
+                          </div>
+                          {record.notes && (
+                            <div className="flex flex-col col-span-2">
+                              <span className="text-gray-400 text-[10px] uppercase font-medium">Notes</span>
+                              <span className="text-[#1E293B] font-medium italic">{record.notes}</span>
+                            </div>
+                          )}
+                        </div>
+                        {img && (
+                          <div className="grid grid-cols-2 gap-3 pt-2">
+                            <button
+                              type="button"
+                              onClick={() => window.open(img, "_blank")}
+                              className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              View Receipt
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => window.open(img, "_blank")}
+                              className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              Download File
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

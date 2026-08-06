@@ -9,6 +9,7 @@ class DriverModel {
   final String licenseExpiry;
   final String assignedVehicle;
   final String driverStatus;
+  final bool isOnline;
   final String profileImage;
   final String branch;
   final String experience;
@@ -53,6 +54,7 @@ class DriverModel {
     required this.licenseExpiry,
     required this.assignedVehicle,
     required this.driverStatus,
+    required this.isOnline,
     required this.profileImage,
     required this.branch,
     required this.experience,
@@ -87,7 +89,15 @@ class DriverModel {
     // Check if it's the raw MongoDB model format or the profile response format
     final String idVal = json['_id'] ?? json['id'] ?? json['driverId'] ?? '';
     final String employeeIdVal = json['employeeId'] ?? idVal;
-    final String nameVal = json['fullName'] ?? '';
+    final String nameVal = (json['fullName'] != null && json['fullName'].toString().isNotEmpty)
+        ? json['fullName'].toString()
+        : (json['name'] != null && json['name'].toString().isNotEmpty)
+            ? json['name'].toString()
+            : (json['driverName'] != null && json['driverName'].toString().isNotEmpty)
+                ? json['driverName'].toString()
+                : (json['driver'] is Map && json['driver']['fullName'] != null)
+                    ? json['driver']['fullName'].toString()
+                    : '';
     final String emailVal = json['email'] ?? '';
     final String phoneVal = json['phoneNumber'] ?? json['phone'] ?? '';
     final String licNum = json['licenseNumber'] ?? '';
@@ -95,6 +105,11 @@ class DriverModel {
     final String licExpiryVal = json['licenseExpiry'] != null ? json['licenseExpiry'].toString() : '';
     final String vehVal = json['assignedVehicle'] ?? json['vehicle'] ?? 'Unassigned';
     final String statusVal = json['driverStatus'] ?? 'AVAILABLE';
+    final bool isOnlineVal = json['isOnline'] is bool
+        ? (json['isOnline'] as bool)
+        : (json['isOnline'] != null
+            ? (json['isOnline'].toString() == 'true' || json['isOnline'].toString() == '1')
+            : (statusVal != 'OFFLINE'));
     final String imgVal = json['profileImage'] ?? '';
     final String branchVal = json['branch'] ?? '';
     final String expVal = json['experience'] ?? '';
@@ -152,6 +167,7 @@ class DriverModel {
       licenseExpiry: licExpiryVal,
       assignedVehicle: vehVal,
       driverStatus: statusVal,
+      isOnline: isOnlineVal,
       profileImage: imgVal,
       branch: branchVal,
       experience: expVal,

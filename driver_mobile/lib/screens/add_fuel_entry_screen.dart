@@ -6,7 +6,8 @@ import '../services/api_service.dart';
 
 /// Driver Module - Add Fuel Entry Screen
 class AddFuelEntryScreen extends StatefulWidget {
-  const AddFuelEntryScreen({super.key});
+  final String? tripId;
+  const AddFuelEntryScreen({super.key, this.tripId});
 
   @override
   State<AddFuelEntryScreen> createState() => _AddFuelEntryScreenState();
@@ -15,7 +16,7 @@ class AddFuelEntryScreen extends StatefulWidget {
 class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
   // Read-only / dynamic vehicle values
   String _assignedVehicle = 'Fetching vehicle...';
-  final String _currentTripId = 'TRP-9901';
+  String? _currentTripId;
   final String _driverName = 'Driver';
   final String _receiptFileSize = '1.2 MB';
   bool _isSubmitting = false;
@@ -42,6 +43,8 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
   final TextEditingController _costController = TextEditingController();
   final TextEditingController _dateTimeController = TextEditingController();
   final TextEditingController _odometerController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
 
   // Receipt Upload State
   bool _receiptUploaded = false;
@@ -53,11 +56,37 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
   @override
   void initState() {
     super.initState();
+    _currentTripId = widget.tripId;
     _fetchVehicleInfo();
     _dateTimeController.text = DateTime.now().toString().split('.')[0];
   }
 
+  bool _isVehicleAssigned = false;
+  bool _hasActiveTrip = false;
+
+  @override
+  void dispose() {
+    _quantityController.dispose();
+    _costController.dispose();
+    _dateTimeController.dispose();
+    _odometerController.dispose();
+    _locationController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchVehicleInfo() async {
+    if (_currentTripId == null) {
+      try {
+        final currentTripRes = await ApiService.get('/driver/trips/current');
+        if (currentTripRes != null && currentTripRes['data'] != null) {
+          final tripData = currentTripRes['data'];
+          setState(() {
+            _currentTripId = tripData['tripId']?.toString() ?? tripData['_id']?.toString() ?? '';
+          });
+        }
+      } catch (_) {}
+    }
     try {
       final res = await ApiService.getAssignedVehicle();
       if (mounted && res != null && res['success'] == true) {
@@ -65,6 +94,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
         if (data != null && data['assigned'] == true && data['vehicle'] != null) {
           final v = data['vehicle'];
           setState(() {
+            _isVehicleAssigned = true;
             _assignedVehicle = v['vehicleNumber'] ?? v['plateNumber'] ?? 'Assigned Vehicle';
             if (v['odometer'] != null) {
               _odometerController.text = v['odometer'].toString();
@@ -72,14 +102,34 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
           });
         } else {
           setState(() {
+            _isVehicleAssigned = false;
             _assignedVehicle = 'No Vehicle Assigned';
           });
         }
       }
+
+      try {
+        final tripRes = await ApiService.getCurrentTrip();
+        if (tripRes != null && tripRes['success'] == true && tripRes['data'] != null) {
+          final tData = tripRes['data'];
+          if (tData is Map && tData.isNotEmpty && tData['tripNumber'] != null) {
+            final st = (tData['status'] ?? '').toString().toLowerCase();
+            final activeStatuses = ['assigned', 'scheduled', 'in progress', 'accepted', 'on transit', 'enroute', 'reach pickup', 'pickup completed'];
+            if (activeStatuses.contains(st)) {
+              setState(() {
+                _hasActiveTrip = true;
+              });
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error checking active trip in AddFuelEntryScreen: $e');
+      }
     } catch (_) {
       if (mounted) {
         setState(() {
-          _assignedVehicle = 'Assigned Vehicle';
+          _isVehicleAssigned = false;
+          _assignedVehicle = 'No Vehicle Assigned';
         });
       }
     }
@@ -239,7 +289,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                         const SizedBox(height: 12.0),
 
                         _buildReceiptRow('Vehicle Reg', _assignedVehicle),
-                        _buildReceiptRow('Trip ID', _currentTripId),
+                        _buildReceiptRow('Trip ID', _currentTripId ?? 'N/A'),
                         _buildReceiptRow('Driver Name', _driverName),
                         _buildReceiptRow('Fuel Station', _selectedStation ?? 'N/A'),
                         _buildReceiptRow('Fuel Type', _selectedFuelType ?? 'N/A'),
@@ -349,8 +399,20 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
   }
 
   Future<void> _showSubmitFeedback(BuildContext context) async {
+    if (!_isVehicleAssigned || _assignedVehicle == 'No Vehicle Assigned' || _assignedVehicle == 'Unassigned' || _assignedVehicle.isEmpty) {
+      _showWarning('No vehicle is currently assigned. You can view your previous records, but new fuel entries will be available once a vehicle is assigned.');
+      return;
+    }
+    if (!_hasActiveTrip) {
+      _showWarning('Adding fuel entries is only permitted during an active trip.');
+      return;
+    }
     if (_selectedStation == null) {
       _showWarning('Please select a Fuel Station.');
+      return;
+    }
+    if (_locationController.text.trim().isEmpty) {
+      _showWarning('Please enter Fuel Purchase Location (City).');
       return;
     }
     if (_selectedFuelType == null) {
@@ -363,10 +425,6 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
     }
     if (_costController.text.trim().isEmpty) {
       _showWarning('Please enter Fuel Cost.');
-      return;
-    }
-    if (!_receiptUploaded) {
-      _showWarning('Please upload a fuel receipt before submitting.');
       return;
     }
 
@@ -382,8 +440,14 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
 
       final response = await ApiService.createFuelEntry(
         fuelStation: _selectedStation!,
+        location: _locationController.text.trim(),
         amount: amt,
         liters: ltr,
+        tripId: _currentTripId,
+        odometer: double.tryParse(_odometerController.text.trim()),
+        fuelType: _selectedFuelType,
+        dateTime: _dateTimeController.text.trim(),
+        notes: _notesController.text.trim(),
         imageFile: imgFile,
         imageName: _receiptFileName,
       );
@@ -460,6 +524,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                 children: [
                   _buildSummaryRow('Vehicle ID', _assignedVehicle),
                   _buildSummaryRow('Station', _selectedStation ?? ''),
+                  _buildSummaryRow('Purchase Location', _locationController.text.trim()),
                   _buildSummaryRow('Fuel Type', _selectedFuelType ?? ''),
                   _buildSummaryRow('Quantity', '${_quantityController.text} L'),
                   _buildSummaryRow('Cost', '₹ ${_costController.text}'),
@@ -523,6 +588,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
       _costController.clear();
       _dateTimeController.clear();
       _odometerController.clear();
+      _locationController.clear();
       _receiptUploaded = false;
     });
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -613,7 +679,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
               _buildFieldLabel('Current Trip ID'),
               const SizedBox(height: 6.0),
               _buildReadOnlyFieldContainer(
-                value: _currentTripId,
+                value: _currentTripId ?? 'N/A',
                 icon: Icons.alt_route_rounded,
               ),
 
@@ -641,6 +707,17 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                 onChanged: (val) {
                   if (val != null) setState(() => _selectedStation = val);
                 },
+              ),
+
+              const SizedBox(height: 16.0),
+
+              // Field: Fuel Purchase Location (City) *
+              _buildRequiredLabel('Fuel Purchase Location (City)'),
+              const SizedBox(height: 6.0),
+              _buildStyledTextField(
+                controller: _locationController,
+                hintText: 'e.g. Vijayawada',
+                prefixIcon: Icons.location_on_rounded,
               ),
 
               const SizedBox(height: 16.0),
@@ -758,6 +835,16 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                     ),
                   ),
                 ],
+              ),
+
+              const SizedBox(height: 16.0),
+
+              // Field: Notes (Optional)
+              _buildFieldLabel('Notes (Optional)'),
+              const SizedBox(height: 6.0),
+              _buildNotesField(
+                controller: _notesController,
+                hintText: 'Add any special notes or comments here...',
               ),
 
               const SizedBox(height: 24.0),
@@ -1254,6 +1341,50 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
             borderRadius: BorderRadius.circular(8.0),
             borderSide: const BorderSide(color: Color(0xFFFF7A1A), width: 1.5),
           ),
+        ),
+      ),
+    );
+  }
+
+  // Multiline notes text field
+  Widget _buildNotesField({
+    required TextEditingController controller,
+    required String hintText,
+  }) {
+    const borderGray = Color(0xFFE2E8F0);
+    const textPrimary = Color(0xFF1F2937);
+
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.multiline,
+      maxLines: 3,
+      style: GoogleFonts.poppins(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: textPrimary,
+      ),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        isDense: true,
+        hintText: hintText,
+        hintStyle: GoogleFonts.poppins(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: const Color(0xFF9CA3AF),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 14.0),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.0),
+          borderSide: const BorderSide(color: borderGray, width: 1.0),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.0),
+          borderSide: const BorderSide(color: borderGray, width: 1.0),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.0),
+          borderSide: const BorderSide(color: Color(0xFFFF7A1A), width: 1.5),
         ),
       ),
     );

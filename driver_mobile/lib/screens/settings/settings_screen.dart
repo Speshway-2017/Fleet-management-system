@@ -204,6 +204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final driver = Provider.of<AuthProvider>(context).driver;
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isSmallScreen = screenWidth < 375;
     final double paddingValue = isSmallScreen ? 16.0 : 20.0;
@@ -310,7 +311,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Alex Johnson',
+                          driver?.fullName ?? 'Driver Profile',
                           style: GoogleFonts.poppins(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
