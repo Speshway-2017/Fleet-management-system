@@ -952,8 +952,20 @@ export const createTrip = async (req, res, next) => {
       mobile: (rawDelivery.mobile || rawDelivery.mobileNumber || rawDelivery.phone || rawDelivery.phoneNumber || rawDelivery.contactPhone || req.body.receiverPhone || req.body.customerPhone || req.body.deliveryPhone || req.body.receiverMobile || req.body.customerMobile || '')
     };
 
-    if (!tripNumber || !vehicle || !driver || !startLocation || !endLocation || !departureTime || !eta) {
-      return sendError(res, 400, 'Trip number, vehicle, driver, route, and timing details are required');
+    // Auto-generate tripNumber if missing or duplicate
+    let finalTripNumber = tripNumber;
+    if (!finalTripNumber || (await Trip.findOne({ tripNumber: finalTripNumber }))) {
+      let isUnique = false;
+      while (!isUnique) {
+        const randomSixDigits = Math.floor(100000 + Math.random() * 900000);
+        finalTripNumber = `TRP-${randomSixDigits}`;
+        const existing = await Trip.findOne({ tripNumber: finalTripNumber });
+        if (!existing) isUnique = true;
+      }
+    }
+
+    if (!vehicle || !driver || !startLocation || !endLocation || !departureTime || !eta) {
+      return sendError(res, 400, 'Vehicle, driver, route, and timing details are required');
     }
 
     // Validation: Pickup and Destination cannot be the same
@@ -981,13 +993,10 @@ export const createTrip = async (req, res, next) => {
     if (!selectedVeh) {
       return sendError(res, 404, 'Vehicle not found');
     }
-    if (selectedVeh.currentStatus !== 'Available' && selectedVeh.currentStatus !== 'Active') {
-      return sendError(res, 400, 'Selected vehicle is no longer available');
-    }
 
     const inProgressTripWithVehicle = await Trip.findOne({
       vehicle,
-      status: { $in: ['In Progress', 'On Transit', 'Enroute', 'Reach Pickup', 'Pickup Completed'] }
+      status: { $in: ['In Progress', 'On Transit', 'Enroute', 'Reach Pickup', 'Pickup Completed', 'Started', 'Ongoing'] }
     });
     if (inProgressTripWithVehicle) {
       return sendError(res, 400, 'This Vehicle is already assigned to an active trip in progress.');
@@ -995,7 +1004,7 @@ export const createTrip = async (req, res, next) => {
 
     // Cancel any stale/orphaned non-completed trips for this vehicle
     await Trip.updateMany(
-      { vehicle, status: { $in: ['Assigned', 'Scheduled', 'Accepted'] } },
+      { vehicle, status: { $in: ['Assigned', 'Scheduled', 'Accepted', 'Pending Driver Acceptance', 'Ready to Dispatch'] } },
       { $set: { status: 'Cancelled', isActive: false } }
     ).catch(() => {});
 
@@ -1004,16 +1013,13 @@ export const createTrip = async (req, res, next) => {
     if (!driverDoc) {
       return sendError(res, 404, 'Driver not found');
     }
-    if (driverDoc.driverStatus !== 'AVAILABLE') {
-      return sendError(res, 400, 'This Driver is already assigned to an active trip.');
-    }
     if (driverDoc.licenseExpiry && new Date(driverDoc.licenseExpiry) < currentDate) {
       return sendError(res, 400, 'Cannot assign driver with an expired license');
     }
 
     const inProgressTripWithDriver = await Trip.findOne({
       driver,
-      status: { $in: ['In Progress', 'On Transit', 'Enroute', 'Reach Pickup', 'Pickup Completed'] }
+      status: { $in: ['In Progress', 'On Transit', 'Enroute', 'Reach Pickup', 'Pickup Completed', 'Started', 'Ongoing'] }
     });
     if (inProgressTripWithDriver) {
       return sendError(res, 400, 'This Driver is already assigned to an active trip in progress.');
@@ -1021,7 +1027,7 @@ export const createTrip = async (req, res, next) => {
 
     // Cancel any stale/orphaned non-completed trips for this driver
     await Trip.updateMany(
-      { driver, status: { $in: ['Assigned', 'Scheduled', 'Accepted'] } },
+      { driver, status: { $in: ['Assigned', 'Scheduled', 'Accepted', 'Pending Driver Acceptance', 'Ready to Dispatch'] } },
       { $set: { status: 'Cancelled', isActive: false } }
     ).catch(() => {});
 
@@ -1034,7 +1040,7 @@ export const createTrip = async (req, res, next) => {
     // C. Create the trip with status "Pending Driver Acceptance"
     const initialStatus = 'Pending Driver Acceptance';
     const trip = await createTripInRepo({
-      tripNumber,
+      tripNumber: finalTripNumber,
       vehicle,
       driver,
       driverName: driverName || driverDoc.fullName || '',
@@ -1055,7 +1061,11 @@ export const createTrip = async (req, res, next) => {
       cargoType,
       cargoWeight: Number(cargoWeight) || 0,
       tripNotes,
-      estimatedDistance: Number(estimatedDistance) || calculateDistance(startLocation, endLocation),
+      estimatedDistance: (() => {
+        const computedDist = calculateDistance(startLocation, endLocation);
+        const inputDist = Number(estimatedDistance);
+        return (inputDist > 0 && Math.abs(inputDist - computedDist) < 1500) ? inputDist : computedDist;
+      })(),
       assignedManager: req.user._id
     });
 
@@ -1158,48 +1168,28 @@ export const createTrip = async (req, res, next) => {
       }
     }
 
-    // G. Automatically generate unique invoice and save to database
-    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
-    const seq = String(count + 1).padStart(4, '0');
-    const invoiceNumber = `INV-${datePart}-${seq}`;
-
-    const invoice = new Invoice({
-      invoiceNumber,
-      invoiceDate: new Date(),
-      trip: trip._id,
-      driver: trip.driver,
-      vehicle: trip.vehicle,
-      createdBy: req.user._id
-    });
-    await invoice.save();
-    trip.tripInvoice = {
-      invoiceId: invoice._id,
-      invoiceNumber: invoice.invoiceNumber,
-      url: invoice.pdfUrl || '',
-      generatedAt: invoice.createdAt || invoice.invoiceDate
-    };
-    await trip.save();
-    console.log(`Invoice Generated for Trip ${trip.tripNumber}: ${invoice.invoiceNumber}\n`);
-
-    // Generate Toll Transactions for the new trip
+    // Generate Toll Transactions & log activity for the new trip safely
     try {
       await generateTollsForTrip(trip);
     } catch (tollErr) {
       console.error('Failed to generate toll transactions for new trip:', tollErr);
     }
 
-    await logActivity({
-      title: 'Trip Dispatched',
-      description: `Trip ${trip.tripNumber} dispatched using Vehicle ${trip.vehiclePlate || ''}.`,
-      activityType: 'TRIP_ASSIGNED',
-      vehicleNumber: trip.vehiclePlate || '',
-      vehicleName: trip.vehicleName || '',
-      relatedModule: 'Trip',
-      relatedId: trip._id,
-      user: req.user,
-      assignedManager: req.user._id
-    });
+    try {
+      await logActivity({
+        title: 'Trip Dispatched',
+        description: `Trip ${trip.tripNumber} dispatched using Vehicle ${trip.vehiclePlate || ''}.`,
+        activityType: 'TRIP_ASSIGNED',
+        vehicleNumber: trip.vehiclePlate || '',
+        vehicleName: trip.vehicleName || '',
+        relatedModule: 'Trip',
+        relatedId: trip._id,
+        user: req.user,
+        assignedManager: req.user._id
+      });
+    } catch (logErr) {
+      console.error('Failed to log trip creation activity:', logErr);
+    }
 
     return sendSuccess(res, 201, trip, 'Trip created and assigned successfully');
   } catch (error) {
