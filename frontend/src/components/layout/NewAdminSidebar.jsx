@@ -47,7 +47,7 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
       )}
 
       {/* Sidebar */}
-      <div className={`w-[260px] bg-[#1a2332] text-slate-300 flex flex-col h-screen fixed lg:sticky top-0 z-50 flex-shrink-0 transition-transform duration-300 ease-in-out ${
+      <div className={`w-[260px] bg-[#1a2332] text-slate-300 flex flex-col h-screen fixed lg:sticky top-0 z-50 flex-shrink-0 overflow-hidden transition-transform duration-300 ease-in-out ${
         isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       }`}>
       {/* Logo Area */}

@@ -210,11 +210,10 @@ export default function AppLayout() {
                       key={item.label}
                       to={item.to}
                       onClick={() => setMobileSidebarOpen(false)}
-                      className={`flex items-center gap-3.5 px-6 py-3 text-sm border-l-4 transition-all ${
-                        isActive
+                      className={`flex items-center gap-3.5 px-6 py-3 text-sm border-l-4 transition-all ${isActive
                           ? "border-[#B45A0A] bg-[#1B1B1D] text-[#B45A0A] font-semibold"
                           : "border-transparent hover:text-white hover:bg-[#1B1B1D]/30"
-                      }`}
+                        }`}
                     >
                       <Icon className="w-5 h-5 shrink-0" />
                       <span>{item.label}</span>
@@ -231,11 +230,10 @@ export default function AppLayout() {
                         key={item.label}
                         to={item.to}
                         onClick={() => setMobileSidebarOpen(false)}
-                        className={`flex items-center gap-3.5 px-4 py-3.5 text-sm rounded-xl transition-all ${
-                          isActive
+                        className={`flex items-center gap-3.5 px-4 py-3.5 text-sm rounded-xl transition-all ${isActive
                             ? "bg-[#1B1B1D] text-[#B45A0A] font-semibold"
                             : "text-gray-300 hover:text-white hover:bg-[#1B1B1D]/30"
-                        }`}
+                          }`}
                       >
                         <Icon className="w-4.5 h-4.5 shrink-0" />
                         <span>{item.label}</span>
@@ -296,11 +294,10 @@ export default function AppLayout() {
               <NavLink
                 key={item.label}
                 to={item.to}
-                className={`flex items-center justify-center lg:justify-start gap-3.5 px-6 py-3 text-sm border-l-4 transition-all ${
-                  isActive
+                className={`flex items-center justify-center lg:justify-start gap-3.5 px-6 py-3 text-sm border-l-4 transition-all ${isActive
                     ? "border-[#B45A0A] bg-[#1B1B1D] text-[#B45A0A] font-semibold"
                     : "border-transparent hover:text-white hover:bg-[#1B1B1D]/30"
-                }`}
+                  }`}
               >
                 <Icon className="w-5 h-5 shrink-0" />
                 <span className="hidden lg:block">{item.label}</span>
@@ -325,7 +322,7 @@ export default function AppLayout() {
             <h2 className="text-sm font-extrabold tracking-tight text-slate-800 md:hidden">{pageTitle}</h2>
           </div>
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => navigate(role === "admin" ? "/admin/notifications" : "/manager/notifications")}
               className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-md cursor-pointer transition-colors min-h-[48px] min-w-[48px] flex items-center justify-center"
               title="Notifications"
@@ -334,146 +331,150 @@ export default function AppLayout() {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#B45A0A] border border-white rounded-full animate-pulse" />
             </button>
             <div className="relative hidden md:block">
-              <UserProfileCard
-                user={user}
-                roleLabel={role === "admin" ? "Admin" : "Fleet Manager"}
-                profilePath={role === "admin" ? "/admin/settings/profile" : "/manager/profile"}
-                settingsPath={role === "admin" ? "/admin/settings" : "/manager/settings"}
-                supportPath={role === "admin" ? "/admin/notifications" : "/manager/notifications"}
-                onLogout={handleLogoutRequest}
-              />
-            </div>
-          </div>
-        </header>
+            <UserProfileCard
+              user={user}
+              roleLabel={role === "admin" ? "Admin" : "Fleet Manager"}
+              profilePath={role === "admin" ? "/admin/settings/profile" : "/manager/profile"}
+              settingsPath={role === "admin" ? "/admin/settings" : "/manager/settings"}
+              supportPath={role === "admin" ? "/admin/notifications" : "/manager/notifications"}
+              onLogout={handleLogoutRequest}
+            />
+            </div >
+          </div >
+        </header >
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[120px] md:pb-0 transition-all duration-300 animate-fade">
-          <Outlet />
-        </main>
+    {/* Page Content */ }
+    < main className = "flex-1 overflow-y-auto overflow-x-hidden pb-[120px] md:pb-0 transition-all duration-300 animate-fade" >
+      <Outlet />
+        </main >
 
-        {isMobile && !mobileSidebarOpen && (
-          <nav className="fixed inset-x-2 bottom-2 z-[9999] flex min-h-[96px] items-center rounded-[24px] border border-gray-200 bg-white/95 px-2 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.75rem))] pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden animate-slide-up">
-            <div className="mx-auto flex h-full w-full max-w-md items-center justify-between gap-2">
-              {mobileLinks.map((item) => {
-                const Icon = item.icon;
-                const isActive =
-                  item.to === "/manager"
-                    ? location.pathname === "/manager"
-                    : item.to === "/admin"
-                      ? location.pathname === "/admin"
-                      : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+    { isMobile && !mobileSidebarOpen && (
+      <nav className="fixed inset-x-2 bottom-2 z-[9999] flex min-h-[96px] items-center rounded-[24px] border border-gray-200 bg-white/95 px-2 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.75rem))] pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden animate-slide-up">
+        <div className="mx-auto flex h-full w-full max-w-md items-center justify-between gap-2">
+          {mobileLinks.map((item) => {
+            const Icon = item.icon;
+            const isActive =
+              item.to === "/manager"
+                ? location.pathname === "/manager"
+                : item.to === "/admin"
+                  ? location.pathname === "/admin"
+                  : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
 
-                if (item.label === "More") {
-                  return (
-                    <button
-                      key={item.label}
-                      type="button"
-                      onClick={() => {
-                        setMobileSidebarOpen(true);
-                        setFabOpen(false);
-                      }}
-                      className="flex flex-1 items-center justify-center rounded-2xl px-2 py-4 text-gray-500 transition-all hover:bg-gray-50 hover:text-gray-700"
-                    >
-                      <Icon className="h-6 w-6 shrink-0" />
-                    </button>
-                  );
-                }
-
-                return (
-                  <NavLink
-                    key={item.label}
-                    to={item.to}
-                    className={`flex flex-1 items-center justify-center rounded-2xl px-2 py-4 transition-all ${
-                      isActive
-                        ? "bg-[#FFF3E8] text-[#B45A0A]"
-                        : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                    }`}
-                  >
-                    <Icon className="h-6 w-6 shrink-0" />
-                  </NavLink>
-                );
-              })}
-            </div>
-          </nav>
-        )}
-
-        {isMobile && !mobileSidebarOpen && (
-          <div className="fixed bottom-[110px] right-4 z-[60] md:hidden">
-            <div className="relative">
-              {fabOpen && (
-                <div className="mb-3 flex flex-col gap-2 animate-slide-up">
-                  <button
-                    onClick={() => { setFabOpen(false); navigate("/manager/add-vehicle"); }}
-                    className="flex items-center gap-2 rounded-full bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-lg"
-                  >
-                    <Truck className="h-4 w-4" />
-                    <span>Add Vehicle</span>
-                  </button>
-                  <button
-                    onClick={() => { setFabOpen(false); navigate("/manager/reports"); }}
-                    className="flex items-center gap-2 rounded-full bg-[#B45A0A] px-3 py-2 text-sm font-semibold text-white shadow-lg"
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                    <span>Generate Report</span>
-                  </button>
-                  <button
-                    onClick={() => { setFabOpen(false); navigate("/manager/reports"); }}
-                    className="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-lg"
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span>Export PDF</span>
-                  </button>
-                </div>
-              )}
-              <button
-                onClick={() => setFabOpen((prev) => !prev)}
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-[#B45A0A] text-white shadow-[0_10px_30px_rgba(180,90,10,0.35)] transition-transform hover:scale-105"
-                title="Quick Actions"
-              >
-                <Plus className="h-6 w-6" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {showLogoutConfirm && (
-          <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
-              <h3 className="text-lg font-semibold text-slate-800">Are you sure you want to log out?</h3>
-              <p className="mt-2 text-sm text-slate-500">You can sign back in anytime.</p>
-              <div className="mt-5 flex justify-end gap-3">
+            if (item.label === "More") {
+              return (
                 <button
-                  onClick={() => setShowLogoutConfirm(false)}
-                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-gray-50"
+                  key={item.label}
+                  type="button"
+                  onClick={() => {
+                    setMobileSidebarOpen(true);
+                    setFabOpen(false);
+                  }}
+                  className="flex flex-1 items-center justify-center rounded-2xl px-2 py-4 text-gray-500 transition-all hover:bg-gray-50 hover:text-gray-700"
                 >
-                  Cancel
+                  <Icon className="h-6 w-6 shrink-0" />
                 </button>
-                <button
-                  onClick={handleLogout}
-                  className="rounded-lg bg-[#B45A0A] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#963f00]"
-                >
-                  Logout
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </div>
-
-      {pendingMilestone && (
-        <MilestoneReviewModal
-          milestoneData={pendingMilestone}
-          onClose={(refresh) => {
-            setPendingMilestone(null);
-            setIsLocked(false);
-            if (refresh) {
-              checkMilestone();
+              );
             }
-          }}
-          onLockStateChange={setIsLocked}
-        />
-      )}
+
+            return (
+              <NavLink
+                key={item.label}
+                to={item.to}
+                className={`flex flex-1 items-center justify-center rounded-2xl px-2 py-4 transition-all ${isActive
+                    ? "bg-[#FFF3E8] text-[#B45A0A]"
+                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                  }`}
+              >
+                <Icon className="h-6 w-6 shrink-0" />
+              </NavLink>
+            );
+          })}
+        </div>
+      </nav>
+    )
+}
+
+{
+  isMobile && !mobileSidebarOpen && (
+    <div className="fixed bottom-[110px] right-4 z-[60] md:hidden">
+      <div className="relative">
+        {fabOpen && (
+          <div className="mb-3 flex flex-col gap-2 animate-slide-up">
+            <button
+              onClick={() => { setFabOpen(false); navigate("/manager/add-vehicle"); }}
+              className="flex items-center gap-2 rounded-full bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-lg"
+            >
+              <Truck className="h-4 w-4" />
+              <span>Add Vehicle</span>
+            </button>
+            <button
+              onClick={() => { setFabOpen(false); navigate("/manager/reports"); }}
+              className="flex items-center gap-2 rounded-full bg-[#B45A0A] px-3 py-2 text-sm font-semibold text-white shadow-lg"
+            >
+              <BarChart3 className="h-4 w-4" />
+              <span>Generate Report</span>
+            </button>
+            <button
+              onClick={() => { setFabOpen(false); navigate("/manager/reports"); }}
+              className="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-lg"
+            >
+              <FileText className="h-4 w-4" />
+              <span>Export PDF</span>
+            </button>
+          </div>
+        )}
+        <button
+          onClick={() => setFabOpen((prev) => !prev)}
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-[#B45A0A] text-white shadow-[0_10px_30px_rgba(180,90,10,0.35)] transition-transform hover:scale-105"
+          title="Quick Actions"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      </div>
     </div>
+  )
+}
+
+{
+  showLogoutConfirm && (
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+        <h3 className="text-lg font-semibold text-slate-800">Are you sure you want to log out?</h3>
+        <p className="mt-2 text-sm text-slate-500">You can sign back in anytime.</p>
+        <div className="mt-5 flex justify-end gap-3">
+          <button
+            onClick={() => setShowLogoutConfirm(false)}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleLogout}
+            className="rounded-lg bg-[#B45A0A] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#963f00]"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+      </div >
+
+  { pendingMilestone && (
+    <MilestoneReviewModal
+      milestoneData={pendingMilestone}
+      onClose={(refresh) => {
+        setPendingMilestone(null);
+        setIsLocked(false);
+        if (refresh) {
+          checkMilestone();
+        }
+      }}
+      onLockStateChange={setIsLocked}
+    />
+  )}
+    </div >
   );
 }

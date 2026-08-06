@@ -259,83 +259,69 @@ export async function calculateDrivingRoute(startLocation, endLocation) {
   const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startCoords[1]},${startCoords[0]};${endCoords[1]},${endCoords[0]}?overview=full&geometries=geojson`;
 
   try {
-    const response = await fetch(osrmUrl);
-    if (!response.ok) {
-      throw new Error(`OSRM HTTP status ${response.status}`);
-    }
+    const response = await fetch(osrmUrl).catch(() => null);
+    if (response && response.ok) {
+      const data = await response.json().catch(() => null);
+      if (data && data.code === 'Ok' && Array.isArray(data.routes) && data.routes.length > 0) {
+        const primaryRoute = data.routes[0];
+        const distanceMeters = primaryRoute.distance; // meters
+        const durationSecs = primaryRoute.duration; // seconds
 
-    const data = await response.json();
-    if (data.code === 'Ok' && Array.isArray(data.routes) && data.routes.length > 0) {
-      const primaryRoute = data.routes[0];
-      const distanceMeters = primaryRoute.distance; // meters
-      const durationSecs = primaryRoute.duration; // seconds
+        const distanceKm = Math.round(distanceMeters / 1000);
+        const durationHours = parseFloat((durationSecs / 3600).toFixed(1));
+        const durationFormatted = formatDuration(durationSecs);
 
-      const distanceKm = Math.round(distanceMeters / 1000);
-      const durationHours = parseFloat((durationSecs / 3600).toFixed(1));
-      const durationFormatted = formatDuration(durationSecs);
+        // GeoJSON coordinates are [longitude, latitude]. Map to Leaflet [latitude, longitude].
+        const routeGeometry = primaryRoute.geometry?.coordinates
+          ? primaryRoute.geometry.coordinates.map(([lon, lat]) => [lat, lon])
+          : [startCoords, endCoords];
 
-      // GeoJSON coordinates are [longitude, latitude]. Map to Leaflet [latitude, longitude].
-      const routeGeometry = primaryRoute.geometry?.coordinates
-        ? primaryRoute.geometry.coordinates.map(([lon, lat]) => [lat, lon])
-        : [startCoords, endCoords];
+        const result = {
+          success: true,
+          distanceKm,
+          durationSeconds: durationSecs,
+          durationHours,
+          durationFormatted,
+          startCoords,
+          endCoords,
+          routeGeometry
+        };
 
-      const result = {
-        success: true,
-        distanceKm,
-        durationSeconds: durationSecs,
-        durationHours,
-        durationFormatted,
-        startCoords,
-        endCoords,
-        routeGeometry
-      };
-
-      routeCache.set(cacheKey, result);
-      return result;
-    } else {
-      return {
-        success: false,
-        distanceKm: 0,
-        durationSeconds: 0,
-        durationHours: 0,
-        durationFormatted: "N/A",
-        startCoords,
-        endCoords,
-        routeGeometry: [startCoords, endCoords],
-        errorMessage: `No driving road route available between "${cleanStart}" and "${cleanEnd}".`
-      };
+        routeCache.set(cacheKey, result);
+        return result;
+      }
     }
   } catch (err) {
-    console.error(`[RoutingService] OSRM route fetch error for ${cleanStart} -> ${cleanEnd}:`, err);
-    
-    // Fallback: Haversine distance multiplier if OSRM is unreachable
-    const R = 6371;
-    const dLat = (endCoords[0] - startCoords[0]) * Math.PI / 180;
-    const dLon = (endCoords[1] - startCoords[1]) * Math.PI / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(startCoords[0] * Math.PI / 180) * Math.cos(endCoords[0] * Math.PI / 180) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const straightKm = R * c;
-    const drivingEstKm = Math.round(straightKm * 1.3);
-    const estSecs = Math.round((drivingEstKm / 60) * 3600);
-
-    const fallbackResult = {
-      success: true,
-      distanceKm: drivingEstKm,
-      durationSeconds: estSecs,
-      durationHours: parseFloat((estSecs / 3600).toFixed(1)),
-      durationFormatted: formatDuration(estSecs),
-      startCoords,
-      endCoords,
-      routeGeometry: [startCoords, endCoords],
-      isFallback: true
-    };
-
-    routeCache.set(cacheKey, fallbackResult);
-    return fallbackResult;
+    // Silent catch for network restrictions
   }
+
+  // Fallback: Haversine distance multiplier if OSRM is unreachable or network blocked
+  const R = 6371;
+  const dLat = (endCoords[0] - startCoords[0]) * Math.PI / 180;
+  const dLon = (endCoords[1] - startCoords[1]) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(startCoords[0] * Math.PI / 180) * Math.cos(endCoords[0] * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const straightKm = R * c;
+  const drivingEstKm = Math.round(straightKm * 1.3);
+  const estSecs = Math.round((drivingEstKm / 60) * 3600);
+
+  const fallbackResult = {
+    success: true,
+    distanceKm: drivingEstKm,
+    durationSeconds: estSecs,
+    durationHours: parseFloat((estSecs / 3600).toFixed(1)),
+    durationFormatted: formatDuration(estSecs),
+    startCoords,
+    endCoords,
+    routeGeometry: [startCoords, endCoords],
+    isFallback: true
+  };
+
+  routeCache.set(cacheKey, fallbackResult);
+  return fallbackResult;
 }
 
 /**

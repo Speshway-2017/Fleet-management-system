@@ -37,7 +37,6 @@ import { getSocket } from "@/api/socket";
 import { useAuth } from "@/context/AuthContext";
 
 import { managerApi } from "../api/managerApi";
-import TripCommunicationSection from "../components/TripCommunicationSection";
 import { calculateDrivingRoute, calculateFallbackDistance } from "../services/routingService";
 
 export default function TripDetailsPage() {
@@ -49,21 +48,18 @@ export default function TripDetailsPage() {
 
   const [activeTab, setActiveTab] = useState(() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam && ["overview", "timeline", "documents", "communication"].includes(tabParam.toLowerCase())) {
+    if (tabParam && ["overview", "timeline", "documents"].includes(tabParam.toLowerCase())) {
       return tabParam.toLowerCase();
-    }
-    if (window.location.hash === "#communication") {
-      return "communication";
     }
     return "overview";
   });
 
   useEffect(() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam && ["overview", "timeline", "documents", "communication"].includes(tabParam.toLowerCase())) {
+    if (tabParam && ["overview", "timeline", "documents"].includes(tabParam.toLowerCase())) {
       setActiveTab(tabParam.toLowerCase());
-    } else if (window.location.hash === "#communication") {
-      setActiveTab("communication");
+    } else {
+      setActiveTab("overview");
     }
   }, [searchParams, id]);
   const [actionLoading, setActionLoading] = useState(false);
@@ -930,8 +926,7 @@ export default function TripDetailsPage() {
         {[
           { id: "overview", label: "Overview", icon: Route },
           { id: "timeline", label: "Timeline", icon: Clock },
-          { id: "documents", label: "Documents", icon: FileText },
-          { id: "communication", label: "Communication", icon: MessageSquare }
+          { id: "documents", label: "Documents", icon: FileText }
         ].map((tabItem) => {
           const Icon = tabItem.icon;
           const isActive = activeTab === tabItem.id;
@@ -1979,13 +1974,6 @@ export default function TripDetailsPage() {
               )}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Tab 4: Communication View */}
-      {activeTab === "communication" && (
-        <div className="mt-6">
-          <TripCommunicationSection trip={trip} />
         </div>
       )}
 

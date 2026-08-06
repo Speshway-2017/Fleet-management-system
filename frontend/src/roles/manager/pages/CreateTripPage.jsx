@@ -96,10 +96,10 @@ function SearchableSelect({
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium text-left flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 ${disabled
-            ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-            : error
-              ? "border-red-300 focus:border-red-500 text-[#1E293B]"
-              : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+          ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+          : error
+            ? "border-red-300 focus:border-red-500 text-[#1E293B]"
+            : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
           }`}
       >
         <span className={value ? "text-[#1E293B] font-semibold font-poppins" : "text-gray-400 font-normal font-poppins"}>
@@ -139,8 +139,8 @@ function SearchableSelect({
                     type="button"
                     onClick={() => handleSelect(opt)}
                     className={`w-full px-3.5 py-2 text-left text-xs flex items-center justify-between font-poppins transition-colors ${isSelected
-                        ? "bg-amber-50 text-[#B45A0A] font-bold"
-                        : "text-[#1E293B] hover:bg-gray-50 font-medium"
+                      ? "bg-amber-50 text-[#B45A0A] font-bold"
+                      : "text-[#1E293B] hover:bg-gray-50 font-medium"
                       }`}
                   >
                     <span>{optStr}</span>
@@ -183,6 +183,8 @@ export default function CreateTripPage() {
   const [filterAvailableDrivers, setFilterAvailableDrivers] = useState(true);
   const [isNearbyVehiclesFallback, setIsNearbyVehiclesFallback] = useState(false);
   const [isNearbyDriversFallback, setIsNearbyDriversFallback] = useState(false);
+  const [isExtendedVehiclesFallback, setIsExtendedVehiclesFallback] = useState(false);
+  const [isExtendedDriversFallback, setIsExtendedDriversFallback] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
@@ -191,7 +193,7 @@ export default function CreateTripPage() {
   const [endLocation, setEndLocation] = useState("");
   const [departureTime, setDepartureTime] = useState("");
   const [eta, setEta] = useState("");
-  const [status, setStatus] = useState("Scheduled");
+  const [status, setStatus] = useState("Assigned");
   const [description, setDescription] = useState("");
 
   const normalizeCityName = (loc) => {
@@ -528,9 +530,13 @@ export default function CreateTripPage() {
 
         const isVehFallback = !!(vPayload.isNearbyFallback || vPayload.isNearbyVehiclesFallback);
         const isDrvFallback = !!(dPayload.isNearbyFallback || dPayload.isNearbyDriversFallback);
+        const isVehExt = !!(vPayload.isExtendedFallback || (vPayload.hasNearby === false && rawVehicles.length > 0));
+        const isDrvExt = !!(dPayload.isExtendedFallback || (dPayload.hasNearby === false && rawDrivers.length > 0));
 
         setIsNearbyVehiclesFallback(isVehFallback);
         setIsNearbyDriversFallback(isDrvFallback);
+        setIsExtendedVehiclesFallback(isVehExt);
+        setIsExtendedDriversFallback(isDrvExt);
 
         const vehiclesData = rawVehicles.map(v => {
           const isAvailable = v.currentStatus === 'Available' || v.currentStatus === 'Active' || v.status === 'Available' || v.status === 'Active';
@@ -549,6 +555,9 @@ export default function CreateTripPage() {
 
         const driversData = rawDrivers.map(d => {
           const isAvailable = d.driverStatus === 'AVAILABLE' || d.status === 'Available';
+          let veh = d.assignedVehicle || d.vehiclePlate || d.vehicleRegistration || d.vehicle || "";
+          if (veh === "Unassigned") veh = "";
+
           return {
             ...d,
             id: d._id || d.id,
@@ -558,12 +567,13 @@ export default function CreateTripPage() {
             isNearby: d.isNearby || isDrvFallback,
             distanceKm: d.distanceKm,
             estimatedTravelTime: d.estimatedTravelTime,
-            currentLocation: formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch)
+            currentLocation: formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch),
+            assignedVehicle: veh
           };
         });
 
         const cleanStartCity = cleanLoc.split(',')[0].trim().toLowerCase();
-        
+
         let finalVehicles = vehiclesData;
         if (cleanStartCity && !isVehFallback) {
           const matchedVehs = vehiclesData.filter(v => {
@@ -832,7 +842,7 @@ export default function CreateTripPage() {
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
       <Breadcrumb />
-      
+
       {/* Title Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#E7EAF0] pb-6">
         <div>
@@ -882,11 +892,10 @@ export default function CreateTripPage() {
                     if (startLocation.trim().length > 0) setShowStartSuggestions(true);
                   }}
                   onBlur={() => setTimeout(() => setShowStartSuggestions(false), 200)}
-                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${
-                    isSameLocError
-                      ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
-                      : "border-[#E7EAF0] focus:border-[#B45A0A]"
-                  }`}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${isSameLocError
+                    ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
+                    : "border-[#E7EAF0] focus:border-[#B45A0A]"
+                    }`}
                   required
                 />
                 {showStartSuggestions && startSuggestions.length > 0 && (
@@ -924,11 +933,10 @@ export default function CreateTripPage() {
                     if (endLocation.trim().length > 0) setShowEndSuggestions(true);
                   }}
                   onBlur={() => setTimeout(() => setShowEndSuggestions(false), 200)}
-                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${
-                    isSameLocError
-                      ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
-                      : "border-[#E7EAF0] focus:border-[#B45A0A]"
-                  }`}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${isSameLocError
+                    ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
+                    : "border-[#E7EAF0] focus:border-[#B45A0A]"
+                    }`}
                   required
                 />
                 {showEndSuggestions && endSuggestions.length > 0 && (
@@ -971,9 +979,8 @@ export default function CreateTripPage() {
                   onChange={(e) => handleDepartureTimeChange(e.target.value)}
                   onBlur={handleBlur}
                   min={getCurrentDateTimeString()}
-                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins ${
-                    departureError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
-                  }`}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins ${departureError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
+                    }`}
                   required
                 />
               </div>
@@ -995,9 +1002,8 @@ export default function CreateTripPage() {
                   onChange={(e) => handleEtaChange(e.target.value)}
                   onBlur={handleBlur}
                   min={getMinEtaString(departureTime)}
-                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins ${
-                    etaError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
-                  }`}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins ${etaError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
+                    }`}
                   required
                 />
               </div>
@@ -1070,7 +1076,7 @@ export default function CreateTripPage() {
 
         {/* 2. Asset Allocation & Driver Assignment (Side-by-Side 2-Column Grid, Fixed Height with Internal Scrollbar) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-          
+
           {/* Asset Allocation Card */}
           <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between space-y-4 font-poppins h-[420px]">
             <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0] shrink-0">
@@ -1087,239 +1093,273 @@ export default function CreateTripPage() {
               </button>
             </div>
 
-            {startLocation.trim() && isNearbyVehiclesFallback && (
-              <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0">
-                <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
+            {startLocation.trim() && isExtendedVehiclesFallback ? (
+              <div className="p-3 bg-red-50 border border-red-200/80 rounded-xl text-xs text-red-800 font-medium flex items-start gap-2.5 shrink-0 font-poppins">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold block">No vehicles are available at {startLocation}.</span>
-                  <span className="text-[11px] text-amber-700 font-medium">Showing the nearest available vehicles.</span>
-                </div>
-              </div>
+                  <span className="font-bold block text-rose-900">❌ No nearby vehicles found within 50 km of {startLocation}.</span>
+                  <span className="text-[11px] text-rose-700 font-medium">Displaying all available vehicles sorted from nearest to farthest:</span>
+                </div >
+              </div >
+            ) : startLocation.trim() && isNearbyVehiclesFallback ? (
+    <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0 font-poppins">
+      <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
+      <div>
+        <span className="font-bold block text-amber-900">No vehicles located directly in {startLocation}.</span>
+        <span className="text-[11px] text-amber-700 font-medium">Showing nearest available vehicles within 50 km radius:</span>
+      </div>
+    </div>
+  ) : null
+}
+
+<div className="space-y-2.5 overflow-y-auto pr-1 custom-scrollbar flex-1">
+  {!startLocation.trim() ? (
+    <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+      <MapPin className="w-8 h-8 text-[#94A3B8] mb-2" />
+      <p className="text-xs text-gray-400 font-semibold font-poppins">Please select a Start Location to view available vehicles and drivers.</p>
+    </div>
+  ) : loading ? (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available vehicles...</p>
+    </div>
+  ) : (filterAvailableVehicles
+    ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
+    : vehicles
+  ).length === 0 ? (
+    <p className="text-xs text-gray-400 py-8 text-center font-semibold">No available vehicles found for the selected start location.</p>
+  ) : (
+    (filterAvailableVehicles
+      ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
+      : vehicles
+    ).map(v => (
+      <div
+        key={v.id}
+        onClick={() => {
+          if (v.status === "Under Maintenance") return;
+          handleVehicleSelection(v);
+        }}
+        className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${v.status === "Under Maintenance"
+          ? "border-[#E7EAF0] bg-gray-50/50 opacity-60 cursor-not-allowed"
+          : String(selectedVehicleId) === String(v.id)
+            ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
+            : "border-[#E7EAF0] bg-white hover:bg-gray-50 cursor-pointer"
+          }`}
+      >
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="font-bold text-xs text-[#1E293B]">{v.name}</p>
+            {(v.isNearby || isNearbyVehiclesFallback) && (
+              <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
             )}
-
-            <div className="space-y-2.5 overflow-y-auto pr-1 custom-scrollbar flex-1">
-              {!startLocation.trim() ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-                  <MapPin className="w-8 h-8 text-[#94A3B8] mb-2" />
-                  <p className="text-xs text-gray-400 font-semibold font-poppins">Please select a Start Location to view available vehicles and drivers.</p>
-                </div>
-              ) : loading ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available vehicles...</p>
-                </div>
-              ) : (filterAvailableVehicles 
-                ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
-                : vehicles
-              ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-8 text-center font-semibold">No available vehicles found for the selected start location.</p>
-              ) : (
-                (filterAvailableVehicles 
-                  ? vehicles.filter(v => v.status === "Available" || v.status === "Active")
-                  : vehicles
-                ).map(v => (
-                  <div
-                    key={v.id}
-                    onClick={() => {
-                      if (v.status === "Under Maintenance") return;
-                      handleVehicleSelection(v);
-                    }}
-                    className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${
-                      v.status === "Under Maintenance"
-                        ? "border-[#E7EAF0] bg-gray-50/50 opacity-60 cursor-not-allowed"
-                        : String(selectedVehicleId) === String(v.id)
-                        ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
-                        : "border-[#E7EAF0] bg-white hover:bg-gray-50 cursor-pointer"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold text-xs text-[#1E293B]">{v.name}</p>
-                        {(v.isNearby || isNearbyVehiclesFallback) && (
-                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-[#64748B] font-semibold block mt-0.5 uppercase">Reg: {v.plateNumber}</span>
-                      <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
-                        <span>Type: <strong className="text-[#1E293B]">{v.vehicleType || v.type || "Truck"}</strong></span>
-                        <span>|</span>
-                        <span>Location: <strong className="text-[#1E293B]">{formatDisplayLocation(v.currentLocation, v.branch)}</strong></span>
-                      </div>
-                      {(v.isNearby || isNearbyVehiclesFallback || (v.distanceKm !== undefined && v.distanceKm > 0)) && (
-                        <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
-                          <span>📍 {v.distanceKm || 0} km away</span>
-                          <span>•</span>
-                          <span>⏱️ {v.estimatedTravelTime || "30 mins"}</span>
-                        </div>
-                      )}
-                      <span className={`inline-block mt-2 px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
-                        v.status === "Active" || v.status === "Available"
-                          ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                          : "bg-rose-50 text-rose-600 border border-rose-100"
-                      }`}>
-                        {v.status}
-                      </span>
-                    </div>
-                    
-                    <button
-                      type="button"
-                      disabled={v.status === "Under Maintenance"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleVehicleSelection(v);
-                      }}
-                      className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
-                        v.status === "Under Maintenance"
-                          ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
-                          : String(selectedVehicleId) === String(v.id)
-                          ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
-                          : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
-                      }`}
-                    >
-                      {String(selectedVehicleId) === String(v.id) ? "Allocated" : "Allocate"}
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
           </div>
-
-          {/* Driver Assignment Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between space-y-4 font-poppins h-[420px]">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0] shrink-0">
-              <div className="flex items-center gap-2">
-                <User className="w-5 h-5 text-[#B45A0A]" />
-                <h3 className="font-bold text-[#1E293B] text-[16px]">Driver Assignment</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setFilterAvailableDrivers(!filterAvailableDrivers)}
-                className="text-[10px] font-bold text-[#B45A0A] bg-orange-50 border border-orange-100 hover:bg-orange-100/50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer select-none font-poppins"
-              >
-                {filterAvailableDrivers ? "Show All Drivers" : "Filter Available"}
-              </button>
-            </div>
-
-            {startLocation.trim() && isNearbyDriversFallback && (
-              <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0">
-                <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold block">No drivers are available at {startLocation}.</span>
-                  <span className="text-[11px] text-amber-700 font-medium">Showing the nearest available drivers.</span>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2.5 overflow-y-auto pr-1 custom-scrollbar flex-1">
-              {!startLocation.trim() ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-                  <User className="w-8 h-8 text-[#94A3B8] mb-2" />
-                  <p className="text-xs text-gray-400 font-semibold font-poppins">Please select a Start Location to view available vehicles and drivers.</p>
-                </div>
-              ) : loading ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available drivers...</p>
-                </div>
-              ) : (filterAvailableDrivers 
-                ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
-                : drivers
-              ).length === 0 ? (
-                <p className="text-xs text-gray-400 py-8 text-center font-semibold font-poppins">No drivers available in the selected location.</p>
-              ) : (
-                (filterAvailableDrivers 
-                  ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
-                  : drivers
-                ).map(d => {
-                  const isExpired = d.licenseExpiry && new Date(d.licenseExpiry) < new Date();
-                  return (
-                    <div
-                      key={d.id}
-                      onClick={() => {
-                        if (isExpired) {
-                          toast.error("This driver has an expired license and cannot be assigned.");
-                          return;
-                        }
-                        if (d.status === "Not Available") return;
-                        handleDriverSelection(d);
-                      }}
-                      className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${
-                        (isExpired || d.status === "Not Available")
-                          ? "border-red-150 bg-red-50/10 opacity-60 cursor-not-allowed"
-                          : String(selectedDriverId) === String(d.id)
-                          ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
-                          : "border-[#E7EAF0] bg-white hover:bg-gray-50 cursor-pointer"
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
-                          {(d.isAtPickupLocation || d.distanceKm === 0) ? (
-                            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
-                          ) : (d.isNearby || isNearbyDriversFallback) ? (
-                            <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
-                          ) : null}
-                        </div>
-                        <span className="text-[10px] text-[#64748B] block mt-0.5 font-semibold">Emp ID: {formatEmployeeId(d.employeeId)}</span>
-                        <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
-                          <span>Lic Validity: <strong className={isExpired ? "text-red-500" : "text-[#1E293B]"}>{d.licenseExpiry ? new Date(d.licenseExpiry).toLocaleDateString() : "Valid"}</strong></span>
-                          <span>|</span>
-                          <span>Location: <strong className="text-[#1E293B]">{formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch)}</strong></span>
-                        </div>
-                        {d.distanceKm !== undefined && (
-                          <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
-                            <span>📍 {d.distanceKm || 0} km away</span>
-                            <span>•</span>
-                            <span>⏱️ {d.estimatedTravelTime || "0 mins"}</span>
-                          </div>
-                        )}
-                        <div className="flex gap-1.5 mt-2">
-                          <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${
-                            isExpired
-                              ? "bg-red-50 text-red-600 border border-red-100"
-                              : d.status === "Available"
-                              ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                              : "bg-rose-50 text-rose-600 border border-rose-100"
-                          }`}>
-                            {isExpired ? "Expired License" : d.status}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <button
-                        type="button"
-                        disabled={isExpired || d.status === "Not Available"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isExpired) {
-                            toast.error("This driver has an expired license and cannot be assigned.");
-                            return;
-                          }
-                          handleDriverSelection(d);
-                        }}
-                        className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
-                          (isExpired || d.status === "Not Available")
-                            ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
-                            : String(selectedDriverId) === String(d.id)
-                            ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
-                            : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
-                        }`}
-                      >
-                        {String(selectedDriverId) === String(d.id) ? "Assigned" : "Assign"}
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+          <span className="text-[10px] text-[#64748B] font-semibold block mt-0.5 uppercase">Reg: {v.plateNumber}</span>
+          <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
+            <span>Type: <strong className="text-[#1E293B]">{v.vehicleType || v.type || "Truck"}</strong></span>
+            <span>|</span>
+            <span>Location: <strong className="text-[#1E293B]">{formatDisplayLocation(v.currentLocation, v.branch)}</strong></span>
           </div>
+          {(v.isNearby || isNearbyVehiclesFallback || (v.distanceKm !== undefined && v.distanceKm > 0)) && (
+            <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
+              <span>📍 {v.distanceKm || 0} km away</span>
+              <span>•</span>
+              <span>⏱️ {v.estimatedTravelTime || "30 mins"}</span>
+            </div>
+          )}
+          <span className={`inline-block mt-2 px-2 py-0.5 rounded-[6px] text-[8px] font-bold uppercase ${v.status === "Active" || v.status === "Available"
+            ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+            : "bg-rose-50 text-rose-600 border border-rose-100"
+            }`}>
+            {v.status}
+          </span>
         </div>
 
-        {/* 3. Pickup & Delivery Address (Side-by-Side 2-Column Grid) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-          
-          {/* Pickup Address Card */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm space-y-4 font-poppins flex flex-col justify-between h-full">
+        <button
+          type="button"
+          disabled={v.status === "Under Maintenance"}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleVehicleSelection(v);
+          }}
+          className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${v.status === "Under Maintenance"
+            ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
+            : String(selectedVehicleId) === String(v.id)
+              ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
+              : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
+            }`}
+        >
+          {String(selectedVehicleId) === String(v.id) ? "Allocated" : "Allocate"}
+        </button>
+      </div>
+    ))
+  )}
+</div>
+          </div >
+
+  {/* Driver Assignment Card */ }
+  < div className = "bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between space-y-4 font-poppins h-[420px]" >
+    <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0] shrink-0">
+      <div className="flex items-center gap-2">
+        <User className="w-5 h-5 text-[#B45A0A]" />
+        <h3 className="font-bold text-[#1E293B] text-[16px]">Driver Assignment</h3>
+      </div>
+      <button
+        type="button"
+        onClick={() => setFilterAvailableDrivers(!filterAvailableDrivers)}
+        className="text-[10px] font-bold text-[#B45A0A] bg-orange-50 border border-orange-100 hover:bg-orange-100/50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer select-none font-poppins"
+      >
+        {filterAvailableDrivers ? "Show All Drivers" : "Filter Available"}
+      </button>
+    </div>
+
+{
+  startLocation.trim() && isExtendedDriversFallback ? (
+    <div className="p-3 bg-red-50 border border-red-200/80 rounded-xl text-xs text-red-800 font-medium flex items-start gap-2.5 shrink-0 font-poppins">
+      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+      <div>
+                  <span className="font-bold block text-rose-900">❌ No nearby drivers found within 50 km of {startLocation}.</span>
+                  <span className="text-[11px] text-rose-700 font-medium">Displaying all available drivers sorted from nearest to farthest:</span>
+                </div >
+              </div >
+            ) : startLocation.trim() && isNearbyDriversFallback ? (
+    <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0 font-poppins">
+      <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
+      <div>
+        <span className="font-bold block text-amber-900">No drivers located directly in {startLocation}.</span>
+        <span className="text-[11px] text-amber-700 font-medium">Showing nearest available drivers within 50 km radius:</span>
+      </div>
+    </div>
+  ) : null
+}
+
+<div className="space-y-2.5 overflow-y-auto pr-1 custom-scrollbar flex-1">
+  {!startLocation.trim() ? (
+    <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+      <User className="w-8 h-8 text-[#94A3B8] mb-2" />
+      <p className="text-xs text-gray-400 font-semibold font-poppins">Please select a Start Location to view available vehicles and drivers.</p>
+    </div>
+  ) : loading ? (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available drivers...</p>
+    </div>
+  ) : (filterAvailableDrivers
+    ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
+    : drivers
+  ).length === 0 ? (
+    <p className="text-xs text-gray-400 py-8 text-center font-semibold font-poppins">No drivers available in the selected location.</p>
+  ) : (
+    (filterAvailableDrivers
+      ? drivers.filter(d => (d.driverStatus === "AVAILABLE" || d.status === "Available") && d.isDuty !== false && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
+      : drivers
+    ).map(d => {
+      const isExpired = d.licenseExpiry && new Date(d.licenseExpiry) < new Date();
+      const isOffline = d.driverStatus === "OFFLINE" || d.driverStatus === "OFF_DUTY" || d.isDuty === false || d.status === "Offline";
+      const isAvailable = (d.driverStatus === "AVAILABLE" || d.status === "Available") && !isOffline;
+
+      return (
+        <div
+          key={d.id}
+          onClick={() => {
+            if (isExpired) {
+              toast.error("This driver has an expired license and cannot be assigned.");
+              return;
+            }
+            if (isOffline) {
+              toast.error("This driver is currently Offline / Off Duty and cannot be assigned to a trip.");
+              return;
+            }
+            if (d.status === "Not Available") return;
+            handleDriverSelection(d);
+          }}
+          className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${(isExpired || isOffline || d.status === "Not Available")
+            ? "border-red-150 bg-red-50/10 opacity-60 cursor-not-allowed"
+            : String(selectedDriverId) === String(d.id)
+              ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
+              : "border-[#E7EAF0] bg-white hover:bg-gray-50 cursor-pointer"
+            }`}
+        >
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-bold text-xs text-[#1E293B]">{d.name}</p>
+              {(d.isAtPickupLocation || d.distanceKm === 0) ? (
+                <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
+              ) : (d.isNearby || isNearbyDriversFallback) ? (
+                <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded font-poppins">Nearby</span>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+              <span className="text-[10px] text-[#64748B] font-semibold">Emp ID: {formatEmployeeId(d.employeeId)}</span>
+            </div>
+            <div className="text-[10px] text-gray-500 mt-1 font-semibold flex flex-wrap gap-x-2 gap-y-0.5">
+              <span>Lic Validity: <strong className={isExpired ? "text-red-500" : "text-[#1E293B]"}>{d.licenseExpiry ? new Date(d.licenseExpiry).toLocaleDateString() : "Valid"}</strong></span>
+              <span>|</span>
+              <span>Location: <strong className="text-[#1E293B]">{formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch)}</strong></span>
+            </div>
+            {d.distanceKm !== undefined && (
+              <div className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-2 font-poppins">
+                <span>📍 {d.distanceKm || 0} km away</span>
+                <span>•</span>
+                <span>⏱️ {d.estimatedTravelTime || "0 mins"}</span>
+              </div>
+            )}
+            <div className="flex gap-1.5 mt-2">
+              <span className={`inline-block px-2.5 py-0.5 rounded-[6px] text-[9px] font-extrabold uppercase font-poppins ${isExpired
+                ? "bg-red-50 text-red-600 border border-red-200"
+                : isOffline
+                  ? "bg-red-50 text-red-600 border border-red-200 font-bold"
+                  : isAvailable
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold"
+                    : "bg-amber-50 text-amber-700 border border-amber-200 font-bold"
+                }`}>
+                {isExpired
+                  ? "EXPIRED LICENSE 🔴"
+                  : isOffline
+                    ? "OFFLINE 🔴"
+                    : isAvailable
+                      ? "ONLINE 🟢"
+                      : "OFFLINE 🔴"}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={isExpired || isOffline || d.status === "Not Available"}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isExpired) {
+                toast.error("This driver has an expired license and cannot be assigned.");
+                return;
+              }
+              if (isOffline) {
+                toast.error("This driver is currently Offline / Off Duty and cannot be assigned to a trip.");
+                return;
+              }
+              handleDriverSelection(d);
+            }}
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${(isExpired || isOffline || d.status === "Not Available")
+              ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
+              : String(selectedDriverId) === String(d.id)
+                ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
+                : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
+              }`}
+          >
+            {String(selectedDriverId) === String(d.id) ? "Assigned" : "Assign"}
+          </button>
+        </div>
+      );
+    })
+  )}
+</div>
+          </div >
+        </div >
+
+  {/* 3. Pickup & Delivery Address (Side-by-Side 2-Column Grid) */ }
+  < div className = "grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch" >
+
+    {/* Pickup Address Card */ }
+    < div className = "bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm space-y-4 font-poppins flex flex-col justify-between h-full" >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E7EAF0] gap-2">
               <div>
                 <h2 className="text-base font-bold text-[#1E293B] font-poppins flex items-center gap-2">
@@ -1349,9 +1389,8 @@ export default function CreateTripPage() {
                     placeholder="Enter Company Name"
                     value={pickupAddress.companyName}
                     onChange={(e) => handleAddressChange('pickup', 'companyName', e.target.value)}
-                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
-                      pickupErrors.companyName ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
-                    }`}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${pickupErrors.companyName ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                      }`}
                   />
                   {pickupErrors.companyName && (
                     <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
@@ -1369,9 +1408,8 @@ export default function CreateTripPage() {
                     placeholder="Enter Contact Person Name"
                     value={pickupAddress.contactPerson}
                     onChange={(e) => handleAddressChange('pickup', 'contactPerson', e.target.value)}
-                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
-                      pickupErrors.contactPerson ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
-                    }`}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${pickupErrors.contactPerson ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                      }`}
                   />
                   {pickupErrors.contactPerson && (
                     <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
@@ -1397,9 +1435,8 @@ export default function CreateTripPage() {
                       placeholder="9876543210"
                       value={pickupAddress.mobile}
                       onChange={(e) => handleAddressChange('pickup', 'mobile', e.target.value.replace(/\D/g, ''))}
-                      className={`w-full pl-[72px] pr-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
-                        pickupErrors.mobile ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
-                      }`}
+                      className={`w-full pl-[72px] pr-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${pickupErrors.mobile ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                        }`}
                     />
                   </div>
                   {pickupErrors.mobile && (
@@ -1418,9 +1455,8 @@ export default function CreateTripPage() {
                     placeholder="Enter Complete Street Address"
                     value={pickupAddress.streetAddress}
                     onChange={(e) => handleAddressChange('pickup', 'streetAddress', e.target.value)}
-                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all resize-none font-poppins ${
-                      pickupErrors.streetAddress ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
-                    }`}
+                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all resize-none font-poppins ${pickupErrors.streetAddress ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                      }`}
                   />
                   {pickupErrors.streetAddress && (
                     <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
@@ -1480,9 +1516,8 @@ export default function CreateTripPage() {
                     placeholder="Enter Pincode"
                     value={pickupAddress.pincode}
                     onChange={(e) => handleAddressChange('pickup', 'pincode', e.target.value.replace(/\D/g, ''))}
-                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
-                      pickupErrors.pincode ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
-                    }`}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${pickupErrors.pincode ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                      }`}
                   />
                   {pickupErrors.pincode && (
                     <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
@@ -1492,10 +1527,10 @@ export default function CreateTripPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </div >
 
-          {/* Delivery Address Card */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm space-y-4 font-poppins flex flex-col justify-between h-full">
+  {/* Delivery Address Card */ }
+  < div className = "bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm space-y-4 font-poppins flex flex-col justify-between h-full" >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E7EAF0] gap-2">
               <div>
                 <h2 className="text-base font-bold text-[#1E293B] font-poppins flex items-center gap-2">
@@ -1525,9 +1560,8 @@ export default function CreateTripPage() {
                     placeholder="Enter Company Name"
                     value={deliveryAddress.companyName}
                     onChange={(e) => handleAddressChange('delivery', 'companyName', e.target.value)}
-                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
-                      deliveryErrors.companyName ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
-                    }`}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${deliveryErrors.companyName ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                      }`}
                   />
                   {deliveryErrors.companyName && (
                     <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
@@ -1545,9 +1579,8 @@ export default function CreateTripPage() {
                     placeholder="Enter Contact Person Name"
                     value={deliveryAddress.contactPerson}
                     onChange={(e) => handleAddressChange('delivery', 'contactPerson', e.target.value)}
-                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
-                      deliveryErrors.contactPerson ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
-                    }`}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${deliveryErrors.contactPerson ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                      }`}
                   />
                   {deliveryErrors.contactPerson && (
                     <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
@@ -1573,9 +1606,8 @@ export default function CreateTripPage() {
                       placeholder="9876543210"
                       value={deliveryAddress.mobile}
                       onChange={(e) => handleAddressChange('delivery', 'mobile', e.target.value.replace(/\D/g, ''))}
-                      className={`w-full pl-[72px] pr-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
-                        deliveryErrors.mobile ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
-                      }`}
+                      className={`w-full pl-[72px] pr-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${deliveryErrors.mobile ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                        }`}
                     />
                   </div>
                   {deliveryErrors.mobile && (
@@ -1594,9 +1626,8 @@ export default function CreateTripPage() {
                     placeholder="Enter Complete Street Address"
                     value={deliveryAddress.streetAddress}
                     onChange={(e) => handleAddressChange('delivery', 'streetAddress', e.target.value)}
-                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all resize-none font-poppins ${
-                      deliveryErrors.streetAddress ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
-                    }`}
+                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all resize-none font-poppins ${deliveryErrors.streetAddress ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                      }`}
                   />
                   {deliveryErrors.streetAddress && (
                     <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
@@ -1656,9 +1687,8 @@ export default function CreateTripPage() {
                     placeholder="Enter Pincode"
                     value={deliveryAddress.pincode}
                     onChange={(e) => handleAddressChange('delivery', 'pincode', e.target.value.replace(/\D/g, ''))}
-                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${
-                      deliveryErrors.pincode ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
-                    }`}
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${deliveryErrors.pincode ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                      }`}
                   />
                   {deliveryErrors.pincode && (
                     <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
@@ -1668,12 +1698,12 @@ export default function CreateTripPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </div >
 
-        </div>
+        </div >
 
-        {/* 4. Bottom Action Bar (Cancel & Create Trip / Dispatch Trip) */}
-        <div className="flex items-center justify-end gap-4 pt-6 border-t border-[#E7EAF0]">
+  {/* 4. Bottom Action Bar (Cancel & Create Trip / Dispatch Trip) */ }
+  < div className = "flex items-center justify-end gap-4 pt-6 border-t border-[#E7EAF0]" >
           <button
             type="button"
             onClick={() => navigate("/manager/trips")}
@@ -1685,17 +1715,16 @@ export default function CreateTripPage() {
             type="button"
             onClick={handleDispatch}
             disabled={!!departureError || !!etaError || !departureTime || !eta || !cargoWeight || isSameLocError}
-            className={`px-8 py-3 rounded-xl text-sm font-bold text-white transition-all shadow-md cursor-pointer flex items-center gap-2 font-poppins ${
-              (departureError || etaError || !departureTime || !eta || !cargoWeight || isSameLocError)
+            className={`px-8 py-3 rounded-xl text-sm font-bold text-white transition-all shadow-md cursor-pointer flex items-center gap-2 font-poppins ${(departureError || etaError || !departureTime || !eta || !cargoWeight || isSameLocError)
                 ? "bg-gray-300 shadow-none cursor-not-allowed opacity-60"
                 : "bg-[#B45A0A] hover:bg-[#9A4D08] shadow-[#B45A0A]/20"
-            }`}
+              }`}
           >
             <Navigation className="w-4 h-4" /> Create Trip
           </button>
-        </div>
+        </div >
 
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }

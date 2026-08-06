@@ -73,6 +73,7 @@ const vehicleSchema = new mongoose.Schema(
     documents: {
       rc: {
         fileUrl: { type: String, default: '' },
+        public_id: { type: String, default: '' },
         fileName: { type: String, default: '' },
         originalName: { type: String, default: '' },
         uploadDate: { type: Date },
@@ -84,6 +85,7 @@ const vehicleSchema = new mongoose.Schema(
       },
       insurance: {
         fileUrl: { type: String, default: '' },
+        public_id: { type: String, default: '' },
         fileName: { type: String, default: '' },
         originalName: { type: String, default: '' },
         uploadDate: { type: Date },
@@ -95,6 +97,7 @@ const vehicleSchema = new mongoose.Schema(
       },
       puc: {
         fileUrl: { type: String, default: '' },
+        public_id: { type: String, default: '' },
         fileName: { type: String, default: '' },
         originalName: { type: String, default: '' },
         uploadDate: { type: Date },
@@ -106,6 +109,7 @@ const vehicleSchema = new mongoose.Schema(
       },
       fitness: {
         fileUrl: { type: String, default: '' },
+        public_id: { type: String, default: '' },
         fileName: { type: String, default: '' },
         originalName: { type: String, default: '' },
         uploadDate: { type: Date },
@@ -117,6 +121,7 @@ const vehicleSchema = new mongoose.Schema(
       },
       permit: {
         fileUrl: { type: String, default: '' },
+        public_id: { type: String, default: '' },
         fileName: { type: String, default: '' },
         originalName: { type: String, default: '' },
         uploadDate: { type: Date },
@@ -128,6 +133,7 @@ const vehicleSchema = new mongoose.Schema(
       },
       roadTax: {
         fileUrl: { type: String, default: '' },
+        public_id: { type: String, default: '' },
         fileName: { type: String, default: '' },
         originalName: { type: String, default: '' },
         uploadDate: { type: Date },
@@ -141,6 +147,11 @@ const vehicleSchema = new mongoose.Schema(
     assignedManager:    { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     branch:             { type: String, default: 'Pune', trim: true },
     currentLocation:    { type: String, default: '', trim: true },
+    currentLatitude:    { type: Number, default: null },
+    currentLongitude:   { type: Number, default: null },
+    speed:              { type: Number, default: 0 },
+    heading:            { type: Number, default: 0 },
+    lastLocationUpdate: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );

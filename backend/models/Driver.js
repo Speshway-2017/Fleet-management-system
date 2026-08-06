@@ -16,9 +16,10 @@ const driverSchema = new mongoose.Schema(
     licenseType: { type: String, enum: ['HMV', 'LMV', 'MCWG'], default: 'HMV' },
     licenseExpiry: { type: Date },
     assignedVehicle: { type: String, default: 'Unassigned' },
+    isDuty: { type: Boolean, default: true },
     driverStatus: {
       type: String,
-      enum: ['AVAILABLE', 'ON_TRIP', 'ASSIGNED', 'SUSPENDED', 'OFFLINE'],
+      enum: ['AVAILABLE', 'ON_TRIP', 'ASSIGNED', 'SUSPENDED', 'OFFLINE', 'OFF_DUTY'],
       default: 'AVAILABLE',
     },
     isOnline: { type: Boolean, default: true },
@@ -92,7 +93,7 @@ const driverSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-driverSchema.pre('validate', function(next) {
+driverSchema.pre('validate', function (next) {
   if (this.isModified('driverLocation') && !this.isModified('currentLocation')) {
     this.currentLocation = this.driverLocation;
   } else if (this.isModified('currentLocation') && !this.isModified('driverLocation')) {

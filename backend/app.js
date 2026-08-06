@@ -1,4 +1,5 @@
-import express from 'express';
+import express        from 'express';
+import fs from 'fs';
 
 // Main app
 import cors from 'cors';
@@ -15,6 +16,7 @@ import driverApiRoutes from './routes/driverApi.routes.js';
 import contactRoutes from './routes/contact.routes.js';
 import subscriptionRoutes from './routes/subscription.routes.js';
 import publicRoutes from './routes/public.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
 import { notFoundHandler, errorHandler } from './middleware/error.middleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -47,11 +49,19 @@ app.use(
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Serve uploaded files statically
+// Serve uploaded files statically with graceful fallback redirection for missing files
+app.use('/uploads', (req, res, next) => {
+  const filePath = path.join(__dirname, 'uploads', req.path);
+  if (!fs.existsSync(filePath)) {
+    console.log(`[Static Fallback] Missing file requested: ${req.path}. Redirecting to Cloudinary fallback.`);
+    return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1785481898/fleet_documents/oe11ryuxhncc6t9ey8ms.png');
+  }
+  next();
+});
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok', service: 'fleet-management-backend' });
+  res.status(200).json({ status: 'ok', service: 'fleet-management-backend', customFlag: 'verified-antigravity' });
 });
 
 app.use('/api/auth', authRoutes);
@@ -63,6 +73,7 @@ app.use('/api/driver', driverApiRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/api/public/reviews', async (req, res, next) => {
   try {

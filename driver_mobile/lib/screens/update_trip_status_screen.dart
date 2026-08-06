@@ -592,9 +592,9 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                             tripId: widget.tripId,
                             customerName: 'Acme Logistics',
                             receiverName: 'Verified Receiver',
-                            customerSignatureUrl: 'https://via.placeholder.com/300x100.png?text=Signature',
-                            deliveryPhotoUrl: 'https://via.placeholder.com/300x300.png?text=Delivery+Photo',
-                            podDocumentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                            customerSignatureUrl: '',
+                            deliveryPhotoUrl: '',
+                            podDocumentUrl: '',
                           );
                           if (mounted) {
                             setState(() {
@@ -681,7 +681,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                             tareWeight: 10000,
                             netWeight: 15000,
                             location: 'Highway Weighbridge Station',
-                            documentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                            documentUrl: '',
                           );
                           if (mounted) {
                             setState(() {

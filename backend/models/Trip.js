@@ -1,30 +1,29 @@
 import mongoose from 'mongoose';
 
-const addressSchema = new mongoose.Schema(
-  {
-    companyName: { type: String, default: '' },
-    contactPerson: { type: String, default: '' },
-    mobile: { type: String, default: '' },
-    mobileNumber: { type: String, default: '' },
-    streetAddress: { type: String, default: '' },
-    area: { type: String, default: '' },
-    areaLocality: { type: String, default: '' },
-    city: { type: String, default: '' },
-    state: { type: String, default: '' },
-    pincode: { type: String, default: '' }
-  },
-  { _id: false }
-);
+const addressSchema = new mongoose.Schema({
+  street: { type: String, default: '' },
+  city: { type: String, default: '' },
+  state: { type: String, default: '' },
+  zipCode: { type: String, default: '' },
+  country: { type: String, default: 'India' },
+  formattedAddress: { type: String, default: '' },
+  latitude: { type: Number, default: null },
+  longitude: { type: Number, default: null },
+  contactPerson: { type: String, default: '' },
+  contactPhone: { type: String, default: '' },
+  notes: { type: String, default: '' }
+}, { _id: false });
 
 const tripSchema = new mongoose.Schema(
   {
-    tripNumber: { type: String, required: true, unique: true },
+    tripNumber: { type: String, required: true, unique: true, trim: true },
     vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
-    driver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver', required: false },
-    driverName: { type: String, default: '' },
-    driverPhone: { type: String, default: '' },
     vehicleName: { type: String, default: '' },
     vehiclePlate: { type: String, default: '' },
+    driver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver', required: true },
+    driverName: { type: String, default: '' },
+    driverPhone: { type: String, default: '' },
+    organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
     startLocation: { type: String, required: true },
     endLocation: { type: String, required: true },
     pickupAddress: { type: addressSchema, default: () => ({}) },
@@ -33,7 +32,33 @@ const tripSchema = new mongoose.Schema(
     toAddress: { type: addressSchema, default: () => ({}) },
     departureTime: { type: String, required: true },
     eta: { type: String, required: true },
-    status: { type: String, enum: ['Pending Driver Acceptance', 'Scheduled', 'Assigned', 'Accepted', 'Rejected', 'In Progress', 'Waiting for Manager Approval', 'Completed', 'Cancelled'], default: 'Pending Driver Acceptance' },
+    status: {
+      type: String,
+      enum: [
+        'Pending Driver Acceptance',
+        'Scheduled',
+        'Assigned',
+        'Accepted',
+        'Rejected',
+        'In Progress',
+        'Waiting for Manager Approval',
+        'Completed',
+        'Cancelled',
+        'Start Trip',
+        'En Route',
+        'At Loading',
+        'Loading',
+        'In Transit',
+        'On Transit',
+        'Dispatched',
+        'Delivered',
+        'Complete Trip',
+        'Delayed',
+        'On Trip',
+        'Ready to Dispatch'
+      ],
+      default: 'Pending Driver Acceptance'
+    },
     completionRequestedAt: { type: Date },
     description: { type: String, default: '' },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -82,7 +107,12 @@ const tripSchema = new mongoose.Schema(
     },
     notified15MinBefore: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
-    completedAt: { type: Date }
+    completedAt: { type: Date },
+    currentLatitude: { type: Number, default: null },
+    currentLongitude: { type: Number, default: null },
+    speed: { type: Number, default: 0 },
+    heading: { type: Number, default: 0 },
+    lastLocationUpdate: { type: Date, default: Date.now }
   },
   { timestamps: true }
 );

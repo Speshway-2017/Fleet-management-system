@@ -64,13 +64,26 @@ export function AuthProvider({ children }) {
       const token = getStoredToken();
       if (token) {
         try {
-          const { data: body } = await axiosClient.get("/auth/profile");
-          const backendUser = body.data;
-          const normalized = normalizeUser(backendUser);
-          setUser(normalized);
-          sessionStorage.setItem("user", JSON.stringify(normalized));
-          if (localStorage.getItem("rememberMe") === "true") {
-            localStorage.setItem("user", JSON.stringify(normalized));
+          let backendUser = null;
+          try {
+            const { data: body } = await axiosClient.get("/auth/profile");
+            backendUser = body.data;
+          } catch {
+            const { data: driverBody } = await axiosClient.get("/driver/profile");
+            if (driverBody?.data) {
+              backendUser = { ...driverBody.data, role: "DRIVER" };
+            }
+          }
+
+          if (backendUser) {
+            const normalized = normalizeUser(backendUser);
+            setUser(normalized);
+            sessionStorage.setItem("user", JSON.stringify(normalized));
+            if (localStorage.getItem("rememberMe") === "true") {
+              localStorage.setItem("user", JSON.stringify(normalized));
+            }
+          } else {
+            throw new Error("Could not retrieve profile");
           }
         } catch (err) {
           console.error("Error synchronizing profile on mount:", err);
@@ -89,8 +102,19 @@ export function AuthProvider({ children }) {
 
   const refreshProfile = async () => {
     try {
-      const { data: body } = await axiosClient.get("/auth/profile");
-      const backendUser = body.data;
+      let backendUser = null;
+      try {
+        const { data: body } = await axiosClient.get("/auth/profile");
+        backendUser = body.data;
+      } catch {
+        const { data: driverBody } = await axiosClient.get("/driver/profile");
+        if (driverBody?.data) {
+          backendUser = { ...driverBody.data, role: "DRIVER" };
+        }
+      }
+
+      if (!backendUser) throw new Error("Could not retrieve profile");
+
       const normalized = normalizeUser(backendUser);
       setUser(normalized);
       sessionStorage.setItem("user", JSON.stringify(normalized));
@@ -155,12 +179,32 @@ export function AuthProvider({ children }) {
   const login = async (credentials, rememberMe = false) => {
     setLoading(true);
     try {
-      const { data: body } = await axiosClient.post("/auth/login", {
-        email:    credentials.email,
-        password: credentials.password,
-      });
+      let token = null;
+      let backendUser = null;
+      try {
+        const { data: body } = await axiosClient.post("/auth/login", {
+          email: credentials.email,
+          password: credentials.password,
+        });
+        token = body.data.token;
+        backendUser = body.data.user;
+      } catch (authErr) {
+        try {
+          const { data: driverBody } = await axiosClient.post("/driver/login", {
+            identifier: credentials.email,
+            password: credentials.password,
+          });
+          if (driverBody?.success && driverBody?.data) {
+            token = driverBody.data.token;
+            backendUser = { ...driverBody.data.driver, role: "DRIVER" };
+          } else {
+            throw authErr;
+          }
+        } catch {
+          throw authErr;
+        }
+      }
 
-      const { token, user: backendUser } = body.data;
       const normalizedUser = normalizeUser(backendUser);
 
       sessionStorage.setItem("token", token);

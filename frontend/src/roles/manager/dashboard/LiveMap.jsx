@@ -37,9 +37,9 @@ export default function LiveMap({ vehicles = [], center = [77.2090, 28.6139], zo
       }).setView(leafletCenter, zoom);
 
       // Add OpenStreetMap tile layer
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
         maxZoom: 19,
-        className: "map-tiles-grayscale", // Clean styling filters
+        subdomains: 'abcd'
       }).addTo(mapRef.current);
       
     } catch (e) {
@@ -47,17 +47,25 @@ export default function LiveMap({ vehicles = [], center = [77.2090, 28.6139], zo
     }
 
     return () => {
-      mapRef.current?.remove();
-      mapRef.current = null;
+      try {
+        if (mapRef.current) {
+          mapRef.current.remove();
+          mapRef.current = null;
+        }
+      } catch (e) {}
     };
   }, [center, zoom]);
 
   // Bind dynamic vehicle markers
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !mapRef.current._loaded) return;
 
     // Clear old markers
-    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current.forEach((marker) => {
+      try {
+        marker.remove();
+      } catch (e) {}
+    });
     markersRef.current = [];
 
     try {
@@ -115,10 +123,14 @@ export default function LiveMap({ vehicles = [], center = [77.2090, 28.6139], zo
 
   // Zoom controls
   const zoomIn = () => {
-    mapRef.current?.zoomIn();
+    try {
+      if (mapRef.current && mapRef.current._loaded) mapRef.current.zoomIn();
+    } catch (e) {}
   };
   const zoomOut = () => {
-    mapRef.current?.zoomOut();
+    try {
+      if (mapRef.current && mapRef.current._loaded) mapRef.current.zoomOut();
+    } catch (e) {}
   };
 
   return (

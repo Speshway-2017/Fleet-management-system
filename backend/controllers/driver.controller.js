@@ -142,7 +142,7 @@ export const listDrivers = async (req, res, next) => {
     // 6. Exclude drivers on active trips if availableOnly is set
     if (req.query.availableOnly === 'true' || req.query.available === 'true') {
       const activeTrips = await Trip.find({
-        status: { $nin: ['Completed', 'Cancelled'] }
+        status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
       });
       const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
       filter._id = { $nin: allocatedDriverIds };
@@ -174,7 +174,7 @@ export const listDrivers = async (req, res, next) => {
         const resolvedName = await resolveLocationName(rawLoc, d.branch);
         d.currentLocation = resolvedName;
         d.driverLocation = resolvedName;
-        Driver.findByIdAndUpdate(d._id, { currentLocation: resolvedName, driverLocation: resolvedName }).catch(() => {});
+        Driver.findByIdAndUpdate(d._id, { currentLocation: resolvedName, driverLocation: resolvedName }).catch(() => { });
       }
     }
 
@@ -235,7 +235,7 @@ export const listDrivers = async (req, res, next) => {
 export const getAvailableDrivers = async (req, res, next) => {
   try {
     const activeTrips = await Trip.find({
-      status: { $nin: ['Completed', 'Cancelled'] }
+      status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
     });
 
     const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
@@ -258,7 +258,37 @@ export const getAvailableDrivers = async (req, res, next) => {
         const resolvedName = await resolveLocationName(rawLoc, d.branch);
         d.currentLocation = resolvedName;
         d.driverLocation = resolvedName;
-        Driver.findByIdAndUpdate(d._id, { currentLocation: resolvedName, driverLocation: resolvedName }).catch(() => {});
+        Driver.findByIdAndUpdate(d._id, { currentLocation: resolvedName, driverLocation: resolvedName }).catch(() => { });
+      }
+
+      // Populate assignedVehicle from assignmentHistory, Vehicle model, or recent completed trip if empty
+      let vehStr = (d.assignedVehicle && d.assignedVehicle !== 'Unassigned') ? d.assignedVehicle : '';
+      if (!vehStr && d.assignmentHistory && d.assignmentHistory.length > 0) {
+        const lastAssignment = d.assignmentHistory[d.assignmentHistory.length - 1];
+        if (lastAssignment && lastAssignment.vehicleNumber) {
+          vehStr = lastAssignment.vehicleNumber;
+        }
+      }
+      if (!vehStr) {
+        try {
+          const VehicleModel = (await import('../models/Vehicle.js')).default;
+          const vDoc = await VehicleModel.findOne({ assignedDriver: d._id });
+          if (vDoc) {
+            vehStr = vDoc.registrationNumber || vDoc.vehicleNumber || '';
+          }
+        } catch (e) { }
+      }
+      if (!vehStr) {
+        try {
+          const TripModel = (await import('../models/Trip.js')).default;
+          const lastTrip = await TripModel.findOne({ driver: d._id }).sort({ createdAt: -1 });
+          if (lastTrip && (lastTrip.vehiclePlate || lastTrip.vehicleName)) {
+            vehStr = lastTrip.vehiclePlate || lastTrip.vehicleName;
+          }
+        } catch (e) { }
+      }
+      if (vehStr) {
+        d.assignedVehicle = vehStr;
       }
     }
 
@@ -280,8 +310,8 @@ export const getAvailableDrivers = async (req, res, next) => {
     for (const d of allAvailable) {
       const rawEffective = getDriverEffectiveLocation(d);
       const dLoc = await resolveLocationName(rawEffective || 'Visakhapatnam', d.branch);
+      const dObj = d.toObject ? d.toObject() : { ...d };
       if (isSameLocation(targetLoc, dLoc)) {
-        const dObj = d.toObject ? d.toObject() : { ...d };
         localDrivers.push({
           ...dObj,
           isNearby: false,
@@ -296,31 +326,17 @@ export const getAvailableDrivers = async (req, res, next) => {
       }
     }
 
-    // Sort local drivers by rating / availability
-    localDrivers.sort((a, b) => (b.rating || 5) - (a.rating || 5));
-
-    if (localDrivers.length > 0) {
-      console.log(`\nAvailable Drivers for "${targetLoc}": ${localDrivers.length} local matching drivers found. Skipping nearby search.`);
-      return sendSuccess(res, 200, {
-        drivers: localDrivers,
-        localDrivers,
-        nearbyDrivers: [],
-        localCount: localDrivers.length,
-        nearbyCount: 0,
-        isNearbyFallback: false
-      }, 'Available drivers fetched successfully');
-    }
-
-    console.log(`\nNo drivers available at "${targetLoc}". Searching nearest drivers...`);
-    const nearbyDrivers = await Promise.all(
+    console.log(`\nAvailable Drivers for "${targetLoc}": ${localDrivers.length} local matching drivers found.`);
+    const mappedNearbyDrivers = await Promise.all(
       nearbyRawDrivers.map(async ({ driver: d, dLoc }) => {
         const routeData = await getRoadDistanceAndEta(targetLoc, dLoc);
         const dObj = d.toObject ? d.toObject() : { ...d };
+        const dist = routeData.distanceKm || 0;
         return {
           ...dObj,
-          isNearby: true,
-          isAtPickupLocation: false,
-          distanceKm: routeData.distanceKm,
+          isNearby: dist <= 50,
+          isAtPickupLocation: dist === 0,
+          distanceKm: dist,
           estimatedTravelTime: routeData.estimatedTravelTime,
           currentBranch: d.branch || d.currentLocation || dLoc,
           currentLocation: dLoc
@@ -328,15 +344,24 @@ export const getAvailableDrivers = async (req, res, next) => {
       })
     );
 
-    nearbyDrivers.sort((a, b) => a.distanceKm - b.distanceKm);
+    const allSortedDrivers = [...localDrivers, ...mappedNearbyDrivers].sort((a, b) => a.distanceKm - b.distanceKm);
+    const driversWithin50 = allSortedDrivers.filter(d => d.distanceKm <= 50);
+
+    let finalDriversToReturn = allSortedDrivers;
+    if (driversWithin50.length > 0) {
+      finalDriversToReturn = driversWithin50;
+    }
 
     return sendSuccess(res, 200, {
-      drivers: nearbyDrivers,
-      localDrivers: [],
-      nearbyDrivers,
-      localCount: 0,
-      nearbyCount: nearbyDrivers.length,
-      isNearbyFallback: true
+      drivers: finalDriversToReturn,
+      localDrivers,
+      nearbyDrivers: driversWithin50,
+      allDriversSorted: allSortedDrivers,
+      localCount: localDrivers.length,
+      nearbyCount: driversWithin50.length,
+      hasNearby,
+      isNearbyFallback,
+      isExtendedFallback
     }, 'Available drivers fetched successfully');
   } catch (error) {
     next(error);
@@ -413,14 +438,16 @@ export const createDriver = async (req, res, next) => {
       return sendError(res, 400, 'Name, email, mobile number, and license number are required');
     }
 
-    const rawPassword = req.body.password || 'driver123';
+    const temporaryPassword = req.body.password || generateTempPassword();
+    const hashedPassword = await hashPassword(temporaryPassword);
+    const generatedEmpId = req.body.employeeId || await generateEmployeeId();
 
     const driver = await createDriverRecord({
-      fullName,
-      email,
-      phoneNumber,
-      licenseNumber,
-      password: rawPassword,
+      fullName: computedFullName,
+      email: finalEmail,
+      phoneNumber: finalPhone,
+      licenseNumber: finalLicense,
+      password: hashedPassword,
       licenseType: licenseType || 'HMV',
       licenseExpiry: licenseExpiry ? new Date(licenseExpiry) : undefined,
       assignedVehicle: assignedVehicle || 'Unassigned',
@@ -428,7 +455,6 @@ export const createDriver = async (req, res, next) => {
       accountStatus: 'Active',
       status: status || 'Active',
       employeeId: generatedEmpId,
-      password: hashedPassword,
       mustChangePassword: true,
       dob: dob ? new Date(dob) : undefined,
       gender: gender || 'Male',
@@ -527,8 +553,8 @@ export const updateDriver = async (req, res, next) => {
         field === 'licenseNumber'
           ? 'A driver with this license number already exists'
           : field === 'employeeId'
-          ? 'A driver with this Employee ID already exists'
-          : 'A driver with this email already exists';
+            ? 'A driver with this Employee ID already exists'
+            : 'A driver with this email already exists';
       return sendError(res, 409, message);
     }
     next(error);
@@ -612,7 +638,7 @@ export const uploadDriverDocument = async (req, res, next) => {
       secure_url: result.secure_url,
       originalName: req.file.originalname
     });
-    
+
     await doc.save();
     console.log("MongoDB Document saved successfully:", doc);
 

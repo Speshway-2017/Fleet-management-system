@@ -60,6 +60,18 @@ export const listOrganizations = async (_req, res, next) => {
         role: 'FLEET_MANAGER',
         organization: org._id
       });
+      const subscribedManagers = await User.countDocuments({
+        role: 'FLEET_MANAGER',
+        organization: org._id,
+        subscriptionStatus: 'ACTIVE'
+      });
+
+      let currentStatus = org.status || 'Pending';
+      if (subscribedManagers > 0 && currentStatus === 'Pending') {
+        currentStatus = 'Active';
+        await Organization.findByIdAndUpdate(org._id, { status: 'Active' });
+      }
+
       return {
         id: org._id.toString(),
         name: org.name,
@@ -68,7 +80,7 @@ export const listOrganizations = async (_req, res, next) => {
         phone: org.phone,
         industry: org.industry,
         subscription: org.plan || 'Standard',
-        status: org.status || 'Pending',
+        status: currentStatus,
         createdAt: new Date(org.createdAt).toLocaleDateString(),
         activeManagers,
         managers: activeManagers, // support details page
@@ -163,6 +175,18 @@ export const getOrganizationDetails = async (req, res, next) => {
     const totalRevenue = managersWithStats.reduce((sum, m) => sum + m.stats.totalRevenue, 0);
     const totalVehiclesCount = managersWithStats.reduce((sum, m) => sum + m.stats.vehiclesManaged, 0);
 
+    const subscribedManagers = await User.countDocuments({
+      role: 'FLEET_MANAGER',
+      organization: org._id,
+      subscriptionStatus: 'ACTIVE'
+    });
+
+    let currentStatus = org.status || 'Pending';
+    if (subscribedManagers > 0 && currentStatus === 'Pending') {
+      currentStatus = 'Active';
+      await Organization.findByIdAndUpdate(org._id, { status: 'Active' });
+    }
+
     const formattedOrg = {
       id: org._id.toString(),
       name: org.name,
@@ -171,7 +195,7 @@ export const getOrganizationDetails = async (req, res, next) => {
       phone: org.phone,
       industry: org.industry,
       subscription: org.plan || 'Standard',
-      status: org.status || 'Pending',
+      status: currentStatus,
       createdAt: new Date(org.createdAt).toLocaleDateString(),
       activeManagers,
       stats: {
@@ -826,8 +850,25 @@ export const updateIssue = async (req, res, next) => {
 };
 
 // Analytics
-export const getAnalytics = async (_req, res, next) => {
+export const getAnalytics = async (req, res, next) => {
   try {
+    const filter = req.query.filter || 'year';
+
+    let startDate = null;
+    const now = new Date();
+    if (filter === 'today') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (filter === 'week') {
+      startDate = new Date();
+      startDate.setDate(startDate.getDate() - 7);
+    } else if (filter === 'month') {
+      startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 1);
+    } else if (filter === 'year') {
+      startDate = new Date();
+      startDate.setFullYear(startDate.getFullYear() - 1);
+    }
+
     const [
       totalOrgs,
       activeOrgs,
@@ -840,8 +881,8 @@ export const getAnalytics = async (_req, res, next) => {
       closedIssues,
       vehicles,
       drivers,
-      activeTrips,
-      completedTrips,
+      activeTripsCount,
+      completedTripsCount,
       fuelDocs
     ] = await Promise.all([
       Organization.countDocuments(),
@@ -855,9 +896,12 @@ export const getAnalytics = async (_req, res, next) => {
       PlatformIssue.countDocuments({ status: 'Resolved' }),
       Vehicle.countDocuments(),
       Driver.countDocuments(),
-      Trip.countDocuments({ status: { $in: ['Scheduled', 'Assigned', 'In Progress'] } }),
-      Trip.countDocuments({ status: 'Completed' }),
-      Fuel.aggregate([{ $group: { _id: null, totalFuel: { $sum: '$quantity' } } }])
+      Trip.countDocuments({ status: { $in: ['Scheduled', 'Assigned', 'In Progress', 'Accepted', 'On Transit'] } }),
+      Trip.countDocuments({ status: 'Completed', ...(startDate ? { updatedAt: { $gte: startDate } } : {}) }),
+      Fuel.aggregate([
+        ...(startDate ? [{ $match: { createdAt: { $gte: startDate } } }] : []),
+        { $group: { _id: null, totalFuel: { $sum: '$quantity' } } }
+      ])
     ]);
 
     const fuelUsage = fuelDocs.length > 0 ? fuelDocs[0].totalFuel : 0;
@@ -870,8 +914,13 @@ export const getAnalytics = async (_req, res, next) => {
     ]);
     const plansMap = { Enterprise: 0, Professional: 0, Standard: 0 };
     plansAgg.forEach(p => {
-      if (p._id && plansMap[p._id] !== undefined) {
-        plansMap[p._id] = p.count;
+      const planName = p._id ? String(p._id).trim() : '';
+      if (planName.toLowerCase().includes('enterprise')) {
+        plansMap.Enterprise += p.count;
+      } else if (planName.toLowerCase().includes('pro')) {
+        plansMap.Professional += p.count;
+      } else {
+        plansMap.Standard += p.count;
       }
     });
 
@@ -881,20 +930,17 @@ export const getAnalytics = async (_req, res, next) => {
       { name: 'Standard', value: plansMap.Standard, color: '#cbd5e1' },
     ];
 
-    // Weekly login activity
+    // System activity from AuditLog
     const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const loginActivityData = weekdayNames.map(day => ({ name: day, value: 0 }));
     
-    const startOfWeek = new Date();
-    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    const loginAgg = await User.aggregate([
-      { $match: { lastLogin: { $gte: startOfWeek } } },
-      { $group: { _id: { $dayOfWeek: '$lastLogin' }, count: { $sum: 1 } } }
+    const AuditLog = (await import('../models/AuditLog.js')).default;
+    const activityAgg = await AuditLog.aggregate([
+      ...(startDate ? [{ $match: { createdAt: { $gte: startDate } } }] : []),
+      { $group: { _id: { $dayOfWeek: '$createdAt' }, count: { $sum: 1 } } }
     ]);
 
-    loginAgg.forEach(item => {
+    activityAgg.forEach(item => {
       const idx = item._id - 1;
       if (idx >= 0 && idx < 7) {
         loginActivityData[idx].value = item.count;
@@ -921,8 +967,8 @@ export const getAnalytics = async (_req, res, next) => {
         },
         vehicles,
         drivers,
-        activeTrips,
-        completedTrips,
+        activeTrips: activeTripsCount,
+        completedTrips: completedTripsCount,
         fuelUsage
       },
       charts: {

@@ -1,6 +1,7 @@
 import Vehicle from '../models/Vehicle.js';
 import Trip from '../models/Trip.js';
 import Maintenance from '../models/Maintenance.js';
+import Driver from '../models/Driver.js';
 
 export const syncVehicleStatus = async (vehicleId) => {
   try {
@@ -29,7 +30,7 @@ export const syncVehicleStatus = async (vehicleId) => {
     if (newStatus === 'Available') {
       const activeTrip = await Trip.findOne({
         vehicle: vehicleId,
-        status: { $in: ['Scheduled', 'Assigned', 'In Progress', 'On Transit', 'Delayed', 'On Trip', 'Ready to Dispatch'] }
+        status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
       });
       if (activeTrip) {
         newStatus = ['Scheduled', 'Assigned', 'Ready to Dispatch'].includes(activeTrip.status) ? 'Assigned' : 'On Trip';
@@ -48,6 +49,14 @@ export const syncAllVehicleStatuses = async () => {
     const vehicles = await Vehicle.find({});
     for (const vehicle of vehicles) {
       await syncVehicleStatus(vehicle._id);
+
+      if (vehicle.assignedDriver) {
+        const driverDoc = await Driver.findById(vehicle.assignedDriver);
+        if (!driverDoc || driverDoc.assignedVehicle !== vehicle.vehicleNumber) {
+          vehicle.assignedDriver = null;
+          await vehicle.save();
+        }
+      }
     }
     console.log('🔄 All vehicle statuses synced successfully.');
   } catch (err) {

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Wrench,
   Plus,
+  Ticket,
   AlertTriangle,
   CheckCircle,
   Search,
@@ -22,31 +23,60 @@ export default function UpcomingServicesPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const fetchWorkOrders = async () => {
+  const fetchWorkOrders = async (isInitial = false) => {
     try {
-      setLoading(true);
-      const response = await managerApi.getMaintenance();
-      const result = response.data?.data || response.data;
-      if (Array.isArray(result)) {
-        setWorkOrders(
-          result
-            .map(w => ({ ...w, id: w._id }))
-            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-        );
-      } else {
-        setWorkOrders([]);
-      }
+      if (isInitial) setLoading(true);
+      const [maintRes, complaintsRes] = await Promise.all([
+        managerApi.getMaintenance().catch(() => null),
+        managerApi.getVehicleComplaints().catch(() => null)
+      ]);
+
+      const complaintList = complaintsRes?.data?.data || complaintsRes?.data || [];
+
+      const formattedComplaints = (Array.isArray(complaintList) ? complaintList : []).map(c => {
+        const s = c.status || 'Open';
+        const isComp = s === 'Resolved' || s === 'Closed' || s === 'Completed' || s === 'Repair Completed';
+
+        return {
+          id: c._id || c.ticketId,
+          ticketId: c.ticketId || c._id,
+          isDriverTicket: true,
+          vehicleId: c.vehiclePlate || c.vehicleNumber || 'VEH-ASSIGNED',
+          vehiclePlate: c.vehiclePlate || c.vehicleNumber || 'VEH-ASSIGNED',
+          vehicleName: c.vehiclePlate ? `Vehicle (${c.vehiclePlate})` : 'Fleet Vehicle',
+          serviceType: c.issueType || c.title || 'Vehicle Issue',
+          driverName: c.driverName || c.driver?.name || 'Driver',
+          driverPhone: c.driverPhone || c.driver?.phone || '',
+          description: c.description || 'Issue reported by driver.',
+          scheduledDate: c.reportedAt ? new Date(c.reportedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          reportedAt: c.reportedAt || c.createdAt,
+          status: isComp ? 'Completed' : s,
+          driverProgressStatus: s,
+          displayStatus: s === 'Need Maintenance' ? 'Need Maintenance' : s,
+          severity: c.severity || c.priority || 'MEDIUM',
+          cost: c.estimatedCost ? `₹${Number(c.estimatedCost).toLocaleString("en-IN")}` : '₹0.00',
+          specialist: c.assignedMechanic?.name || 'Pending Mechanic',
+          garage: c.assignedMechanic?.location || 'Garage Workshop',
+          notes: c.notes || ''
+        };
+      });
+
+      // Filter out completed ones to show ONLY active needed maintenance tickets
+      const activeTickets = formattedComplaints.filter(w => w.status !== 'Completed');
+
+      setWorkOrders(activeTickets);
     } catch (error) {
-      toast.error("Failed to load work orders from database");
+      if (isInitial) toast.error("Failed to load work orders from database");
       console.error(error);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
-  // Load from database
   useEffect(() => {
-    fetchWorkOrders();
+    fetchWorkOrders(true);
+    const interval = setInterval(() => fetchWorkOrders(false), 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleStartService = async (orderId) => {
@@ -154,124 +184,117 @@ export default function UpcomingServicesPage() {
             Upcoming Services
           </button>
           <button
-            onClick={() => navigate("/manager/maintenance/schedule")}
-            className="px-4 py-2 bg-white text-[#64748B] border border-[#E7EAF0] hover:text-[#1E293B] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+            onClick={() => navigate("/manager/maintenance/tickets")}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm border border-indigo-600"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Schedule Service</span>
+            <Ticket className="w-3.5 h-3.5" />
+            <span>View Driver Tickets</span>
           </button>
         </div>
       </div>
 
-          {/* Metrics summary cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Metrics summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
-            {/* Card 1 */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger">
-              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Completed Services</span>
-              <h3 className="text-2xl font-extrabold text-emerald-600 mt-2 font-poppins">{completedCount} Units</h3>
-              <div className="mt-3 text-[10px] text-gray-400 font-medium">All compliance cleared</div>
-            </div>
-
-            {/* Card 2 */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger">
-              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Due in 7 Days</span>
-              <h3 className="text-2xl font-extrabold text-red-600 mt-2 font-poppins">{String(dueIn7DaysCount).padStart(2, '0')} Vehicles</h3>
-              <div className="mt-3 text-[10px] text-red-500 font-bold flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                Overdue alerts active
-              </div>
-            </div>
-
-            {/* Card 3 */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger">
-              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">In Service</span>
-              <h3 className="text-2xl font-extrabold text-[#B45A0A] mt-2 font-poppins">{inServiceCount} Services</h3>
-              <div className="mt-3 text-[10px] text-gray-400 font-medium">Active in workshop</div>
-            </div>
-
-            {/* Card 4 */}
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger">
-              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Estimated Cost</span>
-              <h3 className="text-2xl font-extrabold text-blue-600 mt-2 font-poppins">{formattedCost}</h3>
-              <div className="mt-3 text-[10px] text-gray-400 font-medium">Auto-invoice projections</div>
-            </div>
-
-          </div>
-
-          {/* Queue lists (Full Width) */}
-          <div className="space-y-4 mt-6">
-              <div className="flex items-center justify-between">
-                <h3 className="font-poppins font-black text-lg text-[#1E293B]">Schedule Garage Queue</h3>
-
-                <div className="relative select-none">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8]" />
-                  <input
-                    type="text"
-                    placeholder="Search queue..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-8 pr-4 py-1.5 border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-medium w-[180px] bg-white"
-                  />
-                </div>
-              </div>
-
-              {filteredOrders.length === 0 ? (
-                <div className="text-center py-12 text-gray-400 text-xs bg-white rounded-2xl border border-[#E7EAF0] shadow-sm">
-                  No upcoming workshop orders found.
-                </div>
-              ) : (
-                filteredOrders.map(w => (
-                  <div
-                    key={w.id}
-                    onClick={() => navigate(`/manager/maintenance/details/${w.id}`)}
-                    className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm hover:border-[#B45A0A] transition-all cursor-pointer flex items-center justify-between select-none"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="bg-[#FDF3EC] text-[#B45A0A] p-3 rounded-xl shrink-0">
-                        <Truck className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-xs text-gray-400 font-poppins uppercase tracking-wider">{w.vehicleId}</p>
-                        <h4 className="font-bold text-base text-[#1E293B] font-poppins mt-0.5">{w.vehicleName} • {w.serviceType}</h4>
-                        <span className="text-xs text-[#64748B] font-medium block mt-1">
-                          Garage: {w.garage}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4" onClick={e => e.stopPropagation()}>
-                      <div className="text-right shrink-0">
-                        <span className="text-[11px] font-bold text-[#64748B] uppercase block">Timeline due</span>
-                        <span className="text-xs font-black text-red-500 mt-1 inline-block">{getDaysUntil(w.scheduledDate)}</span>
-                      </div>
-
-                      {w.status === "Scheduled" ? (
-                        <button
-                          onClick={(e) => handleStartService(w.id, e)}
-                          className="px-4 py-2 bg-slate-900 hover:bg-slate-950 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer"
-                        >
-                          Start Service
-                        </button>
-                      ) : w.status === "In Progress" ? (
-                        <button
-                          onClick={() => navigate(`/manager/maintenance/details/${w.id}`)}
-                          className="px-4 py-2 bg-white border border-gray-200 text-[#B45A0A] hover:bg-gray-50 rounded-xl text-xs font-bold shadow-sm cursor-pointer"
-                        >
-                          View Details
-                        </button>
-                      ) : (
-                        <span className="text-emerald-600 font-bold text-xs flex items-center gap-1 select-none">
-                          <CheckCircle className="w-4 h-4" />
-                          Completed
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-          </div>
-
+        {/* Card 1 */}
+        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger">
+          <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Completed Services</span>
+          <h3 className="text-2xl font-extrabold text-emerald-600 mt-2 font-poppins">{completedCount} Units</h3>
+          <div className="mt-3 text-[10px] text-gray-400 font-medium">All compliance cleared</div>
         </div>
-    );
+
+        {/* Card 2 */}
+        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger">
+          <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Due in 7 Days</span>
+          <h3 className="text-2xl font-extrabold text-red-600 mt-2 font-poppins">{String(dueIn7DaysCount).padStart(2, '0')} Vehicles</h3>
+          <div className="mt-3 text-[10px] text-red-500 font-bold flex items-center gap-1">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            Overdue alerts active
+          </div>
+        </div>
+
+        {/* Card 3 */}
+        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger">
+          <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">In Service</span>
+          <h3 className="text-2xl font-extrabold text-[#B45A0A] mt-2 font-poppins">{inServiceCount} Services</h3>
+          <div className="mt-3 text-[10px] text-gray-400 font-medium">Active in workshop</div>
+        </div>
+
+        {/* Card 4 */}
+        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger">
+          <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Estimated Cost</span>
+          <h3 className="text-2xl font-extrabold text-blue-600 mt-2 font-poppins">{formattedCost}</h3>
+          <div className="mt-3 text-[10px] text-gray-400 font-medium">Auto-invoice projections</div>
+        </div>
+
+      </div>
+
+      {/* Queue lists (Full Width) */}
+      <div className="space-y-4 mt-6">
+        <div className="flex items-center justify-between">
+          <h3 className="font-poppins font-black text-lg text-[#1E293B]">Schedule Garage Queue</h3>
+
+          <div className="relative select-none">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8]" />
+            <input
+              type="text"
+              placeholder="Search queue..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 pr-4 py-1.5 border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-medium w-[180px] bg-white"
+            />
+          </div>
+        </div>
+
+        {filteredOrders.length === 0 ? (
+          <div className="text-center py-12 text-gray-400 text-xs bg-white rounded-2xl border border-[#E7EAF0] shadow-sm">
+            No upcoming workshop orders found.
+          </div>
+        ) : (
+          filteredOrders.map(w => (
+            <div
+              key={w.id}
+              onClick={() => navigate(`/manager/maintenance/details/${w.id}`)}
+              className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm hover:border-[#B45A0A] transition-all cursor-pointer flex items-center justify-between select-none"
+            >
+              <div className="flex items-center gap-4">
+                <div className="bg-[#FDF3EC] text-[#B45A0A] p-3 rounded-xl shrink-0">
+                  <Truck className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="font-bold text-xs text-gray-400 font-poppins uppercase tracking-wider">{w.vehicleId}</p>
+                  <h4 className="font-bold text-base text-[#1E293B] font-poppins mt-0.5">{w.vehicleName} • {w.serviceType}</h4>
+                  <span className="text-xs text-[#64748B] font-medium block mt-1">
+                    Garage: {w.garage}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4" onClick={e => e.stopPropagation()}>
+                <div className="text-right shrink-0">
+                  <span className="text-[11px] font-bold text-[#64748B] uppercase block">Timeline due</span>
+                  <span className="text-xs font-black text-red-500 mt-1 inline-block">{getDaysUntil(w.scheduledDate)}</span>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (w.isDriverTicket || w.ticketId) {
+                      navigate("/manager/maintenance/tickets");
+                    } else {
+                      navigate(`/manager/maintenance/details/${w.id}`);
+                    }
+                  }}
+                  className="px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold shadow-sm cursor-pointer transition flex items-center gap-1.5"
+                >
+                  <Ticket className="w-3.5 h-3.5" />
+                  <span>View Details</span>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+    </div>
+  );
 }

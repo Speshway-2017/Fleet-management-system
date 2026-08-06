@@ -7,7 +7,8 @@ import {
   getRecentNotifications,
   getAnalyticsSummary,
   getRevenueChartData,
-  getTodayRevenueAggregate
+  getTodayRevenueAggregate,
+  getPendingRequestsCount
 } from '../repositories/admin.repository.js';
 import Organization from '../models/Organization.js';
 import User from '../models/User.js';
@@ -34,7 +35,7 @@ export const getAdminDashboardData = async () => {
     getVehiclesCount({ status: 'Active' }), // active vehicles count
     getRevenueAggregate(), // total revenue
     getTodayRevenueAggregate(), // today revenue
-    getUsersCount({ isActive: false }), // pending requests count
+    getPendingRequestsCount(), // pending requests count
     getRecentTrips(5), // recent activities (trips)
     getRecentNotifications(5), // recent notifications
     getAnalyticsSummary(), // analytics summary

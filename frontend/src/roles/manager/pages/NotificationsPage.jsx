@@ -10,8 +10,8 @@ import { getSocket, disconnectSocket } from "@/api/socket";
 import { useAuth } from "@/context/AuthContext";
 
 const mapTypeToTab = (type) => {
-  if (type === "alert")  return "Critical";
-  if (type === "info")   return "Maintenance";
+  if (type === "alert") return "Critical";
+  if (type === "info") return "Maintenance";
   if (type === "system") return "System";
   return "All";
 };
@@ -54,9 +54,9 @@ export default function NotificationsPage() {
       });
 
       socket.on("notification:read", (notification) => {
-        setNotifications(prev => prev.map(n => 
-          (n._id === (notification._id || notification.id) || n.id === (notification._id || notification.id)) 
-            ? { ...n, isRead: true } 
+        setNotifications(prev => prev.map(n =>
+          (n._id === (notification._id || notification.id) || n.id === (notification._id || notification.id))
+            ? { ...n, isRead: true }
             : n
         ));
       });
@@ -68,7 +68,7 @@ export default function NotificationsPage() {
       });
 
       socket.on("notification:delete", (data) => {
-        setNotifications(prev => prev.filter(n => 
+        setNotifications(prev => prev.filter(n =>
           n._id !== data.id && n.id !== data.id
         ));
       });
@@ -140,7 +140,7 @@ export default function NotificationsPage() {
 
   const handleActionClick = async (action, notification, e) => {
     e.stopPropagation();
-    
+
     // Mark as read in DB
     try {
       await managerApi.markNotificationRead(notification._id || notification.id);
@@ -163,13 +163,7 @@ export default function NotificationsPage() {
     } else if (actType === "View Analytics") {
       navigate("/manager/analytics");
     } else if (actType === "Schedule Now") {
-      navigate("/manager/maintenance/schedule", {
-        state: {
-          vehicleNumber: notification.vehicle,
-          maintenanceType: "Brake Check",
-          dueMileage: "150 miles"
-        }
-      });
+      navigate("/manager/maintenance/tickets");
     } else if (actType === "Download PDF") {
       toast.success(`Downloading PDF for ${notification.title}...`);
     } else {
@@ -178,75 +172,134 @@ export default function NotificationsPage() {
   };
 
   const resolveTargetUrl = (notif) => {
+    if (!notif) return "/manager/dashboard";
     if (notif.actionUrl) return notif.actionUrl;
     if (notif.metadata?.actionUrl) return notif.metadata.actionUrl;
     if (notif.metadata?.targetUrl) return notif.metadata.targetUrl;
 
-    const tripId = notif.metadata?.tripId || (['trip', 'Trip'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
-    const driverId = notif.metadata?.driverId || (['driver', 'Driver'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
-    const vehicleId = notif.metadata?.vehicleId || (['vehicle', 'Vehicle'].includes(notif.referenceType || notif.entityType) ? notif.referenceId || notif.entityId : null);
+    const title = (notif.title || "").toLowerCase();
+    const message = (notif.message || notif.description || "").toLowerCase();
+    const type = (notif.type || "").toUpperCase();
 
-    const type = (notif.type || '').toLowerCase();
-    const title = (notif.title || '').toLowerCase();
-    const message = (notif.message || notif.description || '').toLowerCase();
-    const refType = (notif.referenceType || notif.entityType || '').toLowerCase();
-
-    // 1. Trip Notifications
-    if (refType === 'trip' || type.includes('trip') || title.includes('trip') || message.includes('trip')) {
-      const targetId = tripId || notif.referenceId;
-      return targetId ? `/manager/trip-details/${targetId}` : `/manager/trips`;
+    const tripId = notif.metadata?.tripId || notif.referenceId || notif.relatedId;
+    const driverId = notif.metadata?.driverId;
+    let extractedTicketId = notif.metadata?.ticketId || notif.metadata?.complaintId;
+    if (!extractedTicketId) {
+      const fullText = (notif.title || "") + " " + (notif.message || notif.description || "");
+      const match = fullText.match(/TKT-VEH-[\w-]+/i);
+      if (match) extractedTicketId = match[0];
     }
 
-    // 2. Vehicle Issue & Maintenance
-    if (type.includes('vehicle_issue') || type.includes('ticket') || title.includes('vehicle issue') || title.includes('ticket')) {
-      return `/manager/view-tickets`;
-    }
-    if (type.includes('maintenance') || title.includes('maintenance')) {
-      return `/manager/maintenance`;
-    }
-
-    // 3. Driver Notifications
-    if (refType === 'driver' || type.includes('driver') || title.includes('driver')) {
-      return driverId ? `/manager/driver-profile/${driverId}` : `/manager/drivers`;
-    }
-
-    // 4. Vehicle Notifications
-    if (refType === 'vehicle' || type.includes('vehicle') || title.includes('vehicle')) {
-      return vehicleId ? `/manager/vehicle-details/${vehicleId}` : `/manager/vehicles`;
-    }
-
-    // 5. Fuel Notifications
-    if (type.includes('fuel') || title.includes('fuel')) {
-      return `/manager/fuel-management`;
-    }
-
-    // 6. Subscription
-    if (type.includes('subscription') || title.includes('subscription')) {
+    // 1. Subscription Notifications
+    if (
+      type.includes("SUB") ||
+      title.includes("subscription") ||
+      title.includes("plan") ||
+      title.includes("billing") ||
+      title.includes("invoice") ||
+      message.includes("subscription") ||
+      message.includes("plan") ||
+      message.includes("renew")
+    ) {
       return `/manager/subscription`;
     }
 
-    // Fallbacks based on IDs
-    if (tripId) return `/manager/trip-details/${tripId}`;
-    if (driverId) return `/manager/driver-profile/${driverId}`;
-    if (vehicleId) return `/manager/vehicle-details/${vehicleId}`;
+    // 2. Ticket & Maintenance Notifications
+    if (
+      extractedTicketId ||
+      title.includes("ticket") ||
+      title.includes("mechanic") ||
+      title.includes("maintenance") ||
+      title.includes("issue") ||
+      title.includes("breakdown") ||
+      message.includes("tkt-") ||
+      message.includes("mechanic") ||
+      message.includes("maintenance") ||
+      message.includes("breakdown") ||
+      type.includes("MAINTENANCE") ||
+      type.includes("COMPLAINT")
+    ) {
+      return extractedTicketId
+        ? `/manager/maintenance?ticketId=${encodeURIComponent(extractedTicketId)}`
+        : `/manager/maintenance`;
+    }
 
-    return `/manager/trips`;
+    // 3. Fuel Notifications
+    if (
+      type.includes("FUEL") ||
+      title.includes("fuel") ||
+      message.includes("fuel") ||
+      message.includes("diesel") ||
+      message.includes("petrol")
+    ) {
+      return `/manager/fuel-management`;
+    }
+
+    // 4. Trip, Dispatch, POD & Weighbridge Notifications
+    if (
+      tripId ||
+      type.includes("TRIP") ||
+      type.includes("POD") ||
+      type.includes("WEIGHBRIDGE") ||
+      title.includes("trip") ||
+      title.includes("dispatch") ||
+      title.includes("delivery") ||
+      title.includes("pod") ||
+      title.includes("weighbridge") ||
+      message.includes("trp-") ||
+      message.includes("dispatch") ||
+      message.includes("delivery")
+    ) {
+      return tripId ? `/manager/trip-details/${tripId}` : `/manager/trips`;
+    }
+
+    // 5. Driver Notifications
+    if (
+      driverId ||
+      type.includes("DRIVER") ||
+      title.includes("driver") ||
+      message.includes("driver")
+    ) {
+      return driverId ? `/manager/driver-profile/${driverId}` : `/manager/drivers`;
+    }
+
+    // 6. Vehicle & Live Tracking Notifications
+    if (
+      type.includes("VEHICLE") ||
+      title.includes("vehicle") ||
+      title.includes("truck") ||
+      message.includes("vehicle") ||
+      message.includes("tracking")
+    ) {
+      return `/manager/vehicles`;
+    }
+
+    // 7. Document Notifications
+    if (
+      type.includes("DOCUMENT") ||
+      title.includes("document") ||
+      title.includes("insurance") ||
+      message.includes("document")
+    ) {
+      return `/manager/settings`;
+    }
+
+    return `/manager/dashboard`;
   };
 
   const handleNotificationClick = async (notif) => {
+    const notifId = notif._id || notif.id;
     try {
-      if (!notif.isRead) {
-        await managerApi.markNotificationRead(notif._id || notif.id);
-        setNotifications(prev =>
-          prev.map(n => (n._id === notif._id || n.id === notif.id) ? { ...n, isRead: true } : n)
-        );
-      }
+      await managerApi.markNotificationRead(notifId);
+      setNotifications(prev =>
+        prev.map(n => (n._id === notifId || n.id === notifId) ? { ...n, isRead: true } : n)
+      );
     } catch (err) {
       console.error("Failed to mark read", err);
     }
 
-    const url = resolveTargetUrl(notif);
-    navigate(url);
+    const targetUrl = resolveTargetUrl(notif);
+    navigate(targetUrl);
   };
 
   const countByPriority = (priority) => {
@@ -271,7 +324,7 @@ export default function NotificationsPage() {
               <span className="whitespace-nowrap">Mark all as read</span>
             </button>
           )}
-          <button 
+          <button
             onClick={() => navigate("/manager/profile")}
             className="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors w-full sm:w-auto cursor-pointer"
           >
@@ -295,8 +348,8 @@ export default function NotificationsPage() {
                   setIsDropdownOpen(false);
                 }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border-none ${activeTab === tab
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-gray-500 hover:text-gray-700 bg-transparent"
+                  ? "bg-blue-100 text-blue-700"
+                  : "text-gray-500 hover:text-gray-700 bg-transparent"
                   }`}
               >
                 {tab}
@@ -308,8 +361,8 @@ export default function NotificationsPage() {
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border-none flex items-center gap-1.5 ${activeTab === "Alert Overview"
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-gray-500 hover:text-gray-700 bg-transparent"
+                  ? "bg-blue-100 text-blue-700"
+                  : "text-gray-500 hover:text-gray-700 bg-transparent"
                   }`}
               >
                 <span>Alert Overview {priorityFilter ? `(${priorityFilter.toUpperCase()})` : ''}</span>
@@ -364,12 +417,11 @@ export default function NotificationsPage() {
           ) : (
             <div className="max-h-[calc(100vh-230px)] overflow-y-auto space-y-3 pr-1.5 custom-scrollbar">
               {filteredNotifications.map((notif) => (
-                <div 
-                  key={notif._id || notif.id} 
+                <div
+                  key={notif._id || notif.id}
                   onClick={() => handleNotificationClick(notif)}
-                  className={`bg-white rounded-xl border border-[#E7EAF0] px-4 py-3.5 shadow-xs hover:shadow-md transition-all cursor-pointer relative group ${
-                    !notif.isRead ? 'border-l-4 border-l-[#B45A0A] bg-amber-50/20' : 'hover:border-gray-300'
-                  }`}
+                  className={`bg-white rounded-xl border border-[#E7EAF0] px-4 py-3.5 shadow-xs hover:shadow-md transition-all cursor-pointer relative group ${!notif.isRead ? 'border-l-4 border-l-[#B45A0A] bg-amber-50/20' : 'hover:border-gray-300'
+                    }`}
                 >
                   <div className="flex items-start gap-3.5">
                     {/* Compact Icon Badge */}
@@ -402,11 +454,10 @@ export default function NotificationsPage() {
                             <button
                               key={i}
                               onClick={(e) => handleActionClick(action, notif, e)}
-                              className={`px-3 py-1 rounded-lg text-[11px] font-bold font-poppins transition-colors cursor-pointer border ${
-                                action.bg === 'bg-white'
+                              className={`px-3 py-1 rounded-lg text-[11px] font-bold font-poppins transition-colors cursor-pointer border ${action.bg === 'bg-white'
                                   ? `${action.bg} ${action.text} border-gray-200 hover:bg-gray-50`
                                   : `${action.bg} text-white border-transparent ${action.hover}`
-                              }`}
+                                }`}
                             >
                               {action.label}
                             </button>
