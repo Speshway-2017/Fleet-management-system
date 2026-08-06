@@ -58,6 +58,27 @@ export const syncAllVehicleStatuses = async () => {
         }
       }
     }
+
+    // Auto sanitize trip distances across all existing database trips
+    try {
+      const { calculateDistance } = await import('./distanceCalculator.js');
+      const trips = await Trip.find({});
+      for (const trip of trips) {
+        if (trip.startLocation && trip.endLocation) {
+          const computedDist = calculateDistance(trip.startLocation, trip.endLocation);
+          if (!trip.actualDistance || Number(trip.actualDistance) === 0) {
+            if (!trip.estimatedDistance || Math.abs(Number(trip.estimatedDistance) - computedDist) > 100) {
+              trip.estimatedDistance = computedDist;
+              await trip.save();
+              console.log(`[Auto Sync] Corrected distance for Trip ${trip.tripNumber}: ${computedDist} KM`);
+            }
+          }
+        }
+      }
+    } catch (tErr) {
+      console.warn('Trip distance auto-sync notice:', tErr.message);
+    }
+
     console.log('🔄 All vehicle statuses synced successfully.');
   } catch (err) {
     console.error('Failed to sync all vehicle statuses:', err);
