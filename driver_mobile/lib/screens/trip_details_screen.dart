@@ -747,8 +747,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     
     final isCompleted = rawStatus.toLowerCase() == 'completed';
     final isInProgress = rawStatus.toLowerCase() == 'in progress' || rawStatus.toLowerCase() == 'on transit' || rawStatus.toLowerCase() == 'enroute';
-    final isAcceptedOrScheduled = ['accepted', 'scheduled', 'assigned'].contains(rawStatus.toLowerCase());
-    final isPending = ['pending', 'pending driver acceptance'].contains(rawStatus.toLowerCase());
+    final isAcceptedOrScheduled = ['accepted', 'scheduled'].contains(rawStatus.toLowerCase());
+    final isPending = ['pending', 'pending driver acceptance', 'assigned'].contains(rawStatus.toLowerCase());
     
     final statusText = rawStatus.toUpperCase();
     final statusColor = isPending

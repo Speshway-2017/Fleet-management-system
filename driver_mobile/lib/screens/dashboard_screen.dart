@@ -613,7 +613,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final rawStatus = _currentTrip?['status']?.toString() ?? '';
     final statusLower = rawStatus.toLowerCase();
 
-    if (statusLower.contains('pending')) {
+    if (statusLower.contains('pending') || statusLower == 'assigned') {
       return _buildPendingTripCard(context);
     }
 

@@ -558,7 +558,8 @@ export const getDriverDashboard = async (req, res, next) => {
       $or: [
         { recipient: driverId },
         { user: driverId },
-        { targetRole: 'DRIVER' }
+        { recipientRole: 'DRIVER', recipient: { $exists: false } },
+        { recipientRole: 'DRIVER', recipient: null }
       ]
     }).sort({ createdAt: -1 }).limit(5);
 
@@ -585,7 +586,8 @@ export const getDriverNotifications = async (req, res, next) => {
       $or: [
         { recipient: driverId },
         { user: driverId },
-        { recipientRole: 'DRIVER' }
+        { recipientRole: 'DRIVER', recipient: { $exists: false } },
+        { recipientRole: 'DRIVER', recipient: null }
       ]
     }).sort({ createdAt: -1 }).limit(20);
 
@@ -609,7 +611,8 @@ export const markDriverNotificationRead = async (req, res, next) => {
         $or: [
           { recipient: driverId },
           { user: driverId },
-          { recipientRole: 'DRIVER' }
+          { recipientRole: 'DRIVER', recipient: { $exists: false } },
+          { recipientRole: 'DRIVER', recipient: null }
         ]
       },
       { isRead: true },
@@ -638,7 +641,8 @@ export const markAllDriverNotificationsRead = async (req, res, next) => {
         $or: [
           { recipient: driverId },
           { user: driverId },
-          { recipientRole: 'DRIVER' }
+          { recipientRole: 'DRIVER', recipient: { $exists: false } },
+          { recipientRole: 'DRIVER', recipient: null }
         ]
       },
       { isRead: true }
@@ -995,33 +999,6 @@ export const endTrip = async (req, res, next) => {
     const trip = await Trip.findById(id);
     if (!trip) {
       return sendError(res, 404, 'Trip not found');
-    }
-
-    const targetStatus = status === 'Start Trip' ? 'In Progress' : (status === 'Complete Trip' ? 'Completed' : status);
-
-    // Enforce Pipeline Order - Prevent moving backward in status progression
-    const statusOrder = ['ASSIGNED', 'IN PROGRESS', 'EN ROUTE', 'AT LOADING', 'IN TRANSIT', 'DELIVERED', 'COMPLETED'];
-    const currentStatusUpper = (trip.status || '').toUpperCase();
-    const targetStatusUpper = (targetStatus || '').toUpperCase();
-    const currentIndex = statusOrder.indexOf(currentStatusUpper);
-    const targetIndex = statusOrder.indexOf(targetStatusUpper);
-
-    if (currentIndex !== -1 && targetIndex !== -1 && targetIndex < currentIndex) {
-      return sendError(res, 400, `🔒 Cannot move backward to '${targetStatus}'. Trip pipeline status can only move forward.`);
-    }
-
-    // Enforce POD & Weighbridge Upload rule for Driver before marking Delivered or Completed
-    const isDriverRequest = !req.user || req.user.role === 'driver' || req.user.role === 'DRIVER';
-    if (isDriverRequest && ['Delivered', 'Completed', 'Complete Trip'].includes(targetStatus)) {
-      const isPodUploaded = Boolean(trip.podUploaded || trip.podUrl || trip.podFile);
-      const isWeighbridgeUploaded = Boolean(trip.weighbridgeUploaded || trip.weighbridgeUrl || trip.weighbridgeFile);
-
-      if (!isPodUploaded || !isWeighbridgeUploaded) {
-        const missing = [];
-        if (!isPodUploaded) missing.push('Proof of Delivery (POD)');
-        if (!isWeighbridgeUploaded) missing.push('Weighbridge Slip');
-        return sendError(res, 400, `🔒 Cannot mark trip as ${targetStatus}. Missing required documents: ${missing.join(' and ')}. Please upload them first.`);
-      }
     }
 
     trip.tripEnded = true;
