@@ -10,7 +10,8 @@ import {
   Plus,
   Eye,
   Pencil,
-  Trash2
+  Trash2,
+  Ban
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { adminApi } from "@/api/adminApi";
@@ -52,6 +53,24 @@ export default function OrganizationList() {
       if (fetchOrganizations) await fetchOrganizations();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to delete organization");
+    }
+  };
+
+  const handleSuspend = async (orgId, currentStatus) => {
+    const isSuspended = currentStatus === "Suspended";
+    const nextStatus = isSuspended ? "Active" : "Suspended";
+    const promptMsg = isSuspended
+      ? "Are you sure you want to reactivate this organization?"
+      : "Are you sure you want to suspend this organization?";
+
+    if (!window.confirm(promptMsg)) return;
+
+    try {
+      await adminApi.suspendOrganization(orgId, nextStatus);
+      toast.success(isSuspended ? "Organization reactivated successfully" : "Organization suspended successfully");
+      if (fetchOrganizations) await fetchOrganizations();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update organization status");
     }
   };
 
@@ -183,6 +202,13 @@ export default function OrganizationList() {
                           <Link to={`/admin/organizations/edit/${org.id}`} className="text-slate-400 hover:text-[#A14000] transition-colors" title="Edit">
                             <Pencil className="w-4 h-4" />
                           </Link>
+                          <button
+                            onClick={() => handleSuspend(org.id, org.status)}
+                            className={`transition-colors ${org.status === 'Suspended' ? 'text-green-600 hover:text-green-800' : 'text-slate-400 hover:text-orange-600'}`}
+                            title={org.status === 'Suspended' ? 'Reactivate Organization' : 'Suspend Organization'}
+                          >
+                            {org.status === 'Suspended' ? <CheckCircle2 className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                          </button>
                           <button onClick={() => handleDelete(org.id)} className="text-slate-400 hover:text-red-500 transition-colors" title="Delete">
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -238,6 +264,13 @@ export default function OrganizationList() {
                     <Link to={`/admin/organizations/edit/${org.id}`} className="text-slate-400 hover:text-[#A14000] transition-colors" title="Edit">
                       <Pencil className="w-4 h-4" />
                     </Link>
+                    <button
+                      onClick={() => handleSuspend(org.id, org.status)}
+                      className={`transition-colors ${org.status === 'Suspended' ? 'text-green-600 hover:text-green-800' : 'text-slate-400 hover:text-orange-600'}`}
+                      title={org.status === 'Suspended' ? 'Reactivate Organization' : 'Suspend Organization'}
+                    >
+                      {org.status === 'Suspended' ? <CheckCircle2 className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                    </button>
                     <button onClick={() => handleDelete(org.id)} className="text-slate-400 hover:text-red-500 transition-colors" title="Delete">
                       <Trash2 className="w-4 h-4" />
                     </button>

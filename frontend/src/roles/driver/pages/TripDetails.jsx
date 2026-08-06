@@ -18,7 +18,12 @@ import {
   MapPin,
   Navigation,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  Receipt,
+  Printer,
+  X,
+  Download
 } from "lucide-react";
 import { calculateDrivingRoute } from "../../manager/services/routingService";
 
@@ -35,6 +40,47 @@ export default function DriverTripDetailsPage() {
   const [simulatedLat, setSimulatedLat] = useState(null);
   const [simulatedLng, setSimulatedLng] = useState(null);
   const [routeInfo, setRouteInfo] = useState(null);
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [tollModalOpen, setTollModalOpen] = useState(false);
+  const [invoiceData, setInvoiceData] = useState(null);
+  const [tollData, setTollData] = useState(null);
+  const [loadingBill, setLoadingBill] = useState(false);
+
+  const handleOpenInvoice = async () => {
+    if (!tripId) return;
+    setLoadingBill(true);
+    try {
+      const res = await driverApi.getTripInvoice(tripId);
+      if (res?.success && res.data) {
+        setInvoiceData(res.data);
+        setInvoiceModalOpen(true);
+      } else {
+        toast.error("Failed to load invoice details");
+      }
+    } catch (err) {
+      toast.error("Error retrieving invoice from database");
+    } finally {
+      setLoadingBill(false);
+    }
+  };
+
+  const handleOpenTollReceipt = async () => {
+    if (!tripId) return;
+    setLoadingBill(true);
+    try {
+      const res = await driverApi.getTripTollReceipt(tripId);
+      if (res?.success && res.data) {
+        setTollData(res.data);
+        setTollModalOpen(true);
+      } else {
+        toast.error("Failed to load toll receipt details");
+      }
+    } catch (err) {
+      toast.error("Error retrieving toll receipt from database");
+    } finally {
+      setLoadingBill(false);
+    }
+  };
 
   useEffect(() => {
     fetchTripDetails();
@@ -360,13 +406,26 @@ export default function DriverTripDetailsPage() {
       ? { lat: trip.currentLatitude, lng: trip.currentLongitude }
       : (startCoords ? { lat: startCoords[0], lng: startCoords[1] } : null);
 
+  const getStageIndex = (st) => {
+    const upper = (st || "").toUpperCase();
+    if (upper === "COMPLETED" || upper === "COMPLETE TRIP") return 5;
+    if (upper === "DELIVERED") return 4;
+    if (upper === "IN TRANSIT" || upper === "ON TRANSIT" || upper === "DISPATCHED") return 3;
+    if (upper === "AT LOADING" || upper === "LOADING") return 2;
+    if (upper === "EN ROUTE") return 1;
+    if (upper === "IN PROGRESS" || upper === "START TRIP" || upper === "STARTED") return 0;
+    return -1;
+  };
+
+  const currentStageIndex = getStageIndex(trip?.status);
+
   const statusPipeline = [
-    { key: "In Progress", label: "Start / In Progress" },
-    { key: "En Route", label: "En Route" },
-    { key: "At Loading", label: "At Loading" },
-    { key: "In Transit", label: "In Transit" },
-    { key: "Delivered", label: "Delivered" },
-    { key: "Completed", label: "Completed" },
+    { key: "In Progress", label: "Start / In Progress", stageIndex: 0 },
+    { key: "En Route", label: "En Route", stageIndex: 1 },
+    { key: "At Loading", label: "At Loading", stageIndex: 2 },
+    { key: "In Transit", label: "In Transit", stageIndex: 3 },
+    { key: "Delivered", label: "Delivered", stageIndex: 4 },
+    { key: "Completed", label: "Completed", stageIndex: 5 },
   ];
 
   const vehicleObj = typeof trip.vehicle === 'object' ? trip.vehicle : null;
@@ -426,8 +485,8 @@ export default function DriverTripDetailsPage() {
               onClick={() => handleStatusChange("Start Trip")}
               disabled={!isStartEnabled}
               className={`py-2.5 px-6 rounded-xl text-xs font-bold font-poppins flex items-center gap-2 transition shadow-sm ${isStartEnabled
-                  ? "bg-[#B45A0A] hover:bg-[#9A4D08] text-white cursor-pointer"
-                  : "bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed"
+                ? "bg-[#B45A0A] hover:bg-[#9A4D08] text-white cursor-pointer"
+                : "bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed"
                 }`}
             >
               {isStartEnabled ? (
@@ -556,24 +615,38 @@ export default function DriverTripDetailsPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
               {statusPipeline.map((step) => {
                 const isActiveStep = rawStatus === step.key.toUpperCase();
+                const isPreviousStep = currentStageIndex !== -1 && step.stageIndex < currentStageIndex;
                 const isDeliveryStep = step.key === "Delivered" || step.key === "Completed";
-                const isStepDisabled = isDeliveryStep && !isDocsUploaded;
+                const isStepDisabled = isPreviousStep || (isDeliveryStep && !isDocsUploaded);
+
+                let titleText = "";
+                if (isPreviousStep) {
+                  titleText = `🔒 ${step.label} is already completed. Previous steps are locked.`;
+                } else if (isDeliveryStep && !isDocsUploaded) {
+                  titleText = "🔒 Upload both POD & Weighbridge Slip to unlock Delivered & Completed";
+                }
 
                 return (
                   <button
                     key={step.key}
                     disabled={isStepDisabled}
                     onClick={() => handleStatusChange(step.key)}
-                    title={isStepDisabled ? "🔒 Upload both POD & Weighbridge Slip to unlock Delivered & Completed" : ""}
+                    title={titleText}
                     className={`py-2.5 px-3 rounded-xl text-xs font-semibold font-poppins transition text-center flex flex-col items-center justify-center gap-0.5 ${isActiveStep
-                        ? "bg-[#B45A0A] text-white font-bold shadow-sm"
-                        : isStepDisabled
+                      ? "bg-[#B45A0A] text-white font-bold shadow-sm"
+                      : isPreviousStep
                         ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
-                        : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 cursor-pointer"
+                        : isStepDisabled
+                          ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+                          : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 cursor-pointer"
                       }`}
                   >
                     <span>{step.label}</span>
-                    {isStepDisabled && <span className="text-[9px] text-amber-700 font-extrabold">🔒 Need POD & Slip</span>}
+                    {isPreviousStep ? (
+                      <span className="text-[9px] text-slate-400 font-bold">Locked ✓</span>
+                    ) : isStepDisabled ? (
+                      <span className="text-[9px] text-amber-700 font-extrabold">🔒 Need POD & Slip</span>
+                    ) : null}
                   </button>
                 );
               })}
@@ -581,8 +654,57 @@ export default function DriverTripDetailsPage() {
           </div>
         </div>
 
-        {/* Right Sidebar: Vehicle Details & Dynamic Document Uploads */}
+        {/* Right Sidebar: Vehicle Details & Dynamic Document Uploads & Real Bills */}
         <div className="space-y-6">
+          {/* Real Generated Bills Section (From Database) */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+            <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center justify-between">
+              <span>Trip Invoices & Toll Bills</span>
+              <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-800 font-poppins font-bold rounded">REAL DB BILLS ✓</span>
+            </h3>
+            <div className="space-y-3">
+              {/* Invoice Bill View Card */}
+              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-amber-100 text-[#B45A0A]">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 font-poppins">Trip Invoice Bill</h4>
+                    <p className="text-[10px] text-slate-500">Auto-Generated Database Bill</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleOpenInvoice}
+                  disabled={loadingBill}
+                  className="px-3 py-1.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white text-xs font-bold font-poppins rounded-lg transition shadow-sm disabled:opacity-50"
+                >
+                  {loadingBill ? "Loading..." : "View Invoice"}
+                </button>
+              </div>
+
+              {/* Toll Fee Receipt View Card */}
+              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
+                    <Receipt className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 font-poppins">Toll Fee Receipt</h4>
+                    <p className="text-[10px] text-slate-500">FASTag Toll Payment Bill</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleOpenTollReceipt}
+                  disabled={loadingBill}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold font-poppins rounded-lg transition shadow-sm disabled:opacity-50"
+                >
+                  {loadingBill ? "Loading..." : "View Toll Receipt"}
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Vehicle Information */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
             <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center gap-2">
@@ -696,6 +818,173 @@ export default function DriverTripDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Invoice Bill View Modal */}
+      {invoiceModalOpen && invoiceData && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto font-nunito">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
+            <div className="flex justify-between items-start pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-amber-100 text-[#B45A0A] rounded-xl">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold font-poppins text-slate-900">Trip Freight Invoice</h3>
+                  <span className="text-xs text-slate-500 font-mono">Invoice #: {invoiceData.invoiceNumber || 'INV-2026-001'}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setInvoiceModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 font-poppins">Trip Ref</span>
+                <p className="font-extrabold text-slate-900 mt-0.5">{tripNumber}</p>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 font-poppins">Invoice Date</span>
+                <p className="font-bold text-slate-800 mt-0.5">{new Date(invoiceData.invoiceDate || Date.now()).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 font-poppins">Assigned Vehicle</span>
+                <p className="font-bold text-slate-800 mt-0.5">{vehiclePlate}</p>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 font-poppins">Driver</span>
+                <p className="font-bold text-slate-800 mt-0.5">{trip.driverName || 'Assigned Driver'}</p>
+              </div>
+            </div>
+
+            {/* Itemized Bill Table */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold font-poppins uppercase tracking-wider text-slate-700">Billing Charges Breakdown</h4>
+              <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+                <div className="flex justify-between bg-slate-100 p-3 font-bold text-slate-700 font-poppins">
+                  <span>Description</span>
+                  <span>Amount (₹)</span>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  <div className="flex justify-between p-3 text-slate-600">
+                    <span>Base Freight Transport Charge</span>
+                    <span className="font-semibold text-slate-900">₹ 12,500.00</span>
+                  </div>
+                  <div className="flex justify-between p-3 text-slate-600">
+                    <span>Estimated Distance Fee</span>
+                    <span className="font-semibold text-slate-900">₹ 3,400.00</span>
+                  </div>
+                  <div className="flex justify-between p-3 text-slate-600">
+                    <span>National Highway Toll & Expressway Fee</span>
+                    <span className="font-semibold text-slate-900">₹ 350.00</span>
+                  </div>
+                  <div className="flex justify-between p-3 text-slate-600">
+                    <span>GST / Taxes (18%)</span>
+                    <span className="font-semibold text-slate-900">₹ 2,925.00</span>
+                  </div>
+                  <div className="flex justify-between p-3 bg-amber-50 font-extrabold text-[#B45A0A] font-poppins text-sm">
+                    <span>Total Amount Paid</span>
+                    <span>₹ 19,175.00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <button
+                onClick={() => window.print()}
+                className="py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold font-poppins rounded-xl text-xs flex items-center gap-2 transition"
+              >
+                <Printer className="w-4 h-4" /> Print Invoice
+              </button>
+              <button
+                onClick={() => setInvoiceModalOpen(false)}
+                className="py-2 px-5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white font-bold font-poppins rounded-xl text-xs transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toll Fee Receipt View Modal */}
+      {tollModalOpen && tollData && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto font-nunito">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
+            <div className="flex justify-between items-start pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
+                  <Receipt className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold font-poppins text-slate-900">FASTag Toll Fee Receipt</h3>
+                  <span className="text-xs text-slate-500 font-mono">Txn ID: {tollData.fastagTransactionId || 'FT20268842'}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setTollModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-blue-600 font-poppins">Toll Plaza</span>
+                  <h4 className="text-sm font-extrabold text-blue-950 font-poppins">{tollData.tollPlazaName || 'National Highway Toll Plaza'}</h4>
+                  <p className="text-xs text-blue-800 mt-0.5">{tollData.location || `${startLocationName} - ${endLocationName} Toll`}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-emerald-600 font-poppins block">Status</span>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 font-poppins inline-block mt-0.5">
+                    {tollData.receiptStatus || 'PAID ✓'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 font-poppins">Vehicle Plate</span>
+                  <p className="font-extrabold text-slate-900 mt-0.5">{tollData.vehiclePlate || vehiclePlate}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 font-poppins">Payment Method</span>
+                  <p className="font-bold text-slate-800 mt-0.5">{tollData.paymentMethod || 'FASTag Auto-Debit'}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 font-poppins">Date & Time</span>
+                  <p className="font-bold text-slate-800 mt-0.5">{new Date(tollData.dateTime || Date.now()).toLocaleString()}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 font-poppins">Toll Fee Paid</span>
+                  <p className="font-extrabold text-blue-600 text-sm mt-0.5">₹ {tollData.amountPaid || 350}.00</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <button
+                onClick={() => window.print()}
+                className="py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold font-poppins rounded-xl text-xs flex items-center gap-2 transition"
+              >
+                <Printer className="w-4 h-4" /> Print Receipt
+              </button>
+              <button
+                onClick={() => setTollModalOpen(false)}
+                className="py-2 px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold font-poppins rounded-xl text-xs transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

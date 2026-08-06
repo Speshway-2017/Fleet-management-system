@@ -27,6 +27,8 @@ import {
   getDriverTickets,
   getDriverTicketById,
   updateDriverTicketStatus,
+  getTripInvoice,
+  getTripTollReceipt,
 } from '../controllers/driverApi.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import memoryUpload from '../middleware/memoryUpload.middleware.js';
@@ -46,6 +48,8 @@ router.get('/vehicle', getAssignedVehicle);
 router.get('/maintenance', getDriverMaintenance);
 router.get('/trips/current', getCurrentTrip);
 router.get('/trips', getDriverTrips);
+router.get('/trips/:id/invoice', getTripInvoice);
+router.get('/trips/:id/toll-receipt', getTripTollReceipt);
 router.get('/dashboard', getDriverDashboard);
 router.get('/notifications', getDriverNotifications);
 router.patch('/trips/:id/respond', respondToTripAssignment);
