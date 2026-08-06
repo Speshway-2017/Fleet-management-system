@@ -5,10 +5,10 @@ All notable changes to the Fleet Driver Mobile application will be documented in
 ## [1.78.0] - 2026-08-06
 
 ### Enhanced (Active Trip Fuel Refill Requirement)
-- **Active Trip Fuel Logging Policy (`driverApi.controller.js`, `Fuel.jsx`, `Dashboard.jsx`)**:
-  - Restricts fuel refill logging to drivers with an active trip in progress (`Assigned`, `Accepted`, `In Progress`, `En Route`, `In Transit`, etc.).
-  - Backend controller `createDriverFuelEntry` validates active trip presence and returns `400 Bad Request` if no active trip is found.
-  - Driver Web Portal `Fuel.jsx` disables the "Log New Fuel Refill" button with a lock icon and displays a prominent warning notice (`🔒 Fuel Refill Logging Locked`).
+- **Dynamic Lat/Lon Distance Calculation & Dummy 350 KM Removal (`distanceCalculator.js`, `routingService.js`, `TripDetailsPage.jsx`)**:
+  - Expanded city coordinate lookup tables with local Andhra Pradesh & Telangana towns (Bhimadole, Dwaraka Tirumala, Eluru, Tanuku, Tadepalligudem, Rajahmundry, Kakinada, Ongole, etc.).
+  - Replaced hardcoded `350 KM` dummy distance fallbacks with real Haversine spherical geometry and OSRM road driving distance calculations.
+  - Resolved dynamic financial & route distance details cards in Manager Web `TripDetailsPage.jsx` to render accurate, realistic route distances (e.g., 20-30 KM for local routes instead of dummy 350 KM).
 
 ## [1.77.0] - 2026-08-05
 

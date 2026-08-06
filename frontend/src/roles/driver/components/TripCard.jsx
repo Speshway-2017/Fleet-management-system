@@ -83,6 +83,10 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
     }
   };
 
+  const normStatus = rawStatus.replace(/_/g, " ").trim();
+  const isPending = normStatus === "ASSIGNED" || normStatus === "PENDING";
+  const isUpcoming = normStatus === "ACCEPTED" || normStatus === "SCHEDULED" || normStatus === "UPCOMING";
+
   return (
     <div className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between font-nunito">
       <div>
@@ -139,18 +143,18 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
 
       {/* Action Buttons */}
       <div className="mt-5 pt-4 border-t border-slate-100 space-y-2">
-        {(rawStatus === "ASSIGNED" || rawStatus === "PENDING") && (
+        {isPending ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onRespond && onRespond(tripId, "accept")}
-                className="flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm"
+                className="flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" /> Accept Trip
               </button>
               <button
                 onClick={() => onRespond && onRespond(tripId, "reject")}
-                className="flex-1 py-2.5 px-3 bg-white hover:bg-rose-50 text-rose-600 border border-slate-300 hover:border-rose-300 font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm"
+                className="flex-1 py-2.5 px-3 bg-white hover:bg-rose-50 text-rose-600 border border-slate-300 hover:border-rose-300 font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
               >
                 <XCircle className="w-4 h-4" /> Reject Trip
               </button>
@@ -162,10 +166,8 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
               <Eye className="w-3.5 h-3.5 text-[#B45A0A]" /> View Details First
             </Link>
           </div>
-        )}
-
-        {(rawStatus === "ACCEPTED" || rawStatus === "SCHEDULED" || rawStatus === "UPCOMING") && (
-          <div>
+        ) : isUpcoming ? (
+          <div className="space-y-2">
             <button
               onClick={handleStartTripClick}
               disabled={!isStartEnabled}
@@ -189,13 +191,18 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
                 🔒 Button unlocks at {unlockTimeStr} (15 mins prior to departure)
               </p>
             )}
+            <Link
+              to={`/driver/trips/${tripId}`}
+              className="w-full py-2 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-1.5 transition border border-slate-200"
+            >
+              <span>View Details & Tracking</span>
+              <ArrowRight className="w-3.5 h-3.5 text-[#B45A0A]" />
+            </Link>
           </div>
-        )}
-
-        {(rawStatus === "DISPATCHED" || rawStatus === "STARTED" || rawStatus === "EN_ROUTE" || rawStatus === "IN_TRANSIT" || rawStatus === "IN PROGRESS" || rawStatus === "ON TRANSIT" || rawStatus === "DELIVERED" || rawStatus === "COMPLETED") && (
+        ) : (
           <Link
             to={`/driver/trips/${tripId}`}
-            className="w-full py-2.5 px-3 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition"
+            className="w-full py-2.5 px-3 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition cursor-pointer"
           >
             <span>View Details & Tracking</span>
             <ArrowRight className="w-4 h-4 text-[#B45A0A]" />

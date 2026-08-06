@@ -2510,7 +2510,30 @@ export const getInvoiceByTripId = async (req, res, next) => {
 
 export const getPODByTripId = async (req, res, next) => {
   try {
-    const pod = await ProofOfDelivery.findOne({ trip: req.params.tripId }).populate('driver');
+    const { tripId } = req.params;
+    if (!tripId) {
+      return sendSuccess(res, 200, null, 'No POD uploaded yet');
+    }
+    const query = {
+      $or: [
+        { trip: tripId },
+        ...(mongoose.Types.ObjectId.isValid(tripId) ? [{ trip: new mongoose.Types.ObjectId(tripId) }] : [])
+      ]
+    };
+
+    let pod = await ProofOfDelivery.findOne(query).populate('driver').catch(() => null);
+
+    if (!pod && mongoose.Types.ObjectId.isValid(tripId)) {
+      const targetTrip = await Trip.findById(tripId).catch(() => null);
+      if (targetTrip?.driver) {
+        pod = await ProofOfDelivery.findOne({ driver: targetTrip.driver }).sort({ createdAt: -1 }).populate('driver').catch(() => null);
+        if (pod && !pod.trip) {
+          pod.trip = targetTrip._id;
+          await pod.save().catch(() => {});
+        }
+      }
+    }
+
     if (!pod) {
       return sendSuccess(res, 200, null, 'No POD uploaded yet');
     }
@@ -2654,11 +2677,27 @@ export const getWeighbridgeByTripId = async (req, res, next) => {
     if (!tripId) {
       return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
     }
-    const query = mongoose.Types.ObjectId.isValid(tripId)
-      ? { trip: tripId }
-      : { $or: [{ trip: tripId }, { slipNumber: tripId }] };
+    const query = {
+      $or: [
+        { trip: tripId },
+        { slipNumber: tripId },
+        ...(mongoose.Types.ObjectId.isValid(tripId) ? [{ trip: new mongoose.Types.ObjectId(tripId) }] : [])
+      ]
+    };
 
-    const slip = await WeighbridgeSlip.findOne(query).populate('driver').catch(() => null);
+    let slip = await WeighbridgeSlip.findOne(query).populate('driver').catch(() => null);
+
+    if (!slip && mongoose.Types.ObjectId.isValid(tripId)) {
+      const targetTrip = await Trip.findById(tripId).catch(() => null);
+      if (targetTrip?.driver) {
+        slip = await WeighbridgeSlip.findOne({ driver: targetTrip.driver }).sort({ createdAt: -1 }).populate('driver').catch(() => null);
+        if (slip && !slip.trip) {
+          slip.trip = targetTrip._id;
+          await slip.save().catch(() => {});
+        }
+      }
+    }
+
     if (!slip) {
       return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
     }
