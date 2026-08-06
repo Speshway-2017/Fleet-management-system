@@ -829,6 +829,46 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (isCompleted) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: const Color(0xFF1E293B)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.lock, color: AppColors.success, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Completed Trip - Read Only View',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  Text(
+                                    'This trip has been completed. Details are locked and viewable only.',
+                                    style: GoogleFonts.nunito(
+                                      fontSize: 11,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      AppSpacing.verticalMd,
+                    ],
+
                     // Trip Summary Card
                     CustomCard(
                       padding: const EdgeInsets.all(16),

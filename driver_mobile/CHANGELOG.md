@@ -2,6 +2,44 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.78.0] - 2026-08-06
+
+### Enhanced (Active Trip Fuel Refill Requirement)
+- **Active Trip Fuel Logging Policy (`driverApi.controller.js`, `Fuel.jsx`, `Dashboard.jsx`)**:
+  - Restricts fuel refill logging to drivers with an active trip in progress (`Assigned`, `Accepted`, `In Progress`, `En Route`, `In Transit`, etc.).
+  - Backend controller `createDriverFuelEntry` validates active trip presence and returns `400 Bad Request` if no active trip is found.
+  - Driver Web Portal `Fuel.jsx` disables the "Log New Fuel Refill" button with a lock icon and displays a prominent warning notice (`🔒 Fuel Refill Logging Locked`).
+
+## [1.77.0] - 2026-08-05
+
+### Fixed & Enhanced (Weighbridge Slip Approval Fix, Completed Trip Read-Only Mode & Urgent KPI Removal)
+- **Weighbridge Slip & POD Approval Status Fix (`manager.controller.js`, `driverApi.controller.js`, `TripDetailsPage.jsx`, `TripDetails.jsx`)**:
+  - Fixed backend controller bug in `updateWeighbridgeSlipStatus` where updating trip status assigned invalid enum value `DOCUMENTS_SUBMITTED`, preventing weighbridge status from persisting as Approved.
+  - Added dynamic fallback lookup in `getCurrentTrip` and `getDriverTrips` to query `ProofOfDelivery` and `WeighbridgeSlip` collections, guaranteeing uniform `podStatus`, `weighbridgeStatus`, `podUploaded`, and `weighbridgeUploaded` fields.
+  - Updated Driver Web `TripDetails.jsx` and Driver Mobile `ActiveTripsScreen` to render separate upload unlock controls and instant status badges (`🟡 UPLOADED (PENDING APPROVAL)` / `🟢 APPROVED` / `🔴 REJECTED`).
+  - Added real-time socket events (`weighbridge:approved`, `pod:uploaded`, `weighbridge:uploaded`, `trip:status-updated`) for manager and driver channels upon document uploads and approvals.
+- **Completed Trip Read-Only Mode (`TripDetailsPage.jsx`, `trip_details_screen.dart`)**:
+  - Enforced strict read-only policy for completed trips (`status === 'Completed'`) across Manager Web Portal and Driver Mobile App.
+  - Added prominent `🔒 Completed Trip - Read-Only View` status banner.
+  - Automatically hidden/disabled document approval, rejection, upload, and status editing action buttons on completed trips.
+- **Urgent Trips KPI Removal (`TripsManagementPage.jsx`)**:
+  - Removed "Urgent Trips" KPI card from Manager Trips Management page.
+  - Adjusted summary grid columns layout to 3 equal KPI cards: Total Trips, Active Trips, and Completed.
+
+## [1.76.0] - 2026-08-05
+
+### Fixed & Enhanced (Auto-Generated Bills, Driver Trip Pipeline Lock & Admin Organization Suspension)
+- **Automatic Invoice & Toll Fee Bill Database Generation (`driverApi.controller.js`, `driverApi.routes.js`)**:
+  - Automatically generate and store real `Invoice` and `TollTransaction` documents in MongoDB when a trip status is marked as `Completed`.
+  - Added driver API endpoints `GET /api/driver/trips/:id/invoice` and `GET /api/driver/trips/:id/toll-receipt` to fetch real database invoice and toll receipts.
+  - Added interactive Invoice & Toll Fee Receipt view modals in Driver Web (`TripDetails.jsx`) displaying real database itemized breakdown and charges.
+- **Driver Trip Pipeline Backward Lock (`driverApi.controller.js`, `TripDetails.jsx`)**:
+  - Enforced forward-only status pipeline progression (`Start / In Progress` -> `En Route` -> `At Loading` -> `In Transit` -> `Delivered` -> `Completed`).
+  - Automatically disabled previous stage buttons in Driver Web UI and rejected status regression requests with a 400 error in the backend API.
+- **Super Admin Organization Suspension (`admin.controller.js`, `admin.routes.js`, `OrganizationList.jsx`, `OrganizationDetails.jsx`, `EditOrganization.jsx`)**:
+  - Added `suspendOrganization` endpoint (`PATCH /api/admin/organizations/:id/suspend`) in backend controller and routes to toggle organization status to `Suspended` or `Active` in MongoDB.
+  - Implemented Suspend / Activate action buttons across Organization List table & cards, Organization Details page, and Edit Organization status dropdown.
+
 ## [1.75.0] - 2026-08-05
 
 ### Fixed & Enhanced (Manager Data Isolation, Profile Organization Details & Org Status Auto-Sync)
@@ -1402,5 +1440,7 @@ All notable changes to the Fleet Driver Mobile application will be documented in
   - Visibility toggles for the password field.
   - Custom Google Sign-In button with auto-scaling to prevent overflows.
   - Legal disclaimer footer using rich text formatting.
+- **Local Asset Integration**: Configured local assets directory and registered [logo.png](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/assets/images/logo.png) (copied from frontend public directory) and [google_logo.png](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/assets/images/google_logo.png) in [pubspec.yaml](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/pubspec.yaml) to circumvent cross-origin (CORS) network errors on web target.
+- **Smoke Tests**: Added and configured widget tests in [widget_test.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/test/widget_test.dart) verifying login screen layout, text fields, controller values, and action buttons.
 - **Local Asset Integration**: Configured local assets directory and registered [logo.png](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/assets/images/logo.png) (copied from frontend public directory) and [google_logo.png](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/assets/images/google_logo.png) in [pubspec.yaml](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/pubspec.yaml) to circumvent cross-origin (CORS) network errors on web target.
 - **Smoke Tests**: Added and configured widget tests in [widget_test.dart](file:///c:/Users/user/Downloads/Fleet-management-system/driver_mobile/test/widget_test.dart) verifying login screen layout, text fields, controller values, and action buttons.

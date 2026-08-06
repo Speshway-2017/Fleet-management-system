@@ -277,6 +277,15 @@ export default function EditOrganization() {
               <input type="text" name="country" value={form.country} onChange={handleChange}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all" />
             </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Status</label>
+              <select name="status" value={form.status} onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all">
+                <option value="Active">Active</option>
+                <option value="Pending">Pending</option>
+                <option value="Suspended">Suspended</option>
+              </select>
+            </div>
           </div>
 
         </form>

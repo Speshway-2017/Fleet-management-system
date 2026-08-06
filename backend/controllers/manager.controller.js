@@ -2608,8 +2608,7 @@ export const updatePODStatus = async (req, res, next) => {
       const updatedTrip = await Trip.findByIdAndUpdate(
         pod.trip,
         {
-          podStatus: newPodStatus,
-          status: status === 'Rejected' ? 'Documents Rejected' : 'DOCUMENTS_SUBMITTED'
+          podStatus: newPodStatus
         },
         { new: true }
       );
@@ -3067,8 +3066,7 @@ export const updateWeighbridgeSlipStatus = async (req, res, next) => {
       const updatedTrip = await Trip.findByIdAndUpdate(
         slip.trip,
         {
-          weighbridgeStatus: newSlipStatus,
-          status: status === 'Rejected' ? 'Documents Rejected' : 'DOCUMENTS_SUBMITTED'
+          weighbridgeStatus: newSlipStatus
         },
         { new: true }
       );
@@ -3098,6 +3096,16 @@ export const updateWeighbridgeSlipStatus = async (req, res, next) => {
           });
         }
       } else if (status === 'Approved') {
+        if (io) {
+          io.to(`driver:${updatedTrip?.driver}`).emit('weighbridge:approved', {
+            tripId: slip.trip,
+            slip
+          });
+          io.to(`manager:${updatedTrip?.assignedManager}`).emit('weighbridge:approved', {
+            tripId: slip.trip,
+            slip
+          });
+        }
         await checkAndCompleteTripIfApproved(slip.trip, req);
       }
     }
