@@ -248,8 +248,11 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     }
 
     // Distance Resolution
-    double distanceVal = 0.0;
-    if (trip['actualDistance'] != null) {
+    double distanceVal = double.tryParse(trip['distance']?.toString() ?? '') ?? 0.0;
+    if (distanceVal == 0.0) {
+      distanceVal = double.tryParse(trip['totalDistance']?.toString() ?? '') ?? 0.0;
+    }
+    if (distanceVal == 0.0 && trip['actualDistance'] != null) {
       distanceVal = double.tryParse(trip['actualDistance'].toString()) ?? 0.0;
     }
     if (distanceVal == 0.0 && trip['estimatedDistance'] != null) {
@@ -848,8 +851,20 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                     Widget? targetScreen;
                     switch (doc['name']) {
                       case 'Invoice':
+                        String? invId;
+                        if (trip['tripInvoice'] is Map) {
+                          invId = (trip['tripInvoice'] as Map)['invoiceId']?.toString();
+                        }
+                        invId ??= trip['invoiceId']?.toString();
+
+                        String? invNum = trip['invoiceNumber']?.toString();
+                        if ((invNum == null || invNum.isEmpty) && trip['tripInvoice'] is Map) {
+                          invNum = (trip['tripInvoice'] as Map)['invoiceNumber']?.toString();
+                        }
+
                         targetScreen = InvoiceScreen(
-                          invoiceNumber: trip['invoiceNumber'] ?? (trip['tripInvoice'] is Map ? trip['tripInvoice']['invoiceNumber'] : 'INV-${displayId.replaceAll('#', '')}'),
+                          invoiceId: invId,
+                          invoiceNumber: invNum,
                           tripId: displayId,
                           tripData: trip,
                         );

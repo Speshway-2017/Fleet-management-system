@@ -443,18 +443,33 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        station.toString(),
+                        'Station: ${station.toString()}',
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: textPrimary,
                         ),
                       ),
+                      const SizedBox(height: 3.0),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_rounded, size: 13, color: primaryOrange),
+                          const SizedBox(width: 4),
+                          Text(
+                            'City: ${entry['location'] ?? entry['city'] ?? 'N/A'}',
+                            style: GoogleFonts.nunito(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 2.0),
                       Text(
                         dateStr,
                         style: GoogleFonts.nunito(
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w600,
                           color: textSecondary,
                         ),

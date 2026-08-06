@@ -216,6 +216,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                     iconColor: Colors.blue,
                     status: podStatus,
                     onTap: () async {
+                      final messenger = ScaffoldMessenger.of(context);
                       final data = await Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -235,27 +236,27 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                             imageName: data['imageName'],
                           );
                           await _fetchTripDetails();
-                          if (mounted && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('✅ POD uploaded successfully!'),
-                                backgroundColor: AppColors.success,
-                              ),
-                            );
-                          }
+                          if (!mounted) return;
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('✅ POD uploaded successfully!'),
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
                         } catch (e) {
-                          if (mounted && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('POD upload failed: $e'),
-                                backgroundColor: AppColors.error,
-                              ),
-                            );
-                          }
+                          if (!mounted) return;
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text('POD upload failed: $e'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
                         } finally {
-                          setState(() {
-                            _isSubmitting = false;
-                          });
+                          if (mounted) {
+                            setState(() {
+                              _isSubmitting = false;
+                            });
+                          }
                         }
                       }
                     },
@@ -272,6 +273,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                     iconColor: Colors.orange,
                     status: fuelStatus,
                     onTap: () async {
+                      final messenger = ScaffoldMessenger.of(context);
                       final data = await Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -294,27 +296,27 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                             imageName: data['imageName'],
                           );
                           await _fetchTripDetails();
-                          if (mounted && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('✅ Fuel entry uploaded successfully!'),
-                                backgroundColor: AppColors.success,
-                              ),
-                            );
-                          }
+                          if (!mounted) return;
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('✅ Fuel entry uploaded successfully!'),
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
                         } catch (e) {
-                          if (mounted && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Fuel upload failed: $e'),
-                                backgroundColor: AppColors.error,
-                              ),
-                            );
-                          }
+                          if (!mounted) return;
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text('Fuel upload failed: $e'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
                         } finally {
-                          setState(() {
-                            _isSubmitting = false;
-                          });
+                          if (mounted) {
+                            setState(() {
+                              _isSubmitting = false;
+                            });
+                          }
                         }
                       }
                     },
@@ -335,6 +337,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                     onTap: !isWeighbridgeRequired
                         ? () {}
                         : () async {
+                            final messenger = ScaffoldMessenger.of(context);
                             final data = await Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -356,27 +359,27 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                                   imageName: data['imageName'],
                                 );
                                 await _fetchTripDetails();
-                                if (mounted && context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('✅ Weighbridge Slip uploaded successfully!'),
-                                      backgroundColor: AppColors.success,
-                                    ),
-                                  );
-                                }
+                                if (!mounted) return;
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('✅ Weighbridge Slip uploaded successfully!'),
+                                    backgroundColor: AppColors.success,
+                                  ),
+                                );
                               } catch (e) {
-                                if (mounted && context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Weighbridge upload failed: $e'),
-                                      backgroundColor: AppColors.error,
-                                    ),
-                                  );
-                                }
+                                if (!mounted) return;
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text('Weighbridge upload failed: $e'),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
                               } finally {
-                                setState(() {
-                                  _isSubmitting = false;
-                                });
+                                if (mounted) {
+                                  setState(() {
+                                    _isSubmitting = false;
+                                  });
+                                }
                               }
                             }
                           },
@@ -395,15 +398,16 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                     iconColor: Colors.green,
                     status: tollStatus,
                     onTap: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      final navigator = Navigator.of(context);
                       final result = await showDialog<String>(
                         context: context,
                         builder: (ctx) => TollTransactionsDialog(tripId: widget.tripId),
                       );
 
                       if (result == 'upload_manual') {
-                        if (!mounted || !context.mounted) return;
-                        final data = await Navigator.push(
-                          context,
+                        if (!mounted) return;
+                        final data = await navigator.push(
                           MaterialPageRoute(
                             builder: (context) => TollReceiptsFormScreen(initialData: _tollData),
                           ),
@@ -422,27 +426,27 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                               imageNames: data['imageNames'],
                             );
                             await _fetchTripDetails();
-                            if (mounted && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('✅ Toll Receipt uploaded successfully!'),
-                                  backgroundColor: AppColors.success,
-                                ),
-                              );
-                            }
+                            if (!mounted) return;
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('✅ Toll Receipt uploaded successfully!'),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
                           } catch (e) {
-                            if (mounted && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Toll upload failed: $e'),
-                                  backgroundColor: AppColors.error,
-                                ),
-                              );
-                            }
+                            if (!mounted) return;
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('Toll upload failed: $e'),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
                           } finally {
-                            setState(() {
-                              _isSubmitting = false;
-                            });
+                            if (mounted) {
+                              setState(() {
+                                _isSubmitting = false;
+                              });
+                            }
                           }
                         }
                       }
@@ -917,6 +921,7 @@ class FuelEntryFormScreen extends StatefulWidget {
 class _FuelEntryFormScreenState extends State<FuelEntryFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _stationController = TextEditingController();
+  final _locationController = TextEditingController();
   final _litersController = TextEditingController();
   final _amountController = TextEditingController();
   final _odometerController = TextEditingController();
@@ -931,6 +936,7 @@ class _FuelEntryFormScreenState extends State<FuelEntryFormScreen> {
     _fetchVehicleInfo();
     if (widget.initialData != null) {
       _stationController.text = widget.initialData!['fuelStation'] ?? '';
+      _locationController.text = widget.initialData!['location'] ?? widget.initialData!['city'] ?? '';
       _litersController.text = widget.initialData!['liters']?.toString() ?? '';
       _amountController.text = widget.initialData!['amount']?.toString() ?? '';
       _odometerController.text = widget.initialData!['odometer']?.toString() ?? '';
@@ -961,6 +967,7 @@ class _FuelEntryFormScreenState extends State<FuelEntryFormScreen> {
   @override
   void dispose() {
     _stationController.dispose();
+    _locationController.dispose();
     _litersController.dispose();
     _amountController.dispose();
     _odometerController.dispose();
@@ -994,6 +1001,13 @@ class _FuelEntryFormScreenState extends State<FuelEntryFormScreen> {
                 label: 'Station Name',
                 hint: 'e.g. Shell Station',
                 validator: (val) => val == null || val.trim().isEmpty ? 'Station Name is required' : null,
+              ),
+              const SizedBox(height: 12),
+              _buildInputField(
+                controller: _locationController,
+                label: 'Fuel Purchase Location (City)',
+                hint: 'e.g. Vijayawada',
+                validator: (val) => val == null || val.trim().isEmpty ? 'Fuel Purchase Location (City) is required' : null,
               ),
               const SizedBox(height: 12),
               Row(
@@ -1131,6 +1145,7 @@ class _FuelEntryFormScreenState extends State<FuelEntryFormScreen> {
                   if (_formKey.currentState!.validate()) {
                     Navigator.pop(context, {
                       'fuelStation': _stationController.text.trim(),
+                      'location': _locationController.text.trim(),
                       'liters': double.tryParse(_litersController.text) ?? 0.0,
                       'amount': double.tryParse(_amountController.text) ?? 0.0,
                       'odometer': double.tryParse(_odometerController.text) ?? 0.0,

@@ -8,12 +8,14 @@ import '../widgets/custom_card.dart';
 import '../services/api_service.dart';
 
 class InvoiceScreen extends StatefulWidget {
+  final String? invoiceId;
   final String? invoiceNumber;
   final String? tripId;
   final Map<String, dynamic>? tripData;
 
   const InvoiceScreen({
     super.key,
+    this.invoiceId,
     this.invoiceNumber,
     this.tripId,
     this.tripData,
@@ -42,56 +44,98 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     });
 
     try {
-      final targetId = (widget.tripId != null && widget.tripId!.trim().isNotEmpty)
+      String? invId = widget.invoiceId;
+      if (invId == null || invId.trim().isEmpty) {
+        if (widget.tripData?['tripInvoice'] is Map) {
+          invId = (widget.tripData!['tripInvoice'] as Map)['invoiceId']?.toString();
+        }
+        invId ??= widget.tripData?['invoiceId']?.toString();
+      }
+
+      String? invNum = widget.invoiceNumber;
+      if (invNum == null || invNum.trim().isEmpty) {
+        if (widget.tripData?['tripInvoice'] is Map) {
+          invNum = (widget.tripData!['tripInvoice'] as Map)['invoiceNumber']?.toString();
+        }
+        invNum ??= widget.tripData?['invoiceNumber']?.toString();
+      }
+
+      final tripIdParam = (widget.tripId != null && widget.tripId!.trim().isNotEmpty)
           ? widget.tripId!
-          : (widget.tripData?['tripNumber'] ?? widget.tripData?['_id'] ?? widget.invoiceNumber ?? '');
-      final cleanId = targetId.toString().replaceAll('#', '').trim();
+          : (widget.tripData?['tripNumber'] ?? widget.tripData?['_id'] ?? '');
 
-      if (cleanId.isNotEmpty) {
-        final invRes = await ApiService.getInvoiceByTripId(cleanId);
-        if (invRes != null && invRes['data'] != null) {
-          if (mounted) {
-            setState(() {
-              _invoiceData = Map<String, dynamic>.from(invRes['data']);
-              _isLoading = false;
-              _noInvoiceExists = false;
-            });
-          }
-          return;
-        }
-      }
+      final cleanTripId = tripIdParam.toString().replaceAll('#', '').trim();
+      final cleanInvId = invId?.toString().replaceAll('#', '').trim();
+      final cleanInvNum = invNum?.toString().replaceAll('#', '').trim();
 
-      if (widget.tripData != null) {
-        final trip = widget.tripData!;
-        final invNum = trip['invoiceNumber'] ?? (trip['tripInvoice'] is Map ? trip['tripInvoice']['invoiceNumber'] : null);
-        if (invNum != null && invNum.toString().trim().isNotEmpty) {
-          if (mounted) {
-            setState(() {
-              _invoiceData = _buildInvoiceFromTrip(trip);
-              _isLoading = false;
-              _noInvoiceExists = false;
-            });
-          }
-          return;
-        }
-      }
+      final searchKey = (cleanTripId.isNotEmpty)
+          ? cleanTripId
+          : (cleanInvId != null && cleanInvId.isNotEmpty
+              ? cleanInvId
+              : (cleanInvNum ?? ''));
 
-      if (cleanId.isNotEmpty) {
-        final tripRes = await ApiService.getTripDetails(cleanId);
-        if (tripRes != null && tripRes['data'] != null) {
-          final trip = Map<String, dynamic>.from(tripRes['data']);
-          final invNum = trip['invoiceNumber'] ?? (trip['tripInvoice'] is Map ? trip['tripInvoice']['invoiceNumber'] : null);
-          if (invNum != null && invNum.toString().trim().isNotEmpty) {
+      final baseUrl = await ApiService.getBaseUrl();
+      final reqUrl = '$baseUrl/driver/invoices/trip/$searchKey';
+
+      debugPrint('==================================================');
+      debugPrint('[Flutter Invoice API Log]');
+      debugPrint('  • API URL: $reqUrl');
+
+      if (searchKey.isNotEmpty) {
+        try {
+          final invRes = await ApiService.getInvoiceByTripId(searchKey);
+
+          debugPrint('  • Response Status: ${invRes != null ? "200 Success" : "Failed / Null"}');
+          debugPrint('  • Response Body: $invRes');
+          debugPrint('==================================================');
+
+          if (invRes != null && invRes['data'] != null) {
             if (mounted) {
               setState(() {
-                _invoiceData = _buildInvoiceFromTrip(trip);
+                _invoiceData = Map<String, dynamic>.from(invRes['data']);
                 _isLoading = false;
                 _noInvoiceExists = false;
               });
             }
             return;
           }
+        } catch (apiErr) {
+          debugPrint('[InvoiceScreen API Fetch Warning]: $apiErr');
         }
+      }
+
+      if (cleanTripId.isNotEmpty && searchKey != cleanTripId) {
+        try {
+          final fallbackUrl = '$baseUrl/driver/invoices/trip/$cleanTripId';
+          debugPrint('[InvoiceScreen Fallback] API URL called: $fallbackUrl');
+          final invRes = await ApiService.getInvoiceByTripId(cleanTripId);
+          debugPrint('[InvoiceScreen Fallback] API response: $invRes');
+          if (invRes != null && invRes['data'] != null) {
+            if (mounted) {
+              setState(() {
+                _invoiceData = Map<String, dynamic>.from(invRes['data']);
+                _isLoading = false;
+                _noInvoiceExists = false;
+              });
+            }
+            return;
+          }
+        } catch (apiErr) {
+          debugPrint('[InvoiceScreen Fallback Warning]: $apiErr');
+        }
+      }
+
+      if (widget.tripData != null) {
+        final trip = widget.tripData!;
+        debugPrint('[InvoiceScreen] Rendering invoice payload directly from trip object.');
+        if (mounted) {
+          setState(() {
+            _invoiceData = _buildInvoiceFromTrip(trip);
+            _isLoading = false;
+            _noInvoiceExists = false;
+          });
+        }
+        return;
       }
 
       if (mounted) {
@@ -101,19 +145,33 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _noInvoiceExists = true;
-        });
+      debugPrint('[InvoiceScreen ERROR]: $e');
+      if (widget.tripData != null) {
+        if (mounted) {
+          setState(() {
+            _invoiceData = _buildInvoiceFromTrip(widget.tripData!);
+            _isLoading = false;
+            _noInvoiceExists = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _noInvoiceExists = true;
+          });
+        }
       }
     }
   }
 
   Map<String, dynamic> _buildInvoiceFromTrip(Map<String, dynamic> trip) {
     final invNum = trip['invoiceNumber'] ?? (trip['tripInvoice'] is Map ? trip['tripInvoice']['invoiceNumber'] : 'INV-${trip['tripNumber'] ?? '001'}');
-    double dist = 0.0;
-    if (trip['actualDistance'] != null) {
+    double dist = double.tryParse(trip['distance']?.toString() ?? '') ?? 0.0;
+    if (dist == 0.0) {
+      dist = double.tryParse(trip['totalDistance']?.toString() ?? '') ?? 0.0;
+    }
+    if (dist == 0.0 && trip['actualDistance'] != null) {
       dist = double.tryParse(trip['actualDistance'].toString()) ?? 0.0;
     }
     if (dist == 0.0 && trip['estimatedDistance'] != null) {
@@ -130,7 +188,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
     return {
       'invoiceNumber': invNum,
-      'invoiceDate': trip['createdAt'] ?? trip['actualEndTime'],
+      'invoiceDate': trip['createdAt'] ?? trip['actualEndTime'] ?? trip['departureTime'] ?? DateTime.now().toIso8601String(),
       'pdfUrl': trip['tripInvoice'] is Map ? (trip['tripInvoice']['url'] ?? '') : '',
       'status': trip['status'] == 'Completed' ? 'Paid' : 'Pending',
       'trip': trip,
@@ -148,20 +206,14 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   String _formatDate(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) return '--';
+    if (dateStr == null || dateStr.isEmpty || dateStr == 'null' || dateStr == '--') return '--';
     try {
       final dt = DateTime.parse(dateStr).toLocal();
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+      return '${dt.day.toString().padLeft(2, '0')} ${months[dt.month - 1]} ${dt.year}';
     } catch (_) {
       return dateStr;
     }
-  }
-
-  String _formatCurrency(num value) {
-    final str = value.round().toString();
-    final RegExp reg = RegExp(r'(\d)(?=(\d{3})+(?!\d))');
-    return '₹${str.replaceAllMapped(reg, (Match match) => '${match[1]},')}';
   }
 
   Future<void> _openPdfUrl(String url) async {
@@ -251,7 +303,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No Invoice Found',
+            'Invoice Not Generated',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
               color: AppColors.primaryText,
@@ -259,7 +311,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'No invoice has been generated for this trip.',
+            'Invoice not generated yet.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: AppColors.secondaryText,
             ),
@@ -273,10 +325,17 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   Widget _buildInvoiceContent(BuildContext context) {
     final inv = _invoiceData!;
     final trip = (inv['trip'] is Map) ? Map<String, dynamic>.from(inv['trip']) : <String, dynamic>{};
-    final charges = (inv['charges'] is Map) ? Map<String, dynamic>.from(inv['charges']) : <String, dynamic>{};
 
     final invoiceNumber = inv['invoiceNumber']?.toString() ?? '--';
-    final dateStr = _formatDate(inv['invoiceDate']?.toString());
+    final rawDateStr = inv['invoiceDate'] ??
+        inv['date'] ??
+        inv['createdAt'] ??
+        inv['createdDate'] ??
+        trip['createdAt'] ??
+        trip['departureTime'] ??
+        trip['departureDate'] ??
+        DateTime.now().toIso8601String();
+    final dateStr = _formatDate(rawDateStr?.toString());
     final status = (inv['status'] ?? inv['paymentStatus'] ?? (trip['status'] == 'Completed' ? 'Paid' : 'Pending')).toString();
     final pdfUrl = (inv['pdfUrl'] ?? inv['documentUrl'] ?? inv['url'] ?? '').toString();
 
@@ -294,26 +353,132 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     final fromCompanyName = pickupAddr?['companyName'] ?? '${trip['startLocation'] ?? 'Pickup'} Hub';
     final fromContactPerson = pickupAddr?['contactPerson'] ?? 'Dispatch Desk';
     final fromMobile = pickupAddr?['mobile'] ?? pickupAddr?['mobileNumber'] ?? trip['driverPhone'] ?? '--';
-    final fromStreet = pickupAddr?['streetAddress'] ?? trip['startLocation'] ?? '--';
-    final fromCity = pickupAddr?['city'] ?? trip['startLocation'] ?? '--';
-    final fromState = pickupAddr?['state'] ?? '';
 
     final toCompanyName = deliveryAddr?['companyName'] ?? '${trip['endLocation'] ?? 'Destination'} Depot';
     final toContactPerson = deliveryAddr?['contactPerson'] ?? trip['receiverName'] ?? 'Receiving Desk';
-    final toMobile = deliveryAddr?['mobile'] ?? deliveryAddr?['mobileNumber'] ?? '--';
-    final toStreet = deliveryAddr?['streetAddress'] ?? trip['endLocation'] ?? '--';
-    final toCity = deliveryAddr?['city'] ?? trip['endLocation'] ?? '--';
-    final toState = deliveryAddr?['state'] ?? '';
 
-    // Charges
-    final num freight = charges['freightCharges'] ?? 0;
-    final num loading = charges['loadingCharges'] ?? 0;
-    final num unloading = charges['unloadingCharges'] ?? 0;
-    final num fuel = charges['fuelCharges'] ?? 0;
-    final num toll = charges['tollCharges'] ?? 0;
-    final num subtotal = charges['subtotal'] ?? (freight + loading + unloading + fuel + toll);
-    final num tax = charges['gstTax'] ?? (subtotal * 0.18);
-    final num total = charges['totalAmount'] ?? (subtotal + tax);
+    String extractPhone(dynamic obj) {
+      if (obj == null) return '';
+      if (obj is Map) {
+        final p = obj['mobile'] ??
+            obj['mobileNumber'] ??
+            obj['phone'] ??
+            obj['phoneNumber'] ??
+            obj['contactPhone'] ??
+            obj['contactNumber'] ??
+            obj['contactMobile'] ??
+            obj['phoneNo'] ??
+            obj['mobileNo'] ??
+            obj['contact'];
+        if (p != null && p.toString().trim().isNotEmpty && p.toString().trim() != '--') {
+          return p.toString().trim();
+        }
+      }
+      return '';
+    }
+
+    String resolvedToMobile = extractPhone(deliveryAddr);
+    if (resolvedToMobile.isEmpty) {
+      resolvedToMobile = extractPhone(trip['deliveryAddress']);
+    }
+    if (resolvedToMobile.isEmpty) {
+      resolvedToMobile = extractPhone(trip['toAddress']);
+    }
+    if (resolvedToMobile.isEmpty) {
+      resolvedToMobile = extractPhone(trip['customer']);
+    }
+    if (resolvedToMobile.isEmpty) {
+      resolvedToMobile = extractPhone(trip['proofOfDelivery']);
+    }
+    if (resolvedToMobile.isEmpty) {
+      resolvedToMobile = extractPhone(trip['assignedManager']);
+    }
+    if (resolvedToMobile.isEmpty) {
+      final directKeys = [
+        'receiverPhone',
+        'receiverMobile',
+        'deliveryPhone',
+        'toMobile',
+        'customerPhone',
+        'customerMobile',
+        'contactPhone',
+        'destinationPhone',
+        'managerPhone',
+        'driverPhone',
+      ];
+      for (final key in directKeys) {
+        final val = trip[key]?.toString().trim();
+        if (val != null && val.isNotEmpty && val != '--') {
+          resolvedToMobile = val;
+          break;
+        }
+      }
+    }
+    final toMobile = resolvedToMobile.isNotEmpty ? resolvedToMobile : '--';
+
+    String formatFullAddress(Map<String, dynamic>? addr, Map<String, dynamic> trip, {required bool isDelivery}) {
+      final parts = <String>[];
+
+      if (addr != null) {
+        final directFull = addr['fullAddress'] ?? addr['completeAddress'] ?? addr['address'] ?? addr['addressString'];
+        if (directFull != null && directFull.toString().trim().isNotEmpty && directFull.toString().trim() != '--') {
+          return directFull.toString().trim();
+        }
+
+        final street = addr['streetAddress'] ?? addr['street'] ?? addr['line1'] ?? addr['addressLine1'];
+        final area = addr['area'] ?? addr['areaLocality'] ?? addr['locality'] ?? addr['landmark'] ?? addr['line2'];
+        final city = addr['city'] ?? addr['town'];
+        final state = addr['state'];
+        final pincode = addr['pincode'] ?? addr['postalCode'] ?? addr['zipCode'] ?? addr['pin'];
+
+        if (street != null && street.toString().trim().isNotEmpty && street.toString().trim() != '--') {
+          parts.add(street.toString().trim());
+        }
+        if (area != null && area.toString().trim().isNotEmpty && area.toString().trim() != '--') {
+          parts.add(area.toString().trim());
+        }
+        if (city != null && city.toString().trim().isNotEmpty && city.toString().trim() != '--') {
+          parts.add(city.toString().trim());
+        }
+        if (state != null && state.toString().trim().isNotEmpty && state.toString().trim() != '--') {
+          parts.add(state.toString().trim());
+        }
+        if (pincode != null && pincode.toString().trim().isNotEmpty && pincode.toString().trim() != '--') {
+          parts.add(pincode.toString().trim());
+        }
+      }
+
+      if (parts.isNotEmpty) {
+        final uniqueParts = <String>[];
+        for (final p in parts) {
+          if (!uniqueParts.contains(p)) {
+            uniqueParts.add(p);
+          }
+        }
+        return uniqueParts.join(', ');
+      }
+
+      if (isDelivery) {
+        final dest = trip['deliveryAddressString'] ??
+            trip['toAddressString'] ??
+            trip['dropLocation'] ??
+            trip['endLocation'] ??
+            trip['destination'] ??
+            '--';
+        return dest.toString().trim();
+      } else {
+        final start = trip['pickupAddressString'] ??
+            trip['fromAddressString'] ??
+            trip['pickupLocation'] ??
+            trip['startLocation'] ??
+            trip['origin'] ??
+            '--';
+        return start.toString().trim();
+      }
+    }
+
+    final fromFullAddress = formatFullAddress(pickupAddr, trip, isDelivery: false);
+    final toFullAddress = formatFullAddress(deliveryAddr, trip, isDelivery: true);
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -331,15 +496,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             fromCompanyName,
             fromContactPerson,
             fromMobile,
-            fromStreet,
-            fromCity,
-            fromState,
+            fromFullAddress,
             toCompanyName,
             toContactPerson,
             toMobile,
-            toStreet,
-            toCity,
-            toState,
+            toFullAddress,
           ),
           AppSpacing.verticalSm,
 
@@ -347,26 +508,13 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           _buildCargoVehicleCard(context, trip),
           AppSpacing.verticalSm,
 
-          // 4. Financial Summary Card
-          _buildSummaryCard(
-            context,
-            _formatCurrency(freight),
-            _formatCurrency(loading),
-            _formatCurrency(unloading),
-            _formatCurrency(fuel),
-            _formatCurrency(toll),
-            _formatCurrency(tax),
-            _formatCurrency(total),
-          ),
-          AppSpacing.verticalSm,
-
-          // 5. PDF Document Preview Card (If PDF URL exists)
+          // 4. PDF Document Preview Card (If PDF URL exists)
           if (pdfUrl.isNotEmpty) ...[
             _buildDocumentPreviewCard(context, invoiceNumber, pdfUrl),
             AppSpacing.verticalSm,
           ],
 
-          // 6. Action Footer
+          // 5. Action Footer
           _buildFooterActions(context, invoiceNumber, pdfUrl),
           const SizedBox(height: 40),
         ],
@@ -450,15 +598,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     String fromCompany,
     String fromContact,
     String fromMobile,
-    String fromStreet,
-    String fromCity,
-    String fromState,
+    String fromFullAddress,
     String toCompany,
     String toContact,
     String toMobile,
-    String toStreet,
-    String toCity,
-    String toState,
+    String toFullAddress,
   ) {
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
@@ -485,9 +629,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             company: fromCompany,
             contact: fromContact,
             mobile: fromMobile,
-            street: fromStreet,
-            city: fromCity,
-            state: fromState,
+            fullAddress: fromFullAddress,
             titleColor: AppColors.secondary,
           ),
           const SizedBox(height: 12),
@@ -496,9 +638,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             company: toCompany,
             contact: toContact,
             mobile: toMobile,
-            street: toStreet,
-            city: toCity,
-            state: toState,
+            fullAddress: toFullAddress,
             titleColor: AppColors.primary,
           ),
         ],
@@ -511,9 +651,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     required String company,
     required String contact,
     required String mobile,
-    required String street,
-    required String city,
-    required String state,
+    required String fullAddress,
     required Color titleColor,
   }) {
     return Container(
@@ -553,7 +691,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          _buildMiniDetail('Address', '$street, $city ${state.isNotEmpty ? "- $state" : ""}'),
+          _buildMiniDetail('Address', fullAddress),
         ],
       ),
     );
@@ -631,88 +769,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       ),
     );
   }
-
-  Widget _buildSummaryCard(
-    BuildContext context,
-    String freight,
-    String loading,
-    String unloading,
-    String fuel,
-    String toll,
-    String tax,
-    String grandTotal,
-  ) {
-    return CustomCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF0F4FA),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(AppRadius.lg),
-                topRight: Radius.circular(AppRadius.lg),
-              ),
-            ),
-            child: const Text(
-              'Charges Summary',
-              style: TextStyle(
-                color: AppColors.primaryText,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                _buildSummaryRow('Freight Charges', freight),
-                const SizedBox(height: 10),
-                _buildSummaryRow('Loading Charges', loading),
-                const SizedBox(height: 10),
-                _buildSummaryRow('Unloading Charges', unloading),
-                const SizedBox(height: 10),
-                _buildSummaryRow('Fuel Expenses', fuel),
-                const SizedBox(height: 10),
-                _buildSummaryRow('Toll Charges', toll),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12.0),
-                  child: Divider(color: AppColors.divider),
-                ),
-                _buildSummaryRow('GST / Tax (18%)', tax),
-                const SizedBox(height: 14),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Total Amount',
-                      style: TextStyle(
-                        color: AppColors.primaryText,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      grandTotal,
-                      style: const TextStyle(
-                        color: AppColors.secondary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDocumentPreviewCard(BuildContext context, String invoiceNum, String pdfUrl) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -806,28 +862,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     );
   }
 
-  Widget _buildSummaryRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.secondaryText,
-            fontSize: 13,
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppColors.primaryText,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildInfoRow(String label, String value, {bool alignRight = false}) {
     return Column(

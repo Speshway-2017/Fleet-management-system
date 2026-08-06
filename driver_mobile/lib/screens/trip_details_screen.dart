@@ -1,5 +1,3 @@
-// ignore_for_file: unused_import
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
@@ -20,7 +18,11 @@ class TripDetailsScreen extends StatefulWidget {
   final String tripId;
   final Map<String, dynamic>? tripData;
 
-  const TripDetailsScreen({super.key, required this.tripId, this.tripData});
+  const TripDetailsScreen({
+    super.key,
+    required this.tripId,
+    this.tripData,
+  });
 
   @override
   State<TripDetailsScreen> createState() => _TripDetailsScreenState();
@@ -29,8 +31,6 @@ class TripDetailsScreen extends StatefulWidget {
 class _TripDetailsScreenState extends State<TripDetailsScreen> {
   bool _isLoading = false;
   bool _isSubmitting = false;
-  bool _isUploadingPod = false;
-  bool _isUploadingWeighbridge = false;
   Map<String, dynamic>? _trip;
 
   Future<void> printInvoice(Map<String, dynamic> trip, String invoiceNumber) async {
@@ -45,6 +45,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final vehicleName = trip['vehicleName'] ?? 'N/A';
     final vehiclePlate = trip['vehiclePlate'] ?? 'N/A';
     final driverName = trip['driverName'] ?? 'N/A';
+    final driverPhone = trip['driverPhone'] ?? 'N/A';
     final managerName = trip['manager'] != null ? trip['manager']['name'] ?? 'N/A' : 'N/A';
 
     final htmlContent = '''
@@ -63,54 +64,87 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     .meta-item { display: flex; flex-direction: column; }
     .meta-label { font-weight: bold; color: #4b5563; font-size: 10px; text-transform: uppercase; }
     .meta-val { font-weight: bold; color: #111827; margin-top: 4px; }
-    .details-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
-    .details-table th { background: #1e293b; color: #fff; text-align: left; padding: 10px; font-weight: 600; }
-    .details-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
-    .footer { border-top: 1px solid #e2e8f0; padding-top: 15px; text-align: center; font-size: 11px; color: #94a3b8; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .section-title { font-size: 14px; font-weight: bold; color: #1e3a8a; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 10px; text-transform: uppercase; }
+    .detail-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
+    .detail-label { color: #666; }
+    .detail-val { font-weight: bold; color: #333; }
+    .footer { text-align: center; font-size: 11px; color: #999; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; }
   </style>
 </head>
 <body>
   <div class="invoice-box">
     <div class="header">
-      <div class="logo">FLEET<span>LOGIX</span></div>
+      <div class="logo">Speshway <span>Logistics</span></div>
       <div class="company-details">
-        <strong>Fleet Management System</strong><br>
-        Trip Electronic Receipt & Manifest<br>
-        Date: $invoiceDateStr
+        <strong>Speshway Logistics Pvt Ltd</strong><br>
+        Plot 45, Industrial Depot, Sector 3<br>
+        Pune, Maharashtra, 411018<br>
+        Phone: +91 20 5566 7788 | billing@speshway.com
       </div>
     </div>
+    
     <div class="invoice-meta">
-      <div class="meta-item"><span class="meta-label">Invoice No</span><span class="meta-val">$invoiceNumber</span></div>
-      <div class="meta-item"><span class="meta-label">Vehicle</span><span class="meta-val">$vehicleName ($vehiclePlate)</span></div>
-      <div class="meta-item"><span class="meta-label">Driver</span><span class="meta-val">$driverName</span></div>
-      <div class="meta-item"><span class="meta-label">Manager</span><span class="meta-val">$managerName</span></div>
+      <div class="meta-item">
+        <span class="meta-label">Invoice Number</span>
+        <span class="meta-val">$invoiceNumber</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Invoice Date</span>
+        <span class="meta-val">$invoiceDateStr</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Trip ID</span>
+        <span class="meta-val">${trip['tripNumber']}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Status</span>
+        <span class="meta-val">${trip['status']}</span>
+      </div>
     </div>
-    <table class="details-table">
-      <thead>
-        <tr><th>Description</th><th>Details</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Origin</td><td>$startLocation</td></tr>
-        <tr><td>Destination</td><td>$endLocation</td></tr>
-        <tr><td>Departure Time</td><td>$departureTime</td></tr>
-        <tr><td>ETA</td><td>$eta</td></tr>
-        <tr><td>Distance</td><td>$distance</td></tr>
-        <tr><td>Cargo Type</td><td>$cargoType</td></tr>
-        <tr><td>Cargo Weight</td><td>$cargoWeight</td></tr>
-      </tbody>
-    </table>
+
+    <div class="grid">
+      <div>
+        <div class="section-title">Trip Information</div>
+        <div class="detail-row"><span class="detail-label">Pickup Location</span><span class="detail-val">$startLocation</span></div>
+        <div class="detail-row"><span class="detail-label">Destination</span><span class="detail-val">$endLocation</span></div>
+        <div class="detail-row"><span class="detail-label">Departure</span><span class="detail-val">$departureTime</span></div>
+        <div class="detail-row"><span class="detail-label">ETA</span><span class="detail-val">$eta</span></div>
+        <div class="detail-row"><span class="detail-label">Distance</span><span class="detail-val">$distance</span></div>
+        <div class="detail-row"><span class="detail-label">Cargo Type</span><span class="detail-val">$cargoType</span></div>
+        <div class="detail-row"><span class="detail-label">Cargo Weight</span><span class="detail-val">$cargoWeight</span></div>
+      </div>
+      
+      <div>
+        <div class="section-title">Asset & Driver Information</div>
+        <div class="detail-row"><span class="detail-label">Vehicle Name</span><span class="detail-val">$vehicleName</span></div>
+        <div class="detail-row"><span class="detail-label">Registration Number</span><span class="detail-val">$vehiclePlate</span></div>
+        <div class="detail-row"><span class="detail-label">Driver Name</span><span class="detail-val">$driverName</span></div>
+        <div class="detail-row"><span class="detail-label">Mobile Number</span><span class="detail-val">$driverPhone</span></div>
+        <div class="detail-row"><span class="detail-label">Manager</span><span class="detail-val">$managerName</span></div>
+      </div>
+    </div>
+
     <div class="footer">
       Thank you for your business. This is an auto-generated electronic document.
     </div>
   </div>
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+      }, 500);
+    }
+  </script>
 </body>
 </html>
-''';
+  ''';
 
     final bytes = utf8.encode(htmlContent);
     final base64Str = base64.encode(bytes);
     final urlStr = 'data:text/html;base64,$base64Str';
     final uri = Uri.parse(urlStr);
+    
     try {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
@@ -124,68 +158,231 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
-  Widget _buildDocumentRow(
-    String label,
-    String status, {
-    required bool isUploaded,
-    required bool isUploading,
-    VoidCallback? onUpload,
-  }) {
+
+
+  Widget _buildDocumentStatusRow(String label, String rawStatusStr) {
+    final statusTrim = rawStatusStr.trim();
+    final statusLower = statusTrim.toLowerCase();
+
+    Color badgeBg;
+    Color badgeText;
+    String displayStatus;
+    IconData statusIcon;
+
+    if (statusLower == 'approved') {
+      displayStatus = 'Approved';
+      badgeBg = const Color(0xFFDCFCE7);
+      badgeText = const Color(0xFF15803D);
+      statusIcon = Icons.check_circle_rounded;
+    } else if (statusLower == 'rejected') {
+      displayStatus = 'Rejected';
+      badgeBg = const Color(0xFFFEE2E2);
+      badgeText = const Color(0xFFB91C1C);
+      statusIcon = Icons.cancel_rounded;
+    } else if (statusLower == 'pending' || statusLower == 'pending approval' || statusLower == 'waiting for manager approval') {
+      displayStatus = 'Pending Approval';
+      badgeBg = const Color(0xFFFEF3C7);
+      badgeText = const Color(0xFFB45309);
+      statusIcon = Icons.hourglass_top_rounded;
+    } else if (statusLower == 'uploaded') {
+      displayStatus = 'Uploaded';
+      badgeBg = const Color(0xFFDBEAFE);
+      badgeText = const Color(0xFF1D4ED8);
+      statusIcon = Icons.task_alt_rounded;
+    } else {
+      displayStatus = 'Not Uploaded';
+      badgeBg = const Color(0xFFF3F4F6);
+      badgeText = const Color(0xFF6B7280);
+      statusIcon = Icons.remove_circle_outline_rounded;
+    }
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Text(
+              label,
+              style: GoogleFonts.nunito(
+                fontSize: 13,
+                color: AppColors.primaryText,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: badgeBg,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
+                Icon(statusIcon, size: 14, color: badgeText),
+                const SizedBox(width: 5),
                 Text(
-                  label,
-                  style: GoogleFonts.nunito(
-                    fontSize: 13,
-                    color: AppColors.secondaryText,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  status,
+                  displayStatus,
                   style: GoogleFonts.poppins(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: isUploaded ? const Color(0xFF16A34A) : Colors.orange,
+                    color: badgeText,
                   ),
                 ),
               ],
             ),
           ),
-          if (onUpload != null)
-            ElevatedButton(
-              onPressed: isUploading ? null : onUpload,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isUploaded ? AppColors.secondary : AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                minimumSize: const Size(80, 32),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-              ),
-              child: isUploading
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : Text(
-                      isUploaded ? 'Re-upload' : 'Upload',
-                      style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-            ),
         ],
       ),
     );
   }
 
+
+
   Widget _buildInvoiceDetailRow(String label, String value) {
     final hasInvoice = value != 'N/A' && value.isNotEmpty;
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
+    Widget buildViewButton() {
+      return InkWell(
+        onTap: () {
+          String? invId;
+          if (_trip?['tripInvoice'] is Map) {
+            invId = (_trip!['tripInvoice'] as Map)['invoiceId']?.toString();
+          }
+          invId ??= _trip?['invoiceId']?.toString();
+
+          String? invNum = value.isNotEmpty ? value : _trip?['invoiceNumber']?.toString();
+          if ((invNum == null || invNum.isEmpty) && _trip?['tripInvoice'] is Map) {
+            invNum = (_trip!['tripInvoice'] as Map)['invoiceNumber']?.toString();
+          }
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => InvoiceScreen(
+                invoiceId: invId,
+                invoiceNumber: invNum,
+                tripId: widget.tripId,
+                tripData: _trip,
+              ),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.secondary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.visibility,
+                size: 13,
+                color: AppColors.secondary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'View',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.secondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget buildDownloadButton() {
+      return InkWell(
+        onTap: () => printInvoice(_trip!, value),
+        borderRadius: BorderRadius.circular(4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.success.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.download,
+                size: 13,
+                color: AppColors.success,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Download',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.success,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (isMobile) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.nunito(
+                      fontSize: 13,
+                      color: AppColors.secondaryText,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    value,
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryText,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                  ),
+                ),
+              ],
+            ),
+            if (hasInvoice) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(child: buildViewButton()),
+                  const SizedBox(width: 8),
+                  Expanded(child: buildDownloadButton()),
+                ],
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
@@ -212,80 +409,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
               if (hasInvoice) ...[
                 const SizedBox(width: 8),
-                InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => InvoiceScreen(
-                          tripId: widget.tripId,
-                          invoiceNumber: value,
-                          tripData: _trip,
-                        ),
-                      ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.visibility,
-                          size: 12,
-                          color: AppColors.secondary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'View',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.secondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                buildViewButton(),
                 const SizedBox(width: 6),
-                InkWell(
-                  onTap: () => printInvoice(_trip!, value),
-                  borderRadius: BorderRadius.circular(4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.download,
-                          size: 12,
-                          color: AppColors.success,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Download',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.success,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                buildDownloadButton(),
               ],
             ],
           ),
@@ -322,6 +448,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
+  bool _isShowingDocumentPopup = false;
+
   Future<void> _fetchTripDetails() async {
     if (!mounted) return;
     setState(() {
@@ -336,6 +464,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             _trip = res['data'];
             _isLoading = false;
           });
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            checkPendingDocumentPopup();
+          });
         }
       } else {
         if (mounted) {
@@ -344,12 +475,75 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           });
         }
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Error in _fetchTripDetails: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  void checkPendingDocumentPopup() {
+    if (!mounted || _trip == null || _isShowingDocumentPopup) return;
+
+    final rawStatus = (_trip?['status'] ?? '').toString().trim();
+    final statusUpper = rawStatus.toUpperCase();
+    final isTripEndedFlag = _trip?['tripEnded'] == true || _trip?['customerLocationReached'] == true;
+
+    final isEnded = isTripEndedFlag ||
+        statusUpper == 'ENDED' ||
+        statusUpper == 'REACHED DESTINATION' ||
+        statusUpper == 'TRIP ENDED';
+
+    final tripCompletionRequested = _trip?['tripCompletionRequested'] == true ||
+        _trip?['documentsSubmitted'] == true ||
+        statusUpper == 'WAITING FOR MANAGER APPROVAL' ||
+        statusUpper == 'COMPLETED' ||
+        statusUpper == 'WAITING_FOR_MANAGER_APPROVAL';
+
+    final podObj = _trip?['proofOfDelivery'] is Map ? _trip!['proofOfDelivery'] as Map : {};
+    final podDetails = _trip?['podDetails'] is Map ? _trip!['podDetails'] as Map : {};
+    final podStatusRaw = (_trip?['podStatus'] ?? podObj['status'] ?? podDetails['status'] ?? '').toString().trim();
+    final podUrlRaw = (_trip?['podUrl'] ?? podObj['url'] ?? podObj['deliveryPhotoUrl'] ?? podDetails['podDocumentUrl'] ?? '').toString().trim();
+    final podStatusUpper = podStatusRaw.toUpperCase();
+    final isPodUploadedOrSubmitted = (podStatusUpper == 'UPLOADED' || podStatusUpper == 'SUBMITTED' || podStatusUpper == 'APPROVED' || podUrlRaw.isNotEmpty) && podStatusUpper != 'NOT UPLOADED';
+
+    final wbObj = _trip?['weighbridgeSlip'] is Map ? _trip!['weighbridgeSlip'] as Map : {};
+    final wbDetails = _trip?['weighbridgeDetails'] is Map ? _trip!['weighbridgeDetails'] as Map : {};
+    final wbStatusRaw = (_trip?['weighbridgeStatus'] ?? wbObj['status'] ?? wbDetails['status'] ?? '').toString().trim();
+    final wbUrlRaw = (_trip?['weighbridgeUrl'] ?? wbObj['documentUrl'] ?? wbObj['url'] ?? wbDetails['documentUrl'] ?? '').toString().trim();
+    final wbStatusUpper = wbStatusRaw.toUpperCase();
+    final isWbUploadedOrSubmitted = (wbStatusUpper == 'UPLOADED' || wbStatusUpper == 'SUBMITTED' || wbStatusUpper == 'APPROVED' || wbUrlRaw.isNotEmpty) && wbStatusUpper != 'NOT UPLOADED';
+
+    final missingDocs = (!isPodUploadedOrSubmitted || !isWbUploadedOrSubmitted);
+
+    final shouldShowPopup = isEnded && !tripCompletionRequested && missingDocs;
+
+    debugPrint('================= PENDING DOCUMENT POPUP DEBUG LOGS =================');
+    debugPrint('trip.status: "$rawStatus" (statusUpper: "$statusUpper", isTripEndedFlag: $isTripEndedFlag, isEnded: $isEnded)');
+    debugPrint('podStatus: "$podStatusRaw" (podUrl: "$podUrlRaw", isPodUploadedOrSubmitted: $isPodUploadedOrSubmitted)');
+    debugPrint('weighbridgeStatus: "$wbStatusRaw" (wbUrl: "$wbUrlRaw", isWbUploadedOrSubmitted: $isWbUploadedOrSubmitted)');
+    debugPrint('documentsSubmitted / tripCompletionRequested: $tripCompletionRequested');
+    debugPrint('missingDocs condition: $missingDocs');
+    debugPrint('POPUP CONDITION RESULT: $shouldShowPopup');
+    debugPrint('=====================================================================');
+
+    if (shouldShowPopup) {
+      _isShowingDocumentPopup = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        await UploadRequiredDocumentsDialog.show(
+          context,
+          tripId: widget.tripId,
+          tripData: _trip,
+        );
+        _isShowingDocumentPopup = false;
+        if (mounted) {
+          await _fetchTripDetails();
+        }
+      });
     }
   }
 
@@ -386,14 +580,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       final res = await ApiService.endTrip(cleanId);
       if (res != null) {
         await _fetchTripDetails();
-        if (mounted) {
-          await UploadRequiredDocumentsDialog.show(
-            context,
-            tripId: widget.tripId,
-            tripData: _trip,
-          );
-          await _fetchTripDetails();
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -464,90 +650,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
-  Future<void> _uploadPodFromDetails() async {
-    setState(() => _isUploadingPod = true);
-    try {
-      final rawId = _trip?['tripId'] ?? _trip?['_id'] ?? widget.tripId;
-      final cleanId = rawId.toString().replaceAll('#', '').trim();
-      await ApiService.uploadProofOfDelivery(
-        tripId: cleanId,
-        customerName: _trip?['deliveryAddress']?['contactPerson'] ?? 'Customer Receiver',
-        receiverName: 'Verified Receiver',
-        customerSignatureUrl: '',
-        deliveryPhotoUrl: '',
-        podDocumentUrl: '',
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Proof of Delivery (POD) uploaded successfully!'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        _fetchTripDetails();
-      }
-    } catch (e, stack) {
-      debugPrint('POD Upload Exception: $e\n$stack');
-      if (mounted) {
-        final errStr = e.toString().replaceAll('Exception: ', '');
-        final isEngineError = errStr.contains('is not defined') || errStr.contains('ReferenceError') || errStr.contains('TypeError');
-        final msg = isEngineError ? 'Unable to upload document. Please try again.' : errStr;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isUploadingPod = false);
-    }
-  }
-
-  Future<void> _uploadWeighbridgeFromDetails() async {
-    setState(() => _isUploadingWeighbridge = true);
-    try {
-      final rawId = _trip?['tripId'] ?? _trip?['_id'] ?? widget.tripId;
-      final cleanId = rawId.toString().replaceAll('#', '').trim();
-      await ApiService.uploadWeighbridgeSlip(
-        tripId: cleanId,
-        grossWeight: 25000,
-        tareWeight: 10000,
-        netWeight: 15000,
-        location: _trip?['endLocation'] ?? 'Highway Weighbridge Station',
-        documentUrl: '',
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Weighbridge Slip uploaded successfully!'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        _fetchTripDetails();
-      }
-    } catch (e, stack) {
-      debugPrint('Weighbridge Upload Exception: $e\n$stack');
-      if (mounted) {
-        final errStr = e.toString().replaceAll('Exception: ', '');
-        final isEngineError = errStr.contains('is not defined') || errStr.contains('ReferenceError') || errStr.contains('TypeError');
-        final msg = isEngineError ? 'Unable to upload document. Please try again.' : errStr;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isUploadingWeighbridge = false);
-    }
-  }
-
   Future<void> _handleCompleteTrip() async {
     final submitted = await UploadRequiredDocumentsDialog.show(
       context,
@@ -568,11 +670,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final cleanId = rawId.toString().replaceAll('#', '');
 
     try {
-      if (action == 'accept') {
-        await ApiService.acceptTrip(cleanId);
-      } else {
-        await ApiService.rejectTrip(cleanId);
-      }
+      await ApiService.respondToTripAssignment(cleanId, action);
       if (mounted) {
         if (action == 'accept') {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -658,14 +756,23 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         : (isAcceptedOrScheduled ? AppColors.secondary : (isCompleted ? AppColors.success : Colors.blue));
 
     // Dynamic or fallback locations
-    final origin = _trip?['pickup'] ?? _trip?['startLocation'] ?? 'Hyderabad';
-    final destination = _trip?['destination'] ?? _trip?['endLocation'] ?? 'Chennai';
-    final distanceVal = _trip?['estimatedDistance'] ?? _trip?['distance'];
+    final origin = _trip?['pickup'] ?? _trip?['startLocation'] ?? 'N/A';
+    final destination = _trip?['destination'] ?? _trip?['endLocation'] ?? 'N/A';
+    final distanceVal = _trip?['distance'] ?? _trip?['totalDistance'] ?? _trip?['estimatedDistance'] ?? _trip?['actualDistance'];
     final distance = (distanceVal != null && distanceVal != 0 && distanceVal != '0')
-        ? (distanceVal.toString().endsWith('km') || distanceVal.toString().endsWith('mi')
+        ? (distanceVal.toString().toLowerCase().endsWith('km') || distanceVal.toString().toLowerCase().endsWith('mi')
             ? distanceVal.toString()
             : '$distanceVal km')
-        : '285 km';
+        : '0 km';
+
+    debugPrint('==================================================');
+    debugPrint('[Driver TripDetailsScreen Distance Debug]');
+    debugPrint('  • Trip ID: ${widget.tripId}');
+    debugPrint('  • Origin: $origin');
+    debugPrint('  • Destination: $destination');
+    debugPrint('  • Distance received from backend: $distanceVal');
+    debugPrint('  • Distance displayed on the UI: $distance');
+    debugPrint('==================================================');
     final estTime = formatIndianDateTime(_trip?['eta']);
 
     // Driver/Vehicle details
@@ -675,7 +782,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final truckId = (vehicleName.isNotEmpty && vehiclePlate.isNotEmpty)
         ? '$vehicleName ($vehiclePlate)'
         : (vehiclePlate.isNotEmpty ? vehiclePlate : (vehicleName.isNotEmpty ? vehicleName : (_trip?['vehicle'] ?? 'Unassigned')));
-    final weight = _trip?['cargoWeight'] != null ? '${_trip!['cargoWeight']} Tons' : 'N/A';
+    final weight = _trip?['cargoWeight'] != null ? '${_trip!['cargoWeight']} kg' : 'N/A';
     final managerName = _trip?['manager'] != null ? _trip!['manager']['name'] : 'N/A';
 
     // Manifest nodes
@@ -721,68 +828,51 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'TRIP ID: $activeId',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.secondaryText,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'TRIP ID',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.secondaryText,
+                                      ),
+                                    ),
+                                    Text(
+                                      activeId.startsWith('#') ? activeId : '#$activeId',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primaryText,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: statusColor.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
                                   statusText,
                                   style: GoogleFonts.poppins(
+                                    color: statusColor,
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    color: statusColor,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              const Icon(Icons.my_location, color: AppColors.primary, size: 18),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  origin,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primaryText,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.only(left: 8),
-                            child: Icon(Icons.more_vert, color: AppColors.secondaryText, size: 16),
-                          ),
-                          Row(
-                            children: [
-                              const Icon(Icons.location_on, color: AppColors.secondary, size: 18),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  destination,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primaryText,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          AppSpacing.verticalMd,
+                          // Multi-city Route & Fuel Stops Timeline
+                          _buildRouteTimelineWidget(_trip),
                         ],
                       ),
                     ),
@@ -826,10 +916,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 width: 42,
                                 height: 42,
                                 decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.white24,
-                                    width: 1.5,
-                                  ),
+                                  border: Border.all(color: Colors.white24, width: 1.5),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: const Icon(
@@ -949,32 +1036,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           const Divider(height: 24, color: AppColors.divider),
                           Builder(
                             builder: (context) {
-                              final rawStatus = (_trip?['status'] ?? '').toString().toLowerCase();
-                              final isEnded = _isTripEnded(_trip);
-                              final isLocked = rawStatus == 'waiting for manager approval' || rawStatus == 'completed';
-                              final canUpload = isEnded && !isLocked;
-
-                              final podStatusStr = isEnded ? (_trip?['podStatus'] ?? 'Not Uploaded').toString() : 'Not Uploaded';
-                              final wbStatusStr = isEnded ? (_trip?['weighbridgeStatus'] ?? 'Not Uploaded').toString() : 'Not Uploaded';
-                              final hasPod = ['uploaded', 'pending', 'approved'].contains(podStatusStr.toLowerCase());
-                              final hasWb = ['uploaded', 'pending', 'approved'].contains(wbStatusStr.toLowerCase());
+                              final podStatusStr = (_trip?['podStatus'] ?? _trip?['proofOfDelivery']?['status'] ?? 'Not Uploaded').toString();
+                              final wbStatusStr = (_trip?['weighbridgeStatus'] ?? _trip?['weighbridgeSlip']?['status'] ?? 'Not Uploaded').toString();
 
                               return Column(
                                 children: [
-                                  _buildDocumentRow(
-                                    'Proof of Delivery (POD)',
-                                    podStatusStr,
-                                    isUploaded: hasPod,
-                                    isUploading: _isUploadingPod,
-                                    onUpload: canUpload ? _uploadPodFromDetails : null,
-                                  ),
-                                  _buildDocumentRow(
-                                    'Weighbridge Slip',
-                                    wbStatusStr,
-                                    isUploaded: hasWb,
-                                    isUploading: _isUploadingWeighbridge,
-                                    onUpload: canUpload ? _uploadWeighbridgeFromDetails : null,
-                                  ),
+                                  _buildDocumentStatusRow('Proof of Delivery (POD)', podStatusStr),
+                                  _buildDocumentStatusRow('Weighbridge Slip', wbStatusStr),
                                 ],
                               );
                             },
@@ -1027,13 +1095,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     CustomCard(
                       padding: const EdgeInsets.all(16),
                       child: Column(
-                        children: List.generate(manifestNodes.length, (index) {
-                          final node = manifestNodes[index];
-                          return _buildManifestNodeItem(
-                            node: node,
-                            isLast: index == manifestNodes.length - 1,
-                          );
-                        }),
+                        children: List.generate(
+                          manifestNodes.length,
+                          (index) {
+                            final node = manifestNodes[index];
+                            return _buildManifestNodeItem(
+                              node: node,
+                              isLast: index == manifestNodes.length - 1,
+                            );
+                          },
+                        ),
                       ),
                     ),
 
@@ -1044,18 +1115,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         children: [
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: _isSubmitting
-                                  ? null
-                                  : () => _handleRespond('reject'),
+                              onPressed: _isSubmitting ? null : () => _handleRespond('reject'),
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(
-                                  color: AppColors.error,
-                                  width: 1.5,
-                                ),
+                                side: const BorderSide(color: AppColors.error, width: 1.5),
                                 foregroundColor: AppColors.error,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14.0,
-                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 14.0),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10.0),
                                 ),
@@ -1072,16 +1136,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: _isSubmitting
-                                  ? null
-                                  : () => _handleRespond('accept'),
+                              onPressed: _isSubmitting ? null : () => _handleRespond('accept'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.success,
                                 foregroundColor: Colors.white,
                                 elevation: 0,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14.0,
-                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 14.0),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10.0),
                                 ),
@@ -1090,10 +1150,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                   ? const SizedBox(
                                       width: 20,
                                       height: 20,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                     )
                                   : Text(
                                       'Accept Trip',
@@ -1442,7 +1499,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             left: 10,
             top: 20,
             bottom: 0,
-            child: Container(width: 1.5, color: AppColors.secondary),
+            child: Container(
+              width: 1.5,
+              color: AppColors.secondary,
+            ),
           ),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1453,12 +1513,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: node.isCompleted
-                    ? AppColors.secondary
-                    : AppColors.divider,
+                color: node.isCompleted ? AppColors.secondary : AppColors.divider,
               ),
               child: node.isCompleted
-                  ? const Icon(Icons.check, color: Colors.white, size: 14)
+                  ? const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 14,
+                    )
                   : const SizedBox(),
             ),
             const SizedBox(width: 14),
@@ -1497,9 +1559,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: node.isCompleted
-                            ? AppColors.secondary
-                            : AppColors.secondaryText,
+                        color: node.isCompleted ? AppColors.secondary : AppColors.secondaryText,
                       ),
                     ),
                   ],
@@ -1511,6 +1571,251 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       ],
     );
   }
+
+  List<_RouteNode> _buildRouteNodesList(Map<String, dynamic>? trip) {
+    final originFull = (trip?['startLocation'] ?? trip?['pickup'] ?? 'Origin').toString();
+    final destFull = (trip?['endLocation'] ?? trip?['destination'] ?? 'Destination').toString();
+
+    final originCity = originFull.split(',')[0].trim();
+    final destCity = destFull.split(',')[0].trim();
+
+    List<String> rawWaypoints = [];
+    if (trip?['routeCities'] is List) {
+      rawWaypoints = (trip!['routeCities'] as List).map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
+    } else if (trip?['intermediateCities'] is List) {
+      rawWaypoints = (trip!['intermediateCities'] as List).map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
+    } else if (trip?['route'] is List) {
+      rawWaypoints = (trip!['route'] as List).map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
+    }
+
+    if (rawWaypoints.isEmpty) {
+      final oLower = originCity.toLowerCase();
+      final dLower = destCity.toLowerCase();
+      if (oLower.contains('hyderabad') && dLower.contains('vijayawada')) {
+        rawWaypoints = ['Suryapet', 'Kodad', 'Nandigama'];
+      } else if (oLower.contains('vijayawada') && dLower.contains('hyderabad')) {
+        rawWaypoints = ['Nandigama', 'Kodad', 'Suryapet'];
+      } else if (oLower.contains('hyderabad') && dLower.contains('khammam')) {
+        rawWaypoints = ['Suryapet'];
+      } else if (oLower.contains('chennai') && dLower.contains('bengaluru')) {
+        rawWaypoints = ['Vellore', 'Krishnagiri'];
+      }
+    }
+
+    List<Map<String, dynamic>> fuelEntries = [];
+    if (trip?['fuelEntries'] is List) {
+      fuelEntries = (trip!['fuelEntries'] as List).cast<Map<String, dynamic>>();
+    } else if (trip?['fuelDetails'] is Map<String, dynamic>) {
+      fuelEntries = [trip!['fuelDetails'] as Map<String, dynamic>];
+    }
+
+    Map<String, Map<String, dynamic>> fuelByCity = {};
+    for (final f in fuelEntries) {
+      final loc = (f['location'] ?? f['city'] ?? '').toString().trim();
+      if (loc.isNotEmpty) {
+        fuelByCity[loc.toLowerCase()] = f;
+      }
+    }
+
+    List<_RouteNode> nodes = [];
+
+    nodes.add(_RouteNode(
+      city: originCity,
+      role: 'origin',
+      fuelData: fuelByCity[originCity.toLowerCase()],
+    ));
+
+    for (final wp in rawWaypoints) {
+      if (wp.toLowerCase() == originCity.toLowerCase() || wp.toLowerCase() == destCity.toLowerCase()) continue;
+      final fData = fuelByCity[wp.toLowerCase()];
+      nodes.add(_RouteNode(
+        city: wp,
+        role: fData != null ? 'fuel_stop' : 'waypoint',
+        fuelData: fData,
+      ));
+    }
+
+    for (final f in fuelEntries) {
+      final fCity = (f['location'] ?? f['city'] ?? '').toString().trim();
+      if (fCity.isEmpty) continue;
+      final fLower = fCity.toLowerCase();
+      final alreadyIncluded = nodes.any((n) => n.city.toLowerCase() == fLower) || destCity.toLowerCase() == fLower;
+      if (!alreadyIncluded) {
+        nodes.add(_RouteNode(
+          city: fCity,
+          role: 'fuel_stop',
+          fuelData: f,
+        ));
+      }
+    }
+
+    nodes.add(_RouteNode(
+      city: destCity,
+      role: 'destination',
+      fuelData: fuelByCity[destCity.toLowerCase()],
+    ));
+
+    return nodes;
+  }
+
+  Widget _buildRouteTimelineWidget(Map<String, dynamic>? trip) {
+    final nodes = _buildRouteNodesList(trip);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.alt_route_rounded, color: AppColors.secondary, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              'ONGOING TRIP ROUTE & FUEL STOPS',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: AppColors.secondaryText,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: nodes.length,
+          itemBuilder: (context, index) {
+            final node = nodes[index];
+            final isFirst = index == 0;
+            final isLast = index == nodes.length - 1;
+            final isFuel = node.role == 'fuel_stop' || node.fuelData != null;
+
+            Color dotColor = isFirst
+                ? const Color(0xFF3B82F6)
+                : (isLast
+                    ? const Color(0xFFEF4444)
+                    : (isFuel ? AppColors.success : const Color(0xFF64748B)));
+
+            IconData iconData = isFirst
+                ? Icons.trip_origin_rounded
+                : (isLast
+                    ? Icons.location_on_rounded
+                    : (isFuel ? Icons.local_gas_station_rounded : Icons.location_city_rounded));
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: isFuel ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8) : const EdgeInsets.symmetric(vertical: 2),
+                  decoration: isFuel
+                      ? BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF86EFAC)),
+                        )
+                      : null,
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: dotColor.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(iconData, size: 16, color: dotColor),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (isFuel) ...[
+                              Row(
+                                children: [
+                                  const Icon(Icons.location_on_rounded, size: 14, color: AppColors.success),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      '🟢 Fuel Purchased – ${node.city}',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF15803D),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (node.fuelData != null) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${node.fuelData!['fuelStation'] ?? 'Fuel Station'} • ${node.fuelData!['liters'] ?? 0}L',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF166534),
+                                  ),
+                                ),
+                              ],
+                            ] else ...[
+                              Row(
+                                children: [
+                                  const Icon(Icons.location_on_outlined, size: 14, color: AppColors.secondaryText),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    isFirst ? 'Origin (${node.city})' : (isLast ? 'Destination (${node.city})' : node.city),
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13.5,
+                                      fontWeight: isFirst || isLast ? FontWeight.bold : FontWeight.w600,
+                                      color: AppColors.primaryText,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!isLast)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 14.0, top: 4.0, bottom: 4.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 2,
+                          height: 16,
+                          color: nodes[index + 1].role == 'fuel_stop' ? AppColors.success : AppColors.divider,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '↓',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: nodes[index + 1].role == 'fuel_stop' ? AppColors.success : AppColors.secondaryText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _RouteNode {
+  final String city;
+  final String role; // 'origin', 'waypoint', 'fuel_stop', 'destination'
+  final Map<String, dynamic>? fuelData;
+
+  _RouteNode({required this.city, required this.role, this.fuelData});
 }
 
 class _ManifestNode {
