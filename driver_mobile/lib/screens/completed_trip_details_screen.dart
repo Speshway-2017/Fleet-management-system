@@ -10,7 +10,6 @@ import '../services/api_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'invoice_screen.dart';
 import 'toll_fee_receipt_screen.dart';
-import 'add_fuel_entry_screen.dart';
 
 class CompletedTripDetailsScreen extends StatefulWidget {
   final String tripId;
@@ -1140,38 +1139,6 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
   Widget _buildFooterActions(BuildContext context) {
     return Column(
       children: [
-        ElevatedButton.icon(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AddFuelEntryScreen(
-                  tripId: _trip?['_id']?.toString() ?? widget.tripId,
-                ),
-              ),
-            );
-          },
-          icon: const Icon(Icons.local_gas_station_rounded, color: Colors.white, size: 20),
-          label: const Text(
-            'Record Fuel Purchase',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.secondary,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            minimumSize: const Size(double.infinity, 48),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
         ElevatedButton.icon(
           onPressed: _downloadTripReport,
           icon: const Icon(Icons.download_outlined, color: Colors.white, size: 20),

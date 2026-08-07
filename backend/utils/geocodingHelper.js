@@ -85,7 +85,20 @@ const LOCAL_COORDINATES = {
   "indore": [22.7196, 75.8577],
   "goa": [15.2993, 74.1240],
   "satara": [17.6805, 73.9918],
-  "kolhapur": [16.7050, 74.2433]
+  "kolhapur": [16.7050, 74.2433],
+
+  // Northern Hubs & Hill Stations
+  "manali": [32.2432, 77.1892],
+  "shimla": [31.1048, 77.1734],
+  "srinagar": [34.0837, 74.7973],
+  "jammu": [32.7266, 74.8570],
+  "kashmir": [34.0837, 74.7973],
+  "leh": [34.1526, 77.5771],
+  "ladakh": [34.1526, 77.5771],
+  "chandigarh": [30.7333, 76.7794],
+  "dehradun": [30.3165, 78.0322],
+  "amritsar": [31.6340, 74.8723],
+  "ludhiana": [30.9010, 75.8573]
 };
 
 /**
@@ -281,7 +294,7 @@ export async function getRoadDistanceAndEta(originLoc, destLoc) {
       console.warn(`[GEOCODE WARNING] Could not resolve coordinates for "${cleanOrigin}" or "${cleanDest}".`);
       console.log(`===================================\n`);
     }
-    return { distanceKm: 0, estimatedTravelTime: 'N/A', durationSeconds: 0 };
+    return { distanceKm: 9999, estimatedTravelTime: 'N/A', durationSeconds: 0, unresolvable: true };
   }
 
   const [lat1, lon1] = coords1;

@@ -187,6 +187,7 @@ export default function CreateTripPage() {
   const [isExtendedDriversFallback, setIsExtendedDriversFallback] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form inputs
   const [startLocation, setStartLocation] = useState("");
@@ -651,8 +652,8 @@ export default function CreateTripPage() {
       toast.error("This driver has an expired license and cannot be assigned.");
       return;
     }
-    if (driver.driverStatus === "ASSIGNED" || driver.driverStatus === "ON_TRIP" || driver.status === "Not Available") {
-      toast.error("This Driver is already assigned to an active trip.");
+    if (driver.driverStatus === "ON_TRIP" || driver.driverStatus === "ON TRANSIT") {
+      toast.error("This Driver is currently on an active trip in progress.");
       return;
     }
     const driverIdStr = String(driver.id || driver._id);
@@ -757,6 +758,9 @@ export default function CreateTripPage() {
       return;
     }
 
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
     try {
       const distance = routeInfo.distanceKm || 0;
       await managerApi.createTrip({
@@ -832,6 +836,8 @@ export default function CreateTripPage() {
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to dispatch trip");
       console.error(error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1714,13 +1720,19 @@ export default function CreateTripPage() {
           <button
             type="button"
             onClick={handleDispatch}
-            disabled={!!departureError || !!etaError || !departureTime || !eta || !cargoWeight || isSameLocError}
-            className={`px-8 py-3 rounded-xl text-sm font-bold text-white transition-all shadow-md cursor-pointer flex items-center gap-2 font-poppins ${(departureError || etaError || !departureTime || !eta || !cargoWeight || isSameLocError)
+            disabled={isSubmitting || !!departureError || !!etaError || !departureTime || !eta || !cargoWeight || isSameLocError}
+            className={`px-8 py-3 rounded-xl text-sm font-bold text-white transition-all shadow-md cursor-pointer flex items-center gap-2 font-poppins ${(isSubmitting || departureError || etaError || !departureTime || !eta || !cargoWeight || isSameLocError)
                 ? "bg-gray-300 shadow-none cursor-not-allowed opacity-60"
                 : "bg-[#B45A0A] hover:bg-[#9A4D08] shadow-[#B45A0A]/20"
               }`}
           >
-            <Navigation className="w-4 h-4" /> Create Trip
+            {isSubmitting ? (
+              <span className="flex items-center gap-2 font-semibold">Creating Trip...</span>
+            ) : (
+              <>
+                <Navigation className="w-4 h-4" /> Create Trip
+              </>
+            )}
           </button>
         </div >
 
