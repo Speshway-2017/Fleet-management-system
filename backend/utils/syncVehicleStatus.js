@@ -1,6 +1,7 @@
 import Vehicle from '../models/Vehicle.js';
 import Trip from '../models/Trip.js';
 import Maintenance from '../models/Maintenance.js';
+import Driver from '../models/Driver.js';
 
 export const syncVehicleStatus = async (vehicleId) => {
   try {
@@ -48,7 +49,36 @@ export const syncAllVehicleStatuses = async () => {
     const vehicles = await Vehicle.find({});
     for (const vehicle of vehicles) {
       await syncVehicleStatus(vehicle._id);
+
+      if (vehicle.assignedDriver) {
+        const driverDoc = await Driver.findById(vehicle.assignedDriver);
+        if (!driverDoc || driverDoc.assignedVehicle !== vehicle.vehicleNumber) {
+          vehicle.assignedDriver = null;
+          await vehicle.save();
+        }
+      }
     }
+
+    // Auto sanitize trip distances across all existing database trips
+    try {
+      const { calculateDistance } = await import('./distanceCalculator.js');
+      const trips = await Trip.find({});
+      for (const trip of trips) {
+        if (trip.startLocation && trip.endLocation) {
+          const computedDist = calculateDistance(trip.startLocation, trip.endLocation);
+          if (!trip.actualDistance || Number(trip.actualDistance) === 0) {
+            if (!trip.estimatedDistance || Math.abs(Number(trip.estimatedDistance) - computedDist) > 100) {
+              trip.estimatedDistance = computedDist;
+              await trip.save();
+              console.log(`[Auto Sync] Corrected distance for Trip ${trip.tripNumber}: ${computedDist} KM`);
+            }
+          }
+        }
+      }
+    } catch (tErr) {
+      console.warn('Trip distance auto-sync notice:', tErr.message);
+    }
+
     console.log('🔄 All vehicle statuses synced successfully.');
   } catch (err) {
     console.error('Failed to sync all vehicle statuses:', err);

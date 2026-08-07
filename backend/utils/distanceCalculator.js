@@ -108,3 +108,26 @@ export const calculateDistance = (startCity, endCity) => {
   // Apply ~1.14x multiplier for driving distance estimate over highways
   return Math.max(12, Math.round(straightKm * 1.14));
 };
+
+export const getClosestCity = (lat, lon) => {
+  let closestCity = "Pune";
+  let minDistance = Infinity;
+  const R = 6371;
+
+  for (const [cityName, coords] of Object.entries(CITY_COORDINATES)) {
+    const dLat = (coords[0] - lat) * Math.PI / 180;
+    const dLon = (coords[1] - lon) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat * Math.PI / 180) * Math.cos(coords[0] * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c;
+
+    if (d < minDistance) {
+      minDistance = d;
+      closestCity = cityName;
+    }
+  }
+  return closestCity.charAt(0).toUpperCase() + closestCity.slice(1);
+};

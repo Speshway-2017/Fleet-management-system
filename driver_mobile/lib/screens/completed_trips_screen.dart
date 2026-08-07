@@ -5,6 +5,7 @@ import '../constants/app_spacing.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
+import '../utils/date_formatter.dart';
 import 'completed_trip_details_screen.dart';
 
 class CompletedTripsScreen extends StatefulWidget {
@@ -123,10 +124,34 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
     final displayId = tripNumber.toString().startsWith('#') ? tripNumber.toString() : '#$tripNumber';
     final pickup = trip['pickup'] ?? trip['startLocation'] ?? 'Origin';
     final destination = trip['destination'] ?? trip['endLocation'] ?? 'Destination';
-    final date = trip['actualEndTime'] ?? trip['createdAt'] ?? 'Completed';
-    final distance = trip['distance'] ?? '240 km';
-    final duration = trip['duration'] ?? '3h 15m';
-    final fuelUsed = trip['fuelUsed'] ?? '22.5 L';
+    final date = formatIndianDateTime(trip['actualEndTime'] ?? trip['createdAt'] ?? 'Completed');
+    double distanceVal = double.tryParse(trip['actualDistance']?.toString() ?? '') ?? 0.0;
+    if (distanceVal == 0.0) {
+      distanceVal = double.tryParse(trip['estimatedDistance']?.toString() ?? '') ?? 0.0;
+    }
+    if (distanceVal == 0.0) {
+      distanceVal = 240.0;
+    }
+    final distance = '${distanceVal.toStringAsFixed(0)} km';
+
+    final departureTimeStr = trip['departureTime'] ?? trip['actualStartTime'];
+    final departureTime = departureTimeStr != null ? DateTime.tryParse(departureTimeStr.toString()) : null;
+    final actualEndTimeStr = trip['actualEndTime'] ?? trip['createdAt'];
+    final actualEndTime = actualEndTimeStr != null ? DateTime.tryParse(actualEndTimeStr.toString()) : null;
+    final createdAt = trip['createdAt'] != null ? DateTime.tryParse(trip['createdAt'].toString()) : null;
+    
+    final startTime = departureTime ?? createdAt ?? DateTime.now();
+    final endTime = actualEndTime ?? createdAt ?? DateTime.now();
+    final durationDiff = endTime.difference(startTime);
+    final durationHours = durationDiff.inHours;
+    final durationMins = durationDiff.inMinutes.remainder(60);
+    final duration = durationHours > 0 ? '${durationHours}h ${durationMins}m' : '${durationMins}m';
+
+    final fuelDetails = trip['fuelDetails'] as Map<String, dynamic>?;
+    final fuelUsedVal = fuelDetails != null ? fuelDetails['liters'] : null;
+    final fuelUsed = fuelUsedVal != null 
+        ? '${double.tryParse(fuelUsedVal.toString())?.toStringAsFixed(0) ?? fuelUsedVal} L'
+        : '30 L';
 
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
@@ -139,7 +164,7 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
             children: [
               Expanded(
                 child: Text(
-                  date.toString().contains('T') ? date.toString().split('T')[0] : date.toString(),
+                  date,
                   style: const TextStyle(
                     color: AppColors.secondaryText,
                     fontSize: 11,
@@ -290,6 +315,7 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
                 MaterialPageRoute(
                   builder: (context) => CompletedTripDetailsScreen(
                     tripId: displayId,
+                    tripData: trip,
                   ),
                 ),
               );

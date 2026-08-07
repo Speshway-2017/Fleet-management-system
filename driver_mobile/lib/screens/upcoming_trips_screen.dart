@@ -5,9 +5,10 @@ import '../constants/app_spacing.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
 import '../widgets/custom_app_bar.dart';
+import '../utils/date_formatter.dart';
 import '../widgets/custom_card.dart';
 import 'active_trips_screen.dart';
-import 'upcoming_trip_details_screen.dart';
+import 'trip_details_screen.dart';
 
 class UpcomingTripsScreen extends StatefulWidget {
   const UpcomingTripsScreen({super.key});
@@ -218,12 +219,12 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
     final tripNumber = trip['tripNumber'] ?? tripId;
     final pickup = trip['pickup'] ?? trip['startLocation'] ?? 'Pickup Point';
     final destination = trip['destination'] ?? trip['endLocation'] ?? 'Destination Point';
-    final departureTime = trip['departureTime'] ?? 'Scheduled';
+    final departureTime = formatIndianDateTime(trip['departureTime'] ?? 'Scheduled');
     final status = trip['status'] ?? 'Scheduled';
     final vehicle = trip['vehicle'] ?? 'Van / Truck';
     final managerName = trip['manager'] != null ? trip['manager']['name'] : 'Fleet Manager';
     final isAssigned = status == 'Assigned';
-    final startEnabled = _isStartEnabled(departureTime);
+    final startEnabled = _isStartEnabled(trip['departureTime']);
 
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
@@ -381,7 +382,7 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: startEnabled ? () => _handleStartTrip(tripId.toString(), departureTime) : null,
+                    onPressed: startEnabled ? () => _handleStartTrip(tripId.toString(), trip['departureTime']) : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: startEnabled ? AppColors.secondary : AppColors.disabledText.withValues(alpha: 0.4),
                       foregroundColor: Colors.white,
@@ -419,7 +420,7 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => UpcomingTripDetailsScreen(tripId: tripId.toString()),
+                          builder: (context) => TripDetailsScreen(tripId: tripId.toString(), tripData: trip),
                         ),
                       );
                     },

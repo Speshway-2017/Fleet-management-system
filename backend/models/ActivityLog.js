@@ -29,7 +29,9 @@ const activityLogSchema = new mongoose.Schema({
       'FUEL_ENTRY_ADDED',
       'DOCUMENT_UPLOADED',
       'TRIP_DISPATCHED',
-      'TRIP_COMPLETED'
+      'TRIP_COMPLETED',
+      'TRIP_ASSIGNED',
+      'TRIP_CREATED'
     ],
     required: true,
   },

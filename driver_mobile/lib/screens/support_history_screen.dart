@@ -3,8 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import 'raise_ticket_screen.dart';
 import 'ticket_details_screen.dart';
-import 'calling_fleet_manager_screen.dart';
-import 'message_fleet_manager_screen.dart';
+import 'contact_fleet_manager_screen.dart';
 
 /// Representation of a Support Ticket data item.
 class SupportTicketItem {
@@ -52,43 +51,8 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
   final List<String> _filters = ['All', 'Open', 'In Progress', 'Resolved', 'Rejected'];
 
   bool _isLoading = false;
+  bool _isVehicleAssigned = false;
   List<SupportTicketItem> _tickets = [];
-
-  static const List<SupportTicketItem> _defaultMockTickets = [
-    SupportTicketItem(
-      ticketId: 'TK-1024',
-      issueCategory: 'Engine Overheating',
-      vehicleNumber: 'Assigned Vehicle',
-      tripId: 'TRP-9901',
-      priority: 'High',
-      status: 'Open',
-      raisedDate: 'Oct 24, 2023',
-      statusBg: Color(0xFFFFEDD5),
-      statusText: Color(0xFFC2410C),
-    ),
-    SupportTicketItem(
-      ticketId: 'TK-1018',
-      issueCategory: 'Tyre Puncture',
-      vehicleNumber: 'MH12PQ8820',
-      tripId: 'TRP-9905',
-      priority: 'Medium',
-      status: 'In Progress',
-      raisedDate: 'Oct 22, 2023',
-      statusBg: Color(0xFFDBEAFE),
-      statusText: Color(0xFF1D4ED8),
-    ),
-    SupportTicketItem(
-      ticketId: 'TK-0998',
-      issueCategory: 'Brake Service Required',
-      vehicleNumber: 'KA02AB1456',
-      tripId: 'TRP-9882',
-      priority: 'High',
-      status: 'Resolved',
-      raisedDate: 'Oct 18, 2023',
-      statusBg: Color(0xFFDCFCE7),
-      statusText: Color(0xFF15803D),
-    ),
-  ];
 
   @override
   void initState() {
@@ -102,92 +66,97 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
     });
 
     try {
+      bool assigned = false;
+      try {
+        final vehRes = await ApiService.getAssignedVehicle();
+        if (vehRes != null && vehRes['success'] == true) {
+          final vData = vehRes['data'];
+          if (vData != null && vData['assigned'] == true && vData['vehicle'] != null) {
+            assigned = true;
+          }
+        }
+      } catch (_) {}
+
       final res = await ApiService.getDriverTickets();
       final List data = (res is Map && res['data'] != null)
           ? res['data']
           : (res is List ? res : []);
 
-      if (data.isNotEmpty) {
-        final List<SupportTicketItem> fetched = data.map((t) {
-          final status = t['status'] ?? 'Open';
-          Color bg = const Color(0xFFFFEDD5);
-          Color textClr = const Color(0xFFC2410C);
+      final List<SupportTicketItem> fetched = data.map((t) {
+        final status = t['status'] ?? 'Open';
+        Color bg = const Color(0xFFFFEDD5);
+        Color textClr = const Color(0xFFC2410C);
 
-          if (status == 'Mechanic Assigned' || status == 'Mechanic Arrived') {
-            bg = const Color(0xFFE0F2FE);
-            textClr = const Color(0xFF0369A1);
-          } else if (status == 'Repair In Progress' || status == 'In Progress') {
-            bg = const Color(0xFFFEF3C7);
-            textClr = const Color(0xFFD97706);
-          } else if (status == 'Repair Completed') {
-            bg = const Color(0xFFDCFCE7);
-            textClr = const Color(0xFF16A34A);
-          } else if (status == 'Resolved') {
-            bg = const Color(0xFFDCFCE7);
-            textClr = const Color(0xFF15803D);
-          } else if (status == 'Closed') {
-            bg = const Color(0xFFF1F5F9);
-            textClr = const Color(0xFF475569);
-          } else if (status == 'Rejected') {
-            bg = const Color(0xFFFEE2E2);
-            textClr = const Color(0xFFDC2626);
-          }
+        if (status == 'Mechanic Assigned' || status == 'Mechanic Arrived') {
+          bg = const Color(0xFFE0F2FE);
+          textClr = const Color(0xFF0369A1);
+        } else if (status == 'Repair In Progress' || status == 'In Progress') {
+          bg = const Color(0xFFFEF3C7);
+          textClr = const Color(0xFFD97706);
+        } else if (status == 'Repair Completed') {
+          bg = const Color(0xFFDCFCE7);
+          textClr = const Color(0xFF16A34A);
+        } else if (status == 'Resolved') {
+          bg = const Color(0xFFDCFCE7);
+          textClr = const Color(0xFF15803D);
+        } else if (status == 'Closed') {
+          bg = const Color(0xFFF1F5F9);
+          textClr = const Color(0xFF475569);
+        } else if (status == 'Rejected') {
+          bg = const Color(0xFFFEE2E2);
+          textClr = const Color(0xFFDC2626);
+        }
 
-          final attachments = t['attachments'] as List?;
-          String? attachUrl;
-          if (attachments != null && attachments.isNotEmpty) {
-            attachUrl = attachments.first['url'];
-          }
+        final attachments = t['attachments'] as List?;
+        String? attachUrl;
+        if (attachments != null && attachments.isNotEmpty) {
+          attachUrl = attachments.first['url'];
+        }
 
-          final tripObj = t['trip'];
-          final vehicleObj = t['vehicle'];
-          final tripIdStr = tripObj != null && tripObj is Map
-              ? (tripObj['tripNumber'] ?? 'TRP-9901')
-              : 'TRP-9901';
-          final vehPlateStr = t['vehiclePlate'] ??
-              (vehicleObj != null && vehicleObj is Map
-                  ? (vehicleObj['registrationNumber'] ?? vehicleObj['plateNumber'] ?? 'Assigned Vehicle')
-                  : 'Assigned Vehicle');
+        final tripObj = t['trip'];
+        final vehicleObj = t['vehicle'];
+        final tripIdStr = tripObj != null && tripObj is Map
+            ? (tripObj['tripNumber'] ?? 'TRP-9901')
+            : 'TRP-9901';
+        final vehPlateStr = t['vehiclePlate'] ??
+            (vehicleObj != null && vehicleObj is Map
+                ? (vehicleObj['registrationNumber'] ?? vehicleObj['plateNumber'] ?? 'Assigned Vehicle')
+                : 'Assigned Vehicle');
 
-          final rawDate = t['reportedAt'] ?? t['createdAt'];
-          String formattedDate = 'Recently';
-          if (rawDate != null) {
-            try {
-              final d = DateTime.parse(rawDate.toString());
-              formattedDate = '${d.day}/${d.month}/${d.year}';
-            } catch (_) {}
-          }
+        final rawDate = t['reportedAt'] ?? t['createdAt'];
+        String formattedDate = 'Recently';
+        if (rawDate != null) {
+          try {
+            final d = DateTime.parse(rawDate.toString());
+            formattedDate = '${d.day}/${d.month}/${d.year}';
+          } catch (_) {}
+        }
 
-          return SupportTicketItem(
-            ticketId: t['ticketId'] ?? 'TKT-1000',
-            issueCategory: t['issueType'] ?? 'Vehicle Maintenance',
-            vehicleNumber: vehPlateStr,
-            tripId: tripIdStr,
-            priority: t['severity'] ?? 'Medium',
-            status: status,
-            raisedDate: formattedDate,
-            description: t['description'] ?? '',
-            attachmentUrl: attachUrl,
-            statusBg: bg,
-            statusText: textClr,
-          );
-        }).toList();
+        return SupportTicketItem(
+          ticketId: t['ticketId'] ?? 'TKT-1000',
+          issueCategory: t['issueType'] ?? 'Vehicle Maintenance',
+          vehicleNumber: vehPlateStr,
+          tripId: tripIdStr,
+          priority: t['severity'] ?? 'Medium',
+          status: status,
+          raisedDate: formattedDate,
+          description: t['description'] ?? '',
+          attachmentUrl: attachUrl,
+          statusBg: bg,
+          statusText: textClr,
+        );
+      }).toList();
 
-        setState(() {
-          _tickets = fetched;
-        });
-      } else {
-        setState(() {
-          _tickets = _defaultMockTickets;
-        });
-      }
+      setState(() {
+        _isVehicleAssigned = assigned;
+        _tickets = fetched;
+      });
     } catch (e) {
       debugPrint('Failed to load driver tickets from API: $e');
-      if (_tickets.isEmpty) {
-        setState(() {
-          _tickets = _defaultMockTickets;
-        });
-      }
+      setState(() {
+        _isVehicleAssigned = false;
+        _tickets = [];
+      });
     } finally {
       if (mounted) {
         setState(() {
@@ -198,7 +167,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
   }
 
   List<SupportTicketItem> get _filteredTickets {
-    final list = _tickets.isNotEmpty ? _tickets : _defaultMockTickets;
+    final list = _tickets;
     if (_selectedFilterIndex == 0) return list;
     final filterName = _filters[_selectedFilterIndex];
     return list.where((t) => t.status == filterName).toList();
@@ -219,47 +188,44 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         backgroundColor: primaryDark,
         elevation: 0,
         centerTitle: false,
-        titleSpacing: 16.0,
-        automaticallyImplyLeading: false,
-        title: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
+        titleSpacing: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Support & Tickets',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: Container(
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8.0),
               ),
               padding: const EdgeInsets.all(4.0),
               child: Image.asset(
-                'assets/logo.png',
+                'assets/images/logo.png',
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
-                  return Image.asset(
-                    'assets/images/logo.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.local_shipping_rounded,
-                        color: primaryDark,
-                        size: 20,
-                      );
-                    },
+                  return const Icon(
+                    Icons.local_shipping_rounded,
+                    color: primaryDark,
+                    size: 20,
                   );
                 },
               ),
             ),
-            const SizedBox(width: 12),
-            Text(
-              'Support History',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -268,6 +234,40 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (!_isVehicleAssigned) ...[
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 16.0),
+                  padding: const EdgeInsets.all(14.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF), // Light blue box
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        color: Color(0xFF2563EB),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'No vehicle is currently assigned. You can view your previous records, but new maintenance tickets will be available once a vehicle is assigned.',
+                          style: GoogleFonts.nunito(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1E40AF),
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               // Subtitle Banner Description
               Text(
                 'Track and manage your vehicle issues and support requests.',
@@ -336,7 +336,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const CallingFleetManagerScreen()),
+                          MaterialPageRoute(builder: (context) => const ContactFleetManagerScreen()),
                         );
                       },
                     ),
@@ -351,7 +351,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const MessageFleetManagerScreen()),
+                          MaterialPageRoute(builder: (context) => const ContactFleetManagerScreen()),
                         );
                       },
                     ),
@@ -420,16 +420,49 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                         child: CircularProgressIndicator(color: primaryOrange),
                       ),
                     )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _filteredTickets.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 14.0),
-                      itemBuilder: (context, index) {
-                        final ticket = _filteredTickets[index];
-                        return _buildTicketCard(context, ticket);
-                      },
-                    ),
+                  : _filteredTickets.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.support_agent_outlined,
+                                  size: 64,
+                                  color: textSecondary.withValues(alpha: 0.4),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No Tickets Found',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'You haven\'t raised any support requests yet.',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 13,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _filteredTickets.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 14.0),
+                          itemBuilder: (context, index) {
+                            final ticket = _filteredTickets[index];
+                            return _buildTicketCard(context, ticket);
+                          },
+                        ),
 
               const SizedBox(height: 80.0), // Padding for FAB space
             ],
@@ -440,6 +473,16 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
       // 4. Circular (+) Floating Action Button
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
+          if (!_isVehicleAssigned) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No vehicle is currently assigned. New maintenance tickets will be available once a vehicle is assigned.'),
+                backgroundColor: Colors.orange,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            return;
+          }
           final res = await Navigator.push(
             context,
             MaterialPageRoute(
@@ -450,10 +493,10 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
             _loadTickets();
           }
         },
-        backgroundColor: primaryOrange,
-        elevation: 4,
+        backgroundColor: _isVehicleAssigned ? primaryOrange : const Color(0xFF94A3B8),
+        elevation: _isVehicleAssigned ? 4 : 1,
         shape: const CircleBorder(),
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+        child: Icon(_isVehicleAssigned ? Icons.add_rounded : Icons.lock_outline_rounded, color: Colors.white, size: 26),
       ),
     );
   }

@@ -18,7 +18,9 @@ const LOCAL_CITY_COORDINATES = {
   pune: [18.5204, 73.8567],
   bengaluru: [12.9716, 77.5946],
   bangalore: [12.9716, 77.5946],
-  hyderabad: [17.3850, 78.4867],
+  deng: [12.9716, 77.5946],
+  dengaluru: [12.9716, 77.5946],
+  tirupati: [13.6288, 79.4192],
   delhi: [28.7041, 77.1025],
   newdelhi: [28.6139, 77.2090],
   chennai: [13.0827, 80.2707],
@@ -87,17 +89,19 @@ const routeCache = new Map();
 export async function geocodeLocation(locationName) {
   if (!locationName || typeof locationName !== 'string') return null;
   
-  const query = locationName.trim().toLowerCase();
-  if (!query) return null;
+  const rawQuery = locationName.trim().toLowerCase();
+  const cleanQuery = rawQuery.replace(/[^a-z0-9]/g, '');
+  if (!cleanQuery) return null;
 
-  if (geocodeCache.has(query)) {
-    return geocodeCache.get(query);
+  if (geocodeCache.has(rawQuery)) {
+    return geocodeCache.get(rawQuery);
   }
 
   // 1. Check local lookup dictionary first for exact or fuzzy match
   for (const [key, coords] of Object.entries(LOCAL_CITY_COORDINATES)) {
-    if (query === key || query.includes(key)) {
-      geocodeCache.set(query, coords);
+    const cleanKey = key.replace(/[^a-z0-9]/g, '');
+    if (rawQuery.includes(key) || cleanQuery.includes(cleanKey) || cleanKey.includes(cleanQuery)) {
+      geocodeCache.set(rawQuery, coords);
       return coords;
     }
   }

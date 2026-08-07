@@ -8,6 +8,7 @@ import 'trip_details_screen.dart';
 import 'active_trips_screen.dart';
 import 'upcoming_trips_screen.dart';
 import 'completed_trips_screen.dart';
+import 'completed_trip_details_screen.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
 
@@ -60,10 +61,11 @@ class _TripsScreenState extends State<TripsScreen> {
     final completedCount = _dashboardMetrics?['completedTrips'] ?? 0;
     final totalCount = activeCount + upcomingCount + completedCount;
 
-    final recentTripNumber = _currentTrip?['tripNumber'] ?? _currentTrip?['tripId'] ?? '#TRP-8842';
-    final recentPickup = _currentTrip?['pickup'] ?? _currentTrip?['startLocation'] ?? 'Downtown Hub';
-    final recentDestination = _currentTrip?['destination'] ?? _currentTrip?['endLocation'] ?? 'North Port Center';
-    final recentStatus = _currentTrip?['status'] ?? 'Scheduled';
+    final hasRecentTrip = _currentTrip != null && (_currentTrip!['tripNumber'] != null || _currentTrip!['tripId'] != null);
+    final recentTripNumber = hasRecentTrip ? (_currentTrip!['tripNumber'] ?? _currentTrip!['tripId']) : '';
+    final recentPickup = hasRecentTrip ? (_currentTrip!['pickup'] ?? _currentTrip!['startLocation'] ?? '--') : '--';
+    final recentDestination = hasRecentTrip ? (_currentTrip!['destination'] ?? _currentTrip!['endLocation'] ?? '--') : '--';
+    final recentStatus = hasRecentTrip ? (_currentTrip!['status'] ?? 'Scheduled') : '';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -255,202 +257,265 @@ class _TripsScreenState extends State<TripsScreen> {
                       const SizedBox(height: 6),
 
                       // Recent Trip Card
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            border: Border.all(color: AppColors.divider),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // Header Row
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'TRIP ID',
-                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                          color: AppColors.secondaryText,
-                                          fontWeight: FontWeight.bold,
-                                          letterSpacing: 0.5,
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        recentTripNumber.toString().startsWith('#') ? recentTripNumber.toString() : '#$recentTripNumber',
-                                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                          color: AppColors.primaryText,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.secondary.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(AppRadius.round),
-                                    ),
-                                    child: Text(
-                                      recentStatus.toString(),
-                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                        color: AppColors.secondary,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 12),
-
-                              // Timeline/Route Section
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Column(
-                                    children: [
-                                      Container(
-                                        width: 14,
-                                        height: 14,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: AppColors.secondary,
-                                            width: 2.0,
-                                          ),
-                                          color: AppColors.background,
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 2.0),
-                                        child: Column(
-                                          children: List.generate(
-                                            3,
-                                            (index) => Container(
-                                              width: 1.5,
-                                              height: 4,
-                                              margin: const EdgeInsets.symmetric(vertical: 2.0),
-                                              color: AppColors.divider,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const Icon(
-                                        Icons.location_on,
-                                        color: AppColors.primaryVariant,
-                                        size: 16,
-                                      ),
-                                    ],
-                                  ),
-                                  AppSpacing.horizontalSm,
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      if (hasRecentTrip)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              border: Border.all(color: AppColors.divider),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Header Row
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Pickup',
-                                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                                color: AppColors.secondaryText,
-                                                fontWeight: FontWeight.w500,
-                                                fontSize: 10,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              recentPickup.toString(),
-                                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                color: AppColors.primaryText,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
+                                        Text(
+                                          'TRIP ID',
+                                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                            color: AppColors.secondaryText,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 0.5,
+                                            fontSize: 10,
+                                          ),
                                         ),
-                                        const SizedBox(height: 12),
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Destination',
-                                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                                color: AppColors.secondaryText,
-                                                fontWeight: FontWeight.w500,
-                                                fontSize: 10,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              recentDestination.toString(),
-                                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                color: AppColors.primaryText,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          recentTripNumber.toString().startsWith('#') ? recentTripNumber.toString() : '#$recentTripNumber',
+                                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                            color: AppColors.primaryText,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 12),
-
-                              // View Details button
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => TripDetailsScreen(
-                                        tripId: recentTripNumber.toString(),
-                                        tripData: _currentTrip,
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.secondary.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(AppRadius.round),
+                                      ),
+                                      child: Text(
+                                        recentStatus.toString(),
+                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                          color: AppColors.secondary,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 10,
+                                        ),
                                       ),
                                     ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.secondary,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(vertical: 10.0),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 12),
+
+                                // Timeline/Route Section
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Column(
+                                      children: [
+                                        Container(
+                                          width: 14,
+                                          height: 14,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: AppColors.secondary,
+                                              width: 2.0,
+                                            ),
+                                            color: AppColors.background,
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 2.0),
+                                          child: Column(
+                                            children: List.generate(
+                                              3,
+                                              (index) => Container(
+                                                width: 1.5,
+                                                height: 4,
+                                                margin: const EdgeInsets.symmetric(vertical: 2.0),
+                                                color: AppColors.divider,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const Icon(
+                                          Icons.location_on,
+                                          color: AppColors.primaryVariant,
+                                          size: 16,
+                                        ),
+                                      ],
+                                    ),
+                                    AppSpacing.horizontalSm,
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Pickup',
+                                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                  color: AppColors.secondaryText,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                recentPickup.toString(),
+                                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                  color: AppColors.primaryText,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Destination',
+                                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                  color: AppColors.secondaryText,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                recentDestination.toString(),
+                                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                  color: AppColors.primaryText,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 12),
+
+                                // View Details button
+                                ElevatedButton(
+                                  onPressed: () {
+                                    final statusStr = _currentTrip?['status']?.toString() ?? '';
+                                    if (statusStr == 'Completed') {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => CompletedTripDetailsScreen(
+                                            tripId: recentTripNumber.toString(),
+                                            tripData: _currentTrip,
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => TripDetailsScreen(
+                                            tripId: recentTripNumber.toString(),
+                                            tripData: _currentTrip,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.secondary,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(vertical: 10.0),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'View Details',
+                                    style: TextStyle(
+                                      fontSize: 14.0,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
-                                child: const Text(
-                                  'View Details',
-                                  style: TextStyle(
-                                    fontSize: 14.0,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
+                        )
+                      else
+                        _buildEmptyRecentTripCard(context),
 
                       AppSpacing.verticalLg,
                     ],
                   ),
                 ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyRecentTripCard(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.route_outlined,
+                size: 28,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No Recent Trip',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryText,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'You do not have any assigned or completed trips yet.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.secondaryText,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );

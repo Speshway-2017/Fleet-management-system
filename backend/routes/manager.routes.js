@@ -20,6 +20,8 @@ import {
   createTrip,
   getTripDetails,
   updateTrip,
+  approveTripCompletion,
+  rejectTripDocuments,
   deleteTrip,
   getInvoiceByTripId,
   // Fuel
@@ -117,6 +119,8 @@ router.post('/trips', ...auth, checkActiveSubscription, createTrip);
 router.get('/trips/:id', ...auth, getTripDetails);
 router.get('/trips/:tripId/tolls', ...auth, getTripTolls);
 router.put('/trips/:id', ...auth, checkActiveSubscription, updateTrip);
+router.post('/trips/:id/approve-completion', ...auth, checkActiveSubscription, approveTripCompletion);
+router.post('/trips/:id/reject-documents', ...auth, checkActiveSubscription, rejectTripDocuments);
 router.delete('/trips/:id', ...auth, checkActiveSubscription, deleteTrip);
 router.get('/trips/:tripId/chat', ...auth, getTripChat);
 router.post('/trips/:tripId/chat', ...auth, sendTripMessage);

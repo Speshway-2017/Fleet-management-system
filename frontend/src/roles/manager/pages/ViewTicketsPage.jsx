@@ -140,8 +140,8 @@ export default function ViewTicketsPage() {
                   type="button"
                   onClick={() => setData(prev => ({ ...prev, status: 'Resolved' }))}
                   className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${data.status === 'Resolved'
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
                     }`}
                 >
                   ✓ Approve & Resolve
@@ -150,8 +150,8 @@ export default function ViewTicketsPage() {
                   type="button"
                   onClick={() => setData(prev => ({ ...prev, status: 'Rejected' }))}
                   className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${data.status === 'Rejected'
-                      ? 'bg-red-600 text-white shadow-sm'
-                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
                     }`}
                 >
                   ✕ Reject Issue
@@ -591,27 +591,7 @@ export default function ViewTicketsPage() {
         }
       }
     } catch (err) {
-      console.warn("Failed to load vehicle complaints from DB (using local storage fallback):", err);
-      const localNotifsStr = localStorage.getItem("local_complaints_notifications");
-      if (localNotifsStr) {
-        const localNotifs = JSON.parse(localNotifsStr).map(n => ({
-          _id: n._id || n.id,
-          ticketId: n.metadata?.ticketId || n.id,
-          trip: n.metadata?.tripId || '',
-          vehiclePlate: n.metadata?.vehiclePlate || '',
-          driverName: n.metadata?.driverName || '',
-          issueType: n.metadata?.issueType || '',
-          severity: n.metadata?.severity || 'Medium',
-          description: n.description || n.message || '',
-          status: n.metadata?.status || n.status || 'Open',
-          estimatedCost: n.metadata?.estimatedCost || 0,
-          actualCost: n.metadata?.actualCost || 0,
-          notes: n.metadata?.notes || '',
-          reportedAt: n.createdAt || new Date().toISOString(),
-          completionDate: n.metadata?.completionDate
-        }));
-        setTickets(localNotifs);
-      }
+      console.warn("Failed to load vehicle complaints from DB:", err);
     } finally {
       if (isInitial) setLoadingTickets(false);
     }
@@ -810,8 +790,8 @@ export default function ViewTicketsPage() {
                   key={st}
                   onClick={() => setTicketStatusFilter(st)}
                   className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${ticketStatusFilter === st
-                      ? "bg-white text-slate-900 shadow-sm border border-slate-200/50"
-                      : "text-[#64748B] hover:text-[#1E293B]"
+                    ? "bg-white text-slate-900 shadow-sm border border-slate-200/50"
+                    : "text-[#64748B] hover:text-[#1E293B]"
                     }`}
                 >
                   {st}
@@ -875,12 +855,12 @@ export default function ViewTicketsPage() {
                       <td className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{t.issueType}</td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[9px] font-bold uppercase ${t.severity === 'Critical'
-                            ? 'bg-red-50 text-red-600 border border-red-100'
-                            : t.severity === 'High'
-                              ? 'bg-orange-50 text-orange-600 border border-orange-100'
-                              : t.severity === 'Medium'
-                                ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                                : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          ? 'bg-red-50 text-red-600 border border-red-100'
+                          : t.severity === 'High'
+                            ? 'bg-orange-50 text-orange-600 border border-orange-100'
+                            : t.severity === 'Medium'
+                              ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                              : 'bg-slate-100 text-slate-600 border border-slate-200'
                           }`}>
                           {t.severity}
                         </span>
@@ -893,18 +873,18 @@ export default function ViewTicketsPage() {
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-extrabold uppercase ${t.status === 'Resolved' || t.status === 'Completed' || t.status === 'Repair Completed'
-                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                            : t.status === 'Need Maintenance'
-                              ? 'bg-rose-50 text-rose-600 border border-rose-100 font-black'
-                              : t.status === 'Mechanic Assigned'
-                                ? 'bg-purple-50 text-purple-600 border border-purple-100'
-                                : t.status === 'Mechanic Arrived'
-                                  ? 'bg-sky-50 text-sky-600 border border-sky-100'
-                                  : t.status === 'Repair In Progress' || t.status === 'In Progress'
-                                    ? 'bg-amber-50 text-amber-600 border border-amber-100 font-bold'
-                                    : t.status === 'Closed'
-                                      ? 'bg-slate-100 text-slate-500 border border-slate-200'
-                                      : 'bg-blue-50 text-blue-600 border border-blue-100'
+                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                          : t.status === 'Need Maintenance'
+                            ? 'bg-rose-50 text-rose-600 border border-rose-100 font-black'
+                            : t.status === 'Mechanic Assigned'
+                              ? 'bg-purple-50 text-purple-600 border border-purple-100'
+                              : t.status === 'Mechanic Arrived'
+                                ? 'bg-sky-50 text-sky-600 border border-sky-100'
+                                : t.status === 'Repair In Progress' || t.status === 'In Progress'
+                                  ? 'bg-amber-50 text-amber-600 border border-amber-100 font-bold'
+                                  : t.status === 'Closed'
+                                    ? 'bg-slate-100 text-slate-500 border border-slate-200'
+                                    : 'bg-blue-50 text-blue-600 border border-blue-100'
                           }`}>
                           {t.status}
                         </span>
@@ -1033,12 +1013,12 @@ export default function ViewTicketsPage() {
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Severity Level:</span>
                     <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[9px] font-bold uppercase ${selectedTicket.severity === 'Critical'
-                        ? 'bg-red-50 text-red-600 border border-red-100'
-                        : selectedTicket.severity === 'High'
-                          ? 'bg-orange-50 text-orange-600 border border-orange-100'
-                          : selectedTicket.severity === 'Medium'
-                            ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                      ? 'bg-red-50 text-red-600 border border-red-100'
+                      : selectedTicket.severity === 'High'
+                        ? 'bg-orange-50 text-orange-600 border border-orange-100'
+                        : selectedTicket.severity === 'Medium'
+                          ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200'
                       }`}>
                       {selectedTicket.severity}
                     </span>
@@ -1063,16 +1043,16 @@ export default function ViewTicketsPage() {
                   <div className="flex justify-between">
                     <span className="text-slate-500 font-semibold">Current Status:</span>
                     <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-extrabold uppercase ${selectedTicket.status === 'Resolved' || selectedTicket.status === 'Completed' || selectedTicket.status === 'Repair Completed'
-                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                        : selectedTicket.status === 'Need Maintenance'
-                          ? 'bg-rose-50 text-rose-600 border border-rose-100 font-black'
-                          : selectedTicket.status === 'Mechanic Assigned'
-                            ? 'bg-purple-50 text-purple-600 border border-purple-100'
-                            : selectedTicket.status === 'Closed'
-                              ? 'bg-slate-100 text-slate-500 border border-slate-200'
-                              : selectedTicket.status === 'In Progress' || selectedTicket.status === 'Repair In Progress'
-                                ? 'bg-amber-50 text-amber-600 border border-amber-100'
-                                : 'bg-blue-50 text-blue-600 border border-blue-100'
+                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                      : selectedTicket.status === 'Need Maintenance'
+                        ? 'bg-rose-50 text-rose-600 border border-rose-100 font-black'
+                        : selectedTicket.status === 'Mechanic Assigned'
+                          ? 'bg-purple-50 text-purple-600 border border-purple-100'
+                          : selectedTicket.status === 'Closed'
+                            ? 'bg-slate-100 text-slate-500 border border-slate-200'
+                            : selectedTicket.status === 'In Progress' || selectedTicket.status === 'Repair In Progress'
+                              ? 'bg-amber-50 text-amber-600 border border-amber-100'
+                              : 'bg-blue-50 text-blue-600 border border-blue-100'
                       }`}>
                       {selectedTicket.status}
                     </span>
