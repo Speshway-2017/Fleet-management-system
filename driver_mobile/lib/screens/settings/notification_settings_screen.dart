@@ -235,18 +235,6 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none_outlined, color: Colors.white),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('No new system alerts.'),
-                  backgroundColor: AppColors.primary,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-          ),
           Container(
             width: 32,
             height: 32,

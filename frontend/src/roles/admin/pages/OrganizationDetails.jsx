@@ -149,6 +149,26 @@ export default function OrganizationDetails() {
     setIsEditManagerOpen(true);
   };
 
+  const handleSuspendOrg = async () => {
+    const isSuspended = org?.status === "Suspended";
+    const nextStatus = isSuspended ? "Active" : "Suspended";
+    const promptMsg = isSuspended
+      ? "Are you sure you want to reactivate this organization?"
+      : "Are you sure you want to suspend this organization?";
+
+    if (!window.confirm(promptMsg)) return;
+
+    try {
+      await adminApi.suspendOrganization(id, nextStatus);
+      toast.success(isSuspended ? "Organization reactivated successfully" : "Organization suspended successfully");
+      const res = await adminApi.getOrganizationDetails(id);
+      setOrg(res.data?.data || res.data);
+      if (fetchOrganizations) await fetchOrganizations();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update status");
+    }
+  };
+
   const openAddModal = () => {
     setManagerForm({ id: "", name: "", email: "", phone: "", password: "", confirmPassword: "" });
     setManagerErrors({});
@@ -200,6 +220,16 @@ export default function OrganizationDetails() {
               <Link to="/admin/organizations" className="flex-1 sm:flex-none flex items-center justify-center px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-[#A14000] border border-[#A14000] bg-transparent hover:bg-[#A14000]/10 rounded-lg transition-colors text-center truncate">
                 Back to List
               </Link>
+              <button
+                onClick={handleSuspendOrg}
+                className={`flex-1 sm:flex-none flex items-center justify-center px-2 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-colors text-center truncate ${
+                  org.status === 'Suspended'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-rose-600 hover:bg-rose-700 text-white'
+                }`}
+              >
+                {org.status === 'Suspended' ? 'Reactivate Organization' : 'Suspend Organization'}
+              </button>
               <Link to={`/admin/organizations/edit/${id}`} className="flex-[2] sm:flex-none flex items-center justify-center px-2 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-[#A14000] border border-[#A14000] rounded-lg shadow-sm hover:bg-[#8a3700] transition-colors text-center truncate">
                 Edit Organization
               </Link>

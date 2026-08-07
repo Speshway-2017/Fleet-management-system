@@ -225,10 +225,6 @@ export default function TripsManagementPage() {
       const res = await calculateDrivingRoute(formData.startLocation, formData.endLocation);
       if (res.success) {
         setEditRouteInfo({ distanceKm: res.distanceKm, loading: false, errorMessage: "" });
-        if (res.durationSeconds > 0 && formData.departureTime) {
-          const newEta = calculateEtaFromDuration(formData.departureTime, res.durationSeconds);
-          setFormData(prev => ({ ...prev, eta: newEta }));
-        }
       } else {
         setEditRouteInfo({ distanceKm: 0, loading: false, errorMessage: res.errorMessage || "Invalid route" });
       }
@@ -340,6 +336,20 @@ export default function TripsManagementPage() {
     }
   };
 
+  const formatDateTimeForInput = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   const handleOpenEdit = (t) => {
     fetchResources();
     setEditingTrip(t);
@@ -350,8 +360,8 @@ export default function TripsManagementPage() {
       vehicleId: t.vehicle?._id || t.vehicle || "",
       startLocation: t.startLocation,
       endLocation: t.endLocation,
-      departureTime: t.departureTime ? new Date(t.departureTime).toISOString().slice(0, 16) : "",
-      eta: t.eta ? new Date(t.eta).toISOString().slice(0, 16) : "",
+      departureTime: formatDateTimeForInput(t.departureTime),
+      eta: formatDateTimeForInput(t.eta),
       status: t.status,
       description: t.description || "",
       cargoType: t.cargoType || "",
@@ -544,7 +554,7 @@ export default function TripsManagementPage() {
           </div>
 
           {/* KPI Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4">
             
             {/* Card 1: Total Trips */}
             <div className="bg-white rounded-xl border-l-4 border-l-blue-600 border border-[#E7EAF0] p-5 flex items-center justify-between shadow-sm">
@@ -570,19 +580,7 @@ export default function TripsManagementPage() {
               </div>
             </div>
 
-            {/* Card 3: Urgent Trips */}
-            <div className="bg-white rounded-xl border-l-4 border-l-red-500 border border-[#E7EAF0] p-5 shadow-sm flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Urgent Trips</p>
-                <p className="text-3xl font-black text-red-600 mt-2 font-poppins">{String(urgentTripsCount).padStart(2, '0')}</p>
-                <span className="text-[10px] text-red-500 mt-1 block font-semibold">Immediate Action</span>
-              </div>
-              <div className="p-3 bg-red-50 text-red-600 rounded-xl">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-            </div>
-
-            {/* Card 4: Completed */}
+            {/* Card 3: Completed */}
             <div className="bg-white rounded-xl border-l-4 border-l-[#1E293B] border border-[#E7EAF0] p-5 shadow-sm flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Completed</p>

@@ -8,7 +8,6 @@ import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/main_navigation_screen.dart';
-import 'services/api_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/notification_provider.dart';
 
@@ -21,16 +20,7 @@ void main() async {
   } catch (e) {
     debugPrint('Firebase initialization failed: $e');
   }
-  ApiService.initialize();
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => NotificationProvider()),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -38,11 +28,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Fleet Driver Mobile',
-      theme: AppTheme.lightTheme,
-      debugShowCheckedModeBanner: false,
-      home: const AuthSessionWrapper(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Fleet Driver Mobile',
+        theme: AppTheme.lightTheme,
+        debugShowCheckedModeBanner: false,
+        home: const AuthSessionWrapper(),
+      ),
     );
   }
 }

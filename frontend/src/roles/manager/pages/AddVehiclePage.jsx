@@ -115,7 +115,8 @@ export default function AddVehiclePage() {
       setVehicleDocs(prev => ({
         ...prev,
         [key]: {
-          fileUrl: data.url,
+          fileUrl: data.url || data.secure_url,
+          public_id: data.public_id,
           originalName: data.originalName,
           uploadDate: new Date(),
           fileSize: file.size,

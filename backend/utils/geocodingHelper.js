@@ -85,8 +85,66 @@ const LOCAL_COORDINATES = {
   "indore": [22.7196, 75.8577],
   "goa": [15.2993, 74.1240],
   "satara": [17.6805, 73.9918],
-  "kolhapur": [16.7050, 74.2433]
+  "kolhapur": [16.7050, 74.2433],
+
+  // Northern Hubs & Hill Stations
+  "manali": [32.2432, 77.1892],
+  "shimla": [31.1048, 77.1734],
+  "srinagar": [34.0837, 74.7973],
+  "jammu": [32.7266, 74.8570],
+  "kashmir": [34.0837, 74.7973],
+  "leh": [34.1526, 77.5771],
+  "ladakh": [34.1526, 77.5771],
+  "chandigarh": [30.7333, 76.7794],
+  "dehradun": [30.3165, 78.0322],
+  "amritsar": [31.6340, 74.8723],
+  "ludhiana": [30.9010, 75.8573]
 };
+
+/**
+ * Normalize location names to handle variations, extra spaces, casing, and common city aliases.
+ */
+export function normalizeCityName(loc) {
+  if (!loc) return '';
+  let clean = loc.toString().trim().toLowerCase();
+  clean = clean.split(',')[0].trim();
+  clean = clean.replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ');
+
+  const aliases = {
+    'visakapatnam': 'visakhapatnam',
+    'visakapatanam': 'visakhapatnam',
+    'visakhapatanam': 'visakhapatnam',
+    'vizag': 'visakhapatnam',
+    'waltair': 'visakhapatnam',
+    'bengaluru': 'bangalore',
+    'bangalore': 'bengaluru',
+    'gurugram': 'gurgaon',
+    'gurgaon': 'gurugram',
+    'cyberabad': 'hyderabad',
+    'secunderabad': 'hyderabad',
+    'dtl': 'dwaraka tirumala',
+    'dwarakatirumala': 'dwaraka tirumala',
+    'vijayawada': 'vijayawada',
+    'tirupati': 'tirupati'
+  };
+
+  return aliases[clean] || clean;
+}
+
+/**
+ * Check if two location names represent the same location.
+ */
+export function isSameLocation(loc1, loc2) {
+  if (!loc1 || !loc2) return false;
+  const n1 = normalizeCityName(loc1);
+  const n2 = normalizeCityName(loc2);
+
+  if (n1 === n2) return true;
+  if (n1.length >= 3 && n2.length >= 3) {
+    if (n1.includes(n2) || n2.includes(n1)) return true;
+  }
+  return false;
+}
 
 const geocodeCache = new Map();
 const roadDistanceCache = new Map();
@@ -180,11 +238,11 @@ export async function geocodeCity(locationName) {
 export function getDistanceKm(lat1, lon1, lat2, lon2) {
   if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) return 0;
   const R = 6371;
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return Math.max(1, Math.round(R * c));
@@ -236,7 +294,7 @@ export async function getRoadDistanceAndEta(originLoc, destLoc) {
       console.warn(`[GEOCODE WARNING] Could not resolve coordinates for "${cleanOrigin}" or "${cleanDest}".`);
       console.log(`===================================\n`);
     }
-    return { distanceKm: 0, estimatedTravelTime: 'N/A', durationSeconds: 0 };
+    return { distanceKm: 9999, estimatedTravelTime: 'N/A', durationSeconds: 0, unresolvable: true };
   }
 
   const [lat1, lon1] = coords1;

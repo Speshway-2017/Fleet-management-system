@@ -102,40 +102,28 @@ export default function UploadDocumentModal({
 
     if (!validateForm()) return;
 
-    // Read file and create object with data
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const fileObj = {
-        name: selectedFile.name,
-        size: (selectedFile.size / 1024).toFixed(2),
-        type: selectedFile.type,
-        data: event.target.result
-      };
+    const formDataToSubmit = new FormData();
+    formDataToSubmit.append("category", formData.category);
+    formDataToSubmit.append("documentName", formData.documentName);
+    formDataToSubmit.append("documentNumber", formData.documentNumber);
+    formDataToSubmit.append("issueDate", formData.issueDate);
+    formDataToSubmit.append("expiryDate", formData.expiryDate);
+    formDataToSubmit.append("notes", formData.notes);
+    formDataToSubmit.append("file", selectedFile); // Append real File object
 
-      const formDataToSubmit = new FormData();
-      formDataToSubmit.append("category", formData.category);
-      formDataToSubmit.append("documentName", formData.documentName);
-      formDataToSubmit.append("documentNumber", formData.documentNumber);
-      formDataToSubmit.append("issueDate", formData.issueDate);
-      formDataToSubmit.append("expiryDate", formData.expiryDate);
-      formDataToSubmit.append("notes", formData.notes);
-      formDataToSubmit.append("file", fileObj);
+    await onUpload(formDataToSubmit, isReplacing, existingDocument?.id);
 
-      await onUpload(formDataToSubmit, isReplacing, existingDocument?.id);
-
-      // Reset form
-      setFormData({
-        category: "",
-        documentName: "",
-        documentNumber: "",
-        issueDate: "",
-        expiryDate: "",
-        notes: ""
-      });
-      setSelectedFile(null);
-      setErrors({});
-    };
-    reader.readAsDataURL(selectedFile);
+    // Reset form
+    setFormData({
+      category: "",
+      documentName: "",
+      documentNumber: "",
+      issueDate: "",
+      expiryDate: "",
+      notes: ""
+    });
+    setSelectedFile(null);
+    setErrors({});
   };
 
   return (

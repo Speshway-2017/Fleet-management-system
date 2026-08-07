@@ -8,19 +8,47 @@ import { vehicleApi } from "@/api/vehicleApi";
 export const getVehicleDocuments = async (vehicleId) => {
   try {
     const res = await vehicleApi.getById(vehicleId);
-    return res.data?.data?.documents || [];
+    const docsObj = res.data?.data?.documents || {};
+    
+    const docsArray = [];
+    const categories = {
+      rc: "Registration Certificate (RC)",
+      insurance: "Insurance Certificate",
+      puc: "Pollution Under Control (PUC)",
+      fitness: "Fitness Certificate",
+      permit: "Permit Document",
+      roadTax: "Road Tax Receipt"
+    };
+    
+    Object.keys(categories).forEach(key => {
+      const doc = docsObj[key];
+      if (doc) {
+        docsArray.push({
+          id: key,
+          name: doc.fileName || doc.originalName || categories[key],
+          category: categories[key],
+          documentNumber: doc.documentNumber || "",
+          issueDate: doc.issueDate || doc.uploadDate || "",
+          expiryDate: doc.expiryDate || "",
+          notes: doc.notes || "",
+          uploadDate: doc.uploadDate || doc.uploadedAt || new Date().toISOString(),
+          uploadedBy: doc.uploadedBy || "Manager",
+          status: getDocumentStatus(doc.expiryDate),
+          fileData: doc.fileUrl || "",
+          fileName: doc.fileName || doc.originalName || "",
+          fileSize: doc.fileSize || 0,
+          fileType: doc.mimeType || ""
+        });
+      }
+    });
+    
+    return docsArray;
   } catch (error) {
     console.error("Error fetching documents:", error);
     throw error;
   }
 };
 
-/**
- * Upload a new document for a vehicle
- * @param {string} vehicleId - Vehicle MongoDB ID
- * @param {FormData} formData - Form data containing document details and file
- * @returns {Promise} Uploaded document data
- */
 export const uploadVehicleDocument = async (vehicleId, formData) => {
   try {
     const res = await vehicleApi.getById(vehicleId);
@@ -28,6 +56,11 @@ export const uploadVehicleDocument = async (vehicleId, formData) => {
     if (!vehicle) throw new Error("Vehicle not found");
 
     const fileObj = formData.get("file");
+    if (!fileObj) throw new Error("No file selected");
+
+    // 1. Upload to Cloudinary first
+    const uploadRes = await vehicleApi.uploadDocument(fileObj);
+    const uploadData = uploadRes.data?.data || uploadRes.data;
 
     const newDocument = {
       id: Math.random().toString(36).substring(2, 11),
@@ -40,13 +73,50 @@ export const uploadVehicleDocument = async (vehicleId, formData) => {
       uploadDate: new Date().toISOString().split('T')[0],
       uploadedBy: "Manager",
       status: "Valid",
-      fileData: fileObj.data,
+      fileUrl: uploadData.secure_url || uploadData.url,
+      fileData: uploadData.secure_url || uploadData.url,
+      public_id: uploadData.public_id,
       fileName: fileObj.name,
       fileSize: fileObj.size,
       fileType: fileObj.type
     };
 
-    const documents = [...(vehicle.documents || []), newDocument];
+    const docsObj = vehicle.documents || {};
+    const categories = {
+      rc: "Registration Certificate (RC)",
+      insurance: "Insurance Certificate",
+      puc: "Pollution Under Control (PUC)",
+      fitness: "Fitness Certificate",
+      permit: "Permit Document",
+      roadTax: "Road Tax Receipt"
+    };
+    
+    const docsArray = [];
+    Object.keys(categories).forEach(key => {
+      const doc = docsObj[key];
+      if (doc) {
+        docsArray.push({
+          id: key,
+          name: doc.fileName || doc.originalName || categories[key],
+          category: categories[key],
+          documentNumber: doc.documentNumber || "",
+          issueDate: doc.issueDate || doc.uploadDate || "",
+          expiryDate: doc.expiryDate || "",
+          notes: doc.notes || "",
+          uploadDate: doc.uploadDate || doc.uploadedAt || new Date().toISOString(),
+          uploadedBy: doc.uploadedBy || "Manager",
+          status: getDocumentStatus(doc.expiryDate),
+          fileUrl: doc.fileUrl || "",
+          fileData: doc.fileUrl || "",
+          fileName: doc.fileName || doc.originalName || "",
+          fileSize: doc.fileSize || 0,
+          fileType: doc.mimeType || "",
+          public_id: doc.public_id || ""
+        });
+      }
+    });
+
+    const documents = [...docsArray, newDocument];
     await vehicleApi.update(vehicleId, { documents });
     
     return newDocument;
@@ -70,25 +140,68 @@ export const replaceVehicleDocument = async (vehicleId, documentId, formData) =>
     if (!vehicle) throw new Error("Vehicle not found");
 
     const fileObj = formData.get("file");
-    const docIndex = (vehicle.documents || []).findIndex(d => d.id === documentId);
+    if (!fileObj) throw new Error("No file selected");
+
+    // 1. Upload to Cloudinary first
+    const uploadRes = await vehicleApi.uploadDocument(fileObj);
+    const uploadData = uploadRes.data?.data || uploadRes.data;
+
+    const docsObj = vehicle.documents || {};
+    const categories = {
+      rc: "Registration Certificate (RC)",
+      insurance: "Insurance Certificate",
+      puc: "Pollution Under Control (PUC)",
+      fitness: "Fitness Certificate",
+      permit: "Permit Document",
+      roadTax: "Road Tax Receipt"
+    };
+    
+    const docsArray = [];
+    Object.keys(categories).forEach(key => {
+      const doc = docsObj[key];
+      if (doc) {
+        docsArray.push({
+          id: key,
+          name: doc.fileName || doc.originalName || categories[key],
+          category: categories[key],
+          documentNumber: doc.documentNumber || "",
+          issueDate: doc.issueDate || doc.uploadDate || "",
+          expiryDate: doc.expiryDate || "",
+          notes: doc.notes || "",
+          uploadDate: doc.uploadDate || doc.uploadedAt || new Date().toISOString(),
+          uploadedBy: doc.uploadedBy || "Manager",
+          status: getDocumentStatus(doc.expiryDate),
+          fileUrl: doc.fileUrl || "",
+          fileData: doc.fileUrl || "",
+          fileName: doc.fileName || doc.originalName || "",
+          fileSize: doc.fileSize || 0,
+          fileType: doc.mimeType || "",
+          public_id: doc.public_id || ""
+        });
+      }
+    });
+
+    const docIndex = docsArray.findIndex(d => d.id === documentId);
     if (docIndex === -1) throw new Error("Document not found");
 
     const updatedDocument = {
-      ...vehicle.documents[docIndex],
+      ...docsArray[docIndex],
       name: formData.get("documentName"),
       category: formData.get("category"),
       documentNumber: formData.get("documentNumber") || "",
       issueDate: formData.get("issueDate"),
       expiryDate: formData.get("expiryDate"),
       notes: formData.get("notes") || "",
-      fileData: fileObj.data,
+      fileUrl: uploadData.secure_url || uploadData.url,
+      fileData: uploadData.secure_url || uploadData.url,
+      public_id: uploadData.public_id,
       fileName: fileObj.name,
       fileSize: fileObj.size,
       fileType: fileObj.type,
       replacedDate: new Date().toISOString().split('T')[0]
     };
 
-    const documents = vehicle.documents.map(d => d.id === documentId ? updatedDocument : d);
+    const documents = docsArray.map(d => d.id === documentId ? updatedDocument : d);
     await vehicleApi.update(vehicleId, { documents });
     
     return updatedDocument;
@@ -110,7 +223,40 @@ export const deleteVehicleDocument = async (vehicleId, documentId) => {
     const vehicle = res.data?.data;
     if (!vehicle) throw new Error("Vehicle not found");
 
-    const documents = (vehicle.documents || []).filter(d => d.id !== documentId);
+    const docsObj = vehicle.documents || {};
+    const categories = {
+      rc: "Registration Certificate (RC)",
+      insurance: "Insurance Certificate",
+      puc: "Pollution Under Control (PUC)",
+      fitness: "Fitness Certificate",
+      permit: "Permit Document",
+      roadTax: "Road Tax Receipt"
+    };
+    
+    const docsArray = [];
+    Object.keys(categories).forEach(key => {
+      const doc = docsObj[key];
+      if (doc) {
+        docsArray.push({
+          id: key,
+          name: doc.fileName || doc.originalName || categories[key],
+          category: categories[key],
+          documentNumber: doc.documentNumber || "",
+          issueDate: doc.issueDate || doc.uploadDate || "",
+          expiryDate: doc.expiryDate || "",
+          notes: doc.notes || "",
+          uploadDate: doc.uploadDate || doc.uploadedAt || new Date().toISOString(),
+          uploadedBy: doc.uploadedBy || "Manager",
+          status: getDocumentStatus(doc.expiryDate),
+          fileData: doc.fileUrl || "",
+          fileName: doc.fileName || doc.originalName || "",
+          fileSize: doc.fileSize || 0,
+          fileType: doc.mimeType || ""
+        });
+      }
+    });
+
+    const documents = docsArray.filter(d => d.id !== documentId);
     await vehicleApi.update(vehicleId, { documents });
     return { success: true };
   } catch (error) {

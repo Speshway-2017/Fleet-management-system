@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import driverApi from "../api/driverApi";
 import FuelCard from "../components/FuelCard";
 import { toast } from "react-hot-toast";
-import { Fuel, Plus, X, RefreshCw } from "lucide-react";
+import { Fuel, Plus, X, RefreshCw, Lock } from "lucide-react";
 
 export default function DriverFuelPage() {
   const [loading, setLoading] = useState(true);
   const [fuelRecords, setFuelRecords] = useState([]);
+  const [activeTrip, setActiveTrip] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -17,9 +18,41 @@ export default function DriverFuelPage() {
   const [odometerReading, setOdometerReading] = useState("");
   const [receiptFile, setReceiptFile] = useState(null);
 
+  const [assignedVehicle, setAssignedVehicle] = useState(null);
+
   useEffect(() => {
     fetchFuelRecords();
+    fetchActiveTrip();
+    fetchAssignedVehicle();
   }, []);
+
+  const fetchActiveTrip = async () => {
+    try {
+      const res = await driverApi.getCurrentTrip();
+      if (res?.success && res.data) {
+        setActiveTrip(res.data);
+      } else {
+        setActiveTrip(null);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch active trip for fuel check:", err);
+      setActiveTrip(null);
+    }
+  };
+
+  const fetchAssignedVehicle = async () => {
+    try {
+      const res = await driverApi.getAssignedVehicle();
+      if (res?.success && res.data) {
+        setAssignedVehicle(res.data);
+      } else {
+        setAssignedVehicle(null);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch assigned vehicle for fuel check:", err);
+      setAssignedVehicle(null);
+    }
+  };
 
   const fetchFuelRecords = async () => {
     setLoading(true);
@@ -40,8 +73,25 @@ export default function DriverFuelPage() {
     }
   };
 
+  const hasVehicle = Boolean(
+    assignedVehicle &&
+      (assignedVehicle._id || assignedVehicle.id || assignedVehicle.vehicleNumber) &&
+      assignedVehicle.vehicleNumber !== "Unassigned" &&
+      assignedVehicle.vehicleNumber !== "No Vehicle Assigned"
+  );
+  const hasActiveTrip = Boolean(activeTrip && (activeTrip._id || activeTrip.id || activeTrip.tripId));
+  const isFuelLogEnabled = hasVehicle && hasActiveTrip;
+
   const handleCreateFuelEntry = async (e) => {
     e.preventDefault();
+    if (!hasVehicle) {
+      toast.error("🔒 Fuel entries can only be logged when a vehicle is assigned to you!");
+      return;
+    }
+    if (!hasActiveTrip) {
+      toast.error("🔒 Fuel entries can only be logged when you have an active trip!");
+      return;
+    }
     if (!quantity || !totalCost || !stationName) {
       toast.error("Please fill in required fields (Station Name, Liters, Amount)");
       return;
@@ -53,6 +103,9 @@ export default function DriverFuelPage() {
       formData.append("quantity", quantity);
       formData.append("totalCost", totalCost);
       formData.append("stationName", stationName);
+      if (activeTrip?._id || activeTrip?.id) {
+        formData.append("tripId", activeTrip._id || activeTrip.id);
+      }
       if (odometerReading) formData.append("odometerReading", odometerReading);
       if (receiptFile) formData.append("file", receiptFile);
 
@@ -89,13 +142,56 @@ export default function DriverFuelPage() {
         </div>
 
         <button
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-sm"
+          onClick={() => {
+            if (!hasVehicle) {
+              toast.error("🔒 Fuel logging requires an assigned vehicle!");
+              return;
+            }
+            if (!hasActiveTrip) {
+              toast.error("🔒 Fuel logging requires an active trip!");
+              return;
+            }
+            setShowModal(true);
+          }}
+          disabled={!isFuelLogEnabled}
+          title={
+            !isFuelLogEnabled
+              ? !hasVehicle
+                ? "Fuel logging disabled. No vehicle is currently assigned to you."
+                : "Fuel logging disabled. You currently have 0 active trips."
+              : "Log fuel refill for your active trip"
+          }
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold font-poppins flex items-center justify-center gap-2 transition shadow-sm ${
+            isFuelLogEnabled
+              ? "bg-[#B45A0A] hover:bg-[#9A4D08] text-white cursor-pointer"
+              : "bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed"
+          }`}
         >
-          <Plus className="w-4 h-4" />
-          <span>Log New Fuel Refill</span>
+          {isFuelLogEnabled ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+          <span>{isFuelLogEnabled ? "Log New Fuel Refill" : "Fuel Log Locked"}</span>
         </button>
       </div>
+
+      {/* Lock Notice Banner if Fuel Log Disabled */}
+      {!isFuelLogEnabled && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-3 text-amber-900 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-100 text-[#B45A0A] shrink-0">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold font-poppins text-slate-900">🔒 Fuel Refill Logging Disabled</h4>
+              <p className="text-xs text-amber-800 mt-0.5">
+                {!hasVehicle && !hasActiveTrip
+                  ? "Fuel refill logs are locked because no vehicle is assigned to you AND you currently have 0 active trips. Fuel logging requires an assigned vehicle and an active trip."
+                  : !hasVehicle
+                  ? "Fuel refill logs are locked because no vehicle is currently assigned to you. Please ask your Fleet Manager to assign a vehicle."
+                  : "Fuel refill logs can only be submitted when you have an active trip in progress (active trips > 0)."}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Fuel Cards Grid */}
       {loading ? (

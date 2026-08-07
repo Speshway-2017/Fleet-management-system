@@ -7,6 +7,8 @@ import '../../services/socket_service.dart';
 import '../../repositories/notification_repository.dart';
 import 'notification_details_screen.dart';
 import '../main_navigation_screen.dart';
+import '../trip_details_screen.dart';
+import '../../utils/date_formatter.dart';
 
 class NotificationItem {
   final String id;
@@ -16,6 +18,8 @@ class NotificationItem {
   final String category; // 'TODAY' or 'YESTERDAY'
   bool isRead;
   final IconData icon;
+  final String? tripId;
+  final String? type;
 
   NotificationItem({
     required this.id,
@@ -25,13 +29,66 @@ class NotificationItem {
     required this.category,
     required this.isRead,
     required this.icon,
+    this.tripId,
+    this.type,
   });
 }
 
 class NotificationsScreen extends StatefulWidget {
   static List<NotificationItem> notifications = [];
+  static final ValueNotifier<int> unreadCountNotifier = ValueNotifier<int>(0);
 
   const NotificationsScreen({super.key});
+
+  static Future<void> fetchNotificationsFromServer() async {
+    try {
+      final res = await ApiService.getDriverNotifications();
+      if (res != null && res['data'] is List) {
+        final List list = res['data'];
+        final fetched = list.map((item) {
+          final typeStr = item['type']?.toString() ?? '';
+          final tId = item['metadata']?['tripId']?.toString() ?? item['referenceId']?.toString() ?? '';
+          IconData iconData = Icons.notifications_none_outlined;
+          if (typeStr == 'trip_assigned') {
+            iconData = Icons.assignment_ind_outlined;
+          } else if (typeStr == 'trip_updated') {
+            iconData = Icons.edit_calendar_outlined;
+          } else if (typeStr == 'trip_status_changed') {
+            iconData = Icons.sync_outlined;
+          }
+
+          return NotificationItem(
+            id: item['_id'] ?? item['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+            title: item['title'] ?? 'Fleet Notification',
+            description: item['message'] ?? item['description'] ?? '',
+            timestamp: formatNotificationTime(item['createdAt']),
+            category: getNotificationCategory(item['createdAt']),
+            isRead: item['isRead'] ?? false,
+            icon: iconData,
+            tripId: tId,
+            type: typeStr,
+          );
+        }).toList();
+
+        NotificationsScreen.notifications = fetched;
+        NotificationsScreen.unreadCountNotifier.value = fetched.where((n) => !n.isRead).length;
+      } else {
+        NotificationsScreen.notifications = [];
+        NotificationsScreen.unreadCountNotifier.value = 0;
+      }
+    } catch (_) {}
+  }
+
+  static void markAsReadStatic(String id) {
+    if (id.isEmpty) return;
+    final index = notifications.indexWhere((n) => n.id == id);
+    if (index != -1) {
+      if (notifications[index].isRead) return;
+      notifications[index].isRead = true;
+      unreadCountNotifier.value = notifications.where((n) => !n.isRead).length;
+    }
+    ApiService.patch('/driver/notifications/$id/read', {}).catchError((_) {});
+  }
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -53,30 +110,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _fetchServerNotifications() async {
-    try {
-      final res = await ApiService.getDriverNotifications();
-      if (res != null && res['data'] is List) {
-        final List list = res['data'];
-        if (list.isNotEmpty) {
-          final fetched = list.map((item) {
-            return NotificationItem(
-              id: item['_id'] ?? item['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-              title: item['title'] ?? 'Fleet Notification',
-              description: item['message'] ?? item['description'] ?? '',
-              timestamp: 'Just now',
-              category: 'TODAY',
-              isRead: item['isRead'] ?? false,
-              icon: item['type'] == 'trip_assigned' ? Icons.assignment_ind_outlined : Icons.notifications_none_outlined,
-            );
-          }).toList();
-          if (mounted) {
-            setState(() {
-              NotificationsScreen.notifications = fetched;
-            });
-          }
-        }
-      }
-    } catch (_) {}
+    await NotificationsScreen.fetchNotificationsFromServer();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -96,13 +133,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       for (var item in _notifications) {
         item.isRead = true;
       }
+      NotificationsScreen.unreadCountNotifier.value = 0;
     });
     try {
       await NotificationRepository().markAllAsRead();
-    } catch (e) {
-      debugPrint('Failed to mark all as read: $e');
+    } catch (_) {
+      ApiService.patch('/driver/notifications/read-all', {}).catchError((_) {});
     }
-    if (mounted) {
+    if (mounted && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('All notifications marked as read.'),
@@ -117,6 +155,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (!item.isRead) {
       setState(() {
         item.isRead = true;
+        NotificationsScreen.markAsReadStatic(item.id);
       });
       try {
         await NotificationRepository().markAsRead(item.id);
@@ -252,36 +291,44 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           children: [
             _buildFilterBar(),
             Expanded(
-              child: filteredNotifications.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+              child: RefreshIndicator(
+                onRefresh: _fetchServerNotifications,
+                color: AppColors.secondary,
+                child: filteredNotifications.isEmpty
+                    ? SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Container(
+                          height: MediaQuery.of(context).size.height - 200,
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.notifications_off_outlined,
+                                size: 64,
+                                color: AppColors.textDisabled,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _selectedFilterIndex == 0
+                                    ? 'No Notifications Yet'
+                                    : _selectedFilterIndex == 1
+                                        ? 'No Read Notifications'
+                                        : 'No Unread Notifications',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                         children: [
-                          Icon(
-                            Icons.notifications_off_outlined,
-                            size: 64,
-                            color: AppColors.textDisabled,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _selectedFilterIndex == 0
-                                ? 'No Notifications Yet'
-                                : _selectedFilterIndex == 1
-                                    ? 'No Read Notifications'
-                                    : 'No Unread Notifications',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-                      children: [
                         // TODAY SECTION
                         if (todayNotifications.isNotEmpty) ...[
                           Row(
@@ -337,6 +384,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ],
                       ],
                     ),
+              ),
             ),
           ],
         ),
@@ -348,23 +396,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return GestureDetector(
       onTap: () {
         _toggleReadStatus(item);
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => NotificationDetailsScreen(
-              title: item.title,
-              message: item.description,
-              time: item.timestamp,
-              type: item.title,
-              icon: item.icon,
-              onOpened: () => _toggleReadStatus(item),
+        if (item.tripId != null && item.tripId!.isNotEmpty) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TripDetailsScreen(tripId: item.tripId!),
             ),
-          ),
-        ).then((_) {
-          if (mounted) {
-            setState(() {});
-          }
-        });
+          ).then((_) {
+            if (mounted) setState(() {});
+          });
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => NotificationDetailsScreen(
+                title: item.title,
+                message: item.description,
+                time: item.timestamp,
+                type: item.title,
+                icon: item.icon,
+                onOpened: () => _toggleReadStatus(item),
+              ),
+            ),
+          ).then((_) {
+            if (mounted) setState(() {});
+          });
+        }
       },
       child: Container(
         padding: const EdgeInsets.all(16.0),

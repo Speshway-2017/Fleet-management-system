@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,6 +7,16 @@ import 'api_service.dart';
 class SocketService {
   static io.Socket? _socket;
   static bool _isConnected = false;
+  static final Map<String, List<Function(dynamic)>> _listeners = {};
+
+  static bool get _isTest {
+    if (kIsWeb) return false;
+    try {
+      return Platform.environment.containsKey('FLUTTER_TEST');
+    } catch (_) {
+      return false;
+    }
+  }
 
   static bool get isConnected => _isConnected;
 
@@ -18,6 +29,7 @@ class SocketService {
   }
 
   static Future<void> initSocket({Function(dynamic data)? onTripStatusUpdated, Function(dynamic data)? onTripAssigned}) async {
+    if (_isTest) return;
     if (_socket != null && _socket!.connected) return;
 
     try {
@@ -54,6 +66,13 @@ class SocketService {
         _isConnected = false;
       });
 
+      // Register all queued event listeners on the newly created socket
+      _listeners.forEach((event, callbacks) {
+        for (final callback in callbacks) {
+          _socket!.on(event, (data) => callback(data));
+        }
+      });
+
       if (onTripStatusUpdated != null) {
         _socket!.on('trip:status-updated', (data) {
           onTripStatusUpdated(data);
@@ -71,6 +90,10 @@ class SocketService {
   }
 
   static void onEvent(String event, Function(dynamic data) callback) {
+    final list = _listeners.putIfAbsent(event, () => []);
+    if (!list.contains(callback)) {
+      list.add(callback);
+    }
     if (_socket != null) {
       _socket!.on(event, (data) => callback(data));
     }
@@ -87,5 +110,6 @@ class SocketService {
     _socket?.dispose();
     _socket = null;
     _isConnected = false;
+    _listeners.clear();
   }
 }

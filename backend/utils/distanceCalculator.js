@@ -48,7 +48,20 @@ const CITY_COORDINATES = {
   nellore: [14.4426, 79.9865],
   kadapa: [14.4673, 78.8242],
   tirupati: [13.6288, 79.4192],
-  warangal: [17.9689, 79.5941]
+  warangal: [17.9689, 79.5941],
+  bhimadole: [16.8103, 81.2643],
+  dwaraka: [16.9538, 81.2588],
+  dwarakatirumala: [16.9538, 81.2588],
+  eluru: [16.7107, 81.1040],
+  tanuku: [16.8580, 81.6780],
+  tadepalligudem: [16.8333, 81.5333],
+  rajahmundry: [17.0005, 81.8040],
+  kakinada: [16.9891, 82.2475],
+  ongole: [15.5057, 80.0499],
+  bhimavaram: [16.5449, 81.5212],
+  khammam: [17.2473, 80.1514],
+  karimnagar: [18.4386, 79.1288],
+  nizamabad: [18.6725, 78.0941]
 };
 
 const getCoordinates = (cityName) => {
@@ -61,12 +74,23 @@ const getCoordinates = (cityName) => {
 };
 
 export const calculateDistance = (startCity, endCity) => {
-  if (!startCity || !endCity) return 120;
+  if (!startCity || !endCity) return 20;
+  const normStart = startCity.toLowerCase().trim();
+  const normEnd = endCity.toLowerCase().trim();
+
+  if (normStart === normEnd) return 5;
+
   const startCoords = getCoordinates(startCity);
   const endCoords = getCoordinates(endCity);
 
   if (!startCoords || !endCoords) {
-    return 350;
+    let hash = 0;
+    const combined = normStart + normEnd;
+    for (let i = 0; i < combined.length; i++) {
+      hash = (hash << 5) - hash + combined.charCodeAt(i);
+      hash |= 0;
+    }
+    return 18 + (Math.abs(hash) % 50);
   }
 
   const R = 6371; // Radius of the earth in km
@@ -79,8 +103,31 @@ export const calculateDistance = (startCity, endCity) => {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const straightKm = R * c;
 
-  if (straightKm < 5) return 20;
+  if (straightKm < 5) return 12;
 
   // Apply ~1.14x multiplier for driving distance estimate over highways
-  return Math.round(straightKm * 1.14);
+  return Math.max(12, Math.round(straightKm * 1.14));
+};
+
+export const getClosestCity = (lat, lon) => {
+  let closestCity = "Pune";
+  let minDistance = Infinity;
+  const R = 6371;
+
+  for (const [cityName, coords] of Object.entries(CITY_COORDINATES)) {
+    const dLat = (coords[0] - lat) * Math.PI / 180;
+    const dLon = (coords[1] - lon) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat * Math.PI / 180) * Math.cos(coords[0] * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c;
+
+    if (d < minDistance) {
+      minDistance = d;
+      closestCity = cityName;
+    }
+  }
+  return closestCity.charAt(0).toUpperCase() + closestCity.slice(1);
 };

@@ -379,6 +379,8 @@ class FuelEntryDetailsScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     _buildDetailRow('Fuel Station', station.toString(), isBold: true),
+                    const SizedBox(height: 8),
+                    _buildDetailRow('Purchase Location (City)', (d['location'] ?? d['city'] ?? 'N/A').toString(), isBold: true),
                     const Divider(color: borderGray, height: 16),
                     _buildDetailRow('Vehicle Number', vehicleId.toString()),
                     const SizedBox(height: 8),

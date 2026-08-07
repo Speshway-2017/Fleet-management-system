@@ -9,6 +9,7 @@ import {
   getOrganizationDetails,
   updateOrganization,
   deleteOrganization,
+  suspendOrganization,
   updateManager,
   deleteManager,
   getSettings,
@@ -66,6 +67,7 @@ router.get('/organizations',       ...adminAuth, listOrganizations);
 router.get('/organizations/:id',   ...adminAuth, getOrganizationDetails);
 router.post('/organizations',      ...adminAuth, memoryUpload.single('logo'), parseManagers, createOrganizationValidator, createOrganization);
 router.put('/organizations/:id',   ...adminAuth, memoryUpload.single('logo'), updateOrganizationValidator, updateOrganization);
+router.patch('/organizations/:id/suspend', ...adminAuth, suspendOrganization);
 router.delete('/organizations/:id',...adminAuth, deleteOrganization);
 
 // ── Fleet Managers ─────────────────────────────────────────────────────────

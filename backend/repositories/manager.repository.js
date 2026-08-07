@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Vehicle from '../models/Vehicle.js';
 import Driver from '../models/Driver.js';
 import Trip from '../models/Trip.js';
@@ -52,7 +53,19 @@ export const getTrips = async (filter = {}) => {
 };
 
 export const getTripById = async (id) => {
-  return Trip.findById(id).populate('vehicle').populate('driver');
+  if (!id) return null;
+  if (mongoose.Types.ObjectId.isValid(id)) {
+    const trip = await Trip.findById(id).populate('vehicle').populate('driver');
+    if (trip) return trip;
+  }
+  const cleanId = String(id).replace(/^#/, '').trim();
+  return Trip.findOne({
+    $or: [
+      { tripNumber: cleanId },
+      { tripNumber: `#${cleanId}` },
+      { tripNumber: cleanId.startsWith('TRP-') ? cleanId : `TRP-${cleanId}` }
+    ]
+  }).populate('vehicle').populate('driver');
 };
 
 export const createTrip = async (data) => {
