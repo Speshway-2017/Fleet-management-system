@@ -765,6 +765,10 @@ export const updateTripStatus = async (req, res, next) => {
       return sendError(res, 404, `Trip not found for ID '${id}'`);
     }
 
+    if (['Completed', 'Cancelled', 'Rejected'].includes(trip.status)) {
+      return sendError(res, 400, 'Trip is completed and is read-only');
+    }
+
     const targetStatus = status === 'Start Trip' ? 'In Progress' : (status === 'Complete Trip' ? 'Completed' : status);
 
     // Validate backend restrictions for starting trip
@@ -1110,6 +1114,10 @@ export const toggleCustomerLocation = async (req, res, next) => {
       return sendError(res, 404, 'Trip not found');
     }
 
+    if (['Completed', 'Cancelled', 'Rejected'].includes(trip.status)) {
+      return sendError(res, 400, 'Trip is completed and is read-only');
+    }
+
     trip.customerLocationReached = reached;
     if (reached) {
       trip.customerLocationReachedAt = new Date();
@@ -1158,8 +1166,13 @@ export const updateDriverLocation = async (req, res, next) => {
       return sendError(res, 400, 'Latitude and longitude are required');
     }
 
-    const locationStr = `${latitude},${longitude}`;
-    const closestCity = getClosestCity(Number(latitude), Number(longitude));
+    const latNum = Number(latitude);
+    const lngNum = Number(longitude);
+    const speedNum = Number(speed) || 0;
+    const headingNum = Number(heading) || 0;
+
+    const locationStr = `${latNum},${lngNum}`;
+    const closestCity = getClosestCity(latNum, lngNum);
     const driver = await Driver.findByIdAndUpdate(
       req.user._id,
       {
@@ -1532,6 +1545,7 @@ export const uploadWeighbridgeSlip = async (req, res, next) => {
     const gross = Number(grossWeight) || 25000;
     const tare = Number(tareWeight) || 10000;
     const calculatedNet = Number(netWeight) || (gross - tare);
+    const finalWbUrl = secureUrl || documentUrl || 'https://via.placeholder.com/300x300.png?text=Weighbridge+Slip';
 
     let slip = null;
     if (tripId) {

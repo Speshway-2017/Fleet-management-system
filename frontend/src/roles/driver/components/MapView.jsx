@@ -19,28 +19,27 @@ export default function MapView({
 
   const [osrmRoute, setOsrmRoute] = useState([]);
 
-  // Fetch OSRM driving geometry if origin & destination lat/lng are provided
+  // Fetch OSRM driving geometry if origin & destination lat/lng are provided (only if routeCoordinates not provided)
   useEffect(() => {
+    if (routeCoordinates && routeCoordinates.length > 0) return;
     if (!origin?.lat || !origin?.lng || !destination?.lat || !destination?.lng) return;
 
     const fetchOsrmRoute = async () => {
       try {
         const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
+        const res = await fetch(url).catch(() => null);
+        if (res && res.ok) {
+          const data = await res.json().catch(() => null);
           if (data?.routes?.[0]?.geometry?.coordinates) {
             const coords = data.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon]);
             setOsrmRoute(coords);
           }
         }
-      } catch (err) {
-        console.warn("Driver Map OSRM route fetch fallback:", err.message);
-      }
+      } catch (_) {}
     };
 
     fetchOsrmRoute();
-  }, [origin?.lat, origin?.lng, destination?.lat, destination?.lng]);
+  }, [origin?.lat, origin?.lng, destination?.lat, destination?.lng, routeCoordinates?.length]);
 
   useEffect(() => {
     if (!mapRef.current) return;

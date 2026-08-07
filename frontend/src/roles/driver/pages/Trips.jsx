@@ -70,7 +70,7 @@ export default function DriverTripsPage() {
   };
 
   // Filter logic for tabs: Pending, Upcoming, Active, Completed
-  const pendingTrips = trips.filter(t => ["ASSIGNED", "PENDING"].includes(t.status?.toUpperCase()));
+  const pendingTrips = trips.filter(t => ["ASSIGNED", "PENDING", "PENDING DRIVER ACCEPTANCE"].includes(t.status?.toUpperCase()));
   const upcomingTrips = trips.filter(t => ["ACCEPTED", "SCHEDULED", "UPCOMING"].includes(t.status?.toUpperCase()));
   const activeTrips = trips.filter(t => ["DISPATCHED", "STARTED", "EN_ROUTE", "IN_TRANSIT", "IN PROGRESS", "ON TRANSIT"].includes(t.status?.toUpperCase()));
   const completedTrips = trips.filter(t => ["DELIVERED", "COMPLETED", "REJECTED", "CANCELLED"].includes(t.status?.toUpperCase()));

@@ -2,6 +2,19 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.31.44] - 2026-08-07
+
+### Fixed
+- **Driver Pending Trip Accept/Reject Buttons & Completed Trip Read-Only Restriction**:
+  - Fixed pending response matching across `TripCard.jsx`, `Trips.jsx`, and `TripDetails.jsx` to explicitly include initial status `"Pending Driver Acceptance"` created by manager.
+  - Rendered `[ Accept Trip ]` and `[ Reject Trip ]` action buttons on driver trip cards and detail pages when trip status is `"Pending Driver Acceptance"`.
+  - Enforced strict read-only mode for all completed trips across web frontend and backend driver endpoints (`updateTripStatus`, `toggleCustomerLocation`, `uploadPOD`, `uploadWeighbridge`), disabling location arrival toggle and file upload forms on completed trips.
+- **Weighbridge & Location Update 500 Errors and Geocoding Query Reference**:
+  - Fixed `ReferenceError: finalWbUrl is not defined` in `uploadWeighbridgeSlip` (`driverApi.controller.js`), resolving the 500 error on Weighbridge slip uploads.
+  - Fixed `ReferenceError: latNum is not defined` in `updateDriverLocation` (`driverApi.controller.js`), resolving the 500 error on driver location sync.
+  - Fixed `ReferenceError: query is not defined` in `geocodeLocation` (`routingService.js`) and added local coordinate lookups for `DTL` (Dwaraka Tirumala), `DT`, `benagluru`, `blr`, `hyd`.
+  - Suppressed redundant OSRM API network calls in `MapView.jsx` when pre-calculated route geometry exists.
+
 ## [1.31.43] - 2026-08-06
 
 ### Changed

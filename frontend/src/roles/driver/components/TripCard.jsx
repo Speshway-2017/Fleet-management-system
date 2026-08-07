@@ -13,6 +13,7 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
     switch (st) {
       case "ASSIGNED":
       case "PENDING":
+      case "PENDING DRIVER ACCEPTANCE":
         return <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-poppins">Pending Response</span>;
       case "ACCEPTED":
       case "SCHEDULED":
@@ -84,8 +85,9 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
   };
 
   const normStatus = rawStatus.replace(/_/g, " ").trim();
-  const isPending = normStatus === "ASSIGNED" || normStatus === "PENDING";
+  const isPending = normStatus === "ASSIGNED" || normStatus === "PENDING" || normStatus === "PENDING DRIVER ACCEPTANCE";
   const isUpcoming = normStatus === "ACCEPTED" || normStatus === "SCHEDULED" || normStatus === "UPCOMING";
+  const isCompleted = normStatus === "COMPLETED" || normStatus === "DELIVERED" || normStatus === "REJECTED" || normStatus === "CANCELLED";
 
   return (
     <div className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between font-nunito">
