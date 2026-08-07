@@ -511,4 +511,10 @@ The application connects to a Node.js/Express backend API for session operations
   - Resolved `ReferenceError: query is not defined` in `geocodeLocation` (`routingService.js`) and added local coordinate dictionary mappings for `DTL` (Dwaraka Tirumala), `DT`, `benagluru`, `blr`, `hyd`.
   - Optimized OSRM route geometry fetching in `MapView.jsx` to eliminate redundant HTTP2 errors.
 
+* **reCAPTCHA Configuration & API Base URL Routing (`backend/.env`, `frontend/.env`, `contact.controller.js`)**:
+  - Corrected `RECAPTCHA_SECRET_KEY` in `backend/.env` by removing duplicate `6L` prefix typo (`6Lfk5nktAAAAABVEbZ_cqLBswPzbaux1q0CQqHhs`).
+  - Configured `frontend/.env` to point `VITE_API_BASE_URL` to `http://localhost:5000/api` for local development.
+  - Updated `contact.controller.js` to log detailed Google API verification error codes and provide clean dev-mode fallbacks for test environments.
+
+
 

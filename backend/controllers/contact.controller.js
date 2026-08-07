@@ -44,15 +44,15 @@ export const createContactRequest = async (req, res, next) => {
 
     // 3. Verify token with Google reCAPTCHA verification endpoint
     let verificationResult;
-    if (process.env.NODE_ENV === 'development' && captchaToken === 'bypass') {
+    if (process.env.NODE_ENV === 'development' && (captchaToken === 'bypass' || process.env.SKIP_CAPTCHA === 'true')) {
       verificationResult = { success: true };
       console.log("reCAPTCHA validation bypassed for local development testing.");
     } else {
       try {
         const secretKey = process.env.RECAPTCHA_SECRET_KEY;
-        console.log("Secret Key Loaded:", process.env.RECAPTCHA_SECRET_KEY?.substring(0, 10) + "...");
+        console.log("Secret Key Loaded:", secretKey ? (secretKey.substring(0, 10) + "...") : "NOT_SET");
         const params = new URLSearchParams({
-          secret: secretKey,
+          secret: secretKey || '',
           response: captchaToken,
         });
 
@@ -64,15 +64,31 @@ export const createContactRequest = async (req, res, next) => {
 
         verificationResult = await googleResponse.json();
         console.log("Google Verification Response:", verificationResult);
+
+        // Fallback for local development testing if secret key or domain is mismatched
+        if (!verificationResult.success && process.env.NODE_ENV === 'development') {
+          console.warn("reCAPTCHA verification failed in development mode:", verificationResult['error-codes']);
+          if (verificationResult['error-codes']?.includes('invalid-input-secret')) {
+            console.warn("Invalid reCAPTCHA secret key in development environment. Allowing dev fallback.");
+            verificationResult = { success: true };
+          }
+        }
       } catch (error) {
         console.error('reCAPTCHA validation API error:', error);
-        return sendError(res, 500, 'Captcha verification service unavailable due to network failure.');
+        if (process.env.NODE_ENV === 'development') {
+          console.warn("reCAPTCHA service unreachable in development. Allowing dev fallback.");
+          verificationResult = { success: true };
+        } else {
+          return sendError(res, 500, 'Captcha verification service unavailable due to network failure.');
+        }
       }
     }
 
     // 4. Validate Google response success
     if (!verificationResult || !verificationResult.success) {
-      return sendError(res, 400, 'Captcha verification failed.');
+      const errorCodes = verificationResult?.['error-codes'] ? ` (Error: ${verificationResult['error-codes'].join(', ')})` : '';
+      console.error(`Captcha verification failed${errorCodes}`);
+      return sendError(res, 400, 'Captcha verification failed. Please try again.');
     }
 
     // Generate custom Ticket ID: CNT-YYYYMMDD-XXX
