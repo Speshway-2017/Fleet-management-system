@@ -56,15 +56,25 @@ const LOCAL_CITY_COORDINATES = {
   ranchi: [23.3441, 85.3096],
   raipur: [21.2514, 81.6296],
   vijayawada: [16.5062, 80.6480],
-  guntur: [16.3067, 80.4365],
-  warangal: [17.9689, 79.5941],
   kurnool: [15.8281, 78.0373],
-  kadapa: [14.4673, 78.8242],
+  guntur: [16.3067, 80.4365],
   nellore: [14.4426, 79.9865],
+  kadapa: [14.4673, 78.8242],
+  tirupati: [13.6288, 79.4192],
+  warangal: [17.9689, 79.5941],
+  bhimadole: [16.8103, 81.2643],
+  dwaraka: [16.9538, 81.2588],
+  dwarakatirumala: [16.9538, 81.2588],
+  eluru: [16.7107, 81.1040],
+  tanuku: [16.8580, 81.6780],
+  tadepalligudem: [16.8333, 81.5333],
+  rajahmundry: [17.0005, 81.8040],
   kakinada: [16.9891, 82.2475],
-  rajahmundry: [16.9891, 81.7830],
-  eluru: [16.7107, 81.1035],
-  chittoor: [13.2172, 79.1003]
+  ongole: [15.5057, 80.0499],
+  bhimavaram: [16.5449, 81.5212],
+  khammam: [17.2473, 80.1514],
+  karimnagar: [18.4386, 79.1288],
+  nizamabad: [18.6725, 78.0941]
 };
 
 // In-memory cache maps
@@ -364,7 +374,15 @@ export function calculateFallbackDistance(startCity, endCity) {
     }
   }
 
-  if (!startCoords || !endCoords) return 350;
+  if (!startCoords || !endCoords) {
+    let hash = 0;
+    const combined = normStart + normEnd;
+    for (let i = 0; i < combined.length; i++) {
+      hash = (hash << 5) - hash + combined.charCodeAt(i);
+      hash |= 0;
+    }
+    return 18 + (Math.abs(hash) % 50);
+  }
 
   const R = 6371;
   const dLat = (endCoords[0] - startCoords[0]) * Math.PI / 180;
@@ -376,6 +394,6 @@ export function calculateFallbackDistance(startCity, endCity) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const straightKm = R * c;
 
-  if (straightKm < 5) return 20;
-  return Math.round(straightKm * 1.14);
+  if (straightKm < 5) return 12;
+  return Math.max(12, Math.round(straightKm * 1.14));
 }

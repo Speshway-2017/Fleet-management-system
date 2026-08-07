@@ -2624,32 +2624,31 @@ export const getInvoiceByTripId = async (req, res, next) => {
 export const getPODByTripId = async (req, res, next) => {
   try {
     const { tripId } = req.params;
-    let tripDoc = null;
-    if (tripId && mongoose.Types.ObjectId.isValid(tripId)) {
-      tripDoc = await Trip.findById(tripId).populate('driver');
-    } else if (tripId) {
-      const cleanId = String(tripId).replaceAll('#', '').trim();
-      tripDoc = await Trip.findOne({
-        $or: [
-          { tripNumber: cleanId },
-          { tripNumber: `#${cleanId}` },
-          { tripNumber: cleanId.startsWith('TRP-') ? cleanId : `TRP-${cleanId}` }
-        ]
-      }).populate('driver');
+    if (!tripId) {
+      return sendSuccess(res, 200, null, 'No POD uploaded yet');
+    }
+    const query = {
+      $or: [
+        { trip: tripId },
+        ...(mongoose.Types.ObjectId.isValid(tripId) ? [{ trip: new mongoose.Types.ObjectId(tripId) }] : [])
+      ]
+    };
+
+    let pod = await ProofOfDelivery.findOne(query).populate('driver').catch(() => null);
+
+    if (!pod && mongoose.Types.ObjectId.isValid(tripId)) {
+      const targetTrip = await Trip.findById(tripId).catch(() => null);
+      if (targetTrip?.driver) {
+        pod = await ProofOfDelivery.findOne({ driver: targetTrip.driver }).sort({ createdAt: -1 }).populate('driver').catch(() => null);
+        if (pod && !pod.trip) {
+          pod.trip = targetTrip._id;
+          await pod.save().catch(() => {});
+        }
+      }
     }
 
-    if (tripDoc && tripDoc.proofOfDelivery && (tripDoc.proofOfDelivery.url || tripDoc.proofOfDelivery.podDocumentUrl || tripDoc.proofOfDelivery.deliveryPhotoUrl)) {
-      const podData = {
-        _id: tripDoc.proofOfDelivery._id || tripDoc._id,
-        trip: tripDoc._id,
-        podDocumentUrl: tripDoc.proofOfDelivery.url || tripDoc.proofOfDelivery.podDocumentUrl || tripDoc.proofOfDelivery.deliveryPhotoUrl,
-        deliveryPhotoUrl: tripDoc.proofOfDelivery.deliveryPhotoUrl || tripDoc.proofOfDelivery.url,
-        customerSignatureUrl: tripDoc.proofOfDelivery.customerSignatureUrl,
-        customerName: tripDoc.proofOfDelivery.customerName || 'Customer Receiver',
-        receiverName: tripDoc.proofOfDelivery.receiverName || 'Verified Receiver',
-        status: tripDoc.proofOfDelivery.status || tripDoc.podStatus || 'Uploaded'
-      };
-      return sendSuccess(res, 200, podData, 'POD fetched successfully');
+    if (!pod) {
+      return sendSuccess(res, 200, null, 'No POD uploaded yet');
     }
 
     return sendSuccess(res, 200, null, 'No POD uploaded yet');
@@ -2862,7 +2861,32 @@ export const getWeighbridgeByTripId = async (req, res, next) => {
       };
       return sendSuccess(res, 200, wbData, 'Weighbridge slip fetched successfully');
     }
+    const query = {
+      $or: [
+        { trip: tripId },
+        { slipNumber: tripId },
+        ...(mongoose.Types.ObjectId.isValid(tripId) ? [{ trip: new mongoose.Types.ObjectId(tripId) }] : [])
+      ]
+    };
 
+    let slip = await WeighbridgeSlip.findOne(query).populate('driver').catch(() => null);
+
+    if (!slip && mongoose.Types.ObjectId.isValid(tripId)) {
+      const targetTrip = await Trip.findById(tripId).catch(() => null);
+      if (targetTrip?.driver) {
+        slip = await WeighbridgeSlip.findOne({ driver: targetTrip.driver }).sort({ createdAt: -1 }).populate('driver').catch(() => null);
+        if (slip && !slip.trip) {
+          slip.trip = targetTrip._id;
+          await slip.save().catch(() => {});
+        }
+      }
+    }
+
+    if (!slip) {
+      return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
+    }
+    return sendSuccess(res, 200, slip, 'Weighbridge slip fetched successfully');
+  } catch (error) {
     return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
   } catch (error) {
     next(error);

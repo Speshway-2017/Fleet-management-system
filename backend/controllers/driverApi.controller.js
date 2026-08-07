@@ -1162,9 +1162,91 @@ export const updateDriverLocation = async (req, res, next) => {
     const closestCity = getClosestCity(Number(latitude), Number(longitude));
     const driver = await Driver.findByIdAndUpdate(
       req.user._id,
-      { currentLocation: closestCity, driverLocation: locationStr },
+      {
+        currentLocation: locationStr,
+        driverLocation: locationStr,
+        currentLatitude: latNum,
+        currentLongitude: lngNum,
+        speed: speedNum,
+        heading: headingNum,
+        lastLocationUpdate: new Date()
+      },
       { new: true }
     );
+
+    // Update assigned vehicle coordinates
+    let vehicleDoc = null;
+    if (driver?.assignedVehicle && driver.assignedVehicle !== 'Unassigned') {
+      vehicleDoc = await Vehicle.findOneAndUpdate(
+        { $or: [{ _id: driver.assignedVehicle }, { vehicleNumber: driver.assignedVehicle }, { assignedDriver: req.user._id }] },
+        {
+          currentLatitude: latNum,
+          currentLongitude: lngNum,
+          currentLocation: locationStr,
+          speed: speedNum,
+          heading: headingNum,
+          lastLocationUpdate: new Date()
+        },
+        { new: true }
+      ).catch(() => null);
+    }
+
+    if (!vehicleDoc) {
+      vehicleDoc = await Vehicle.findOneAndUpdate(
+        { assignedDriver: req.user._id },
+        {
+          currentLatitude: latNum,
+          currentLongitude: lngNum,
+          currentLocation: locationStr,
+          speed: speedNum,
+          heading: headingNum,
+          lastLocationUpdate: new Date()
+        },
+        { new: true }
+      ).catch(() => null);
+    }
+
+    // Find active trip
+    const activeTripQuery = tripId
+      ? { _id: tripId }
+      : { driver: req.user._id, status: { $in: ['In Progress', 'On Transit', 'On Trip', 'En Route', 'Started', 'Delayed', 'Dispatched', 'In Transit'] } };
+
+    const activeTrip = await Trip.findOneAndUpdate(
+      activeTripQuery,
+      {
+        currentLatitude: latNum,
+        currentLongitude: lngNum,
+        speed: speedNum,
+        heading: headingNum,
+        lastLocationUpdate: new Date()
+      },
+      { new: true }
+    ).catch(() => null);
+
+    // Save location to TripLocationHistory collection
+    const historyEntry = await TripLocationHistory.create({
+      trip: activeTrip?._id || (tripId ? tripId : null),
+      driver: req.user._id,
+      vehicle: vehicleDoc?._id || null,
+      latitude: latNum,
+      longitude: lngNum,
+      speed: speedNum,
+      heading: headingNum,
+      timestamp: new Date()
+    }).catch(err => {
+      console.error('Error inserting TripLocationHistory:', err);
+    });
+
+    const payload = {
+      driverId: req.user._id,
+      vehicleId: vehicleDoc?._id || null,
+      tripId: activeTrip?._id || tripId || null,
+      latitude: latNum,
+      longitude: lngNum,
+      speed: speedNum,
+      heading: headingNum,
+      updatedAt: new Date()
+    };
 
     const io = req.app.get('socketio') || req.app.locals?.io;
     if (io && driver?.assignedManager) {
@@ -1239,7 +1321,8 @@ export const getDriverSupportInfo = async (req, res, next) => {
  */
 export const uploadProofOfDelivery = async (req, res, next) => {
   try {
-    const { tripId, customerName, receiverName, customerSignatureUrl, deliveryPhotoUrl, podDocumentUrl } = req.body;
+    let { tripId, customerName, receiverName, customerSignatureUrl, deliveryPhotoUrl, podDocumentUrl } = req.body;
+    tripId = tripId || req.body?.trip;
 
     const tripDoc = await resolveTripHelper(tripId);
     const resolvedTripId = tripDoc ? tripDoc._id : (mongoose.Types.ObjectId.isValid(tripId) ? tripId : null);
@@ -1270,6 +1353,16 @@ export const uploadProofOfDelivery = async (req, res, next) => {
       }
     }
 
+    if (!tripId) {
+      const activeTrip = await Trip.findOne({
+        driver: req.user._id,
+        status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
+      }).sort({ createdAt: -1 });
+      if (activeTrip) {
+        tripId = activeTrip._id;
+      }
+    }
+
     if (!secureUrl) {
       secureUrl = 'https://via.placeholder.com/300x300.png?text=POD+Uploaded';
     }
@@ -1278,10 +1371,20 @@ export const uploadProofOfDelivery = async (req, res, next) => {
     const finalDocUrl = podDocumentUrl || secureUrl;
 
     let pod = null;
-    if (resolvedTripId) {
-      pod = await ProofOfDelivery.findOne({ trip: resolvedTripId });
+    if (tripId) {
+      pod = await ProofOfDelivery.findOne({
+        $or: [
+          { trip: tripId },
+          ...(mongoose.Types.ObjectId.isValid(tripId) ? [{ trip: new mongoose.Types.ObjectId(tripId) }] : [])
+        ]
+      });
     }
+    if (!pod) {
+      pod = await ProofOfDelivery.findOne({ driver: req.user._id }).sort({ createdAt: -1 });
+    }
+
     if (pod) {
+      if (tripId) pod.trip = tripId;
       pod.customerName = customerName || pod.customerName || 'Customer Receiver';
       pod.receiverName = receiverName || pod.receiverName || 'Verified Receiver';
       pod.deliveryPhotoUrl = secureUrl;
@@ -1386,7 +1489,16 @@ export const uploadProofOfDelivery = async (req, res, next) => {
  */
 export const uploadWeighbridgeSlip = async (req, res, next) => {
   try {
-    const { tripId, grossWeight, tareWeight, netWeight, location, documentUrl } = req.body;
+    let { tripId, grossWeight, tareWeight, netWeight, location, documentUrl } = req.body;
+    if (!tripId) {
+      const activeTrip = await Trip.findOne({
+        driver: req.user._id,
+        status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
+      }).sort({ createdAt: -1 });
+      if (activeTrip) {
+        tripId = activeTrip._id;
+      }
+    }
 
     const tripDoc = await resolveTripHelper(tripId);
     const resolvedTripId = tripDoc ? tripDoc._id : (mongoose.Types.ObjectId.isValid(tripId) ? tripId : null);
@@ -1421,13 +1533,21 @@ export const uploadWeighbridgeSlip = async (req, res, next) => {
     const tare = Number(tareWeight) || 10000;
     const calculatedNet = Number(netWeight) || (gross - tare);
 
-    const finalWbUrl = secureUrl || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
-
     let slip = null;
-    if (resolvedTripId) {
-      slip = await WeighbridgeSlip.findOne({ trip: resolvedTripId });
+    if (tripId) {
+      slip = await WeighbridgeSlip.findOne({
+        $or: [
+          { trip: tripId },
+          ...(mongoose.Types.ObjectId.isValid(tripId) ? [{ trip: new mongoose.Types.ObjectId(tripId) }] : [])
+        ]
+      });
     }
+    if (!slip) {
+      slip = await WeighbridgeSlip.findOne({ driver: req.user._id }).sort({ createdAt: -1 });
+    }
+
     if (slip) {
+      if (tripId) slip.trip = tripId;
       slip.grossWeight = gross;
       slip.tareWeight = tare;
       slip.netWeight = calculatedNet;
@@ -1447,7 +1567,7 @@ export const uploadWeighbridgeSlip = async (req, res, next) => {
         location: location || 'Highway Weighbridge Station',
         uploadedBy: req.user.name || 'Driver',
         status: 'Pending',
-        documentUrl: finalWbUrl
+        documentUrl: secureUrl || 'https://via.placeholder.com/300x300.png?text=Weighbridge+Slip'
       });
       await slip.save();
     }
@@ -2070,6 +2190,14 @@ export const createDriverTicket = async (req, res, next) => {
     });
 
     await complaint.save();
+
+    // Update vehicle currentStatus to Need Maintenance
+    if (complaint.vehiclePlate) {
+      await Vehicle.findOneAndUpdate(
+        { vehicleNumber: complaint.vehiclePlate },
+        { currentStatus: 'Need Maintenance' }
+      ).catch(() => { });
+    }
 
     // Create & emit notification for assigned manager
     const managerId = driver.assignedManager || req.user.managerId;
