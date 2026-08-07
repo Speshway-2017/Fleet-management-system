@@ -124,14 +124,14 @@ export const getAvailableVehicles = async (req, res, next) => {
     // Compute road distance for non-local vehicles
     const mappedNearbyVehicles = await Promise.all(
       nearbyRawVehicles.map(async (v) => {
-        const rawEffective = getVehicleEffectiveLocation(v);
+        const rawEffective = getVehicleLocation(v);
         const vLoc = await resolveLocationName(rawEffective || 'Hyderabad', v.branch || v.branchDepot);
         if (isCoordinateString(rawEffective)) {
           Vehicle.findByIdAndUpdate(v._id, { currentLocation: vLoc }).catch(() => {});
         }
         const routeData = await getRoadDistanceAndEta(targetLoc, vLoc);
         const vObj = v.toObject ? v.toObject() : { ...v };
-        const dist = routeData.distanceKm || 0;
+        const dist = routeData.unresolvable ? 9999 : (routeData.distanceKm ?? 9999);
         return {
           ...vObj,
           isNearby: dist <= 50,

@@ -74,9 +74,16 @@ export default function ResetPasswordPage() {
             to="/login"
             className="group inline-flex items-center gap-2 px-4 py-1.5 text-[15px] md:text-[16px] font-display font-medium text-[#475569] hover:text-[#A14000] hover:bg-[#A14000]/5 rounded-full transition-all duration-[250ms] ease-in-out cursor-pointer -ml-4"
           >
-            <span className="inline-block transform group-hover:-translate-x-1.5 transition-transform duration-[250ms] ease-in-out text-lg">
-              ←
-            </span>
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-4 w-4 transform group-hover:-translate-x-1.5 transition-transform duration-[250ms] ease-in-out" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor" 
+              strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
             <span>Back to Login</span>
           </NavLink>
         </div>

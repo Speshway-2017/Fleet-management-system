@@ -59,127 +59,20 @@ export const loginDriver = async (req, res, next) => {
     }).select('+password').populate('assignedManager');
 
     if (!driver) {
-      // Find the first manager in the database to assign to this driver
-      const manager = await User.findOne({ role: 'FLEET_MANAGER' });
-      const managerId = manager ? manager._id : new mongoose.Types.ObjectId('6a58777517516dcf32d3c121');
-
-      const isEmail = loginId.includes('@');
-      const emailVal = isEmail ? loginId.toLowerCase().trim() : `${loginId.trim().toLowerCase()}@fleet.com`;
-      const phoneVal = !isEmail ? loginId.trim() : '9876543210';
-
-      const namePart = emailVal.split('@')[0];
-      const fullName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-
-      const { hashPassword } = await import('../utils/hashPassword.js');
-      const hashedPassword = await hashPassword(password);
-
-      const licenseNum = `DL-${Math.floor(100000000000 + Math.random() * 900000000000)}`;
-
-      // Let's create a vehicle first if none exists so we can assign it
-      const VehicleModel = mongoose.model('Vehicle');
-      let vehicle = await VehicleModel.findOne({});
-      if (!vehicle) {
-        vehicle = new VehicleModel({
-          vehicleNumber: 'MH12PQ8820',
-          vehicleName: 'Mahindra Blazo X 28',
-          brand: 'Mahindra',
-          model: 'Blazo X 28',
-          type: 'Truck',
-          capacity: '28 Tons',
-          fuelType: 'Diesel',
-          status: 'Active',
-          mileage: 4.5,
-          totalDistance: 125000,
-          currentLocation: 'Pune',
-          assignedManager: managerId,
-        });
-        await vehicle.save();
-      }
-
-      driver = new Driver({
-        fullName,
-        email: emailVal,
-        phoneNumber: phoneVal,
-        password: hashedPassword,
-        licenseNumber: licenseNum,
-        licenseType: 'HMV',
-        licenseExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
-        assignedVehicle: vehicle.vehicleNumber,
-        driverStatus: 'AVAILABLE',
-        employeeId: `EMP-${Math.floor(100000 + Math.random() * 900000)}`,
-        dob: new Date('1990-01-01'),
-        gender: 'Male',
-        address: 'Pune, Maharashtra',
-        assignedManager: managerId,
-      });
-      await driver.save();
-
-      // Create an upcoming trip and complete trip to ensure their dashboard metrics are loaded!
-      const TripModel = mongoose.model('Trip');
-      let trip = await TripModel.findOne({ driver: driver._id });
-      if (!trip) {
-        // Create an upcoming trip
-        const trip1 = new TripModel({
-          tripNumber: 'TRP-131267',
-          startLocation: 'Hyderabad',
-          endLocation: 'Visakhapatnam',
-          departureTime: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 mins from now to trigger start trip!
-          eta: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
-          status: 'Accepted', // So it shows in upcoming card list!
-          estimatedDistance: 620,
-          actualDistance: 0,
-          vehicle: vehicle._id,
-          driver: driver._id,
-          assignedManager: managerId,
-          cargoType: 'Steel Coils',
-          cargoWeight: 18,
-          tripNotes: 'Deliver before evening shift.',
-          driverName: driver.fullName,
-          driverPhone: driver.phoneNumber,
-          vehicleName: vehicle.vehicleName,
-          vehiclePlate: vehicle.vehicleNumber
-        });
-        await trip1.save();
-
-        const InvoiceModel = mongoose.model('Invoice');
-        const invoice = new InvoiceModel({
-          invoiceNumber: 'INV-20260731-0001',
-          trip: trip1._id,
-          driver: driver._id,
-          vehicle: vehicle._id,
-          createdBy: managerId
-        });
-        await invoice.save();
-      }
-
-      // Re-populate driver assignedManager
-      driver = await Driver.findById(driver._id).select('+password').populate('assignedManager');
+      return sendError(res, 404, 'No account found with this email');
     }
 
-    let isMatch = await comparePassword(password, driver.password);
-    if (!isMatch) {
-      // Dev/Testing fallback: Allow login with default password, phone number, email, or name-based formats
-      const firstName = driver.fullName ? driver.fullName.split(' ')[0] : '';
-      if (
-        password === 'driver123' ||
-        password === 'Meghana@21' ||
-        password === 'Megha@12' ||
-        (firstName && password.toLowerCase() === `${firstName.toLowerCase()}@21`) ||
-        password === driver.phoneNumber ||
-        password === driver.email ||
-        password.length >= 6
-      ) {
+    let isMatch = false;
+    if (driver.password) {
+      if (password === driver.password) {
         isMatch = true;
-        try {
-          const { hashPassword } = await import('../utils/hashPassword.js');
-          driver.password = await hashPassword(password);
-          await driver.save();
-        } catch (_) {}
+      } else {
+        isMatch = await comparePassword(password, driver.password);
       }
     }
 
     if (!isMatch) {
-      return sendError(res, 401, 'Invalid driver credentials');
+      return sendError(res, 401, 'Incorrect password');
     }
 
     const managerId = driver.assignedManager?._id || driver.assignedManager || null;
@@ -492,6 +385,18 @@ export const getCurrentTrip = async (req, res, next) => {
       weighbridgeStatus = wbDoc.status === 'Approved' ? 'Approved' : 'Uploaded';
     }
 
+    const currentCalcDist = calculateDistance(currentTrip.startLocation, currentTrip.endLocation);
+    let currentStoredDist = (currentTrip.actualDistance && Number(currentTrip.actualDistance) > 0)
+      ? Number(currentTrip.actualDistance)
+      : ((currentTrip.estimatedDistance && Number(currentTrip.estimatedDistance) > 0 && Math.abs(Number(currentTrip.estimatedDistance) - currentCalcDist) < 100)
+          ? Number(currentTrip.estimatedDistance)
+          : currentCalcDist);
+
+    if (currentTrip.estimatedDistance !== currentStoredDist && (!currentTrip.actualDistance || Number(currentTrip.actualDistance) === 0)) {
+      Trip.findByIdAndUpdate(currentTrip._id, { estimatedDistance: currentStoredDist }).catch(() => {});
+      currentTrip.estimatedDistance = currentStoredDist;
+    }
+
     return sendSuccess(res, 200, {
       tripId: currentTrip._id,
       driverId: currentTrip.driver?._id || currentTrip.driver,
@@ -516,8 +421,10 @@ export const getCurrentTrip = async (req, res, next) => {
       weighbridgeUploaded: weighbridgeStatus !== 'Not Uploaded',
       customerLocationReached: currentTrip.customerLocationReached || false,
       customerLocationReachedAt: currentTrip.customerLocationReachedAt || null,
-      estimatedDistance: currentTrip.estimatedDistance || 0,
-      actualDistance: currentTrip.actualDistance || 0,
+      distance: currentStoredDist,
+      totalDistance: currentStoredDist,
+      estimatedDistance: currentStoredDist,
+      actualDistance: (currentTrip.actualDistance && Number(currentTrip.actualDistance) > 0) ? Number(currentTrip.actualDistance) : currentStoredDist,
       invoiceNumber,
       manager: managerInfo
     }, 'Current trip retrieved');
@@ -1255,9 +1162,91 @@ export const updateDriverLocation = async (req, res, next) => {
     const closestCity = getClosestCity(Number(latitude), Number(longitude));
     const driver = await Driver.findByIdAndUpdate(
       req.user._id,
-      { currentLocation: closestCity, driverLocation: locationStr },
+      {
+        currentLocation: locationStr,
+        driverLocation: locationStr,
+        currentLatitude: latNum,
+        currentLongitude: lngNum,
+        speed: speedNum,
+        heading: headingNum,
+        lastLocationUpdate: new Date()
+      },
       { new: true }
     );
+
+    // Update assigned vehicle coordinates
+    let vehicleDoc = null;
+    if (driver?.assignedVehicle && driver.assignedVehicle !== 'Unassigned') {
+      vehicleDoc = await Vehicle.findOneAndUpdate(
+        { $or: [{ _id: driver.assignedVehicle }, { vehicleNumber: driver.assignedVehicle }, { assignedDriver: req.user._id }] },
+        {
+          currentLatitude: latNum,
+          currentLongitude: lngNum,
+          currentLocation: locationStr,
+          speed: speedNum,
+          heading: headingNum,
+          lastLocationUpdate: new Date()
+        },
+        { new: true }
+      ).catch(() => null);
+    }
+
+    if (!vehicleDoc) {
+      vehicleDoc = await Vehicle.findOneAndUpdate(
+        { assignedDriver: req.user._id },
+        {
+          currentLatitude: latNum,
+          currentLongitude: lngNum,
+          currentLocation: locationStr,
+          speed: speedNum,
+          heading: headingNum,
+          lastLocationUpdate: new Date()
+        },
+        { new: true }
+      ).catch(() => null);
+    }
+
+    // Find active trip
+    const activeTripQuery = tripId
+      ? { _id: tripId }
+      : { driver: req.user._id, status: { $in: ['In Progress', 'On Transit', 'On Trip', 'En Route', 'Started', 'Delayed', 'Dispatched', 'In Transit'] } };
+
+    const activeTrip = await Trip.findOneAndUpdate(
+      activeTripQuery,
+      {
+        currentLatitude: latNum,
+        currentLongitude: lngNum,
+        speed: speedNum,
+        heading: headingNum,
+        lastLocationUpdate: new Date()
+      },
+      { new: true }
+    ).catch(() => null);
+
+    // Save location to TripLocationHistory collection
+    const historyEntry = await TripLocationHistory.create({
+      trip: activeTrip?._id || (tripId ? tripId : null),
+      driver: req.user._id,
+      vehicle: vehicleDoc?._id || null,
+      latitude: latNum,
+      longitude: lngNum,
+      speed: speedNum,
+      heading: headingNum,
+      timestamp: new Date()
+    }).catch(err => {
+      console.error('Error inserting TripLocationHistory:', err);
+    });
+
+    const payload = {
+      driverId: req.user._id,
+      vehicleId: vehicleDoc?._id || null,
+      tripId: activeTrip?._id || tripId || null,
+      latitude: latNum,
+      longitude: lngNum,
+      speed: speedNum,
+      heading: headingNum,
+      updatedAt: new Date()
+    };
 
     const io = req.app.get('socketio') || req.app.locals?.io;
     if (io && driver?.assignedManager) {
@@ -1332,7 +1321,8 @@ export const getDriverSupportInfo = async (req, res, next) => {
  */
 export const uploadProofOfDelivery = async (req, res, next) => {
   try {
-    const { tripId, customerName, receiverName, customerSignatureUrl, deliveryPhotoUrl, podDocumentUrl } = req.body;
+    let { tripId, customerName, receiverName, customerSignatureUrl, deliveryPhotoUrl, podDocumentUrl } = req.body;
+    tripId = tripId || req.body?.trip;
 
     const tripDoc = await resolveTripHelper(tripId);
     const resolvedTripId = tripDoc ? tripDoc._id : (mongoose.Types.ObjectId.isValid(tripId) ? tripId : null);
@@ -1363,6 +1353,16 @@ export const uploadProofOfDelivery = async (req, res, next) => {
       }
     }
 
+    if (!tripId) {
+      const activeTrip = await Trip.findOne({
+        driver: req.user._id,
+        status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
+      }).sort({ createdAt: -1 });
+      if (activeTrip) {
+        tripId = activeTrip._id;
+      }
+    }
+
     if (!secureUrl) {
       secureUrl = 'https://via.placeholder.com/300x300.png?text=POD+Uploaded';
     }
@@ -1371,10 +1371,20 @@ export const uploadProofOfDelivery = async (req, res, next) => {
     const finalDocUrl = podDocumentUrl || secureUrl;
 
     let pod = null;
-    if (resolvedTripId) {
-      pod = await ProofOfDelivery.findOne({ trip: resolvedTripId });
+    if (tripId) {
+      pod = await ProofOfDelivery.findOne({
+        $or: [
+          { trip: tripId },
+          ...(mongoose.Types.ObjectId.isValid(tripId) ? [{ trip: new mongoose.Types.ObjectId(tripId) }] : [])
+        ]
+      });
     }
+    if (!pod) {
+      pod = await ProofOfDelivery.findOne({ driver: req.user._id }).sort({ createdAt: -1 });
+    }
+
     if (pod) {
+      if (tripId) pod.trip = tripId;
       pod.customerName = customerName || pod.customerName || 'Customer Receiver';
       pod.receiverName = receiverName || pod.receiverName || 'Verified Receiver';
       pod.deliveryPhotoUrl = secureUrl;
@@ -1479,7 +1489,16 @@ export const uploadProofOfDelivery = async (req, res, next) => {
  */
 export const uploadWeighbridgeSlip = async (req, res, next) => {
   try {
-    const { tripId, grossWeight, tareWeight, netWeight, location, documentUrl } = req.body;
+    let { tripId, grossWeight, tareWeight, netWeight, location, documentUrl } = req.body;
+    if (!tripId) {
+      const activeTrip = await Trip.findOne({
+        driver: req.user._id,
+        status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
+      }).sort({ createdAt: -1 });
+      if (activeTrip) {
+        tripId = activeTrip._id;
+      }
+    }
 
     const tripDoc = await resolveTripHelper(tripId);
     const resolvedTripId = tripDoc ? tripDoc._id : (mongoose.Types.ObjectId.isValid(tripId) ? tripId : null);
@@ -1514,13 +1533,21 @@ export const uploadWeighbridgeSlip = async (req, res, next) => {
     const tare = Number(tareWeight) || 10000;
     const calculatedNet = Number(netWeight) || (gross - tare);
 
-    const finalWbUrl = secureUrl || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
-
     let slip = null;
-    if (resolvedTripId) {
-      slip = await WeighbridgeSlip.findOne({ trip: resolvedTripId });
+    if (tripId) {
+      slip = await WeighbridgeSlip.findOne({
+        $or: [
+          { trip: tripId },
+          ...(mongoose.Types.ObjectId.isValid(tripId) ? [{ trip: new mongoose.Types.ObjectId(tripId) }] : [])
+        ]
+      });
     }
+    if (!slip) {
+      slip = await WeighbridgeSlip.findOne({ driver: req.user._id }).sort({ createdAt: -1 });
+    }
+
     if (slip) {
+      if (tripId) slip.trip = tripId;
       slip.grossWeight = gross;
       slip.tareWeight = tare;
       slip.netWeight = calculatedNet;
@@ -1540,7 +1567,7 @@ export const uploadWeighbridgeSlip = async (req, res, next) => {
         location: location || 'Highway Weighbridge Station',
         uploadedBy: req.user.name || 'Driver',
         status: 'Pending',
-        documentUrl: finalWbUrl
+        documentUrl: secureUrl || 'https://via.placeholder.com/300x300.png?text=Weighbridge+Slip'
       });
       await slip.save();
     }
@@ -1657,6 +1684,18 @@ export const getDriverTrips = async (req, res, next) => {
       const wDoc = await WeighbridgeSlip.findOne({ trip: trip._id });
       if (wDoc) wStat = wDoc.status === 'Approved' ? 'Approved' : 'Uploaded';
 
+      const tripCalcDist = calculateDistance(trip.startLocation, trip.endLocation);
+      let tripStoredDist = (trip.actualDistance && Number(trip.actualDistance) > 0)
+        ? Number(trip.actualDistance)
+        : ((trip.estimatedDistance && Number(trip.estimatedDistance) > 0 && Math.abs(Number(trip.estimatedDistance) - tripCalcDist) < 100)
+            ? Number(trip.estimatedDistance)
+            : tripCalcDist);
+
+      if (trip.estimatedDistance !== tripStoredDist && (!trip.actualDistance || Number(trip.actualDistance) === 0)) {
+        Trip.findByIdAndUpdate(trip._id, { estimatedDistance: tripStoredDist }).catch(() => {});
+        trip.estimatedDistance = tripStoredDist;
+      }
+
       return {
         _id: trip._id,
         id: trip._id,
@@ -1687,8 +1726,10 @@ export const getDriverTrips = async (req, res, next) => {
         weighbridgeUploaded: wStat !== 'Not Uploaded',
         customerLocationReached: trip.customerLocationReached || false,
         customerLocationReachedAt: trip.customerLocationReachedAt || null,
-        estimatedDistance: trip.estimatedDistance || 0,
-        actualDistance: trip.actualDistance || 0,
+        distance: tripStoredDist,
+        totalDistance: tripStoredDist,
+        estimatedDistance: tripStoredDist,
+        actualDistance: (trip.actualDistance && Number(trip.actualDistance) > 0) ? Number(trip.actualDistance) : tripStoredDist,
         invoiceNumber: invoice ? invoice.invoiceNumber : 'N/A'
       };
     }));
@@ -1863,22 +1904,24 @@ export const createDriverFuelEntry = async (req, res, next) => {
       return sendError(res, 404, 'Driver profile not found');
     }
 
-    // Verify driver currently has an active trip in progress
+    // 1. Verify driver currently has an assigned vehicle
+    let vehicle = await Vehicle.findOne({ assignedDriver: driverId });
+    if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '' && driver.assignedVehicle !== 'No Vehicle Assigned') {
+      vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle });
+    }
+
+    if (!vehicle) {
+      return sendError(res, 400, 'Fuel logging is disabled. No vehicle is currently assigned to you.');
+    }
+
+    // 2. Verify driver currently has an active trip in progress (active trips > 0)
     const activeTrip = await Trip.findOne({
       driver: driverId,
       status: { $in: ['Assigned', 'Accepted', 'In Progress', 'Start Trip', 'En Route', 'At Loading', 'Loading', 'In Transit', 'On Transit', 'Dispatched', 'Delivered'] }
     }).populate('vehicle');
 
     if (!activeTrip) {
-      return sendError(res, 400, 'Fuel refilling entries can only be logged during an active trip. Please start your trip first.');
-    }
-
-    let vehicle = activeTrip.vehicle && typeof activeTrip.vehicle === 'object' ? activeTrip.vehicle : null;
-    if (!vehicle) {
-      vehicle = await Vehicle.findOne({ assignedDriver: driverId });
-    }
-    if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '') {
-      vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle });
+      return sendError(res, 400, 'Fuel logging is disabled. You currently have 0 active trips.');
     }
 
     let receiptImageUrl = '';
@@ -2148,6 +2191,14 @@ export const createDriverTicket = async (req, res, next) => {
 
     await complaint.save();
 
+    // Update vehicle currentStatus to Need Maintenance
+    if (complaint.vehiclePlate) {
+      await Vehicle.findOneAndUpdate(
+        { vehicleNumber: complaint.vehiclePlate },
+        { currentStatus: 'Need Maintenance' }
+      ).catch(() => { });
+    }
+
     // Create & emit notification for assigned manager
     const managerId = driver.assignedManager || req.user.managerId;
     if (managerId) {
@@ -2332,11 +2383,17 @@ export const getDriverTripById = async (req, res, next) => {
     }
 
     // Single source of truth for trip distance stored in MongoDB
-    const storedDistance = (trip.actualDistance && Number(trip.actualDistance) > 0)
+    const calculatedDist = calculateDistance(trip.startLocation, trip.endLocation);
+    let storedDistance = (trip.actualDistance && Number(trip.actualDistance) > 0)
       ? Number(trip.actualDistance)
-      : ((trip.estimatedDistance && Number(trip.estimatedDistance) > 0)
+      : ((trip.estimatedDistance && Number(trip.estimatedDistance) > 0 && Math.abs(Number(trip.estimatedDistance) - calculatedDist) < 1500)
           ? Number(trip.estimatedDistance)
-          : calculateDistance(trip.startLocation, trip.endLocation));
+          : calculatedDist);
+
+    if (trip.estimatedDistance !== storedDistance && (!trip.actualDistance || Number(trip.actualDistance) === 0)) {
+      Trip.findByIdAndUpdate(trip._id, { estimatedDistance: storedDistance }).catch(() => {});
+      trip.estimatedDistance = storedDistance;
+    }
 
     const estimatedDistance = storedDistance;
     const actualDistance = (trip.actualDistance && Number(trip.actualDistance) > 0) ? Number(trip.actualDistance) : storedDistance;
@@ -2346,8 +2403,7 @@ export const getDriverTripById = async (req, res, next) => {
     console.log(`  • Trip ID: ${trip._id} (${trip.tripNumber})`);
     console.log(`  • Origin: ${trip.startLocation}`);
     console.log(`  • Destination: ${trip.endLocation}`);
-    console.log(`  • Stored estimatedDistance in MongoDB: ${trip.estimatedDistance}`);
-    console.log(`  • Stored actualDistance in MongoDB: ${trip.actualDistance}`);
+    console.log(`  • Calculated route distance: ${calculatedDist} KM`);
     console.log(`  • Distance returned to Driver API: ${storedDistance} KM`);
     console.log(`==================================================`);
 

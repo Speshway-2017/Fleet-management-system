@@ -331,11 +331,11 @@ export const getAvailableDrivers = async (req, res, next) => {
       nearbyRawDrivers.map(async ({ driver: d, dLoc }) => {
         const routeData = await getRoadDistanceAndEta(targetLoc, dLoc);
         const dObj = d.toObject ? d.toObject() : { ...d };
-        const dist = routeData.distanceKm || 0;
+        const dist = routeData.unresolvable ? 9999 : (routeData.distanceKm ?? 9999);
         return {
           ...dObj,
           isNearby: dist <= 50,
-          isAtPickupLocation: dist === 0,
+          isAtPickupLocation: false,
           distanceKm: dist,
           estimatedTravelTime: routeData.estimatedTravelTime,
           currentBranch: d.branch || d.currentLocation || dLoc,
@@ -347,9 +347,18 @@ export const getAvailableDrivers = async (req, res, next) => {
     const allSortedDrivers = [...localDrivers, ...mappedNearbyDrivers].sort((a, b) => a.distanceKm - b.distanceKm);
     const driversWithin50 = allSortedDrivers.filter(d => d.distanceKm <= 50);
 
-    let finalDriversToReturn = allSortedDrivers;
-    if (driversWithin50.length > 0) {
+    const hasNearby = driversWithin50.length > 0;
+    let isNearbyFallback = false;
+    let isExtendedFallback = false;
+
+    let finalDriversToReturn = [];
+    if (hasNearby) {
       finalDriversToReturn = driversWithin50;
+      isNearbyFallback = localDrivers.length === 0;
+    } else {
+      finalDriversToReturn = allSortedDrivers;
+      isExtendedFallback = true;
+      isNearbyFallback = true;
     }
 
     return sendSuccess(res, 200, {
