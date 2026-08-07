@@ -2,6 +2,14 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.31.45] - 2026-08-07
+
+### Fixed
+- **Google reCAPTCHA Secret Key Typo & Local API Base URL Routing**:
+  - Corrected `RECAPTCHA_SECRET_KEY` in `backend/.env` (removed duplicated `6L` prefix typo).
+  - Commented out production `VITE_API_BASE_URL` override in `frontend/.env` to ensure local dev requests correctly target `http://localhost:5000/api`.
+  - Enhanced reCAPTCHA verification in `contact.controller.js` to log detailed Google API error codes and handle development fallback cleanly.
+
 ## [1.31.44] - 2026-08-07
 
 ### Fixed
