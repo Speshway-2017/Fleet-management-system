@@ -2887,8 +2887,6 @@ export const getWeighbridgeByTripId = async (req, res, next) => {
     }
     return sendSuccess(res, 200, slip, 'Weighbridge slip fetched successfully');
   } catch (error) {
-    return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
-  } catch (error) {
     next(error);
   }
 };
