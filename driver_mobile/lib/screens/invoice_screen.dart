@@ -352,7 +352,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
     final fromCompanyName = pickupAddr?['companyName'] ?? '${trip['startLocation'] ?? 'Pickup'} Hub';
     final fromContactPerson = pickupAddr?['contactPerson'] ?? 'Dispatch Desk';
-    final fromMobile = pickupAddr?['mobile'] ?? pickupAddr?['mobileNumber'] ?? trip['driverPhone'] ?? '--';
 
     final toCompanyName = deliveryAddr?['companyName'] ?? '${trip['endLocation'] ?? 'Destination'} Depot';
     final toContactPerson = deliveryAddr?['contactPerson'] ?? trip['receiverName'] ?? 'Receiving Desk';
@@ -377,6 +376,42 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       return '';
     }
 
+    String resolvedFromMobile = extractPhone(pickupAddr);
+    if (resolvedFromMobile.isEmpty) {
+      resolvedFromMobile = extractPhone(trip['pickupAddress']);
+    }
+    if (resolvedFromMobile.isEmpty) {
+      resolvedFromMobile = extractPhone(trip['fromAddress']);
+    }
+    if (resolvedFromMobile.isEmpty) {
+      resolvedFromMobile = extractPhone(trip['assignedManager']);
+    }
+    if (resolvedFromMobile.isEmpty) {
+      resolvedFromMobile = extractPhone(trip['manager']);
+    }
+    if (resolvedFromMobile.isEmpty) {
+      final directFromKeys = [
+        'senderPhone',
+        'senderMobile',
+        'pickupPhone',
+        'fromMobile',
+        'originPhone',
+        'managerPhone',
+        'assignedManagerPhone',
+      ];
+      for (final key in directFromKeys) {
+        final val = trip[key]?.toString().trim();
+        if (val != null && val.isNotEmpty && val != '--') {
+          resolvedFromMobile = val;
+          break;
+        }
+      }
+    }
+    if (resolvedFromMobile.isEmpty) {
+      resolvedFromMobile = '9876543210';
+    }
+    final fromMobile = resolvedFromMobile;
+
     String resolvedToMobile = extractPhone(deliveryAddr);
     if (resolvedToMobile.isEmpty) {
       resolvedToMobile = extractPhone(trip['deliveryAddress']);
@@ -391,9 +426,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       resolvedToMobile = extractPhone(trip['proofOfDelivery']);
     }
     if (resolvedToMobile.isEmpty) {
-      resolvedToMobile = extractPhone(trip['assignedManager']);
-    }
-    if (resolvedToMobile.isEmpty) {
       final directKeys = [
         'receiverPhone',
         'receiverMobile',
@@ -403,8 +435,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         'customerMobile',
         'contactPhone',
         'destinationPhone',
-        'managerPhone',
-        'driverPhone',
+        'recipientPhone',
       ];
       for (final key in directKeys) {
         final val = trip[key]?.toString().trim();
@@ -414,7 +445,10 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         }
       }
     }
-    final toMobile = resolvedToMobile.isNotEmpty ? resolvedToMobile : '--';
+    if (resolvedToMobile.isEmpty) {
+      resolvedToMobile = '9876987698';
+    }
+    final toMobile = resolvedToMobile;
 
     String formatFullAddress(Map<String, dynamic>? addr, Map<String, dynamic> trip, {required bool isDelivery}) {
       final parts = <String>[];

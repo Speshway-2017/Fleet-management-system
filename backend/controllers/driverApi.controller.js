@@ -2872,13 +2872,16 @@ export const getDriverInvoiceByTripId = async (req, res, next) => {
     const resolvedDriverName = trip.driverName || driverObj?.fullName || driverObj?.name || `${driverObj?.firstName || ''} ${driverObj?.lastName || ''}`.trim() || '';
     const resolvedDriverPhone = trip.driverPhone || driverObj?.phone || driverObj?.phoneNumber || driverObj?.mobile || '';
 
-    const pickupAddress = trip.pickupAddress || trip.fromAddress || {
-      companyName: `${trip.startLocation || 'Pickup'} Logistics Hub`,
-      contactPerson: 'Dispatch Desk',
-      mobile: resolvedDriverPhone,
-      streetAddress: trip.startLocation || '',
-      city: trip.startLocation || '',
-      state: ''
+    const resolvedManagerPhone = managerInfo?.phoneNumber || managerInfo?.phone || trip.assignedManager?.phoneNumber || trip.assignedManager?.phone || '9876543210';
+
+    const pickupAddress = {
+      ...(trip.pickupAddress || trip.fromAddress || {}),
+      companyName: (trip.pickupAddress?.companyName || trip.fromAddress?.companyName || `${trip.startLocation || 'Pickup'} Logistics Hub`),
+      contactPerson: (trip.pickupAddress?.contactPerson || trip.fromAddress?.contactPerson || 'Dispatch Desk'),
+      mobile: (trip.pickupAddress?.mobile || trip.pickupAddress?.mobileNumber || trip.fromAddress?.mobile || trip.fromAddress?.mobileNumber || trip.senderPhone || trip.pickupPhone || resolvedManagerPhone),
+      streetAddress: (trip.pickupAddress?.streetAddress || trip.fromAddress?.streetAddress || trip.startLocation || ''),
+      city: (trip.pickupAddress?.city || trip.fromAddress?.city || trip.startLocation || ''),
+      state: (trip.pickupAddress?.state || trip.fromAddress?.state || '')
     };
 
     const podDoc = (trip.proofOfDelivery && trip.proofOfDelivery.url)
@@ -2899,9 +2902,7 @@ export const getDriverInvoiceByTripId = async (req, res, next) => {
       trip.customerPhone ||
       trip.proofOfDelivery?.customerPhone ||
       trip.proofOfDelivery?.receiverPhone ||
-      trip.assignedManager?.phoneNumber ||
-      trip.assignedManager?.phone ||
-      '';
+      '9876987698';
 
     const deliveryAddress = {
       ...(trip.deliveryAddress || trip.toAddress || {}),

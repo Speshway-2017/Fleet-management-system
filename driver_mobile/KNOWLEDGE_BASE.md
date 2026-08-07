@@ -496,6 +496,9 @@ The application connects to a Node.js/Express backend API for session operations
 
 
 
+* **Invoice Address Mobile Resolution (`invoice_screen.dart`, `driverApi.controller.js`)**:
+  - Independent extraction logic for FROM ADDRESS (pickup contact) and TO ADDRESS (delivery contact).
+  - Uses explicit address mobile fields when provided. When unpopulated on older records, FROM ADDRESS (Dispatch Desk / Manager G Sai Kiran) falls back to the Fleet Manager contact phone (`9876543210`), and TO ADDRESS (Receiving Manager / Venkata Ramana) falls back to receiving contact phone (`9876987698`), preventing `--` blank states and identical number duplication.
 
 >>>>>>> development
 
