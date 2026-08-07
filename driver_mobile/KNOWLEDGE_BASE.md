@@ -480,7 +480,24 @@ The application connects to a Node.js/Express backend API for session operations
   - Removed grayscale filters and upgraded map tiles to CartoDB Voyager full-color vector tiles.
   - Implemented custom location hover tooltips (`custom-map-tooltip`) on Leaflet markers displaying `📍 Location: {resolvedLocationName}`, vehicle plate number, model name, assigned driver, and operational status on hover.
 
-* **Trip Distance Sanitization & Metric Card Layout (`driverApi.controller.js`, `manager.controller.js`, `trip_details_screen.dart`)**:
-  - Implemented automatic distance sanitizer in backend API controllers: if a stored `estimatedDistance` is invalid or out-of-sync with the real route, it recalculates actual road distance using `calculateDistance(startLocation, endLocation)` and updates MongoDB.
-  - Wrapped Metric Cards Row in `IntrinsicHeight` with `CrossAxisAlignment.stretch` in `TripDetailsScreen` (`trip_details_screen.dart`), guaranteeing `Distance` and `Est. Time` cards maintain equal height, vertical centering (`mainAxisAlignment: MainAxisAlignment.center`), and crisp visual alignment.
+* **Production Geocoding & Road Distance Engine (`geocodingHelper.js`, `reverseGeocoder.js`)**:
+  - Removed string hash fallback completely. Zero fake or random coordinates are generated.
+  - Master dictionary (`LOCAL_COORDINATES`) covering AP & Telangana hubs (Eluru, Dwaraka Tirumala, Vijayawada, Guntur, Rajahmundry, Bhimavaram, Tadepalligudem, Tanuku, Gudivada, Machilipatnam, Kakinada, Visakhapatnam, Tirupati, Hyderabad, etc.).
+  - Query normalization (`normalizeLocationString`) handles spelling variations (`"Dwaraka Tirumala"`, `"Dwarka Tirumala"`, `"Dwaraka-Tirumala"` -> `[17.0036, 81.2453]`).
+  - OSRM route distance queries formatted strictly as `lon,lat;lon,lat` with dev logging.
+
+* **Two-Tier Location Resource Allocation Flow (`driver.controller.js`, `vehicle.controller.js`, `CreateTripPage.jsx`)**:
+  - **Tier 1 (Preferred 50 km Radius)**: Searches for drivers and vehicles within 50 km of the trip's pickup location. If found, displays them with a `Nearby` badge sorted by distance.
+  - **Tier 2 (Extended Sorted Fallback)**: If no driver/vehicle is found within 50 km, displays a clear notification (`❌ No nearby drivers/vehicles found within 50 km of {startLocation}`) and renders all active and available drivers/vehicles sorted from nearest to farthest (e.g. 51 km, 180 km, 250 km, 320 km).
+  - Enables fleet managers to assign the closest available operator/asset even when outside the preferred radius.
+
+
+
+
+
+
+* **Invoice Address Mobile Resolution (`invoice_screen.dart`, `driverApi.controller.js`)**:
+  - Independent extraction logic for FROM ADDRESS (pickup contact) and TO ADDRESS (delivery contact).
+  - Uses explicit address mobile fields when provided. When unpopulated on older records, FROM ADDRESS (Dispatch Desk / Manager G Sai Kiran) falls back to the Fleet Manager contact phone (`9876543210`), and TO ADDRESS (Receiving Manager / Venkata Ramana) falls back to receiving contact phone (`9876987698`), preventing `--` blank states and identical number duplication.
+
 
