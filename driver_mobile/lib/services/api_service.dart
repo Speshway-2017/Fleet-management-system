@@ -12,17 +12,51 @@ class ApiService {
     // Initialization setup if required
   }
 
-  // Default fallback host: 10.86.34.1 (PC Wi-Fi IP) or 127.0.0.1 (via adb reverse) or 10.0.2.2 (Emulator)
-  static const String defaultLocalIp = '192.168.1.17';
+  // Default server API endpoint provided by deployment team
+  static const String defaultServerUrl = 'https://fleet.speshway.site/api';
+  static const String defaultLocalIp = defaultServerUrl;
   static String? _cachedBaseUrl;
+
+  static String formatServerUrl(String raw) {
+    var formattedUrl = raw.trim();
+    if (formattedUrl.isEmpty) {
+      formattedUrl = defaultServerUrl;
+    }
+    if (!formattedUrl.startsWith('http://') &&
+        !formattedUrl.startsWith('https://')) {
+      formattedUrl = 'https://$formattedUrl';
+    }
+    if (!formattedUrl.endsWith('/api')) {
+      if (formattedUrl.endsWith('/')) {
+        formattedUrl = '${formattedUrl}api';
+      } else {
+        formattedUrl = '$formattedUrl/api';
+      }
+    }
+    return formattedUrl;
+  }
+
+  static String get defaultUrl {
+    if (defaultServerUrl.startsWith('http://') ||
+        defaultServerUrl.startsWith('https://')) {
+      return formatServerUrl(defaultServerUrl);
+    }
+    return kIsWeb ? 'http://localhost:5000/api' : 'http://$defaultServerUrl:5000/api';
+  }
+
+  static String getHostFromUrl(String rawUrl) {
+    try {
+      final uri = Uri.parse(rawUrl.trim());
+      if (uri.hasScheme && uri.hasAuthority) {
+        return '${uri.scheme}://${uri.authority}';
+      }
+    } catch (_) {}
+    return 'https://fleet.speshway.site';
+  }
 
   static Future<String> getBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
     final savedUrl = prefs.getString('server_url')?.trim();
-
-    final cleanIp = defaultLocalIp.trim();
-    final defaultUrl =
-        kIsWeb ? 'http://localhost:5000/api' : 'http://$cleanIp:5000/api';
 
     String selectedUrl;
 
@@ -32,7 +66,7 @@ class ApiService {
         selectedUrl = defaultUrl;
         await prefs.setString('server_url', selectedUrl);
       } else {
-        selectedUrl = savedUrl;
+        selectedUrl = formatServerUrl(savedUrl);
       }
     } else {
       selectedUrl = defaultUrl;
@@ -57,24 +91,12 @@ class ApiService {
   }
 
   static Future<void> setBaseUrl(String url) async {
-    var formattedUrl = url.trim();
-    if (!formattedUrl.startsWith('http://') &&
-        !formattedUrl.startsWith('https://')) {
-      formattedUrl = 'http://$formattedUrl';
-    }
-    if (!formattedUrl.endsWith('/api')) {
-      if (formattedUrl.endsWith('/')) {
-        formattedUrl = '${formattedUrl}api';
-      } else {
-        formattedUrl = '$formattedUrl/api';
-      }
-    }
+    var formattedUrl = formatServerUrl(url);
 
     if (!kIsWeb &&
         (formattedUrl.contains('localhost') ||
             formattedUrl.contains('127.0.0.1'))) {
-      final cleanIp = defaultLocalIp.trim();
-      formattedUrl = 'http://$cleanIp:5000/api';
+      formattedUrl = defaultUrl;
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -84,11 +106,7 @@ class ApiService {
 
   static Future<bool> testConnection(String targetUrl) async {
     try {
-      var formattedUrl = targetUrl.trim();
-      if (!formattedUrl.startsWith('http://') &&
-          !formattedUrl.startsWith('https://')) {
-        formattedUrl = 'http://$formattedUrl';
-      }
+      var formattedUrl = formatServerUrl(targetUrl);
       final healthUri = Uri.parse(
         '${formattedUrl.replaceAll('/api', '')}/health',
       );
