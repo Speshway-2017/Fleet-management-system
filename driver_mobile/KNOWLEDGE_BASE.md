@@ -500,4 +500,15 @@ The application connects to a Node.js/Express backend API for session operations
   - Independent extraction logic for FROM ADDRESS (pickup contact) and TO ADDRESS (delivery contact).
   - Uses explicit address mobile fields when provided. When unpopulated on older records, FROM ADDRESS (Dispatch Desk / Manager G Sai Kiran) falls back to the Fleet Manager contact phone (`9876543210`), and TO ADDRESS (Receiving Manager / Venkata Ramana) falls back to receiving contact phone (`9876987698`), preventing `--` blank states and identical number duplication.
 
+* **Pending Driver Acceptance Accept/Reject Workflow & Completed Trip Read-Only Restriction (`TripCard.jsx`, `Trips.jsx`, `TripDetails.jsx`, `driverApi.controller.js`)**:
+  - Enhanced trip status matching across driver web portal cards, filter tabs, and trip details page to explicitly include manager initial status `"Pending Driver Acceptance"`.
+  - Presents driver with prominent `[ Accept Trip ]` and `[ Reject Trip ]` action buttons on both list cards and trip details header when status is `"Pending Driver Acceptance"`.
+  - Enforced strict read-only mode for all completed trips across web frontend and backend driver endpoints (`updateTripStatus`, `toggleCustomerLocation`, `uploadPOD`, `uploadWeighbridge`), locking location arrival toggle switch, status buttons, and POD/Weighbridge document uploads for completed trips.
+
+* **Weighbridge, Driver Location 500 Errors & Geocoding Fixes (`driverApi.controller.js`, `routingService.js`, `MapView.jsx`)**:
+  - Fixed `ReferenceError: finalWbUrl is not defined` in `uploadWeighbridgeSlip`, ensuring weighbridge documents are saved with a valid URL.
+  - Fixed `ReferenceError: latNum is not defined` in `updateDriverLocation`, allowing continuous GPS location updates to persist cleanly.
+  - Resolved `ReferenceError: query is not defined` in `geocodeLocation` (`routingService.js`) and added local coordinate dictionary mappings for `DTL` (Dwaraka Tirumala), `DT`, `benagluru`, `blr`, `hyd`.
+  - Optimized OSRM route geometry fetching in `MapView.jsx` to eliminate redundant HTTP2 errors.
+
 

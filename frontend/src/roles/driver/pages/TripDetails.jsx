@@ -436,6 +436,10 @@ export default function DriverTripDetailsPage() {
 
   const customerReached = Boolean(trip.customerLocationReached);
 
+  const normStatus = rawStatus.replace(/_/g, " ").trim();
+  const isPending = normStatus === "ASSIGNED" || normStatus === "PENDING" || normStatus === "PENDING DRIVER ACCEPTANCE";
+  const isCompleted = normStatus === "COMPLETED" || normStatus === "DELIVERED" || normStatus === "REJECTED" || normStatus === "CANCELLED";
+
   return (
     <div className="space-y-8 font-nunito pb-12">
       {/* Top Header */}
@@ -450,8 +454,14 @@ export default function DriverTripDetailsPage() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-extrabold font-poppins text-slate-900">{tripNumber}</h1>
-              <span className="px-3 py-1 text-xs font-bold rounded-full bg-amber-50 text-[#B45A0A] border border-amber-200 font-poppins">
-                {rawStatus}
+              <span className={`px-3 py-1 text-xs font-bold rounded-full border font-poppins ${
+                isCompleted 
+                  ? "bg-slate-100 text-slate-700 border-slate-200" 
+                  : isPending 
+                  ? "bg-amber-50 text-amber-700 border-amber-200" 
+                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+              }`}>
+                {rawStatus} {isCompleted ? "(Read Only)" : ""}
               </span>
             </div>
             <p className="text-slate-500 text-xs mt-1">
@@ -461,20 +471,29 @@ export default function DriverTripDetailsPage() {
         </div>
 
         {/* Action Header for Pending Trips */}
-        {(rawStatus === "ASSIGNED" || rawStatus === "PENDING") && (
+        {isPending && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleRespond("accept")}
-              className="py-2.5 px-5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white font-bold font-poppins rounded-xl text-xs flex items-center gap-2 transition shadow-sm"
+              className="py-2.5 px-5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white font-bold font-poppins rounded-xl text-xs flex items-center gap-2 transition shadow-sm cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" /> Accept Trip
             </button>
             <button
               onClick={() => handleRespond("reject")}
-              className="py-2.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 hover:border-rose-300 font-semibold font-poppins rounded-xl text-xs flex items-center gap-2 transition"
+              className="py-2.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 hover:border-rose-300 font-semibold font-poppins rounded-xl text-xs flex items-center gap-2 transition cursor-pointer"
             >
               <XCircle className="w-4 h-4" /> Reject
             </button>
+          </div>
+        )}
+
+        {/* Action Header for Completed Trips (Read Only) */}
+        {isCompleted && (
+          <div className="flex items-center gap-2">
+            <span className="px-4 py-2 bg-slate-100 text-slate-700 font-bold font-poppins rounded-xl text-xs flex items-center gap-2 border border-slate-200">
+              <Lock className="w-4 h-4 text-slate-500" /> Completed Trip (Read Only)
+            </span>
           </div>
         )}
 
@@ -511,18 +530,20 @@ export default function DriverTripDetailsPage() {
       {/* Customer Location Reached Toggle Card */}
       <div className="bg-gradient-to-r from-amber-50/90 to-amber-100/40 border border-amber-200 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className={`p-3 rounded-2xl ${customerReached ? "bg-emerald-500 text-white shadow-sm" : "bg-amber-100 text-[#B45A0A]"}`}>
+          <div className={`p-3 rounded-2xl ${isCompleted ? "bg-slate-400 text-white shadow-sm" : customerReached ? "bg-emerald-500 text-white shadow-sm" : "bg-amber-100 text-[#B45A0A]"}`}>
             <MapPin className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-bold font-poppins text-slate-900">Arrived at Customer Location</h4>
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-poppins ${customerReached ? "bg-emerald-100 text-emerald-800 border border-emerald-300" : "bg-amber-200 text-amber-900 border border-amber-300"}`}>
-                {customerReached ? "CUSTOMER REACHED" : "EN ROUTE TO CUSTOMER"}
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-poppins ${isCompleted ? "bg-slate-200 text-slate-700 border border-slate-300" : customerReached ? "bg-emerald-100 text-emerald-800 border border-emerald-300" : "bg-amber-200 text-amber-900 border border-amber-300"}`}>
+                {isCompleted ? "TRIP COMPLETED" : customerReached ? "CUSTOMER REACHED" : "EN ROUTE TO CUSTOMER"}
               </span>
             </div>
             <p className="text-xs text-slate-600 mt-0.5">
-              {customerReached
+              {isCompleted
+                ? "✓ Trip is completed and finalized. Location arrival status is read-only."
+                : customerReached
                 ? "✓ Driver arrived at destination. Proof of Delivery (POD) & Weighbridge uploads are unlocked!"
                 : "Toggle switch ON when you reach the destination to automatically unlock POD & Weighbridge uploads."}
             </p>
@@ -531,17 +552,17 @@ export default function DriverTripDetailsPage() {
 
         <div className="flex items-center gap-3">
           <span className="text-xs font-bold font-poppins text-slate-700">
-            {customerReached ? "Reached" : "Not Reached"}
+            {isCompleted ? "Completed" : customerReached ? "Reached" : "Not Reached"}
           </span>
           <label className="relative inline-flex items-center cursor-pointer shrink-0">
             <input
               type="checkbox"
               checked={customerReached}
               onChange={handleToggleCustomerLocation}
-              disabled={togglingLocation}
+              disabled={togglingLocation || isCompleted}
               className="sr-only peer"
             />
-            <div className="w-14 h-7 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-600"></div>
+            <div className={`w-14 h-7 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all ${isCompleted ? "peer-checked:bg-slate-400 cursor-not-allowed" : "peer-checked:bg-emerald-600"}`}></div>
           </label>
         </div>
       </div>
@@ -725,10 +746,16 @@ export default function DriverTripDetailsPage() {
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
             <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center justify-between">
               <span>Trip Documents Upload</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded font-poppins font-bold ${customerReached ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>
-                {customerReached ? "UNLOCKED 🔓" : "LOCKED 🔒"}
+              <span className={`text-[10px] px-2 py-0.5 rounded font-poppins font-bold ${isCompleted ? "bg-slate-100 text-slate-700" : customerReached ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>
+                {isCompleted ? "READ ONLY 🔒" : customerReached ? "UNLOCKED 🔓" : "LOCKED 🔒"}
               </span>
             </h3>
+
+            {isCompleted && (
+              <p className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                🔒 Document uploads are locked because this trip is completed and read-only.
+              </p>
+            )}
 
             {/* POD Upload Box */}
             <form onSubmit={handlePodUpload} className="space-y-3">
@@ -743,13 +770,13 @@ export default function DriverTripDetailsPage() {
               <input
                 type="file"
                 accept="image/*,.pdf"
-                disabled={!customerReached || uploadingPod}
+                disabled={!customerReached || uploadingPod || isCompleted}
                 onChange={(e) => setPodFile(e.target.files[0])}
                 className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-[#B45A0A] hover:file:bg-amber-100 disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={!customerReached || !podFile || uploadingPod}
+                disabled={!customerReached || !podFile || uploadingPod || isCompleted}
                 className="w-full py-2 bg-[#B45A0A] hover:bg-[#9A4D08] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm"
               >
                 {uploadingPod ? "Uploading POD..." : "Upload POD Document"}
@@ -771,13 +798,13 @@ export default function DriverTripDetailsPage() {
               <input
                 type="file"
                 accept="image/*,.pdf"
-                disabled={!customerReached || uploadingWeighbridge}
+                disabled={!customerReached || uploadingWeighbridge || isCompleted}
                 onChange={(e) => setWeighbridgeFile(e.target.files[0])}
                 className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={!customerReached || !weighbridgeFile || uploadingWeighbridge}
+                disabled={!customerReached || !weighbridgeFile || uploadingWeighbridge || isCompleted}
                 className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm"
               >
                 {uploadingWeighbridge ? "Uploading Weighbridge..." : "Upload Weighbridge Slip"}

@@ -60,11 +60,15 @@ const LOCAL_CITY_COORDINATES = {
   guntur: [16.3067, 80.4365],
   nellore: [14.4426, 79.9865],
   kadapa: [14.4673, 78.8242],
-  tirupati: [13.6288, 79.4192],
   warangal: [17.9689, 79.5941],
   bhimadole: [16.8103, 81.2643],
   dwaraka: [16.9538, 81.2588],
   dwarakatirumala: [16.9538, 81.2588],
+  dtl: [16.9538, 81.2588],
+  dt: [16.9538, 81.2588],
+  benagluru: [12.9716, 77.5946],
+  blr: [12.9716, 77.5946],
+  hyd: [17.3850, 78.4867],
   eluru: [16.7107, 81.1040],
   tanuku: [16.8580, 81.6780],
   tadepalligudem: [16.8333, 81.5333],
@@ -100,7 +104,7 @@ export async function geocodeLocation(locationName) {
   // 1. Check local lookup dictionary first for exact or fuzzy match
   for (const [key, coords] of Object.entries(LOCAL_CITY_COORDINATES)) {
     const cleanKey = key.replace(/[^a-z0-9]/g, '');
-    if (rawQuery.includes(key) || cleanQuery.includes(cleanKey) || cleanKey.includes(cleanQuery)) {
+    if (rawQuery === key || cleanQuery === cleanKey || rawQuery.includes(key) || (cleanQuery.length >= 3 && cleanKey.includes(cleanQuery))) {
       geocodeCache.set(rawQuery, coords);
       return coords;
     }
@@ -122,7 +126,7 @@ export async function geocodeLocation(locationName) {
         const lon = parseFloat(data[0].lon);
         if (!isNaN(lat) && !isNaN(lon)) {
           const result = [lat, lon];
-          geocodeCache.set(query, result);
+          geocodeCache.set(rawQuery, result);
           return result;
         }
       }
@@ -141,7 +145,7 @@ export async function geocodeLocation(locationName) {
         const [lon, lat] = data.features[0].geometry.coordinates;
         if (!isNaN(lat) && !isNaN(lon)) {
           const result = [lat, lon];
-          geocodeCache.set(query, result);
+          geocodeCache.set(rawQuery, result);
           return result;
         }
       }
