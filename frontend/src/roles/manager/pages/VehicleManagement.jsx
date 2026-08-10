@@ -339,30 +339,19 @@ export default function VehicleManagement() {
 
   // KPIs
   const totalVehicles = vehicles.length;
-  const activeVehicles = vehicles.filter(v => {
+  const maintVehicles = vehicles.filter(v => {
     const s = (v.status || v.currentStatus || "").toLowerCase();
-    return s === "on trip" || s === "available" || s === "assigned" || s === "active";
+    return s.includes("maintenance") || s.includes("repair") || s.includes("service") || s === "need maintenance" || s === "under maintenance";
   }).length;
   const idleVehicles = vehicles.filter(v => {
     const s = (v.status || v.currentStatus || "").toLowerCase();
     return s === "idle" || s === "out of service";
   }).length;
-  const activeMaintenancePlates = new Set(
-    complaints
-      .filter(c => {
-        const s = (c.status || "").toLowerCase();
-        return s !== "resolved" && s !== "completed" && s !== "closed" && s !== "cancelled" && s !== "cancelled (accident)";
-      })
-      .map(c => (c.vehiclePlate || c.vehicleNumber || c.metadata?.vehiclePlate || "").toUpperCase().replace(/\s+/g, "").trim())
-      .filter(Boolean)
-  );
-
-  const maintVehicles = vehicles.filter(v => {
+  const activeVehicles = vehicles.filter(v => {
     const s = (v.status || v.currentStatus || "").toLowerCase();
-    const isMaintStatus = s.includes("maintenance") || s.includes("repair") || s.includes("service") || s === "need maintenance" || s === "under maintenance";
-    const plate = (v.plateNumber || v.vehicleNumber || "").toUpperCase().replace(/\s+/g, "").trim();
-    const hasActiveTicket = plate && activeMaintenancePlates.has(plate);
-    return isMaintStatus || hasActiveTicket;
+    const isMaint = s.includes("maintenance") || s.includes("repair") || s.includes("service") || s === "need maintenance" || s === "under maintenance";
+    const isIdle = s === "idle" || s === "out of service";
+    return !isMaint && !isIdle;
   }).length;
 
   const overdueRepairsCount = maintenance.filter(m => {
