@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Plus, Search, ChevronDown, Eye, Edit2, Trash2, FileText, MapPin, X, AlertTriangle, SlidersHorizontal, Users, Loader } from "lucide-react";
+import { ArrowLeft, Plus, Search, ChevronDown, Eye, Edit2, Trash2, FileText, MapPin, X, AlertTriangle, SlidersHorizontal, Users, Loader, Truck } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -64,7 +64,7 @@ export default function VehiclesListPage() {
   const [sortField, setSortField] = useState("createdAt");
   const [sortDirection, setSortDirection] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [loading, setLoading] = useState(true);
 
@@ -379,13 +379,6 @@ export default function VehiclesListPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/manager/drivers")}
-            className="px-4 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all flex items-center gap-2 shadow-sm font-poppins cursor-pointer"
-          >
-            <Users className="w-4 h-4" />
-            <span>View All Drivers</span>
-          </button>
           <button
             onClick={() => navigate("/manager/add-vehicle")}
             disabled={isViewOnly}
@@ -756,46 +749,70 @@ export default function VehiclesListPage() {
               </table>
             </div>
 
-            {/* Table Footer */}
-            <div className="px-6 py-4 bg-[#F5F7FB] border-t border-[#E7EAF0] flex items-center justify-between flex-wrap gap-4 select-none">
-              <p className="text-xs font-medium text-[#64748B]">
-                Showing <span className="font-bold text-[#1E293B]">{paginatedVehicles.length}</span> of{" "}
-                <span className="font-bold text-[#1E293B]">{processedVehicles.length}</span> vehicles
-              </p>
-              
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="flex items-center gap-1.5 ml-auto">
-                  <button
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    className="px-3 py-1.5 border border-[#E7EAF0] rounded-lg text-xs font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-white transition-colors cursor-pointer disabled:opacity-40 disabled:hover:bg-transparent"
-                  >
-                    Previous
-                  </button>
-                  {[...Array(totalPages)].map((_, i) => (
-                    <button
-                      key={i + 1}
-                      onClick={() => setCurrentPage(i + 1)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        currentPage === i + 1
-                          ? "bg-[#B45A0A] text-white"
-                          : "border border-[#E7EAF0] text-[#64748B] hover:text-[#1E293B] hover:bg-white"
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                  <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    className="px-3 py-1.5 border border-[#E7EAF0] rounded-lg text-xs font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-white transition-colors cursor-pointer disabled:opacity-40 disabled:hover:bg-transparent"
-                  >
-                    Next
-                  </button>
+            {/* Table Footer / Pagination */}
+            {processedVehicles.length > 0 && (
+              <div className="px-6 py-4 bg-[#FDFDFD] border-t border-[#E7EAF0] flex flex-col sm:flex-row items-center justify-between gap-4 select-none">
+                <div className="flex items-center gap-4 text-xs text-[#64748B] font-semibold font-poppins">
+                  <div className="flex items-center gap-2">
+                    <span>Rows per page:</span>
+                    <div className="relative">
+                      <select
+                        value={itemsPerPage}
+                        onChange={(e) => {
+                          setItemsPerPage(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="pl-2.5 pr-8 py-1.5 bg-white border border-[#E7EAF0] rounded-lg text-xs font-bold text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none cursor-pointer"
+                      >
+                        <option value={5}>5</option>
+                        <option value={8}>8</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                      </select>
+                      <ChevronDown className="w-3 h-3 text-[#64748B] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+                  <span>|</span>
+                  <span>
+                    Showing <span className="text-[#1E293B] font-bold">{Math.min((currentPage - 1) * itemsPerPage + 1, processedVehicles.length)}</span> - <span className="text-[#1E293B] font-bold">{Math.min(currentPage * itemsPerPage, processedVehicles.length)}</span> of <span className="text-[#1E293B] font-bold">{processedVehicles.length}</span> vehicles
+                  </span>
                 </div>
-              )}
-            </div>
+                
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1.5 select-none font-poppins">
+                    <button
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      className="px-3 py-1.5 border border-[#E7EAF0] rounded-lg text-xs font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      Previous
+                    </button>
+                    {[...Array(totalPages)].map((_, i) => (
+                      <button
+                        key={i + 1}
+                        onClick={() => setCurrentPage(i + 1)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          currentPage === i + 1
+                            ? "bg-[#B45A0A] text-white border border-[#B45A0A]"
+                            : "border border-[#E7EAF0] text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB]"
+                        }`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                    <button
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      className="px-3 py-1.5 border border-[#E7EAF0] rounded-lg text-xs font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Fleet Location Map */}

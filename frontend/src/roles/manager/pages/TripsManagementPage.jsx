@@ -30,6 +30,7 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import { getSocket } from "@/api/socket";
 import { managerApi } from "../api/managerApi";
 import { calculateDrivingRoute, calculateEtaFromDuration } from "../services/routingService";
+import { getNormalizedTripCategory, calculateTripKPIs } from "@/utils/tripStatusHelper";
 
 export default function TripsManagementPage() {
   const navigate = useNavigate();
@@ -199,8 +200,22 @@ export default function TripsManagementPage() {
 
   useEffect(() => {
     fetchTrips(true);
+    const socket = getSocket();
+    const handleRefresh = () => fetchTrips(false);
+
+    socket.on("trip:created", handleRefresh);
+    socket.on("trip:updated", handleRefresh);
+    socket.on("trip:status-updated", handleRefresh);
+    socket.on("trip:deleted", handleRefresh);
+
     const interval = setInterval(() => fetchTrips(false), 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      socket.off("trip:created", handleRefresh);
+      socket.off("trip:updated", handleRefresh);
+      socket.off("trip:status-updated", handleRefresh);
+      socket.off("trip:deleted", handleRefresh);
+    };
   }, []);
 
   // Compute dynamic driving distances for fetched trips
@@ -451,27 +466,33 @@ export default function TripsManagementPage() {
     }
   };
 
-  // KPIs Calculations
-  const activeTripsCount = trips.filter(t => t.status === "In Progress" || t.status === "On Transit").length;
-  const urgentTripsCount = trips.filter(t => t.status === "Delayed").length;
-  const completedTripsCount = trips.filter(t => t.status === "Completed").length;
-  // Compute on-time rate based on mock data
-  const totalFinished = trips.filter(t => t.status === "Completed" || t.status === "Delayed").length;
+  // KPIs Calculations using standard normalization
+  const {
+    totalTrips,
+    activeTripsCount,
+    scheduledTripsCount,
+    completedTripsCount,
+    delayedTripsCount,
+    cancelledTripsCount,
+    otherTripsCount
+  } = calculateTripKPIs(trips);
+
+  const totalFinished = completedTripsCount + delayedTripsCount;
   const onTimeRate = totalFinished > 0 
-    ? Math.round((trips.filter(t => t.status === "Completed").length / totalFinished) * 100) 
+    ? Math.round((completedTripsCount / totalFinished) * 100) 
     : 94; // fallback to 94%
 
   // Tab Filtering
   const getTabFilteredTrips = () => {
     switch (activeTab) {
       case "Active":
-        return trips.filter(t => t.status === "In Progress" || t.status === "On Transit");
+        return trips.filter(t => getNormalizedTripCategory(t.status) === "active");
       case "Scheduled":
-        return trips.filter(t => t.status === "Scheduled" || t.status === "Assigned");
+        return trips.filter(t => getNormalizedTripCategory(t.status) === "scheduled");
       case "Completed":
-        return trips.filter(t => t.status === "Completed");
+        return trips.filter(t => getNormalizedTripCategory(t.status) === "completed");
       case "Delayed":
-        return trips.filter(t => t.status === "Delayed");
+        return trips.filter(t => getNormalizedTripCategory(t.status) === "delayed");
       default:
         return trips;
     }
@@ -499,17 +520,20 @@ export default function TripsManagementPage() {
   const currentRows = finalFilteredTrips.slice(0, 10);
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case "In Progress":
-      case "On Transit":
+    const category = getNormalizedTripCategory(status);
+    switch (category) {
+      case "active":
         return "bg-[#FDF3EC] text-[#B45A0A] border border-[#FDF3EC] font-semibold";
-      case "Scheduled":
+      case "scheduled":
+        if (status === "Pending Driver Acceptance") {
+          return "bg-amber-50 text-amber-700 border border-amber-200 font-semibold";
+        }
         return "bg-blue-50 text-blue-700 border border-blue-100 font-semibold";
-      case "Assigned":
-        return "bg-indigo-50 text-indigo-700 border border-indigo-150 font-semibold";
-      case "Completed":
+      case "completed":
         return "bg-slate-900 text-white border border-slate-950 font-semibold";
-      case "Cancelled":
+      case "delayed":
+        return "bg-rose-50 text-rose-700 border border-rose-200 font-semibold";
+      case "cancelled":
         return "bg-red-50 text-red-600 border border-red-100 font-semibold";
       default:
         return "bg-gray-100 text-gray-500";
@@ -554,14 +578,18 @@ export default function TripsManagementPage() {
           </div>
 
           {/* KPI Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
             {/* Card 1: Total Trips */}
             <div className="bg-white rounded-xl border-l-4 border-l-blue-600 border border-[#E7EAF0] p-5 flex items-center justify-between shadow-sm">
               <div>
                 <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Total Trips</p>
-                <p className="text-3xl font-black text-[#1E293B] mt-2 font-poppins">{trips.length}</p>
-                <span className="text-[10px] text-[#64748B] mt-1 block font-medium">All dispatch logs</span>
+                <p className="text-3xl font-black text-[#1E293B] mt-2 font-poppins">{totalTrips}</p>
+                <span className="text-[10px] text-[#64748B] mt-1 block font-medium">
+                  {cancelledTripsCount + otherTripsCount > 0 
+                    ? `Includes ${cancelledTripsCount + otherTripsCount} cancelled/other`
+                    : "All dispatch logs"}
+                </span>
               </div>
               <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
                 <Route className="w-6 h-6" />
@@ -580,7 +608,19 @@ export default function TripsManagementPage() {
               </div>
             </div>
 
-            {/* Card 3: Completed */}
+            {/* Card 3: Scheduled Trips */}
+            <div className="bg-white rounded-xl border-l-4 border-l-indigo-600 border border-[#E7EAF0] p-5 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Scheduled Trips</p>
+                <p className="text-3xl font-black text-[#1E293B] mt-2 font-poppins">{scheduledTripsCount}</p>
+                <span className="text-[10px] text-[#64748B] mt-1 block font-medium">Upcoming & assigned</span>
+              </div>
+              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                <Calendar className="w-6 h-6" />
+              </div>
+            </div>
+
+            {/* Card 4: Completed */}
             <div className="bg-white rounded-xl border-l-4 border-l-[#1E293B] border border-[#E7EAF0] p-5 shadow-sm flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Completed</p>
