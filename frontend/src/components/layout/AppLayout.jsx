@@ -336,7 +336,7 @@ export default function AppLayout() {
               roleLabel={role === "admin" ? "Admin" : "Fleet Manager"}
               profilePath={role === "admin" ? "/admin/settings/profile" : "/manager/profile"}
               settingsPath={role === "admin" ? "/admin/settings" : "/manager/settings"}
-              supportPath={role === "admin" ? "/admin/notifications" : "/manager/notifications"}
+              supportPath={role === "admin" ? "/admin/notifications" : "/manager/help-support"}
               onLogout={handleLogoutRequest}
             />
             </div >

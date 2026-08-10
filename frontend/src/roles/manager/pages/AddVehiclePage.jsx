@@ -100,10 +100,10 @@ export default function AddVehiclePage() {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      const errMsg = "Max size is 5MB.";
+    if (file.size > 10 * 1024 * 1024) {
+      const errMsg = "File size must be less than 10 MB.";
       setDocErrors(prev => ({ ...prev, [key]: errMsg }));
-      toast.error(`File too large: ${file.name}. Max 5MB allowed.`);
+      toast.error(`File too large: ${file.name}. ${errMsg}`);
       return;
     }
 

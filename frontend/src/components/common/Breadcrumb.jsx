@@ -33,6 +33,7 @@ export default function Breadcrumb() {
     "/manager/change-password": { label: "Change Password", parent: "/manager/settings" },
     "/manager/subscription": { label: "Subscription" },
     "/manager/earnings": { label: "Earnings" },
+    "/manager/help-support": { label: "Help & Support" },
 
     "/manager/maintenance": { label: "Maintenance" },
     "/manager/maintenance/upcoming": { label: "Upcoming Services", parent: "/manager/maintenance" },
