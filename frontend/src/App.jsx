@@ -37,7 +37,6 @@ import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
 import VehicleManagement from "@/roles/manager/pages/VehicleManagement";
 import AddVehiclePage from "@/roles/manager/pages/AddVehiclePage";
 import VehiclesListPage from "@/roles/manager/pages/VehiclesListPage";
-import HelpSupportPage from "@/roles/manager/pages/HelpSupportPage";
 import VehicleDetailsPage from "@/roles/manager/pages/VehicleDetailsPage";
 import VehicleEditPage from "@/roles/manager/pages/VehicleEditPage";
 import DriversManagementPage from "@/roles/manager/pages/DriversManagementPage";
@@ -237,7 +236,6 @@ export default function App() {
               <Route path="/manager/profile/2fa" element={<TwoFactorPage />} />
               <Route path="/manager/subscription" element={<SubscriptionPage />} />
               <Route path="/manager/earnings" element={<EarningsPage />} />
-              <Route path="/manager/help-support" element={<HelpSupportPage />} />
             </Route>
           </Route>
 

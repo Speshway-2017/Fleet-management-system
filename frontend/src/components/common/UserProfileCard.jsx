@@ -17,7 +17,6 @@ export default function UserProfileCard({
   roleLabel = "Fleet Manager",
   profilePath = "/manager/profile",
   settingsPath = "/manager/settings",
-  supportPath = "/manager/help-support",
   onLogout,
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -154,21 +153,6 @@ export default function UserProfileCard({
             >
               <Settings className="w-4 h-4 text-gray-500" />
               <span>Settings</span>
-            </button>
-          )}
-
-          {/* 3. Help & Support (Optional) */}
-          {supportPath && (
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                navigate(supportPath);
-              }}
-              className="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-slate-700 font-medium flex items-center gap-3 transition-colors"
-            >
-              <HelpCircle className="w-4 h-4 text-gray-500" />
-              <span>Help & Support</span>
             </button>
           )}
 
