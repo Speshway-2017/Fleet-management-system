@@ -634,11 +634,11 @@ export default function DriverTripDetailsPage() {
           {/* Real Generated Bills Section (Unlocked after Trip Completion) */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
             <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center justify-between">
-              <span>Trip Invoices & Toll Bills</span>
+              <span>Trip Invoice</span>
               <span className={`text-[10px] px-2 py-0.5 font-poppins font-bold rounded ${
                 (trip?.status || "").toUpperCase() === "COMPLETED" ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
               }`}>
-                {(trip?.status || "").toUpperCase() === "COMPLETED" ? "REAL DB BILLS ✓" : "LOCKED 🔒"}
+                {(trip?.status || "").toUpperCase() === "COMPLETED" ? "REAL DB BILL ✓" : "LOCKED 🔒"}
               </span>
             </h3>
 
@@ -663,32 +663,12 @@ export default function DriverTripDetailsPage() {
                     {loadingBill ? "Loading..." : "View Invoice"}
                   </button>
                 </div>
-
-                {/* Toll Fee Receipt View Card */}
-                <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
-                      <Receipt className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900 font-poppins">Toll Fee Receipt</h4>
-                      <p className="text-[10px] text-slate-500">FASTag Toll Payment Bill</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleOpenTollReceipt}
-                    disabled={loadingBill}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold font-poppins rounded-lg transition shadow-sm disabled:opacity-50 cursor-pointer"
-                  >
-                    {loadingBill ? "Loading..." : "View Toll Receipt"}
-                  </button>
-                </div>
               </div>
             ) : (
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-1">
-                <p className="text-xs font-bold text-slate-700 font-poppins">🔒 Invoice & Toll Bills Locked</p>
+                <p className="text-xs font-bold text-slate-700 font-poppins">🔒 Invoice Locked</p>
                 <p className="text-[11px] text-slate-500">
-                  Invoice bill and FASTag toll receipt will be available once the trip is completed by manager.
+                  Invoice bill will be available once the trip is completed by manager.
                 </p>
               </div>
             )}
