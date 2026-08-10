@@ -747,27 +747,31 @@ export const uploadVehicleDocument = async (req, res, next) => {
       return sendError(res, 400, 'No file uploaded');
     }
 
-    const lowerName = (req.file.originalname || '').toLowerCase();
-    const isPdf = lowerName.endsWith('.pdf') || req.file.mimetype === 'application/pdf';
-
     const originalNameWithoutExt = path.parse(req.file.originalname || '').name || 'document';
-    let publicId = `${originalNameWithoutExt.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
-    if (isPdf && !publicId.toLowerCase().endsWith('.pdf')) {
-      publicId = `${publicId}.pdf`;
-    }
+    const publicId = `${originalNameWithoutExt.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
 
     const uploadResult = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: 'fleet_documents',
-          resource_type: isPdf ? 'raw' : 'auto',
+          resource_type: 'auto',
           public_id: publicId
         },
         (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
+          if (error) {
+            console.error('Cloudinary vehicle document upload callback error:', error);
+            reject(error);
+          } else {
+            resolve(result);
+          }
         }
       );
+
+      uploadStream.on('error', (streamErr) => {
+        console.error('Cloudinary uploadStream event error:', streamErr);
+        reject(streamErr);
+      });
+
       uploadStream.end(req.file.buffer);
     });
 
@@ -785,6 +789,10 @@ export const uploadVehicleDocument = async (req, res, next) => {
       'Document uploaded successfully'
     );
   } catch (error) {
-    next(error);
+    console.error('------ Vehicle Document Upload Error ------', error);
+    return res.status(500).json({
+      success: false,
+      message: `Document upload failed: ${error.message || 'Internal Server Error'}`
+    });
   }
 };

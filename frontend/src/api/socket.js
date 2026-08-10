@@ -1,15 +1,21 @@
 import { io } from "socket.io-client";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-const SOCKET_URL = API_BASE_URL.replace("/api", "");
+import { getApiBaseUrl } from "./axiosClient";
 
 let socket;
 
 export const getSocket = () => {
   if (!socket) {
-    socket = io(SOCKET_URL, {
-      transports: ["websocket", "polling"],
+    const apiBase = getApiBaseUrl();
+    const socketUrl = apiBase.replace(/\/api\/?$/, "");
+    socket = io(socketUrl, {
+      transports: ["polling", "websocket"],
       withCredentials: true,
+      reconnectionAttempts: 3,
+      timeout: 5000,
+    });
+
+    socket.on("connect_error", (err) => {
+      console.warn("Socket.IO connection warning:", err.message);
     });
   }
   return socket;

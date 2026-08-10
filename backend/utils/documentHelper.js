@@ -23,19 +23,13 @@ export const uploadBase64ToCloudinary = (base64Data, originalName) => {
       }
     }
     
-    const lowerName = (originalName || '').toLowerCase();
-    const isPdf = lowerName.endsWith('.pdf') || mimeType.toLowerCase() === 'application/pdf';
-    
     const originalNameWithoutExt = path.parse(originalName || '').name || 'document';
-    let publicId = `${originalNameWithoutExt.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
-    if (isPdf && !publicId.toLowerCase().endsWith('.pdf')) {
-      publicId = `${publicId}.pdf`;
-    }
+    const publicId = `${originalNameWithoutExt.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
     
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder: 'fleet_documents',
-        resource_type: isPdf ? 'raw' : 'auto',
+        resource_type: 'auto',
         public_id: publicId
       },
       (error, result) => {
@@ -47,6 +41,11 @@ export const uploadBase64ToCloudinary = (base64Data, originalName) => {
         }
       }
     );
+
+    uploadStream.on('error', (streamErr) => {
+      console.error("Cloudinary base64 stream error event:", streamErr);
+      resolve(null);
+    });
     
     uploadStream.end(fileBuffer);
   });

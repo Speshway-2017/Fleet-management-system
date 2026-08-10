@@ -17,7 +17,7 @@ export default function UserProfileCard({
   roleLabel = "Fleet Manager",
   profilePath = "/manager/profile",
   settingsPath = "/manager/settings",
-  supportPath = "/manager/notifications",
+  supportPath = "/manager/help-support",
   onLogout,
 }) {
   const [isOpen, setIsOpen] = useState(false);
