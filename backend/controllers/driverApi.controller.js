@@ -12,6 +12,7 @@ import VehicleComplaint from '../models/VehicleComplaint.js';
 import User from '../models/User.js';
 import Invoice from '../models/Invoice.js';
 import TollTransaction from '../models/TollTransaction.js';
+import TripLocationHistory from '../models/TripLocationHistory.js';
 import { comparePassword } from '../utils/hashPassword.js';
 import { generateToken } from '../utils/jwt.js';
 import { sendSuccess, sendError } from '../utils/response.js';
@@ -138,6 +139,8 @@ export const getDriverProfile = async (req, res, next) => {
     const vehicleNumber = assignedVeh ? assignedVeh.vehicleNumber : 'Unassigned';
 
     return sendSuccess(res, 200, {
+      id: driver._id,
+      _id: driver._id,
       driverId: driver.employeeId || driver._id,
       employeeId: driver.employeeId || '',
       fullName: driver.fullName,
@@ -778,7 +781,11 @@ export const updateTripStatus = async (req, res, next) => {
         return sendError(res, 400, `Cannot start trip with status '${trip.status}'. Trip must be in Scheduled/Accepted status before starting.`);
       }
       if (trip.departureTime) {
-        const departureTime = new Date(trip.departureTime);
+        let depTimeStr = trip.departureTime;
+        if (typeof depTimeStr === 'string' && !depTimeStr.endsWith('Z') && !depTimeStr.includes('+') && !depTimeStr.includes('-')) {
+          depTimeStr = depTimeStr.trim() + '+05:30';
+        }
+        const departureTime = new Date(depTimeStr);
         const now = new Date();
         const fifteenMinBefore = new Date(departureTime.getTime() - 15 * 60 * 1000);
         if (now < fifteenMinBefore) {

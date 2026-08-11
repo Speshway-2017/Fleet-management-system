@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/secure_storage_helper.dart';
@@ -25,6 +26,14 @@ class AuthRepository {
       await prefs.setString('manager_id', data['managerId'] ?? '');
       await prefs.setString('organization_id', data['organizationId'] ?? '');
 
+      // Cache the driver profile JSON if returned
+      if (data['driver'] != null) {
+        try {
+          final profile = DriverModel.fromJson(data['driver']);
+          await prefs.setString('driver_profile', jsonEncode(profile.toJson()));
+        } catch (_) {}
+      }
+
       return data;
     } else {
       throw Exception(response['message'] ?? 'Login failed');
@@ -36,15 +45,20 @@ class AuthRepository {
       await ApiService.post('/driver/logout', {});
     } catch (_) {}
 
-    // Clear secure storage token
-    await SecureStorageHelper.delete(key: 'jwt_token');
+    try {
+      // Clear secure storage token
+      await SecureStorageHelper.delete(key: 'jwt_token');
+    } catch (_) {}
 
-    // Clear shared_preferences session data
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('jwt_token');
-    await prefs.remove('driver_id');
-    await prefs.remove('manager_id');
-    await prefs.remove('organization_id');
+    try {
+      // Clear shared_preferences session data
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('jwt_token');
+      await prefs.remove('driver_id');
+      await prefs.remove('manager_id');
+      await prefs.remove('organization_id');
+      await prefs.remove('driver_profile');
+    } catch (_) {}
   }
 
   Future<void> forgotPassword(String email) async {
@@ -87,17 +101,24 @@ class AuthRepository {
   Future<DriverModel?> fetchProfile() async {
     try {
       final response = await ApiService.get('/driver/profile');
-      if (response['success'] == true && response['data'] != null) {
-        final profile = DriverModel.fromJson(response['data']);
+      if (response['success'] == true) {
+        if (response['data'] != null) {
+          final profile = DriverModel.fromJson(response['data']);
 
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('driver_id', profile.id);
-        if (profile.manager != null) {
-          await prefs.setString('manager_id', profile.manager!.id);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('driver_id', profile.id);
+          if (profile.manager != null) {
+            await prefs.setString('manager_id', profile.manager!.id);
+          }
+          await prefs.setString('organization_id', profile.organization);
+
+          // Cache the profile JSON
+          await prefs.setString('driver_profile', jsonEncode(profile.toJson()));
+
+          return profile;
         }
-        await prefs.setString('organization_id', profile.organization);
-
-        return profile;
+      } else {
+        throw Exception(response['message'] ?? 'Failed to fetch profile');
       }
     } catch (_) {
       rethrow;
@@ -108,13 +129,23 @@ class AuthRepository {
   Future<DriverModel?> updateProfile(Map<String, dynamic> data) async {
     try {
       final response = await ApiService.put('/driver/profile', data);
-      if (response['success'] == true && response['data'] != null) {
-        return DriverModel.fromJson(response['data']);
+      if (response['success'] == true) {
+        if (response['data'] != null) {
+          final profile = DriverModel.fromJson(response['data']);
+
+          // Cache the updated profile JSON
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('driver_profile', jsonEncode(profile.toJson()));
+
+          return profile;
+        }
+      } else {
+        throw Exception(response['message'] ?? 'Failed to update profile');
       }
-      throw Exception(response['message'] ?? 'Failed to update profile');
     } catch (_) {
       rethrow;
     }
+    return null;
   }
 
   Future<void> changePassword(String oldPassword, String newPassword) async {

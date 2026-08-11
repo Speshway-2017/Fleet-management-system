@@ -144,11 +144,6 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            onPressed: _fetchOverviewData,
-            tooltip: 'Refresh Overview',
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Container(

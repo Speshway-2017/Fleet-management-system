@@ -563,7 +563,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     String tripDisplayId,
     String status,
   ) {
-    final isPaid = status.toLowerCase() == 'paid';
     return CustomCard(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -593,21 +592,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                     ),
                   ),
                 ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isPaid ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
-                  borderRadius: BorderRadius.circular(AppRadius.round),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    color: isPaid ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
-                  ),
-                ),
               ),
             ],
           ),

@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/main_navigation_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import '../main.dart';
 
 class DriverProfileDropdown extends StatefulWidget {
   final bool isDarkBackground;
@@ -397,12 +399,31 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
 
   Future<void> _handleLogout(BuildContext context) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final navigator = Navigator.of(context, rootNavigator: true);
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+          ),
+        );
+      },
+    );
+
     await authProvider.logout();
+
+    navigator.popUntil((route) => route.isFirst);
+
     if (context.mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (route) => false,
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Logged out successfully.'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }

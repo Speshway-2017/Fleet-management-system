@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import 'raise_ticket_screen.dart';
 import 'ticket_details_screen.dart';
 import 'contact_fleet_manager_screen.dart';
+import 'main_navigation_screen.dart';
 
 /// Representation of a Support Ticket data item.
 class SupportTicketItem {
@@ -191,7 +192,9 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         titleSpacing: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            MainNavigationScreen.selectedTabNotifier.value = 0;
+          },
         ),
         title: Text(
           'Support & Tickets',

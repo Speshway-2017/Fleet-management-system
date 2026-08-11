@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../theme/app_colors.dart';
+import '../../constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import 'login_screen.dart';
+import '../../main.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -370,7 +371,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                   );
                                   navigator.pushAndRemoveUntil(
                                     MaterialPageRoute(
-                                      builder: (context) => const LoginScreen(),
+                                      builder: (context) => const AuthSessionWrapper(),
                                     ),
                                     (route) => false,
                                   );
@@ -419,13 +420,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                             child: InkWell(
                               onTap: () {
                                 // Navigate back to Login Screen and clear stack history
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const LoginScreen(),
-                                  ),
-                                  (route) => false,
-                                );
+                                 Navigator.pushAndRemoveUntil(
+                                   context,
+                                   MaterialPageRoute(
+                                     builder: (context) => const AuthSessionWrapper(),
+                                   ),
+                                   (route) => false,
+                                 );
                               },
                               borderRadius: BorderRadius.circular(8.0),
                               child: Padding(
