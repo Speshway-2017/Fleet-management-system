@@ -86,6 +86,12 @@ class DriverModel {
   });
 
   factory DriverModel.fromJson(Map<String, dynamic> json) {
+    bool parseBool(dynamic val, bool fallback) {
+      if (val == null) return fallback;
+      if (val is bool) return val;
+      return val.toString() == 'true' || val.toString() == '1';
+    }
+
     // Check if it's the raw MongoDB model format or the profile response format
     final String idVal = json['_id'] ?? json['id'] ?? json['driverId'] ?? '';
     final String employeeIdVal = json['employeeId'] ?? idVal;
@@ -117,8 +123,13 @@ class DriverModel {
     final String addressVal = json['address'] ?? '';
     final String joiningDateVal = json['joiningDate'] != null ? json['joiningDate'].toString() : '';
     final String dobVal = json['dob'] != null ? json['dob'].toString() : '';
-    final int perfVal = json['performanceScore'] ?? 95;
-    final int tripsVal = json['tripsCompleted'] ?? 0;
+    
+    final int perfVal = json['performanceScore'] != null 
+        ? (num.tryParse(json['performanceScore'].toString())?.toInt() ?? 95) 
+        : 95;
+    final int tripsVal = json['tripsCompleted'] != null 
+        ? (num.tryParse(json['tripsCompleted'].toString())?.toInt() ?? 0) 
+        : 0;
 
     ManagerModel? managerVal;
     if (json['manager'] != null) {
@@ -131,30 +142,30 @@ class DriverModel {
       }
     }
 
-    final bool twoFactorEnabledVal = json['twoFactorEnabled'] ?? false;
+    final bool twoFactorEnabledVal = parseBool(json['twoFactorEnabled'], false);
     final String twoFactorMethodVal = json['twoFactorMethod'] ?? 'SMS';
     final String twoFactorPhoneVal = json['twoFactorPhone'] ?? '';
     final List<String> recoveryCodesVal = json['recoveryCodes'] != null 
         ? List<String>.from(json['recoveryCodes']) 
         : <String>[];
     final String languageVal = json['language'] ?? 'English (US)';
-    final bool isDarkModeVal = json['isDarkMode'] ?? false;
+    final bool isDarkModeVal = parseBool(json['isDarkMode'], false);
     final String fcmTokenVal = json['fcmToken'] ?? '';
 
     final Map<String, dynamic> notifPrefs = json['notificationPreferences'] is Map 
         ? Map<String, dynamic>.from(json['notificationPreferences']) 
         : {};
-    final bool routeChangesVal = notifPrefs['routeChanges'] ?? true;
-    final bool trafficWarningsVal = notifPrefs['trafficWarnings'] ?? true;
-    final bool healthAlertesVal = notifPrefs['healthAlertes'] ?? true;
-    final bool fuelWarningsVal = notifPrefs['fuelWarnings'] ?? true;
-    final bool emergencyAlertsVal = notifPrefs['emergencyAlerts'] ?? true;
-    final bool tripUpdatesVal = notifPrefs['tripUpdates'] ?? true;
-    final bool soundVal = notifPrefs['sound'] ?? true;
-    final bool vibrationVal = notifPrefs['vibration'] ?? true;
-    final bool pushNotificationsVal = notifPrefs['pushNotifications'] ?? true;
-    final bool emailNotificationsVal = notifPrefs['emailNotifications'] ?? false;
-    final bool smsNotificationsVal = notifPrefs['smsNotifications'] ?? true;
+    final bool routeChangesVal = parseBool(notifPrefs['routeChanges'], true);
+    final bool trafficWarningsVal = parseBool(notifPrefs['trafficWarnings'], true);
+    final bool healthAlertesVal = parseBool(notifPrefs['healthAlertes'], true);
+    final bool fuelWarningsVal = parseBool(notifPrefs['fuelWarnings'], true);
+    final bool emergencyAlertsVal = parseBool(notifPrefs['emergencyAlerts'], true);
+    final bool tripUpdatesVal = parseBool(notifPrefs['tripUpdates'], true);
+    final bool soundVal = parseBool(notifPrefs['sound'], true);
+    final bool vibrationVal = parseBool(notifPrefs['vibration'], true);
+    final bool pushNotificationsVal = parseBool(notifPrefs['pushNotifications'], true);
+    final bool emailNotificationsVal = parseBool(notifPrefs['emailNotifications'], false);
+    final bool smsNotificationsVal = parseBool(notifPrefs['smsNotifications'], true);
 
     return DriverModel(
       id: idVal,

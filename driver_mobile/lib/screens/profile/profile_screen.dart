@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../auth/login_screen.dart';
 import 'edit_profile_screen.dart';
 import 'help_support_screen.dart';
+import '../../main.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -62,25 +63,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                Navigator.pop(dialogContext); // Close dialog
+                Navigator.pop(dialogContext); // Close confirmation dialog
+                final navigator = Navigator.of(outerContext, rootNavigator: true);
+                
+                // Show loading spinner
+                showDialog(
+                  context: outerContext,
+                  barrierDismissible: false,
+                  builder: (BuildContext loadingContext) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                      ),
+                    );
+                  },
+                );
+
                 final auth = Provider.of<AuthProvider>(outerContext, listen: false);
                 await auth.logout();
-                if (!outerContext.mounted) return;
-                ScaffoldMessenger.of(outerContext).showSnackBar(
-                  const SnackBar(
-                    content: Text('Logged out successfully.'),
-                    backgroundColor: AppColors.success,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-                // Redirect to Login Screen and clear navigation stack history
-                Navigator.pushAndRemoveUntil(
-                  outerContext,
-                  MaterialPageRoute(
-                    builder: (context) => const LoginScreen(),
-                  ),
-                  (route) => false,
-                );
+
+                navigator.popUntil((route) => route.isFirst);
+
+                if (outerContext.mounted) {
+                  ScaffoldMessenger.of(outerContext).showSnackBar(
+                    const SnackBar(
+                      content: Text('Logged out successfully.'),
+                      backgroundColor: AppColors.success,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.error,

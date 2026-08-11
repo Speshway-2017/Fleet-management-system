@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../main_navigation_screen.dart';
 import 'forgot_password_screen.dart';
+import '../../main.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -116,13 +117,6 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_input_component, color: AppColors.textSecondary),
-            tooltip: 'Server Connection Settings',
-            onPressed: _showServerConfigDialog,
-          ),
-        ],
       ),
       body: SafeArea(
         child: Center(
@@ -408,13 +402,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                   _passwordController.text.trim(),
                                 );
                                 if (!mounted) return;
-                                if (ok) {
-                                  navigator.pushReplacement(
-                                    MaterialPageRoute(
-                                      builder: (context) => const MainNavigationScreen(),
-                                    ),
-                                  );
-                                } else {
+                                 if (ok) {
+                                   navigator.pushReplacement(
+                                     MaterialPageRoute(
+                                       builder: (context) => const AuthSessionWrapper(),
+                                     ),
+                                   );
+                                 } else {
                                   messenger.showSnackBar(
                                     SnackBar(
                                       content: Text('Login failed: ${auth.errorMessage}'),

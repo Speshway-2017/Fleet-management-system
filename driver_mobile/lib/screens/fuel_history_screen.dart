@@ -126,11 +126,6 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            onPressed: _fetchFuelRecords,
-            tooltip: 'Refresh Fuel Records',
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Container(

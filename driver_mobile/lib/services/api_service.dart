@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'secure_storage_helper.dart';
 
 class ApiService {
   static Function()? onUnauthorized;
@@ -37,6 +38,9 @@ class ApiService {
   }
 
   static String get defaultUrl {
+    if (kDebugMode) {
+      return kIsWeb ? 'http://localhost:5000/api' : 'http://192.168.88.15:5000/api';
+    }
     if (defaultServerUrl.startsWith('http://') ||
         defaultServerUrl.startsWith('https://')) {
       return formatServerUrl(defaultServerUrl);
@@ -51,7 +55,7 @@ class ApiService {
         return '${uri.scheme}://${uri.authority}';
       }
     } catch (_) {}
-    return 'https://fleet.speshway.site';
+    return kDebugMode ? 'http://localhost:5000' : 'https://fleet.speshway.site';
   }
 
   static Future<String> getBaseUrl() async {
@@ -73,6 +77,7 @@ class ApiService {
     }
 
     if (!kIsWeb &&
+        !kDebugMode &&
         (selectedUrl.contains('localhost') || selectedUrl.contains('127.0.0.1'))) {
       selectedUrl = defaultUrl;
       await prefs.setString('server_url', selectedUrl);
@@ -122,16 +127,19 @@ class ApiService {
   static const _secureStorage = FlutterSecureStorage();
 
   static Future<Map<String, String>> _getHeaders() async {
-    String? token = await _secureStorage.read(key: 'jwt_token');
-    if (token == null || token.isEmpty) {
-      final prefs = await SharedPreferences.getInstance();
-      token = prefs.getString('jwt_token') ?? '';
-    }
-    return {
+    final token = await SecureStorageHelper.read(key: 'jwt_token') ?? '';
+    debugPrint('[ApiService] Token exists in auth storage: ${token.isNotEmpty}');
+    final headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       if (token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
+    final loggedHeaders = Map<String, String>.from(headers);
+    if (loggedHeaders.containsKey('Authorization')) {
+      loggedHeaders['Authorization'] = 'Bearer [MASKED]';
+    }
+    debugPrint('[ApiService] Final API request headers: $loggedHeaders');
+    return headers;
   }
 
   static Future<dynamic> get(String endpoint) async {
