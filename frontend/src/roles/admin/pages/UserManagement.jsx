@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { adminApi } from "@/roles/admin/api/adminApi";
 import toast from "react-hot-toast";
+import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -51,32 +52,36 @@ export default function UserManagement() {
         <div className="px-6 py-5 border-b border-border-custom bg-gray-50/50 flex items-center justify-between">
           <span className="text-sm font-bold text-heading">Registered Operators</span>
           <span className="text-xs font-semibold text-muted bg-white border border-border-custom px-2.5 py-1 rounded-lg">
-            Total count: {users.length}
+            {loading ? (
+              <span className="inline-block w-20 h-3.5 bg-slate-200 animate-pulse rounded" />
+            ) : (
+              `Total count: ${users.length}`
+            )}
           </span>
         </div>
 
         <div className="p-6">
-          {loading ? (
-            <div className="py-12 flex justify-center items-center text-sm text-muted gap-2">
-              <svg className="animate-spin h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              Fetching operator directory...
-            </div>
-          ) : users.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-border-custom text-muted font-bold text-xs uppercase tracking-wider">
-                    <th className="py-3 px-4">Operator Name</th>
-                    <th className="py-3 px-4">Email</th>
-                    <th className="py-3 px-4">Role Permission</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border-custom text-muted font-bold text-xs uppercase tracking-wider">
+                  <th className="py-3 px-4">Operator Name</th>
+                  <th className="py-3 px-4">Email</th>
+                  <th className="py-3 px-4">Role Permission</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-custom">
+                {loading ? (
+                  <TableRowSkeleton columns={4} rows={5} />
+                ) : users.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-12 text-center text-muted font-medium">
+                      No operators found.
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border-custom">
-                  {users.map((u) => (
+                ) : (
+                  users.map((u) => (
                     <tr key={u.id} className="hover:bg-hover-custom transition-colors duration-150 group">
                       <td className="py-4 px-4 font-semibold text-heading flex items-center gap-3">
                         <div className="h-9 w-9 rounded-full bg-primary/5 text-primary border border-primary/10 flex items-center justify-center font-bold text-xs">
@@ -114,15 +119,11 @@ export default function UserManagement() {
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="py-12 text-center text-sm text-muted">
-              No operator users found.
-            </div>
-          )}
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

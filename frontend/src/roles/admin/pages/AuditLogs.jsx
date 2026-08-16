@@ -62,7 +62,7 @@ export default function AuditLogs() {
   const getStatusColor = (status) => {
     switch (status) {
       case "Success": return "bg-green-50 text-green-600";
-      case "Warning": return "bg-orange-50 text-orange-600";
+      case "Warning": return "bg-orange-50 text-[#A14000]";
       case "Failed": return "bg-red-50 text-red-600";
       default: return "bg-slate-50 text-slate-600";
     }
@@ -147,7 +147,7 @@ export default function AuditLogs() {
             <div className="flex-1 relative">
               {loading && logs.length === 0 && (
                 <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center">
-                  <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full"></div>
+                  <div className="animate-spin w-8 h-8 border-4 border-[#A14000] border-t-transparent rounded-full"></div>
                 </div>
               )}
               

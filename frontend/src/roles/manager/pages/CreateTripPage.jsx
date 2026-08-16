@@ -95,11 +95,11 @@ function SearchableSelect({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium text-left flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 ${disabled
+        className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium text-left flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 ${disabled
           ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
           : error
             ? "border-red-300 focus:border-red-500 text-[#1E293B]"
-            : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+            : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
           }`}
       >
         <span className={value ? "text-[#1E293B] font-semibold font-poppins" : "text-gray-400 font-normal font-poppins"}>
@@ -119,7 +119,7 @@ function SearchableSelect({
                 placeholder={`Search ${label.toLowerCase()}...`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-[#E7EAF0] rounded-lg text-xs focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-poppins"
+                className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-[#E7EAF0] rounded-lg text-xs focus:outline-none focus:border-[#A14000] text-[#1E293B] font-poppins"
               />
             </div>
           </div>
@@ -139,12 +139,12 @@ function SearchableSelect({
                     type="button"
                     onClick={() => handleSelect(opt)}
                     className={`w-full px-3.5 py-2 text-left text-xs flex items-center justify-between font-poppins transition-colors ${isSelected
-                      ? "bg-amber-50 text-[#B45A0A] font-bold"
+                      ? "bg-amber-50 text-[#A14000] font-bold"
                       : "text-[#1E293B] hover:bg-gray-50 font-medium"
                       }`}
                   >
                     <span>{optStr}</span>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-[#B45A0A]" />}
+                    {isSelected && <Check className="w-3.5 h-3.5 text-[#A14000]" />}
                   </button>
                 );
               })
@@ -177,6 +177,12 @@ export default function CreateTripPage() {
   const [cargoType, setCargoType] = useState("");
   const [cargoWeight, setCargoWeight] = useState("");
   const [tripNotes, setTripNotes] = useState("");
+
+  // Service & Payment fields (Parcelix Image 2 style)
+  const [serviceType, setServiceType] = useState("Standard (3-5 days)");
+  const [paymentMethod, setPaymentMethod] = useState("Prepaid");
+  const [codAmount, setCodAmount] = useState("0");
+  const [paymentStatus, setPaymentStatus] = useState("Pending");
 
   // Filters
   const [filterAvailableVehicles, setFilterAvailableVehicles] = useState(true);
@@ -828,6 +834,10 @@ export default function CreateTripPage() {
         cargoType,
         cargoWeight: cargoWeight ? Number(cargoWeight) : undefined,
         tripNotes,
+        serviceType,
+        paymentMethod,
+        codAmount: paymentMethod === "COD" ? Number(codAmount) : 0,
+        paymentStatus,
         estimatedDistance: distance
       });
 
@@ -876,7 +886,7 @@ export default function CreateTripPage() {
         {/* 1. Trip Specifications Card (100% Width) */}
         <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-5 font-poppins">
           <div className="flex items-center gap-2 pb-3 border-b border-[#E7EAF0]">
-            <Route className="w-5 h-5 text-[#B45A0A]" />
+            <Route className="w-5 h-5 text-[#A14000]" />
             <h3 className="font-poppins font-bold text-[#1E293B] text-[16px]">Trip Specifications</h3>
           </div>
 
@@ -900,7 +910,7 @@ export default function CreateTripPage() {
                   onBlur={() => setTimeout(() => setShowStartSuggestions(false), 200)}
                   className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${isSameLocError
                     ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
-                    : "border-[#E7EAF0] focus:border-[#B45A0A]"
+                    : "border-[#E7EAF0] focus:border-[#A14000]"
                     }`}
                   required
                 />
@@ -913,7 +923,7 @@ export default function CreateTripPage() {
                           setStartLocation(city);
                           setShowStartSuggestions(false);
                         }}
-                        className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#B45A0A] text-sm text-gray-700 font-medium cursor-pointer transition-colors font-poppins"
+                        className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#A14000] text-sm text-gray-700 font-medium cursor-pointer transition-colors font-poppins"
                       >
                         {city}
                       </div>
@@ -941,7 +951,7 @@ export default function CreateTripPage() {
                   onBlur={() => setTimeout(() => setShowEndSuggestions(false), 200)}
                   className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${isSameLocError
                     ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
-                    : "border-[#E7EAF0] focus:border-[#B45A0A]"
+                    : "border-[#E7EAF0] focus:border-[#A14000]"
                     }`}
                   required
                 />
@@ -954,7 +964,7 @@ export default function CreateTripPage() {
                           setEndLocation(city);
                           setShowEndSuggestions(false);
                         }}
-                        className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#B45A0A] text-sm text-gray-700 font-medium cursor-pointer transition-colors font-poppins"
+                        className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#A14000] text-sm text-gray-700 font-medium cursor-pointer transition-colors font-poppins"
                       >
                         {city}
                       </div>
@@ -985,7 +995,7 @@ export default function CreateTripPage() {
                   onChange={(e) => handleDepartureTimeChange(e.target.value)}
                   onBlur={handleBlur}
                   min={getCurrentDateTimeString()}
-                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins ${departureError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium font-poppins ${departureError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
                     }`}
                   required
                 />
@@ -1008,7 +1018,7 @@ export default function CreateTripPage() {
                   onChange={(e) => handleEtaChange(e.target.value)}
                   onBlur={handleBlur}
                   min={getMinEtaString(departureTime)}
-                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins ${etaError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium font-poppins ${etaError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
                     }`}
                   required
                 />
@@ -1028,7 +1038,7 @@ export default function CreateTripPage() {
                 placeholder="e.g. 5000"
                 value={cargoWeight}
                 onChange={(e) => setCargoWeight(e.target.value)}
-                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins"
+                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium font-poppins"
                 required
               />
             </div>
@@ -1046,7 +1056,7 @@ export default function CreateTripPage() {
                 placeholder="e.g. Perishable Goods, Electronics"
                 value={cargoType}
                 onChange={(e) => setCargoType(e.target.value)}
-                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins"
+                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium font-poppins"
               />
             </div>
 
@@ -1060,7 +1070,7 @@ export default function CreateTripPage() {
                 placeholder="e.g. Express Deliveries"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins"
+                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium font-poppins"
               />
             </div>
 
@@ -1074,7 +1084,7 @@ export default function CreateTripPage() {
                 placeholder="e.g. Handle with care, route via tollway"
                 value={tripNotes}
                 onChange={(e) => setTripNotes(e.target.value)}
-                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium font-poppins"
+                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium font-poppins"
               />
             </div>
           </div>
@@ -1087,13 +1097,13 @@ export default function CreateTripPage() {
           <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between space-y-4 font-poppins h-[420px]">
             <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0] shrink-0">
               <div className="flex items-center gap-2">
-                <Truck className="w-5 h-5 text-[#B45A0A]" />
+                <Truck className="w-5 h-5 text-[#A14000]" />
                 <h3 className="font-bold text-[#1E293B] text-[16px]">Asset Allocation</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setFilterAvailableVehicles(!filterAvailableVehicles)}
-                className="text-[10px] font-bold text-[#B45A0A] bg-orange-50 border border-orange-100 hover:bg-orange-100/50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer select-none font-poppins"
+                className="text-[10px] font-bold text-[#A14000] bg-orange-50 border border-orange-100 hover:bg-orange-100/50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer select-none font-poppins"
               >
                 {filterAvailableVehicles ? "Show All Vehicles" : "Filter Available"}
               </button>
@@ -1109,7 +1119,7 @@ export default function CreateTripPage() {
               </div >
             ) : startLocation.trim() && isNearbyVehiclesFallback ? (
     <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0 font-poppins">
-      <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
+      <AlertTriangle className="w-4 h-4 text-[#A14000] shrink-0 mt-0.5" />
       <div>
         <span className="font-bold block text-amber-900">No vehicles located directly in {startLocation}.</span>
         <span className="text-[11px] text-amber-700 font-medium">Showing nearest available vehicles within 50 km radius:</span>
@@ -1148,7 +1158,7 @@ export default function CreateTripPage() {
         className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${v.status === "Under Maintenance"
           ? "border-[#E7EAF0] bg-gray-50/50 opacity-60 cursor-not-allowed"
           : String(selectedVehicleId) === String(v.id)
-            ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
+            ? "border-[#A14000] bg-orange-50/20 shadow-sm cursor-pointer"
             : "border-[#E7EAF0] bg-white hover:bg-gray-50 cursor-pointer"
           }`}
       >
@@ -1190,7 +1200,7 @@ export default function CreateTripPage() {
           className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${v.status === "Under Maintenance"
             ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
             : String(selectedVehicleId) === String(v.id)
-              ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
+              ? "bg-[#A14000] text-white shadow-sm font-poppins"
               : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
             }`}
         >
@@ -1206,13 +1216,13 @@ export default function CreateTripPage() {
   < div className = "bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between space-y-4 font-poppins h-[420px]" >
     <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0] shrink-0">
       <div className="flex items-center gap-2">
-        <User className="w-5 h-5 text-[#B45A0A]" />
+        <User className="w-5 h-5 text-[#A14000]" />
         <h3 className="font-bold text-[#1E293B] text-[16px]">Driver Assignment</h3>
       </div>
       <button
         type="button"
         onClick={() => setFilterAvailableDrivers(!filterAvailableDrivers)}
-        className="text-[10px] font-bold text-[#B45A0A] bg-orange-50 border border-orange-100 hover:bg-orange-100/50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer select-none font-poppins"
+        className="text-[10px] font-bold text-[#A14000] bg-orange-50 border border-orange-100 hover:bg-orange-100/50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer select-none font-poppins"
       >
         {filterAvailableDrivers ? "Show All Drivers" : "Filter Available"}
       </button>
@@ -1229,7 +1239,7 @@ export default function CreateTripPage() {
               </div >
             ) : startLocation.trim() && isNearbyDriversFallback ? (
     <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2.5 shrink-0 font-poppins">
-      <AlertTriangle className="w-4 h-4 text-[#B45A0A] shrink-0 mt-0.5" />
+      <AlertTriangle className="w-4 h-4 text-[#A14000] shrink-0 mt-0.5" />
       <div>
         <span className="font-bold block text-amber-900">No drivers located directly in {startLocation}.</span>
         <span className="text-[11px] text-amber-700 font-medium">Showing nearest available drivers within 50 km radius:</span>
@@ -1281,7 +1291,7 @@ export default function CreateTripPage() {
           className={`p-3.5 border rounded-xl flex items-center justify-between transition-all ${(isExpired || isOffline || d.status === "Not Available")
             ? "border-red-150 bg-red-50/10 opacity-60 cursor-not-allowed"
             : String(selectedDriverId) === String(d.id)
-              ? "border-[#B45A0A] bg-orange-50/20 shadow-sm cursor-pointer"
+              ? "border-[#A14000] bg-orange-50/20 shadow-sm cursor-pointer"
               : "border-[#E7EAF0] bg-white hover:bg-gray-50 cursor-pointer"
             }`}
         >
@@ -1347,7 +1357,7 @@ export default function CreateTripPage() {
             className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${(isExpired || isOffline || d.status === "Not Available")
               ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed font-poppins"
               : String(selectedDriverId) === String(d.id)
-                ? "bg-[#B45A0A] text-white shadow-sm font-poppins"
+                ? "bg-[#A14000] text-white shadow-sm font-poppins"
                 : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B] font-poppins"
               }`}
           >
@@ -1378,9 +1388,9 @@ export default function CreateTripPage() {
               <button
                 type="button"
                 onClick={handleUseCurrentBranch}
-                className="text-xs font-bold text-[#B45A0A] bg-amber-50 hover:bg-amber-100/70 border border-amber-200/60 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs font-poppins shrink-0"
+                className="text-xs font-bold text-[#A14000] bg-amber-50 hover:bg-amber-100/70 border border-amber-200/60 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs font-poppins shrink-0"
               >
-                <Building2 className="w-3.5 h-3.5 text-[#B45A0A]" /> Use Current Branch
+                <Building2 className="w-3.5 h-3.5 text-[#A14000]" /> Use Current Branch
               </button>
             </div>
 
@@ -1395,7 +1405,7 @@ export default function CreateTripPage() {
                     placeholder="Enter Company Name"
                     value={pickupAddress.companyName}
                     onChange={(e) => handleAddressChange('pickup', 'companyName', e.target.value)}
-                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${pickupErrors.companyName ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins ${pickupErrors.companyName ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
                       }`}
                   />
                   {pickupErrors.companyName && (
@@ -1414,7 +1424,7 @@ export default function CreateTripPage() {
                     placeholder="Enter Contact Person Name"
                     value={pickupAddress.contactPerson}
                     onChange={(e) => handleAddressChange('pickup', 'contactPerson', e.target.value)}
-                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${pickupErrors.contactPerson ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins ${pickupErrors.contactPerson ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
                       }`}
                   />
                   {pickupErrors.contactPerson && (
@@ -1432,7 +1442,7 @@ export default function CreateTripPage() {
                   </label>
                   <div className="relative flex items-center">
                     <div className="absolute left-3 flex items-center gap-1.5 text-[#64748B] pointer-events-none border-r border-[#E7EAF0] pr-2.5 h-6">
-                      <Phone className="w-3.5 h-3.5 text-[#B45A0A]" />
+                      <Phone className="w-3.5 h-3.5 text-[#A14000]" />
                       <span className="text-xs font-bold text-[#1E293B] font-poppins">+91</span>
                     </div>
                     <input
@@ -1441,7 +1451,7 @@ export default function CreateTripPage() {
                       placeholder="9876543210"
                       value={pickupAddress.mobile}
                       onChange={(e) => handleAddressChange('pickup', 'mobile', e.target.value.replace(/\D/g, ''))}
-                      className={`w-full pl-[72px] pr-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${pickupErrors.mobile ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                      className={`w-full pl-[72px] pr-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins ${pickupErrors.mobile ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
                         }`}
                     />
                   </div>
@@ -1461,7 +1471,7 @@ export default function CreateTripPage() {
                     placeholder="Enter Complete Street Address"
                     value={pickupAddress.streetAddress}
                     onChange={(e) => handleAddressChange('pickup', 'streetAddress', e.target.value)}
-                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all resize-none font-poppins ${pickupErrors.streetAddress ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 transition-all resize-none font-poppins ${pickupErrors.streetAddress ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
                       }`}
                   />
                   {pickupErrors.streetAddress && (
@@ -1508,7 +1518,7 @@ export default function CreateTripPage() {
                     placeholder="Enter Area or Locality"
                     value={pickupAddress.area}
                     onChange={(e) => handleAddressChange('pickup', 'area', e.target.value)}
-                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#B45A0A] focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins"
+                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins"
                   />
                 </div>
 
@@ -1522,7 +1532,7 @@ export default function CreateTripPage() {
                     placeholder="Enter Pincode"
                     value={pickupAddress.pincode}
                     onChange={(e) => handleAddressChange('pickup', 'pincode', e.target.value.replace(/\D/g, ''))}
-                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${pickupErrors.pincode ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins ${pickupErrors.pincode ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
                       }`}
                   />
                   {pickupErrors.pincode && (
@@ -1566,7 +1576,7 @@ export default function CreateTripPage() {
                     placeholder="Enter Company Name"
                     value={deliveryAddress.companyName}
                     onChange={(e) => handleAddressChange('delivery', 'companyName', e.target.value)}
-                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${deliveryErrors.companyName ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins ${deliveryErrors.companyName ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
                       }`}
                   />
                   {deliveryErrors.companyName && (
@@ -1585,7 +1595,7 @@ export default function CreateTripPage() {
                     placeholder="Enter Contact Person Name"
                     value={deliveryAddress.contactPerson}
                     onChange={(e) => handleAddressChange('delivery', 'contactPerson', e.target.value)}
-                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${deliveryErrors.contactPerson ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins ${deliveryErrors.contactPerson ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
                       }`}
                   />
                   {deliveryErrors.contactPerson && (
@@ -1603,7 +1613,7 @@ export default function CreateTripPage() {
                   </label>
                   <div className="relative flex items-center">
                     <div className="absolute left-3 flex items-center gap-1.5 text-[#64748B] pointer-events-none border-r border-[#E7EAF0] pr-2.5 h-6">
-                      <Phone className="w-3.5 h-3.5 text-[#B45A0A]" />
+                      <Phone className="w-3.5 h-3.5 text-[#A14000]" />
                       <span className="text-xs font-bold text-[#1E293B] font-poppins">+91</span>
                     </div>
                     <input
@@ -1612,7 +1622,7 @@ export default function CreateTripPage() {
                       placeholder="9876543210"
                       value={deliveryAddress.mobile}
                       onChange={(e) => handleAddressChange('delivery', 'mobile', e.target.value.replace(/\D/g, ''))}
-                      className={`w-full pl-[72px] pr-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${deliveryErrors.mobile ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                      className={`w-full pl-[72px] pr-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins ${deliveryErrors.mobile ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
                         }`}
                     />
                   </div>
@@ -1632,7 +1642,7 @@ export default function CreateTripPage() {
                     placeholder="Enter Complete Street Address"
                     value={deliveryAddress.streetAddress}
                     onChange={(e) => handleAddressChange('delivery', 'streetAddress', e.target.value)}
-                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all resize-none font-poppins ${deliveryErrors.streetAddress ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 transition-all resize-none font-poppins ${deliveryErrors.streetAddress ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
                       }`}
                   />
                   {deliveryErrors.streetAddress && (
@@ -1679,7 +1689,7 @@ export default function CreateTripPage() {
                     placeholder="Enter Area or Locality"
                     value={deliveryAddress.area}
                     onChange={(e) => handleAddressChange('delivery', 'area', e.target.value)}
-                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#B45A0A] focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins"
+                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins"
                   />
                 </div>
 
@@ -1693,7 +1703,7 @@ export default function CreateTripPage() {
                     placeholder="Enter Pincode"
                     value={deliveryAddress.pincode}
                     onChange={(e) => handleAddressChange('delivery', 'pincode', e.target.value.replace(/\D/g, ''))}
-                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B45A0A]/20 transition-all font-poppins ${deliveryErrors.pincode ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#B45A0A] text-[#1E293B]"
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins ${deliveryErrors.pincode ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
                       }`}
                   />
                   {deliveryErrors.pincode && (
@@ -1704,12 +1714,99 @@ export default function CreateTripPage() {
                 </div>
               </div>
             </div>
-          </div >
+          </div>
+        </div>
 
-        </div >
+        {/* Service & Payment Card (Parcelix Image 2 style) */}
+        <div className="bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm space-y-4 font-poppins">
+          <div className="flex items-center justify-between pb-3 border-b border-[#E7EAF0]">
+            <div>
+              <h2 className="text-base font-bold text-[#1E293B] font-poppins flex items-center gap-2">
+                💳 Service & Payment
+              </h2>
+              <p className="text-xs text-[#64748B] font-medium mt-0.5 font-poppins">
+                Configure shipping service tier and payment method (Prepaid / Cash on Delivery COD)
+              </p>
+            </div>
+          </div>
 
-  {/* 4. Bottom Action Bar (Cancel & Create Trip / Dispatch Trip) */ }
-  < div className = "flex items-center justify-end gap-4 pt-6 border-t border-[#E7EAF0]" >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                  Service Type
+                </label>
+                <select
+                  value={serviceType}
+                  onChange={(e) => setServiceType(e.target.value)}
+                  className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins"
+                >
+                  <option value="Standard (3-5 days)">Standard (3-5 days)</option>
+                  <option value="Express (1-2 days)">Express (1-2 days)</option>
+                  <option value="Same Day Delivery">Same Day Delivery</option>
+                  <option value="Heavy Cargo Fleet">Heavy Cargo Fleet</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                  Payment Method <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins"
+                >
+                  <option value="Prepaid">Prepaid</option>
+                  <option value="COD">Cash on Delivery (COD)</option>
+                  <option value="Bill to Account">Bill to Account / Credit</option>
+                </select>
+              </div>
+
+              {paymentMethod === "COD" && (
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 font-poppins">
+                    COD Amount (₹)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={codAmount}
+                    onChange={(e) => setCodAmount(e.target.value)}
+                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80 space-y-2.5">
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Estimated Payment Summary</h3>
+              <div className="flex justify-between text-xs text-slate-600">
+                <span>Base Freight Rate</span>
+                <span className="font-semibold">₹{(Number(cargoWeight || 1) * 450).toLocaleString("en-IN")}</span>
+              </div>
+              <div className="flex justify-between text-xs text-slate-600">
+                <span>Service Fee ({serviceType.split(' ')[0]})</span>
+                <span className="font-semibold">₹{serviceType.includes("Express") ? 1500 : serviceType.includes("Same Day") ? 3000 : 500}</span>
+              </div>
+              <div className="flex justify-between text-xs text-slate-600">
+                <span>Payment Method</span>
+                <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${paymentMethod === 'COD' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                  {paymentMethod}
+                </span>
+              </div>
+              <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm font-black text-[#0D1B2A]">
+                <span>Estimated Total</span>
+                <span className="text-base text-[#A14000]">
+                  ₹{((Number(cargoWeight || 1) * 450) + (serviceType.includes("Express") ? 1500 : serviceType.includes("Same Day") ? 3000 : 500)).toLocaleString("en-IN")}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Bottom Action Bar (Cancel & Create Trip / Dispatch Trip) */}
+        <div className="flex items-center justify-end gap-4 pt-6 border-t border-[#E7EAF0]">
           <button
             type="button"
             onClick={() => navigate("/manager/trips")}
@@ -1723,7 +1820,7 @@ export default function CreateTripPage() {
             disabled={isSubmitting || !!departureError || !!etaError || !departureTime || !eta || !cargoWeight || isSameLocError}
             className={`px-8 py-3 rounded-xl text-sm font-bold text-white transition-all shadow-md cursor-pointer flex items-center gap-2 font-poppins ${(isSubmitting || departureError || etaError || !departureTime || !eta || !cargoWeight || isSameLocError)
                 ? "bg-gray-300 shadow-none cursor-not-allowed opacity-60"
-                : "bg-[#B45A0A] hover:bg-[#9A4D08] shadow-[#B45A0A]/20"
+                : "bg-[#A14000] hover:bg-[#853400] shadow-[#A14000]/20"
               }`}
           >
             {isSubmitting ? (
@@ -1734,9 +1831,9 @@ export default function CreateTripPage() {
               </>
             )}
           </button>
-        </div >
+        </div>
 
-      </div >
-    </div >
+      </div>
+    </div>
   );
 }

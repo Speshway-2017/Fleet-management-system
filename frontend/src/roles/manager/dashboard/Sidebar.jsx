@@ -51,20 +51,22 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
   };
 
   const navContent = (
-    <div className="flex flex-col h-full bg-[#0F0F10] text-gray-400 border-r border-[#1B1B1D]/50 select-none">
+    <div className="flex flex-col h-full bg-[#0D1B2A] text-slate-300 border-r border-slate-800/80 select-none">
       {/* Brand Header */}
-      <div className="flex items-center justify-between px-4 py-6 border-b border-[#1B1B1D]/50 shrink-0">
-        <div className="flex items-center gap-2">
-          <img src={platformSettings?.logoUrl || "/logo.png"} className="w-10 h-10 object-contain rounded-lg shrink-0" alt="Logo" />
-          <div className="border-l border-[#1B1B1D]/80 pl-[14px] py-1">
+      <div className="flex items-center justify-between px-5 py-5 border-b border-slate-800/80 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="p-1 rounded-xl bg-slate-900/60 border border-slate-800 shrink-0">
+            <img src={platformSettings?.logoUrl || "/logo.png"} className="w-8 h-8 object-contain rounded-md shrink-0" alt="Logo" />
+          </div>
+          <div className="border-l border-slate-700/60 pl-3 py-0.5">
             <h1 className="font-poppins font-black text-white text-base tracking-wide leading-none whitespace-nowrap">{platformSettings?.platformName || "Fleet Management"}</h1>
-            <span className="text-[10px] text-[#64748B] font-bold font-poppins uppercase tracking-wider mt-1.5 block">Manager</span>
+            <span className="text-[10px] text-[#A14000] font-extrabold font-poppins uppercase tracking-wider mt-1.5 block">Fleet Manager</span>
           </div>
         </div>
         {mobileOpen && (
           <button
             onClick={() => setMobileOpen(false)}
-            className="lg:hidden text-gray-400 hover:text-white p-1 rounded-lg focus:outline-none"
+            className="lg:hidden text-slate-400 hover:text-white p-1 rounded-lg focus:outline-none cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -72,7 +74,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 overflow-y-auto py-4 custom-scrollbar">
+      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1 no-scrollbar">
         {MENU_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.to || (location.pathname === "/manager" && item.to === "/manager");
@@ -81,9 +83,9 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
               key={item.label}
               to={item.to}
               onClick={(e) => handleMenuClick(e, item)}
-              className={`flex items-center gap-3.5 px-6 py-3 font-poppins text-sm border-l-4 sidebar-link-transition ${isActive
-                ? "border-[#B45A0A] bg-[#1B1B1D] text-[#B45A0A] font-semibold"
-                : "border-transparent hover:text-white hover:bg-[#1B1B1D]/30"
+              className={`flex items-center gap-3.5 px-4 py-3 font-poppins text-sm rounded-xl transition-all ${isActive
+                ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/25"
+                : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                 }`}
             >
               <Icon className="w-5 h-5 shrink-0" />

@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import { adminApi } from "@/api/adminApi";
 
 export default function NotificationSettings() {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [activeCard, setActiveCard] = useState(null);
 

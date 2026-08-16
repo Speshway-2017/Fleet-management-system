@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -12,47 +13,26 @@ class ApiService {
     // Initialization setup if required
   }
 
-  // Default fallback host: 10.86.34.1 (PC Wi-Fi IP) or 127.0.0.1 (via adb reverse) or 10.0.2.2 (Emulator)
-  static const String defaultLocalIp = '192.168.1.17';
+  // Primary local network IP (PC Wi-Fi / Hotspot)
+  static const String defaultLocalIp = '10.166.118.1';
   static String? _cachedBaseUrl;
 
   static Future<String> getBaseUrl() async {
+    if (_cachedBaseUrl != null && _cachedBaseUrl!.isNotEmpty) {
+      return _cachedBaseUrl!;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final savedUrl = prefs.getString('server_url')?.trim();
 
-    final cleanIp = defaultLocalIp.trim();
-    final defaultUrl =
-        kIsWeb ? 'http://localhost:5000/api' : 'http://$cleanIp:5000/api';
-
-    String selectedUrl;
-
     if (savedUrl != null && savedUrl.isNotEmpty) {
-      if (!kIsWeb &&
-          (savedUrl.contains('localhost') || savedUrl.contains('127.0.0.1'))) {
-        selectedUrl = defaultUrl;
-        await prefs.setString('server_url', selectedUrl);
-      } else {
-        selectedUrl = savedUrl;
-      }
-    } else {
-      selectedUrl = defaultUrl;
+      _cachedBaseUrl = savedUrl;
+      return _cachedBaseUrl!;
     }
 
-    if (!kIsWeb &&
-        (selectedUrl.contains('localhost') || selectedUrl.contains('127.0.0.1'))) {
-      selectedUrl = defaultUrl;
-      await prefs.setString('server_url', selectedUrl);
-    }
-
-    _cachedBaseUrl = selectedUrl;
-
-    debugPrint('==================================================');
-    debugPrint('[ApiService Base URL Debug]');
-    debugPrint('  • Saved URL: ${savedUrl ?? "None"}');
-    debugPrint('  • Selected Base URL: $selectedUrl');
-    debugPrint('  • Platform: ${kIsWeb ? "Web" : "Mobile (Android/iOS)"}');
-    debugPrint('==================================================');
-
+    final defaultUrl =
+        kIsWeb ? 'http://localhost:5000/api' : 'http://$defaultLocalIp:5000/api';
+    _cachedBaseUrl = defaultUrl;
     return _cachedBaseUrl!;
   }
 
@@ -70,18 +50,12 @@ class ApiService {
       }
     }
 
-    if (!kIsWeb &&
-        (formattedUrl.contains('localhost') ||
-            formattedUrl.contains('127.0.0.1'))) {
-      final cleanIp = defaultLocalIp.trim();
-      formattedUrl = 'http://$cleanIp:5000/api';
-    }
-
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('server_url', formattedUrl);
     _cachedBaseUrl = formattedUrl;
   }
 
+  /// Fast health-check probe to test if a candidate backend URL is reachable.
   static Future<bool> testConnection(String targetUrl) async {
     try {
       var formattedUrl = targetUrl.trim();
@@ -94,21 +68,55 @@ class ApiService {
       );
       final response = await http
           .get(healthUri)
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(seconds: 3));
       return response.statusCode == 200;
     } catch (_) {
       return false;
     }
   }
 
+  /// Automatically probes candidate URLs (ADB reverse 127.0.0.1, Wi-Fi IP, Emulator 10.0.2.2)
+  /// and returns the first reachable URL while persisting it in SharedPreferences.
+  static Future<String?> autoDiscoverWorkingBaseUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUrl = prefs.getString('server_url')?.trim();
+
+    final List<String> candidates = [
+      if (savedUrl != null && savedUrl.isNotEmpty) savedUrl,
+      'http://127.0.0.1:5000/api',
+      'http://10.166.118.1:5000/api',
+      'http://10.0.2.2:5000/api',
+      'http://192.168.1.17:5000/api',
+      'http://localhost:5000/api',
+    ];
+
+    final uniqueCandidates = candidates.toSet().toList();
+
+    for (final url in uniqueCandidates) {
+      final isOk = await testConnection(url);
+      if (isOk) {
+        await setBaseUrl(url);
+        debugPrint('[ApiService] Auto-discovered working server URL: $url');
+        return url;
+      }
+    }
+    return null;
+  }
+
   static const _secureStorage = FlutterSecureStorage();
 
-  static Future<Map<String, String>> _getHeaders() async {
+  static Future<String?> getToken() async {
     String? token = await _secureStorage.read(key: 'jwt_token');
     if (token == null || token.isEmpty) {
       final prefs = await SharedPreferences.getInstance();
-      token = prefs.getString('jwt_token') ?? '';
+      token = prefs.getString('jwt_token');
     }
+    return token;
+  }
+
+  static Future<Map<String, String>> _getHeaders() async {
+    String? token = await getToken();
+    token ??= '';
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -120,14 +128,48 @@ class ApiService {
     if (mockResponses.containsKey(endpoint)) {
       return mockResponses[endpoint];
     }
-    final baseUrl = await getBaseUrl();
+    var baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
-    final finalApiUrl = '$baseUrl$endpoint';
+    var finalApiUrl = '$baseUrl$endpoint';
     debugPrint('[ApiService GET] Final API URL: $finalApiUrl');
-    final response = await http
-        .get(Uri.parse(finalApiUrl), headers: headers)
-        .timeout(const Duration(seconds: 10));
-    return _processResponse(response);
+    try {
+      final response = await http
+          .get(Uri.parse(finalApiUrl), headers: headers)
+          .timeout(const Duration(seconds: 4));
+      return _processResponse(response);
+    } catch (e) {
+      final isNetworkError = e is TimeoutException ||
+          e.toString().contains('SocketException') ||
+          e.toString().contains('Connection refused') ||
+          e.toString().contains('Failed host lookup');
+
+      if (isNetworkError) {
+        debugPrint('[ApiService GET Error] Connection failed: $e. Probing fallbacks...');
+        final discoveredUrl = await autoDiscoverWorkingBaseUrl();
+        if (discoveredUrl != null && discoveredUrl != baseUrl) {
+          final retryUrl = '$discoveredUrl$endpoint';
+          debugPrint('[ApiService GET] Retrying with auto-discovered URL: $retryUrl');
+          final response = await http
+              .get(Uri.parse(retryUrl), headers: headers)
+              .timeout(const Duration(seconds: 5));
+          return _processResponse(response);
+        }
+      }
+
+      if (e is TimeoutException) {
+        throw Exception(
+          'Server connection timed out ($baseUrl). Please check ⚙ Server Settings.',
+        );
+      }
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('Connection refused') ||
+          e.toString().contains('Failed host lookup')) {
+        throw Exception(
+          'Cannot connect to server at $baseUrl. Please check ⚙ Server Settings.',
+        );
+      }
+      rethrow;
+    }
   }
 
   static Future<dynamic> post(
@@ -137,18 +179,56 @@ class ApiService {
     if (mockResponses.containsKey(endpoint)) {
       return mockResponses[endpoint];
     }
-    final baseUrl = await getBaseUrl();
+    var baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
-    final finalApiUrl = '$baseUrl$endpoint';
+    var finalApiUrl = '$baseUrl$endpoint';
     debugPrint('[ApiService POST] Final API URL: $finalApiUrl');
-    final response = await http
-        .post(
-          Uri.parse(finalApiUrl),
-          headers: headers,
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 10));
-    return _processResponse(response);
+    try {
+      final response = await http
+          .post(
+            Uri.parse(finalApiUrl),
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 4));
+      return _processResponse(response);
+    } catch (e) {
+      final isNetworkError = e is TimeoutException ||
+          e.toString().contains('SocketException') ||
+          e.toString().contains('Connection refused') ||
+          e.toString().contains('Failed host lookup');
+
+      if (isNetworkError) {
+        debugPrint('[ApiService POST Error] Connection failed: $e. Probing fallbacks...');
+        final discoveredUrl = await autoDiscoverWorkingBaseUrl();
+        if (discoveredUrl != null && discoveredUrl != baseUrl) {
+          final retryUrl = '$discoveredUrl$endpoint';
+          debugPrint('[ApiService POST] Retrying with auto-discovered URL: $retryUrl');
+          final response = await http
+              .post(
+                Uri.parse(retryUrl),
+                headers: headers,
+                body: jsonEncode(body),
+              )
+              .timeout(const Duration(seconds: 5));
+          return _processResponse(response);
+        }
+      }
+
+      if (e is TimeoutException) {
+        throw Exception(
+          'Server connection timed out ($baseUrl). Please check ⚙ Server Settings.',
+        );
+      }
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('Connection refused') ||
+          e.toString().contains('Failed host lookup')) {
+        throw Exception(
+          'Cannot connect to server at $baseUrl. Please check ⚙ Server Settings.',
+        );
+      }
+      rethrow;
+    }
   }
 
   static Future<dynamic> patch(
@@ -158,32 +238,108 @@ class ApiService {
     if (mockResponses.containsKey(endpoint)) {
       return mockResponses[endpoint];
     }
-    final baseUrl = await getBaseUrl();
+    var baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
-    final response = await http
-        .patch(
-          Uri.parse('$baseUrl$endpoint'),
-          headers: headers,
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 10));
-    return _processResponse(response);
+    try {
+      final response = await http
+          .patch(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 4));
+      return _processResponse(response);
+    } catch (e) {
+      final isNetworkError = e is TimeoutException ||
+          e.toString().contains('SocketException') ||
+          e.toString().contains('Connection refused') ||
+          e.toString().contains('Failed host lookup');
+
+      if (isNetworkError) {
+        debugPrint('[ApiService PATCH Error] Connection failed: $e. Probing fallbacks...');
+        final discoveredUrl = await autoDiscoverWorkingBaseUrl();
+        if (discoveredUrl != null && discoveredUrl != baseUrl) {
+          final retryUrl = '$discoveredUrl$endpoint';
+          debugPrint('[ApiService PATCH] Retrying with auto-discovered URL: $retryUrl');
+          final response = await http
+              .patch(
+                Uri.parse(retryUrl),
+                headers: headers,
+                body: jsonEncode(body),
+              )
+              .timeout(const Duration(seconds: 5));
+          return _processResponse(response);
+        }
+      }
+
+      if (e is TimeoutException) {
+        throw Exception(
+          'Server connection timed out ($baseUrl). Please check ⚙ Server Settings.',
+        );
+      }
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('Connection refused') ||
+          e.toString().contains('Failed host lookup')) {
+        throw Exception(
+          'Cannot connect to server at $baseUrl. Please check ⚙ Server Settings.',
+        );
+      }
+      rethrow;
+    }
   }
 
   static Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
     if (mockResponses.containsKey(endpoint)) {
       return mockResponses[endpoint];
     }
-    final baseUrl = await getBaseUrl();
+    var baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
-    final response = await http
-        .put(
-          Uri.parse('$baseUrl$endpoint'),
-          headers: headers,
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 10));
-    return _processResponse(response);
+    try {
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 4));
+      return _processResponse(response);
+    } catch (e) {
+      final isNetworkError = e is TimeoutException ||
+          e.toString().contains('SocketException') ||
+          e.toString().contains('Connection refused') ||
+          e.toString().contains('Failed host lookup');
+
+      if (isNetworkError) {
+        debugPrint('[ApiService PUT Error] Connection failed: $e. Probing fallbacks...');
+        final discoveredUrl = await autoDiscoverWorkingBaseUrl();
+        if (discoveredUrl != null && discoveredUrl != baseUrl) {
+          final retryUrl = '$discoveredUrl$endpoint';
+          debugPrint('[ApiService PUT] Retrying with auto-discovered URL: $retryUrl');
+          final response = await http
+              .put(
+                Uri.parse(retryUrl),
+                headers: headers,
+                body: jsonEncode(body),
+              )
+              .timeout(const Duration(seconds: 5));
+          return _processResponse(response);
+        }
+      }
+
+      if (e is TimeoutException) {
+        throw Exception(
+          'Server connection timed out ($baseUrl). Please check ⚙ Server Settings.',
+        );
+      }
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('Connection refused') ||
+          e.toString().contains('Failed host lookup')) {
+        throw Exception(
+          'Cannot connect to server at $baseUrl. Please check ⚙ Server Settings.',
+        );
+      }
+      rethrow;
+    }
   }
 
   // Trip Flow API Helpers
@@ -239,6 +395,10 @@ class ApiService {
     return await get('/driver/maintenance');
   }
 
+  static Future<dynamic> getDriverNotifications() async {
+    return await get('/driver/notifications');
+  }
+
   static Future<dynamic> getDriverFuelRecords() async {
     return await get('/driver/fuel');
   }
@@ -280,18 +440,18 @@ class ApiService {
 
       if (imageFile is String &&
           (imageFile.startsWith('http') || imageFile.startsWith('data:'))) {
-        request.fields['receiptImage'] = imageFile;
+        request.fields['billImage'] = imageFile;
       } else if (imageFile is List<int>) {
         request.files.add(
           http.MultipartFile.fromBytes(
-            'file',
+            'billImage',
             imageFile,
-            filename: imageName ?? 'receipt.jpg',
+            filename: imageName ?? 'fuel_receipt.jpg',
           ),
         );
       } else {
         request.files.add(
-          await http.MultipartFile.fromPath('file', imageFile.toString()),
+          await http.MultipartFile.fromPath('billImage', imageFile.toString()),
         );
       }
 
@@ -299,27 +459,40 @@ class ApiService {
       final response = await http.Response.fromStream(streamedResponse);
       return _processResponse(response);
     } else {
-      final Map<String, dynamic> body = {
+      return await post('/driver/fuel', {
         'fuelStation': fuelStation,
+        'location': location,
         'amount': amount,
         'liters': liters,
-      };
-      if (location != null && location.isNotEmpty) body['location'] = location;
-      if (tripId != null) body['tripId'] = tripId;
-      if (odometer != null) body['odometer'] = odometer;
-      if (fuelType != null) body['fuelType'] = fuelType;
-      if (dateTime != null) body['dateTime'] = dateTime;
-      if (notes != null) body['notes'] = notes;
-      return await post('/driver/fuel', body);
+        'tripId': tripId,
+        'odometer': odometer,
+        'fuelType': fuelType,
+        'dateTime': dateTime,
+        'notes': notes,
+      });
     }
   }
 
-  static Future<dynamic> getDriverDashboard() async {
-    return await get('/driver/dashboard');
-  }
-
-  static Future<dynamic> getDriverNotifications() async {
-    return await get('/driver/notifications');
+  static Future<dynamic> createTripFuelEntry({
+    required String fuelStation,
+    required double amount,
+    required double liters,
+    required double odometer,
+    required String tripId,
+    required String dateTime,
+    dynamic imageFile,
+    String? imageName,
+  }) async {
+    return await createFuelEntry(
+      fuelStation: fuelStation,
+      amount: amount,
+      liters: liters,
+      odometer: odometer,
+      tripId: tripId,
+      dateTime: dateTime,
+      imageFile: imageFile,
+      imageName: imageName,
+    );
   }
 
   static Future<dynamic> uploadProofOfDelivery({
@@ -524,63 +697,7 @@ class ApiService {
     }
   }
 
-  static Future<dynamic> createTripFuelEntry({
-    required String fuelStation,
-    required double amount,
-    required double liters,
-    required double odometer,
-    required String tripId,
-    required String dateTime,
-    dynamic imageFile,
-    String? imageName,
-  }) async {
-    final baseUrl = await getBaseUrl();
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('jwt_token') ?? '';
-    final uri = Uri.parse('$baseUrl/driver/fuel');
-
-    if (imageFile != null) {
-      final request = http.MultipartRequest('POST', uri);
-      if (token.isNotEmpty) {
-        request.headers['Authorization'] = 'Bearer $token';
-      }
-      request.fields['fuelStation'] = fuelStation;
-      request.fields['amount'] = amount.toString();
-      request.fields['liters'] = liters.toString();
-      request.fields['odometer'] = odometer.toString();
-      request.fields['tripId'] = tripId;
-      request.fields['dateTime'] = dateTime;
-
-      if (imageFile is List<int>) {
-        request.files.add(
-          http.MultipartFile.fromBytes(
-            'file',
-            imageFile,
-            filename: imageName ?? 'fuel_receipt.jpg',
-          ),
-        );
-      } else {
-        request.files.add(
-          await http.MultipartFile.fromPath('file', imageFile.toString()),
-        );
-      }
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      return _processResponse(response);
-    } else {
-      return await post('/driver/fuel', {
-        'fuelStation': fuelStation,
-        'amount': amount,
-        'liters': liters,
-        'odometer': odometer,
-        'tripId': tripId,
-        'dateTime': dateTime,
-      });
-    }
-  }
-
-  static Future<dynamic> createDriverTicket({
+  static Future<dynamic> createSupportTicket({
     required String category,
     required String priority,
     required String subject,
@@ -633,6 +750,24 @@ class ApiService {
         'description': description,
       });
     }
+  }
+
+  static Future<dynamic> createDriverTicket({
+    required String category,
+    required String priority,
+    required String subject,
+    required String description,
+    dynamic imageFile,
+    String? imageName,
+  }) async {
+    return await createSupportTicket(
+      category: category,
+      priority: priority,
+      subject: subject,
+      description: description,
+      imageFile: imageFile,
+      imageName: imageName,
+    );
   }
 
   static Future<dynamic> getDriverTickets() async {

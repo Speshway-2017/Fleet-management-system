@@ -7,7 +7,7 @@ import { adminApi } from "@/api/adminApi";
 import { Plus, Trash2, Save } from "lucide-react";
 
 export default function SettingsAbout() {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // About Content State

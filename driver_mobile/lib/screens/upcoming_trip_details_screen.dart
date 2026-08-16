@@ -22,7 +22,7 @@ class UpcomingTripDetailsScreen extends StatefulWidget {
 }
 
 class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
-  bool _isLoading = true;
+  bool _isLoading = false;
   Map<String, dynamic>? _trip;
 
   @override
@@ -128,7 +128,7 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -588,27 +588,31 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
   }
 
   Widget _buildInfoItem(BuildContext context, String label, String value, {bool alignRight = false}) {
-    return Column(
-      crossAxisAlignment: alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.secondaryText,
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.secondaryText,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppColors.primaryText,
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.primaryText,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

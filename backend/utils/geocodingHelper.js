@@ -304,55 +304,46 @@ export async function getRoadDistanceAndEta(originLoc, destLoc) {
     return { distanceKm: 0, estimatedTravelTime: 'N/A', durationSeconds: 0 };
   }
 
-  // 2. Query OSRM API (Longitude,Latitude order!)
-  // Format: lon1,lat1;lon2,lat2
-  const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
+  const osrmUrls = [
+    `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`,
+    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${lon1},${lat1};${lat2},${lat2}?overview=false`
+  ];
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`[OSRM REQUEST] URL: ${osrmUrl}`);
-  }
+  for (const osrmUrl of osrmUrls) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch(osrmUrl, { signal: controller.signal }).catch(() => null);
+      clearTimeout(timeoutId);
 
-    const res = await fetch(osrmUrl, { signal: controller.signal });
-    clearTimeout(timeoutId);
+      if (res && res.ok) {
+        const data = await res.json().catch(() => null);
+        if (data && data.code === 'Ok' && Array.isArray(data.routes) && data.routes.length > 0) {
+          const distanceMeters = data.routes[0].distance;
+          const durationSecs = data.routes[0].duration;
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data.code === 'Ok' && Array.isArray(data.routes) && data.routes.length > 0) {
-        const distanceMeters = data.routes[0].distance;
-        const durationSecs = data.routes[0].duration;
+          const distanceKm = Math.max(1, Math.round(distanceMeters / 1000));
+          const hours = Math.floor(durationSecs / 3600);
+          const minutes = Math.round((durationSecs % 3600) / 60);
 
-        const distanceKm = Math.max(1, Math.round(distanceMeters / 1000));
-        const hours = Math.floor(durationSecs / 3600);
-        const minutes = Math.round((durationSecs % 3600) / 60);
+          let travelTime = `${minutes} mins`;
+          if (hours > 0) {
+            travelTime = minutes === 0 ? `${hours} hrs` : `${hours} hrs ${minutes} mins`;
+          }
 
-        let travelTime = `${minutes} mins`;
-        if (hours > 0) {
-          travelTime = minutes === 0 ? `${hours} hrs` : `${hours} hrs ${minutes} mins`;
+          const result = {
+            distanceKm,
+            estimatedTravelTime: travelTime,
+            durationSeconds: durationSecs
+          };
+
+          routeCache.set(cacheKey, result);
+          return result;
         }
-
-        const result = {
-          distanceKm,
-          estimatedTravelTime: travelTime,
-          durationSeconds: durationSecs
-        };
-
-        if (process.env.NODE_ENV !== 'production') {
-          console.log(`[OSRM RESPONSE] Code: ${data.code}`);
-          console.log(`[OSRM RESULT] Distance: ${distanceKm} km | Travel Time: ${travelTime}`);
-          console.log(`===================================\n`);
-        }
-
-        roadDistanceCache.set(cacheKey, result);
-        return result;
       }
-    }
-  } catch (err) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn(`[OSRM FAILED] Error: ${err.message}. Falling back to Haversine formula.`);
+    } catch (_) {
+      // Try next endpoint or fall through to Haversine fallback
     }
   }
 

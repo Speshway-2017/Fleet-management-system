@@ -31,7 +31,7 @@ const BLANK = { name: "", type: "Operational", frequency: "Weekly", day: "Monday
 export default function ManageSchedulesPage() {
   const navigate = useNavigate();
   const [schedules, setSchedules] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null); // null = new, id = edit
   const [form, setForm] = useState(BLANK);
@@ -160,7 +160,7 @@ export default function ManageSchedulesPage() {
         </div>
         <button
           onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#B45A0A] text-white rounded-xl text-xs font-bold hover:bg-[#9A4D08] transition-colors shadow-sm"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#A14000] text-white rounded-xl text-xs font-bold hover:bg-[#853400] transition-colors shadow-sm"
         >
           <Plus className="w-3.5 h-3.5" />
           New Schedule
@@ -192,7 +192,7 @@ export default function ManageSchedulesPage() {
                   <tr key={s.id} className="hover:bg-[#F5F7FB]/50 transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-[#B45A0A] shrink-0" />
+                        <Clock className="w-4 h-4 text-[#A14000] shrink-0" />
                         <span className="font-semibold text-sm text-[#1E293B] font-poppins">{s.name}</span>
                       </div>
                     </td>
@@ -299,7 +299,7 @@ export default function ManageSchedulesPage() {
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="e.g. Weekly Driver Log Sheets"
-                  className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] font-nunito"
+                  className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] font-nunito"
                 />
               </div>
 
@@ -309,7 +309,7 @@ export default function ManageSchedulesPage() {
                   <select
                     value={form.type}
                     onChange={(e) => setForm({ ...form, type: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] font-nunito bg-white"
+                    className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] font-nunito bg-white"
                   >
                     {["Operational", "Financial", "Compliance", "Safety"].map((t) => <option key={t}>{t}</option>)}
                   </select>
@@ -319,7 +319,7 @@ export default function ManageSchedulesPage() {
                   <select
                     value={form.format}
                     onChange={(e) => setForm({ ...form, format: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] font-nunito bg-white"
+                    className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] font-nunito bg-white"
                   >
                     {["PDF", "CSV", "XLSX"].map((f) => <option key={f}>{f}</option>)}
                   </select>
@@ -332,7 +332,7 @@ export default function ManageSchedulesPage() {
                   <select
                     value={form.frequency}
                     onChange={(e) => setForm({ ...form, frequency: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] font-nunito bg-white"
+                    className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] font-nunito bg-white"
                   >
                     {["Daily", "Weekly", "Monthly", "Quarterly"].map((f) => <option key={f}>{f}</option>)}
                   </select>
@@ -343,7 +343,7 @@ export default function ManageSchedulesPage() {
                     type="time"
                     value={form.time}
                     onChange={(e) => setForm({ ...form, time: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] font-nunito"
+                    className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] font-nunito"
                   />
                 </div>
               </div>
@@ -355,7 +355,7 @@ export default function ManageSchedulesPage() {
                   value={form.day}
                   onChange={(e) => setForm({ ...form, day: e.target.value })}
                   placeholder="e.g. Monday or 1st"
-                  className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] font-nunito"
+                  className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] font-nunito"
                 />
               </div>
 
@@ -366,7 +366,7 @@ export default function ManageSchedulesPage() {
                   value={form.recipients}
                   onChange={(e) => setForm({ ...form, recipients: e.target.value })}
                   placeholder="e.g. team@company.com"
-                  className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] font-nunito"
+                  className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] font-nunito"
                 />
               </div>
             </div>
@@ -380,7 +380,7 @@ export default function ManageSchedulesPage() {
               </button>
               <button
                 onClick={handleSave}
-                className="px-5 py-2.5 bg-[#B45A0A] text-white rounded-xl text-xs font-bold hover:bg-[#9A4D08] transition-colors"
+                className="px-5 py-2.5 bg-[#A14000] text-white rounded-xl text-xs font-bold hover:bg-[#853400] transition-colors"
               >
                 {editing ? "Save Changes" : "Create Schedule"}
               </button>

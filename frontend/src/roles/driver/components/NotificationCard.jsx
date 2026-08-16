@@ -23,20 +23,22 @@ export default function NotificationCard({ notification, onMarkRead }) {
       if (match) extractedTicketId = match[0];
     }
 
+    const navState = { state: { fromNotification: true, from: "/driver/notifications" } };
+
     if (extractedTicketId || title.includes("ticket") || title.includes("mechanic") || title.includes("maintenance") || message.includes("tkt-") || message.includes("mechanic") || type.includes("maintenance") || type.includes("issue") || type.includes("complaint") || type.includes("ticket")) {
-      navigate(extractedTicketId ? `/driver/maintenance?ticketId=${encodeURIComponent(extractedTicketId)}` : "/driver/maintenance");
+      navigate(extractedTicketId ? `/driver/maintenance?ticketId=${encodeURIComponent(extractedTicketId)}` : "/driver/maintenance", navState);
     } else if (tripId) {
-      navigate("/driver/trips");
+      navigate(`/driver/trips/${tripId}`, navState);
     } else if (type.includes("trip") || title.includes("trip") || message.includes("trip") || message.includes("trp-") || title.includes("assigned")) {
-      navigate("/driver/trips");
+      navigate(tripId ? `/driver/trips/${tripId}` : "/driver/trips", navState);
     } else if (type.includes("fuel") || title.includes("fuel") || message.includes("fuel")) {
-      navigate("/driver/fuel");
+      navigate("/driver/fuel", navState);
     } else if (type.includes("support") || title.includes("support") || message.includes("support")) {
-      navigate("/driver/support");
+      navigate("/driver/support", navState);
     } else if (type.includes("vehicle") || title.includes("vehicle") || message.includes("vehicle")) {
-      navigate("/driver/vehicle");
+      navigate("/driver/vehicle", navState);
     } else {
-      navigate("/driver/trips");
+      navigate("/driver/trips", navState);
     }
   };
 
@@ -46,57 +48,64 @@ export default function NotificationCard({ notification, onMarkRead }) {
       case "trip_assigned":
       case "trip_accepted":
       case "trip_completed":
-        return <Navigation className="w-5 h-5 text-[#B45A0A]" />;
+        return <Navigation className="w-4 h-4 text-[#A14000]" />;
       case "warning":
       case "alert":
-        return <AlertTriangle className="w-5 h-5 text-amber-600" />;
+        return <AlertTriangle className="w-4 h-4 text-amber-600" />;
       default:
-        return <Info className="w-5 h-5 text-blue-600" />;
+        return <Info className="w-4 h-4 text-blue-600" />;
     }
   };
 
   return (
     <div
       onClick={handleCardClick}
-      className={`p-4 rounded-2xl border transition shadow-sm flex items-start justify-between gap-4 font-nunito cursor-pointer hover:border-[#B45A0A] hover:shadow-md ${
-        notification.isRead
-          ? "bg-slate-50/70 border-slate-200 text-slate-500"
-          : "bg-white border-l-4 border-l-[#B45A0A] border-slate-200 text-slate-900 shadow-md"
+      className={`bg-white dark:bg-[#0F172A] rounded-xl border border-slate-200 dark:border-[#1E293B] px-4 py-3.5 shadow-xs hover:shadow-md transition-all cursor-pointer relative group ${
+        !notification.isRead ? 'border-l-4 border-l-[#A14000] dark:bg-[#1E293B]/70' : 'hover:border-slate-300 dark:hover:border-slate-700'
       }`}
     >
-      <div className="flex items-start gap-3">
-        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 shrink-0 mt-0.5">
-          {getIcon(notification.type)}
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h4 className="font-semibold text-sm font-poppins text-slate-900 flex items-center gap-1.5">
-              <span>{notification.title || "Notification"}</span>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400 opacity-70" />
-            </h4>
-            {!notification.isRead && (
-              <span className="w-2 h-2 rounded-full bg-[#B45A0A] animate-ping" />
-            )}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3.5 min-w-0">
+          {/* Icon Badge */}
+          <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-[#A14000] dark:text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+            {getIcon(notification.type)}
           </div>
-          <p className="text-xs text-slate-600 mt-1 leading-relaxed">{notification.message || notification.body}</p>
-          <p className="text-[10px] text-slate-400 font-medium mt-2">
-            {notification.createdAt ? new Date(notification.createdAt).toLocaleString() : "Just now"}
-          </p>
+
+          {/* Content Area */}
+          <div className="flex-1 min-w-0">
+            <h4 className="font-poppins font-bold text-xs text-slate-900 dark:text-white truncate group-hover:text-[#A14000] transition-colors flex items-center gap-1.5">
+              <span>{notification.title || "Notification"}</span>
+              {!notification.isRead && (
+                <span className="w-2 h-2 rounded-full bg-[#A14000] shrink-0" title="Unread" />
+              )}
+              <ExternalLink className="w-3 h-3 text-slate-400 opacity-60 shrink-0 ml-1" />
+            </h4>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito font-normal line-clamp-2 mt-1 leading-relaxed">
+              {notification.message || notification.body || notification.description}
+            </p>
+          </div>
+        </div>
+
+        {/* Timestamp on Far Right */}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <span className="text-[11px] font-medium text-slate-400 dark:text-slate-400 font-poppins">
+            {notification.createdAt ? new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
+          </span>
+          {!notification.isRead && onMarkRead && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMarkRead(notification._id || notification.id);
+              }}
+              className="p-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 text-slate-400 hover:text-[#A14000] border border-slate-200 dark:border-slate-700 transition shrink-0 cursor-pointer"
+              title="Mark as read"
+            >
+              <Check className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
-
-      {!notification.isRead && onMarkRead && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onMarkRead(notification._id || notification.id);
-          }}
-          className="p-1.5 rounded-lg bg-white hover:bg-amber-50 text-slate-400 hover:text-[#B45A0A] border border-slate-200 transition shrink-0"
-          title="Mark as read"
-        >
-          <Check className="w-4 h-4" />
-        </button>
-      )}
     </div>
   );
 }

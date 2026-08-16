@@ -21,7 +21,7 @@ class VehicleOverviewScreen extends StatefulWidget {
 }
 
 class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
-  bool _isLoading = true;
+  bool _isLoading = false;
   bool _isAssigned = false;
   Map<String, dynamic>? _vehicle;
 
@@ -32,10 +32,6 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
   }
 
   Future<void> _fetchVehicleData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
       final response = await ApiService.getAssignedVehicle();
       if (mounted) {

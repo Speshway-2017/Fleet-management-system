@@ -48,6 +48,10 @@ export const driverApi = {
     const response = await axiosClient.get("/driver/trips", { params });
     return response.data;
   },
+  getTripById: async (tripId) => {
+    const response = await axiosClient.get(`/driver/trips/${tripId}`);
+    return response.data;
+  },
   respondToTripAssignment: async (tripId, action) => {
     const formattedAction = action?.toLowerCase() === "accepted" ? "accept" : action?.toLowerCase() === "rejected" ? "reject" : action;
     const response = await axiosClient.patch(`/driver/trips/${tripId}/respond`, { action: formattedAction });

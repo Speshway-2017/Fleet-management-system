@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
+import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
 import { useSearchParams } from "react-router-dom";
 import driverApi from "../api/driverApi";
 import IssueCard from "../components/IssueCard";
 import { toast } from "react-hot-toast";
-import { Wrench, Plus, X, RefreshCw } from "lucide-react";
+import { Wrench, Plus, X, RefreshCw, AlertTriangle } from "lucide-react";
 
 import { useDriverSocket } from "../hooks/useDriverSocket";
 
@@ -11,8 +12,10 @@ export default function DriverMaintenancePage() {
   const [searchParams] = useSearchParams();
   const highlightedTicketId = searchParams.get("ticketId") || searchParams.get("id");
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [tickets, setTickets] = useState([]);
+  const [assignedVehicleInfo, setAssignedVehicleInfo] = useState(null);
+  const [hasVehicle, setHasVehicle] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -20,11 +23,14 @@ export default function DriverMaintenancePage() {
   const [issueType, setIssueType] = useState("Tyre / Brake Issue");
   const [customIssue, setCustomIssue] = useState("");
   const [priority, setPriority] = useState("MEDIUM");
+  const [activeTrip, setActiveTrip] = useState(null);
   const [description, setDescription] = useState("");
   const [photoFile, setPhotoFile] = useState(null);
 
   useEffect(() => {
     fetchTickets();
+    fetchAssignedVehicle();
+    fetchActiveTrip();
 
     const interval = setInterval(() => {
       fetchTickets(true);
@@ -33,6 +39,49 @@ export default function DriverMaintenancePage() {
     return () => clearInterval(interval);
   }, []);
 
+  const fetchActiveTrip = async () => {
+    try {
+      const res = await driverApi.getCurrentTrip();
+      if (res?.success && res.data) {
+        setActiveTrip(res.data);
+      } else {
+        setActiveTrip(null);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch active trip for maintenance check:", err);
+    }
+  };
+
+  const fetchAssignedVehicle = async () => {
+    try {
+      const res = await driverApi.getAssignedVehicle();
+      if (res?.success) {
+        setAssignedVehicleInfo(res.data);
+        const isAssigned = Boolean(res.data?.assigned && res.data?.vehicle);
+        setHasVehicle(isAssigned);
+      }
+    } catch (err) {
+      console.warn("Failed to check assigned vehicle:", err);
+    }
+  };
+
+  const vehObj = assignedVehicleInfo?.vehicle || assignedVehicleInfo;
+  const isPermanentVehicleAssigned = Boolean(
+    (assignedVehicleInfo?.assigned && vehObj) ||
+      (vehObj &&
+        (vehObj._id || vehObj.id || vehObj.vehicleNumber) &&
+        vehObj.vehicleNumber !== "Unassigned" &&
+        vehObj.vehicleNumber !== "No Vehicle Assigned")
+  );
+  const isTripAccepted = Boolean(
+    activeTrip &&
+      (activeTrip.status === "ACCEPTED" ||
+        activeTrip.status === "IN_PROGRESS" ||
+        activeTrip.status === "ON_TRIP" ||
+        activeTrip.acceptStatus === "ACCEPTED")
+  );
+  const isMaintenanceEnabled = isPermanentVehicleAssigned || isTripAccepted;
+
   // Listen for real-time manager updates so page updates automatically without manual refresh
   useDriverSocket({
     onTicketStatusUpdated: () => {
@@ -40,6 +89,8 @@ export default function DriverMaintenancePage() {
     },
     onTripStatusUpdated: () => {
       fetchTickets(true);
+      fetchAssignedVehicle();
+      fetchActiveTrip();
     },
     onNotification: (notif) => {
       toast(notif.title || "Ticket Update Received", { icon: "🔧" });
@@ -61,8 +112,21 @@ export default function DriverMaintenancePage() {
     }
   };
 
+  const handleOpenReportModal = () => {
+    if (!isMaintenanceEnabled) {
+      toast.error("Maintenance reporting is locked. Requires an assigned vehicle or an active trip.");
+      return;
+    }
+    setShowModal(true);
+  };
+
   const handleCreateTicket = async (e) => {
     e.preventDefault();
+    if (!isMaintenanceEnabled) {
+      toast.error("Maintenance reporting is locked. Requires an assigned vehicle or an active trip.");
+      return;
+    }
+
     if (!description) {
       toast.error("Please provide a description of the issue");
       return;
@@ -97,6 +161,8 @@ export default function DriverMaintenancePage() {
     }
   };
 
+
+
   return (
     <div className="space-y-8 font-nunito pb-12">
       {/* Top Header */}
@@ -112,18 +178,35 @@ export default function DriverMaintenancePage() {
         </div>
 
         <button
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-sm"
+          onClick={handleOpenReportModal}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold font-poppins flex items-center justify-center gap-2 transition shadow-sm ${
+            isMaintenanceEnabled
+              ? "bg-[#A14000] hover:bg-[#853400] text-white cursor-pointer"
+              : "bg-slate-300 text-slate-500 cursor-not-allowed"
+          }`}
         >
           <Plus className="w-4 h-4" />
           <span>Report New Vehicle Issue</span>
         </button>
       </div>
 
+      {/* Unassigned Vehicle Warning Banner */}
+      {!hasVehicle && (
+        <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-3 text-amber-900 font-nunito">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <h4 className="font-bold text-sm font-poppins text-amber-900">No Vehicle Assigned</h4>
+            <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+              You currently have no vehicle assigned to your driver account. Maintenance reporting and new issue tickets are only available when a vehicle is assigned. You can still view your previously reported issue tickets below.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Ticket Cards Grid */}
       {loading ? (
         <div className="min-h-[50vh] flex items-center justify-center font-poppins">
-          <RefreshCw className="w-8 h-8 text-[#B45A0A] animate-spin" />
+          <RefreshCw className="w-8 h-8 text-[#A14000] animate-spin" />
         </div>
       ) : tickets.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -174,7 +257,7 @@ export default function DriverMaintenancePage() {
                 <select
                   value={issueType}
                   onChange={(e) => setIssueType(e.target.value)}
-                  className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
+                  className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
                 >
                   <option value="Tyre / Brake Issue">Tyre / Brake Issue (Puncture, Air Pressure, Brakes)</option>
                   <option value="Mechanic / Engine Breakdown">Mechanic / Engine Breakdown (Overheating, Gearbox)</option>
@@ -194,7 +277,7 @@ export default function DriverMaintenancePage() {
                     value={customIssue}
                     onChange={(e) => setCustomIssue(e.target.value)}
                     placeholder="e.g., Steering vibration, Windshield crack..."
-                    className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
+                    className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
                   />
                 </div>
               )}
@@ -204,7 +287,7 @@ export default function DriverMaintenancePage() {
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
-                  className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
+                  className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
                 >
                   <option value="LOW">LOW - Minor / Informational</option>
                   <option value="MEDIUM">MEDIUM - Standard Repair</option>
@@ -220,7 +303,7 @@ export default function DriverMaintenancePage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe the noise, warning light, or failure..."
-                  className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
+                  className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
                 />
               </div>
 
@@ -230,7 +313,7 @@ export default function DriverMaintenancePage() {
                   type="file"
                   accept="image/*"
                   onChange={(e) => setPhotoFile(e.target.files[0])}
-                  className="mt-1 block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-[#B45A0A] hover:file:bg-amber-100 cursor-pointer"
+                  className="mt-1 block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-[#A14000] hover:file:bg-amber-100 cursor-pointer"
                 />
               </div>
 
@@ -245,7 +328,7 @@ export default function DriverMaintenancePage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 bg-[#B45A0A] hover:bg-[#9A4D08] text-white text-xs font-bold font-poppins rounded-xl disabled:opacity-50 shadow-sm"
+                  className="px-4 py-2 bg-[#A14000] hover:bg-[#853400] text-white text-xs font-bold font-poppins rounded-xl disabled:opacity-50 shadow-sm"
                 >
                   {submitting ? "Submitting..." : "Submit Ticket"}
                 </button>

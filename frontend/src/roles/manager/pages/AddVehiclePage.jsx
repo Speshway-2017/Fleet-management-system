@@ -307,7 +307,7 @@ export default function AddVehiclePage() {
                         <Check className="w-3.5 h-3.5" /> Ready for upload
                       </p>
                       <div className="flex items-center gap-2 mt-3">
-                        <label className="px-3 py-1.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white text-xs font-bold rounded-lg cursor-pointer transition-colors">
+                        <label className="px-3 py-1.5 bg-[#A14000] hover:bg-[#853400] text-white text-xs font-bold rounded-lg cursor-pointer transition-colors">
                           Replace Image
                           <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" onChange={handleImageSelect} />
                         </label>
@@ -327,15 +327,15 @@ export default function AddVehiclePage() {
                     onDragLeave={() => setIsDragOver(false)}
                     onDrop={handleImageDrop}
                     className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all max-w-xl ${
-                      isDragOver ? "border-[#B45A0A] bg-[#B45A0A]/5 scale-[0.99]" : "border-[#E7EAF0] bg-gray-50/50 hover:bg-gray-50"
+                      isDragOver ? "border-[#A14000] bg-[#A14000]/5 scale-[0.99]" : "border-[#E7EAF0] bg-gray-50/50 hover:bg-gray-50"
                     }`}
                   >
-                    <div className="w-12 h-12 rounded-full bg-[#FDF3EC] border border-[#B45A0A]/20 text-[#B45A0A] flex items-center justify-center mx-auto mb-3">
+                    <div className="w-12 h-12 rounded-full bg-[#FDF3EC] border border-[#A14000]/20 text-[#A14000] flex items-center justify-center mx-auto mb-3">
                       <Upload className="w-6 h-6" />
                     </div>
                     <p className="text-sm font-bold text-[#1E293B]">
                       Drag & Drop vehicle image here, or{" "}
-                      <label className="text-[#B45A0A] underline cursor-pointer hover:text-[#9A4D08]">
+                      <label className="text-[#A14000] underline cursor-pointer hover:text-[#853400]">
                         Browse
                         <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" onChange={handleImageSelect} />
                       </label>
@@ -349,7 +349,7 @@ export default function AddVehiclePage() {
               {/* SECTION 1: Basic Information */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-6 h-6 bg-[#FDF3EC] border border-[#B45A0A] rounded flex items-center justify-center text-xs font-bold text-[#B45A0A]">1</div>
+                  <div className="w-6 h-6 bg-[#FDF3EC] border border-[#A14000] rounded flex items-center justify-center text-xs font-bold text-[#A14000]">1</div>
                   <h2 className="text-lg font-bold text-[#1E293B]">Basic Information</h2>
                 </div>
                 <p className="text-xs text-[#64748B] mb-4">Enter the basic details of your vehicle</p>
@@ -364,7 +364,7 @@ export default function AddVehiclePage() {
                       value={formData.manufacturer}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     />
                   </div>
                   <div>
@@ -376,7 +376,7 @@ export default function AddVehiclePage() {
                       value={formData.model}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     />
                   </div>
                   <div>
@@ -388,7 +388,7 @@ export default function AddVehiclePage() {
                       onChange={handleInputChange}
                       min="1990"
                       max={new Date().getFullYear()}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     />
                   </div>
                   <div>
@@ -400,7 +400,7 @@ export default function AddVehiclePage() {
                       value={formData.plateNumber}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 uppercase bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 uppercase bg-white text-[#1E293B]"
                     />
                   </div>
                   <div>
@@ -409,7 +409,7 @@ export default function AddVehiclePage() {
                       name="vehicleType"
                       value={formData.vehicleType}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     >
                       <option value="Truck">Truck</option>
                       <option value="Van">Van</option>
@@ -429,7 +429,7 @@ export default function AddVehiclePage() {
                       placeholder="e.g. Pune"
                       value={formData.branch}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     />
                   </div>
                   <div>
@@ -441,7 +441,7 @@ export default function AddVehiclePage() {
                       value={formData.chassisNumber}
                       onChange={handleInputChange}
                       maxLength={17}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     />
                   </div>
                 </div>
@@ -450,7 +450,7 @@ export default function AddVehiclePage() {
               {/* SECTION 2: Registration Details */}
               <div className="border-t border-[#E7EAF0] pt-8">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-6 h-6 bg-[#FDF3EC] border border-[#B45A0A] rounded flex items-center justify-center text-xs font-bold text-[#B45A0A]">2</div>
+                  <div className="w-6 h-6 bg-[#FDF3EC] border border-[#A14000] rounded flex items-center justify-center text-xs font-bold text-[#A14000]">2</div>
                   <h2 className="text-lg font-bold text-[#1E293B]">Registration Details</h2>
                 </div>
                 <p className="text-xs text-[#64748B] mb-4">Provide registration certificate information</p>
@@ -464,7 +464,7 @@ export default function AddVehiclePage() {
                       placeholder="e.g. MH-01-AB-2023"
                       value={formData.registrationNumber}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 uppercase bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 uppercase bg-white text-[#1E293B]"
                     />
                   </div>
                   <div>
@@ -479,7 +479,7 @@ export default function AddVehiclePage() {
                         )?.code || formData.registrationState || ""
                       }
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     >
                       <option value="">Select State</option>
                       {INDIAN_STATES.map((st) => (
@@ -495,7 +495,7 @@ export default function AddVehiclePage() {
                       name="registrationType"
                       value={formData.registrationType}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     >
                       <option value="New">New</option>
                       <option value="Transfer">Transfer</option>
@@ -508,7 +508,7 @@ export default function AddVehiclePage() {
               {/* SECTION 3: Technical Specifications */}
               <div className="border-t border-[#E7EAF0] pt-8">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-6 h-6 bg-[#FDF3EC] border border-[#B45A0A] rounded flex items-center justify-center text-xs font-bold text-[#B45A0A]">3</div>
+                  <div className="w-6 h-6 bg-[#FDF3EC] border border-[#A14000] rounded flex items-center justify-center text-xs font-bold text-[#A14000]">3</div>
                   <h2 className="text-lg font-bold text-[#1E293B]">Technical Specifications</h2>
                 </div>
                 <p className="text-xs text-[#64748B] mb-4">Vehicle technical details</p>
@@ -520,7 +520,7 @@ export default function AddVehiclePage() {
                       name="fuelType"
                       value={formData.fuelType}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     >
                       <option value="Diesel">Diesel</option>
                       <option value="Petrol">Petrol</option>
@@ -535,7 +535,7 @@ export default function AddVehiclePage() {
                       name="transmissionType"
                       value={formData.transmissionType}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     >
                       <option value="Manual">Manual</option>
                       <option value="Automatic">Automatic</option>
@@ -547,7 +547,7 @@ export default function AddVehiclePage() {
                       name="seatingCapacity"
                       value={formData.seatingCapacity}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     >
                       <option value="2">2</option>
                       <option value="3">3</option>
@@ -566,7 +566,7 @@ export default function AddVehiclePage() {
                       placeholder="e.g. 2500"
                       value={formData.engineCC}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     />
                   </div>
                   <div>
@@ -577,7 +577,7 @@ export default function AddVehiclePage() {
                       placeholder="e.g. 200"
                       value={formData.fuelCapacity}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     />
                   </div>
                   <div>
@@ -589,7 +589,7 @@ export default function AddVehiclePage() {
                       placeholder="e.g. 15.5"
                       value={formData.loadCapacity}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     />
                   </div>
                   <div>
@@ -600,7 +600,7 @@ export default function AddVehiclePage() {
                       placeholder="e.g. 500"
                       value={formData.fastagBalance}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
                     />
                   </div>
                 </div>
@@ -611,7 +611,7 @@ export default function AddVehiclePage() {
               {/* SECTION 4: Document Upload */}
               <div className="border-t border-[#E7EAF0] pt-8">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-6 h-6 bg-[#FDF3EC] border border-[#B45A0A] rounded flex items-center justify-center text-xs font-bold text-[#B45A0A]">4</div>
+                  <div className="w-6 h-6 bg-[#FDF3EC] border border-[#A14000] rounded flex items-center justify-center text-xs font-bold text-[#A14000]">4</div>
                   <h2 className="text-lg font-bold text-[#1E293B]">Document Upload</h2>
                 </div>
                 <p className="text-xs text-[#64748B] mb-6">Manage all six required vehicle documents.</p>
@@ -635,7 +635,7 @@ export default function AddVehiclePage() {
                       const label = docLabels[key];
 
                       return (
-                        <div key={key} className="bg-gray-50/50 border border-[#E7EAF0] rounded-2xl p-4 flex flex-col justify-between h-[135px] hover:border-[#B45A0A]/40 transition-colors">
+                        <div key={key} className="bg-gray-50/50 border border-[#E7EAF0] rounded-2xl p-4 flex flex-col justify-between h-[135px] hover:border-[#A14000]/40 transition-colors">
                           <div>
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-xs font-bold text-[#1E293B] font-poppins">{label}</span>
@@ -656,13 +656,13 @@ export default function AddVehiclePage() {
                           <div className="flex-1 flex flex-col justify-center">
                             {isUploading ? (
                               <div className="flex flex-col items-center justify-center gap-1">
-                                <div className="w-5 h-5 border-2 border-[#B45A0A] border-t-transparent rounded-full animate-spin" />
+                                <div className="w-5 h-5 border-2 border-[#A14000] border-t-transparent rounded-full animate-spin" />
                                 <span className="text-[10px] text-gray-500 font-medium">Uploading...</span>
                               </div>
                             ) : doc ? (
                               <div className="bg-white border border-[#E7EAF0] rounded-xl p-2.5 flex items-center justify-between">
                                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                                  <FileText className="w-4 h-4 text-[#B45A0A] shrink-0" />
+                                  <FileText className="w-4 h-4 text-[#A14000] shrink-0" />
                                   <div className="min-w-0 flex-1">
                                     <p className="text-xs font-semibold text-gray-700 truncate">{doc.originalName}</p>
                                     <p className="text-[9px] text-gray-400">{(doc.fileSize / 1024).toFixed(1)} KB</p>
@@ -672,7 +672,7 @@ export default function AddVehiclePage() {
                                   <button
                                     type="button"
                                     onClick={() => window.open(doc.fileUrl, '_blank')}
-                                    className="p-1 hover:bg-[#F5F7FB] rounded text-[11px] font-bold text-[#B45A0A] cursor-pointer"
+                                    className="p-1 hover:bg-[#F5F7FB] rounded text-[11px] font-bold text-[#A14000] cursor-pointer"
                                   >
                                     Preview
                                   </button>
@@ -695,7 +695,7 @@ export default function AddVehiclePage() {
                                 </div>
                               </div>
                             ) : (
-                              <label className="border border-dashed border-gray-300 hover:border-[#B45A0A] hover:bg-[#FDF3EC]/30 rounded-xl p-2 flex items-center justify-center gap-2 cursor-pointer transition-colors h-[50px]">
+                              <label className="border border-dashed border-gray-300 hover:border-[#A14000] hover:bg-[#FDF3EC]/30 rounded-xl p-2 flex items-center justify-center gap-2 cursor-pointer transition-colors h-[50px]">
                                 <input
                                   type="file"
                                   accept=".pdf,.jpg,.jpeg,.png"
@@ -728,7 +728,7 @@ export default function AddVehiclePage() {
                   type="submit"
                   disabled={isProcessing || isViewOnly}
                   title={isViewOnly ? "This feature is available after activating a subscription." : "Save Vehicle"}
-                  className={`px-8 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer disabled:opacity-50 flex items-center gap-2 ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
+                  className={`px-8 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-xl text-sm font-bold text-white transition-all shadow-md shadow-[#A14000]/20 cursor-pointer disabled:opacity-50 flex items-center gap-2 ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   {isProcessing ? (
                     <>

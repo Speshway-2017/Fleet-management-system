@@ -22,6 +22,8 @@ import { getSocket } from "@/api/socket";
 import { managerApi } from "../api/managerApi";
 import { calculateDrivingRoute } from "../services/routingService";
 
+import TableRowSkeleton from "@/components/common/TableRowSkeleton";
+
 export default function TripsListPage() {
   const navigate = useNavigate();
   const [trips, setTrips] = useState([]);
@@ -388,7 +390,7 @@ export default function TripsListPage() {
     switch (status) {
       case "In Progress":
       case "On Transit":
-        return "bg-[#FDF3EC] text-[#B45A0A] border border-[#FDF3EC] font-semibold";
+        return "bg-[#FDF3EC] text-[#A14000] border border-[#FDF3EC] font-semibold";
       case "Scheduled":
         return "bg-blue-50 text-blue-700 border border-blue-100 font-semibold";
       case "Assigned":
@@ -439,7 +441,7 @@ export default function TripsListPage() {
               placeholder="Search ID, route..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 h-[44px] border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B] font-semibold"
+              className="w-full pl-9 pr-3 py-2.5 h-[44px] border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B] font-semibold"
             />
           </div>
 
@@ -448,7 +450,7 @@ export default function TripsListPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full pl-3.5 pr-8 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none cursor-pointer font-semibold"
+              className="w-full pl-3.5 pr-8 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer font-semibold"
             >
               <option value="All Statuses">All Statuses</option>
               <option value="Scheduled">Scheduled</option>
@@ -467,7 +469,7 @@ export default function TripsListPage() {
             <select
               value={driverFilter}
               onChange={(e) => setDriverFilter(e.target.value)}
-              className="w-full pl-3.5 pr-8 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none cursor-pointer font-semibold"
+              className="w-full pl-3.5 pr-8 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer font-semibold"
             >
               <option value="All Drivers">All Drivers</option>
               {driversList.map((drv) => (
@@ -484,7 +486,7 @@ export default function TripsListPage() {
             <select
               value={vehicleFilter}
               onChange={(e) => setVehicleFilter(e.target.value)}
-              className="w-full pl-3.5 pr-8 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none cursor-pointer font-semibold"
+              className="w-full pl-3.5 pr-8 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer font-semibold"
             >
               <option value="All Vehicles">All Vehicles</option>
               {vehiclesList.map((veh) => (
@@ -502,13 +504,13 @@ export default function TripsListPage() {
               type="date"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] font-semibold"
+              className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#A14000] font-semibold"
             />
           </div>
         </div>
 
         <div className="flex items-center justify-between border-t border-[#E7EAF0]/60 pt-3 text-xs text-[#64748B] font-semibold font-poppins">
-          <span>Total Matches: <strong>{filteredTrips.length}</strong> dispatches</span>
+          <span>Total Matches: <strong>{loading ? "..." : filteredTrips.length}</strong> dispatches</span>
           {(search || statusFilter !== "All Statuses" || driverFilter !== "All Drivers" || vehicleFilter !== "All Vehicles" || dateFilter) && (
             <button
               onClick={handleResetFilters}
@@ -540,7 +542,9 @@ export default function TripsListPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7EAF0]/60">
-              {currentRows.length === 0 ? (
+              {loading ? (
+                <TableRowSkeleton columns={10} rows={5} />
+              ) : currentRows.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="py-12 text-center text-gray-400 font-medium font-nunito">
                     No trips found matching the selections.
@@ -577,7 +581,7 @@ export default function TripsListPage() {
                     {/* Driver */}
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex flex-col">
-                        <span className="font-bold text-sm text-[#1E293B] font-poppins group-hover:text-[#B45A0A] transition-colors">
+                        <span className="font-bold text-sm text-[#1E293B] font-poppins group-hover:text-[#A14000] transition-colors">
                           {t.driverName || "Unassigned"}
                         </span>
                         <span className="text-[10px] text-[#64748B] mt-0.5 block font-semibold">
@@ -687,8 +691,8 @@ export default function TripsListPage() {
 
         {/* Pagination Controls */}
         {filteredTrips.length > 0 && (
-          <div className="px-6 py-4.5 border-t border-[#E7EAF0] flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#FDFDFD]">
-            <div className="flex items-center gap-4 text-xs text-[#64748B] font-semibold font-poppins">
+          <div className="px-6 py-4.5 border-t border-slate-200 dark:border-[#1E293B] flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-[#0F172A]">
+            <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-300 font-semibold font-poppins">
               <div className="flex items-center gap-2">
                 <span>Rows per page:</span>
                 <div className="relative">
@@ -698,19 +702,19 @@ export default function TripsListPage() {
                       setRowsPerPage(Number(e.target.value));
                       setCurrentPage(1);
                     }}
-                    className="pl-2.5 pr-8 py-1.5 bg-white border border-[#E7EAF0] rounded-lg text-xs font-bold text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none cursor-pointer"
+                    className="pl-2.5 pr-8 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer"
                   >
                     <option value={5}>5</option>
                     <option value={10}>10</option>
                     <option value={20}>20</option>
                     <option value={50}>50</option>
                   </select>
-                  <ChevronDown className="w-3 h-3 text-[#64748B] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
               <span>|</span>
               <span>
-                Showing <span className="text-[#1E293B] font-bold">{indexOfFirstRow + 1}</span> - <span className="text-[#1E293B] font-bold">{indexOfLastRow}</span> of <span className="text-[#1E293B] font-bold">{filteredTrips.length}</span> entries
+                Showing <span className="text-slate-900 dark:text-white font-bold">{indexOfFirstRow + 1}</span> - <span className="text-slate-900 dark:text-white font-bold">{indexOfLastRow}</span> of <span className="text-slate-900 dark:text-white font-bold">{filteredTrips.length}</span> entries
               </span>
             </div>
 
@@ -718,7 +722,7 @@ export default function TripsListPage() {
               <button
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                className="px-3 py-1.5 border border-[#E7EAF0] rounded-lg text-xs font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
               >
                 Previous
               </button>
@@ -727,10 +731,10 @@ export default function TripsListPage() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold cursor-pointer transition-all ${
                     currentPage === page
-                      ? "bg-[#B45A0A] text-white border border-[#B45A0A]"
-                      : "border border-[#E7EAF0] text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB]"
+                      ? "bg-[#A14000] text-white border border-[#A14000]"
+                      : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
                   }`}
                 >
                   {page}
@@ -740,7 +744,7 @@ export default function TripsListPage() {
               <button
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                className="px-3 py-1.5 border border-[#E7EAF0] rounded-lg text-xs font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
               >
                 Next
               </button>
@@ -822,7 +826,7 @@ export default function TripsListPage() {
                     required
                     value={formData.startLocation}
                     onChange={(e) => setFormData({ ...formData, startLocation: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium"
                   />
                 </div>
 
@@ -836,7 +840,7 @@ export default function TripsListPage() {
                     required
                     value={formData.endLocation}
                     onChange={(e) => setFormData({ ...formData, endLocation: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium"
                   />
                 </div>
               </div>
@@ -854,7 +858,7 @@ export default function TripsListPage() {
                     onChange={(e) => handleDepartureTimeChange(e.target.value)}
                     onBlur={handleBlur}
                     min={getCurrentDateTimeString()}
-                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium ${
+                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium ${
                       departureError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
                     }`}
                   />
@@ -875,7 +879,7 @@ export default function TripsListPage() {
                     onChange={(e) => handleEtaChange(e.target.value)}
                     onBlur={handleBlur}
                     min={getMinEtaString(formData.departureTime)}
-                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium ${
+                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium ${
                       etaError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
                     }`}
                   />
@@ -895,7 +899,7 @@ export default function TripsListPage() {
                     type="text"
                     value={formData.cargoType}
                     onChange={(e) => setFormData({ ...formData, cargoType: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium"
                   />
                 </div>
 
@@ -908,7 +912,7 @@ export default function TripsListPage() {
                     type="number"
                     value={formData.cargoWeight}
                     onChange={(e) => setFormData({ ...formData, cargoWeight: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium"
                   />
                 </div>
               </div>
@@ -923,7 +927,7 @@ export default function TripsListPage() {
                     type="text"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium"
                   />
                 </div>
 
@@ -936,7 +940,7 @@ export default function TripsListPage() {
                     type="text"
                     value={formData.tripNotes}
                     onChange={(e) => setFormData({ ...formData, tripNotes: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium"
                   />
                 </div>
               </div>
@@ -956,7 +960,7 @@ export default function TripsListPage() {
                   className={`px-6 py-2.5 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md ${
                     (departureError || etaError || !formData.departureTime || !formData.eta)
                       ? "bg-gray-300 shadow-none cursor-not-allowed opacity-60"
-                      : "bg-[#B45A0A] hover:bg-[#9A4D08]"
+                      : "bg-[#A14000] hover:bg-[#853400]"
                   }`}
                 >
                   Save Changes

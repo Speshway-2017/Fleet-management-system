@@ -1,267 +1,261 @@
+import React, { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import PublicLayout from "@/components/layout/PublicLayout";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AdminProvider } from "@/roles/admin/context/AdminContext";
 import { SettingsProvider } from "@/context/SettingsContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import AuthLayout from "@/components/layout/AuthLayout";
-import LoginPage from "@/roles/admin/pages/LoginPage";
-import ForgotPasswordPage from "@/roles/admin/pages/ForgotPasswordPage";
-import OtpVerificationPage from "@/roles/admin/pages/OtpVerificationPage";
-import ResetPasswordPage from "@/roles/admin/pages/ResetPasswordPage";
-import UnauthorizedPage from "@/components/common/UnauthorizedPage";
-import AdminDashboard from "@/roles/admin/pages/AdminDashboard";
-import Dashboard from "@/roles/admin/pages/Dashboard";
-import OrganizationList from "@/roles/admin/pages/OrganizationList";
-import AddOrganization from "@/roles/admin/pages/AddOrganization";
-import OrganizationDetails from "@/roles/admin/pages/OrganizationDetails";
-import EditOrganization from "@/roles/admin/pages/EditOrganization";
+import DriverLayout from "@/roles/driver/layouts/DriverLayout";
+import { ErrorBoundary } from "@/ErrorBoundary";
+import SmartSkeletonFallback from "@/components/common/SmartSkeletonFallback";
 
-import Analytics from "@/roles/admin/pages/Analytics";
-import SystemHealth from "@/roles/admin/pages/SystemHealth";
-import AuditLogs from "@/roles/admin/pages/AuditLogs";
-import Settings from "@/roles/admin/pages/Settings";
-import SecuritySettings from "@/roles/admin/pages/SecuritySettings";
-import NotificationSettings from "@/roles/admin/pages/NotificationSettings";
-import ProfileSettings from "@/roles/admin/pages/ProfileSettings";
-import ReviewsSettings from "@/roles/admin/pages/ReviewsSettings";
-import SettingsBlogs from "@/roles/admin/pages/SettingsBlogs";
-import SettingsAbout from "@/roles/admin/pages/SettingsAbout";
-import NotificationList from "@/roles/admin/pages/NotificationList";
-import NotificationDetails from "@/roles/admin/pages/NotificationDetails";
-import UserManagement from "@/roles/admin/pages/UserManagement";
-import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
-import FleetMapPage from "@/roles/manager/pages/FleetMapPage";
-import VehicleManagement from "@/roles/manager/pages/VehicleManagement";
-import AddVehiclePage from "@/roles/manager/pages/AddVehiclePage";
-import VehiclesListPage from "@/roles/manager/pages/VehiclesListPage";
-import VehicleDetailsPage from "@/roles/manager/pages/VehicleDetailsPage";
-import VehicleEditPage from "@/roles/manager/pages/VehicleEditPage";
-import DriversManagementPage from "@/roles/manager/pages/DriversManagementPage";
-import DriversListPage from "@/roles/manager/pages/DriversListPage";
-import DriverProfilePage from "@/roles/manager/pages/DriverProfilePage";
-import AssignVehiclePage from "@/roles/manager/pages/AssignVehiclePage";
-import AddDriverPage from "@/roles/manager/pages/AddDriverPage";
-import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
-import TripsListPage from "@/roles/manager/pages/TripsListPage";
-import CreateTripPage from "@/roles/manager/pages/CreateTripPage";
-import FuelManagementPage from "@/roles/manager/pages/FuelManagementPage";
-import MaintenanceManagementPage from "@/roles/manager/pages/MaintenanceManagementPage";
-import AnalyticsPage from "@/roles/manager/pages/AnalyticsPage";
-import NotificationsPage from "@/roles/manager/pages/NotificationsPage";
-import NotificationDetailsPage from "@/roles/manager/pages/NotificationDetailsPage";
-import ReportsPage from "@/roles/manager/pages/ReportsPage";
-import ArchivedReportsPage from "@/roles/manager/pages/ArchivedReportsPage";
-import ManageSchedulesPage from "@/roles/manager/pages/ManageSchedulesPage";
-import SettingsPage from "@/roles/manager/pages/SettingsPage";
-import ChangePasswordPage from "@/roles/manager/pages/ChangePasswordPage";
-import UpcomingServicesPage from "@/roles/manager/pages/UpcomingServicesPage";
-import ScheduleServicePage from "@/roles/manager/pages/ScheduleServicePage";
-import ServiceDetailsPage from "@/roles/manager/pages/ServiceDetailsPage";
-import TripDetailsPage from "@/roles/manager/pages/TripDetailsPage";
-import ViewTicketsPage from "@/roles/manager/pages/ViewTicketsPage";
-import ProfilePage from "@/roles/manager/pages/ProfilePage";
-import EditProfilePage from "@/roles/manager/pages/EditProfilePage";
-import ManagerResetPasswordPage from "@/roles/manager/pages/ManagerResetPasswordPage";
-import TwoFactorPage from "@/roles/manager/pages/TwoFactorPage";
-// Imports for document pages removed
-// import TripsManagementPage from "@/roles/manager/pages/TripsManagementPage";
-// import TripsListPage from "@/roles/manager/pages/TripsListPage";
-
+// 1. Direct Static Imports (Critical Initial Experience - No Lazy Loading)
 import Home from "@/roles/admin/pages/Home";
 import Performance from "@/roles/admin/pages/Performance";
 import About from "@/roles/admin/pages/About";
 import Contact from "@/roles/admin/pages/Contact";
-import Security from "@/roles/admin/pages/Security";
-import Features from "@/roles/admin/pages/Features";
-import Blogs from "@/roles/admin/pages/Blogs";
-import ContactRequests from "@/roles/admin/pages/ContactRequests";
-import Pricing from "@/roles/admin/pages/Pricing";
-import SubscriptionRequests from "@/roles/admin/pages/SubscriptionRequests";
-import SubscriptionPage from "@/roles/manager/pages/SubscriptionPage";
-import EarningsPage from "@/roles/manager/pages/EarningsPage";
-
-import DriverLayout from "@/roles/driver/layouts/DriverLayout";
-import DriverLogin from "@/roles/driver/pages/Login";
+import LoginPage from "@/roles/admin/pages/LoginPage";
+import Dashboard from "@/roles/admin/pages/Dashboard";
+import AdminDashboard from "@/roles/admin/pages/AdminDashboard";
+import ManagerDashboard from "@/roles/manager/pages/ManagerDashboard";
 import DriverDashboard from "@/roles/driver/pages/Dashboard";
-import DriverTripsPage from "@/roles/driver/pages/Trips";
-import DriverTripDetailsPage from "@/roles/driver/pages/TripDetails";
-import DriverVehiclesPage from "@/roles/driver/pages/Vehicles";
-import DriverFuelPage from "@/roles/driver/pages/Fuel";
-import DriverMaintenancePage from "@/roles/driver/pages/Maintenance";
-import DriverDocumentsPage from "@/roles/driver/pages/Documents";
-import DriverNotificationsPage from "@/roles/driver/pages/Notifications";
-import DriverSupportPage from "@/roles/driver/pages/Support";
-import DriverSelfProfilePage from "@/roles/driver/pages/Profile";
-import DriverSettingsPage from "@/roles/driver/pages/Settings";
+import UnauthorizedPage from "@/components/common/UnauthorizedPage";
+
+// 2. Secondary Public & Auth Pages (Lazy Loaded)
+const Security = lazy(() => import("@/roles/admin/pages/Security"));
+const Features = lazy(() => import("@/roles/admin/pages/Features"));
+const Blogs = lazy(() => import("@/roles/admin/pages/Blogs"));
+const Pricing = lazy(() => import("@/roles/admin/pages/Pricing"));
+
+const ForgotPasswordPage = lazy(() => import("@/roles/admin/pages/ForgotPasswordPage"));
+const OtpVerificationPage = lazy(() => import("@/roles/admin/pages/OtpVerificationPage"));
+const ResetPasswordPage = lazy(() => import("@/roles/admin/pages/ResetPasswordPage"));
+
+// 3. Secondary Admin Pages (Lazy Loaded)
+const OrganizationList = lazy(() => import("@/roles/admin/pages/OrganizationList"));
+const AddOrganization = lazy(() => import("@/roles/admin/pages/AddOrganization"));
+const OrganizationDetails = lazy(() => import("@/roles/admin/pages/OrganizationDetails"));
+const EditOrganization = lazy(() => import("@/roles/admin/pages/EditOrganization"));
+const Analytics = lazy(() => import("@/roles/admin/pages/Analytics"));
+const ContactRequests = lazy(() => import("@/roles/admin/pages/ContactRequests"));
+const SystemHealth = lazy(() => import("@/roles/admin/pages/SystemHealth"));
+const AuditLogs = lazy(() => import("@/roles/admin/pages/AuditLogs"));
+const Settings = lazy(() => import("@/roles/admin/pages/Settings"));
+const SecuritySettings = lazy(() => import("@/roles/admin/pages/SecuritySettings"));
+const NotificationSettings = lazy(() => import("@/roles/admin/pages/NotificationSettings"));
+const ProfileSettings = lazy(() => import("@/roles/admin/pages/ProfileSettings"));
+const ReviewsSettings = lazy(() => import("@/roles/admin/pages/ReviewsSettings"));
+const SettingsBlogs = lazy(() => import("@/roles/admin/pages/SettingsBlogs"));
+const SettingsAbout = lazy(() => import("@/roles/admin/pages/SettingsAbout"));
+const NotificationList = lazy(() => import("@/roles/admin/pages/NotificationList"));
+const NotificationDetails = lazy(() => import("@/roles/admin/pages/NotificationDetails"));
+const SubscriptionRequests = lazy(() => import("@/roles/admin/pages/SubscriptionRequests"));
+const UserManagement = lazy(() => import("@/roles/admin/pages/UserManagement"));
+
+// 4. Secondary Fleet Manager Pages (Lazy Loaded)
+const VehicleManagement = lazy(() => import("@/roles/manager/pages/VehicleManagement"));
+const VehiclesListPage = lazy(() => import("@/roles/manager/pages/VehiclesListPage"));
+const VehicleDetailsPage = lazy(() => import("@/roles/manager/pages/VehicleDetailsPage"));
+const VehicleEditPage = lazy(() => import("@/roles/manager/pages/VehicleEditPage"));
+const AddVehiclePage = lazy(() => import("@/roles/manager/pages/AddVehiclePage"));
+const FleetMapPage = lazy(() => import("@/roles/manager/pages/FleetMapPage"));
+const AnalyticsPage = lazy(() => import("@/roles/manager/pages/AnalyticsPage"));
+const DriversManagementPage = lazy(() => import("@/roles/manager/pages/DriversManagementPage"));
+const DriversListPage = lazy(() => import("@/roles/manager/pages/DriversListPage"));
+const DriverProfilePage = lazy(() => import("@/roles/manager/pages/DriverProfilePage"));
+const AssignVehiclePage = lazy(() => import("@/roles/manager/pages/AssignVehiclePage"));
+const AddDriverPage = lazy(() => import("@/roles/manager/pages/AddDriverPage"));
+const TripsManagementPage = lazy(() => import("@/roles/manager/pages/TripsManagementPage"));
+const TripsListPage = lazy(() => import("@/roles/manager/pages/TripsListPage"));
+const CreateTripPage = lazy(() => import("@/roles/manager/pages/CreateTripPage"));
+const TripDetailsPage = lazy(() => import("@/roles/manager/pages/TripDetailsPage"));
+const FuelManagementPage = lazy(() => import("@/roles/manager/pages/FuelManagementPage"));
+const MaintenanceManagementPage = lazy(() => import("@/roles/manager/pages/MaintenanceManagementPage"));
+const UpcomingServicesPage = lazy(() => import("@/roles/manager/pages/UpcomingServicesPage"));
+const ScheduleServicePage = lazy(() => import("@/roles/manager/pages/ScheduleServicePage"));
+const ServiceDetailsPage = lazy(() => import("@/roles/manager/pages/ServiceDetailsPage"));
+const ViewTicketsPage = lazy(() => import("@/roles/manager/pages/ViewTicketsPage"));
+const ReportsPage = lazy(() => import("@/roles/manager/pages/ReportsPage"));
+const ArchivedReportsPage = lazy(() => import("@/roles/manager/pages/ArchivedReportsPage"));
+const ManageSchedulesPage = lazy(() => import("@/roles/manager/pages/ManageSchedulesPage"));
+const NotificationsPage = lazy(() => import("@/roles/manager/pages/NotificationsPage"));
+const NotificationDetailsPage = lazy(() => import("@/roles/manager/pages/NotificationDetailsPage"));
+const SettingsPage = lazy(() => import("@/roles/manager/pages/SettingsPage"));
+const ChangePasswordPage = lazy(() => import("@/roles/manager/pages/ChangePasswordPage"));
+const ProfilePage = lazy(() => import("@/roles/manager/pages/ProfilePage"));
+const EditProfilePage = lazy(() => import("@/roles/manager/pages/EditProfilePage"));
+const ManagerResetPasswordPage = lazy(() => import("@/roles/manager/pages/ManagerResetPasswordPage"));
+const TwoFactorPage = lazy(() => import("@/roles/manager/pages/TwoFactorPage"));
+const SubscriptionPage = lazy(() => import("@/roles/manager/pages/SubscriptionPage"));
+const EarningsPage = lazy(() => import("@/roles/manager/pages/EarningsPage"));
+
+// 5. Secondary Driver Pages (Lazy Loaded)
+const DriverTripsPage = lazy(() => import("@/roles/driver/pages/Trips"));
+const DriverTripDetailsPage = lazy(() => import("@/roles/driver/pages/TripDetails"));
+const DriverVehiclesPage = lazy(() => import("@/roles/driver/pages/Vehicles"));
+const DriverFuelPage = lazy(() => import("@/roles/driver/pages/Fuel"));
+const DriverMaintenancePage = lazy(() => import("@/roles/driver/pages/Maintenance"));
+const DriverNotificationsPage = lazy(() => import("@/roles/driver/pages/Notifications"));
+const DriverSupportPage = lazy(() => import("@/roles/driver/pages/Support"));
+const DriverSelfProfilePage = lazy(() => import("@/roles/driver/pages/Profile"));
+const DriverSettingsPage = lazy(() => import("@/roles/driver/pages/Settings"));
 
 function PublicRoute({ children }) {
-  const { isAuthenticated, role, initializing } = useAuth();
-  if (initializing) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin h-8 w-8 border-4 border-[#A14000] border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-  if (isAuthenticated) {
-    if (role === "SUPER_ADMIN" || role === "admin") return <Navigate to="/admin/dashboard" replace />;
-    if (role === "DRIVER" || role === "driver") return <Navigate to="/driver/dashboard" replace />;
-    return <Navigate to="/manager" replace />;
-  }
-  return children;
-}
+  const { isAuthenticated, role } = useAuth();
 
-function RootRedirect() {
-  const { isAuthenticated, role, initializing } = useAuth();
-  if (initializing) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin h-8 w-8 border-4 border-[#A14000] border-t-transparent rounded-full" />
-      </div>
-    );
-  }
   if (isAuthenticated) {
     if (role === "SUPER_ADMIN" || role === "admin") return <Navigate to="/admin/dashboard" replace />;
     if (role === "DRIVER" || role === "driver") return <Navigate to="/driver/dashboard" replace />;
     return <Navigate to="/manager" replace />;
   }
-  return <Navigate to="/login" replace />;
+
+  return children;
 }
 
 export default function App() {
   return (
-    <SettingsProvider>
-      <AuthProvider>
-        <BrowserRouter>
-        <ScrollToTop />
-        <Toaster position="top-right" />
-        <Routes>
-          <Route path="/" element={<PublicRoute><Home /></PublicRoute>} />
-          <Route path="/performance" element={<PublicRoute><Performance /></PublicRoute>} />
-          <Route path="/about" element={<PublicRoute><About /></PublicRoute>} />
-          <Route path="/features" element={<PublicRoute><Features /></PublicRoute>} />
-          <Route path="/contact" element={<PublicRoute><Contact /></PublicRoute>} />
-          <Route path="/security" element={<PublicRoute><Security /></PublicRoute>} />
-          <Route path="/pricing" element={<PublicRoute><Pricing /></PublicRoute>} />
-          <Route path="/blogs" element={<PublicRoute><Blogs /></PublicRoute>} />
-          <Route element={<AuthLayout />}>
-            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/otp-verification" element={<OtpVerificationPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-          </Route>
-          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+    <ThemeProvider>
+      <SettingsProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <ScrollToTop />
+            <Toaster position="top-right" />
+            <ErrorBoundary>
+              <Suspense fallback={<SmartSkeletonFallback variant="dashboard" />}>
+                <Routes>
+                  {/* Public Landing Pages */}
+                  <Route element={<PublicLayout />}>
+                    <Route path="/" element={<PublicRoute><Home /></PublicRoute>} />
+                    <Route path="/performance" element={<PublicRoute><Performance /></PublicRoute>} />
+                    <Route path="/about" element={<PublicRoute><About /></PublicRoute>} />
+                    <Route path="/features" element={<PublicRoute><Features /></PublicRoute>} />
+                    <Route path="/contact" element={<PublicRoute><Contact /></PublicRoute>} />
+                    <Route path="/security" element={<PublicRoute><Security /></PublicRoute>} />
+                    <Route path="/pricing" element={<PublicRoute><Pricing /></PublicRoute>} />
+                    <Route path="/blogs" element={<PublicRoute><Blogs /></PublicRoute>} />
+                  </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "admin"]} />}>
-            <Route element={<AdminProvider><Outlet /></AdminProvider>}>
-              <Route path="/admin/dashboard" element={<Dashboard />} />
-              <Route path="/admin/organizations" element={<OrganizationList />} />
-              <Route path="/admin/organizations/add" element={<AddOrganization />} />
-              <Route path="/admin/organizations/details" element={<OrganizationDetails />} />
-              <Route path="/admin/organizations/edit" element={<EditOrganization />} />
-              <Route path="/admin/organizations/edit/:id?" element={<EditOrganization />} />
-              <Route path="/admin/organizations/details/:id?" element={<OrganizationDetails />} />
+                  {/* Auth Routes */}
+                  <Route element={<AuthLayout />}>
+                    <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/otp-verification" element={<OtpVerificationPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
+                  </Route>
+                  <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-              <Route path="/admin/analytics" element={<Analytics />} />
-              <Route path="/admin/contact-requests" element={<ContactRequests />} />
-              <Route path="/admin/system-health" element={<SystemHealth />} />
-              <Route path="/admin/audit-logs" element={<AuditLogs />} />
-              <Route path="/admin/settings" element={<Settings />} />
-              <Route path="/admin/settings/security" element={<SecuritySettings />} />
-              <Route path="/admin/settings/notifications" element={<NotificationSettings />} />
-              <Route path="/admin/settings/profile" element={<ProfileSettings />} />
-              <Route path="/admin/settings/blogs" element={<SettingsBlogs />} />
-              <Route path="/admin/settings/about" element={<SettingsAbout />} />
-              <Route path="/admin/settings/reviews" element={<ReviewsSettings />} />
-              <Route path="/admin/notifications" element={<NotificationList />} />
-              <Route path="/admin/notifications/:id" element={<NotificationDetails />} />
-              <Route path="/admin/subscription-plans" element={<SubscriptionRequests />} />
-              <Route path="/admin/subscription-requests" element={<SubscriptionRequests />} />
-              <Route element={<AppLayout />}>
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/users" element={<UserManagement />} />
-              </Route>
-            </Route>
-          </Route>
+                  {/* Super Admin Protected Routes */}
+                  <Route element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "admin"]} />}>
+                    <Route element={<AdminProvider><Outlet /></AdminProvider>}>
+                      <Route path="/admin/dashboard" element={<Dashboard />} />
+                      <Route path="/admin/organizations" element={<OrganizationList />} />
+                      <Route path="/admin/organizations/add" element={<AddOrganization />} />
+                      <Route path="/admin/organizations/details" element={<OrganizationDetails />} />
+                      <Route path="/admin/organizations/edit" element={<EditOrganization />} />
+                      <Route path="/admin/organizations/edit/:id?" element={<EditOrganization />} />
+                      <Route path="/admin/organizations/details/:id?" element={<OrganizationDetails />} />
 
-          <Route element={<ProtectedRoute allowedRoles={["FLEET_MANAGER", "manager"]} />}>
-            <Route element={<AppLayout />}>
-              <Route path="/manager" element={<ManagerDashboard />} />
-              <Route path="/manager/vehicle-management" element={<VehicleManagement />} />
-              <Route path="/manager/vehicles-list" element={<VehiclesListPage />} />
-              <Route path="/manager/vehicle-details/:id" element={<VehicleDetailsPage />} />
-              <Route path="/manager/vehicle-edit/:id" element={<VehicleEditPage />} />
-              <Route path="/manager/add-vehicle" element={<AddVehiclePage />} />
-              <Route path="/manager/map" element={<FleetMapPage />} />
+                      <Route path="/admin/analytics" element={<Analytics />} />
+                      <Route path="/admin/contact-requests" element={<ContactRequests />} />
+                      <Route path="/admin/system-health" element={<SystemHealth />} />
+                      <Route path="/admin/audit-logs" element={<AuditLogs />} />
+                      <Route path="/admin/settings" element={<Settings />} />
+                      <Route path="/admin/settings/security" element={<SecuritySettings />} />
+                      <Route path="/admin/settings/notifications" element={<NotificationSettings />} />
+                      <Route path="/admin/settings/profile" element={<ProfileSettings />} />
+                      <Route path="/admin/settings/blogs" element={<SettingsBlogs />} />
+                      <Route path="/admin/settings/about" element={<SettingsAbout />} />
+                      <Route path="/admin/settings/reviews" element={<ReviewsSettings />} />
+                      <Route path="/admin/notifications" element={<NotificationList />} />
+                      <Route path="/admin/notifications/:id" element={<NotificationDetails />} />
+                      <Route path="/admin/subscription-plans" element={<SubscriptionRequests />} />
+                      <Route path="/admin/subscription-requests" element={<SubscriptionRequests />} />
+                      <Route element={<AppLayout />}>
+                        <Route path="/admin" element={<AdminDashboard />} />
+                        <Route path="/admin/users" element={<UserManagement />} />
+                      </Route>
+                    </Route>
+                  </Route>
 
-              {/* Placeholder routes for other sidebar items */}
-              <Route path="/manager/vehicles" element={<div className="p-8"><h1 className="text-2xl font-bold">Vehicles Page</h1></div>} />
+                  {/* Fleet Manager Protected Routes */}
+                  <Route element={<ProtectedRoute allowedRoles={["FLEET_MANAGER", "manager"]} />}>
+                    <Route element={<AppLayout />}>
+                      <Route path="/manager" element={<ManagerDashboard />} />
+                      <Route path="/manager/vehicle-management" element={<VehicleManagement />} />
+                      <Route path="/manager/vehicles-list" element={<VehiclesListPage />} />
+                      <Route path="/manager/vehicle-details/:id" element={<VehicleDetailsPage />} />
+                      <Route path="/manager/vehicle-edit/:id" element={<VehicleEditPage />} />
+                      <Route path="/manager/add-vehicle" element={<AddVehiclePage />} />
+                      <Route path="/manager/map" element={<FleetMapPage />} />
 
-              <Route path="/manager/drivers" element={<DriversManagementPage />} />
-              <Route path="/manager/drivers-list" element={<DriversListPage />} />
-              <Route path="/manager/driver-profile/:id" element={<DriverProfilePage />} />
-              <Route path="/manager/driver-assign-vehicle/:id" element={<AssignVehiclePage />} />
-              <Route path="/manager/add-driver" element={<AddDriverPage />} />
-              <Route path="/manager/edit-driver/:id" element={<AddDriverPage />} />
+                      <Route path="/manager/vehicles" element={<VehicleManagement />} />
+                      <Route path="/manager/drivers" element={<DriversManagementPage />} />
+                      <Route path="/manager/drivers-list" element={<DriversListPage />} />
+                      <Route path="/manager/driver-profile/:id" element={<DriverProfilePage />} />
+                      <Route path="/manager/driver-assign-vehicle/:id" element={<AssignVehiclePage />} />
+                      <Route path="/manager/add-driver" element={<AddDriverPage />} />
+                      <Route path="/manager/edit-driver/:id" element={<AddDriverPage />} />
 
-              <Route path="/manager/tracking" element={<div className="p-8"><h1 className="text-2xl font-bold">Live Tracking Page</h1></div>} />
+                      <Route path="/manager/tracking" element={<FleetMapPage />} />
+                      <Route path="/manager/settings" element={<SettingsPage />} />
+                      <Route path="/manager/trips" element={<TripsManagementPage />} />
+                      <Route path="/manager/trips-list" element={<TripsListPage />} />
+                      <Route path="/manager/create-trip" element={<CreateTripPage />} />
+                      <Route path="/manager/trip-details/:id" element={<TripDetailsPage />} />
 
-              <Route path="/manager/settings" element={<SettingsPage />} />
-              <Route path="/manager/trips" element={<TripsManagementPage />} />
-              <Route path="/manager/trips-list" element={<TripsListPage />} />
-              <Route path="/manager/create-trip" element={<CreateTripPage />} />
-              <Route path="/manager/trip-details/:id" element={<TripDetailsPage />} />
-              {/* <Route path="/manager/trips" element={<TripsManagementPage />} />
-              <Route path="/manager/trips-list" element={<TripsListPage />} /> */}
+                      <Route path="/manager/fuel" element={<FuelManagementPage />} />
+                      <Route path="/manager/analytics" element={<AnalyticsPage />} />
+                      <Route path="/manager/reports" element={<ReportsPage />} />
+                      <Route path="/manager/reports/archived" element={<ArchivedReportsPage />} />
+                      <Route path="/manager/reports/schedules" element={<ManageSchedulesPage />} />
+                      <Route path="/manager/notifications" element={<NotificationsPage />} />
+                      <Route path="/manager/notifications/:id" element={<NotificationDetailsPage />} />
+                      <Route path="/manager/change-password" element={<ChangePasswordPage />} />
+                      <Route path="/manager/maintenance" element={<MaintenanceManagementPage />} />
+                      <Route path="/manager/maintenance/upcoming" element={<UpcomingServicesPage />} />
+                      <Route path="/manager/maintenance/schedule" element={<ScheduleServicePage />} />
+                      <Route path="/manager/maintenance/details/:id" element={<ServiceDetailsPage />} />
+                      <Route path="/manager/maintenance/tickets" element={<ViewTicketsPage />} />
+                      <Route path="/manager/profile" element={<ProfilePage />} />
+                      <Route path="/manager/profile/edit" element={<EditProfilePage />} />
+                      <Route path="/manager/profile/reset-password" element={<ManagerResetPasswordPage />} />
+                      <Route path="/manager/profile/2fa" element={<TwoFactorPage />} />
+                      <Route path="/manager/subscription" element={<SubscriptionPage />} />
+                      <Route path="/manager/earnings" element={<EarningsPage />} />
+                    </Route>
+                  </Route>
 
-              <Route path="/manager/fuel" element={<FuelManagementPage />} />
-              <Route path="/manager/analytics" element={<AnalyticsPage />} />
-              <Route path="/manager/reports" element={<ReportsPage />} />
-              <Route path="/manager/reports/archived" element={<ArchivedReportsPage />} />
-              <Route path="/manager/reports/schedules" element={<ManageSchedulesPage />} />
-              <Route path="/manager/notifications" element={<NotificationsPage />} />
-              <Route path="/manager/notifications/:id" element={<NotificationDetailsPage />} />
-              <Route path="/manager/change-password" element={<ChangePasswordPage />} />
-              <Route path="/manager/maintenance" element={<MaintenanceManagementPage />} />
-              <Route path="/manager/maintenance/upcoming" element={<UpcomingServicesPage />} />
-              <Route path="/manager/maintenance/schedule" element={<ScheduleServicePage />} />
-              <Route path="/manager/maintenance/details/:id" element={<ServiceDetailsPage />} />
-              <Route path="/manager/maintenance/tickets" element={<ViewTicketsPage />} />
-              <Route path="/manager/profile" element={<ProfilePage />} />
-              <Route path="/manager/profile/edit" element={<EditProfilePage />} />
-              <Route path="/manager/profile/reset-password" element={<ManagerResetPasswordPage />} />
-              <Route path="/manager/profile/2fa" element={<TwoFactorPage />} />
-              <Route path="/manager/subscription" element={<SubscriptionPage />} />
-              <Route path="/manager/earnings" element={<EarningsPage />} />
-            </Route>
-          </Route>
+                  {/* Driver Protected Routes */}
+                  <Route path="/driver/login" element={<Navigate to="/login" replace />} />
+                  <Route element={<ProtectedRoute allowedRoles={["DRIVER", "driver"]} />}>
+                    <Route element={<DriverLayout />}>
+                      <Route path="/driver" element={<Navigate to="/driver/dashboard" replace />} />
+                      <Route path="/driver/dashboard" element={<DriverDashboard />} />
+                      <Route path="/driver/trips" element={<DriverTripsPage />} />
+                      <Route path="/driver/trips/:id" element={<DriverTripDetailsPage />} />
+                      <Route path="/driver/vehicles" element={<DriverVehiclesPage />} />
+                      <Route path="/driver/fuel" element={<DriverFuelPage />} />
+                      <Route path="/driver/maintenance" element={<DriverMaintenancePage />} />
+                      <Route path="/driver/documents" element={<Navigate to="/driver/dashboard" replace />} />
+                      <Route path="/driver/notifications" element={<DriverNotificationsPage />} />
+                      <Route path="/driver/support" element={<DriverSupportPage />} />
+                      <Route path="/driver/profile" element={<DriverSelfProfilePage />} />
+                      <Route path="/driver/settings" element={<DriverSettingsPage />} />
+                    </Route>
+                  </Route>
 
-          <Route path="/driver/login" element={<Navigate to="/login" replace />} />
-
-          <Route element={<ProtectedRoute allowedRoles={["DRIVER", "driver"]} />}>
-            <Route element={<DriverLayout />}>
-              <Route path="/driver" element={<Navigate to="/driver/dashboard" replace />} />
-              <Route path="/driver/dashboard" element={<DriverDashboard />} />
-              <Route path="/driver/trips" element={<DriverTripsPage />} />
-              <Route path="/driver/trips/:id" element={<DriverTripDetailsPage />} />
-              <Route path="/driver/vehicles" element={<DriverVehiclesPage />} />
-              <Route path="/driver/fuel" element={<DriverFuelPage />} />
-              <Route path="/driver/maintenance" element={<DriverMaintenancePage />} />
-              <Route path="/driver/documents" element={<Navigate to="/driver/dashboard" replace />} />
-              <Route path="/driver/notifications" element={<DriverNotificationsPage />} />
-              <Route path="/driver/support" element={<DriverSupportPage />} />
-              <Route path="/driver/profile" element={<DriverSelfProfilePage />} />
-              <Route path="/driver/settings" element={<DriverSettingsPage />} />
-            </Route>
-          </Route>
-
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
-    </SettingsProvider>
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
+          </BrowserRouter>
+        </AuthProvider>
+      </SettingsProvider>
+    </ThemeProvider>
   );
 }

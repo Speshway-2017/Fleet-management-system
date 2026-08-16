@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/date_formatter.dart';
@@ -338,51 +339,92 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildEmptyActiveTripCard() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      height: 190,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E36), // Deep Navy Black
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        color: const Color(0xFF091426), // Deep Dark Navy
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F1E36).withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: const Color(0xFF070F1E).withValues(alpha: 0.5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.06),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.local_shipping_outlined,
-              color: Color(0xFFFF6A00),
-              size: 28,
+          // Graphic Backdrop: Highway, Night Truck, Dashed Route & Location Pin
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _NoActiveTripCardPainter(),
             ),
           ),
-          const SizedBox(height: 10),
-          Text(
-            'No Active Trip',
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "You don't have any assigned trips yet.\nPlease wait for your manager to assign a trip.",
-            textAlign: TextAlign.center,
-            style: GoogleFonts.nunito(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 12,
-              height: 1.4,
+
+          // Foreground Left Column Content
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Orange Truck Circle Icon Badge
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF16253B).withValues(alpha: 0.95),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.local_shipping_rounded,
+                        color: Color(0xFFF97316),
+                        size: 22,
+                      ),
+                    ),
+                  ),
+
+                  // Title & Subtitles Stack
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'No Active Trip',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 21,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "You don't have any assigned\ntrips yet.",
+                        style: GoogleFonts.plusJakartaSans(
+                          color: const Color(0xFF94A3B8),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Please wait for your manager\nto assign a trip.",
+                        style: GoogleFonts.plusJakartaSans(
+                          color: const Color(0xFF94A3B8),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -1094,16 +1136,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       child: Row(
         children: [
-          _buildStatItem(context, 'Active Trip', _dashboardData?['activeTrips']?.toString().padLeft(2, '0') ?? '01', Icons.local_shipping, const Color(0xFF3B82F6), const Color(0xFFEFF6FF), () {
+          _buildStatItem(context, 'Active Trip', (_dashboardData?['activeTrips'] ?? 0).toString(), Icons.local_shipping, const Color(0xFF3B82F6), const Color(0xFFEFF6FF), () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const ActiveTripsScreen()));
           }),
-          _buildStatItem(context, 'Upcoming', _dashboardData?['upcomingTrips']?.toString().padLeft(2, '0') ?? '04', Icons.calendar_today, const Color(0xFF22C55E), const Color(0xFFF0FDF4), () {
+          _buildStatItem(context, 'Upcoming', (_dashboardData?['upcomingTrips'] ?? 0).toString(), Icons.calendar_today, const Color(0xFF22C55E), const Color(0xFFF0FDF4), () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const UpcomingTripsScreen()));
           }),
-          _buildStatItem(context, 'Completed', _dashboardData?['completedTrips']?.toString().padLeft(2, '0') ?? '128', Icons.check_circle_outline, const Color(0xFFFF6A00), const Color(0xFFFFF7ED), () {
+          _buildStatItem(context, 'Completed', (_dashboardData?['completedTrips'] ?? 0).toString(), Icons.check_circle_outline, const Color(0xFFFF6A00), const Color(0xFFFFF7ED), () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const CompletedTripsScreen()));
           }),
-          _buildStatItem(context, 'Total Trips', ((_dashboardData?['activeTrips'] ?? 1) + (_dashboardData?['upcomingTrips'] ?? 4) + (_dashboardData?['completedTrips'] ?? 128)).toString(), Icons.assignment_outlined, const Color(0xFF8B5CF6), const Color(0xFFF5F3FF), () {
+          _buildStatItem(context, 'Total Trips', ((_dashboardData?['activeTrips'] ?? 0) + (_dashboardData?['upcomingTrips'] ?? 0) + (_dashboardData?['completedTrips'] ?? 0)).toString(), Icons.assignment_outlined, const Color(0xFF8B5CF6), const Color(0xFFF5F3FF), () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const TripsScreen()));
           }),
         ],
@@ -1330,4 +1372,125 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
+}
+
+class _NoActiveTripCardPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    // Dark Mountain / Horizon Backdrop
+    final mountainPaint = Paint()
+      ..color = const Color(0xFF0F203C).withValues(alpha: 0.6)
+      ..style = PaintingStyle.fill;
+
+    final mountainPath = Path();
+    mountainPath.moveTo(w * 0.45, h);
+    mountainPath.quadraticBezierTo(w * 0.65, h * 0.55, w * 0.85, h * 0.68);
+    mountainPath.quadraticBezierTo(w * 0.92, h * 0.72, w, h * 0.60);
+    mountainPath.lineTo(w, h);
+    mountainPath.close();
+    canvas.drawPath(mountainPath, mountainPaint);
+
+    // Night Highway Road
+    final roadPaint = Paint()
+      ..color = const Color(0xFF0B172C)
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(Rect.fromLTWH(w * 0.4, h * 0.76, w * 0.6, h * 0.24), roadPaint);
+
+    // Semi-Truck Silhouette Graphic on the Right
+    final truckStartX = w * 0.52;
+    final truckY = h * 0.44;
+
+    // Trailer Body
+    final trailerPaint = Paint()..color = const Color(0xFF1C3456);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(truckStartX, truckY, w * 0.26, h * 0.34), const Radius.circular(4)),
+      trailerPaint,
+    );
+
+    // Cab Head
+    final cabPaint = Paint()..color = const Color(0xFF2B4E7E);
+    final cabPath = Path();
+    final cabX = truckStartX + w * 0.26;
+    cabPath.moveTo(cabX, truckY + h * 0.08);
+    cabPath.lineTo(cabX + w * 0.12, truckY + h * 0.08);
+    cabPath.quadraticBezierTo(cabX + w * 0.15, truckY + h * 0.12, cabX + w * 0.16, truckY + h * 0.24);
+    cabPath.lineTo(cabX + w * 0.17, truckY + h * 0.34);
+    cabPath.lineTo(cabX, truckY + h * 0.34);
+    cabPath.close();
+    canvas.drawPath(cabPath, cabPaint);
+
+    // Windshield
+    final winPaint = Paint()..color = const Color(0xFF628DC5);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(cabX + w * 0.04, truckY + h * 0.11, w * 0.07, h * 0.09), const Radius.circular(2)),
+      winPaint,
+    );
+
+    // Headlight Beam Light
+    final headlightGlow = Paint()
+      ..shader = LinearGradient(
+        colors: [const Color(0xFFFFF7ED).withValues(alpha: 0.35), Colors.transparent],
+      ).createShader(Rect.fromLTWH(cabX + w * 0.16, truckY + h * 0.24, w * 0.2, h * 0.1));
+    final beamPath = Path();
+    beamPath.moveTo(cabX + w * 0.16, truckY + h * 0.25);
+    beamPath.lineTo(w, truckY + h * 0.20);
+    beamPath.lineTo(w, truckY + h * 0.36);
+    beamPath.lineTo(cabX + w * 0.16, truckY + h * 0.30);
+    beamPath.close();
+    canvas.drawPath(beamPath, headlightGlow);
+
+    // Wheels
+    final wheelPaint = Paint()..color = const Color(0xFF0D1626);
+    canvas.drawCircle(Offset(truckStartX + w * 0.06, truckY + h * 0.34), 8, wheelPaint);
+    canvas.drawCircle(Offset(truckStartX + w * 0.20, truckY + h * 0.34), 8, wheelPaint);
+    canvas.drawCircle(Offset(cabX + w * 0.12, truckY + h * 0.34), 8, wheelPaint);
+
+    // White Dashed Curved Line climbing to location pin
+    final dashPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.8)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final curvePath = Path();
+    final startPt = Offset(truckStartX + w * 0.18, truckY - 4);
+    final endPt = Offset(w * 0.76, h * 0.20);
+    final controlPt = Offset(w * 0.68, h * 0.28);
+
+    curvePath.moveTo(startPt.dx, startPt.dy);
+    curvePath.quadraticBezierTo(controlPt.dx, controlPt.dy, endPt.dx, endPt.dy);
+
+    for (final metric in curvePath.computeMetrics()) {
+      double distance = 0.0;
+      const dashWidth = 5.0;
+      const dashSpace = 4.0;
+      while (distance < metric.length) {
+        canvas.drawPath(metric.extractPath(distance, distance + dashWidth), dashPaint);
+        distance += dashWidth + dashSpace;
+      }
+    }
+
+    // Blue Location Pin Marker at Top End
+    final pinCenter = Offset(endPt.dx, endPt.dy - 10);
+    final pinPaint = Paint()..color = const Color(0xFF25549E);
+
+    final pinPath = Path();
+    pinPath.moveTo(pinCenter.dx, pinCenter.dy + 14);
+    pinPath.quadraticBezierTo(pinCenter.dx - 12, pinCenter.dy, pinCenter.dx - 12, pinCenter.dy - 6);
+    pinPath.addArc(Rect.fromCircle(center: Offset(pinCenter.dx, pinCenter.dy - 6), radius: 12), math.pi, math.pi);
+    pinPath.quadraticBezierTo(pinCenter.dx + 12, pinCenter.dy, pinCenter.dx, pinCenter.dy + 14);
+    pinPath.close();
+
+    canvas.drawPath(pinPath, pinPaint);
+    canvas.drawPath(pinPath, Paint()..color = Colors.white.withValues(alpha: 0.25)..style = PaintingStyle.stroke..strokeWidth = 1.0);
+
+    // Central White Dot inside Pin Marker
+    canvas.drawCircle(Offset(pinCenter.dx, pinCenter.dy - 6), 4.5, Paint()..color = Colors.white);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -51,7 +51,7 @@ class VehicleMaintenanceScreen extends StatefulWidget {
 }
 
 class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
-  bool _isLoading = true;
+  bool _isLoading = false;
   bool _isAssigned = false;
   Map<String, dynamic>? _vehicle;
   List<dynamic> _activeMaintenances = [];
@@ -66,10 +66,6 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
   }
 
   Future<void> _fetchMaintenanceData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
       // Check vehicle assignment first to avoid unnecessary maintenance API calls when unassigned
       final vehRes = await ApiService.getAssignedVehicle();

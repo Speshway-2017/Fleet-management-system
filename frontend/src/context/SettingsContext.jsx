@@ -11,6 +11,14 @@ export function SettingsProvider({ children }) {
   const [platformSettings, setPlatformSettings] = useState({
     platformName: "Fleet Management",
     logoUrl: "/logo.png",
+    footerDescription: "Next-generation intelligent fleet management platform. Streamlining nationwide transport operations, vehicle tracking, driver allocation, and logistics workflows with enterprise-grade reliability.",
+    contactPhone: "+91 1800 200 4567",
+    contactEmail: "support@fleetmanagement.io",
+    contactAddress: "Logistics Hub Tower, Tech City, Bengaluru 560001, Karnataka, India",
+    facebookUrl: "https://facebook.com",
+    linkedinUrl: "https://linkedin.com",
+    twitterUrl: "https://twitter.com",
+    youtubeUrl: "https://youtube.com",
   });
 
   const fetchPlatformSettings = async () => {
@@ -20,16 +28,20 @@ export function SettingsProvider({ children }) {
       setPlatformSettings({
         platformName: data.platformName || "Fleet Management",
         logoUrl: data.logoUrl || "/logo.png",
+        footerDescription: data.footerDescription || "Next-generation intelligent fleet management platform. Streamlining nationwide transport operations, vehicle tracking, driver allocation, and logistics workflows with enterprise-grade reliability.",
+        contactPhone: data.contactPhone || "+91 1800 200 4567",
+        contactEmail: data.contactEmail || "support@fleetmanagement.io",
+        contactAddress: data.contactAddress || "Logistics Hub Tower, Tech City, Bengaluru 560001, Karnataka, India",
+        facebookUrl: data.facebookUrl || "https://facebook.com",
+        linkedinUrl: data.linkedinUrl || "https://linkedin.com",
+        twitterUrl: data.twitterUrl || "https://twitter.com",
+        youtubeUrl: data.youtubeUrl || "https://youtube.com",
+        ...data
       });
     } catch (error) {
       if (error?.response?.status) {
         console.warn("Failed to fetch public platform settings:", error.response.status);
       }
-      setPlatformSettings((prev) => ({
-        ...prev,
-        platformName: prev.platformName || "Fleet Management",
-        logoUrl: prev.logoUrl || "/logo.png",
-      }));
     }
   };
 

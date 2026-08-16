@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
 import { useNavigate, useLocation } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -42,8 +43,17 @@ export default function FleetMapPage() {
   // Fetch live tracking vehicles from MongoDB (5s polling)
   const fetchMapData = async () => {
     try {
-      const response = await managerApi.getLiveTracking();
-      const rawVehicles = response.data?.data || response.data || [];
+      let rawVehicles = [];
+      try {
+        const response = await managerApi.getLiveTracking();
+        rawVehicles = response.data?.data || response.data || [];
+      } catch (e) {
+        // fallback
+      }
+      if (!Array.isArray(rawVehicles) || rawVehicles.length === 0) {
+        const vehRes = await managerApi.getVehicles();
+        rawVehicles = vehRes.data?.data || vehRes.data || [];
+      }
       setVehicles(rawVehicles);
     } catch (error) {
       console.error("Failed to fetch map tracking data:", error);
@@ -204,9 +214,37 @@ export default function FleetMapPage() {
 
     let dbCoords = null;
     if (v.currentLatitude && v.currentLongitude && !isNaN(v.currentLatitude) && !isNaN(v.currentLongitude)) {
-      dbCoords = [v.currentLatitude, v.currentLongitude];
+      dbCoords = [Number(v.currentLatitude), Number(v.currentLongitude)];
     } else if (locKey && resolvedCoordsMap[locKey]) {
       dbCoords = resolvedCoordsMap[locKey];
+    } else {
+      const DEFAULT_CITY_MAP = {
+        "samarlakot": [17.0500, 82.1667],
+        "kakinada": [16.9891, 82.2475],
+        "rajahmundry": [17.0005, 81.8040],
+        "dwaraka tirumala": [16.9538, 81.2588],
+        "eluru": [16.7107, 81.0952],
+        "vijayawada": [16.5062, 80.6480],
+        "visakhapatnam": [17.6868, 83.2185],
+        "vizag": [17.6868, 83.2185],
+        "hyderabad": [17.3850, 78.4867],
+        "pune": [18.5204, 73.8567],
+        "mumbai": [19.0760, 72.8777],
+        "bengaluru": [12.9716, 77.5946],
+        "bangalore": [12.9716, 77.5946],
+        "chennai": [13.0827, 80.2707],
+        "delhi": [28.6139, 77.2090],
+        "tirupati": [13.6288, 79.4192],
+        "guntur": [16.3067, 80.4365],
+        "nellore": [14.4426, 79.9865],
+        "kurnool": [15.8281, 78.0373]
+      };
+      const locSearch = (v.currentLocation || v.branchDepot || v.branch || "hyderabad").toLowerCase();
+      const matchedCity = Object.keys(DEFAULT_CITY_MAP).find(k => locSearch.includes(k));
+      const baseCoords = matchedCity ? DEFAULT_CITY_MAP[matchedCity] : [17.3850, 78.4867];
+      // Tiny ~200m offset so multiple vehicles in same location don't stack directly, but stay in town
+      const idxOffset = (vehicles.indexOf(v) % 6) * 0.003;
+      dbCoords = [baseCoords[0] + idxOffset, baseCoords[1] + idxOffset];
     }
 
     const startLocationName = activeTrip ? activeTrip.startLocation : null;
@@ -380,7 +418,7 @@ export default function FleetMapPage() {
       validBounds.push(v.coords);
       const isSelected = v.id === selectedVehicleId;
       const markerColor = 
-        v.status === "ON TRANSIT" ? "#B45A0A" : 
+        v.status === "ON TRANSIT" ? "#A14000" : 
         v.status === "DELIVERED" ? "#10B981" :
         v.status === "ASSIGNED" ? "#2563EB" : 
         v.status === "MAINT" ? "#D97706" : 
@@ -449,7 +487,7 @@ export default function FleetMapPage() {
         }).addTo(routesGroupRef.current);
 
         L.polyline(selectedVehicle.routeCoords, {
-          color: "#B45A0A",
+          color: "#A14000",
           weight: 5,
           opacity: 0.95,
           lineCap: "round"
@@ -518,7 +556,7 @@ export default function FleetMapPage() {
   const getStatusBadge = (status) => {
     switch (status) {
       case "ON TRANSIT":
-        return "bg-orange-50 text-[#B45A0A] border border-orange-100";
+        return "bg-orange-50 text-[#A14000] border border-orange-100";
       case "DELIVERED":
         return "bg-emerald-50 text-emerald-700 border border-emerald-200";
       case "ASSIGNED":
@@ -533,6 +571,8 @@ export default function FleetMapPage() {
         return "bg-gray-100 text-gray-500";
     }
   };
+
+
 
   return (
     <div className="p-6 lg:p-8 space-y-6 font-nunito">
@@ -564,12 +604,21 @@ export default function FleetMapPage() {
               placeholder="Search truck, driver..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] placeholder-gray-400 focus:outline-none focus:border-[#B45A0A] transition-colors"
+              className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] placeholder-gray-400 focus:outline-none focus:border-[#A14000] transition-colors"
             />
           </div>
 
           <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
-            {filteredVehicles.length === 0 ? (
+            {loading ? (
+              <div className="space-y-2 py-2 animate-pulse">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="p-3 border border-[#E7EAF0] rounded-xl space-y-2">
+                    <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
+                    <div className="h-3 w-32 bg-slate-100 dark:bg-slate-800 rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredVehicles.length === 0 ? (
               <p className="text-xs text-gray-400 py-4 text-center">No matching vehicles</p>
             ) : (
               filteredVehicles.map(v => (
@@ -577,7 +626,7 @@ export default function FleetMapPage() {
                   key={v.id}
                   onClick={() => setSelectedVehicleId(v.id)}
                   className={`p-3 border rounded-xl cursor-pointer transition-all flex items-start justify-between select-none ${selectedVehicleId === v.id
-                      ? "border-[#B45A0A] bg-orange-50/20 shadow-sm ring-1 ring-orange-400/30"
+                      ? "border-[#A14000] bg-orange-50/20 shadow-sm ring-1 ring-orange-400/30"
                       : "border-[#E7EAF0] bg-white hover:bg-gray-50/60"
                     }`}
                 >
@@ -620,7 +669,7 @@ export default function FleetMapPage() {
               <div className="grid grid-cols-3 gap-2 pt-2 text-center select-none">
                 <div>
                   <span className="text-[9px] uppercase font-bold text-slate-400">Progress</span>
-                  <p className="font-extrabold text-[#B45A0A] text-xs">{selectedVehicle.percentCompleted}%</p>
+                  <p className="font-extrabold text-[#A14000] text-xs">{selectedVehicle.percentCompleted}%</p>
                 </div>
                 <div>
                   <span className="text-[9px] uppercase font-bold text-slate-400">Remaining</span>
@@ -641,7 +690,7 @@ export default function FleetMapPage() {
             <button
               onClick={() => setIsTrafficOn(!isTrafficOn)}
               className={`px-3 py-1.5 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all ${isTrafficOn
-                  ? "bg-[#B45A0A] text-white"
+                  ? "bg-[#A14000] text-white"
                   : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B]"
                 }`}
             >
@@ -652,7 +701,7 @@ export default function FleetMapPage() {
             <button
               onClick={() => setIsSatellite(!isSatellite)}
               className={`px-3 py-1.5 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all ${isSatellite
-                  ? "bg-[#B45A0A] text-white"
+                  ? "bg-[#A14000] text-white"
                   : "bg-white hover:bg-gray-50 border border-[#E7EAF0] text-[#64748B]"
                 }`}
             >
@@ -665,32 +714,32 @@ export default function FleetMapPage() {
         {/* Right Column: Vehicle & Trip Details */}
         <div className="lg:col-span-3">
           {selectedVehicle && (
-            <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-5 flex flex-col space-y-4 h-full max-h-[620px] overflow-y-auto custom-scrollbar select-none">
+            <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-[#E7EAF0] dark:border-[#1E293B] shadow-sm p-5 flex flex-col space-y-4 h-full max-h-[620px] overflow-y-auto custom-scrollbar select-none">
 
               {/* Header card info */}
-              <div className="flex items-center justify-between border-b border-[#E7EAF0]/60 pb-3 shrink-0">
+              <div className="flex items-center justify-between border-b border-[#E7EAF0]/60 dark:border-slate-800 pb-3 shrink-0">
                 <div className="flex items-center gap-1.5">
-                  <Navigation className="w-4 h-4 text-[#B45A0A]" />
-                  <span className="font-poppins font-black text-sm text-[#1E293B] uppercase">{selectedVehicle.plateNumber}</span>
+                  <Navigation className="w-4 h-4 text-[#A14000]" />
+                  <span className="font-poppins font-black text-sm text-[#1E293B] dark:text-white uppercase">{selectedVehicle.plateNumber}</span>
                 </div>
                 <button
                   onClick={() => toast.success("Live GPS link copied to clipboard")}
                   title="Share Live link"
-                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                  className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                 >
                   <Share2 className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Driver info row */}
-              <div className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl p-3 shrink-0">
+              <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-xl p-3 shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-amber-100 border border-amber-200 text-[#B45A0A] rounded-xl flex items-center justify-center font-poppins font-black text-sm shrink-0">
+                  <div className="w-10 h-10 bg-amber-100 dark:bg-[#A14000]/20 border border-amber-200 dark:border-amber-800/40 text-[#A14000] dark:text-amber-400 rounded-xl flex items-center justify-center font-poppins font-black text-sm shrink-0">
                     {selectedVehicle.driver.split(" ").map(n => n[0]).join("")}
                   </div>
                   <div>
-                    <h5 className="font-poppins font-bold text-[#1E293B] text-xs">{selectedVehicle.driver}</h5>
-                    <span className="text-[10px] text-[#64748B] block mt-0.5">
+                    <h5 className="font-poppins font-bold text-[#1E293B] dark:text-white text-xs">{selectedVehicle.driver}</h5>
+                    <span className="text-[10px] text-[#64748B] dark:text-white font-medium block mt-0.5">
                       {selectedVehicle.phone ? `Phone: ${selectedVehicle.phone}` : "No phone number"}
                     </span>
                   </div>
@@ -698,7 +747,7 @@ export default function FleetMapPage() {
                 {selectedVehicle.phone && (
                   <a
                     href={`tel:${selectedVehicle.phone}`}
-                    className="p-2 bg-white border border-[#E7EAF0] hover:bg-gray-50 text-[#B45A0A] rounded-xl transition-all cursor-pointer shadow-sm"
+                    className="p-2 bg-white dark:bg-slate-800 border border-[#E7EAF0] dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-[#A14000] dark:text-amber-400 rounded-xl transition-all cursor-pointer shadow-sm"
                   >
                     <Phone className="w-4 h-4" />
                   </a>
@@ -706,26 +755,26 @@ export default function FleetMapPage() {
               </div>
 
               {/* Dynamic Location Details */}
-              <div className="bg-gray-50 border border-gray-100 rounded-xl p-3.5 flex flex-col space-y-2.5 text-xs text-[#64748B] shrink-0">
+              <div className="bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-xl p-3.5 flex flex-col space-y-2.5 text-xs text-[#64748B] dark:text-white shrink-0">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold">Vehicle Model / Type:</span>
-                  <span className="font-bold text-[#1E293B]">{selectedVehicle.name} ({selectedVehicle.type})</span>
+                  <span className="font-semibold text-slate-600 dark:text-white">Vehicle Model / Type:</span>
+                  <span className="font-bold text-[#1E293B] dark:text-white">{selectedVehicle.name} ({selectedVehicle.type})</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold">Current Location:</span>
-                  <span className={`font-bold ${selectedVehicle.isLocationUnavailable ? "text-red-500" : "text-[#1E293B]"}`}>
+                  <span className="font-semibold text-slate-600 dark:text-white">Current Location:</span>
+                  <span className={`font-bold ${selectedVehicle.isLocationUnavailable ? "text-red-500" : "text-[#1E293B] dark:text-white"}`}>
                     {selectedVehicle.currentLocation}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold">Status:</span>
+                  <span className="font-semibold text-slate-600 dark:text-white">Status:</span>
                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${getStatusBadge(selectedVehicle.status)}`}>
                     {selectedVehicle.status}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold">Last Sync:</span>
-                  <span className="font-bold text-[#1E293B]">{selectedVehicle.lastUpdated}</span>
+                  <span className="font-semibold text-slate-600 dark:text-white">Last Sync:</span>
+                  <span className="font-bold text-[#1E293B] dark:text-white">{selectedVehicle.lastUpdated}</span>
                 </div>
               </div>
 

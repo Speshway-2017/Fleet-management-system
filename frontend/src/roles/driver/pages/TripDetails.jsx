@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import driverApi from "../api/driverApi";
 import MapView from "../components/MapView";
 import { useDriverSocket } from "../hooks/useDriverSocket";
@@ -30,7 +30,16 @@ import { calculateDrivingRoute } from "../../manager/services/routingService";
 export default function DriverTripDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const location = useLocation();
+  const [loading, setLoading] = useState(false);
+
+  const handleBack = () => {
+    if (location.state?.fromNotification || location.state?.from === "/driver/notifications") {
+      navigate("/driver/notifications");
+    } else {
+      navigate("/driver/trips");
+    }
+  };
   const [trip, setTrip] = useState(null);
   const [podFile, setPodFile] = useState(null);
   const [uploadingPod, setUploadingPod] = useState(false);
@@ -97,6 +106,14 @@ export default function DriverTripDetailsPage() {
   const fetchTripDetails = async () => {
     setLoading(true);
     try {
+      if (id) {
+        const res = await driverApi.getTripById(id);
+        if (res?.success && res.data) {
+          setTrip(res.data);
+          return;
+        }
+      }
+
       const res = await driverApi.getTrips();
       if (res?.success && Array.isArray(res.data)) {
         const found = res.data.find(
@@ -104,14 +121,15 @@ export default function DriverTripDetailsPage() {
         );
         if (found) {
           setTrip(found);
-        } else {
-          const curRes = await driverApi.getCurrentTrip();
-          if (curRes?.success && curRes.data) {
-            setTrip(curRes.data);
-          } else {
-            toast.error("Trip not found");
-          }
+          return;
         }
+      }
+
+      const curRes = await driverApi.getCurrentTrip();
+      if (curRes?.success && curRes.data) {
+        setTrip(curRes.data);
+      } else {
+        toast.error("Trip not found");
       }
     } catch (err) {
       console.error("Error fetching trip details:", err);
@@ -251,9 +269,7 @@ export default function DriverTripDetailsPage() {
     try {
       const res = await driverApi.updateTripStatus(tripId, { status: newStatus });
       if (res?.success) {
-        toast.success(newStatus === "Start Trip" || newStatus === "In Progress" ? "🚀 Trip started! Live GPS tracking activated." : `Trip status updated to ${newStatus}`);
-        fetchTripDetails();
-      }
+}
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to update trip status");
     }
@@ -261,19 +277,29 @@ export default function DriverTripDetailsPage() {
 
   const handleToggleCustomerLocation = async () => {
     if (!tripId) return;
+    const previousState = trip.customerLocationReached;
+    const newReachedState = !previousState;
+
+    // Optimistic UI update for instant (0ms delay) response
+    setTrip(prev => ({
+      ...prev,
+      customerLocationReached: newReachedState,
+      customerLocationReachedAt: newReachedState ? new Date().toISOString() : null
+    }));
+
     setTogglingLocation(true);
     try {
-      const newReachedState = !trip.customerLocationReached;
       const res = await driverApi.toggleCustomerLocation(tripId, { reached: newReachedState });
       if (res?.success) {
         toast.success(
           newReachedState
-            ? "📍 Customer location reached! Proof of Delivery (POD) & Weighbridge uploads are unlocked."
+            ? "📍 Customer location reached! Document uploads unlocked."
             : "Customer location status reset."
         );
         fetchTripDetails();
       }
     } catch (err) {
+      setTrip(prev => ({ ...prev, customerLocationReached: previousState }));
       toast.error(err.response?.data?.message || "Failed to update arrival status");
     } finally {
       setTogglingLocation(false);
@@ -300,6 +326,21 @@ export default function DriverTripDetailsPage() {
       if (res?.success) {
         toast.success("Proof of Delivery uploaded successfully!");
         setPodFile(null);
+        const uploadedUrl = res.data?.pod?.podDocumentUrl || res.data?.pod?.deliveryPhotoUrl || res.data?.trip?.podUrl || res.data?.trip?.proofOfDelivery?.url;
+        if (uploadedUrl) {
+          setTrip(prev => ({
+            ...prev,
+            podStatus: "Uploaded",
+            podUploaded: true,
+            podUrl: uploadedUrl,
+            proofOfDelivery: {
+              ...(prev?.proofOfDelivery || {}),
+              url: uploadedUrl,
+              podDocumentUrl: uploadedUrl,
+              status: "Uploaded"
+            }
+          }));
+        }
         fetchTripDetails();
       }
     } catch (err) {
@@ -329,6 +370,21 @@ export default function DriverTripDetailsPage() {
       if (res?.success) {
         toast.success("Weighbridge slip uploaded successfully!");
         setWeighbridgeFile(null);
+        const uploadedUrl = res.data?.slip?.documentUrl || res.data?.trip?.weighbridgeUrl || res.data?.trip?.weighbridgeSlip?.url;
+        if (uploadedUrl) {
+          setTrip(prev => ({
+            ...prev,
+            weighbridgeStatus: "Uploaded",
+            weighbridgeUploaded: true,
+            weighbridgeUrl: uploadedUrl,
+            weighbridgeSlip: {
+              ...(prev?.weighbridgeSlip || {}),
+              url: uploadedUrl,
+              documentUrl: uploadedUrl,
+              status: "Uploaded"
+            }
+          }));
+        }
         fetchTripDetails();
       }
     } catch (err) {
@@ -338,24 +394,28 @@ export default function DriverTripDetailsPage() {
     }
   };
 
-  if (loading) {
+
+
+  if (!trip) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center font-poppins">
-        <RefreshCw className="w-8 h-8 text-[#B45A0A] animate-spin" />
+      <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm font-poppins space-y-4">
+        <h2 className="text-xl font-bold text-slate-800">Trip Not Found</h2>
+        <p className="text-slate-500 text-xs">The requested trip ID could not be loaded or does not exist.</p>
+        <button
+          onClick={() => navigate("/driver/trips")}
+          className="px-5 py-2.5 bg-[#A14000] text-white font-bold rounded-xl text-xs"
+        >
+          Return to Trips
+        </button>
       </div>
     );
   }
 
-  if (!trip) {
-    return (
-      <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm font-nunito">
-        <p className="text-slate-600 font-medium">Trip not found or access denied.</p>
-        <Link to="/driver/trips" className="mt-4 inline-block text-[#B45A0A] text-sm font-semibold hover:underline font-poppins">
-          ← Back to Trips
-        </Link>
-      </div>
-    );
-  }
+  const rawPodUrl = (trip.podUrl || trip.proofOfDelivery?.url || trip.proofOfDelivery?.podDocumentUrl || trip.proofOfDelivery?.deliveryPhotoUrl || trip.podDetails?.podDocumentUrl || trip.podDetails?.url || "").trim();
+  const hasRealPod = Boolean(rawPodUrl && !rawPodUrl.includes("unsplash.com") && !rawPodUrl.includes("via.placeholder.com") && (trip.podUploaded || trip.podStatus === "Uploaded" || trip.podStatus === "Approved"));
+
+  const rawWbUrl = (trip.weighbridgeUrl || trip.weighbridgeSlip?.url || trip.weighbridgeSlip?.documentUrl || trip.weighbridgeDetails?.documentUrl || trip.weighbridgeDetails?.url || "").trim();
+  const hasRealWb = Boolean(rawWbUrl && !rawWbUrl.includes("unsplash.com") && !rawWbUrl.includes("via.placeholder.com") && (trip.weighbridgeUploaded || trip.weighbridgeStatus === "Uploaded" || trip.weighbridgeStatus === "Approved"));
 
   const tripNumber = trip.tripNumber || (typeof trip.tripId === 'string' && trip.tripId.startsWith('TRIP') ? trip.tripId : `TRIP-${String(tripId).slice(-6)}`);
   const rawStatus = (trip.status || "DISPATCHED").toUpperCase();
@@ -445,12 +505,13 @@ export default function DriverTripDetailsPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
         <div className="flex items-center gap-4">
-          <Link
-            to="/driver/trips"
-            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition shadow-sm"
+          <button
+            onClick={handleBack}
+            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition shadow-sm cursor-pointer"
+            title="Back"
           >
             <ArrowLeft className="w-5 h-5" />
-          </Link>
+          </button>
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-extrabold font-poppins text-slate-900">{tripNumber}</h1>
@@ -475,7 +536,7 @@ export default function DriverTripDetailsPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleRespond("accept")}
-              className="py-2.5 px-5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white font-bold font-poppins rounded-xl text-xs flex items-center gap-2 transition shadow-sm cursor-pointer"
+              className="py-2.5 px-5 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs flex items-center gap-2 transition shadow-sm cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" /> Accept Trip
             </button>
@@ -504,7 +565,7 @@ export default function DriverTripDetailsPage() {
               onClick={() => handleStatusChange("Start Trip")}
               disabled={!isStartEnabled}
               className={`py-2.5 px-6 rounded-xl text-xs font-bold font-poppins flex items-center gap-2 transition shadow-sm ${isStartEnabled
-                ? "bg-[#B45A0A] hover:bg-[#9A4D08] text-white cursor-pointer"
+                ? "bg-[#A14000] hover:bg-[#853400] text-white cursor-pointer"
                 : "bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed"
                 }`}
             >
@@ -530,7 +591,7 @@ export default function DriverTripDetailsPage() {
       {/* Customer Location Reached Toggle Card */}
       <div className="bg-gradient-to-r from-amber-50/90 to-amber-100/40 border border-amber-200 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className={`p-3 rounded-2xl ${isCompleted ? "bg-slate-400 text-white shadow-sm" : customerReached ? "bg-emerald-500 text-white shadow-sm" : "bg-amber-100 text-[#B45A0A]"}`}>
+          <div className={`p-3 rounded-2xl ${isCompleted ? "bg-slate-400 text-white shadow-sm" : customerReached ? "bg-emerald-500 text-white shadow-sm" : "bg-amber-100 text-[#A14000]"}`}>
             <MapPin className="w-6 h-6" />
           </div>
           <div>
@@ -586,7 +647,7 @@ export default function DriverTripDetailsPage() {
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
             <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center justify-between">
               <span>GPS Tracking & Route Stops</span>
-              <span className="text-xs font-semibold text-[#B45A0A] lowercase font-nunito">live route gps</span>
+              <span className="text-xs font-semibold text-[#A14000] lowercase font-nunito">live route gps</span>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -635,19 +696,14 @@ export default function DriverTripDetailsPage() {
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
             <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center justify-between">
               <span>Trip Invoices & Toll Bills</span>
-              <span className={`text-[10px] px-2 py-0.5 font-poppins font-bold rounded ${
-                (trip?.status || "").toUpperCase() === "COMPLETED" ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
-              }`}>
-                {(trip?.status || "").toUpperCase() === "COMPLETED" ? "REAL DB BILLS ✓" : "LOCKED 🔒"}
-              </span>
             </h3>
 
-            {(trip?.status || "").toUpperCase() === "COMPLETED" ? (
+            {(trip?.status || "").toUpperCase() === "COMPLETED" || (customerReached && (hasRealPod || hasRealWb)) ? (
               <div className="space-y-3">
                 {/* Invoice Bill View Card */}
                 <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-lg bg-amber-100 text-[#B45A0A]">
+                    <div className="p-2 rounded-lg bg-amber-100 text-[#A14000]">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div>
@@ -658,7 +714,7 @@ export default function DriverTripDetailsPage() {
                   <button
                     onClick={handleOpenInvoice}
                     disabled={loadingBill}
-                    className="px-3 py-1.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white text-xs font-bold font-poppins rounded-lg transition shadow-sm disabled:opacity-50 cursor-pointer"
+                    className="px-3 py-1.5 bg-[#A14000] hover:bg-[#853400] text-white text-xs font-bold font-poppins rounded-lg transition shadow-sm disabled:opacity-50 cursor-pointer"
                   >
                     {loadingBill ? "Loading..." : "View Invoice"}
                   </button>
@@ -688,7 +744,7 @@ export default function DriverTripDetailsPage() {
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-1">
                 <p className="text-xs font-bold text-slate-700 font-poppins">🔒 Invoice & Toll Bills Locked</p>
                 <p className="text-[11px] text-slate-500">
-                  Invoice bill and FASTag toll receipt will be available once the trip is completed by manager.
+                  Invoice bill and FASTag toll receipt will be available once customer location is reached and POD / Weighbridge documents are uploaded.
                 </p>
               </div>
             )}
@@ -697,7 +753,7 @@ export default function DriverTripDetailsPage() {
           {/* Vehicle Information */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
             <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center gap-2">
-              <Truck className="w-4 h-4 text-[#B45A0A]" /> Assigned Vehicle Details
+              <Truck className="w-4 h-4 text-[#A14000]" /> Assigned Vehicle Details
             </h3>
             <div className="space-y-3 text-xs">
               <div className="flex justify-between items-center py-1">
@@ -761,23 +817,49 @@ export default function DriverTripDetailsPage() {
             <form onSubmit={handlePodUpload} className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-800 font-poppins flex items-center gap-1.5">
-                  <FileCheck className="w-4 h-4 text-[#B45A0A]" /> Proof of Delivery (POD)
+                  <FileCheck className="w-4 h-4 text-[#A14000]" /> Proof of Delivery (POD)
                 </label>
-                {trip.podUploaded && (
-                  <span className="text-[10px] text-emerald-600 font-extrabold font-poppins">Uploaded ✓</span>
-                )}
+                <div className="flex items-center gap-2">
+                  {customerReached && hasRealPod && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          let url = rawPodUrl;
+                          if (!url) {
+                            try {
+                              const res = await driverApi.getTripById(trip._id || tripId);
+                              url = res?.data?.podUrl || res?.data?.proofOfDelivery?.url || res?.data?.podDetails?.podDocumentUrl;
+                            } catch (err) {
+                              console.warn("Failed to fetch POD URL:", err);
+                            }
+                          }
+                          if (url && !url.includes("unsplash.com") && !url.includes("via.placeholder.com")) {
+                            window.open(url, "_blank");
+                          } else {
+                            toast.error("No valid POD document uploaded yet.");
+                          }
+                        }}
+                        className="px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-amber-100 text-[#A14000] hover:bg-amber-200 transition font-poppins cursor-pointer"
+                      >
+                        View POD
+                      </button>
+                      <span className="text-[10px] text-emerald-600 font-extrabold font-poppins">Uploaded ✓</span>
+                    </>
+                  )}
+                </div>
               </div>
               <input
                 type="file"
                 accept="image/*,.pdf"
                 disabled={!customerReached || uploadingPod || isCompleted}
                 onChange={(e) => setPodFile(e.target.files[0])}
-                className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-[#B45A0A] hover:file:bg-amber-100 disabled:opacity-50"
+                className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-[#A14000] hover:file:bg-amber-100 disabled:opacity-50"
               />
               <button
                 type="submit"
                 disabled={!customerReached || !podFile || uploadingPod || isCompleted}
-                className="w-full py-2 bg-[#B45A0A] hover:bg-[#9A4D08] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm"
+                className="w-full py-2 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm"
               >
                 {uploadingPod ? "Uploading POD..." : "Upload POD Document"}
               </button>
@@ -791,9 +873,35 @@ export default function DriverTripDetailsPage() {
                 <label className="text-xs font-bold text-slate-800 font-poppins flex items-center gap-1.5">
                   <Scale className="w-4 h-4 text-blue-600" /> Weighbridge Slip
                 </label>
-                {trip.weighbridgeUploaded && (
-                  <span className="text-[10px] text-emerald-600 font-extrabold font-poppins">Uploaded ✓</span>
-                )}
+                <div className="flex items-center gap-2">
+                  {customerReached && hasRealWb && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          let url = rawWbUrl;
+                          if (!url) {
+                            try {
+                              const res = await driverApi.getTripById(trip._id || tripId);
+                              url = res?.data?.weighbridgeUrl || res?.data?.weighbridgeSlip?.url || res?.data?.weighbridgeDetails?.documentUrl;
+                            } catch (err) {
+                              console.warn("Failed to fetch Weighbridge URL:", err);
+                            }
+                          }
+                          if (url && !url.includes("unsplash.com") && !url.includes("via.placeholder.com")) {
+                            window.open(url, "_blank");
+                          } else {
+                            toast.error("No valid Weighbridge slip uploaded yet.");
+                          }
+                        }}
+                        className="px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 transition font-poppins cursor-pointer"
+                      >
+                        View Weighbridge
+                      </button>
+                      <span className="text-[10px] text-emerald-600 font-extrabold font-poppins">Uploaded ✓</span>
+                    </>
+                  )}
+                </div>
               </div>
               <input
                 type="file"
@@ -820,7 +928,7 @@ export default function DriverTripDetailsPage() {
           <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
             <div className="flex justify-between items-start pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-amber-100 text-[#B45A0A] rounded-xl">
+                <div className="p-3 bg-amber-100 text-[#A14000] rounded-xl">
                   <FileText className="w-6 h-6" />
                 </div>
                 <div>
@@ -866,23 +974,39 @@ export default function DriverTripDetailsPage() {
                 <div className="divide-y divide-slate-100">
                   <div className="flex justify-between p-3 text-slate-600">
                     <span>Base Freight Transport Charge</span>
-                    <span className="font-semibold text-slate-900">₹ 12,500.00</span>
+                    <span className="font-semibold text-slate-900">₹ {(invoiceData.charges?.freightCharges || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
-                  <div className="flex justify-between p-3 text-slate-600">
-                    <span>Estimated Distance Fee</span>
-                    <span className="font-semibold text-slate-900">₹ 3,400.00</span>
-                  </div>
-                  <div className="flex justify-between p-3 text-slate-600">
-                    <span>National Highway Toll & Expressway Fee</span>
-                    <span className="font-semibold text-slate-900">₹ 350.00</span>
-                  </div>
+                  {Boolean(invoiceData.charges?.loadingCharges) && (
+                    <div className="flex justify-between p-3 text-slate-600">
+                      <span>Loading & Handling Charges</span>
+                      <span className="font-semibold text-slate-900">₹ {(invoiceData.charges?.loadingCharges || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+                  {Boolean(invoiceData.charges?.unloadingCharges) && (
+                    <div className="flex justify-between p-3 text-slate-600">
+                      <span>Unloading Charges</span>
+                      <span className="font-semibold text-slate-900">₹ {(invoiceData.charges?.unloadingCharges || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+                  {Boolean(invoiceData.charges?.fuelCharges) && (
+                    <div className="flex justify-between p-3 text-slate-600">
+                      <span>Fuel Charges</span>
+                      <span className="font-semibold text-slate-900">₹ {(invoiceData.charges?.fuelCharges || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+                  {Boolean(invoiceData.charges?.tollCharges) && (
+                    <div className="flex justify-between p-3 text-slate-600">
+                      <span>National Highway Toll & Expressway Fee</span>
+                      <span className="font-semibold text-slate-900">₹ {(invoiceData.charges?.tollCharges || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between p-3 text-slate-600">
                     <span>GST / Taxes (18%)</span>
-                    <span className="font-semibold text-slate-900">₹ 2,925.00</span>
+                    <span className="font-semibold text-slate-900">₹ {(invoiceData.charges?.gstTax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
-                  <div className="flex justify-between p-3 bg-amber-50 font-extrabold text-[#B45A0A] font-poppins text-sm">
+                  <div className="flex justify-between p-3 bg-amber-50 font-extrabold text-[#A14000] font-poppins text-sm">
                     <span>Total Amount Paid</span>
-                    <span>₹ 19,175.00</span>
+                    <span>₹ {(invoiceData.charges?.totalAmount || invoiceData.charges?.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               </div>
@@ -897,7 +1021,7 @@ export default function DriverTripDetailsPage() {
               </button>
               <button
                 onClick={() => setInvoiceModalOpen(false)}
-                className="py-2 px-5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white font-bold font-poppins rounded-xl text-xs transition"
+                className="py-2 px-5 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs transition"
               >
                 Close
               </button>

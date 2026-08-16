@@ -178,7 +178,7 @@ export default function MilestoneReviewModal({ milestoneData, onClose, onLockSta
                 disabled={!isValid || isSubmitting}
                 className={`w-full sm:flex-1 py-3 px-4 rounded-xl text-sm font-bold text-white transition-all shadow-md ${
                   isValid && !isSubmitting
-                    ? "bg-[#B45A0A] hover:bg-[#963f00] shadow-amber-900/10 cursor-pointer"
+                    ? "bg-[#A14000] hover:bg-[#963f00] shadow-amber-900/10 cursor-pointer"
                     : "bg-slate-300 cursor-not-allowed"
                 }`}
               >

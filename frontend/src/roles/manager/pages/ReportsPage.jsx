@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -15,7 +16,7 @@ export default function ReportsPage() {
   const [fuelRecords, setFuelRecords] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
   const [schedules, setSchedules] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // View tabs: "live" (Interactive Report Cockpit) or "schedules" (Delivery Schedules CRUD)
   const [activeTab, setActiveTab] = useState("live");
@@ -630,13 +631,7 @@ export default function ReportsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-4 border-[#B45A0A] border-t-transparent" />
-      </div>
-    );
-  }
+
 
   return (
     <div className="p-6 lg:p-8 relative">
@@ -652,7 +647,7 @@ export default function ReportsPage() {
           <button
             onClick={() => setActiveTab("live")}
             className={`px-5 py-2 text-xs font-bold transition-all cursor-pointer ${
-              activeTab === "live" ? "bg-[#B45A0A] text-white shadow-md shadow-[#B45A0A]/10" : "text-gray-600 hover:bg-gray-50"
+              activeTab === "live" ? "bg-[#A14000] text-white shadow-md shadow-[#A14000]/10" : "text-gray-600 hover:bg-gray-50"
             }`}
           >
             Live Reports Cockpit
@@ -660,7 +655,7 @@ export default function ReportsPage() {
           <button
             onClick={() => setActiveTab("schedules")}
             className={`px-5 py-2 text-xs font-bold transition-all cursor-pointer ${
-              activeTab === "schedules" ? "bg-[#B45A0A] text-white shadow-md shadow-[#B45A0A]/10" : "text-gray-600 hover:bg-gray-50"
+              activeTab === "schedules" ? "bg-[#A14000] text-white shadow-md shadow-[#A14000]/10" : "text-gray-600 hover:bg-gray-50"
             }`}
           >
             Delivery Schedules ({schedules.length})
@@ -677,7 +672,7 @@ export default function ReportsPage() {
           <div className="hidden print:block mb-8 border-b pb-4 border-gray-300">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-[#B45A0A] rounded-xl flex items-center justify-center text-white font-bold text-lg font-poppins">
+                <div className="w-10 h-10 bg-[#A14000] rounded-xl flex items-center justify-center text-white font-bold text-lg font-poppins">
                   S
                 </div>
                 <div>
@@ -686,7 +681,7 @@ export default function ReportsPage() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-bold text-sm text-[#B45A0A] font-poppins uppercase">{selectedReport} Report</p>
+                <p className="font-bold text-sm text-[#A14000] font-poppins uppercase">{selectedReport} Report</p>
                 <p className="text-[10px] text-gray-400">Generated: {new Date().toLocaleString()}</p>
               </div>
             </div>
@@ -701,7 +696,7 @@ export default function ReportsPage() {
           {/* FILTER CONTROLS */}
           <div className="bg-white border border-[#E7EAF0] p-6 rounded-2xl shadow-md space-y-4 print:hidden select-none">
             <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
-              <Icon icon="mdi:filter-outline" className="w-5 h-5 text-[#B45A0A]" />
+              <Icon icon="mdi:filter-outline" className="w-5 h-5 text-[#A14000]" />
               <h3 className="font-poppins font-bold text-sm text-gray-800">Report Configuration</h3>
             </div>
             
@@ -712,7 +707,7 @@ export default function ReportsPage() {
                 <select
                   value={selectedReport}
                   onChange={(e) => setSelectedReport(e.target.value)}
-                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#B45A0A]"
+                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000]"
                 >
                   <option value="Utilization">Vehicle Utilization</option>
                   <option value="Performance">Driver Performance</option>
@@ -729,7 +724,7 @@ export default function ReportsPage() {
                 <select
                   value={dateRange}
                   onChange={(e) => setDateRange(e.target.value)}
-                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#B45A0A]"
+                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000]"
                 >
                   <option value="Today">Today</option>
                   <option value="This Week">This Week</option>
@@ -745,7 +740,7 @@ export default function ReportsPage() {
                 <select
                   value={selectedVehicleId}
                   onChange={(e) => setSelectedVehicleId(e.target.value)}
-                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#B45A0A]"
+                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000]"
                 >
                   <option value="All">All Vehicles</option>
                   {vehicles.map(v => (
@@ -762,7 +757,7 @@ export default function ReportsPage() {
                 <select
                   value={selectedDriverId}
                   onChange={(e) => setSelectedDriverId(e.target.value)}
-                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#B45A0A]"
+                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000]"
                 >
                   <option value="All">All Drivers</option>
                   {drivers.map(d => (
@@ -779,7 +774,7 @@ export default function ReportsPage() {
                 <select
                   value={selectedBranch}
                   onChange={(e) => setSelectedBranch(e.target.value)}
-                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#B45A0A]"
+                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000]"
                 >
                   <option value="All">All Branches</option>
                   <option value="Pune">Pune</option>
@@ -823,7 +818,7 @@ export default function ReportsPage() {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:border-[#B45A0A]"
+                    className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:border-[#A14000]"
                   />
                 </div>
                 <div className="flex flex-col">
@@ -832,7 +827,7 @@ export default function ReportsPage() {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:border-[#B45A0A]"
+                    className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:border-[#A14000]"
                   />
                 </div>
               </div>
@@ -871,7 +866,7 @@ export default function ReportsPage() {
                 {selectedReport === "Utilization" && activeData.charts.utilization.map((item, idx) => (
                   <div key={idx} className="flex-1 flex flex-col items-center gap-2 group">
                     <div className="w-full bg-amber-50 group-hover:bg-[#FDF3EC] rounded-t-lg relative transition-all" style={{ height: `${Math.max(15, item.utilization * 1.8)}px` }}>
-                      <div className="absolute top-1 inset-x-0 text-center text-[10px] font-black text-[#B45A0A]">
+                      <div className="absolute top-1 inset-x-0 text-center text-[10px] font-black text-[#A14000]">
                         {item.utilization}%
                       </div>
                     </div>
@@ -897,7 +892,7 @@ export default function ReportsPage() {
                 {selectedReport === "Fuel" && activeData.charts.trend.map((item, idx) => (
                   <div key={idx} className="flex-1 flex flex-col items-center gap-2 group">
                     <div className="w-full bg-orange-50 group-hover:bg-orange-100 rounded-t-lg relative transition-all" style={{ height: `${Math.max(15, Math.min(180, item.quantity * 1.2))}px` }}>
-                      <div className="absolute top-1 inset-x-0 text-center text-[9px] font-bold text-[#B45A0A]">
+                      <div className="absolute top-1 inset-x-0 text-center text-[9px] font-bold text-[#A14000]">
                         {item.quantity}L
                       </div>
                     </div>
@@ -964,7 +959,7 @@ export default function ReportsPage() {
                   <div className="space-y-3">
                     {[
                       { key: "Available", val: activeData.charts.status.Available, color: "bg-green-500" },
-                      { key: "On Trip", val: activeData.charts.status["On Trip"], color: "bg-orange-500" },
+                      { key: "On Trip", val: activeData.charts.status["On Trip"], color: "bg-[#A14000]" },
                       { key: "Under Maintenance", val: activeData.charts.status.Maintenance, color: "bg-red-500" },
                       { key: "Idle / Out of Service", val: activeData.charts.status.Idle, color: "bg-gray-400" }
                     ].map((item, idx) => {
@@ -1214,7 +1209,7 @@ export default function ReportsPage() {
                             <td className="py-4 px-6 whitespace-nowrap text-gray-600">{row.runningHours} hrs</td>
                             <td className="py-4 px-6 whitespace-nowrap text-gray-600">{row.daysActive} days</td>
                             <td className="py-4 px-6 whitespace-nowrap text-gray-600">{row.daysIdle} days</td>
-                            <td className="py-4 px-6 whitespace-nowrap font-bold text-[#B45A0A]">{row.utilization}%</td>
+                            <td className="py-4 px-6 whitespace-nowrap font-bold text-[#A14000]">{row.utilization}%</td>
                             <td className="py-4 px-6 whitespace-nowrap">
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                 row.status === "Available" ? "bg-green-50 text-green-700" :
@@ -1315,7 +1310,7 @@ export default function ReportsPage() {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg">
               <h3 className="text-base font-bold text-gray-800 mb-6 font-poppins flex items-center gap-2">
-                <Icon icon="mdi:plus-circle-outline" className="w-5 h-5 text-[#B45A0A]" />
+                <Icon icon="mdi:plus-circle-outline" className="w-5 h-5 text-[#A14000]" />
                 Create Schedule
               </h3>
               
@@ -1328,7 +1323,7 @@ export default function ReportsPage() {
                     value={newSchedule.name}
                     onChange={handleScheduleInputChange}
                     placeholder="e.g. Weekly Fuel Summary"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     required
                   />
                 </div>
@@ -1339,7 +1334,7 @@ export default function ReportsPage() {
                     name="type"
                     value={newSchedule.type}
                     onChange={handleScheduleInputChange}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                   >
                     <option value="Operational">Operational</option>
                     <option value="Financial">Financial</option>
@@ -1355,7 +1350,7 @@ export default function ReportsPage() {
                       name="frequency"
                       value={newSchedule.frequency}
                       onChange={handleScheduleInputChange}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option value="Daily">Daily</option>
                       <option value="Weekly">Weekly</option>
@@ -1368,7 +1363,7 @@ export default function ReportsPage() {
                       name="format"
                       value={newSchedule.format}
                       onChange={handleScheduleInputChange}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option value="PDF">PDF</option>
                       <option value="CSV">CSV</option>
@@ -1384,7 +1379,7 @@ export default function ReportsPage() {
                       name="day"
                       value={newSchedule.day}
                       onChange={handleScheduleInputChange}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option value="Monday">Monday</option>
                       <option value="Tuesday">Tuesday</option>
@@ -1402,7 +1397,7 @@ export default function ReportsPage() {
                       name="time"
                       value={newSchedule.time}
                       onChange={handleScheduleInputChange}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     />
                   </div>
                 </div>
@@ -1415,14 +1410,14 @@ export default function ReportsPage() {
                     value={newSchedule.recipients}
                     onChange={handleScheduleInputChange}
                     placeholder="manager@fleet.com, admin@fleet.com"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     required
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer text-center font-poppins"
+                  className="w-full py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-xl text-xs font-bold text-white transition-all shadow-md shadow-[#A14000]/20 cursor-pointer text-center font-poppins"
                 >
                   Add Delivery Schedule
                 </button>
@@ -1501,7 +1496,7 @@ export default function ReportsPage() {
                               <button 
                                 onClick={() => toggleScheduleStatus(schedule.id)}
                                 className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 focus:outline-none ${
-                                  schedule.active ? "bg-[#B45A0A]" : "bg-gray-300"
+                                  schedule.active ? "bg-[#A14000]" : "bg-gray-300"
                                 }`}
                               >
                                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${

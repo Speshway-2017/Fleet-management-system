@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
 import {
   TrendingUp,
   AlertTriangle,
@@ -16,6 +17,8 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
+
+import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 
 export default function FuelManagementPage() {
   const [search, setSearch] = useState("");
@@ -103,13 +106,19 @@ export default function FuelManagementPage() {
           id: l._id,
           vehicleId: l.vehicleId || (l.vehicle && (l.vehicle.vehicleNumber || l.vehicle.registrationNumber || l.vehicle.plateNumber)) || "Unassigned",
           vehicleName: l.vehicleName || (l.vehicle && l.vehicle.name) || "Fleet Vehicle",
-          qty: `${l.liters} L`,
-          total: `₹${(l.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+          driver: l.driver || (l.driverId && typeof l.driverId === 'object' ? l.driverId.fullName : l.driverId) || "Driver",
+          fuelStation: l.fuelStation || l.stationName || l.station || "General Station",
+          location: l.location || l.purchaseLocation || l.city || "Live GPS Location",
+          odometer: l.odometer || l.odometerReading ? `${l.odometer || l.odometerReading} km` : "N/A",
+          qty: `${l.liters || l.quantity || 0} L`,
+          total: `₹${(Number(l.amount || l.totalCost || l.cost || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+          approvalStatus: l.approvalStatus || l.billStatus || (l.status === 'resolved' ? 'Approved' : 'Pending'),
           receiptImage: l.receiptImage || l.billUrl || "",
           billUrl: l.billUrl || l.receiptImage || "",
-          timestamp: new Date(l.createdAt || l.date || Date.now()).toLocaleDateString("en-IN", {
+          timestamp: new Date(l.createdAt || l.dateTime || l.date || Date.now()).toLocaleDateString("en-IN", {
             month: 'short',
             day: 'numeric',
+            year: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
           })
@@ -324,10 +333,10 @@ Status:          PAID & VERIFIED
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
     toast.success(`Receipt for ${log.vehicleId} downloaded!`);
   };
+
+
 
   return (
     <div className="p-8">
@@ -351,9 +360,13 @@ Status:          PAID & VERIFIED
           <div className="flex items-center justify-between">
             <div>
               <span className="text-xs font-bold text-gray-500 tracking-wider uppercase">Total Fuel Spend</span>
-              <h3 className="text-2xl font-extrabold text-gray-800 mt-2">
-                ₹{totalSpend.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-              </h3>
+              {loading ? (
+                <div className="h-8 w-32 bg-slate-200 dark:bg-slate-700 animate-pulse rounded mt-2" />
+              ) : (
+                <h3 className="text-2xl font-extrabold text-gray-800 mt-2">
+                  ₹{totalSpend.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </h3>
+              )}
             </div>
             <div className="bg-amber-50 text-amber-700 p-3 rounded-xl">
               <CreditCard className="w-6 h-6" />
@@ -370,9 +383,13 @@ Status:          PAID & VERIFIED
           <div className="flex items-center justify-between">
             <div>
               <span className="text-xs font-bold text-gray-500 tracking-wider uppercase">Theft & Anomalies</span>
-              <h3 className="text-2xl font-extrabold text-red-600 mt-2">
-                {anomaliesCount < 10 ? `0${anomaliesCount}` : anomaliesCount}
-              </h3>
+              {loading ? (
+                <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 animate-pulse rounded mt-2" />
+              ) : (
+                <h3 className="text-2xl font-extrabold text-red-600 mt-2">
+                  {anomaliesCount < 10 ? `0${anomaliesCount}` : anomaliesCount}
+                </h3>
+              )}
             </div>
             <div className="bg-red-50 text-red-600 p-3 rounded-xl">
               <AlertTriangle className="w-6 h-6" />
@@ -408,10 +425,7 @@ Status:          PAID & VERIFIED
 
         {/* Responsive Table */}
         <div className="overflow-x-auto no-scrollbar">
-          {loading ? (
-            <div className="py-12 text-center text-gray-400 font-medium">Loading fuel records...</div>
-          ) : (
-            <table className="w-full text-left border-collapse text-sm font-nunito">
+          <table className="w-full text-left border-collapse text-sm font-nunito">
               <thead>
                 <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
                   <th className="py-4 px-6">Vehicle</th>
@@ -426,10 +440,12 @@ Status:          PAID & VERIFIED
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E7EAF0]/60">
-                {filteredLogs.length === 0 ? (
+                {loading ? (
+                  <TableRowSkeleton columns={7} rows={5} />
+                ) : filteredLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-gray-400 font-medium">
-                      No fuel records found.
+                    <td colSpan={7} className="py-12 text-center text-gray-400 font-medium font-nunito">
+                      No fuel logs recorded yet.
                     </td>
                   </tr>
                 ) : (
@@ -540,7 +556,6 @@ Status:          PAID & VERIFIED
                 )}
               </tbody>
             </table>
-          )}
         </div>
 
         {/* Table Footer info */}
@@ -668,15 +683,22 @@ Status:          PAID & VERIFIED
         </div>
       )}
 
-      {/* Bill View Modal */}
+      {/* Bill View & Driver Entry Details Modal */}
       {billModalOpen && (
         <div className="fixed inset-0 bg-gray-800/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] select-none font-poppins">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl p-6 w-full max-w-lg flex flex-col space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
-              <h4 className="font-bold text-sm text-gray-800 flex items-center gap-1.5 font-poppins">
-                <FileText className="w-4 h-4 text-amber-700" />
-                View Receipt Image
-              </h4>
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl p-6 w-full max-w-lg flex flex-col space-y-4 max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3 shrink-0">
+              <div>
+                <h4 className="font-bold text-sm text-gray-800 flex items-center gap-1.5 font-poppins">
+                  <FileText className="w-4 h-4 text-amber-700" />
+                  Fuel Entry Details & Receipt
+                </h4>
+                {selectedLog && (
+                  <p className="text-[10px] text-gray-400 font-bold font-mono mt-0.5">
+                    Log ID: #{selectedLog.id ? String(selectedLog.id).slice(-6).toUpperCase() : "REF-LOG"}
+                  </p>
+                )}
+              </div>
               <button
                 onClick={() => setBillModalOpen(false)}
                 className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
@@ -685,21 +707,92 @@ Status:          PAID & VERIFIED
               </button>
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col justify-center items-center overflow-auto max-h-[70vh]">
-              {activeBillUrl ? (
-                activeBillUrl.toLowerCase().endsWith(".pdf") ? (
-                  <iframe src={activeBillUrl} className="w-full h-[50vh] border-0 rounded-xl" title="Fuel Bill PDF" />
-                ) : (
-                  <img src={activeBillUrl} alt="Receipt Image" className="max-w-full max-h-[50vh] object-contain rounded-lg shadow-sm" />
-                )
-              ) : (
-                <div className="py-12 text-center text-gray-500 font-medium">
-                  No receipt uploaded.
+            <div className="space-y-4 overflow-y-auto pr-1">
+              {/* Itemized Driver-Entered Summary Card */}
+              {selectedLog && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-2.5 font-nunito shadow-xs">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-200/80">
+                    <span className="text-slate-500 font-semibold font-poppins">Approval Status:</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                      selectedLog.approvalStatus === "Approved" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                      selectedLog.approvalStatus === "Rejected" ? "bg-red-50 text-red-700 border-red-200" :
+                      "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}>
+                      {selectedLog.approvalStatus || "Pending"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-500 font-semibold block text-[10px] uppercase font-poppins">Driver Name</span>
+                      <span className="font-bold text-slate-800">{selectedLog.driver}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 font-semibold block text-[10px] uppercase font-poppins">Vehicle Plate</span>
+                      <span className="font-bold text-slate-800 font-mono">{selectedLog.vehicleId}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-500 font-semibold block text-[10px] uppercase font-poppins">Station Name</span>
+                      <span className="font-bold text-slate-800">{selectedLog.fuelStation}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 font-semibold block text-[10px] uppercase font-poppins">GPS Location</span>
+                      <span className="font-bold text-slate-800">{selectedLog.location || "Auto-captured via GPS"}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 p-2.5 bg-white rounded-lg border border-slate-200/80 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold font-poppins">Liters Refueled</span>
+                      <span className="font-extrabold text-slate-900 text-sm font-poppins">{selectedLog.qty}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold font-poppins">Total Amount</span>
+                      <span className="font-extrabold text-[#A14000] text-sm font-poppins">{selectedLog.total}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold font-poppins">Odometer</span>
+                      <span className="font-bold text-slate-800 text-xs font-poppins mt-0.5 block">{selectedLog.odometer}</span>
+                    </div>
+                  </div>
+
+                  {selectedLog.notes && (
+                    <div className="pt-2 border-t border-slate-200/60 text-slate-600">
+                      <span className="text-slate-500 font-semibold block text-[10px] uppercase font-poppins">Driver Notes:</span>
+                      <p className="text-slate-700 italic mt-0.5">{selectedLog.notes}</p>
+                    </div>
+                  )}
+
+                  {selectedLog.rejectionReason && (
+                    <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-red-800 text-[11px]">
+                      <strong>Rejection Reason:</strong> {selectedLog.rejectionReason}
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* Receipt Image / PDF Viewer */}
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col justify-center items-center overflow-auto max-h-[50vh]">
+                {activeBillUrl ? (
+                  activeBillUrl.toLowerCase().endsWith(".pdf") ? (
+                    <iframe src={activeBillUrl} className="w-full h-[40vh] border-0 rounded-xl" title="Fuel Bill PDF" />
+                  ) : (
+                    <a href={activeBillUrl} target="_blank" rel="noreferrer" title="Click to view full photo">
+                      <img src={activeBillUrl} alt="Receipt Image" loading="lazy" className="max-w-full max-h-[40vh] object-contain rounded-lg shadow-sm hover:opacity-90 transition-opacity" />
+                    </a>
+                  )
+                ) : (
+                  <div className="py-8 text-center text-gray-400 font-medium text-xs">
+                    No fuel receipt photo uploaded by driver.
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2 font-nunito">
+            <div className="flex items-center justify-between pt-2 font-nunito shrink-0 border-t border-gray-100">
               <div className="flex items-center gap-2">
                 {selectedLog && (selectedLog.approvalStatus || "Pending") === "Pending" && (
                   <>

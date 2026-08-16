@@ -80,10 +80,10 @@ export default function DriverProfilePage() {
   const navigate = useNavigate();
   const [driver, setDriver] = useState(null);
   const [vehicle, setVehicle] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const [trips, setTrips] = useState([]);
-  const [loadingTrips, setLoadingTrips] = useState(true);
+  const [loadingTrips, setLoadingTrips] = useState(false);
   const [tripsError, setTripsError] = useState("");
   const [showAllTrips, setShowAllTrips] = useState(false);
 
@@ -191,16 +191,7 @@ export default function DriverProfilePage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F5F7FB] flex items-center justify-center font-poppins p-6 lg:p-8">
-        <div className="flex flex-col items-center gap-3 text-[#64748B]">
-          <Loader className="w-8 h-8 animate-spin text-[#B45A0A]" />
-          <p className="font-semibold">Loading Driver Details...</p>
-        </div>
-      </div>
-    );
-  }
+
 
   if (!driver) return null;
 
@@ -239,15 +230,19 @@ export default function DriverProfilePage() {
         <div className="flex items-center gap-4">
           
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-[#FDF3EC] text-[#B45A0A] rounded-2xl flex items-center justify-center border border-[#FDF3EC] font-poppins font-black text-xl select-none">
-              {getInitials(driver.fullName)}
+            <div className="w-16 h-16 bg-[#FDF3EC] text-[#A14000] rounded-2xl flex items-center justify-center border border-[#FDF3EC] font-poppins font-black text-xl select-none overflow-hidden shrink-0">
+              {driver.profileImage ? (
+                <img src={driver.profileImage} alt={driver.fullName} className="w-full h-full object-cover" />
+              ) : (
+                getInitials(driver.fullName)
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">{driver.fullName}</h1>
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                   driver.driverStatus === "AVAILABLE" ? "bg-emerald-50 text-[#22C55E]" :
-                  driver.driverStatus === "ON_TRIP" ? "bg-amber-50 text-[#B45A0A]" :
+                  driver.driverStatus === "ON_TRIP" ? "bg-amber-50 text-[#A14000]" :
                   "bg-red-50 text-[#EF4444]"
                 }`}>
                   {getStatusLabel(driver.driverStatus)}
@@ -372,7 +367,7 @@ export default function DriverProfilePage() {
                   href={driver.licenseDocument}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#B45A0A] hover:underline font-bold"
+                  className="text-[#A14000] hover:underline font-bold"
                 >
                   View Document
                 </a>
@@ -417,8 +412,10 @@ export default function DriverProfilePage() {
               </div>
 
               <div>
-                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block">Current Location</span>
-                <span className="text-sm font-semibold text-[#1E293B] mt-1 block">{formatDisplayLocation(driver.driverLocation || driver.currentLocation || driver.city, driver.branch || driver.city)}</span>
+                <span className="text-[10px] font-bold text-[#64748B] dark:text-slate-300 uppercase tracking-wider block">Current Location</span>
+                <span className="text-sm font-semibold text-[#1E293B] dark:text-white mt-1 block">
+                  {driver.driverLocation || driver.currentLocation || driver.city || driver.address || (driver.branch && driver.branch !== "Pune" ? driver.branch : null) || "Not Specified"}
+                </span>
               </div>
             </div>
           </div>
@@ -451,7 +448,7 @@ export default function DriverProfilePage() {
                     <div
                       key={trip._id}
                       onClick={() => navigate(`/manager/trip-details/${trip._id}`)}
-                      className="flex items-center justify-between p-3.5 bg-gray-50/50 hover:bg-gray-50 border border-gray-100 rounded-xl transition-all cursor-pointer hover:border-[#B45A0A]"
+                      className="flex items-center justify-between p-3.5 bg-gray-50/50 hover:bg-gray-50 border border-gray-100 rounded-xl transition-all cursor-pointer hover:border-[#A14000]"
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">

@@ -18,12 +18,15 @@ export default function UserProfileCard({
   profilePath = "/manager/profile",
   settingsPath = "/manager/settings",
   supportPath = "/manager/notifications",
+  showSettings = true,
+  showSupport = true,
+  showStatusToggle = true,
   onLogout,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isOnline, setIsOnline] = useState(
-    user?.isOnline ?? (user?.driverStatus !== "OFFLINE")
+    user?.isOnline ?? (user?.driverStatus ? (user.driverStatus !== "OFFLINE" && user.driverStatus !== "OFF_DUTY") : false)
   );
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
@@ -36,7 +39,9 @@ export default function UserProfileCard({
     if (user?.isOnline !== undefined) {
       setIsOnline(user.isOnline);
     } else if (user?.driverStatus) {
-      setIsOnline(user.driverStatus !== "OFFLINE");
+      setIsOnline(user.driverStatus !== "OFFLINE" && user.driverStatus !== "OFF_DUTY");
+    } else {
+      setIsOnline(false);
     }
   }, [user]);
 
@@ -59,9 +64,10 @@ export default function UserProfileCard({
     setIsOnline(newStatus);
 
     try {
-      if (user?._id || user?.id) {
-        const driverId = user._id || user.id;
-        await driverApi.update(driverId, {
+      const updateFn = driverApi.updateProfile || driverApi.update;
+      if (updateFn) {
+        await updateFn({
+          isDuty: newStatus,
           isOnline: newStatus,
           driverStatus: newStatus ? "AVAILABLE" : "OFFLINE",
         });
@@ -85,7 +91,7 @@ export default function UserProfileCard({
         className="flex items-center gap-3 p-1.5 hover:bg-gray-100/80 rounded-2xl focus:outline-none transition-all duration-150 cursor-pointer"
       >
         <div className="relative">
-          <div className="w-[44px] h-[44px] rounded-full bg-[#B45A0A]/10 border border-[#B45A0A]/20 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+          <div className="w-[44px] h-[44px] rounded-full bg-[#A14000]/10 border border-[#A14000]/20 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
             {user?.profileImage ? (
               <img
                 src={getImageUrl(user.profileImage)}
@@ -93,22 +99,24 @@ export default function UserProfileCard({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <User className="w-5 h-5 text-[#B45A0A]" />
+              <User className="w-5 h-5 text-[#A14000]" />
             )}
           </div>
           {/* Status Indicator Dot */}
-          <span
-            className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white transition-colors ${
-              isOnline ? "bg-[#22C55E]" : "bg-[#9CA3AF]"
-            }`}
-          />
+          {showStatusToggle && (
+            <span
+              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white transition-colors ${
+                isOnline ? "bg-[#22C55E]" : "bg-[#9CA3AF]"
+              }`}
+            />
+          )}
         </div>
 
         <div className="hidden sm:block text-left leading-tight pr-1">
-          <p className="font-poppins font-semibold text-sm text-[#1B2430] leading-none max-w-[140px] truncate">
+          <p className="font-poppins font-bold text-sm text-[#1B2430] dark:text-white leading-none max-w-[140px] truncate">
             {displayName}
           </p>
-          <span className="text-[11px] text-[#6B7280] font-nunito font-medium mt-1 block leading-none">
+          <span className="text-[11px] text-[#6B7280] dark:text-slate-300 font-nunito font-semibold mt-1 block leading-none">
             {displayRole}
           </span>
         </div>
@@ -143,7 +151,7 @@ export default function UserProfileCard({
           </button>
 
           {/* 2. Settings (Optional) */}
-          {settingsPath && (
+          {settingsPath && showSettings && (
             <button
               type="button"
               onClick={() => {
@@ -158,7 +166,7 @@ export default function UserProfileCard({
           )}
 
           {/* 3. Help & Support (Optional) */}
-          {supportPath && (
+          {supportPath && showSupport && (
             <button
               type="button"
               onClick={() => {
@@ -172,8 +180,8 @@ export default function UserProfileCard({
             </button>
           )}
 
-          {/* 4. Availability Status Toggle Switch (Driver Only) */}
-          {isDriver && (
+          {/* 4. Availability Status Toggle Switch (Optional) */}
+          {isDriver && showStatusToggle && (
             <>
               <div className="my-1 border-t border-gray-100" />
               <div className="px-4 py-2.5">

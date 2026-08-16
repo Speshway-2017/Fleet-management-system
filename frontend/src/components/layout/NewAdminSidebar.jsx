@@ -46,24 +46,26 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
         />
       )}
 
-      {/* Sidebar */}
-      <div className={`w-[260px] bg-[#1a2332] text-slate-300 flex flex-col h-screen fixed lg:sticky top-0 z-50 flex-shrink-0 overflow-hidden transition-transform duration-300 ease-in-out ${
+      {/* Sidebar - Unified Dark Navy */}
+      <div className={`w-[260px] bg-[#0D1B2A] text-slate-300 border-r border-slate-800/80 flex flex-col h-screen fixed lg:sticky top-0 z-50 flex-shrink-0 overflow-hidden transition-transform duration-300 ease-in-out ${
         isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       }`}>
       {/* Logo Area */}
-      <div className="p-6 pb-4 border-b border-[#2a3241]/50">
-        <div className="flex items-center gap-2">
-          <img src={platformSettings?.logoUrl || "/logo.png"} className="w-10 h-10 object-contain rounded-lg shrink-0" alt="Logo" />
-          <div className="border-l border-[#2a3241]/80 pl-[14px] py-1">
+      <div className="p-6 pb-4 border-b border-slate-800/80">
+        <div className="flex items-center gap-3">
+          <div className="p-1 rounded-xl bg-slate-900/60 border border-slate-800 shrink-0">
+            <img src={platformSettings?.logoUrl || "/logo.png"} className="w-8 h-8 object-contain rounded-md shrink-0" alt="Logo" />
+          </div>
+          <div className="border-l border-slate-700/60 pl-3 py-0.5">
             <h1 className="font-poppins font-black text-white text-base tracking-wide leading-none whitespace-nowrap">{platformSettings?.platformName || "Fleet Management"}</h1>
-            <span className="text-[10px] text-[#64748B] font-bold font-poppins uppercase tracking-wider mt-1.5 block">Super Admin</span>
+            <span className="text-[10px] text-[#A14000] font-extrabold font-poppins uppercase tracking-wider mt-1.5 block">Super Admin</span>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 py-6 space-y-1">
-        <p className="px-8 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Main Menu</p>
+      <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto no-scrollbar">
+        <p className="px-5 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3">Main Menu</p>
         
         {navItems.map((item) => {
           const isActive = activeItem === item.id;
@@ -73,13 +75,13 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
             <Link 
               key={item.id}
               to={item.to} 
-              className={`flex items-center gap-3 px-8 py-3.5 transition-colors border-l-[3px] ${
+              className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all ${
                 isActive 
-                  ? "bg-[#252f3f] text-[#f97316] font-semibold border-[#f97316]" 
-                  : "text-slate-400 hover:bg-[#252f3f] hover:text-white border-transparent"
+                  ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/25" 
+                  : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
               }`}
             >
-              <Icon className="w-[18px] h-[18px]" />
+              <Icon className={`w-[18px] h-[18px] ${isActive ? "text-white" : "text-slate-400"}`} />
               {item.label}
             </Link>
           );
@@ -90,7 +92,7 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
       <div className="p-4 mb-4">
         <button
           onClick={() => { logout(); navigate('/login'); }}
-          className="w-full flex items-center justify-center gap-3 rounded-lg border border-[#b45309]/30 bg-transparent px-4 py-3 font-semibold text-[#b45309] transition-all hover:bg-[#b45309]/10"
+          className="w-full flex items-center justify-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 font-semibold text-red-400 transition-all hover:bg-red-500/20 cursor-pointer"
         >
           <LogOut className="w-[18px] h-[18px]" />
           Logout
@@ -98,7 +100,7 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
       </div>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(1rem,calc(env(safe-area-inset-bottom)+0.95rem))] pt-3 shadow-[0_-10px_25px_rgba(15,23,42,0.08)] backdrop-blur-md lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800 bg-[#0D1B2A]/95 px-2 pb-[max(1rem,calc(env(safe-area-inset-bottom)+0.95rem))] pt-3 shadow-[0_-10px_25px_rgba(15,23,42,0.08)] backdrop-blur-md lg:hidden">
         <div className="mx-auto flex max-w-md items-center justify-between gap-1">
           {bottomNavItems.map((item) => {
             const Icon = item.icon;
@@ -110,8 +112,8 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
                 to={item.to}
                 className={`flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition-all ${
                   isActive
-                    ? "bg-[#FFF3E8] text-[#b45309]"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                    ? "bg-[#A14000] text-white"
+                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                 }`}
               >
                 <Icon className="h-4.5 w-4.5" />

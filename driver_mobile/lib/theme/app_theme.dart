@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Centralized Material Design 3 theme system for the Fleet Driver Mobile application.
@@ -21,51 +22,50 @@ class AppTheme {
       outline: AppColors.divider,
     );
 
-    // Apply Typography Scale
+    // Apply Typography Scale (Open Sans for Headings, Poppins for Body/UI/Numbers)
     final textTheme = TextTheme(
-      // Heading 1: Poppins, Bold, Size 28
-      displayLarge: GoogleFonts.poppins(
+      // Page Headings: Open Sans, Bold (700), Size 28
+      displayLarge: GoogleFonts.openSans(
         fontSize: 28,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w700,
         color: AppColors.textPrimary,
       ),
-      // Heading 2: Poppins, SemiBold, Size 24
-      displayMedium: GoogleFonts.poppins(
+      // Section Headings: Open Sans, SemiBold (600), Size 24
+      displayMedium: GoogleFonts.openSans(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      // Heading 3: Poppins, Medium, Size 20
-      displaySmall: GoogleFonts.poppins(
+      // Section Headings: Open Sans, SemiBold (600), Size 20
+      displaySmall: GoogleFonts.openSans(
         fontSize: 20,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      // Fallback display styles to ensure everything maps perfectly
-      headlineLarge: GoogleFonts.poppins(
+      headlineLarge: GoogleFonts.openSans(
         fontSize: 28,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w700,
         color: AppColors.textPrimary,
       ),
-      headlineMedium: GoogleFonts.poppins(
+      headlineMedium: GoogleFonts.openSans(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      headlineSmall: GoogleFonts.poppins(
+      headlineSmall: GoogleFonts.openSans(
         fontSize: 20,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      // Card titles & Section headers
-      titleLarge: GoogleFonts.poppins(
+      // Card titles & Section headers: Open Sans, SemiBold (600), Size 18
+      titleLarge: GoogleFonts.openSans(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      titleMedium: GoogleFonts.poppins(
+      titleMedium: GoogleFonts.openSans(
         fontSize: 16,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
       titleSmall: GoogleFonts.poppins(
@@ -73,35 +73,40 @@ class AppTheme {
         fontWeight: FontWeight.w500,
         color: AppColors.textSecondary,
       ),
-      // Body Large: Nunito, Size 16
-      bodyLarge: GoogleFonts.nunito(
+      // Body Large: Poppins, Regular (400), Size 16
+      bodyLarge: GoogleFonts.poppins(
         fontSize: 16,
+        fontWeight: FontWeight.w400,
         color: AppColors.textPrimary,
       ),
-      // Body Medium: Nunito, Size 14
-      bodyMedium: GoogleFonts.nunito(
+      // Body Medium: Poppins, Regular (400), Size 14
+      bodyMedium: GoogleFonts.poppins(
         fontSize: 14,
+        fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
       ),
-      // Caption: Nunito, Size 12
-      bodySmall: GoogleFonts.nunito(
+      // Caption: Poppins, Regular (400), Size 12
+      bodySmall: GoogleFonts.poppins(
         fontSize: 12,
+        fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
       ),
-      // Button: Poppins, SemiBold, Size 16
+      // Button: Poppins, SemiBold (600), Size 16
       labelLarge: GoogleFonts.poppins(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: Colors.white,
       ),
-      // Form Labels: Nunito, Size 14
-      labelMedium: GoogleFonts.nunito(
+      // Form Labels: Poppins, Medium (500), Size 14
+      labelMedium: GoogleFonts.poppins(
         fontSize: 14,
+        fontWeight: FontWeight.w500,
         color: AppColors.textSecondary,
       ),
-      // Hint & Placeholder states: Nunito, Size 12
-      labelSmall: GoogleFonts.nunito(
+      // Hint & Placeholder states: Poppins, Regular (400), Size 12
+      labelSmall: GoogleFonts.poppins(
         fontSize: 12,
+        fontWeight: FontWeight.w400,
         color: AppColors.textDisabled,
       ),
     );
@@ -120,9 +125,9 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.poppins(
+        titleTextStyle: GoogleFonts.openSans(
           fontSize: 20,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w700,
           color: Colors.white,
         ),
         iconTheme: const IconThemeData(
@@ -137,8 +142,8 @@ class AppTheme {
         unselectedItemColor: AppColors.textDisabled,
         selectedIconTheme: IconThemeData(color: AppColors.secondary, size: 24),
         unselectedIconTheme: IconThemeData(color: AppColors.textDisabled, size: 24),
-        selectedLabelStyle: TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w500),
-        unselectedLabelStyle: TextStyle(fontFamily: 'Poppins', fontSize: 12),
+        selectedLabelStyle: TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w500),
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),
@@ -246,12 +251,14 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
-        labelStyle: GoogleFonts.nunito(
+        labelStyle: GoogleFonts.poppins(
           fontSize: 14,
+          fontWeight: FontWeight.w500,
           color: AppColors.textSecondary,
         ),
-        hintStyle: GoogleFonts.nunito(
+        hintStyle: GoogleFonts.poppins(
           fontSize: 14,
+          fontWeight: FontWeight.w400,
           color: AppColors.textDisabled,
         ),
       ),
@@ -261,7 +268,7 @@ class AppTheme {
         backgroundColor: AppColors.surface,
         selectedColor: AppColors.secondary.withAlpha(38),
         disabledColor: AppColors.surface,
-        labelStyle: GoogleFonts.nunito(
+        labelStyle: GoogleFonts.poppins(
           fontSize: 12,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
@@ -271,6 +278,14 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
           side: const BorderSide(color: AppColors.divider, width: 1),
         ),
+      ),
+
+      // Page Transitions
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        },
       ),
     );
   }

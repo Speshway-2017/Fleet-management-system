@@ -25,7 +25,7 @@ import "./manager.css";
 export default function ManagerDashboard() {
   const navigate = useNavigate();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [retryTrigger, setRetryTrigger] = useState(0);
 
   // States for API datasets
@@ -37,8 +37,6 @@ export default function ManagerDashboard() {
   // Removed mock dev session injection to strictly enforce backend authentication
   // Fetch dashboard details
   useEffect(() => {
-    setLoading(true);
-    
     Promise.all([
       dashboardApi.getDashboard(),
       dashboardApi.getVehicles(),
@@ -58,17 +56,6 @@ export default function ManagerDashboard() {
         setLoading(false);
       });
   }, [retryTrigger]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F5F7FA] flex items-center justify-center font-poppins">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="w-9 h-9 text-[#C65D0E] animate-spin" />
-          <p className="text-sm font-semibold text-gray-500">Loading Manager Workspace...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex bg-[#F5F7FA] font-nunito text-[#1B2430]">
@@ -152,7 +139,7 @@ export default function ManagerDashboard() {
               <h3 className="font-poppins font-bold text-[#1B2430] text-[16px]">Compliance Expiry</h3>
               <button 
                 onClick={() => navigate("/manager/vehicles-list")}
-                className="text-xs text-[#C65D0E] hover:underline font-poppins font-bold cursor-pointer"
+                className="text-xs text-[#853400] hover:underline font-poppins font-bold cursor-pointer"
               >
                 View All
               </button>
@@ -191,7 +178,7 @@ export default function ManagerDashboard() {
           {/* Cost Breakdowns Bar Progress meters */}
           <div className="lg:col-span-3 bg-[#0D0D0D] border border-gray-900 rounded-2xl p-6 shadow-sm flex flex-col h-[350px] overflow-hidden text-white font-nunito">
             <div className="flex items-center gap-2.5 mb-5 shrink-0">
-              <svg className="w-5 h-5 text-[#C65D0E]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <svg className="w-5 h-5 text-[#853400]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
               <h3 className="font-poppins font-bold text-white text-[15px]">Cost Breakdown</h3>
@@ -206,7 +193,7 @@ export default function ManagerDashboard() {
                   </div>
                   <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-[#C65D0E] rounded-full transition-all duration-1000 ease-out" 
+                      className="h-full bg-[#853400] rounded-full transition-all duration-1000 ease-out" 
                       style={{ width: `${cost.percentage}%` }}
                     />
                   </div>

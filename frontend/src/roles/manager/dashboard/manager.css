@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Poppins:wght@400;500;600;700;800&display=swap');
 
 /* Style custom variables */
 :root {
@@ -6,8 +6,8 @@
   --color-sidebar: #0F0F10;
   --color-sidebar-active: #1B1B1D;
   --color-card: #FFFFFF;
-  --color-primary-orange: #B45A0A;
-  --color-orange-hover: #9A4D08;
+  --color-primary-orange: #A14000;
+  --color-orange-hover: #853400;
   --color-primary-light: #FDF3EC;
   --color-dark-text: #1E293B;
   --color-light-text: #64748B;
@@ -18,17 +18,28 @@
   --color-warning: #F59E0B;
   --color-info: #3B82F6;
 
+  --font-opensans: 'Open Sans', 'Segoe UI', sans-serif;
   --font-poppins: 'Poppins', 'Segoe UI', sans-serif;
-  --font-nunito: 'Nunito', 'Segoe UI', sans-serif;
+  --font-jakarta: 'Open Sans', 'Segoe UI', sans-serif;
+  --font-inter: 'Poppins', 'Segoe UI', sans-serif;
+  --font-nunito: 'Poppins', 'Segoe UI', sans-serif;
 }
 
 /* Font utilities */
-.font-poppins {
-  font-family: var(--font-poppins) !important;
+.font-heading,
+.font-opensans,
+.font-display,
+.font-jakarta {
+  font-family: var(--font-opensans) !important;
 }
 
-.font-nunito {
-  font-family: var(--font-nunito) !important;
+.font-poppins,
+.font-inter,
+.font-nunito,
+.font-sans,
+.font-body,
+.font-manrope {
+  font-family: var(--font-poppins) !important;
 }
 
 /* Hide default shared header navigation */
@@ -38,7 +49,7 @@ nav.flex.items-center.justify-between.border-b {
 
 body {
   background-color: var(--color-bg-primary) !important;
-  font-family: var(--font-nunito);
+  font-family: var(--font-poppins);
 }
 
 /* Custom Scrollbars */

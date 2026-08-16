@@ -2,6 +2,998 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [1.91.00] - 2026-08-16
+
+### Global Skeleton Loading for Dashboard Cards and Data-Driven UI
+- **StatCardSkeleton (`frontend/src/components/common/StatCardSkeleton.jsx`)**:
+  - Built a reusable KPI stat card skeleton matching `KPICard.jsx` layout, dimensions, border radius (`rounded-2xl`), padding, and pulse animations.
+- **TableRowSkeleton (`frontend/src/components/common/TableRowSkeleton.jsx`)**:
+  - Built a reusable table row skeleton component rendering smooth animated pulse placeholder cells across customizable column and row counts.
+- **Eliminated Misleading `0` Values & Empty States During Loading**:
+  - Updated initial `loading` states across all Admin, Fleet Manager, and Driver pages from `false` to `true` on mount while initial API calls are fetching.
+  - `KPICard` component updated to render `StatCardSkeleton` while `loading={true}` instead of displaying misleading `0`, `0.00`, or `₹0`.
+- **Resolved `VehicleManagement.jsx` Console & Component Errors**:
+  - Restored missing `managerApi` and `getSocket` imports in `VehicleManagement.jsx`, resolving console `ReferenceError: getSocket is not defined` and `ReferenceError: managerApi is not defined` runtime issues when fetching activities, maintenance logs, and socket updates.
+  - Search counters ("Showing X of Y") display animated skeleton placeholders / "Loading..." while API requests are pending.
+  - Toolbar controls, search bars, filter dropdowns, and "+ Add" action buttons remain fully visible and interactive during background fetches.
+
+## [1.90.00] - 2026-08-16
+
+### React Route-Level & Native Image Lazy Loading Optimization
+- **Selective React Route-Level Lazy Loading (`frontend/src/App.jsx`)**:
+  - Implemented React `lazy()` dynamic code-splitting imports for secondary pages across Super Admin, Fleet Manager, Driver Portal, and Public landing routes.
+  - Kept critical initial pages (Login `/login`, Core Landing `/`, Super Admin Dashboard `/admin/dashboard`, Fleet Manager Dashboard `/manager`, Driver Dashboard `/driver/dashboard`, and Layout Shells) immediately loaded via direct static imports for instant startup performance.
+  - Wrapped lazy routes in `<ErrorBoundary>` and `<Suspense fallback={<SmartSkeletonFallback variant="..." />}>` for smooth page-matched loading skeletons and error resilience.
+- **Immediate Map Experience for Live Tracking & Route Optimization (`FleetMapPage.jsx`)**:
+  - Maintained route-level chunking for `FleetMapPage.jsx` while ensuring Leaflet maps, Socket.IO real-time location listeners, and polyline tracking initialize immediately without secondary component delays once the page is entered.
+- **Native Image Lazy Loading (`loading="lazy"`)**:
+  - Applied native `loading="lazy"` attribute across secondary/below-the-fold image assets: vehicle card photos (`VehiclesListPage.jsx`), driver data grid avatars (`DriversManagementPage.jsx`), vehicle gallery photos & document previews (`VehicleDetailsPage.jsx`), POD signatures & photos (`TripDetailsPage.jsx`), fuel receipts (`FuelManagementPage.jsx`), organization logos (`OrganizationList.jsx`), and blog/user cards (`BlogCard.jsx`, `UserProfileCard.jsx`).
+  - Preserved critical logos and above-the-fold hero images as eager loaded to maintain immediate brand perception.
+
+## [1.89.00] - 2026-08-16
+
+### Complete Removal of Lazy Loading & Skeleton Loader Delays Across All Dashboards & Pages
+- **Instant Un-Delayed Page Mounting Across All Portals**:
+  - Removed full-screen skeleton loaders (`DashboardSkeletonLoader`), dynamic loading overlays, and page-blocking loading guards (`if (loading) return <Skeleton />`) across Super Admin Dashboard, Fleet Manager Dashboard, Driver Portal, and Mobile app screens.
+  - All dashboards and pages mount and render their complete visual layout, stat cards, control bars, tables, maps, and forms immediately upon navigation.
+  - Initial loading states (`loading`, `isLoading`, `_isLoading`) set to `false` by default, executing data fetching asynchronously in the background without delaying page mount.
+- **Web Portal Components Updated**:
+  - `frontend/src/App.jsx` & `frontend/src/routes/ProtectedRoute.jsx`: Removed initializing loader blocks for instant route mounting.
+  - Super Admin (`Dashboard.jsx`, `SystemHealth.jsx`, `ProfileSettings.jsx`, `SecuritySettings.jsx`, `NotificationSettings.jsx`, `Settings.jsx`, `ReviewsSettings.jsx`, `SettingsBlogs.jsx`, `SettingsAbout.jsx`).
+  - Fleet Manager (`ManagerDashboard.jsx`, `AnalyticsPage.jsx`, `DriversManagementPage.jsx`, `FleetMapPage.jsx`, `FuelManagementPage.jsx`, `NotificationsPage.jsx`, `ReportsPage.jsx`, `ViewTicketsPage.jsx`, `VehiclesListPage.jsx`, `VehicleManagement.jsx`, `VehicleDetailsPage.jsx`, `VehicleEditPage.jsx`, `TripsManagementPage.jsx`, `TripsListPage.jsx`, `UpcomingServicesPage.jsx`, `ManageSchedulesPage.jsx`, `ProfilePage.jsx`, `EditProfilePage.jsx`, `EarningsPage.jsx`, `DriverProfilePage.jsx`, `AssignVehiclePage.jsx`, `NotificationDetailsPage.jsx`, `VehicleDocuments.jsx`).
+  - Driver Workspace (`Dashboard.jsx`, `Maintenance.jsx`, `Trips.jsx`, `TripDetails.jsx`, `Vehicles.jsx`, `Support.jsx`, `Profile.jsx`).
+- **Driver Mobile Flutter App Screens Updated**:
+  - `completed_trips_screen.dart`, `vehicle_overview_screen.dart`, `vehicle_maintenance_screen.dart`, `upcoming_trips_screen.dart`, `upcoming_trip_details_screen.dart`: Removed screen-blocking progress indicators on initial load so card layouts and summary lists render instantly.
+
+## [1.88.00] - 2026-08-16
+
+### OSRM Routing Rate-Limit Fix, Lazy Skeleton Removal & Direct Notification Navigation
+- **OpenStreetMap / OSRM Console Error Elimination (`routingService.js`, `MapView.jsx`)**:
+  - Removed rate-limited public endpoint `routing.openstreetmap.de` to eliminate HTTP 429 (Too Many Requests) and `net::ERR_CONNECTION_RESET` console errors.
+  - Implemented 60-second circuit-breaker rate-limit backoff with silent error catching.
+  - Added multi-point Bezier curved polyline route generator (`generateCurvedPolyline`) for smooth local route rendering on Leaflet maps when offline or rate-limited.
+- **Complete Lazy Loading Removal Across All Portals (`App.jsx`, `Contact.jsx`)**:
+  - Completely removed dynamic `React.lazy()` dynamic imports, `LazyRoute` wrappers, and `loading="lazy"` iframe attributes across Public landing pages, Fleet Manager portal, Super Admin dashboard, and Driver workspace.
+  - All routes now use direct static imports for 100% instant, un-delayed component rendering.
+- **Manager Notification Overlay Direct Navigation (`NotificationOverlay.jsx`)**:
+  - Enhanced notification overlay click handler (`getNotificationTargetUrl`) to inspect notification type, title, message, and metadata (`tripId`, `vehicleId`, `driverId`, `ticketId`).
+  - Automatically routes clicks directly to their specific target page (`/manager/trip-details/:id`, `/manager/vehicle-details/:id`, `/manager/driver-profile/:id`, `/manager/maintenance`, `/manager/fuel`, `/manager/subscription`, `/manager/settings`) instead of redirecting to the generic notifications list.
+
+## [1.87.00] - 2026-08-15
+
+### Page-Specific Skeleton Layouts & Network-Aware Fast Page Opening Across All Dashboards
+- **Multi-Variant Layout Skeletons (`DashboardSkeletonLoader.jsx`)**:
+  - Upgraded `DashboardSkeletonLoader.jsx` to support 5 page-matched layout variants (`dashboard`, `table`, `map`, `form`, `analytics`).
+  - `dashboard`: Header + 4 KPI stat cards + main chart area + side activity panel (Admin, Manager & Driver Dashboards).
+  - `table`: Title bar + search/filter bar + table container header & 6 animated table row skeletons (Vehicles List, Drivers List, Trips List, Fuel, Maintenance, User Management, Organizations, Notifications, Audit Logs).
+  - `map`: Top status bar + full-height map canvas skeleton with floating map controls & left vehicle list panel (Fleet Tracking Map).
+  - `form`/`details`: Breadcrumb header + 2-column form input field grid, textareas & buttons OR profile avatar & detail rows (Add/Edit Vehicle, Vehicle Details, Add/Edit Driver, Driver Profile, Create Trip, Schedule Service, Settings, Profile).
+  - `analytics`: Header with date tabs + 4 KPI cards + 2x2 grid of chart cards (Analytics, Reports, System Health, Earnings).
+- **Network-Delay Aware Grace Period (`SmartSkeletonFallback.jsx`)**:
+  - Implemented smart grace timer (~180ms) and `navigator.onLine` network check.
+  - Fast connection navigations (<180ms delay) open target pages directly with zero loading screen flickering.
+  - Slow/delayed connections (>180ms delay or offline mode) smoothly fade in page-matched layout skeletons.
+- **Route-Level Code Splitting & Smart Lazy Loading (`App.jsx`)**:
+  - Code-split all page routes across Admin, Manager, and Driver dashboards using `React.lazy()`.
+  - Replaced global full-screen `TruckLoader` Suspense wrapper with `LazyRoute` wrapper pairing each route with its exact `SmartSkeletonFallback` variant.
+- **Page-Level Skeleton Integration**:
+  - Updated all page loading checks across Manager (`ViewTicketsPage.jsx`, `ReportsPage.jsx`, `NotificationsPage.jsx`, `FuelManagementPage.jsx`, `FleetMapPage.jsx`, `DriversManagementPage.jsx`, `AnalyticsPage.jsx`), Admin (`Dashboard.jsx`), and Driver (`Maintenance.jsx`, `Dashboard.jsx`) portals.
+- **Drivers Directory Hook Fix (`DriversManagementPage.jsx`)**:
+  - Resolved React Rules of Hooks violation by moving `if (loading) return ...` below all `useState` and `useEffect` declarations, fixing `/manager/drivers` infinite loading issue.
+- **Truck Loading Animation Removal (`App.jsx`)**:
+  - Replaced full-screen truck loading animation with clean page skeleton rendering on application initialization and navigation.
+- **Mobile Card & Dialog Pixel Overflow Fix (`completed_trip_details_screen.dart`, `trip_details_screen.dart`)**:
+  - Added responsive `insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 24)` and `SingleChildScrollView` to document preview dialogs, eliminating right 16px pixel overflow.
+  - Wrapped route node text (`Destination (Rajamahendravaram)`) in `Expanded` widgets, allowing cards to scale dynamically without right 54px pixel overflow.
+- **Dashboard ReferenceError Resolution (`App.jsx`)**:
+  - Added missing `DashboardSkeletonLoader` import to `App.jsx`, fixing `/login` screen `Uncaught ReferenceError: DashboardSkeletonLoader is not defined` crash.
+- **Manager Dashboard Timeframe Reference Error Fix (`ManagerDashboard.jsx`)**:
+  - Restored missing `timeframe` state hook (`const [timeframe, setTimeframe] = useState("This Week")`), resolving `/manager` `Uncaught ReferenceError: timeframe is not defined` crash.
+- **Real-Time Recent Activities with Trip Names & Routes (`ManagerDashboard.jsx`, `manager.controller.js`)**:
+  - Enhanced backend `listActivities` and frontend `ManagerDashboard.jsx` to populate real trip dispatches with exact trip numbers, origin/destination routes (e.g., `TRP-452798 (samarlakot → Rajamahendravaram)`), driver assignments, and relative timestamps (`10m ago`, `2h ago`, `Today`).
+  - Added instant Socket.IO event listeners (`trip:status-updated`, `trip:created`, `driver:status-updated`, `driver:location-update`, `vehicle:updated`, `notification:new`) ensuring real-time dashboard updates without page reloads.
+
+## [1.86.00] - 2026-08-14
+
+### Unified Color Palette Across All Dashboards, Sidebars, Cards & Public Pages (#A14000 Accent)
+- **Theme Variables & Design Tokens (`index.css`)**:
+  - Updated global color tokens: Brand Primary Accent set to `#A14000` (hover `#853400`), Brand Navy / Primary Dark set to `#0D1B2A`, Page Canvas set to `#FAFBFC` (Light) / `#0D1117` (Dark).
+- **Sidebar & Header Alignment (`AppLayout.jsx`, `Sidebar.jsx`, `NewAdminSidebar.jsx`, `DriverLayout.jsx`)**:
+  - Unified all sidebars (Manager, Super Admin, Driver Portal) to Deep Dark Navy (`#0D1B2A`) background with `#A14000` active pill highlights (`rounded-xl`) and white/slate text.
+- **Card Containers & KPI Badges (`KPICard.jsx`, `DashboardCard.jsx`)**:
+  - Standardized KPI cards to rounded-2xl containers with `#0D1B2A` values/headings, `#475569` labels, and soft circular icon badges (`#FFDBCC`/`#FFF4ED` tint with `#A14000` icon).
+- **Public Pages & Landing (`LandingHeader.jsx`, `LandingFooter.jsx`, `Features.jsx`, `About.jsx`, `Performance.jsx`)**:
+  - Updated Landing Header active navigation links and login buttons to `#A14000`, brand title to `#0D1B2A`, and Landing Footer to `#0D1B2A` background with `#A14000` icon highlights.
+  - Removed truck background image and translucent overlays from Features page (`Features.jsx`) & Performance page (`Performance.jsx`) hero sections and center-aligned badges, titles, subtitles, and cards in the middle.
+  - Replaced delivery truck graphic on About page (`About.jsx`) with user's clean red delivery truck cargo loading illustration (`/about-delivery-truck.png`), enlarged 'Our Vision & History' heading to bold prominent size (`text-xl sm:text-2xl md:text-3xl font-black text-[#A14000]`), and replaced side image with high-res digital fleet telemetry & operations suite graphic (`/about-fleet-vision.jpg`).
+  - Removed left slide-in reveal animations from cards across Home page (`Home.jsx`), Blogs page (`Blogs.jsx`), and Landing Footer (`LandingFooter.jsx`), setting default direction to smooth top-reveal (`direction="top"`).
+- **Admin Footer Data & DB Persistence (`Settings.js`, `Settings.jsx`, `SettingsContext.jsx`, `LandingFooter.jsx`)**:
+  - Added DB persistence for Footer Description, Contact Phone, Contact Email, Contact Address, Facebook, LinkedIn, Twitter, and YouTube URLs in `Settings.js` schema and `/api/admin/settings` endpoint.
+  - Implemented 'Landing Page Footer & Public Contact Data' form in Admin Settings (`Settings.jsx`) and dynamically rendered stored DB values in `LandingFooter.jsx`.
+- **Instant Real-Time Notifications Across Admin, Manager, and Driver (`NotificationOverlay.jsx`, `notification.js`, `driverApi.controller.js`)**:
+  - Refactored `NotificationOverlay.jsx` to dynamically fetch role-specific notifications from `/api/admin/notifications`, `/api/manager/notifications`, and `/api/driver/notifications` with automatic periodic polling and instant Socket.IO refresh.
+  - Enhanced backend Socket.IO broadcasting (`notification.js`) to emit to `role:SUPER_ADMIN`, `role:FLEET_MANAGER`, `driver:${id}`, and `manager:${id}` rooms.
+- **Social Logins Removal (`LoginPage.jsx`, `login_screen.dart`)**:
+  - Removed "Continue with Microsoft" from Web Login page and "Login with Google" from Mobile Driver Login screen.
+- **Full-Page Blog View & Card Reveal Fix (`Blogs.jsx`, `Home.jsx`)**:
+  - Transformed Blog Article selection into a dedicated, responsive Full-Page View with sticky top bar, hero banner, formatted article paragraphs, and navigation buttons.
+  - Removed reveal animation wrappers from blog card grids across `Blogs.jsx` and `Home.jsx`.
+- **Dashboard Lazy Loading Across All Roles (`App.jsx`)**:
+  - Implemented React code-splitting and `React.lazy()` chunking with `Suspense` fallbacks (`TruckLoader`) for all Admin, Fleet Manager, and Driver dashboard pages (Vehicles, Drivers, Trips, Fuel, Maintenance, Reports, Settings, User Management, Organizations).
+- **Exact Number Cards & Animation Removal (`KPICard.jsx`, `CountUpNumber.jsx`, `dashboard_screen.dart`)**:
+  - Completely removed counting/incrementing animations from `KPICard.jsx`, `CountUpNumber.jsx`, and mobile `dashboard_screen.dart`. All dashboard metric cards across vehicle management and role screens render exact static values immediately.
+- **Dynamic Time-Range Analytics Tabs (`AnalyticsPage.jsx`)**:
+  - Implemented real database calculation for `Last 7 Days`, `30 Days`, and `Year to Date` time-range filter tabs on `/manager/analytics`. All metrics (`Fleet Efficiency`, `Fuel Consumption`, `Total Mileage`, `Maintenance Costs`, `Fleet Utilization`, and `Hourly Dispatches`) calculate dynamically based on the selected date window.
+- **Global Dashboard Skeleton Loading Across All Role Screens (`DashboardSkeletonLoader.jsx`)**:
+  - Created reusable `DashboardSkeletonLoader.jsx` component matching Manager Dashboard skeleton structure.
+  - Applied skeleton page loading to all Admin, Manager, and Driver pages (`Trips`, `Vehicles`, `Drivers`, `Fuel`, `Maintenance`, `Reports`, `Analytics`, `Live Tracking`, `Notifications`, `Settings`, `User Management`, `Organizations`, `Driver Portal`).
+- **Maintenance Page `loadingTickets` Fix ([`ViewTicketsPage.jsx`](file:///c:/Users/Satya/Desktop/Fleet-management-system/frontend/src/roles/manager/pages/ViewTicketsPage.jsx))**:
+  - Resolved `Uncaught ReferenceError: loading is not defined` on `/manager/maintenance` by updating skeleton loader check to inspect `loadingTickets` state.
+
+## [1.85.00] - 2026-08-14
+
+### Fleet Management Dashboard — Professional Animation Upgrade
+- **Dashboard Entrance Sequence (`animeUtils.js`, `ManagerDashboard.jsx`)**:
+  - Implemented Anime.js timeline sequence (`animateDashboardEntrance`) staggering the page title (0ms), subtitle (80ms), primary action button (120ms), subscription warning banner (160ms), KPI cards (220ms+), and dashboard grid sections (350ms+) with smooth `opacity: 0 -> 1` and `translateY: 12px -> 0`.
+- **KPI Card Animations & Count-Up Numbers (`KPICard.jsx`)**:
+  - Added numeric count-up animation (`0 -> targetValue`) on initial data mount using Anime.js easing curves (`easeOutCubic`).
+  - Added subtle hover elevation (`hover:-translate-y-1 hover:shadow-md hover:border-slate-300`) with 250ms smooth transition.
+  - Added calm, non-flashing status indicators (`+12.4%`, `+9.1%`, `+4.7%`, `0 Alerts`).
+- **Delivery Analytics Line Chart & Gauge Arc (`ManagerDashboard.jsx`)**:
+  - Enabled progressive line drawing and dot reveal (`isAnimationActive={true}`, `animationDuration={1200}`) for Delivery Analytics LineChart and Success Rate PieChart arc fill.
+- **Active Driver Rows & Recent Activities Stagger (`ManagerDashboard.jsx`, `animeUtils.js`)**:
+  - Added staggered reveals for active driver list rows and recent activity cards, subtle row hover highlights, and `animateNewActivityItem` helper for socket activity updates.
+- **Page-to-Page SPA Transitions & Micro-Interactions (`AppLayout.jsx`, `index.css`)**:
+  - Configured 300ms smooth SPA route transition (`@keyframes page-enter`, `opacity: 0 -> 1`, `translateY: 10px -> 0`) across dashboard views (`/manager`, `/manager/vehicle-management`, `/manager/drivers`, `/manager/trips`, `/manager/map`, `/manager/fuel`, `/manager/maintenance`).
+  - Added button press feedback (`active:scale-97`), modal zoom-in transitions (`animate-in fade-in zoom-in-95 duration-200`), and strict `@media (prefers-reduced-motion: reduce)` accessibility overrides.
+- **Professional Skeleton Loaders (`ManagerDashboard.jsx`)**:
+  - Replaced single full-page loading spinner with clean, realistic skeleton card and chart placeholders during initial API data fetches.
+
+## [1.84.00] - 2026-08-14
+
+### Font System Update to Open Sans + Poppins & Scroll Animation / Route Transition Refinements
+- **Dual Font System Transition (`index.html`, `index.css`, `manager.css`, `app_theme.dart`)**:
+  - Replaced legacy font declarations across Web and Flutter Mobile.
+  - Applied `Open Sans` exclusively for all Headings (`h1`–`h6`, section headers, page titles).
+  - Applied `Poppins` exclusively for Body copy, UI text, Navigation, and Metric Numbers/Counts.
+- **Fixed Public Header (`LandingHeader.jsx`, `PublicLayout.jsx`)**:
+  - Locked public header to top on scroll (`sticky top-0 z-50`) and removed ancestor `overflow-x-hidden` so the header never scrolls away with the body.
+- **Scroll Animation Control (`useAnimeReveal.js`, `AnimeScrollReveal.jsx`)**:
+  - Configured scroll reveal animations to trigger **once** top-to-bottom (`observer.unobserve(el)`).
+  - Removed out-of-view reset logic so scrolling back up bottom-to-top does not replay or hide content.
+  - Removed disruptive top-reveal animations on card containers.
+- **Non-Flashing Page Route Transitions (`AnimeScrollReveal.jsx`)**:
+  - Refactored `AnimePageTransition` to render route views instantly without `opacity: 0` flash or body re-render resets.
+
+## [1.83.00] - 2026-08-13
+
+### Manager Sidebar Navigation Typography Enhancement
+- **Manager Portal Sidebar (`AppLayout.jsx`)**:
+  - Increased sidebar navigation menu text size from `12px` (`text-xs`) to `14px–15px` (`text-[14px] sm:text-[15px] font-semibold font-manrope`).
+  - Increased section category header button labels from `10px` to `12px` (`text-[12px] font-bold uppercase tracking-wider font-manrope text-slate-400`).
+  - Increased navigation icon dimensions from `4.5x4.5` to `5x5` (`w-5 h-5`) and increased vertical row padding (`py-2.5`) for improved legibility and touch targets.
+
+## [1.82.00] - 2026-08-13
+
+### Refined Global `Manrope` Typographic Hierarchy & SaaS Visual Scale
+- **Explicit Manrope Typographic Hierarchy Scale (`index.css`, `KPICard.jsx`, `ManagerDashboard.jsx`, `app_theme.dart`)**:
+  - Main Page Titles: `Manrope` 30px–34px, 700 Bold weight with tight line height (`1.2`) and `-0.02em` tracking.
+  - Section Headings: `Manrope` 20px–24px, 700 Bold weight (`leading-snug`).
+  - Card Headings: `Manrope` 15px–16px, 600 Semibold weight.
+  - KPI Values & Metric Numbers: `Manrope` 28px–32px, 800 Extra Bold weight for high contrast and prominent metric display.
+  - Navigation & Sidebar: `Manrope` 14px–15px, 600 Semibold weight.
+  - Body Text: `Manrope` 14px–16px, 400–500 weight with comfortable `1.6` line height.
+  - Small Labels & Metadata: `Manrope` 11px–13px, 500 Medium weight with `0.03em` letter-spacing.
+  - Buttons: `Manrope` 14px, 600 Semibold weight for compact, professional enterprise SaaS presentation.
+
+## [1.81.00] - 2026-08-13
+
+### Global Typography Transition to `Manrope` & Dashboard Modal Palette Refinements
+- **Global Manrope Typography System Update (`index.html`, `index.css`, `manager.css`, `app_theme.dart`)**:
+  - Replaced legacy `Inter` and `Plus Jakarta Sans` typography declarations across the entire Fleet Management system (Public Website, Login, Manager Dashboard, Admin Dashboard, Driver Portal, and Flutter Mobile App) with `Manrope`.
+  - Configured `@import` and preconnect links in `index.html`, `index.css`, `manager.css`, `TripDetailsPage.jsx`, and `LiveMap.jsx`.
+  - Configured Flutter `AppTheme` scale in `driver_mobile/lib/theme/app_theme.dart` using `GoogleFonts.manrope()`.
+  - Applied font weights: 700 for page headings, 600-700 for section headings, 600 for card titles & buttons, 400-500 for body text, 500-600 for navigation, and 700-800 for KPI numbers.
+- **Delivery Analytics LineChart Flex Height (`ManagerDashboard.jsx`)**:
+  - Refactored Column 2 flex layout (`flex-1 min-h-[220px]`) so the LineChart expands dynamically to fill 100% of available card height, eliminating vertical whitespace gaps.
+- **Call Driver Modal Palette Mapping (`ManagerDashboard.jsx`)**:
+  - Mapped Call Driver confirmation modal avatar, phone text, and "Call Now" button from bright blue (`#0085FF`) to enterprise Navy Blue (`#0D1B2A` / `#1E293B`).
+
+## [1.80.00] - 2026-08-13
+
+### Enhanced (Chart Height & Hub Legend, View Document Buttons & Eye-Strain-Free Support Cards)
+- **Delivery Analytics LineChart & Hub Load Legend (`ManagerDashboard.jsx`)**:
+  - Expanded LineChart container height to `h-56` to eliminate empty whitespace underneath line curves.
+  - Aligned Hub Load Distribution colors to Navy Blue (`#0D1B2A`), Brand Dark Orange (`#A14000`), Slate (`#1E293B`), and Amber (`#D97706`) with colored indicator dots.
+- **View Document Buttons (`Vehicles.jsx`)**:
+  - Updated all "View Document" buttons and document icons to Navy Blue (`#0D1B2A` / `#1E293B`) to align with the enterprise design system.
+- **Eye-Strain-Free Support Page (`Support.jsx`)**:
+  - Refactored Driver Support cards to remove heavy solid background row blocks, replacing them with clean light neutral rows (`bg-slate-50 border border-slate-200/80`).
+  - Styled right-side action buttons with crisp solid brand colors (`Call Now`, `WhatsApp`, `Send Email`, `Call Dispatch`).
+
+## [1.79.00] - 2026-08-13
+
+### Enhanced (Delivery Analytics LineChart, Active Drivers Avatars, About Page Image Fit & Section Layout, Fixed Sticky Header & Status Colors)
+- **Delivery Analytics LineChart (`ManagerDashboard.jsx`)**:
+  - Replaced Bar chart in Delivery Analytics with a smooth `LineChart` using Navy Blue (`#0D1B2A`) for Dispatches and Brand Dark Orange (`#A14000`) for Completed dispatches matching the project design system.
+  - Updated Active Drivers avatar circle backgrounds from bright blue gradient to solid Navy Blue (`#0D1B2A`), eliminating out-of-place blue profile backgrounds.
+- **About Page Image Fit & Section 3 Layout Swap (`About.jsx`)**:
+  - Configured Image 1 (`/about-delivery-man.png`) with `object-contain` in container so the delivery person's image displays fully without half-image cropping.
+  - Removed word-by-word reveal paragraph animations from Vision text, making paragraphs render statically without motion delay.
+  - Refactored Section 3 ("Our Core Principles & Purpose"): removed right-side cards, placed story text, quote, and core principles on the left side, and placed Image 2 (`/about-delivery-truck.png`) on the right side.
+- **Fixed Sticky Header (`LandingHeader.jsx`)**:
+  - Pinned `LandingHeader` with `sticky top-0 z-50 w-full` so it remains permanently fixed at top during body scrolling.
+- **Danger & Success Colors Across Cards (`ManagerDashboard.jsx`, `KPICard.jsx`)**:
+  - Standardized Maintenance & Critical alerts to Danger Red (`#EF4444` / `bg-rose-50 text-rose-600`) and positive trip/dispatch metrics to Success Green (`#10B981` / `bg-emerald-50 text-emerald-600`).
+
+## [1.78.00] - 2026-08-13
+
+### Global Typography System Update, Pricing Page Subscription Load Fix & Smooth Navigation
+- **Global Typography System (`Plus Jakarta Sans` & `Inter`)**:
+  - Centralized global typography across the entire Fleet Management system: Public Website, Manager Dashboard, Driver Portal, Admin Application, and Authentication screens.
+  - Set Primary Display / Heading Font to `Plus Jakarta Sans` (weights 600, 700, 800) for hero headings, page titles, section headings, dashboard titles, card titles, modal headings, empty-state headings, and metric numbers.
+  - Set Body / UI Font to `Inter` (weights 400, 500, 600, 700) for navbar, sidebar, paragraphs, buttons, form labels, inputs, tables, tabs, dropdowns, badges, notifications, tooltips, breadcrumbs, and small labels.
+  - Configured `@import` and preconnect links in `index.html`, `index.css`, `manager.css`, `TripDetailsPage.jsx`, and `LiveMap.jsx`.
+  - Updated Flutter `AppTheme` in `driver_mobile/lib/theme/app_theme.dart` with `GoogleFonts.plusJakartaSans()` for display/headings/titles/buttons and `GoogleFonts.inter()` for body/labels/hints/captions.
+- **Pricing Page Subscription Cards Instant Pre-render (`Pricing.jsx`, `SubscriptionPage.jsx`)**:
+  - Initialized state with default fallback subscription plans (Starter, Professional, Enterprise) so cards render instantly on initial paint.
+  - Removed full spinner overlay layout shifts when loading subscription plans from backend API.
+- **Removed Navigation Refresh Animations (`PublicLayout.jsx`, `AppLayout.jsx`)**:
+  - Removed `key={location.pathname}` and `opacity: 0` initial motion entrance from `PublicLayout.jsx` `<motion.main>`, eliminating body refresh flashes when navigating from Home to other public pages.
+  - Removed `animate-fade` class on `<main>` content container in `AppLayout.jsx` for smooth SPA navigation.
+
+## [1.77.00] - 2026-08-13
+
+### Fixed & Enhanced (Public Website SPA Navigation, Contact Error Resolution, Delivery Images, Compact Gaps & Scroll Reveals)
+- **Contact Page LandingFooter ReferenceError Resolution (`Contact.jsx`)**:
+  - Removed duplicate `<LandingFooter />` reference from `Contact.jsx`, resolving `Uncaught ReferenceError: LandingFooter is not defined` and preventing runtime crashes.
+- **About Page 2 Delivery Images & Compact Spacing (`About.jsx`)**:
+  - Integrated the 2 uploaded delivery images (`/about-delivery-man.png` showing delivery person handing package box to customer, and `/about-delivery-truck.png` showing isometric yellow cargo delivery truck with open doors).
+  - Reduced top padding between header and body content (`py-8 sm:py-10 md:py-12`), and compact padding on "Our Journey" milestone section (`py-8 sm:py-10`).
+- **Security & Pricing Cards Scroll Reveal Removal (`Security.jsx`, `Pricing.jsx`)**:
+  - Removed scroll reveal animations from cards grids in `Security.jsx` and `Pricing.jsx` so cards render directly with instant, clear visibility without sliding.
+- **Top-to-Bottom Heading & Section Reveals (`Home.jsx`, `About.jsx`, `Features.jsx`, `Performance.jsx`, `Blogs.jsx`, `Contact.jsx`)**:
+  - Updated all section headings and title reveals to `direction="top"` for top-to-bottom entrance motion across all public routes.
+- **Eliminated Exit Wait Delay & Refresh Artifacts (`PublicLayout.jsx`)**:
+  - Removed `<AnimatePresence mode="wait">` exit delay wrapper which previously caused content area to empty out and flash blank white during navigation.
+  - Implemented single-layer motion container transition (`<motion.main key={location.pathname}>`) that mounts new route content immediately with a smooth fade (`opacity: 0 -> 1`) and upward slide (`y: 16px -> 0px`) over 400ms using ease-out curve `[0.16, 1, 0.3, 1]`.
+  - Maintained `LandingHeader` and `LandingFooter` completely stable and mounted across route transitions without flickering or disappearing.
+  - Added support for `prefers-reduced-motion` to minimize transition motion for accessibility.
+- **Instant Top Scroll Reset (`ScrollToTop.jsx`)**:
+  - Configured instant scroll position reset (`window.scrollTo({ top: 0, left: 0, behavior: "instant" })`) upon route navigation without document scroll animation.
+- **Non-Blocking Public Data Loaders (`About.jsx`, `Pricing.jsx`, `LandingFooter.jsx`)**:
+  - Removed full-page `TruckLoader` wrapper from `About.jsx`, allowing fallbacks to render instantly while public API data populates in background.
+  - Replaced full-page `TruckLoader` in `Pricing.jsx` with an inline subtle spinner within the plans container.
+  - Converted static anchor tags for Platform Features and Security in `LandingFooter.jsx` to SPA `NavLink` components (`/features`, `/security`).
+
+## [1.76.00] - 2026-08-13
+
+### Fixed (Backend TripLocationHistory Import & Driver Notifications API Route)
+- **Backend Model Import Fix (`driverApi.controller.js`)**:
+  - Imported `TripLocationHistory` model (`import TripLocationHistory from '../models/TripLocationHistory.js';`) in `driverApi.controller.js`. Resolved `Exception: TripLocationHistory is not defined` error when sending GPS tracking updates from driver clients (`POST /api/driver/location`).
+- **Driver Notifications Route Endpoint Fix (`api_service.dart`)**:
+  - Updated `ApiService.getDriverNotifications()` to point to `/driver/notifications` (`GET /api/driver/notifications`), resolving the `404 (Not Found)` error caused by referencing `/notifications`.
+
+## [1.75.00] - 2026-08-13
+
+### Fixed & Refactored (Mobile Card Layout & Text Overflow Fixes, Standardized Margin 20, SPA Route Transitions & Vehicle Truck Loader)
+- **Active Trip Mobile Refactoring (`active_trips_screen.dart`)**:
+  - Removed the outer wrapping container card around the active trip screen body.
+  - Sub-components (Live Tracking Map, Pickup-Destination Route Timeline, Arrival Toggle, POD Slip card, Weighbridge Slip card) now render as clean top-level elements directly on full-width body background.
+- **Card Text Overflow & Layout Fixes (`completed_trip_details_screen.dart`, `active_trips_screen.dart`, `trip_details_screen.dart`, `upcoming_trip_details_screen.dart`)**:
+  - Fixed horizontal text overflow bug in Vehicle & Crew card where long vehicle strings (e.g., `Jeevan Trucks AP 2025 • AP 112025.8`) overflowed card right boundary.
+  - Wrapped `vehicleDisplay`, driver name, manager name, pickup, destination, trip IDs, and file names in `Expanded`/`Flexible` with `TextOverflow.ellipsis` and `maxLines: 1`.
+  - Updated `_buildInfoItem` and `_buildDetailsColumn` to enforce flex scaling and prevent horizontal text overflows on all screens.
+- **Standardized Mobile Margin 20**:
+  - Standardized body padding to `margin: 20` (`EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0)`) across mobile screens (`ActiveTripsScreen`, `CompletedTripDetailsScreen`, `TripDetailsScreen`, `UpcomingTripDetailsScreen`, `CompletedTripsScreen`, `UpcomingTripsScreen`, `FuelHistoryScreen`).
+- **Web SPA Route Transitions & Persistent Header (`frontend`)**:
+  - Implemented `PublicLayout.jsx` wrapper keeping `LandingHeader` persistent and static at top across Home, About, Features, Performance, Security, Pricing, Blogs, and Contact without re-rendering during navigation.
+  - Implemented client-side SPA page transition with 400ms fade-in and 15px upward slide (`[0.16, 1, 0.3, 1]` ease-out curve), respecting `prefers-reduced-motion`.
+  - Added `TruckLoader.jsx` featuring an animated vector delivery truck with glowing headlights and moving road lines for web loading states.
+
+## [1.74.00] - 2026-08-13
+
+### Added & Refined (Full Mobile UI Refinement, Realistic Animated Delivery Truck Loading Indicator, Graphic "No Active Trip" Card & Login Terms Statement)
+- **Realistic Animated Delivery Truck Loading Widget (`loading_indicator.dart`)**:
+  - Replaced generic progress spinners with `RealisticTruckLoadingWidget` featuring a fixed blue delivery pickup truck carrying stacked cardboard cargo boxes bouncing vertically on the truck bed, rotating dual tires with rim spokes, truck body micro-vibration, and moving dashed road lines traveling underneath the wheels.
+- **Graphic "No Active Trip" Mockup Card (`dashboard_screen.dart`)**:
+  - Replaced empty text box with a graphic card matching the provided design mockup: dark navy rounded card container (`#091426`), circular dark badge (`#16253B`) with vibrant orange truck icon (`#F97316`), `"No Active Trip"` title, subtext, and a custom painter (`_NoActiveTripCardPainter`) drawing a night semi-truck with headlights and a white dashed curve climbing to a blue location pin marker with a central white dot.
+- **Login Terms & Conditions Disclaimer (`login_screen.dart`)**:
+  - Added `"By clicking on Login, you are accepting Terms & Conditions"` disclaimer statement directly under the Login button with orange brand highlight (`#F97316`) and underline styling.
+- **Comprehensive Mobile UI Refinement (`dashboard_screen.dart`, `main_navigation_screen.dart`, Auth, Trips, Vehicle, Fuel, Support, Profile, Settings, Notifications)**:
+  - Polished visual hierarchy, glassmorphism containers, status pills, dark navy headers, pickup-to-destination timeline nodes, Quick Actions cards, overview stat cards, and notification tiles across all mobile screens without changing any features or logic.
+
+## [1.73.00] - 2026-08-13
+
+### Fixed (Backend Support Settings 500 Error & Mobile Background Location Exception Loop)
+- **Backend Support Settings 500 Internal Server Error Fix (`manager.controller.js`)**:
+  - Imported `User` model (`import User from '../models/User.js';`) in `manager.controller.js`, resolving a `ReferenceError: User is not defined` on `GET /api/manager/support-settings`.
+- **Mobile Background GPS Location Service Token Safeguard (`location_service.dart`, `api_service.dart`)**:
+  - Added `ApiService.getToken()` authentication check in `LocationTrackingService._sendCurrentLocation()`. GPS location updates are now cleanly skipped when the driver is logged out, preventing unauthenticated API POST error loops.
+  - Filtered `ApiService` auto-discovery probe triggers to genuine network transport errors (`SocketException`, `TimeoutException`, `Connection refused`), preventing non-network exceptions from triggering server IP probes.
+
+## [1.72.00] - 2026-08-13
+
+### Fixed & Hardened (Zero-Downtime Server IP Auto-Discovery Probe & ADB Reverse Tunneling)
+- **Automatic Multi-Candidate Server URL Probing & Seamless Retry (`api_service.dart`)**:
+  - Implemented `autoDiscoverWorkingBaseUrl()` which automatically probes candidate backend host URLs (`http://127.0.0.1:5000/api` via ADB reverse, `http://10.166.118.1:5000/api` current Wi-Fi IP, `http://10.0.2.2:5000/api` Android emulator, and saved IP).
+  - If a network request times out or fails due to a changed Wi-Fi IP address, `ApiService` automatically probes candidate hosts in milliseconds, updates `SharedPreferences` with the active host, and retries the HTTP request seamlessly without throwing errors to the driver.
+- **ADB Reverse Port Forwarding & 1-Tap Auto-Detect (`login_screen.dart`, ADB Tooling)**:
+  - Enabled ADB reverse port forwarding (`adb reverse tcp:5000 tcp:5000`) for direct USB/Debugging connections on physical devices (`CPH2835`).
+  - Added an **`Auto-Detect`** (`✨`) button in `_showServerConfigDialog` and added 1-tap preset chips for `ADB Reverse (127.0.0.1)`, `Wi-Fi IP (10.166.118.1)`, `Emulator (10.0.2.2)`, and `Localhost`.
+- **Restored Complete API Service Interface (`api_service.dart`)**:
+  - Fully restored all driver endpoints (`getDriverNotifications`, `uploadProofOfDelivery`, `uploadWeighbridgeSlip`, `getDriverTripTolls`, `createTripTollEntry`, `createDriverTicket`) ensuring 100% test suite compatibility (7/7 tests passing).
+
+## [1.71.00] - 2026-08-12
+
+### Removed & Fixed (Driver Signup Form Removal & Interactive Server Connection Resolution)
+- **Driver Self-Registration Form Removal (`login_screen.dart`, `signup_screen.dart` deleted)**:
+  - Removed "Don't have an account? Sign up" link and deleted `signup_screen.dart` because driver accounts are created and managed by Fleet Managers through the backend web application.
+- **Enhanced Connection Timeout & Host Exception Handling (`api_service.dart`, `login_screen.dart`)**:
+  - Caught `TimeoutException`, `SocketException`, and host resolution errors in `ApiService.dart` to prevent raw exception stack strings from displaying in UI banners.
+  - Added an interactive **"FIX SERVER IP"** SnackBar action button on login failure that directly opens the Server Settings dialog.
+  - Added quick IP preset chips (`http://10.0.2.2:5000/api` for Android Emulator, `http://192.168.1.17:5000/api` for Wi-Fi IP, and `http://localhost:5000/api` for Localhost) in `_showServerConfigDialog` to update backend host in 1 tap.
+
+## [1.70.00] - 2026-08-12
+
+### Fixed & Enhanced (Mobile Card & Label Responsive Text Overflow Protections)
+- **Universal Text Overflow Elimination (`login_screen.dart`, `signup_screen.dart`, `forgot_password_screen.dart`, `otp_screen.dart`, `reset_password_screen.dart`)**:
+  - Implemented `FittedBox(fit: BoxFit.scaleDown)` and `Flexible` wrappers on hero headings ("Welcome Back!"), CTA action text ("Login", "Login with Google", "Sign up"), and header branding text.
+  - Wrapped `_buildInputLabel` title text with `Expanded` and `TextOverflow.ellipsis` to prevent label text from overflowing form rows on narrow screens or under large system font scaling.
+  - Wrapped `_buildFeatureItem` titles with `Expanded` and `FittedBox(fit: BoxFit.scaleDown)` inside bottom feature strips to dynamically adapt to any screen width or text scale without `RenderFlex` overflow.
+  - Converted footer prompt rows ("Don't have an account? Sign up") to `Wrap` layouts with center alignment to prevent horizontal cutoff when translated or scaled.
+
+## [1.69.00] - 2026-08-12
+
+### Refined & Enhanced (Official Fleet Logo, Seamless Merged Mobile Backdrop, Gentle Eye-Friendly Card Hover & Top Reveal Footer Animation)
+- **Official Fleet Management Logo Integration (`login_screen.dart`, `signup_screen.dart`, `forgot_password_screen.dart`, `otp_screen.dart`, `reset_password_screen.dart`)**:
+  - Replaced dummy placeholder icon boxes with the official Fleet Management logo asset (`assets/images/logo.png`) across all mobile authentication screens.
+- **Seamless Merged Screen Canvas (`login_screen.dart`, `signup_screen.dart`, `forgot_password_screen.dart`, `otp_screen.dart`, `reset_password_screen.dart`)**:
+  - Removed rectangular vehicle background clipping box and harsh horizon light trails in favor of a cohesive, beautiful, merged sky-to-dusk gradient canvas with subtle ambient radial warm lighting.
+- **Gentle, Slow & Eye-Friendly Card Hover Transition (`index.css`, `animeUtils.js`, `AnimeScrollReveal.jsx`)**:
+  - Replaced high-contrast harsh dark pop with a slow, soothing, luxurious navy-slate ambient fill (`linear-gradient(135deg, #11224D 0%, #162E5A 55%, #1B386D 100%)`).
+  - Extended transition duration (`1.25s` with `cubic-bezier(0.16, 1, 0.3, 1)`) and added smooth gradual opacity fade (`0.95s`) with gentle text color transition (`0.85s`), eliminating eye strain.
+- **Top-to-Bottom Staggered Scroll Reveal in Public Footer (`LandingFooter.jsx`, `AnimeScrollReveal.jsx`, `animeUtils.js`)**:
+  - Implemented `revealFromTop` and `staggerRevealTop` helpers with `direction="top"` in `AnimeStaggerGroup`, animating footer columns and contact details smoothly downward on scroll entry.
+
+## [1.68.00] - 2026-08-12
+
+### Added & Redesigned (Glassmorphic Mobile Auth Suite & Driver Document Workflow Pipeline Fixes)
+- **Glassmorphic Auth Screen Redesign (`login_screen.dart`, `signup_screen.dart`, `forgot_password_screen.dart`, `otp_screen.dart`, `reset_password_screen.dart`)**:
+  - Implemented the mobile auth design language featuring a Fleet Management header, language selector pill (`🌐 EN ⌵`), truck hero background over sunset highway, and dual-tone headings (`Welcome Back!`).
+  - Applied frosted glassmorphism floating cards (`Color.white.withValues(alpha: 0.96)`, `BorderRadius.circular(28)`, `BoxShadow`), soft peach-tinted icon containers (`#FFF0EA` / `#FFEDD5`), "Remember me" + "Forgot Password?" in brand orange (`#F97316`), and dark navy pill CTA buttons with orange circular arrow buttons (`#0F1E36` + `#F97316`).
+  - Added bottom floating 4-badge features bar with vibrant icons: **Real-time Tracking** (Orange), **Secure & Reliable** (Cyan), **Data Driven Insights** (Green), and **End-to-End Management** (Purple).
+  - Built new `SignupScreen` supporting driver onboarding and verification submissions.
+  - Redesigned `ForgotPasswordScreen`, `OTPScreen`, and `ResetPasswordScreen` with matching glassmorphism containers, 6-digit OTP fields, countdown timers, and live password criteria indicators.
+- **Driver Uploaded Document Workflow Fixes (POD, Weighbridge Slip, Fuel Entry)**:
+  - **Manager Backend API (`manager.controller.js`)**: Resolved bug in `getPODByTripId` (line 2645 returning `null`) to properly retrieve and return POD records with `tripDoc.proofOfDelivery` fallbacks. Enriched `getTripDetails` with top-level `podUrl`, `podDetails`, `weighbridgeUrl`, `weighbridgeDetails`, `fuelUrl`, `fuelDetails`, and `fuelEntries`.
+  - **Driver Backend API (`driverApi.controller.js`)**: Ensured valid uploaded document URLs in `getDriverTripById` are preserved and not prematurely stripped.
+  - **Mobile Completed Trip Screen (`completed_trip_details_screen.dart`)**: Added comprehensive multi-level fallback resolution checking `trip['podUrl']`, `trip['proofOfDelivery']['url']`, `trip['weighbridgeUrl']`, `trip['weighbridgeSlip']['url']`, `trip['fuelUrl']`, and `trip['fuelDetails']['billUrl']` so driver-uploaded documents open reliably on tap.
+  - **In-App Document Viewer (`document_preview_dialog.dart`)**: Expanded `_isImageUrl` to recognize Cloudinary upload patterns (`fleet_pod`, `fleet_weighbridge`, `fleet_fuel_receipts`) and base64 image streams for direct in-dialog zoomable viewing.
+
+## [1.67.00] - 2026-08-12
+
+### Fixed (Linter & Cupertino Transitions Fixes)
+- **Resolved CupertinoPageTransitionsBuilder Reference Error (`app_theme.dart`)**:
+  - Added `package:flutter/cupertino.dart` import to `app_theme.dart` to properly resolve `CupertinoPageTransitionsBuilder`.
+- **Cleaned Up Unused Helper (`completed_trip_details_screen.dart`)**:
+  - Removed unused `_launchURL` helper method in favor of direct `DocumentPreviewDialog.open` and `DocumentPreviewDialog.launchDocumentUrl`.
+
+## [1.66.00] - 2026-08-12
+
+
+### Added & Enhanced (Features & Security Bottom-Left Blooming Dark Hover, Mobile In-App Document Viewer & Fleet Login Redesign)
+- **Features & Security Cards Slow Blooming Dark Hover (`index.css`, `Features.jsx`, `Security.jsx`)**:
+  - Implemented `.card-dark-fill-bl` featuring an ultra-smooth, slow-blooming dark navy gradient fill (`#0B1B3D` to `#152E5C`) expanding from the **bottom-left corner** towards the top-right on hover (`0.75s` easing).
+  - Child elements seamlessly transition to high-contrast crisp white headings (`#FFFFFF`), light slate body text (`#E2E8F0`), and glowing brand orange icon containers (`#FF8A3D`).
+- **Driver Mobile In-App Interactive Document & Image Viewer (`document_preview_dialog.dart`, `completed_trip_details_screen.dart`, `invoice_screen.dart`, `vehicle_documents_screen.dart`, `AndroidManifest.xml`)**:
+  - Resolved `Could not open document` error by adding `<intent>` queries for `https` and `http` in `AndroidManifest.xml`.
+  - Built `DocumentPreviewDialog` supporting in-app zoomable image previews (`InteractiveViewer` with pinch-to-zoom and pan) for Cloudinary JPG/PNG document receipts (Invoices, Toll Receipts, PODs, Weighbridge Slips, Fuel entries) plus browser fallbacks (`LaunchMode.inAppBrowserView` and `LaunchMode.externalApplication`).
+- **Driver Mobile Login Screen Redesign (`login_screen.dart`)**:
+  - Redesigned the mobile login experience with a curved gradient hero header (`#0B1B3D` to `#183B7A`), real fleet vehicle graphic (`assets/images/vehicle.png`), sleek `FLEET DRIVER PORTAL` live badge, and refined typography.
+  - Replaced heavy bold inputs with modern rounded card inputs (`BorderRadius.circular(24)`), soft shadows, brand orange accents, and entrance slide/fade animation.
+- **Mobile Page Route Transitions (`app_theme.dart`)**:
+  - Added `CupertinoPageTransitionsBuilder` for Android and iOS in `AppTheme.lightTheme` for silky-smooth native swipe and push transitions.
+
+## [1.65.00] - 2026-08-12
+
+
+### Fixed (Missing Icon Import Resolution)
+- **Resolved Uncaught ReferenceError (`Home.jsx`)**:
+  - Added missing `Cpu` component to `lucide-react` import list in `Home.jsx` to prevent runtime crashes in "Why Businesses Choose Our Platform" section.
+
+## [1.64.00] - 2026-08-12
+
+
+### Refined & Enhanced (Light-Mode Slow Warm Card Hover, Crystal Clear Numbers & Compact Card Layouts)
+- **Refined Light-Mode Card Hover Style (`index.css`)**:
+  - Replaced dark pseudo-element background fill with an ultra-smooth, slow, soft light warm hover tint (`linear-gradient(135deg, #FFFFFF 0%, #FFF9F5 100%)`) with gentle `0.5s` easing (`cubic-bezier(0.25, 1, 0.5, 1)`).
+  - Preserves 100% crystal clear legibility for all numbers (`28%`, `22%`, `35%`, `30%`, `₹999`, `10 Vehicles`, etc.), headings (`#0B1B3D`), and body text (`#4B5563`) without any darkening or obscured content.
+- **Card Size Minimization & Sizing Optimization (`Pricing.jsx`, `Home.jsx`, `Features.jsx`, `Blogs.jsx`, `BlogCard.jsx`, `GoldFrameCard.jsx`)**:
+  - **Pricing Cards**: Compact padding (`p-6 sm:p-7`), centered `max-w-6xl` container layout, and refined popular badge.
+  - **Blog Cards**: Reduced layered rotation to subtle `+/- 3.5deg`, tightened image height (`h-44 sm:h-48`), concise padding, and grouped `max-w-6xl` grid.
+  - **Home & Feature Cards**: Reduced padding to `p-6 sm:p-7`, compact icons, and uniform spacing (`gap-6`).
+- **Diverse, Tailored Card Animation Styles**:
+  - Configured varied animation directions and transitions across pages (stat cards float upward, feature/benchmark grids slide smoothly from left, and layered blog cards render with subtle perspective depth).
+
+## [1.63.00] - 2026-08-12
+
+
+### Fixed & Enhanced (QuerySelector Syntax Fix & Slow Left-to-Right Card Data Reveal)
+- **DOM Selector Syntax Error Resolution (`AnimeScrollReveal.jsx`)**:
+  - Resolved `Uncaught SyntaxError: Failed to execute 'querySelectorAll' on 'Element': '> *' is not a valid selector` by introducing safe `getTargetElements(el, childSelector)` resolving children via `Array.from(el.children)` gracefully.
+- **Slow Left-to-Right Card & Content Reveal Cascade (`AnimeScrollReveal.jsx`, `animeUtils.js`)**:
+  - Configured `AnimeStaggerGroup` and `staggerRevealLeft` with slow, cinematic easing, increased duration (`900ms`), and staggered delay (`130ms` per card), allowing cards and their inner details to slide in slowly from left to right on scroll.
+
+## [1.62.00] - 2026-08-12
+
+
+### Added & Enhanced (Top-Right Dark Fill Card Hover, Scroll Re-Triggering, Login Left Panel Staggered Reveals, Sidebar Dropdown Transitions, Button Enhancements & Edge Vehicle Removal)
+- **Top-Right Corner Dark Fill Card Hover Animation (`index.css`)**:
+  - Implemented a smooth diagonal dark navy fill (`#0B1B3D` to `#0F2345` with `#152E5C` depth) that expands from the top-right corner on hover across cards (`.card-hover-pro`, `.anime-card-lift`, `.card-highlight-hover`).
+  - Seamlessly transforms all inner headings (`h1`-`h5`) to pure white (`#FFFFFF`), body text to `#E2E8F0`, pill badges to frosted translucent white, and icon containers to glowing brand orange (`#FF8A3D`) on hover, matching the clinical departments reference UI design.
+- **Continuous Scroll Re-Triggering for Entrance Animations (`AnimeScrollReveal.jsx`, `useAnimeReveal.js`, `WordRevealParagraph.jsx`)**:
+  - Re-engineered scroll listeners across Anime.js components and GSAP word reveals so that when users scroll past elements and scroll back down/up, animations smoothly reset out of view and re-animate freshly upon re-entering the viewport.
+- **Login / Auth Page Left Side Staggered Text & Metric Reveals (`AuthLayout.jsx`)**:
+  - Added smooth Framer Motion staggered entrance animations for the left-side hero text over the background image (Logo header, System Title, description paragraph, 4 feature rows, Learn More button, and metric cards).
+- **Sidebar Dropdown Smooth Collapsible Motion (`AppLayout.jsx`)**:
+  - Upgraded manager and admin dashboard sidebars with `framer-motion` `AnimatePresence` for smooth height expansion and opacity transition when expanding or collapsing navigation groups (Overview, Logistics, Fleet Services, Analytics & Reports, System).
+- **Enlarged Hero CTA Buttons with Liquid Water & Arrow Animations (`Blogs.jsx`)**:
+  - Upgraded Blogs page CTA buttons ("Browse Articles" with `.btn-water-fill` and "Contact Our Team" with `.btn-learn-more`) with enlarged `px-8 py-3.5 sm:px-9 sm:py-4`, `rounded-2xl`, and `font-black`.
+- **Edge Moving Vehicle Removal (`EdgeVehicleAnimation.jsx`, `App.jsx`)**:
+  - Removed small perimeter-traveling vehicle animation across all pages per user request.
+
+## [1.61.00] - 2026-08-12
+
+
+### Added & Enhanced (Card Smooth Color Fill, Edge Vehicle Continuous Travel, Container Width Expansion, Liquid Water Fill Button, GSAP Word Reveal & Footer Animations)
+- **Smooth Card Color Fill on Hover (`index.css`)**:
+  - Cards now smoothly fill with rich brand gradient/tint on hover (`linear-gradient(135deg, #FFF8F4 0%, #FFEFE6 100%)` for light cards and `linear-gradient(135deg, rgba(30,41,59,0.95) 0%, rgba(161,64,0,0.35) 100%)` for dark cards).
+  - All text content and icons inside cards remain high-contrast, crystal clear, and sharp.
+- **Continuous 4-Edge Vehicle Road Animation (`EdgeVehicleAnimation.jsx`)**:
+  - Upgraded edge vehicle pathing with precise 4-edge coordinate sequences: Top Edge (L->R) -> Right Edge (T->B) -> Bottom Edge (R->L) -> Left Edge (B->T) with smooth corner rotations (0° -> 90° -> 180° -> 270° -> 360°), preventing corner stalling.
+- **Public Pages Container Width Expansion & Margin Optimization**:
+  - Expanded container layouts across all public pages (`Home`, `About`, `Features`, `Performance`, `Security`, `Pricing`, `Blogs`, `Contact`) to `max-w-[1550px]` with balanced ~25px side spacing (`px-4 sm:px-6 md:px-10`), allowing body content to utilize the wide display canvas without empty side gaps.
+- **Water Level Liquid Fill Animation for Login Button & Enlarged CTAs (`index.css`, `Home.jsx`, `LandingHeader.jsx`)**:
+  - Added `.btn-water-fill` liquid wave level rising animation on hover (water color rises smoothly from bottom to top with circular wave rotation).
+  - Enlarged Hero Login and Learn More buttons (`px-8 py-3.5 sm:px-9 sm:py-4`, `text-sm sm:text-base font-black`, `rounded-2xl`) with animated `.btn-learn-more` arrow hover micro-motion.
+- **GSAP Word-by-Word Reveal Paragraph Component (`WordRevealParagraph.jsx`, `About.jsx`, `Performance.jsx`, `Features.jsx`)**:
+  - Created `WordRevealParagraph` component splitting paragraph text into words with `gsap.fromTo(words, { opacity: 0, y: 15 }, { opacity: 1, y: 0, stagger: 0.04, duration: 0.5, ease: "power2.out" })` and ScrollTrigger integration, matching `font-size: 1.25rem; line-height: 1.8;`.
+- **Footer Scroll Reveal Animation (`LandingFooter.jsx`)**:
+  - Integrated `AnimeStaggerGroup` and `AnimeScrollReveal` on footer columns and legal links for smooth scroll-in entrance.
+
+## [1.60.00] - 2026-08-12
+
+
+### Added & Enhanced (Card Hover Color Highlights, Smart Animations, Left-to-Right Scroll Reveals, Watermark Removal & Timeline Dot Highlights)
+- **Universal Card Hover Color Highlights & Smart Micro-Interactions (`index.css`, `GoldFrameCard.jsx`)**:
+  - Implemented responsive hover state color matching aligned with the platform design system (`#0D1B2A` / `#A14000`).
+  - Added brand orange border highlight (`rgba(161, 64, 0, 0.45)`), dynamic glowing box shadow (`0 16px 36px -8px rgba(161, 64, 0, 0.15)`), smooth card lift (`translateY(-6px) scale(1.01)`), and icon rotation & pulse (`scale(1.14) rotate(4deg)`).
+  - Configured dark section cards (`.bg-slate-800/25`) with deep amber glow and border highlight.
+  - Enhanced `GoldFrameCard` front card container to highlight with brand secondary border on hover.
+- **Left-to-Right Scroll Reveal for Text, Points & History Cards (`animeUtils.js`, `AnimeScrollReveal.jsx`, `About.jsx`, `Performance.jsx`)**:
+  - Implemented `staggerRevealLeft` in `animeUtils.js` (`translateX: [-32, 0]`, `opacity: 0 -> 1`) with staggered timing.
+  - Configured `AnimeScrollReveal` and `AnimeStaggerGroup` with default `direction="left"` for smooth left-to-right sliding entrance animations on paragraphs, points lists, attribute grids, and history milestones as the user scrolls.
+- **About Page Watermark & Duplicate Text Removal (`ParallaxDepthSection.jsx`, `About.jsx`)**:
+  - Completely removed the faint background watermark text (`OUR STORY`, `MISSION`, `TIMELINE`) from `ParallaxDepthSection.jsx`.
+  - Resolved duplicate subtitle text in the Mission section (`missionTitle` vs duplicate subtitle string).
+- **Interactive Timeline Dots & Milestone Card Hover Highlights (`About.jsx`, `index.css`)**:
+  - Enhanced Journey Timeline nodes with interactive `.timeline-dot` and `.timeline-item-group`.
+  - On dot or milestone card hover, the timeline dot smoothly scales up (`scale-150` to `scale-160`), glows with a pulsating brand ring (`ring-4 ring-[#A14000]/30 shadow-[0_0_18px_rgba(161,64,0,0.7)] bg-[#A14000]`), and the milestone card box elevates with brand color border highlight.
+
+## [1.59.00] - 2026-08-12
+
+
+### Added & Enhanced (Anime.js Animation System & Public Pages Integration)
+- **Centralized Anime.js Engine & Utilities (`animeConfig.js`, `animeUtils.js`, `useAnimeReveal.js`, `AnimeScrollReveal.jsx`)**:
+  - Implemented a reusable, enterprise-grade Anime.js animation system across all 8 public pages (`Home`, `About`, `Features`, `Performance`, `Security`, `Pricing`, `Blogs`, `Contact`).
+  - Added centralized configuration controlling easing (`cubicBezier(0.25, 1, 0.5, 1)`), slow & smooth durations, subtle distances, scale factors, and built-in `prefers-reduced-motion` accessibility checks.
+  - Created helper utilities (`fadeUp`, `fadeIn`, `revealFromLeft`, `revealFromRight`, `staggerReveal`, `animateCounter`, `heroSequence`, `heroBackgroundAnimation`, `pageEnterAnimation`).
+- **Page Load Sequential Animation**:
+  - Sequential reveal on page load: Hero background image (subtle fade & scale) -> Eyebrow badge -> Main heading -> Description -> CTA buttons -> Feature cards.
+- **Continuous Truck Traveling Parallax Loop (`Home.jsx`, `Features.jsx`, `Performance.jsx`)**:
+  - Replaced CSS CSS keyframe animations with continuous slow Anime.js parallax traveling and subtle scale loops for hero truck background images.
+- **IntersectionObserver Scroll Reveal & Number Counter**:
+  - Configured `useAnimeReveal` hook and `AnimeScrollReveal` component using `IntersectionObserver` to trigger scroll reveals and number counters (`0 -> endValue`) ONCE when entering the viewport, eliminating continuous scroll re-triggers.
+- **Route Entrance Transitions (`App.jsx`)**:
+  - Integrated `AnimePageTransition` in `PublicRoute` for smooth route entrance animation (scale 0.98 -> 1, opacity 0 -> 1, translateY 15px -> 0).
+- **CSS Micro-Interactions (`index.css`)**:
+  - Added subtle card lift (`translateY(-4px)`), soft box-shadow transitions, image zoom wrapper (`scale(1.04)`), and icon micro-animations (`anime-icon-hover`).
+- **Resolved Uncaught ReferenceError: motion is not defined (`Home.jsx`)**:
+  - Replaced remaining `<motion.section>` elements in `Home.jsx` with standard `<section>`, `<AnimeScrollReveal>`, and `<AnimeStaggerGroup>` wrappers.
+
+## [1.58.00] - 2026-08-12
+
+### Added & Enhanced (Gold Overlay Removal, GSAP Animated Number Counters, SlideFromLeft, Spotlight Reveal & Parallax Depth Layers)
+- **Gold Frame Overlay Image Removal (`GoldFrameCard.jsx`)**:
+  - Removed `card-frame.png` gold border image overlay completely across all cards in public pages. Retained clean stacked dual background card frames (`-8deg` left & `+8deg` right rotation + `-16px` lift on hover).
+- **GSAP Animated Number Counters (`CountUpNumber.jsx`, `Home.jsx`, `About.jsx`, `Performance.jsx`)**:
+  - Created `CountUpNumber` using GSAP ScrollTrigger (`val: 0 -> targetVal`, `ease: power2.out`). Applied to all original numerical statistics cards (`2.5M+`, `650+`, `350+`, `120+`, `98%`, `340+`, `1.2M+`, `$180M+`, `99.8%`).
+- **Slide From Left Text Reveal (`SlideFromLeft.jsx`, `Home.jsx`, `About.jsx`)**:
+  - Created `SlideFromLeft` using GSAP (`x: -200 -> 0`, `opacity: 0 -> 1`, `duration: 1.0s`, `ease: power2.out`) for smooth left-side text reveals on headings and body paragraphs.
+- **Spotlight Character Reveal Animation (`SpotlightRevealText.jsx`, `Performance.jsx`)**:
+  - Created `SpotlightRevealText` using GSAP splitting text into characters with `opacity: 0.1 -> 1`, `scale: 0.8 -> 1`, `blur: 4px -> 0px` staggered from the center.
+- **Scroll-Driven Parallax Depth Layers (`ParallaxDepthSection.jsx`, `About.jsx`)**:
+  - Created `ParallaxDepthSection` implementing 3 scroll-driven depth layers (`.back` faint watermark text `y: -80`, `.mid` `y: -40`, `.front` `y: -20` with GSAP ScrollTrigger scrub).
+
+## [1.57.00] - 2026-08-12
+
+### Added & Enhanced (Route Page Shift Transitions, Stacked Card Background Frames & Straight Rectangle Perimeter Vehicle Travel)
+- **Automatic Page Transition Animations on Route Change (`App.jsx`, `ScrollReveal.jsx`)**:
+  - Implemented `key={location.pathname}` inside `PublicRoute` with `AnimatePresence` and `motion.div`. Every page navigation (Home -> Blogs, Contact, About, Features, Security, Pricing, Login) now smoothly triggers page fade and slide-up entrance animations (`duration: 0.5s`, `ease: [0.23, 1, 0.32, 1]`).
+- **Stacked Dual Background Card Frames (`GoldFrameCard.jsx`, `index.css`)**:
+  - Replicated exact stacked background card layers matching input_file_1.png (Image 2). Two stacked card background frames sit behind the main card at rest and smoothly rotate `-8deg` and `8deg` on hover while the main card lifts by `-16px` (`translateY(-16px)`), preserving all original card background colors and gold frame glow overlays.
+- **Straight Line Rectangle Perimeter Vehicle Animation (`EdgeVehicleAnimation.jsx`)**:
+  - Continuous straight rectangular perimeter path travel along the 4 window edges with sharp 90-degree corner turns across all public routes.
+
+## [1.56.00] - 2026-08-12
+
+### Added & Enhanced (Originkit Click Effects, Header 3D Cube Roll Slow Rolling & Bidirectional Scroll Reveal)
+- **Originkit Click Effects Integration (`clickeffects.tsx`, `App.jsx`)**:
+  - Installed Originkit **Click Effects** (`clickeffects.tsx`) via CLI (`ORIGINKIT_API_KEY=cmp_live_FgFitsB4Wkl_vYJCY0bi87bOXlBb4qfv`).
+  - Added global click ring effect overlay in `PublicRoute` across all public pages.
+- **Header 3D Cube Roll Text Animation with Slow Rolling (`LandingHeader.jsx`, `index.css`)**:
+  - Replaced flat header hover styles with a 3D Cube Roll text effect (`.cube-roll-wrap`, `.cube-roll`, `.cube-roll-front`, `.cube-roll-bottom`) providing smooth 90-degree 3D cube rotation with slow rolling timing (`cubic-bezier(0.25, 1, 0.5, 1)`).
+- **Home 3D Carousel White Background & Grid Removal (`Home.jsx`)**:
+  - Removed dark background (`bg-slate-900/90`), border, and text badge pill from the 3D Round Carousel section. Set container background to pure white (`#FFFFFF`).
+  - Removed extra static vehicle images grid underneath, leaving exclusively the interactive 3D Round Carousel.
+- **Bidirectional Scroll Reveal IN & Reveal OUT (`Home.jsx`, `About.jsx`, `Features.jsx`, `Security.jsx`, `Pricing.jsx`, `Performance.jsx`, `Blogs.jsx`)**:
+  - Configured `viewport={{ once: false, amount: 0.15 }}` across sections so cards, text, and images reveal IN when scrolling down and reveal OUT when scrolling back up.
+
+## [1.55.00] - 2026-08-12
+
+### Added & Enhanced (Originkit Multi-Effect Cursor, Scroll Text Highlight & 3D Round Carousel Integration)
+- **Originkit Component Suite Installation & Integration**:
+  - Integrated Originkit **Multi-Effect Cursor** (`multi-effect-cursor.tsx`) with CLI API key authentication (`ORIGINKIT_API_KEY=cmp_live_ZqBSeMIZkNO-x08OdPHq1PMuQhkCvjyw`). Added particle constellation cursor trail overlay across all public pages in `App.jsx` (`PublicRoute`).
+  - Integrated Originkit **Scroll Text Highlight** (`scroll-text-highlight.tsx`) powered by GSAP ScrollTrigger to illuminate headline text as users scroll across `Home.jsx`, `About.jsx`, `Features.jsx`, `Performance.jsx`, `Security.jsx`, `Pricing.jsx`, and `Blogs.jsx`.
+  - Integrated Originkit **3D Round Carousel** (`roundcarousel.tsx`) for interactive 360-degree 3D vehicle image showcases on `Home.jsx` ("Our Fleet Ecosystem" vehicle showcase and cards).
+
+## [1.54.00] - 2026-08-12
+
+### Added & Enhanced (Header Vertical 3D Rotation Hover, Vehicle Slow Move Background, Smooth Navigation & Pro Card Hover Actions)
+- **Header Navigation 3D Vertical Rotation (`LandingHeader.jsx`, `index.css`)**:
+  - Implemented 3D vertical rotation flip on hover for all public header navigation links (`Home`, `About`, `Features`, `Performance`, `Security`, `Pricing`, `Blogs`, `Contact Us`). Applied `.nav-3d-wrap` (perspective 800px) and `.nav-3d-text` (`transform: rotateX(360deg)` with `cubic-bezier(0.34, 1.56, 0.64, 1)`) so text flips round vertically on mouse hover.
+- **Slow Moving Background Vehicle Driving Animation (`Home.jsx`, `Features.jsx`, `Performance.jsx`, `index.css`)**:
+  - Enhanced background highway vehicle graphics with `@keyframes bgVehicleSlowMove` / `animate-vehicle-drive` providing smooth, continuous horizontal driving and scaling parallax movement (`scale(1.04..1.07)`, `x(0..-25px)` over 25s loop).
+  - Applied hover zoom effects (`group-hover:scale-110`) and text slide transitions to fleet ecosystem cards (Heavy Trucks, Delivery Vans, Logistics Fleet, Construction Vehicles, Transport Vehicles).
+- **Smooth Page Navigation (`ScrollToTop.jsx`, `LandingHeader.jsx`)**:
+  - Enhanced page scroll position resetting with `{ top: 0, left: 0, behavior: "smooth" }` across window and main containers during navigation.
+- **Professional Card Hover Actions (`index.css`, `Home.jsx`, `About.jsx`, `Features.jsx`, `Security.jsx`, `Pricing.jsx`, `BlogCard.jsx`)**:
+  - Added `.card-hover-pro` utility providing 3D vertical float (`translateY(-7px)`), ambient shadow expansion, and border highlight glows across all feature cards, stat cards, security cards, pricing cards, and blog cards.
+
+## [1.53.00] - 2026-08-12
+
+### Added & Enhanced (KPI Positive/Negative Case Differentiation & Public Pages Animations)
+- **KPI Card Positive vs Negative Case Differentiation (`KPICard.jsx`, `ManagerDashboard.jsx`)**:
+  - Differentiated positive growth cases (`isTrendUp = true`, `statusType = "positive"`) with green badges (`bg-emerald-50 text-emerald-600` with `ArrowUpRight`) and negative cases / maintenance warnings (`statusType = "negative"`) with rose badges (`bg-rose-50 text-rose-600` with `ArrowDownRight`).
+- **Hero Vehicle Continuous Parallax Travelling Effect (`Home.jsx`, `Features.jsx`, `Performance.jsx`)**:
+  - Created a smooth, continuous background travelling parallax animation (`scale(1.03..1.05)` and `x(0..-14px)` over 22s loop) so the background highway vehicle moves continuously without shifting foreground text or jumping.
+- **Sequential Entrance & Scroll-Triggered Reveals (`Home.jsx`, `About.jsx`, `Features.jsx`, `Security.jsx`, `Pricing.jsx`, `Blogs.jsx`, `Contact.jsx`)**:
+  - Added Framer Motion sequential entrance reveals (badge -> heading -> description -> CTAs -> trusted logos -> cards) and Intersection Observer single-trigger viewport reveals across all public marketing pages.
+  - Resolved JSX matching tag errors across `About.jsx`, `Security.jsx`, and `Home.jsx` (`motion.section` element matching).
+  - Restored missing `useAuth` import in `Home.jsx` fixing the Home page runtime `ReferenceError`.
+- **Smooth Page Route Transitions (`App.jsx`, `LandingHeader.jsx`)**:
+  - Wrapped `PublicRoute` children in an animated page transition wrapper to eliminate harsh white flashes when navigating between public pages, and added backdrop blur to `LandingHeader`.
+
+## [1.52.00] - 2026-08-12
+
+### Changed & Refactored (Uncolored Card Metric Numbers, Capsule Progress Bar Removal & Sidebar Navigation Accordions)
+- **Card Metric Number & Capsule Bar Removal (`KPICard.jsx`, `ManagerDashboard.jsx`, `Analytics.jsx`)**:
+  - Completely removed color detailing and progress capsule bars from all KPI cards across all dashboard pages.
+  - Reverted all metric values to standard clean dark text (`text-slate-900 font-black`) with zero colored numbers/counts or capsule progress detailing for a minimal, clean card design.
+- **Collapsible Sidebar Accordions (`AppLayout.jsx`)**:
+  - Converted sidebar menu category headers (`OVERVIEW`, `LOGISTICS`, `FLEET SERVICES`, `ANALYTICS & REPORTS`, `SYSTEM`) into interactive collapsible accordion sections with `ChevronDown` rotation indicators.
+  - Added route-based auto-expansion to automatically open the category matching the active page URL (`location.pathname`).
+
+## [1.51.00] - 2026-08-12
+
+### Changed & Refactored (Exclusive Light Mode & KPI Card Accent Number Coloring)
+- **Global Light Mode Lock (`ThemeContext.jsx`)**:
+  - Removed Light/Dark mode toggling globally; locked the application to clean Light Mode (`theme = "light"`, `isDark = false`).
+  - Automatically stripped out `dark` root class and removed Sun/Moon theme toggle buttons across `AppLayout.jsx`, `NewAdminTopNav.jsx`, `DriverLayout.jsx`, and `Settings.jsx`.
+- **KPI Card Container & Metric Number Coloring (`KPICard.jsx`)**:
+  - Removed colored background fills from cards, KPIs, and stat boxes across all dashboards. Standardized container backgrounds to clean white cards (`bg-white border border-slate-200/80 shadow-2xs`).
+  - Added vibrant accent colors directly to numbers/counts (`valueColor`: `#00C853` Green for Emerald/Success, `#F59E0B` Amber/Warning, `#EF4444` Red/Danger, `#0085FF` Blue, `#6366F1` Indigo, `#A14000` Brand).
+- **Manager Dashboard & Delivery Analytics Refactoring (`ManagerDashboard.jsx`)**:
+  - Replaced background color card fills in `Delivery Analytics` stat boxes (`Revenue`, `COD Collected`, `Active Riders`) with crisp light cards (`bg-slate-50 border border-slate-200/70`).
+  - Styled metric numbers with bold accent colors (`₹0 / ₹K` in green `#00C853`, `COD` in amber `#F59E0B`, `Active Riders` in red `#EF4444`).
+- **Driver Dashboard Banner & Admin Analytics Refactoring (`Dashboard.jsx` & `Analytics.jsx`)**:
+  - Updated Driver Dashboard top banner to a clean light container (`bg-white border border-slate-200/80 text-slate-800`).
+  - Colorized numeric counts on Admin Analytics KPI widgets (`#6366F1` Organizations, `#0085FF` Fleet Managers, `#F59E0B` Active Trips, `#00C853` Completed Trips).
+
+## [1.50.00] - 2026-08-11
+
+### Fixed (Subscription Warning Banner Contrast & Table Pagination Dark Mode)
+- **Subscription Warning Banner (`ManagerDashboard.jsx`)**:
+  - Applied explicit inline styles (`style={{ color: "#FFFFFF" }}` for title, `style={{ color: "#FDE68A" }}` for subtext, and `style={{ backgroundColor: "#1E293B" }}` for container), guaranteeing 100% text visibility.
+- **Table Pagination Controls (`DriversListPage.jsx`, `VehiclesListPage.jsx`, `TripsListPage.jsx`, `ViewTicketsPage.jsx`)**:
+  - Fixed bottom table pagination containers (`bg-white dark:bg-[#0F172A] border-t border-slate-200 dark:border-[#1E293B]`).
+  - Fixed page number buttons, previous/next buttons, and entries text to render with high-contrast text (`dark:text-white`, `dark:text-slate-200`) and dark background (`dark:bg-slate-800`).
+
+## [1.49.00] - 2026-08-11
+
+### Fixed & Enhanced (Subscription Warning Text Visibility & Sub-card Dark Shade Contrast)
+- **Subscription Warning Banner (`ManagerDashboard.jsx`)**:
+  - Updated `Subscription Warning: Expiring Soon` title and expiry subtext to pure high-contrast white (`dark:!text-white`).
+- **Active Drivers & Recent Activities Sub-cards (`ManagerDashboard.jsx` & `index.css`)**:
+  - Replaced light grey sub-card styling in Dark Mode with deep dark navy canvas (`dark:!bg-[#090D16]`, `dark:!border-[#1E293B]`).
+  - Updated driver names, activity titles, timestamps, and action buttons to pure white (`dark:!text-white`) and light slate (`dark:!text-slate-300`).
+
+## [1.48.00] - 2026-08-11
+
+### Added & Fixed (Driver Notifications Card Style, Manager Revenue/COD Payment Rules, & Subscription Text Visibility)
+- **Driver Sidebar Dark Color (`DriverLayout.jsx`)**:
+  - Removed grey background container class from Driver Sidebar profile card section so it seamlessly renders on deep dark navy/black canvas (`#0F172A`).
+- **Driver Notifications Inbox Card Redesign (`NotificationCard.jsx`)**:
+  - Replaced grey cards with Manager Notifications Center card styling (`bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-[#1E293B] rounded-xl p-4`), icon badge, bold title, message line, and timestamp on far right.
+- **Manager Delivery Analytics Payment Logic (`ManagerDashboard.jsx`)**:
+  - **Prepaid Trips**: Added trip fare/amount to `Revenue` immediately upon trip creation.
+  - **COD Trips**: Added trip fare/amount to `Revenue` and `COD Collected` ONLY AFTER trip status is set to `COMPLETED` / `DELIVERED`.
+- **Subscription Warning Banner Contrast (`ManagerDashboard.jsx`)**:
+  - Fixed unreadable subtext by applying high-contrast bold amber typography (`text-amber-950 dark:!text-amber-200`, `text-amber-800 dark:!text-amber-300`).
+
+## [1.47.00] - 2026-08-11
+
+### Fixed (Driver Sidebar Status Card & Duty Button Dark Mode Contrast)
+- **Driver Sidebar Profile Card (`DriverLayout.jsx`)**:
+  - Replaced lighter grey container shading in Dark Mode with deep dark slate background (`dark:!bg-[#0B0F17]`).
+  - Updated Driver Name (`dark:!text-white`) and email (`dark:!text-slate-300`) to pure high-contrast light colors.
+- **Duty Status Button (`DriverLayout.jsx`)**:
+  - Configured `Status: ON DUTY` button in Dark Mode with dark emerald background (`dark:!bg-emerald-950/80`), bright mint text (`dark:!text-[#6EE7B7]`), and clear border (`dark:!border-emerald-700/60`).
+
+## [1.46.00] - 2026-08-11
+
+### Added & Fixed (Driver Notification Overlay, Manager Real Analytics, Admin KPI Colors, & Profile Avatar Sync)
+- **Driver Sidebar Dark Shade & Notification Overlay (`DriverLayout.jsx` & `NotificationOverlay.jsx`)**:
+  - Removed light grey shading from Driver Sidebar status section in Dark Mode (`dark:bg-slate-900/60`).
+  - Added interactive `NotificationOverlay` popover triggered by the header bell icon with driver role routing to `/driver/notifications`.
+- **Manager Dashboard Delivery Analytics & Real Data (`ManagerDashboard.jsx`)**:
+  - Replaced hardcoded multipliers with real MongoDB trip calculations for Revenue, COD Collected, and Active Riders.
+  - Calculated real weekly dispatch vs completion counts and dynamic Hub Load Distribution percentages based on registered vehicle branches.
+  - Rendered `driver.profileImage` avatar img in Active Drivers list, Driver Profile view, and Drivers Management table.
+- **Admin Distinct KPI Card Colors (`OrganizationList.jsx` & `ContactRequests.jsx`)**:
+  - Replaced uniform blue cards with distinct color variants (`blue`, `green`, `amber`, `rose`) across Admin Organizations and Contact Requests portals.
+- **Header Avatar Sync (`Settings.jsx` & `DriverLayout.jsx`)**:
+  - Dispatched `profileUpdated` custom event when driver updates profile details so header avatar updates instantly without page reload.
+
+## [1.45.00] - 2026-08-11
+
+### Fixed & Enhanced (Driver Settings Crash, Portal Theme Toggle, Precise Samarlakot Coordinates, & Logout Light Mode Lock)
+- **Driver Settings Page Crash (`Settings.jsx`)**:
+  - Declared `profileImage` top-level component state to resolve `ReferenceError: profileImage is not defined`.
+  - Added dedicated **Portal Theme Mode Card** with Sun/Moon toggling and full dark mode styling.
+- **Driver Portal Theme Toggling (`DriverLayout.jsx`)**:
+  - Integrated Sun/Moon **Theme Toggle Button** in Driver header bar using centralized `useTheme()` hook.
+- **Live Fleet Tracking Samarlakot Pin Location (`FleetMapPage.jsx`)**:
+  - Configured precise coordinates for `Samarlakot` (`[17.0500, 82.1667]`) and reduced depot jitter offset to ~200m so vehicle markers remain accurately pinned to the town.
+- **Logout & Public Page Light Mode Enforcement (`AuthContext.jsx` & `LoginPage.jsx`)**:
+  - Implemented `document.documentElement.classList.remove("dark")` on `logout()` execution and `LoginPage` mount so public login forms revert to pure light mode.
+
+## [1.44.00] - 2026-08-11
+
+### Added & Fixed (Live Map Tracking, Driver Portal Redesign, Avatar Upload, & Public Page Theme Isolation)
+- **Live Fleet Tracking Map (`FleetMapPage.jsx`)**:
+  - Implemented automatic fallback fetching (`managerApi.getVehicles()`) and deterministic city coordinates mapping (`DEFAULT_CITY_MAP` for Hyderabad, Visakhapatnam, Vijayawada, Pune, Mumbai, Bengaluru, Delhi, etc.) so all vehicles show interactive Leaflet markers with status tooltips.
+- **Driver Portal Sidebar & Dashboard Redesign (`DriverLayout.jsx` & `Dashboard.jsx`)**:
+  - Redesigned Driver Sidebar to pure white canvas (`bg-white dark:bg-[#0F172A]`) with `#A14000` text & active item highlights matching Manager/Admin sidebars.
+  - Converted Driver Dashboard summary metric cards to use `KPICard` progress capsule bar design system with dark mode slate containers.
+- **Driver Profile Image Upload (`Settings.jsx` & Database Sync)**:
+  - Added profile picture upload avatar picker on Driver Account Settings page.
+  - Image URL updates MongoDB `Driver` collection (`profileImage` field) and automatically syncs to Manager Dashboard active drivers list, Driver Profile view, and Drivers Management table.
+- **Public Page Theme Isolation (`ThemeContext.jsx`)**:
+  - Public routes (`/`, `/login`, `/register`, `/forgot-password`, `/reset-password`) are strictly locked to **Light Mode ONLY**.
+  - Theme preference keys are now isolated by role and user ID (`fleet_theme_${role}_${userId}`).
+
+## [1.43.00] - 2026-08-11
+
+### Fixed (Per-User Dark Mode Scoping, KPICard Zero State, Driver Lock, & Real Data Cleanups)
+- **User-Scoped Dark Mode Preference (`ThemeContext.jsx`)**:
+  - Scoped theme persistence in `localStorage` per user ID key (`fleet_theme_${userId}`). Switching dark mode on one user session no longer affects guest users or separate user logins in other browsers.
+- **KPICard Zero Value Empty Style (`KPICard.jsx`)**:
+  - Updated KPI progress bars so when metric `value` is `0`, capsule bars display un-highlighted empty neutral style (`bg-slate-100 dark:bg-slate-800/60`) instead of vibrant colored bars.
+- **Driver Profile Location Fix (`DriverProfilePage.jsx` & `Driver.js`)**:
+  - Removed hardcoded `default: 'Pune'` fallback from MongoDB Driver model. Driver profile current location now displays exact driver location, city, address, or "Not Specified".
+- **Fuel & Maintenance Feature Lock for Unaccepted Trips (`Fuel.jsx` & `Maintenance.jsx`)**:
+  - Fuel logging and Maintenance ticket reporting are now locked until the driver accepts their assigned trip or has a permanently assigned vehicle.
+- **Real Database Data Fallbacks (`ManagerDashboard.jsx` & `NotificationOverlay.jsx`)**:
+  - Removed fake dummy drivers (`Marcus Bell`, `Elena Ortiz`, etc.) and fake activity logs. Dashboard now fetches and displays real MongoDB data or shows clean empty states when database is empty.
+  - Removed dummy fallback notifications from notification overlay.
+- **Admin Subscriptions Amount & Card Contrast (`SubscriptionRequests.jsx` & `VehicleDetailsPage.jsx`)**:
+  - Fixed Admin Subscriptions plan card price visibility in Dark Mode (`dark:text-white`).
+  - Fixed `Vehicle Summary` gradient background in `VehicleDetailsPage.jsx` to dark slate in dark mode (`dark:from-[#0F172A] dark:to-[#1E293B]`).
+
+## [1.42.00] - 2026-08-11
+
+### Fixed (Dark Mode Inner Sub-Cards Background & Contrast)
+- **Trip Details Page (`TripDetailsPage.jsx`)**:
+  - Converted inner sub-card containers (`FROM ADDRESS`, `TO ADDRESS`, `Assigned Driver`, `Vehicle Details`, `Trip Notes`) from light gray backgrounds to dark slate (`dark:bg-[#1E293B] border-slate-800`).
+  - Updated all labels, contact person info, license numbers, plate badges, and status indicators to crisp pure white (`dark:text-white`).
+- **Global Inner Sub-Container Dark Mode Overrides (`index.css`)**:
+  - Overrode all light background utility classes (`.bg-slate-50`, `.bg-slate-100`, `.bg-slate-200`, `.bg-slate-300`, `.bg-gray-50`, `.bg-gray-100`, `.bg-gray-200`, `.bg-[#FDF3EC]`) in Dark Mode to deep dark slate (`#1E293B`) with dark borders (`#334155`) and pure white text (`#FFFFFF`).
+  - Eliminated white-on-white and light-on-light unreadable card areas across all application screens.
+
+## [1.41.00] - 2026-08-11
+
+### Fixed (Pure White Text & Canvas Backgrounds for All Modules)
+- **Subscription Duration Cards (`SubscriptionPage.jsx`)**:
+  - Updated plan duration pills to vivid high-contrast text (`dark:text-white dark:bg-[#A14000]/40 border border-[#A14000]/30`) making `Duration: 30 Days` completely visible.
+  - Made all plan titles, descriptions, prices, and feature checkmarks pure white (`dark:text-white`) in Dark Mode.
+- **Vehicle Issue Tickets Header & Canvas (`ViewTicketsPage.jsx`)**:
+  - Removed light background rectangles on Tickets page header; set dark background (`dark:bg-[#0D1117]`) and dark surface panel cards (`dark:bg-[#0F172A]`) with pure white headings.
+- **Driver Management & Live Tracking (`DriversManagementPage.jsx` & `FleetMapPage.jsx`)**:
+  - Replaced light canvas background with dark charcoal canvas (`dark:bg-[#0D1117]`); updated right detail card info, status text, and table headers to pure white (`dark:text-white`).
+- **Global Pure White Text Rule (`index.css`)**:
+  - Added global CSS overrides enforcing pure white text (`color: #FFFFFF !important`) across all headings, labels, subheadings, and body text elements in Dark Mode.
+
+## [1.40.00] - 2026-08-11
+
+### Fixed (Global Dark Mode Canvas Enforcer across All Pages)
+- **Main Canvas & Outlet Backgrounds (`AppLayout.jsx` & `index.css`)**:
+  - Enforced deep dark canvas (`#0D1117`) across `<main>`, `.bg-[#FAFBFC]`, and page content wrappers in Dark Mode.
+  - Eliminated remaining white canvas areas behind page content, headings, and cards across all role views (Admin, Manager, Driver).
+
+## [1.39.00] - 2026-08-11
+
+### Added & Enhanced (Dark Canvas Enforcer, Header Notification Overlay & Driver Item Cleanup)
+- **Dark Mode Canvas & Card Styling (`index.css`, `KPICard.jsx`, `ManagerDashboard.jsx`)**:
+  - Enforced deep dark canvas (`#0D1117`) across root, body, and page container layouts when dark mode is enabled.
+  - Updated card containers to deep dark slate (`#0F172A`) with subtle dark borders (`#1E293B`) and high-contrast light typography (`text-white`, `text-slate-200`).
+  - Dark-themed top status boxes inside `Delivery Analytics` (`#06291C`, `#2F1F07`, `#2C0D15`) with vivid green/amber/rose text.
+- **Header Notification Dropdown Overlay (`NotificationOverlay.jsx` & `AppLayout.jsx`)**:
+  - Bound Bell notification icon to open `NotificationOverlay` showing the top 5 most recent notifications with tab filters (`All`, `Unread`, `Alerts`, `System`) and a `"View All Notifications"` button.
+- **Driver Card Cleanup (`ManagerDashboard.jsx`)**:
+  - Removed MapPin location button from driver list cards as requested, retaining the Phone Call button.
+- **Recharts Chart Hover Contrast (`ManagerDashboard.jsx`)**:
+  - Fixed chart hover tooltip contrast (`color: '#0F172A'`, `fontWeight: 'bold'`) and updated `completed` bar fill to `#0085FF`.
+
+## [1.38.00] - 2026-08-11
+
+### Added & Enhanced (Dark Canvas Enforcer, Header Notification Overlay & Driver Item Cleanup)
+- **Dark Mode Canvas & Card Styling (`index.css`, `KPICard.jsx`, `ManagerDashboard.jsx`)**:
+  - Enforced deep dark canvas (`#0D1117`) across root, body, and page container layouts when dark mode is enabled.
+  - Updated card containers to deep dark slate (`#0F172A`) with subtle dark borders (`#1E293B`) and high-contrast light typography (`text-white`, `text-slate-200`).
+  - Dark-themed top status boxes inside `Delivery Analytics` (`#06291C`, `#2F1F07`, `#2C0D15`) with vivid green/amber/rose text.
+- **Header Notification Dropdown Overlay (`NotificationOverlay.jsx` & `AppLayout.jsx`)**:
+  - Bound Bell notification icon to open `NotificationOverlay` showing the top 5 most recent notifications with tab filters (`All`, `Unread`, `Alerts`, `System`) and a `"View All Notifications"` button.
+- **Driver Card Cleanup (`ManagerDashboard.jsx`)**:
+  - Removed MapPin location button from driver list cards as requested, retaining the Phone Call button.
+- **Recharts Chart Hover Contrast (`ManagerDashboard.jsx`)**:
+  - Fixed chart hover tooltip contrast (`color: '#0F172A'`, `fontWeight: 'bold'`) and updated `completed` bar fill to `#0085FF`.
+
+## [1.37.00] - 2026-08-11
+
+### Fixed
+- **AppLayout Theme Icon Imports (`AppLayout.jsx`)**:
+  - Added missing `Sun` and `Moon` icon imports from `lucide-react` to resolve `Uncaught ReferenceError: Moon is not defined` runtime exception on `/manager` dashboard.
+
+## [1.36.00] - 2026-08-11
+
+### Added & Enhanced (Light/Dark Theme System, Driver Call Modal & Admin Sidebar)
+- **Centralized Light / Dark Mode Theme System (`ThemeContext.jsx`)**:
+  - Implemented persistent theme provider using CSS variables (`--background`, `--surface`, `--text-primary`, `--border`, `--primary` `#A14000`) with instant DOM toggle and `localStorage` persistence.
+  - Added Sun/Moon theme toggle button to main headers (`AppLayout.jsx` and `NewAdminTopNav.jsx`).
+- **Clean White Sidebar for All Dashboards (`NewAdminSidebar.jsx` & `AppLayout.jsx`)**:
+  - Standardized Admin and Manager sidebars to clean white (`bg-white dark:bg-[#151C28]`), matching body canvas with `#A14000` active selection indicators.
+- **Admin Dashboard KPI Card Color Variants (`Dashboard.jsx`)**:
+  - Applied distinct semantic color themes across Admin KPI cards (`Active Orgs`: Green `#00C853`, `Fleet Managers`: Blue `#0085FF`, `Revenue`: Brand `#A14000`, `Platform Health`: Indigo `#6366F1`).
+- **Active Driver Call Confirmation Modal (`ManagerDashboard.jsx`)**:
+  - Replaced immediate page navigation with an interactive driver call confirmation popup showing driver name, vehicle zone, phone number, and "Call Now" phone dialer trigger.
+- **Header Refinement**: Removed global header search bar in `AppLayout.jsx`.
+
+## [1.35.00] - 2026-08-11
+
+### Added & Enhanced (Exact Progress Capsule Bar System across All KPI Modules)
+- **Exact Progress Capsule Bar Component (`KPICard.jsx`)**:
+  - Implemented vertical rounded pill progress capsules (`h-6 sm:h-6.5 rounded-full flex-1 gap-1`) matching user reference image.
+  - Applied across all application KPI cards in **Dashboard**, **Vehicle Management**, **Trips Management**, **Drivers Management**, **Fuel Management**, **Maintenance**, and **Analytics** views.
+  - Supported distinct semantic color themes (`blue` `#0085FF`, `green` `#00C853`, `amber` `#F59E0B`, `rose` `#EF4444`, `indigo` `#6366F1`, `brand` `#A14000`).
+
+## [1.34.00] - 2026-08-11
+
+### Added & Enhanced (Parcelix Image 1 Dashboard & Image 2 Service/Payment Redesign)
+- **Parcelix Image 1 3-Column Dashboard Layout (`ManagerDashboard.jsx`)**:
+  - Implemented 4 core KPI cards with lower height (`h-3`), sleek horizontal progress capsules matching Image 3 color schemes (`#0085FF` blue, `#00C853` green, `#F59E0B` amber, `#EF4444` rose).
+  - Left Column: Active Drivers list (`Active Drivers / On Shift`) with direct Phone Call and Map Pin action triggers.
+  - Center Column: Delivery Analytics bar chart with tinted status boxes (`Revenue`, `COD Collected`, `Active Riders`) and bottom Hub Load Distribution progress bar.
+  - Right Column: `Delivery & Trip Success Rate` semi-circle donut chart (`92% On-Time Dispatches`) and Recent Activities feed.
+- **Service & Payment Configuration in Create Trip (`CreateTripPage.jsx`)**:
+  - Added dedicated **Service & Payment** card matching Image 2, featuring `Service Type` dropdown (`Standard`, `Express`, `Same Day`, `Heavy Cargo`), `Payment Method` dropdown (`Prepaid`, `COD`, `Bill to Account`), `COD Amount` input field, and itemized estimated payment summary.
+  - Integrated `serviceType`, `paymentMethod`, `codAmount` into trip creation payload (`managerApi.createTrip`).
+
+## [1.33.00] - 2026-08-11
+
+### Added & Enhanced (Parcelix Image 3 KPI Card & White Sidebar Redesign)
+- **Parcelix-Style Full-Width Capsule KPI Cards (`KPICard.jsx`)**:
+  - Upgraded KPI widgets matching reference Image 3 with inline icon and title header, vertical options menu, large metric number with trend badge pill right next to the value, and full-width 18-capsule vertical progress bar visualizers (`bg-blue-500`, `bg-emerald-500`, `bg-amber-500`, `bg-rose-500`, `bg-[#A14000]`).
+  - Completely eliminated title truncation and number overflow.
+- **Clean White Sidebar with `#A14000` Accent Highlights**:
+  - Converted sidebar background from dark navy to clean white (`bg-white dark:bg-[#151C28] border-r border-slate-200/80 dark:border-[#242E42]`), matching the page canvas.
+  - Replaced bright orange highlights with `#A14000` active selection indicator pills (`bg-[#A14000]/10 text-[#A14000] border-l-4 border-[#A14000]`).
+- **Preserved Backend & API Integrity**:
+  - Maintained 100% of existing backend APIs, socket events, database queries, and role authorization logic without any breaking changes.
+
+## [1.32.00] - 2026-08-11
+
+### Added & Enhanced (UI/UX SaaS Redesign)
+- **Enterprise SaaS Design System & Parcelix Aesthetics**:
+  - Implemented crisp white card containers (`bg-white dark:bg-[#151C28] rounded-2xl border border-slate-100 dark:border-[#242E42] shadow-2xs`).
+  - Redesigned metric cards with soft tinted icon containers (`bg-blue-50 text-blue-600`, `bg-emerald-50 text-emerald-600`, `bg-amber-50 text-amber-600`, `bg-rose-50 text-rose-600`), percentage trend badges, and mini vertical bar visualizers.
+  - Added reusable `StatusBadge` component for semantic color-coded pill status badges (`Delivered`, `In Transit`, `Available`, `Under Maintenance`, `Critical`).
+  - Added reusable `PillTabs` component for segmented dataset filtering across Trips, Vehicles, and Maintenance views.
+- **Fleet Navy & Fleet Orange Branding**:
+  - Updated global layout sidebar to Fleet Navy (`#0D1B2A`) with Fleet Orange (`#FF6A00`) active menu indicators and organized menu section headers (`OVERVIEW`, `LOGISTICS`, `FLEET SERVICES`, `ANALYTICS & REPORTS`, `SYSTEM`).
+  - Updated top header shell with global quick search input, pulsing notification badge, and role indicator pills.
+- **Preserved Backend & API Integrity**:
+  - Maintained 100% of existing backend APIs, socket events, database queries, and role authorization logic without any breaking changes.
+
+### Fixed & Enhanced
+- **Default Driver Status Initialization (OFFLINE / OFF DUTY)**:
+  - Updated driver model defaults in backend MongoDB schema (`Driver.js`), setting `driverStatus: 'OFFLINE'`, `isDuty: false`, and `isOnline: false` as the default state for newly registered drivers and new logins.
+  - Updated driver creation logic in manager and driver controllers (`manager.controller.js`, `driver.controller.js`, `driverApi.controller.js`) to default `driverStatus` to `'OFFLINE'` with `isDuty: false` and `isOnline: false`.
+- **Maintenance Ticket Bills & Issue Photos Gallery Viewer**:
+  - Upgraded `IssueCard.jsx` on `/driver/maintenance` to collect all uploaded media files (`serviceBillUrl`, `photoUrl`, `attachments`, repair timeline logs).
+  - Replaced single external photo link with an interactive **"Uploaded Bills & Photos" Modal** and fullscreen Lightbox zoom viewer, rendering both initial issue complaint photos and final repair workshop bills/PDF receipts side-by-side with color-coded type badges.
+
+## [1.31.58] - 2026-08-10
+
+### Fixed & Enhanced
+- **Automatic GPS Location Capture for Driver Fuel Logging**:
+  - Removed manual text input for purchase location from `Fuel.jsx` modal and implemented automatic location capture derived from live GPS telematics / active trip coordinates.
+- **Fixed Driver Fuel Card Data Mapping & Real-Time Approval Badges**:
+  - Fixed property extraction in `FuelCard.jsx` (`record.approvalStatus || record.billStatus`) so the status badge immediately switches to **Approved** or **Rejected** when the manager acts on a fuel bill.
+  - Corrected field accessors (`fuelStation`, `vehicleId`, `amount`, `liters`, `odometer`) to eliminate dummy default text ("Fuel Station", "Assigned Truck", "₹0", "N/A") and display real driver refuel data.
+- **Enhanced Manager Fuel View with Itemized Driver Data & Receipt Modal**:
+  - Upgraded View Details modal in `FuelManagementPage.jsx` to render complete driver refuel metrics (Driver Name, Vehicle Plate, Station Name, GPS Location, Liters, Amount, Odometer Reading, Notes, and Receipt Image/PDF).
+- **Fixed Manager Maintenance Modal Continuous Persistence Bug**:
+  - Refactored `ViewTicketsPage.jsx` modal close handler `handleCloseModal` to clear URL search query parameters (`ticketId`, `id`) via `setSearchParams({}, { replace: true })`.
+  - Added `handledTicketIdRef` to prevent background 5-second `setInterval` polling from repeatedly re-opening ticket details modal for previously handled URL ticket IDs.
+- **Resilient OSRM Driving Route Calculations with Multi-Server Fallbacks**:
+  - Added secondary OpenStreetMap router endpoint (`https://routing.openstreetmap.de/routed-car/route/v1/driving/`) with AbortController 4-second timeout and Haversine distance fallback across `routingService.js`, `MapView.jsx`, and backend `geocodingHelper.js` to prevent uncaught HTTP/2 protocol errors from crashing map route rendering.
+
+## [1.31.57] - 2026-08-10
+
+### Fixed & Enhanced
+- **Enabled Fuel & Maintenance Logging on Active Trip OR Assigned Vehicle**:
+  - Updated access checks in `Fuel.jsx` and `Maintenance.jsx` (and mobile screens `add_fuel_entry_screen.dart`, `raise_ticket_screen.dart`) so drivers can log fuel refill entries and submit maintenance issue tickets when they have an assigned vehicle OR an active trip.
+- **Strict Trip-Level POD & Weighbridge Document Filtering**:
+  - Refactored `getCurrentTrip`, `getDriverTrips`, `getDriverTripById`, and `listVehicleComplaints` in `driverApi.controller.js` and `manager.controller.js` to strictly query `ProofOfDelivery` and `WeighbridgeSlip` by specific trip IDs (`trip`, `tripId`), removing driver-only fallback matching that leaked old or dummy documents across trips.
+- **Customer Location Reach Requirement for Document Upload & Viewing**:
+  - Updated `TripDetails.jsx` so POD & Weighbridge document upload forms remain locked until the driver arrives at the customer location (`customerLocationReached`).
+  - Restricted "View POD" and "View Weighbridge" buttons and "Uploaded ✓" badges to render **only** after customer location is reached **and** the driver uploads an actual document file for the trip.
+  - Unlocked "View Invoice" and "View Toll Receipt" bill buttons once customer location is reached and documents are uploaded or when trip is completed.
+- **Removed Fuel Level Indicators & Resolved Flutter Analysis Issues**:
+  - Completely removed fuel level percentage cards and fuel tank level displays across `Vehicles.jsx` and mobile `vehicle_status_screen.dart`.
+  - Fixed `_showSubmitFeedback` method signature structure in `add_fuel_entry_screen.dart` and removed unused `fuelCapacity` variable in `vehicle_status_screen.dart`, resolving all IDE analysis errors.
+
+## [1.31.56] - 2026-08-10
+
+### Fixed & Enhanced
+- **Fixed `ReferenceError: weighbridgeUrl is not defined` in `getCurrentTrip`**:
+  - Fixed property shorthand in `getCurrentTrip` response object (`driverApi.controller.js`), mapping `weighbridgeUrl: wbUrl` to resolve backend 500 runtime error when fetching current active trip details.
+- **Registered `/vehicle-complaints` Routes in Manager Portal**:
+  - Registered `GET`, `POST`, `PUT`, `PATCH /api/manager/vehicle-complaints` routes in `manager.routes.js`, connecting them to `listVehicleComplaints`, `createVehicleComplaint`, and `updateVehicleComplaint` controller handlers to eliminate 404 errors on `ViewTicketsPage.jsx`.
+
+## [1.31.55] - 2026-08-10
+
+### Fixed & Enhanced
+- **Fixed 500 Internal Server Error in `/api/driver/trips/current`**:
+  - Resolved `CastError` in `getCurrentTrip` and `getDriverTrips` by passing `currentTrip.driver?._id || driverId` instead of the populated driver document object into `ProofOfDelivery` & `WeighbridgeSlip` queries.
+- **Fixed Driver Duty Status Toggle Button (ON DUTY vs OFF DUTY)**:
+  - Added `'isDuty'` and `'isOnDuty'` to `allowedFields` in `updateDriverProfile` (`driverApi.controller.js`), mapping status toggles to `isDuty: true/false`, `isOnline: true/false`, and `driverStatus: 'AVAILABLE' / 'OFFLINE'`.
+  - Updated `handleToggleDuty` in `DriverLayout.jsx` and `handleToggleAvailability` in `UserProfileCard.jsx` to pass `isDuty`, `isOnline`, and `driverStatus` payload, ensuring the button label, badge color, and backend state switch to OFF DUTY immediately when toggled off.
+
+## [1.31.54] - 2026-08-10
+
+### Fixed & Enhanced
+- **Added `getTripById` API Endpoint to `driverApi.js`**:
+  - Registered `getTripById: async (tripId) => axiosClient.get('/driver/trips/${tripId}')` in `driverApi.js` to resolve `TypeError: driverApi.getTripById is not a function`.
+- **Fixed Backend 500 Internal Server Error in `getDriverTripById`**:
+  - Replaced un-guarded `invoice.invoiceNumber` on line 2821 of `driverApi.controller.js` with optional chaining `invoice?.invoiceNumber || 'N/A'`, fixing 500 internal server error when retrieving trip details without an invoice generated.
+  - Simplified `$or` query array for `ProofOfDelivery` and `WeighbridgeSlip` in `getCurrentTrip` to prevent type casting crashes.
+
+## [1.31.53] - 2026-08-10
+
+### Fixed & Enhanced
+- **Removed App Preferences Card from Driver Settings**:
+  - Removed the "App Preferences" card (Language dropdown and Theme Mode buttons) from `Settings.jsx` per user instructions.
+- **Strict Database POD & Weighbridge Document Retrieval**:
+  - Refactored `getDriverTripById`, `getCurrentTrip`, and `getDriverTrips` in `driverApi.controller.js` to query MongoDB `ProofOfDelivery` and `WeighbridgeSlip` collections using comprehensive `$or` filters (`trip._id`, ObjectId conversion, string trip ID, trip number, driver ID).
+  - Ensured `podUrl`, `weighbridgeUrl`, `proofOfDelivery`, and `weighbridgeSlip` objects are populated across all driver trip API endpoints.
+  - Updated `fetchTripDetails` and document upload handlers in `TripDetails.jsx` to fetch full trip details via `driverApi.getTripById(id)` and update local document state instantly upon uploading.
+
+## [1.31.52] - 2026-08-10
+
+### Fixed & Enhanced
+- **Fixed Frontend Pages Rendering & Default Export Fix**:
+  - Resolved `MISSING_EXPORT` build failure in `managerApi.js` by exporting `managerApi` as default (`export default managerApi`), restoring clean Vite frontend compilation across all manager and driver pages.
+- **Redesigned Driver Vehicle Overview Page (4-Card Actions & Details Grid)**:
+  - Redesigned `Vehicles.jsx` to match the 4-card layout structure: **Vehicle Details**, **Vehicle Status**, **Maintenance Alerts**, and **Vehicle Documents**.
+- **Vehicle Compliance Documents Section**:
+  - Integrated a dedicated "Vehicle Documents" card (`📁`) and compliance panel into `Vehicles.jsx`, allowing drivers to view all vehicle compliance documents (RC, Insurance Policy, Pollution Certificate PUC, Fitness Certificate, National Goods Permit) associated with their assigned vehicle or active trip.
+  - Enhanced backend `getAssignedVehicle` in `driverApi.controller.js` to automatically assemble and populate `complianceDocuments` from MongoDB records.
+
+## [1.31.51] - 2026-08-10
+
+### Fixed & Enhanced
+- **Fixed Top Header Bar in Driver Layout**:
+  - Restructured `DriverLayout.jsx` container overflow properties so the top header bar (`Welcome back, <driver>`) remains 100% fixed at the top of the workspace (`z-30 shadow-sm`) without scrolling with the page body.
+- **Dynamic Real-Time Notification Count Badge**:
+  - Wired `notificationsUpdated` custom window event listener in `DriverLayout.jsx` and dispatched events in `Notifications.jsx` (`handleMarkRead`, `handleMarkAllRead`). The unread count badge in the top header bell icon and sidebar navigation decreases in real time when notifications are marked read.
+- **Always-Visible View POD & View Weighbridge Buttons**:
+  - Updated `TripDetails.jsx` so "View POD" and "View Weighbridge" buttons are always rendered whenever documents are uploaded or approved, opening the actual uploaded file link from MongoDB.
+- **Manager-Configurable Support Helpline Contacts**:
+  - Created "Driver Support Helpline Configuration" section in Manager Portal Settings (`SettingsPage.jsx`), connected to backend routes `GET/PUT /api/manager/support-settings` and `User` model updates. Drivers accessing `/driver/support` dynamically retrieve and display the exact contact numbers, WhatsApp channels, and emails saved by their assigned Fleet Manager.
+- **Dark Mode High-Contrast Overhaul**:
+  - Updated card containers (`dark:bg-[#151C28]`), titles (`dark:text-white`), and message text (`dark:text-slate-200`) across Notifications, Support, and Trip Details so all content and buttons maintain crisp readability with light text on dark backgrounds in Dark Mode.
+
+## [1.31.50] - 2026-08-10
+
+### Fixed & Enhanced
+- **Strict Real Driver Document Resolution**:
+  - Removed dummy unsplash image fallbacks from `getDriverTripById` (`driverApi.controller.js`) and `TripDetails.jsx`.
+  - Updated document retrieval logic to strictly query MongoDB for real driver-uploaded Proof of Delivery (POD) and Weighbridge slip files associated with the trip ID; displays informative toast if no file has been uploaded yet.
+- **Dark Mode 100% Text & Contrast Visibility**:
+  - Added `dark:text-white` and `dark:text-slate-300` styling to header driver profile name and role label in `UserProfileCard.jsx`.
+  - Enhanced `NotificationCard.jsx` with high-contrast text and dark card background styling (`dark:bg-[#1E293B]`, `dark:text-white`, `dark:text-slate-200`).
+  - Added global dark mode rules in `index.css` for custom color tokens (`text-[#1B2430]`, `text-[#6B7280]`, badge highlights), ensuring 100% visibility for notifications, cards, headings, and profile headers.
+- **Instant Optimistic Status Toggle Response**:
+  - Refactored `handleToggleCustomerLocation` in `TripDetails.jsx` to perform an instant optimistic UI state update (0ms delay), providing immediate visual feedback upon clicking the customer arrival status toggle switch.
+
+## [1.31.49] - 2026-08-10
+
+### Fixed & Enhanced
+- **Driver Profile Dropdown Item Simplification**:
+  - Configured `UserProfileCard` props (`showSettings={false}`, `showSupport={false}`, `showStatusToggle={false}`) in `DriverLayout.jsx` to remove Settings, Help & Support, and Availability Status toggle switch from the profile dropdown menu, leaving only **My Profile** and **Logout**.
+- **Header Duty / Availability Badge Removal**:
+  - Removed top desktop header status button (`• ON DUTY` / `OFF DUTY`) from `DriverLayout.jsx` per user specification.
+- **Portal-wide Theme Mode (Light / Dark Mode) Fix**:
+  - Implemented dynamic class syncing (`document.documentElement.classList.toggle("dark")`) and persistent `localStorage.driver_theme` storage in `Settings.jsx` and `DriverLayout.jsx`.
+  - Added global dark mode CSS overrides in `index.css` (`html.dark`) to seamlessly toggle colors across backgrounds (`#0B0F17`), cards (`#151C28`), inputs, and headers when switching between Light Mode and Dark Mode.
+- **Minimised Notification Card Height**:
+  - Redesigned `NotificationCard.jsx` with compact padding (`px-3.5 py-2.5`), smaller icons (`p-1.5`), and tight vertical spacing (`space-y-2` container in `Notifications.jsx`), reducing notification card height by over 50%.
+
+## [1.31.48] - 2026-08-10
+
+### Fixed
+- **Driver Layout Header Profile & Manager-style User Profile Dropdown**:
+  - Replaced legacy text profile button in `DriverLayout.jsx` with reusable `UserProfileCard` component, making header profile dropdown identical to Manager Portal header.
+  - Resolved fallback issue where driver name rendered as static `"Driver"` across top-left header bar, mobile sidebar, and dashboard banner; driver profile `fullName` is now fetched on mount and rendered dynamically.
+- **View POD & View Weighbridge Action Buttons**:
+  - Enhanced document resolution logic in `getDriverTripById` (`driverApi.controller.js`) and `TripDetails.jsx` to search all nested MongoDB properties (`proofOfDelivery`, `podDetails`, `weighbridgeSlip`, `weighbridgeDetails`).
+  - Added robust fallback document preview URLs for completed/uploaded trips, eliminating "document URL not available" errors.
+- **Support Helpline Interactive CTA Buttons**:
+  - Redesigned driver Support page (`Support.jsx`), replacing plain list rows with prominent, high-visibility action CTA buttons for Call Phone (Emerald Green), WhatsApp Chat (`#25D366`), Email Office (Slate), and 24/7 Emergency Dispatch (`#B45A0A`).
+
+## [1.31.47] - 2026-08-10
+
+### Fixed
+- **Driver Password Change Authentication & Persistence**:
+  - Implemented `currentPassword` verification and `newPassword` bcrypt hashing in `updateDriverProfile` (`driverApi.controller.js`).
+  - Resolved issue where password updates displayed success on UI but failed upon subsequent driver login attempt due to unpersisted DB password state.
+- **Notification Navigation Return Flow**:
+  - Updated `NotificationCard.jsx` to pass navigation state `{ state: { fromNotification: true, from: "/driver/notifications" } }` and route directly to `/driver/trips/${tripId}` when a `tripId` is present.
+  - Updated `TripDetails.jsx` header back button to check `location.state` and return directly to `/driver/notifications` when navigated from notifications.
+- **POD & Weighbridge Document View Buttons**:
+  - Added interactive "View POD" and "View Weighbridge" action buttons in `TripDetails.jsx` upon document upload, allowing drivers to view uploaded documents in a new tab (`window.open`).
+- **Real Database Invoice Bill Data in Completed Trip Modal**:
+  - Replaced static placeholder values in the `TripDetails.jsx` invoice modal with dynamic database-calculated values from `invoiceData.charges` (`freightCharges`, `loadingCharges`, `unloadingCharges`, `fuelCharges`, `tollCharges`, `gstTax`, `totalAmount`).
+- **Trip Details Header UI Cleanup**:
+  - Removed redundant `"REAL DB BILLS ✓"` status badge from the Trip Invoices & Toll Bills header card.
+
+## [1.31.46] - 2026-08-10
+
+### Fixed
+- **Driver Ticket Repair Status Validation & Resolution**:
+  - Expanded allowed status enum in `updateDriverTicketStatus` (`driverApi.controller.js`) to accept `'Need Maintenance'`, `'Resolved'`, `'Repair Completed'`, `'Completed'`, and `'In Progress'`.
+  - Resolved HTTP 400 error (`Invalid status. Must be one of: Mechanic Arrived, Repair In Progress, Repair Completed`) when clicking "Need Maintenance" or "Service Complete" after mechanic arrival.
+  - Implemented bill receipt photo upload parsing, `actualCost` recording, and automatic vehicle `currentStatus` sync (`Active` when resolved, `Need Maintenance` when maintenance needed).
+- **Vehicle Assignment Requirement for Maintenance**:
+  - Enforced vehicle assignment check in backend `createDriverTicket`, returning 400 error if driver has no assigned vehicle.
+  - Added real-time vehicle assignment check and warning banner to Driver Web Maintenance page (`Maintenance.jsx`), disabling issue submission when unassigned.
+- **Driver Settings Layout Alignment & Password Visibility Toggles**:
+  - Removed `max-w-4xl mx-auto` centering in `Settings.jsx`, bringing sidebar-to-content gap in line with all other driver portal pages.
+  - Integrated `Eye` / `EyeOff` lucide icons and visibility state toggles on Current Password, New Password, and Confirm Password fields.
+
 ## [1.31.45] - 2026-08-07
 
 ### Fixed

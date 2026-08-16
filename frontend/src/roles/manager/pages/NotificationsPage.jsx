@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
@@ -21,7 +22,7 @@ export default function NotificationsPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("All");
   const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -306,8 +307,10 @@ export default function NotificationsPage() {
     return notifications.filter(n => n.priority === priority).length;
   };
 
+
+
   return (
-    <div className="p-6 lg:p-8">
+    <div className="p-6 lg:p-8 space-y-6">
       <Breadcrumb />
       {/* Header */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 lg:mb-8 gap-4">
@@ -373,7 +376,7 @@ export default function NotificationsPage() {
                 <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1.5 animate-fade-in font-poppins">
                   {[
                     { label: "High Priority", value: "high", color: "bg-red-500" },
-                    { label: "Medium Priority", value: "medium", color: "bg-orange-500" },
+                    { label: "Medium Priority", value: "medium", color: "bg-[#A14000]" },
                     { label: "Low Priority", value: "low", color: "bg-blue-500" }
                   ].map((option) => (
                     <button
@@ -420,7 +423,7 @@ export default function NotificationsPage() {
                 <div
                   key={notif._id || notif.id}
                   onClick={() => handleNotificationClick(notif)}
-                  className={`bg-white rounded-xl border border-[#E7EAF0] px-4 py-3.5 shadow-xs hover:shadow-md transition-all cursor-pointer relative group ${!notif.isRead ? 'border-l-4 border-l-[#B45A0A] bg-amber-50/20' : 'hover:border-gray-300'
+                  className={`bg-white rounded-xl border border-[#E7EAF0] px-4 py-3.5 shadow-xs hover:shadow-md transition-all cursor-pointer relative group ${!notif.isRead ? 'border-l-4 border-l-[#A14000] bg-amber-50/20' : 'hover:border-gray-300'
                     }`}
                 >
                   <div className="flex items-start gap-3.5">
@@ -432,10 +435,10 @@ export default function NotificationsPage() {
                     {/* Content Area */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-4">
-                        <h4 className="font-poppins font-bold text-xs text-[#1E293B] truncate group-hover:text-[#B45A0A] transition-colors flex items-center gap-1.5">
+                        <h4 className="font-poppins font-bold text-xs text-[#1E293B] truncate group-hover:text-[#A14000] transition-colors flex items-center gap-1.5">
                           <span>{notif.title}</span>
                           {!notif.isRead && (
-                            <span className="w-2 h-2 rounded-full bg-[#B45A0A] shrink-0" title="Unread" />
+                            <span className="w-2 h-2 rounded-full bg-[#A14000] shrink-0" title="Unread" />
                           )}
                         </h4>
                         <span className="text-[11px] font-medium text-gray-400 font-poppins shrink-0">

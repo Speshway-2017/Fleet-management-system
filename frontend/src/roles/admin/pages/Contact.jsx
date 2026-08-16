@@ -1,23 +1,22 @@
 import { useState, useRef } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
+import { AnimeScrollReveal, AnimeStaggerGroup } from "@/components/common/AnimeScrollReveal";
 import { useAuth } from "@/context/AuthContext";
-import LandingHeader from "@/components/layout/LandingHeader";
-import LandingFooter from "@/components/layout/LandingFooter";
 import ReCAPTCHA from "react-google-recaptcha";
 import { contactApi } from "@/api/contactApi";
-import { 
-  Phone, 
-  Mail, 
-  MapPin, 
-  MessageSquare, 
-  ShieldCheck, 
-  Users, 
-  Award, 
-  Send, 
-  ChevronDown, 
-  ChevronUp, 
-  Headphones, 
+import {
+  Phone,
+  Mail,
+  MapPin,
+  MessageSquare,
+  ShieldCheck,
+  Users,
+  Award,
+  Send,
+  ChevronDown,
+  ChevronUp,
+  Headphones,
   ArrowRight,
   KeyRound,
   X
@@ -92,7 +91,7 @@ export default function Contact() {
       toast.error("Please verify that you are not a robot.");
       return;
     }
-    
+
     setSubmitting(true);
     try {
       await contactApi.sendContactRequest({
@@ -139,11 +138,9 @@ export default function Contact() {
 
   return (
     <div className="bg-[#FAFBFC] min-h-screen flex flex-col font-sans text-[#4B5563]">
-      
-      <LandingHeader />
 
       {/* 2. Hero Section with Background Volvo Truck */}
-      <section className="relative w-full overflow-hidden border-b border-[#E5E7EB] bg-white py-16 md:py-24">
+      <section className="relative w-full overflow-hidden border-b border-[#E5E7EB] bg-white py-8 md:py-12">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
@@ -153,11 +150,11 @@ export default function Contact() {
         {/* Translucent overlay for text legibility (minimized white casting for maximum image clarity) */}
         <div className="absolute inset-0 bg-gradient-to-r from-white/60 via-white/20 to-transparent md:bg-gradient-to-r md:from-white/70 md:via-white/30 md:to-transparent lg:bg-gradient-to-r lg:from-white/65 lg:via-white/15 lg:to-transparent" />
 
-        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-6 space-y-6">
-            
+        <div className="relative w-full max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <AnimeScrollReveal direction="top" className="lg:col-span-6 space-y-6">
+
             {/* Pill Capsule */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#A14000]/40 bg-[#A14000]/5 text-[#A14000] text-xs font-bold w-fit animate-fade-up">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#A14000]/40 bg-[#A14000]/5 text-[#A14000] text-xs font-bold w-fit">
               <span className="h-2 w-2 rounded-full bg-[#A14000] animate-pulse" />
               <span>Let's Drive a Better Tomorrow</span>
             </div>
@@ -172,7 +169,7 @@ export default function Contact() {
 
             {/* Features Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-[#E5E7EB]/50">
-              
+
               <div className="flex gap-2.5 items-start">
                 <div className="h-8 w-8 shrink-0 rounded-lg bg-[#A14000]/10 text-[#A14000] flex items-center justify-center">
                   <MessageSquare className="h-4.5 w-4.5" />
@@ -215,16 +212,16 @@ export default function Contact() {
 
             </div>
 
-          </div>
+          </AnimeScrollReveal>
         </div>
       </section>
 
       {/* 3. Quick Info Bar */}
-      <section className="py-10 max-w-7xl mx-auto w-full px-4 sm:px-6 md:px-10 mt-6 relative z-10">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-md flex items-start gap-4 hover:shadow-lg transition-shadow">
-            <div className="h-10 w-10 shrink-0 rounded-xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center">
+      <section className="py-10 max-w-[1550px] mx-auto w-full px-4 sm:px-6 md:px-10 mt-6 relative z-10">
+        <AnimeStaggerGroup className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-md flex items-start gap-4 anime-card-lift">
+            <div className="h-10 w-10 shrink-0 rounded-xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center anime-icon-hover">
               <MapPin className="h-5 w-5" />
             </div>
             <div>
@@ -234,8 +231,8 @@ export default function Contact() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-md flex items-start gap-4 hover:shadow-lg transition-shadow">
-            <div className="h-10 w-10 shrink-0 rounded-xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center">
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-md flex items-start gap-4 anime-card-lift">
+            <div className="h-10 w-10 shrink-0 rounded-xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center anime-icon-hover">
               <Phone className="h-5 w-5" />
             </div>
             <div>
@@ -245,8 +242,8 @@ export default function Contact() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-md flex items-start gap-4 hover:shadow-lg transition-shadow">
-            <div className="h-10 w-10 shrink-0 rounded-xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center">
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-md flex items-start gap-4 anime-card-lift">
+            <div className="h-10 w-10 shrink-0 rounded-xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center anime-icon-hover">
               <Mail className="h-5 w-5" />
             </div>
             <div>
@@ -256,8 +253,8 @@ export default function Contact() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-md flex items-start gap-4 hover:shadow-lg transition-shadow">
-            <div className="h-10 w-10 shrink-0 rounded-xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center">
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-md flex items-start gap-4 anime-card-lift">
+            <div className="h-10 w-10 shrink-0 rounded-xl bg-[#A14000]/10 text-[#A14000] flex items-center justify-center anime-icon-hover">
               <MessageSquare className="h-5 w-5" />
             </div>
             <div>
@@ -267,19 +264,20 @@ export default function Contact() {
             </div>
           </div>
 
-        </div>
+        </AnimeStaggerGroup>
       </section>
 
       {/* 4. Form and Map Split Section */}
-      <section className="py-10 max-w-7xl mx-auto w-full px-4 sm:px-6 md:px-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
+      <section className="py-10 max-w-[1550px] mx-auto w-full px-4 sm:px-6 md:px-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+
         {/* Left Column: Form */}
         <div className="lg:col-span-7 bg-white rounded-3xl border border-[#E5E7EB] p-6 sm:p-10 shadow-md">
           <h2 className="font-display text-2xl font-black text-[#0B1B3D] mb-2">Send Us a Message</h2>
           <p className="text-xs text-[#4B5563] mb-8 font-medium">Fill out the form and our team will get back to you soon.</p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block font-display">
@@ -395,7 +393,7 @@ export default function Contact() {
 
         {/* Right Column: Map and Urgent Support */}
         <div className="lg:col-span-5 space-y-6">
-          
+
           <div className="bg-white rounded-3xl border border-[#E5E7EB] p-4 shadow-md space-y-4">
             <div className="bg-[#F8FAFC] border border-[#E5E7EB] rounded-2xl p-3.5 flex items-start gap-3">
               <div className="p-2 bg-[#A14000]/10 text-[#A14000] rounded-xl shrink-0">
@@ -408,14 +406,13 @@ export default function Contact() {
             </div>
 
             <div className="w-full overflow-hidden rounded-2xl border border-gray-100 shadow-inner">
-              <iframe 
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3806.7579758784116!2d78.3762293148777!3d17.44775798804245!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bcb93e2f2e51921%3A0xe54e3d3b76a084c!2sHitech%20City%2C%20Hyderabad%2C%20Telangana%20500081%2C%20India!5e0!3m2!1sen!2sus!4v1657800000000!5m2!1sen!2sus" 
-                width="100%" 
-                height="280" 
-                style={{ border: 0 }} 
-                allowFullScreen="" 
-                loading="lazy" 
-                referrerPolicy="no-referrer-when-downgrade" 
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3806.7579758784116!2d78.3762293148777!3d17.44775798804245!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bcb93e2f2e51921%3A0xe54e3d3b76a084c!2sHitech%20City%2C%20Hyderabad%2C%20Telangana%20500081%2C%20India!5e0!3m2!1sen!2sus!4v1657800000000!5m2!1sen!2sus"
+                width="100%"
+                height="280"
+                style={{ border: 0 }}
+                allowFullScreen=""
+                referrerPolicy="no-referrer-when-downgrade"
               />
             </div>
           </div>
@@ -430,7 +427,7 @@ export default function Contact() {
                 <p className="text-[10px] text-gray-500 font-medium mt-0.5">For urgent support or technical issues, reach out to our dedicated support team.</p>
               </div>
             </div>
-             <button
+            <button
               onClick={() => setIsChatOpen(true)}
               className="px-4 py-2 border border-[#A14000] hover:bg-[#A14000] hover:text-white text-[#A14000] rounded-xl font-bold text-xs shrink-0 flex items-center gap-1.5 transition-all duration-200 cursor-pointer"
             >
@@ -442,7 +439,7 @@ export default function Contact() {
           <div className="bg-white rounded-3xl border border-[#E5E7EB] p-6 shadow-md">
             <h3 className="font-display font-black text-sm text-[#0B1B3D] mb-5 pb-3 border-b border-gray-100">Why Contact Us?</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              
+
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <div className="h-1.5 w-1.5 bg-[#A14000] rounded-full shrink-0" />
@@ -484,7 +481,7 @@ export default function Contact() {
       {/* 5. FAQs Section */}
       <section className="py-16 bg-[#FAFBFC] border-t border-[#E5E7EB]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 space-y-10">
-          
+
           <div className="text-center space-y-2">
             <h3 className="text-[#A14000] text-xs font-bold tracking-widest uppercase block font-display">Frequently Asked Questions</h3>
             <h2 className="font-display text-2xl sm:text-3xl font-black text-[#0B1B3D]">Quick answers to common questions</h2>
@@ -494,7 +491,7 @@ export default function Contact() {
             {faqData.map((faq, index) => {
               const isOpen = activeFaq === index;
               return (
-                <div 
+                <div
                   key={index}
                   className="bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                 >
@@ -507,7 +504,7 @@ export default function Contact() {
                       {isOpen ? <ChevronUp className="h-4.5 w-4.5" /> : <ChevronDown className="h-4.5 w-4.5" />}
                     </span>
                   </button>
-                  
+
                   {isOpen && (
                     <div className="px-5 pb-5 pt-0 border-t border-gray-50">
                       <p className="text-xs text-[#4B5563] leading-relaxed pt-3">{faq.answer}</p>
@@ -536,8 +533,6 @@ export default function Contact() {
           </div>
         </div>
       </section>
-      
-      <LandingFooter />
 
       {/* Support Chat Widget */}
       {isChatOpen && (
@@ -568,11 +563,10 @@ export default function Contact() {
                     S
                   </div>
                 )}
-                <div className={`p-3 max-w-[80%] rounded-2xl shadow-sm leading-relaxed ${
-                  msg.sender === "user" 
-                    ? "bg-[#A14000] text-white rounded-tr-none font-medium" 
+                <div className={`p-3 max-w-[80%] rounded-2xl shadow-sm leading-relaxed ${msg.sender === "user"
+                    ? "bg-[#A14000] text-white rounded-tr-none font-medium"
                     : "bg-white border border-gray-200 text-slate-700 rounded-tl-none font-normal"
-                }`}>
+                  }`}>
                   {msg.text}
                 </div>
               </div>

@@ -29,7 +29,7 @@ function StatusCard({ title, value, status, statusColor, icon: Icon, iconColor, 
 }
 
 export default function SystemHealth() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [healthData, setHealthData] = useState(null);
 
   const fetchHealthData = async () => {
@@ -54,13 +54,7 @@ export default function SystemHealth() {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading && !healthData) {
-    return (
-      <div className="min-h-screen bg-[#f4f7f6] flex items-center justify-center font-sans">
-        <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
+
 
   // Fallback in case fetch failed completely and we have no data
   const data = healthData || {
@@ -77,7 +71,7 @@ export default function SystemHealth() {
   // Status color logic based on API returns
   const getStatusColor = (status) => {
     if (status === 'Operational' || status === 'Normal' || status === 'Healthy') return 'bg-green-50 text-green-600';
-    if (status === 'High' || status === 'Warning') return 'bg-orange-50 text-orange-600';
+    if (status === 'High' || status === 'Warning') return 'bg-orange-50 text-[#A14000]';
     if (status === 'Down' || status === 'Critical') return 'bg-red-50 text-red-600';
     return 'bg-slate-50 text-slate-600';
   };
@@ -163,7 +157,7 @@ export default function SystemHealth() {
                   statusColor={getStatusColor(data.storage.status)}
                   icon={HardDrive}
                   iconBg="bg-orange-50"
-                  iconColor="text-orange-500"
+                  iconColor="text-[#A14000]"
                 />
                 <StatusCard 
                   title="CPU Usage" 
@@ -172,7 +166,7 @@ export default function SystemHealth() {
                   statusColor={getStatusColor(data.cpu.status)}
                   icon={Cpu}
                   iconBg={data.cpu.status === 'High' ? "bg-orange-50" : "bg-green-50"}
-                  iconColor={data.cpu.status === 'High' ? "text-orange-600" : "text-green-600"}
+                  iconColor={data.cpu.status === 'High' ? "text-[#A14000]" : "text-green-600"}
                 />
                 <StatusCard 
                   title="Memory Usage" 
@@ -181,7 +175,7 @@ export default function SystemHealth() {
                   statusColor={getStatusColor(data.memory.status)}
                   icon={BarChart2}
                   iconBg={data.memory.status === 'High' ? "bg-orange-50" : "bg-green-50"}
-                  iconColor={data.memory.status === 'High' ? "text-orange-600" : "text-green-600"}
+                  iconColor={data.memory.status === 'High' ? "text-[#A14000]" : "text-green-600"}
                 />
                 <StatusCard 
                   title="Uptime" 

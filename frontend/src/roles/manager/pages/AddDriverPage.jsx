@@ -326,7 +326,7 @@ export default function AddDriverPage() {
         {/* CARD 1: Personal Details */}
         <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4">
           <h3 className="font-poppins font-bold text-[#1E293B] text-base flex items-center gap-2">
-            <Users className="w-5 h-5 text-[#B45A0A]" />
+            <Users className="w-5 h-5 text-[#A14000]" />
             Personal Information
           </h3>
 
@@ -354,7 +354,7 @@ export default function AddDriverPage() {
                 placeholder="e.g. Ramesh Chandra"
                 value={formData.fullName}
                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
               />
             </div>
 
@@ -370,7 +370,7 @@ export default function AddDriverPage() {
                 className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white text-[#1E293B] ${
                   errors.phoneNumber
                     ? "border-[#EF4444] focus:border-[#EF4444]"
-                    : "border-[#E7EAF0] focus:border-[#B45A0A]"
+                    : "border-[#E7EAF0] focus:border-[#A14000]"
                 }`}
               />
               {errors.phoneNumber && (
@@ -390,7 +390,7 @@ export default function AddDriverPage() {
                 placeholder="e.g. ramesh.c@fleet.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
               />
             </div>
 
@@ -402,7 +402,7 @@ export default function AddDriverPage() {
                 required
                 value={formData.dob}
                 onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
               />
             </div>
 
@@ -412,7 +412,7 @@ export default function AddDriverPage() {
               <select
                 value={formData.gender}
                 onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
               >
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
@@ -427,7 +427,7 @@ export default function AddDriverPage() {
                 <select
                   value={formData.driverStatus}
                   onChange={(e) => setFormData({ ...formData, driverStatus: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                  className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                 >
                   <option value="AVAILABLE">Available</option>
                   <option value="ON_TRIP">On Trip</option>
@@ -445,7 +445,7 @@ export default function AddDriverPage() {
                 placeholder="e.g. Pune, Hyderabad, Delhi"
                 value={formData.driverLocation}
                 onChange={(e) => setFormData({ ...formData, driverLocation: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
               />
             </div>
 
@@ -458,7 +458,7 @@ export default function AddDriverPage() {
                 placeholder="e.g. Flat 101, Green Meadows, Pune, MH"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B] font-sans resize-none"
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B] font-sans resize-none"
               />
             </div>
           </div>
@@ -467,7 +467,7 @@ export default function AddDriverPage() {
         {/* CARD 2: License Details */}
         <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4">
           <h3 className="font-poppins font-bold text-[#1E293B] text-base flex items-center gap-2">
-            <Award className="w-5 h-5 text-[#B45A0A]" />
+            <Award className="w-5 h-5 text-[#A14000]" />
             Driving License &amp; Compliance Certificates
           </h3>
 
@@ -484,7 +484,7 @@ export default function AddDriverPage() {
                 className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white text-[#1E293B] ${
                   errors.licenseNumber
                     ? "border-[#EF4444] focus:border-[#EF4444]"
-                    : "border-[#E7EAF0] focus:border-[#B45A0A]"
+                    : "border-[#E7EAF0] focus:border-[#A14000]"
                 }`}
               />
               {errors.licenseNumber && (
@@ -501,7 +501,7 @@ export default function AddDriverPage() {
               <select
                 value={formData.licenseType}
                 onChange={(e) => setFormData({ ...formData, licenseType: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
               >
                 <option value="HMV">HMV</option>
                 <option value="LMV">LMV</option>
@@ -517,7 +517,7 @@ export default function AddDriverPage() {
                 required
                 value={formData.licenseExpiry}
                 onChange={(e) => setFormData({ ...formData, licenseExpiry: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
               />
             </div>
 
@@ -529,7 +529,7 @@ export default function AddDriverPage() {
                 placeholder="e.g. RTO Pune"
                 value={formData.licenseIssuingAuthority}
                 onChange={(e) => setFormData({ ...formData, licenseIssuingAuthority: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
               />
             </div>
           </div>
@@ -570,7 +570,7 @@ export default function AddDriverPage() {
                     href={uploadedDoc.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[11px] text-[#B45A0A] font-bold hover:underline"
+                    className="text-[11px] text-[#A14000] font-bold hover:underline"
                   >
                     View
                   </a>
@@ -595,9 +595,9 @@ export default function AddDriverPage() {
               </div>
             ) : isUploading ? (
               /* Uploading state */
-              <div className="border-2 border-dashed border-[#B45A0A]/40 bg-[#FDF3EC]/30 rounded-xl p-6">
+              <div className="border-2 border-dashed border-[#A14000]/40 bg-[#FDF3EC]/30 rounded-xl p-6">
                 <div className="flex flex-col items-center gap-3">
-                  <Loader className="w-8 h-8 text-[#B45A0A] animate-spin" />
+                  <Loader className="w-8 h-8 text-[#A14000] animate-spin" />
                   <div className="w-full max-w-xs">
                     <div className="flex justify-between text-xs font-semibold text-[#64748B] mb-1.5">
                       <span>Uploading {selectedFile?.name}</span>
@@ -605,7 +605,7 @@ export default function AddDriverPage() {
                     </div>
                     <div className="w-full bg-[#E7EAF0] rounded-full h-1.5 overflow-hidden">
                       <div
-                        className="bg-[#B45A0A] h-1.5 rounded-full transition-all duration-300"
+                        className="bg-[#A14000] h-1.5 rounded-full transition-all duration-300"
                         style={{ width: `${uploadProgress}%` }}
                       />
                     </div>
@@ -622,16 +622,16 @@ export default function AddDriverPage() {
                 onDrop={handleDrop}
                 className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 select-none ${
                   isDragging
-                    ? "border-[#B45A0A] bg-[#FDF3EC]/60 scale-[1.01]"
-                    : "border-[#E7EAF0] hover:border-[#B45A0A] hover:bg-[#FDF3EC]/20"
+                    ? "border-[#A14000] bg-[#FDF3EC]/60 scale-[1.01]"
+                    : "border-[#E7EAF0] hover:border-[#A14000] hover:bg-[#FDF3EC]/20"
                 }`}
               >
                 <div className={`w-12 h-12 mx-auto mb-3 rounded-xl flex items-center justify-center transition-colors ${
-                  isDragging ? "bg-[#B45A0A]/10" : "bg-[#F5F7FB]"
+                  isDragging ? "bg-[#A14000]/10" : "bg-[#F5F7FB]"
                 }`}>
-                  <FileUp className={`w-6 h-6 transition-colors ${isDragging ? "text-[#B45A0A]" : "text-[#64748B]"}`} />
+                  <FileUp className={`w-6 h-6 transition-colors ${isDragging ? "text-[#A14000]" : "text-[#64748B]"}`} />
                 </div>
-                <p className={`text-sm font-bold transition-colors ${isDragging ? "text-[#B45A0A]" : "text-[#1E293B]"}`}>
+                <p className={`text-sm font-bold transition-colors ${isDragging ? "text-[#A14000]" : "text-[#1E293B]"}`}>
                   {isDragging ? "Drop file here to upload" : "Drag & drop or click to upload"}
                 </p>
                 <p className="text-[11px] text-[#94A3B8] mt-1 font-medium">PDF, JPG, PNG · Max 5 MB</p>
@@ -651,7 +651,7 @@ export default function AddDriverPage() {
         {/* CARD 3: Employment Info */}
         <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4">
           <h3 className="font-poppins font-bold text-[#1E293B] text-base flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-[#B45A0A]" />
+            <Calendar className="w-5 h-5 text-[#A14000]" />
             Professional &amp; Roster Parameters
           </h3>
 
@@ -664,7 +664,7 @@ export default function AddDriverPage() {
                 placeholder="e.g. 5 Years"
                 value={formData.experience}
                 onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
               />
             </div>
 
@@ -675,7 +675,7 @@ export default function AddDriverPage() {
                 type="date"
                 value={formData.joiningDate}
                 onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
               />
             </div>
 
@@ -685,7 +685,7 @@ export default function AddDriverPage() {
               <select
                 value={formData.medicalFitnessStatus}
                 onChange={(e) => setFormData({ ...formData, medicalFitnessStatus: e.target.value })}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
               >
                 <option value="✅ Fit">✅ Fit</option>
                 <option value="⚠️ Under Medical Review">⚠️ Under Medical Review</option>
@@ -708,7 +708,7 @@ export default function AddDriverPage() {
           <button
             type="submit"
             disabled={isSubmitting || isUploading || isFormInvalid}
-            className="px-7 py-3 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-extrabold text-white transition-all shadow-md shadow-[#B45A0A]/20 flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-7 py-3 bg-[#A14000] hover:bg-[#853400] rounded-xl text-sm font-extrabold text-white transition-all shadow-md shadow-[#A14000]/20 flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>
@@ -749,7 +749,7 @@ export default function AddDriverPage() {
               </div>
               <div className="border-t border-gray-200 pt-3">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] block">Temporary Password</span>
-                <span className="text-lg font-mono font-bold text-[#B45A0A] block mt-0.5 tracking-wider">{createdCredentials.temporaryPassword}</span>
+                <span className="text-lg font-mono font-bold text-[#A14000] block mt-0.5 tracking-wider">{createdCredentials.temporaryPassword}</span>
               </div>
             </div>
 
@@ -770,7 +770,7 @@ export default function AddDriverPage() {
                   navigator.clipboard.writeText(copyText);
                   toast.success("Credentials copied successfully.");
                 }}
-                className="flex-1 py-3 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#B45A0A]/20 flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 py-3 bg-[#A14000] hover:bg-[#853400] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#A14000]/20 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Copy className="w-4 h-4" />
                 Copy Credentials

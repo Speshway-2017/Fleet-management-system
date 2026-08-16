@@ -54,7 +54,7 @@ export default function VehicleDetailsPage() {
   const [vehicle, setVehicle] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeletingVehicle, setIsDeletingVehicle] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [previewDocument, setPreviewDocument] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
 
@@ -346,7 +346,7 @@ export default function VehicleDetailsPage() {
         L.marker(endC).addTo(map).bindPopup(`<strong>End:</strong> ${selectedTrip.endLocation}`);
 
         const routeLine = L.polyline([startC, endC], {
-          color: '#B45A0A',
+          color: '#A14000',
           weight: 5,
           opacity: 0.8,
           dashArray: '5, 10'
@@ -434,17 +434,18 @@ export default function VehicleDetailsPage() {
                 <img
                   src={vehicle.vehicleImage?.secure_url || vehicle.image}
                   alt={vehicle.name}
+                  loading="lazy"
                   className="w-20 h-20 rounded-xl object-cover border border-gray-200 shadow-sm shrink-0"
                 />
               ) : (
-                <div className="bg-[#FDF3EC] p-4 rounded-xl border border-[#B45A0A]/20 flex items-center justify-center shrink-0">
-                  <FileText className="w-8 h-8 text-[#B45A0A]" />
+                <div className="bg-[#FDF3EC] p-4 rounded-xl border border-[#A14000]/20 flex items-center justify-center shrink-0">
+                  <FileText className="w-8 h-8 text-[#A14000]" />
                 </div>
               )}
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <h2 className="text-2xl font-bold text-[#1E293B]">{vehicle.name}</h2>
-                  <span className="px-3 py-1 bg-orange-100 text-[#B45A0A] rounded-full text-xs font-bold">
+                  <span className="px-3 py-1 bg-orange-100 text-[#A14000] rounded-full text-xs font-bold">
                     {vehicle.status}
                   </span>
                 </div>
@@ -476,7 +477,7 @@ export default function VehicleDetailsPage() {
               onClick={() => navigate(`/manager/vehicle-edit/${vehicle._id}`)}
               disabled={isViewOnly}
               title={isViewOnly ? "This feature is available after activating a subscription." : "Edit Vehicle"}
-              className={`px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
+              className={`px-6 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <Edit2 className="w-4 h-4" />
               EDIT
@@ -506,7 +507,7 @@ export default function VehicleDetailsPage() {
             onClick={() => setActiveTab(tab.id)}
             className={`px-5 py-2 rounded-lg text-xs font-bold font-poppins transition-all cursor-pointer ${
               activeTab === tab.id
-                ? "bg-[#B45A0A] text-white shadow-md shadow-[#B45A0A]/10"
+                ? "bg-[#A14000] text-white shadow-md shadow-[#A14000]/10"
                 : "text-[#64748B] hover:text-[#1E293B] hover:bg-gray-50"
             }`}
           >
@@ -617,7 +618,7 @@ export default function VehicleDetailsPage() {
                     vehicle.documents.map((doc) => (
                       <div key={doc.id || doc._id} className="flex items-center justify-between p-3 bg-[#F5F7FB] border border-[#E7EAF0] rounded-lg hover:bg-gray-50 transition-colors">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <FileText className="w-5 h-5 text-[#B45A0A] flex-shrink-0" />
+                          <FileText className="w-5 h-5 text-[#A14000] flex-shrink-0" />
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-bold text-[#1E293B] truncate">{doc.name}</p>
                             <p className="text-[10px] text-[#64748B]">{doc.size} KB • {doc.uploadDate}</p>
@@ -659,7 +660,7 @@ export default function VehicleDetailsPage() {
                         return (
                           <div key={key} className="flex items-center justify-between p-3 bg-[#F5F7FB] border border-[#E7EAF0] rounded-lg hover:bg-gray-50 transition-colors">
                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <FileText className="w-5 h-5 text-[#B45A0A] flex-shrink-0" />
+                              <FileText className="w-5 h-5 text-[#A14000] flex-shrink-0" />
                               <div className="min-w-0 flex-1">
                                 <p className="text-xs font-bold text-[#1E293B] truncate">{docLabels[key] || key}</p>
                                 <p className="text-[10px] text-[#64748B] truncate">{doc.originalName || "document"}</p>
@@ -698,24 +699,24 @@ export default function VehicleDetailsPage() {
             </div>
 
             {/* Summary Card */}
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl border border-orange-200 p-6">
-              <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-4">Vehicle Summary</h3>
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-[#0F172A] dark:to-[#1E293B] rounded-2xl border border-orange-200 dark:border-slate-800 p-6">
+              <h3 className="text-sm font-bold text-[#1E293B] dark:text-white uppercase mb-4">Vehicle Summary</h3>
               <div className="space-y-4 text-sm">
                 <div>
-                  <p className="text-xs text-[#64748B] font-medium">Registration No.</p>
-                  <p className="font-bold text-[#1E293B] mt-1 uppercase">{vehicle.plateNumber}</p>
+                  <p className="text-xs text-[#64748B] dark:text-slate-300 font-medium">Registration No.</p>
+                  <p className="font-bold text-[#1E293B] dark:text-white mt-1 uppercase">{vehicle.plateNumber}</p>
                 </div>
-                <div className="border-t border-orange-200 pt-4">
-                  <p className="text-xs text-[#64748B] font-medium">FASTag Balance</p>
-                  <p className="font-bold text-[#1E293B] mt-1">₹{vehicle.fastagBalance?.toLocaleString("en-IN") || "0"}</p>
+                <div className="border-t border-orange-200 dark:border-slate-800 pt-4">
+                  <p className="text-xs text-[#64748B] dark:text-slate-300 font-medium">FASTag Balance</p>
+                  <p className="font-bold text-[#1E293B] dark:text-white mt-1">₹{vehicle.fastagBalance?.toLocaleString("en-IN") || "0"}</p>
                 </div>
-                <div className="border-t border-orange-200 pt-4">
-                  <p className="text-xs text-[#64748B] font-medium">Branch</p>
-                  <p className="font-bold text-[#1E293B] mt-1">{vehicle.branch}</p>
+                <div className="border-t border-orange-200 dark:border-slate-800 pt-4">
+                  <p className="text-xs text-[#64748B] dark:text-slate-300 font-medium">Branch</p>
+                  <p className="font-bold text-[#1E293B] dark:text-white mt-1">{vehicle.branch}</p>
                 </div>
-                <div className="border-t border-orange-200 pt-4">
-                  <p className="text-xs text-[#64748B] font-medium">Date Added</p>
-                  <p className="font-bold text-[#1E293B] mt-1">
+                <div className="border-t border-orange-200 dark:border-slate-800 pt-4">
+                  <p className="text-xs text-[#64748B] dark:text-slate-300 font-medium">Date Added</p>
+                  <p className="font-bold text-[#1E293B] dark:text-white mt-1">
                     {vehicle.dateAdded ? new Date(vehicle.dateAdded).toLocaleDateString("en-IN") : "N/A"}
                   </p>
                 </div>
@@ -744,14 +745,14 @@ export default function VehicleDetailsPage() {
                   setMaintenanceSearch(e.target.value);
                   setMaintenancePage(1);
                 }}
-                className="w-full pl-9 pr-4 py-1.5 border border-[#E7EAF0] rounded-lg text-xs focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full pl-9 pr-4 py-1.5 border border-[#E7EAF0] rounded-lg text-xs focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
               />
             </div>
           </div>
 
           {maintenanceLoading ? (
             <div className="text-center py-12">
-              <Loader className="w-8 h-8 animate-spin text-[#B45A0A] mx-auto mb-2" />
+              <Loader className="w-8 h-8 animate-spin text-[#A14000] mx-auto mb-2" />
               <p className="text-xs text-[#64748B]">Loading service history...</p>
             </div>
           ) : (() => {
@@ -860,7 +861,7 @@ export default function VehicleDetailsPage() {
           </h3>
           {tripsLoading ? (
             <div className="text-center py-12">
-              <Loader className="w-8 h-8 animate-spin text-[#B45A0A] mx-auto mb-2" />
+              <Loader className="w-8 h-8 animate-spin text-[#A14000] mx-auto mb-2" />
               <p className="text-xs text-[#64748B]">Loading GPS tracking trips...</p>
             </div>
           ) : trips.length === 0 ? (
@@ -881,13 +882,13 @@ export default function VehicleDetailsPage() {
                 
                 {selectedTrip && (
                   <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl space-y-2 select-none">
-                    <h4 className="text-xs font-bold text-[#B45A0A] uppercase">Trip Timeline</h4>
+                    <h4 className="text-xs font-bold text-[#A14000] uppercase">Trip Timeline</h4>
                     <div className="flex items-center justify-between text-xs text-[#1E293B]">
                       <div>
                         <p className="font-bold">{selectedTrip.startLocation}</p>
                         <p className="text-[10px] text-[#64748B] mt-0.5">Departed: {selectedTrip.departureTime}</p>
                       </div>
-                      <div className="h-0.5 flex-1 bg-dashed border-t border-[#B45A0A]/40 mx-4" />
+                      <div className="h-0.5 flex-1 bg-dashed border-t border-[#A14000]/40 mx-4" />
                       <div className="text-right">
                         <p className="font-bold">{selectedTrip.endLocation}</p>
                         <p className="text-[10px] text-[#64748B] mt-0.5">ETA/Arrived: {selectedTrip.eta}</p>
@@ -906,12 +907,12 @@ export default function VehicleDetailsPage() {
                     onClick={() => setSelectedTrip(t)}
                     className={`p-3 border rounded-xl cursor-pointer transition-all ${
                       selectedTrip?._id === t._id
-                        ? "bg-orange-50 border-[#B45A0A]"
+                        ? "bg-orange-50 border-[#A14000]"
                         : "bg-white hover:bg-gray-50 border-[#E7EAF0]"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-[10px] font-bold text-[#B45A0A] font-poppins">{t.tripNumber}</span>
+                      <span className="text-[10px] font-bold text-[#A14000] font-poppins">{t.tripNumber}</span>
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                         t.status === "Completed" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
                         t.status === "On Transit" ? "bg-amber-50 text-amber-700 border border-amber-100" :
@@ -963,6 +964,7 @@ export default function VehicleDetailsPage() {
                   <img
                     src={previewDocument.data}
                     alt={previewDocument.name}
+                    loading="lazy"
                     className="w-full rounded-lg border border-[#E7EAF0] object-contain max-h-[500px]"
                   />
                   <p className="text-xs text-[#94A3B8] text-center">Image Preview</p>
@@ -979,7 +981,7 @@ export default function VehicleDetailsPage() {
                       link.download = previewDocument.name;
                       link.click();
                     }}
-                    className="px-4 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-bold text-white transition-all inline-flex items-center gap-2 cursor-pointer"
+                    className="px-4 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-lg text-sm font-bold text-white transition-all inline-flex items-center gap-2 cursor-pointer"
                   >
                     <Download className="w-4 h-4" />
                     Download Document
@@ -1020,7 +1022,7 @@ export default function VehicleDetailsPage() {
                   link.download = previewDocument.name;
                   link.click();
                 }}
-                className="px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-[#B45A0A]/20"
+                className="px-6 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-lg text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-[#A14000]/20"
               >
                 <Download className="w-4 h-4" />
                 Download
@@ -1151,7 +1153,7 @@ export default function VehicleDetailsPage() {
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E7EAF0]">
                 <button
                   onClick={() => setSelectedMaintenance(null)}
-                  className="px-4.5 py-2.5 bg-[#B45A0A] text-white rounded-xl text-xs font-semibold hover:bg-[#9A4D08] transition-colors cursor-pointer"
+                  className="px-4.5 py-2.5 bg-[#A14000] text-white rounded-xl text-xs font-semibold hover:bg-[#853400] transition-colors cursor-pointer"
                 >
                   Close Details
                 </button>

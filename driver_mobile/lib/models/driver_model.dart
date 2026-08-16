@@ -104,12 +104,12 @@ class DriverModel {
     final String licType = json['licenseType'] ?? 'HMV';
     final String licExpiryVal = json['licenseExpiry'] != null ? json['licenseExpiry'].toString() : '';
     final String vehVal = json['assignedVehicle'] ?? json['vehicle'] ?? 'Unassigned';
-    final String statusVal = json['driverStatus'] ?? 'AVAILABLE';
+    final String statusVal = json['driverStatus'] ?? 'OFFLINE';
     final bool isOnlineVal = json['isOnline'] is bool
         ? (json['isOnline'] as bool)
         : (json['isOnline'] != null
             ? (json['isOnline'].toString() == 'true' || json['isOnline'].toString() == '1')
-            : (statusVal != 'OFFLINE'));
+            : (statusVal != 'OFFLINE' && statusVal != 'OFF_DUTY'));
     final String imgVal = json['profileImage'] ?? '';
     final String branchVal = json['branch'] ?? '';
     final String expVal = json['experience'] ?? '';

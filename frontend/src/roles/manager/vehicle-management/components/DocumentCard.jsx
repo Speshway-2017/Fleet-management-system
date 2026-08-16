@@ -104,7 +104,7 @@ export default function DocumentCard({
             title="Replace Document"
             className="p-2 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer"
           >
-            <Edit2 className="w-4 h-4 text-orange-600" />
+            <Edit2 className="w-4 h-4 text-[#A14000]" />
           </button>
           <button
             onClick={() => onDelete(document)}

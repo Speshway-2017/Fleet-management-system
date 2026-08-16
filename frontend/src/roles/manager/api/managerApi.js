@@ -315,7 +315,14 @@ export const managerApi = {
     return await axiosClient.get(`/manager/toll/trip/${tripId}`);
   },
 
-  updateTollReceiptsStatus: async (id, statusData) => {
-    return await axiosClient.put(`/manager/toll/${id}/status`, statusData);
+  // Support Helpline Settings
+  getSupportSettings: async () => {
+    return await axiosClient.get("/manager/support-settings");
+  },
+
+  updateSupportSettings: async (settingsData) => {
+    return await axiosClient.put("/manager/support-settings", settingsData);
   },
 };
+
+export default managerApi;

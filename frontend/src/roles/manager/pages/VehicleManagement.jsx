@@ -33,9 +33,11 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import KPICard from "@/components/common/KPICard";
 import { vehicleApi } from "@/api/vehicleApi";
 import { managerApi } from "../api/managerApi";
 import { getSocket } from "@/api/socket";
+import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 
 export default function VehicleManagement() {
   const navigate = useNavigate();
@@ -187,7 +189,6 @@ export default function VehicleManagement() {
   useEffect(() => {
     const fetchVehicles = async (isInitial = false) => {
       try {
-        if (isInitial) setVehiclesLoading(true);
         const vehRes = await vehicleApi.list();
         const rawVeh = vehRes.data?.data ?? [];
         setVehicles(rawVeh.map(normaliseVehicle));
@@ -420,7 +421,7 @@ export default function VehicleManagement() {
   const distributionColors = {
     "Available": "#22C55E",
     "Assigned": "#3B82F6",
-    "On Trip": "#B45A0A",
+    "On Trip": "#A14000",
     "Idle": "#64748B",
     "Maintenance": "#EF4444",
     "Out of Service": "#1E293B"
@@ -628,7 +629,7 @@ export default function VehicleManagement() {
       case "Available":
         return "bg-emerald-50 text-[#22C55E] border border-emerald-100";
       case "On Trip":
-        return "bg-amber-50 text-[#B45A0A] border border-amber-100";
+        return "bg-amber-50 text-[#A14000] border border-amber-100";
       case "Idle":
         return "bg-slate-50 text-[#64748B] border border-slate-100";
       case "Maintenance":
@@ -683,15 +684,15 @@ export default function VehicleManagement() {
         <div className="flex items-center gap-3">
           <button
             onClick={handleExportCSV}
-            className="px-4 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all flex items-center gap-2 shadow-sm font-poppins cursor-pointer"
+            className="px-4 py-2.5 bg-[#A14000]/10 border border-[#A14000]/30 hover:bg-[#A14000]/20 rounded-xl text-sm font-bold text-[#A14000] transition-all flex items-center gap-2 shadow-xs font-poppins cursor-pointer"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-4 h-4 text-[#A14000]" />
             <span>Export Vehicles</span>
           </button>
 
           <button
             onClick={openAddModal}
-            className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 font-poppins cursor-pointer"
+            className="px-5 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#A14000]/20 font-poppins cursor-pointer"
           >
             <Plus className="w-4.5 h-4.5" />
             <span>Add Vehicle</span>
@@ -701,73 +702,50 @@ export default function VehicleManagement() {
 
       {/* --- KPI SECTION --- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-
-        {/* KPI Card 1: Total */}
-        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Total Vehicles</span>
-              <h3 className="text-3xl font-extrabold text-[#1E293B] mt-2 font-poppins">{totalVehicles}</h3>
-            </div>
-            <div className="bg-[#FDF3EC] text-[#B45A0A] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
-              <Truck className="w-6 h-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center text-xs text-[#22C55E] gap-1 font-semibold">
-            <TrendingUp className="w-3.5 h-3.5" />
-            <span>+4 Added this month</span>
-          </div>
-        </div>
-
-        {/* KPI Card 2: Active */}
-        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Active Vehicles</span>
-              <h3 className="text-3xl font-extrabold text-[#1E293B] mt-2 font-poppins">{activeVehicles}</h3>
-            </div>
-            <div className="bg-emerald-50 text-[#22C55E] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
-              <Zap className="w-6 h-6" />
-            </div>
-          </div>
-          <div className="mt-4 text-xs text-[#64748B] font-medium">
-            Running utility rate: <span className="text-emerald-600 font-bold">{Math.round((activeVehicles / totalVehicles) * 100) || 0}%</span>
-          </div>
-        </div>
-
-        {/* KPI Card 3: Idle */}
-        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">Idle Vehicles</span>
-              <h3 className="text-3xl font-extrabold text-[#1E293B] mt-2 font-poppins">{idleVehicles}</h3>
-            </div>
-            <div className="bg-blue-50 text-[#3B82F6] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
-              <Clock className="w-6 h-6" />
-            </div>
-          </div>
-          <div className="mt-4 text-xs text-[#64748B] font-medium">
-            Parked in depot: <span className="text-[#3B82F6] font-bold">{idleVehicles} units</span>
-          </div>
-        </div>
-
-        {/* KPI Card 4: Maintenance */}
-        <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger relative overflow-hidden group">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">In Maintenance</span>
-              <h3 className="text-3xl font-extrabold text-[#1E293B] mt-2 font-poppins">{maintVehicles}</h3>
-            </div>
-            <div className="bg-red-50 text-[#EF4444] p-3.5 rounded-xl transition-all duration-300 group-hover:scale-110">
-              <AlertTriangle className="w-6 h-6" />
-            </div>
-          </div>
-          <div className="mt-4 text-xs text-[#EF4444] font-semibold flex items-center gap-1">
-            <AlertCircle className="w-3.5 h-3.5" />
-            <span>{overdueRepairsCount} Overdue repairs</span>
-          </div>
-        </div>
-
+        <KPICard
+          title="Total Vehicles"
+          value={vehiclesLoading ? null : totalVehicles}
+          loading={vehiclesLoading}
+          subtitle="VS last month"
+          icon={<Truck className="w-4 h-4" />}
+          variant="blue"
+          filledBarsRatio={0.8}
+          trendText="+8.4%"
+          isTrendUp={true}
+        />
+        <KPICard
+          title="Active Vehicles"
+          value={vehiclesLoading ? null : activeVehicles}
+          loading={vehiclesLoading}
+          subtitle="On duty"
+          icon={<Zap className="w-4 h-4" />}
+          variant="green"
+          filledBarsRatio={Math.max(0.2, (activeVehicles / totalVehicles) || 0.85)}
+          trendText="+12.1%"
+          isTrendUp={true}
+        />
+        <KPICard
+          title="Idle Vehicles"
+          value={vehiclesLoading ? null : idleVehicles}
+          loading={vehiclesLoading}
+          subtitle="In depot"
+          icon={<Clock className="w-4 h-4" />}
+          variant="amber"
+          filledBarsRatio={Math.max(0.1, (idleVehicles / totalVehicles) || 0.3)}
+          trendText="-2.0%"
+          isTrendUp={false}
+        />
+        <KPICard
+          title="In Maintenance"
+          value={vehiclesLoading ? null : maintVehicles}
+          loading={vehiclesLoading}
+          subtitle="In workshop"
+          icon={<Wrench className="w-4 h-4" />}
+          variant="rose"
+          filledBarsRatio={Math.max(0.1, (maintVehicles / totalVehicles) || 0.15)}
+          trendText="-1.5%"
+          isTrendUp={false}
+        />
       </div>
       {/* Group Header and Filters inside a wrapper to reduce empty gap */}
       <div className="space-y-3">
@@ -787,7 +765,7 @@ export default function VehicleManagement() {
                     placeholder="Search vehicles by name, model, plate, or driver..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:border-[#B45A0A] focus:ring-1 focus:ring-[#B45A0A] transition-colors"
+                    className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000] transition-colors"
                   />
                 </div>
 
@@ -796,7 +774,7 @@ export default function VehicleManagement() {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+                    className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
                   >
                     <option>All Statuses</option>
                     <option>Available</option>
@@ -815,7 +793,7 @@ export default function VehicleManagement() {
                   <select
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value)}
-                    className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+                    className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
                   >
                     <option>All Types</option>
                     <option>Truck</option>
@@ -836,7 +814,7 @@ export default function VehicleManagement() {
                   <button
                     onClick={() => setShowMoreFilters(!showMoreFilters)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${showMoreFilters || branchFilter !== "All Branches" || fuelFilter !== "All Fuel Types" || ownershipFilter !== "All Ownerships" || availFilter !== "All Availabilities" || dateAddedFilter
-                        ? "bg-[#FDF3EC] text-[#B45A0A]"
+                        ? "bg-[#FDF3EC] text-[#A14000]"
                         : "text-[#64748B] hover:text-[#1E293B]"
                       }`}
                   >
@@ -857,7 +835,11 @@ export default function VehicleManagement() {
                 </div>
 
                 <div className="text-xs text-[#64748B] font-medium font-poppins">
-                  Showing <span className="font-bold text-[#1E293B]">{filteredVehicles.length}</span> of {vehicles.length} vehicles
+                  {vehiclesLoading ? (
+                    <span className="inline-block w-32 h-4 bg-slate-200 rounded animate-pulse" />
+                  ) : (
+                    <>Showing <span className="font-bold text-[#1E293B]">{filteredVehicles.length}</span> of {vehicles.length} vehicles</>
+                  )}
                 </div>
               </div>
 
@@ -961,7 +943,7 @@ export default function VehicleManagement() {
               <h3 className="font-poppins font-black text-lg text-[#1E293B]">Fleet Inventory</h3>
               <button
                 onClick={() => navigate("/manager/vehicles-list")}
-                className="text-xs text-[#B45A0A] hover:text-[#9A4D08] hover:underline font-bold font-poppins flex items-center gap-1 cursor-pointer"
+                className="text-xs text-[#A14000] hover:text-[#853400] hover:underline font-bold font-poppins flex items-center gap-1 cursor-pointer"
               >
                 <span>View All Vehicles</span>
                 <ArrowRight className="w-3 h-3" />
@@ -995,7 +977,9 @@ export default function VehicleManagement() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E7EAF0]/60">
-                  {filteredVehicles.length === 0 ? (
+                  {vehiclesLoading ? (
+                    <TableRowSkeleton columns={8} rows={5} />
+                  ) : filteredVehicles.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-12 text-center text-gray-400 font-medium font-nunito">
                         No vehicles found matching the selected filters.
@@ -1007,11 +991,11 @@ export default function VehicleManagement() {
                         {/* Vehicle Card Cell */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div className="bg-[#FDF3EC] text-[#B45A0A] p-2.5 rounded-xl flex items-center justify-center shrink-0 border border-[#FDF3EC]/50">
+                            <div className="bg-[#FDF3EC] text-[#A14000] p-2.5 rounded-xl flex items-center justify-center shrink-0 border border-[#FDF3EC]/50">
                               <Truck className="w-5.5 h-5.5" />
                             </div>
                             <div>
-                              <p className="font-bold text-[#1E293B] font-poppins text-sm group-hover:text-[#B45A0A] transition-colors leading-tight whitespace-nowrap">{v.name}</p>
+                              <p className="font-bold text-[#1E293B] font-poppins text-sm group-hover:text-[#A14000] transition-colors leading-tight whitespace-nowrap">{v.name}</p>
                               <span className="text-[11px] text-[#64748B] font-semibold mt-0.5 block">{v.manufacturer}</span>
                             </div>
                           </div>
@@ -1118,7 +1102,7 @@ export default function VehicleManagement() {
                         style={{ 
                           height: `${Math.max((m.value / maxUsage) * 100, 10)}%`
                         }}
-                        className="w-full bg-gradient-to-t from-[#B45A0A] via-[#C65D0E] to-[#D97706] hover:from-[#9A4D08] hover:via-[#B45A0A] hover:to-[#C65D0E] rounded-t-lg relative transition-all duration-300 group-hover:shadow-lg origin-bottom cursor-pointer shadow-md"
+                        className="w-full bg-gradient-to-t from-[#A14000] via-[#853400] to-[#D97706] hover:from-[#853400] hover:via-[#A14000] hover:to-[#853400] rounded-t-lg relative transition-all duration-300 group-hover:shadow-lg origin-bottom cursor-pointer shadow-md"
                       >
                         {/* Tooltip on hover */}
                         <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-[#1E293B] text-white text-xs py-2 px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20 font-poppins font-semibold shadow-lg border border-[#475569]">
@@ -1241,7 +1225,7 @@ export default function VehicleManagement() {
 
                         {/* Content */}
                         <div className="py-0.5 flex-1 min-w-0">
-                          <p className="text-xs font-bold text-[#1E293B] leading-tight group-hover:text-[#B45A0A] transition-colors">
+                          <p className="text-xs font-bold text-[#1E293B] leading-tight group-hover:text-[#A14000] transition-colors">
                             {act.description || act.text || act.title}
                           </p>
                           <span className="text-[10px] text-[#64748B] font-medium block mt-1 font-poppins">
@@ -1301,9 +1285,9 @@ export default function VehicleManagement() {
                           title: "Insurance Expiring Soon",
                           message: `${v.name} (${v.plateNumber}) expires in ${diffDays} days (${expDate.toLocaleDateString()})`,
                           icon: Calendar,
-                          iconColor: "text-[#B45A0A] bg-[#FDF3EC]",
+                          iconColor: "text-[#A14000] bg-[#FDF3EC]",
                           badge: `${diffDays} Days`,
-                          badgeClass: "bg-[#B45A0A] text-white",
+                          badgeClass: "bg-[#A14000] text-white",
                           bgClass: "bg-amber-50/50 border-amber-100"
                         });
                       }
@@ -1315,9 +1299,9 @@ export default function VehicleManagement() {
                         title: "Maintenance Service Due",
                         message: `${v.name} (${v.plateNumber}) is currently in maintenance.`,
                         icon: Wrench,
-                        iconColor: "text-[#B45A0A] bg-[#FDF3EC]",
+                        iconColor: "text-[#A14000] bg-[#FDF3EC]",
                         badge: "Due",
-                        badgeClass: "bg-amber-100 text-[#B45A0A]",
+                        badgeClass: "bg-amber-100 text-[#A14000]",
                         bgClass: "bg-amber-50/50 border-amber-100"
                       });
                     }
@@ -1363,7 +1347,7 @@ export default function VehicleManagement() {
       <button
         onClick={openAddModal}
         title="Add new vehicle"
-        className="fixed bottom-6 right-6 w-14 h-14 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-full flex items-center justify-center shadow-xl hover:shadow-[#B45A0A]/35 hover:scale-108 transition-all z-30 group cursor-pointer"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-[#A14000] hover:bg-[#853400] text-white rounded-full flex items-center justify-center shadow-xl hover:shadow-[#A14000]/35 hover:scale-108 transition-all z-30 group cursor-pointer"
       >
         <Plus className="w-7 h-7 transition-transform group-hover:rotate-90" />
       </button>
@@ -1405,7 +1389,7 @@ export default function VehicleManagement() {
                       placeholder="e.g. Ashok Leyland 3118"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     />
                   </div>
 
@@ -1418,7 +1402,7 @@ export default function VehicleManagement() {
                       placeholder="e.g. Ashok Leyland"
                       value={formData.manufacturer}
                       onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     />
                   </div>
 
@@ -1431,7 +1415,7 @@ export default function VehicleManagement() {
                       placeholder="e.g. MH 12 AB 5678"
                       value={formData.plateNumber}
                       onChange={(e) => setFormData({ ...formData, plateNumber: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] uppercase bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] uppercase bg-white text-[#1E293B]"
                     />
                   </div>
 
@@ -1441,7 +1425,7 @@ export default function VehicleManagement() {
                     <select
                       value={formData.type}
                       onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option>Truck</option>
                       <option>Van</option>
@@ -1459,7 +1443,7 @@ export default function VehicleManagement() {
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option>Available</option>
                       <option>On Trip</option>
@@ -1479,7 +1463,7 @@ export default function VehicleManagement() {
                       min="0"
                       value={formData.fastagBalance}
                       onChange={(e) => setFormData({ ...formData, fastagBalance: Number(e.target.value) })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     />
                   </div>
 
@@ -1489,7 +1473,7 @@ export default function VehicleManagement() {
                     <select
                       value={formData.branch}
                       onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option>Pune</option>
                       <option>Mumbai</option>
@@ -1507,7 +1491,7 @@ export default function VehicleManagement() {
                     <select
                       value={formData.fuelType}
                       onChange={(e) => setFormData({ ...formData, fuelType: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option>Diesel</option>
                       <option>CNG</option>
@@ -1521,7 +1505,7 @@ export default function VehicleManagement() {
                     <select
                       value={formData.ownership}
                       onChange={(e) => setFormData({ ...formData, ownership: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option>Owned</option>
                       <option>Leased</option>
@@ -1534,7 +1518,7 @@ export default function VehicleManagement() {
                     <select
                       value={formData.availability}
                       onChange={(e) => setFormData({ ...formData, availability: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option>Immediate</option>
                       <option>Scheduled</option>
@@ -1548,7 +1532,7 @@ export default function VehicleManagement() {
                       type="date"
                       value={formData.insuranceExpiry}
                       onChange={(e) => setFormData({ ...formData, insuranceExpiry: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     />
                   </div>
 
@@ -1559,7 +1543,7 @@ export default function VehicleManagement() {
                       type="date"
                       value={formData.lastService}
                       onChange={(e) => setFormData({ ...formData, lastService: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     />
                   </div>
 
@@ -1570,7 +1554,7 @@ export default function VehicleManagement() {
                       type="date"
                       value={formData.nextService}
                       onChange={(e) => setFormData({ ...formData, nextService: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     />
                   </div>
                 </div>
@@ -1585,7 +1569,7 @@ export default function VehicleManagement() {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer"
+                    className="px-5 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-xl text-xs font-bold text-white transition-all shadow-md shadow-[#A14000]/20 cursor-pointer"
                   >
                     Save Changes
                   </button>
@@ -1639,12 +1623,12 @@ export default function VehicleManagement() {
             {modalType === "details" && selectedVehicle && (
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
-                  <div className="bg-[#FDF3EC] text-[#B45A0A] p-3 rounded-2xl border border-[#FDF3EC]/50 flex items-center justify-center shrink-0">
+                  <div className="bg-[#FDF3EC] text-[#A14000] p-3 rounded-2xl border border-[#FDF3EC]/50 flex items-center justify-center shrink-0">
                     <Truck className="w-7 h-7" />
                   </div>
                   <div>
                     <h3 className="text-xl font-bold font-poppins text-[#1E293B]">{selectedVehicle.name}</h3>
-                    <span className="text-xs font-poppins font-semibold text-[#B45A0A] tracking-wider mt-0.5 block">{selectedVehicle.plateNumber}</span>
+                    <span className="text-xs font-poppins font-semibold text-[#A14000] tracking-wider mt-0.5 block">{selectedVehicle.plateNumber}</span>
                   </div>
                 </div>
 
@@ -1734,7 +1718,7 @@ export default function VehicleManagement() {
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E7EAF0]">
                   <button
                     onClick={() => { setModalType(null); setSelectedVehicle(null); }}
-                    className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer"
+                    className="px-5 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-xl text-xs font-bold text-white transition-all shadow-md shadow-[#A14000]/20 cursor-pointer"
                   >
                     Done
                   </button>

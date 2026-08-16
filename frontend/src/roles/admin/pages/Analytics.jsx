@@ -19,7 +19,7 @@ function KPICard({ title, value, icon: Icon }) {
       <div className="flex justify-between items-start mb-2 gap-2">
         <div className="overflow-hidden">
           <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1 truncate" title={title}>{title}</h3>
-          <div className="text-xl font-extrabold text-slate-800 truncate" title={value}>{value}</div>
+          <div className="text-xl font-black text-slate-900 truncate" title={value}>{value}</div>
         </div>
         <div className="w-8 h-8 shrink-0 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
           <Icon className="w-4 h-4" />
@@ -90,7 +90,7 @@ export default function Analytics() {
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar relative">
           {loading && (
             <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center">
-               <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full"></div>
+               <div className="animate-spin w-8 h-8 border-4 border-[#A14000] border-t-transparent rounded-full"></div>
             </div>
           )}
           
@@ -119,7 +119,7 @@ export default function Analytics() {
                   onClick={() => setFilter(f.value)}
                   className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${
                     filter === f.value 
-                      ? 'bg-orange-50 text-orange-600 shadow-sm' 
+                      ? 'bg-orange-50 text-[#A14000] shadow-sm' 
                       : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                   }`}
                 >

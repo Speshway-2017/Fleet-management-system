@@ -17,6 +17,7 @@ import {
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import KPICard from "@/components/common/KPICard";
+import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
 import {
   LineChart,
   Line,
@@ -89,7 +90,7 @@ function Dashboard() {
   
   const orgStatusData = [
     { name: "Active", value: activeOrgs, color: "#22c55e" }, // green-500
-    { name: "Pending", value: pendingOrgs, color: "#f97316" }, // orange-500
+    { name: "Pending", value: pendingOrgs, color: "#A14000" }, // orange-500
     { name: "Suspended", value: Math.max(0, suspendedOrgs), color: "#ef4444" }, // red-500
   ];
 
@@ -115,7 +116,7 @@ function Dashboard() {
 
   const getStatusColor = (status) => {
     switch(status) {
-      case 'PENDING': return 'bg-orange-500';
+      case 'PENDING': return 'bg-[#A14000]';
       case 'COMPLETED': return 'bg-green-500';
       case 'IN_PROGRESS': return 'bg-blue-500';
       default: return 'bg-slate-500';
@@ -147,13 +148,7 @@ function Dashboard() {
     return 'N/A';
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#f4f7f6] flex items-center justify-center font-sans">
-        <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
@@ -168,31 +163,47 @@ function Dashboard() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-6">
             <KPICard 
               title="Active Organizations" 
-              value={(statistics.activeOrganizations || 0).toString()} 
+              value={loading ? null : (statistics.activeOrganizations || 0).toString()} 
+              loading={loading}
               subtitle={`${statistics.totalOrganizations > 0 ? Math.round((statistics.activeOrganizations / statistics.totalOrganizations) * 100) : 0}% of total`}
-              icon={<CheckCircle2 className="w-4 h-4 text-green-500" />}
-              iconBg="bg-green-50 border border-green-100"
+              icon={<CheckCircle2 className="w-4 h-4 text-[#00C853]" />}
+              variant="green"
+              filledBarsRatio={0.7}
+              trendText="+6.2%"
+              isTrendUp={true}
             />
             <KPICard 
               title="Active Fleet Managers" 
-              value={(statistics.activeFleetManagers || 0).toString()} 
+              value={loading ? null : (statistics.activeFleetManagers || 0).toString()} 
+              loading={loading}
               subtitle="Currently active"
-              icon={<Users className="w-4 h-4 text-blue-500" />}
-              iconBg="bg-blue-50 border border-blue-100"
+              icon={<Users className="w-4 h-4 text-[#0085FF]" />}
+              variant="blue"
+              filledBarsRatio={0.8}
+              trendText="+12.4%"
+              isTrendUp={true}
             />
             <KPICard 
               title="Today Revenue" 
-              value={`₹${(statistics.todayRevenue || 0).toLocaleString('en-IN')}`} 
+              value={loading ? null : `₹${(statistics.todayRevenue || 0).toLocaleString('en-IN')}`} 
+              loading={loading}
               subtitle="Today"
-              icon={<TrendingUp className="w-4 h-4 text-orange-500" />}
-              iconBg="bg-orange-50 border border-orange-100"
+              icon={<TrendingUp className="w-4 h-4 text-[#A14000]" />}
+              variant="brand"
+              filledBarsRatio={0.65}
+              trendText="+14.8%"
+              isTrendUp={true}
             />
             <KPICard 
               title="Platform Health" 
-              value="99.9%" 
+              value={loading ? null : "99.9%"} 
+              loading={loading}
               subtitle="All systems operational"
-              icon={<Activity className="w-4 h-4 text-green-500" />}
-              iconBg="bg-green-50 border border-green-100"
+              icon={<Activity className="w-4 h-4 text-[#6366F1]" />}
+              variant="indigo"
+              filledBarsRatio={0.99}
+              trendText="+0.1%"
+              isTrendUp={true}
             />
           </div>
 
@@ -308,7 +319,7 @@ function Dashboard() {
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
               <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
                 <h3 className="font-bold text-slate-800 text-sm">Recent Activities</h3>
-                <Link to="/admin/notifications" className="text-[12px] font-bold text-[#f97316] hover:text-[#ea580c] transition-colors">
+                <Link to="/admin/notifications" className="text-[12px] font-bold text-[#A14000] hover:text-[#853400] transition-colors">
                   View all
                 </Link>
               </div>
@@ -332,7 +343,7 @@ function Dashboard() {
                       } else if ((act.title || '').toLowerCase().includes('invited') || (act.title || '').toLowerCase().includes('added')) {
                         dotColor = 'bg-purple-500';
                       } else if ((act.title || '').toLowerCase().includes('changed')) {
-                        dotColor = 'bg-orange-500';
+                        dotColor = 'bg-[#A14000]';
                       } else if (act.type === 'alert' || act.type === 'critical') {
                         dotColor = 'bg-red-500';
                       }
@@ -384,7 +395,7 @@ function Dashboard() {
               
               <div className="space-y-3.5 flex-1">
                 <Link to="/admin/organizations/add" className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
-                  <div className="w-10 h-10 rounded-full bg-orange-500/10 text-orange-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-[#A14000]/10 text-orange-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
                     <Plus className="w-4 h-4" />
                   </div>
                   <div>

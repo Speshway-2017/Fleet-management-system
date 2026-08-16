@@ -1,29 +1,46 @@
 import { useState, useEffect } from "react";
 import driverApi from "../api/driverApi";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { toast } from "react-hot-toast";
-import { Settings, KeyRound, Globe, Moon, Sun, User, Save } from "lucide-react";
+import { Settings, KeyRound, User, Save, Eye, EyeOff, Moon, Sun } from "lucide-react";
 
 export default function DriverSettingsPage() {
   const { user } = useAuth();
+  const { theme, toggleTheme, setTheme, isDark } = useTheme();
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [updating, setUpdating] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // Profile details state with defaults from useAuth
+  // Profile details state
   const [name, setName] = useState(user?.fullName || user?.name || "Driver");
   const [phoneNumber, setPhoneNumber] = useState(user?.phone || user?.phoneNumber || user?.phoneNo || "");
   const [email, setEmail] = useState(user?.email || "");
   const [licenseNumber, setLicenseNumber] = useState(user?.licenseNumber || "");
-
-  const [language, setLanguage] = useState("en");
-  const [theme, setTheme] = useState("light");
+  const [profileImage, setProfileImage] = useState("");
 
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  const handleThemeChange = (newTheme) => {
+    setTheme(newTheme);
+    localStorage.setItem("driver_theme", newTheme);
+    if (newTheme === "dark") {
+      document.documentElement.classList.add("dark");
+      toast.success("Dark Mode Active 🌙");
+    } else {
+      document.documentElement.classList.remove("dark");
+      toast.success("Light Theme Active ☀️");
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -34,10 +51,25 @@ export default function DriverSettingsPage() {
         setPhoneNumber(d.phone || d.phoneNumber || user?.phone || user?.phoneNumber || user?.phoneNo || "");
         setEmail(d.email || user?.email || "");
         setLicenseNumber(d.licenseNumber || user?.licenseNumber || "");
+        if (d.profileImage) setProfileImage(d.profileImage);
       }
     } catch (err) {
       console.error("Error fetching profile details in settings:", err);
     }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image file size must be under 5MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfileImage(reader.result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveProfileDetails = async (e) => {
@@ -54,11 +86,13 @@ export default function DriverSettingsPage() {
         phone: phoneNumber,
         phoneNumber,
         email,
-        licenseNumber
+        licenseNumber,
+        profileImage
       });
       if (res?.success) {
-        toast.success("Profile details updated successfully!");
+        toast.success("Profile details & avatar updated successfully!");
         fetchProfile();
+        window.dispatchEvent(new Event("profileUpdated"));
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to update profile details");
@@ -99,69 +133,88 @@ export default function DriverSettingsPage() {
   };
 
   return (
-    <div className="space-y-8 font-nunito pb-12 max-w-4xl mx-auto">
+    <div className="max-w-4xl space-y-8 font-nunito pb-12">
       {/* Header */}
-      <div className="pb-6 border-b border-slate-200">
-        <h1 className="text-2xl font-bold font-poppins text-slate-900 flex items-center gap-2">
-          <Settings className="w-6 h-6 text-[#B45A0A]" />
+      <div>
+        <h1 className="text-2xl font-black font-poppins text-slate-900 dark:text-white flex items-center gap-2">
+          <Settings className="w-6 h-6 text-[#A14000]" />
           Driver Account Settings
         </h1>
-        <p className="text-slate-500 text-xs mt-1">
+        <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">
           Configure security, password change, profile details, language preferences, and portal theme.
         </p>
       </div>
 
       {/* Driver Profile Details */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-        <h2 className="text-base font-bold font-poppins text-slate-900 flex items-center gap-2 pb-3 border-b border-slate-100">
-          <User className="w-5 h-5 text-[#B45A0A]" /> Profile Information
+      <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
+        <h2 className="text-base font-bold font-poppins text-slate-900 dark:text-white flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <User className="w-5 h-5 text-[#A14000]" /> Profile Information
         </h2>
 
-        <form onSubmit={handleSaveProfileDetails} className="space-y-4 max-w-2xl">
+        <form onSubmit={handleSaveProfileDetails} className="space-y-6 max-w-2xl">
+          {/* Profile Picture Upload Avatar Box */}
+          <div className="flex items-center gap-4 p-4 bg-slate-50/80 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+            <div className="relative w-16 h-16 rounded-full overflow-hidden bg-[#FFDBCC]/60 dark:bg-[#A14000]/30 border-2 border-[#A14000]/50 flex items-center justify-center text-[#A14000] dark:text-white font-bold font-poppins text-xl shrink-0 shadow-sm">
+              {profileImage ? (
+                <img src={profileImage} alt={name} className="w-full h-full object-cover" />
+              ) : (
+                name.charAt(0).toUpperCase()
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-bold font-poppins text-slate-900 dark:text-white">Profile Photo</label>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Upload a clean headshot. JPG, PNG up to 5MB.</p>
+              <label className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#A14000] hover:bg-[#853400] text-white text-xs font-bold rounded-lg cursor-pointer transition shadow-xs">
+                <span>Upload New Image</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+              </label>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">Driver Full Name</label>
+              <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Driver Full Name</label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Enter driver name"
-                className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-semibold focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
+                className="mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-semibold focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">Phone Number</label>
+              <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Phone Number</label>
               <input
                 type="text"
                 required
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="Enter phone number"
-                className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-semibold focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
+                className="mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-semibold focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">Email Address</label>
+              <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Email Address</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="driver@fleet.com"
-                className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
+                className="mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">License Number</label>
+              <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">License Number</label>
               <input
                 type="text"
                 value={licenseNumber}
                 onChange={(e) => setLicenseNumber(e.target.value)}
                 placeholder="DL-XXXX-XXXXXX"
-                className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
+                className="mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
               />
             </div>
           </div>
@@ -169,7 +222,7 @@ export default function DriverSettingsPage() {
           <button
             type="submit"
             disabled={savingProfile}
-            className="py-2.5 px-5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm flex items-center gap-2"
+            className="py-2.5 px-5 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm flex items-center gap-2 cursor-pointer"
           >
             <Save className="w-4 h-4" />
             <span>{savingProfile ? "Saving Profile..." : "Update Profile Details"}</span>
@@ -177,113 +230,86 @@ export default function DriverSettingsPage() {
         </form>
       </div>
 
+
+
       {/* Security & Password Change */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-        <h2 className="text-base font-bold font-poppins text-slate-900 flex items-center gap-2 pb-3 border-b border-slate-100">
-          <KeyRound className="w-5 h-5 text-[#B45A0A]" /> Change Security Password
+      <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
+        <h2 className="text-base font-bold font-poppins text-slate-900 dark:text-white flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <KeyRound className="w-5 h-5 text-[#A14000]" /> Change Security Password
         </h2>
 
         <form onSubmit={handleChangePassword} className="space-y-4 max-w-lg">
           <div>
-            <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">Current Password</label>
-            <input
-              type="password"
-              required
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
-            />
+            <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Current Password</label>
+            <div className="relative mt-1">
+              <input
+                type={showCurrentPassword ? "text" : "password"}
+                required
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="block w-full px-3.5 py-2.5 pr-10 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none font-medium"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none p-1 transition"
+                title={showCurrentPassword ? "Hide password" : "Show password"}
+              >
+                {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">New Password</label>
-            <input
-              type="password"
-              required
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
-            />
+            <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">New Password</label>
+            <div className="relative mt-1">
+              <input
+                type={showNewPassword ? "text" : "password"}
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="block w-full px-3.5 py-2.5 pr-10 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none font-medium"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none p-1 transition"
+                title={showNewPassword ? "Hide password" : "Show password"}
+              >
+                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">Confirm New Password</label>
-            <input
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
-            />
+            <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Confirm New Password</label>
+            <div className="relative mt-1">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="block w-full px-3.5 py-2.5 pr-10 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none font-medium"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none p-1 transition"
+                title={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={updating}
-            className="py-2.5 px-5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm"
+            className="py-2.5 px-5 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm cursor-pointer"
           >
             {updating ? "Updating Password..." : "Update Password"}
           </button>
         </form>
-      </div>
-
-      {/* Preferences */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-        <h2 className="text-base font-bold font-poppins text-slate-900 flex items-center gap-2 pb-3 border-b border-slate-100">
-          <Globe className="w-5 h-5 text-[#B45A0A]" /> App Preferences
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-xs font-bold font-poppins text-slate-700 uppercase mb-2">Display Language</label>
-            <select
-              value={language}
-              onChange={(e) => {
-                setLanguage(e.target.value);
-                toast.success("Language preference saved");
-              }}
-              className="block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
-            >
-              <option value="en">English (Default)</option>
-              <option value="te">Telugu (తెలుగు)</option>
-              <option value="hi">Hindi (हिंदी)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold font-poppins text-slate-700 uppercase mb-2">Theme Mode</label>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setTheme("light");
-                  toast.success("Light Theme Active");
-                }}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold font-poppins flex items-center justify-center gap-2 border transition ${
-                  theme === "light"
-                    ? "bg-amber-50 text-[#B45A0A] border-amber-200 shadow-sm"
-                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                <Sun className="w-4 h-4" /> Light Mode
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setTheme("dark");
-                  toast.success("Dark Mode Active");
-                }}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold font-poppins flex items-center justify-center gap-2 border transition ${
-                  theme === "dark"
-                    ? "bg-amber-50 text-[#B45A0A] border-amber-200 shadow-sm"
-                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                <Moon className="w-4 h-4" /> Dark Mode
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

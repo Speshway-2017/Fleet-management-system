@@ -5,6 +5,7 @@ import '../constants/app_radius.dart';
 import '../constants/app_spacing.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
+import '../widgets/document_preview_dialog.dart';
 import '../services/api_service.dart';
 
 class InvoiceScreen extends StatefulWidget {
@@ -218,24 +219,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
   Future<void> _openPdfUrl(String url) async {
     if (url.isEmpty) return;
-    try {
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open document URL.')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error launching document: $e')),
-        );
-      }
-    }
+    await DocumentPreviewDialog.open(context, title: 'Trip Invoice', documentUrl: url);
   }
 
   @override

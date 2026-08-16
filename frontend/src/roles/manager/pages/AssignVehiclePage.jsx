@@ -22,7 +22,7 @@ export default function AssignVehiclePage() {
   const navigate = useNavigate();
   const [driver, setDriver] = useState(null);
   const [vehicles, setVehicles] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [typeFilter, setTypeFilter] = useState("All Types");
@@ -168,7 +168,7 @@ export default function AssignVehiclePage() {
       case "Available":
         return "bg-emerald-50 text-[#22C55E] border border-emerald-100";
       case "On Trip":
-        return "bg-amber-50 text-[#B45A0A] border border-amber-100";
+        return "bg-amber-50 text-[#A14000] border border-amber-100";
       case "Idle":
         return "bg-slate-50 text-[#64748B] border border-slate-100";
       case "Maintenance":
@@ -178,16 +178,7 @@ export default function AssignVehiclePage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F5F7FB] flex items-center justify-center font-poppins p-6 lg:p-8">
-        <div className="flex flex-col items-center gap-3 text-[#64748B]">
-          <Loader className="w-8 h-8 animate-spin text-[#B45A0A]" />
-          <p className="font-semibold">Loading Assignment Context...</p>
-        </div>
-      </div>
-    );
-  }
+
 
   if (!driver) return null;
 
@@ -223,7 +214,7 @@ export default function AssignVehiclePage() {
       {/* --- DRIVER QUICK RESUME INFO CARD --- */}
       <div className="p-5 bg-white border border-[#E7EAF0] rounded-2xl flex items-center justify-between shadow-sm select-none mt-6">
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 bg-[#FDF3EC] text-[#B45A0A] rounded-xl flex items-center justify-center font-bold text-sm font-poppins">
+          <div className="w-11 h-11 bg-[#FDF3EC] text-[#A14000] rounded-xl flex items-center justify-center font-bold text-sm font-poppins">
             {driver.fullName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
           </div>
           <div>
@@ -253,7 +244,7 @@ export default function AssignVehiclePage() {
               placeholder="Search vehicles by model, plate number, or manufacturer..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] transition-colors"
+              className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] transition-colors"
             />
           </div>
 
@@ -262,7 +253,7 @@ export default function AssignVehiclePage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+              className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
             >
               <option value="All Statuses">All Statuses</option>
               <option value="Available">Available</option>
@@ -280,7 +271,7 @@ export default function AssignVehiclePage() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+              className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
             >
               <option value="All Types">All Types</option>
               <option value="Truck">Truck</option>
@@ -326,7 +317,7 @@ export default function AssignVehiclePage() {
               <div className="space-y-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="bg-[#FDF3EC] text-[#B45A0A] p-2.5 rounded-xl border border-[#FDF3EC]/50 shrink-0">
+                    <div className="bg-[#FDF3EC] text-[#A14000] p-2.5 rounded-xl border border-[#FDF3EC]/50 shrink-0">
                       <Truck className="w-6 h-6" />
                     </div>
                     <div>
@@ -371,7 +362,7 @@ export default function AssignVehiclePage() {
                   className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                     v.status === "Maintenance" || v.status === "Out of Service" || assigningVehicleId === v.id || isLicenseExpired
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-                      : "bg-white hover:bg-[#B45A0A] hover:text-white text-[#B45A0A] border border-[#B45A0A] shadow-sm hover:shadow-md"
+                      : "bg-white hover:bg-[#A14000] hover:text-white text-[#A14000] border border-[#A14000] shadow-sm hover:shadow-md"
                   }`}
                   disabled={v.status === "Maintenance" || v.status === "Out of Service" || assigningVehicleId !== null || isLicenseExpired}
                 >

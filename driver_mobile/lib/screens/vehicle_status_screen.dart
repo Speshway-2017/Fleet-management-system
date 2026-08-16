@@ -166,7 +166,6 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
     final odometer = veh['odometer'] != null ? '${veh['odometer']} km' : '0 km';
     final currentStatus = veh['currentStatus'] ?? 'Assigned';
     final currentLocation = veh['currentLocation'] ?? veh['branchDepot'] ?? 'N/A';
-    final fuelCapacity = veh['fuelCapacity'] != null ? '${veh['fuelCapacity']} L' : 'N/A';
     final fastagBalance = veh['fastagBalance'] != null ? '₹${veh['fastagBalance']}' : '₹0';
     final lastServiceDateStr = _formatDate(veh['lastServiceDate'] ?? veh['lastService']);
     final nextServiceDueStr = _formatDate(veh['nextServiceDue'] ?? veh['nextService']);
@@ -500,11 +499,11 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                       children: [
                         Expanded(
                           child: _buildLiveDetailItem(
-                            icon: Icons.local_gas_station_outlined,
-                            iconColor: accentOrange,
-                            label: 'Fuel Tank Capacity',
-                            value: fuelCapacity,
-                            subValue: 'Diesel',
+                            icon: Icons.gps_fixed_rounded,
+                            iconColor: primaryDark,
+                            label: 'GPS Tracking System',
+                            value: 'Connected',
+                            subValue: 'Live Telemetry',
                           ),
                         ),
                         Expanded(

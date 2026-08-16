@@ -22,34 +22,54 @@ export default function AuthLayout() {
         <div className="absolute inset-0 bg-slate-900/40 pointer-events-none z-0" />
         
         {/* Top Header: Logo + Title */}
-        <div className="relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="relative z-10"
+        >
           <NavLink to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
             <img src={platformSettings?.logoUrl || "/logo.png"} alt="Fleet Management Logo" className="h-10 [@media(max-height:850px)]:h-8 w-auto object-contain bg-white/95 rounded-xl p-1 shadow-sm" />
             <span className="font-display font-black text-white text-lg [@media(max-height:850px)]:text-base tracking-wide">
               {platformSettings?.platformName || "Fleet Management"}
             </span>
           </NavLink>
-        </div>
+        </motion.div>
 
         {/* Middle Hero details */}
         <div className="relative z-10 space-y-7 [@media(max-height:850px)]:space-y-4 max-w-xl my-auto py-12 [@media(max-height:850px)]:py-6">
           
-          <h1 className="font-display font-black text-white text-3xl sm:text-4xl md:text-5xl [@media(max-height:850px)]:md:text-4xl leading-[1.15] tracking-tight">
+          <motion.h1 
+            initial={{ opacity: 0, x: -35 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, delay: 0.1, ease: "easeOut" }}
+            className="font-display font-black text-white text-3xl sm:text-4xl md:text-5xl [@media(max-height:850px)]:md:text-4xl leading-[1.15] tracking-tight"
+          >
             Fleet Management <br />
             <span className="text-[#A14000]">System</span>
-          </h1>
+          </motion.h1>
 
-          <p className="text-sm [@media(max-height:850px)]:text-xs text-slate-200 font-medium leading-relaxed max-w-lg">
+          <motion.p 
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
+            className="text-sm [@media(max-height:850px)]:text-xs text-slate-200 font-medium leading-relaxed max-w-lg"
+          >
             Manage fleets, drivers, vehicles, centralized dashboard and operations from one intelligent platform. 
             Improve operational efficiency, monitor vehicle health in real time, reduce operational costs, 
             and secure your logistics operations with enterprise-grade technology.
-          </p>
+          </motion.p>
 
-          {/* Features rows */}
+          {/* Features rows with staggered entrance */}
           <div className="space-y-4 [@media(max-height:850px)]:space-y-2.5 pt-4 [@media(max-height:850px)]:pt-2">
             
             {/* Feature 1 */}
-            <div className="flex items-start gap-3">
+            <motion.div 
+              initial={{ opacity: 0, x: -25 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
+              className="flex items-start gap-3"
+            >
               <div className="h-9 w-9 [@media(max-height:850px)]:h-7 [@media(max-height:850px)]:w-7 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
                 <span className="text-lg [@media(max-height:850px)]:text-sm">🚛</span>
               </div>
@@ -57,10 +77,15 @@ export default function AuthLayout() {
                 <h4 className="font-display font-bold text-xs text-white">Real-Time Fleet Tracking</h4>
                 <p className="text-[11px] [@media(max-height:850px)]:text-[10px] text-slate-300 font-medium">Monitor vehicles live using GPS and telematics.</p>
               </div>
-            </div>
+            </motion.div>
 
             {/* Feature 2 */}
-            <div className="flex items-start gap-3">
+            <motion.div 
+              initial={{ opacity: 0, x: -25 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
+              className="flex items-start gap-3"
+            >
               <div className="h-9 w-9 [@media(max-height:850px)]:h-7 [@media(max-height:850px)]:w-7 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
                 <ShieldCheck className="h-4.5 w-4.5 [@media(max-height:850px)]:h-3.5 [@media(max-height:850px)]:w-3.5" />
               </div>
@@ -68,10 +93,15 @@ export default function AuthLayout() {
                 <h4 className="font-display font-bold text-xs text-white">Enterprise Security</h4>
                 <p className="text-[11px] [@media(max-height:850px)]:text-[10px] text-slate-300 font-medium">Role-based authentication with secure access.</p>
               </div>
-            </div>
+            </motion.div>
 
             {/* Feature 3 */}
-            <div className="flex items-start gap-3">
+            <motion.div 
+              initial={{ opacity: 0, x: -25 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.5, ease: "easeOut" }}
+              className="flex items-start gap-3"
+            >
               <div className="h-9 w-9 [@media(max-height:850px)]:h-7 [@media(max-height:850px)]:w-7 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
                 <span className="text-lg [@media(max-height:850px)]:text-sm">📊</span>
               </div>
@@ -79,10 +109,15 @@ export default function AuthLayout() {
                 <h4 className="font-display font-bold text-xs text-white">Smart Analytics</h4>
                 <p className="text-[11px] [@media(max-height:850px)]:text-[10px] text-slate-300 font-medium">Generate reports and optimize operational performance.</p>
               </div>
-            </div>
+            </motion.div>
 
             {/* Feature 4 */}
-            <div className="flex items-start gap-3">
+            <motion.div 
+              initial={{ opacity: 0, x: -25 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.6, ease: "easeOut" }}
+              className="flex items-start gap-3"
+            >
               <div className="h-9 w-9 [@media(max-height:850px)]:h-7 [@media(max-height:850px)]:w-7 rounded-xl bg-white border border-gray-200/60 shadow-sm flex items-center justify-center shrink-0 text-[#A14000]">
                 <Zap className="h-4.5 w-4.5 [@media(max-height:850px)]:h-3.5 [@media(max-height:850px)]:w-3.5" />
               </div>
@@ -90,24 +125,35 @@ export default function AuthLayout() {
                 <h4 className="font-display font-bold text-xs text-white">Automated Operations</h4>
                 <p className="text-[11px] [@media(max-height:850px)]:text-[10px] text-slate-300 font-medium">Reduce manual work through workflow automation.</p>
               </div>
-            </div>
+            </motion.div>
 
           </div>
 
           {/* Left panel CTA buttons */}
-          <div className="flex items-center gap-4 pt-4 [@media(max-height:850px)]:pt-2">
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.7, ease: "easeOut" }}
+            className="flex items-center gap-4 pt-4 [@media(max-height:850px)]:pt-2"
+          >
             <button
-              onClick={() => navigate("/contact")}
-              className="px-6 py-3 [@media(max-height:850px)]:px-4 [@media(max-height:850px)]:py-2 rounded-xl bg-white/80 border border-gray-300 hover:bg-white text-[#1E293B] font-bold text-xs shadow-sm hover:shadow-md active:scale-[0.98] transition-all cursor-pointer"
+              onClick={() => navigate("/about")}
+              className="btn-learn-more px-7 py-3 [@media(max-height:850px)]:px-5 [@media(max-height:850px)]:py-2 rounded-xl bg-white/90 border border-gray-200 hover:bg-white text-[#1E293B] font-bold text-xs shadow-sm hover:shadow-md active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
             >
-              Learn More
+              <span>Learn More</span>
+              <span className="btn-arrow-icon">→</span>
             </button>
-          </div>
+          </motion.div>
 
         </div>
 
         {/* Bottom stats bar */}
-        <div className="relative z-10 w-full mt-auto pt-6 [@media(max-height:850px)]:pt-4 border-t border-gray-300/30">
+        <motion.div 
+          initial={{ opacity: 0, y: 25 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
+          className="relative z-10 w-full mt-auto pt-6 [@media(max-height:850px)]:pt-4 border-t border-gray-300/30"
+        >
           <div className="bg-[#0F2345]/85 backdrop-blur-md border border-white/10 rounded-2xl p-6 [@media(max-height:850px)]:p-4 grid grid-cols-2 md:grid-cols-4 gap-6 [@media(max-height:850px)]:gap-4 text-white shadow-xl">
             
             <div className="space-y-1 text-center md:text-left">
@@ -131,7 +177,8 @@ export default function AuthLayout() {
             </div>
 
           </div>
-        </div>
+        </motion.div>
+
 
       </div>
 

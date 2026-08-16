@@ -38,7 +38,7 @@ export default function DriverDocumentsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
         <div>
           <h1 className="text-2xl font-bold font-poppins text-slate-900 flex items-center gap-2">
-            <FileText className="w-6 h-6 text-[#B45A0A]" />
+            <FileText className="w-6 h-6 text-[#A14000]" />
             Compliance Documents & Certificates
           </h1>
           <p className="text-slate-500 text-xs mt-1">
@@ -49,7 +49,7 @@ export default function DriverDocumentsPage() {
 
       {loading ? (
         <div className="min-h-[50vh] flex items-center justify-center font-poppins">
-          <RefreshCw className="w-8 h-8 text-[#B45A0A] animate-spin" />
+          <RefreshCw className="w-8 h-8 text-[#A14000] animate-spin" />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -58,7 +58,7 @@ export default function DriverDocumentsPage() {
               <div>
                 <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-[#B45A0A]">
+                    <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-[#A14000]">
                       <FileText className="w-6 h-6" />
                     </div>
                     <div>
@@ -91,7 +91,7 @@ export default function DriverDocumentsPage() {
                     href={doc.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 text-[#B45A0A] border border-slate-200 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition"
+                    className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 text-[#A14000] border border-slate-200 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition"
                   >
                     <Download className="w-4 h-4" /> Download Certificate
                   </a>

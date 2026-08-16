@@ -47,8 +47,8 @@ export default function TwoFactorPage() {
       {/* ── SETTINGS CARD ── */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="bg-orange-50/30 px-6 py-3 border-b border-gray-100 flex items-center gap-2">
-          <Shield className="w-4 h-4 text-[#B45A0A]" />
-          <h3 className="font-poppins font-black text-xs text-[#B45A0A] uppercase tracking-wider">
+          <Shield className="w-4 h-4 text-[#A14000]" />
+          <h3 className="font-poppins font-black text-xs text-[#A14000] uppercase tracking-wider">
             2FA Security Preferences
           </h3>
         </div>
@@ -67,7 +67,7 @@ export default function TwoFactorPage() {
               <button
                 type="button"
                 onClick={handleToggle2FA}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border-none ${isEnabled ? 'bg-red-50 hover:bg-red-100 text-red-600' : 'bg-[#B45A0A] hover:bg-[#9A4D08] text-white'}`}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border-none ${isEnabled ? 'bg-red-50 hover:bg-red-100 text-red-600' : 'bg-[#A14000] hover:bg-[#853400] text-white'}`}
               >
                 {isEnabled ? "Disable" : "Configure"}
               </button>
@@ -101,7 +101,7 @@ export default function TwoFactorPage() {
                       placeholder="e.g. 123456"
                       value={verificationCode}
                       onChange={(e) => setVerificationCode(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 border border-gray-250 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#B45A0A] bg-white text-gray-800"
+                      className="w-full pl-9 pr-3 py-2 border border-gray-250 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#A14000] bg-white text-gray-800"
                       maxLength={6}
                     />
                   </div>
@@ -109,7 +109,7 @@ export default function TwoFactorPage() {
 
                 <button
                   type="submit"
-                  className="w-fit px-4 py-2 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer border-none"
+                  className="w-fit px-4 py-2 bg-[#A14000] hover:bg-[#853400] text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer border-none"
                 >
                   Verify and Activate
                 </button>

@@ -13,7 +13,7 @@ export default function NotificationList() {
   const getIcon = (type) => {
     switch (type) {
       case "bell":
-        return { icon: Bell, bg: "bg-orange-50", text: "text-orange-500" };
+        return { icon: Bell, bg: "bg-orange-50", text: "text-[#A14000]" };
       case "success":
         return { icon: CheckCircle2, bg: "bg-green-50", text: "text-green-500" };
       case "warning":

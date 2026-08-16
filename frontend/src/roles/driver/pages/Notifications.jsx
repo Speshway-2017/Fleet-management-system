@@ -39,6 +39,7 @@ export default function DriverNotificationsPage() {
       const res = await driverApi.markNotificationRead(id);
       if (res?.success) {
         setNotifications(prev => prev.map(n => (n._id === id || n.id === id) ? { ...n, isRead: true } : n));
+        window.dispatchEvent(new Event("notificationsUpdated"));
       }
     } catch (err) {
       toast.error("Failed to mark as read");
@@ -51,6 +52,7 @@ export default function DriverNotificationsPage() {
       if (res?.success) {
         toast.success("All notifications marked as read");
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        window.dispatchEvent(new Event("notificationsUpdated"));
       }
     } catch (err) {
       toast.error("Failed to mark all as read");
@@ -66,11 +68,11 @@ export default function DriverNotificationsPage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold font-poppins text-slate-900 flex items-center gap-2">
-              <Bell className="w-6 h-6 text-[#B45A0A]" />
+              <Bell className="w-6 h-6 text-[#A14000]" />
               Notifications Inbox
             </h1>
             {unreadCount > 0 && (
-              <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-[#B45A0A] text-white font-poppins">
+              <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-[#A14000] text-white font-poppins">
                 {unreadCount} Unread
               </span>
             )}
@@ -83,7 +85,7 @@ export default function DriverNotificationsPage() {
         {unreadCount > 0 && (
           <button
             onClick={handleMarkAllRead}
-            className="px-4 py-2.5 bg-white hover:bg-slate-50 text-[#B45A0A] border border-slate-200 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-sm"
+            className="px-4 py-2.5 bg-white hover:bg-slate-50 text-[#A14000] border border-slate-200 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-sm"
           >
             <CheckCheck className="w-4 h-4" />
             <span>Mark All as Read</span>
@@ -93,10 +95,10 @@ export default function DriverNotificationsPage() {
 
       {loading ? (
         <div className="min-h-[50vh] flex items-center justify-center font-poppins">
-          <RefreshCw className="w-8 h-8 text-[#B45A0A] animate-spin" />
+          <RefreshCw className="w-8 h-8 text-[#A14000] animate-spin" />
         </div>
       ) : notifications.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {notifications.map((notif) => (
             <NotificationCard
               key={notif._id || notif.id}

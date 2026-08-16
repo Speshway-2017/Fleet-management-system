@@ -12,7 +12,7 @@ export default function ScheduleServicePage() {
 
   return (
     <div className="p-8 flex flex-col items-center justify-center min-h-[60vh]">
-      <div className="animate-spin h-8 w-8 border-4 border-[#B45A0A] border-t-transparent rounded-full mb-4" />
+      <div className="animate-spin h-8 w-8 border-4 border-[#A14000] border-t-transparent rounded-full mb-4" />
       <p className="text-sm font-bold text-slate-600 font-poppins">Redirecting to Maintenance Overview...</p>
     </div>
   );

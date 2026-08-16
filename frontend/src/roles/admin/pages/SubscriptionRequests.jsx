@@ -229,7 +229,7 @@ export default function SubscriptionRequests() {
             <>
               {requestsLoading ? (
                 <div className="flex justify-center items-center py-24">
-                  <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#f97316] border-t-transparent" />
+                  <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#A14000] border-t-transparent" />
                 </div>
               ) : requests.length === 0 ? (
                 <div className="bg-white border rounded-xl p-12 text-center">
@@ -347,15 +347,15 @@ export default function SubscriptionRequests() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {plans.map((plan) => (
-                    <div key={plan._id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between min-h-[380px] h-auto hover:shadow-md transition-all gap-4">
+                    <div key={plan._id} className="bg-white dark:bg-[#0F172A] rounded-xl border border-slate-200 dark:border-[#1E293B] shadow-sm p-6 flex flex-col justify-between min-h-[380px] h-auto hover:shadow-md transition-all gap-4">
                       <div className="space-y-4">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h3 className="text-base font-extrabold text-[#0f172a]">{plan.name}</h3>
+                            <h3 className="text-base font-extrabold text-[#0f172a] dark:text-white">{plan.name}</h3>
                             <span className={`inline-block px-2 py-0.5 mt-1.5 rounded-full text-[9px] font-bold border uppercase ${
                               plan.status === 'Active' 
-                                ? 'bg-green-50 text-green-700 border-green-200' 
-                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                                ? 'bg-green-50 dark:bg-emerald-950/60 text-green-700 dark:text-emerald-300 border-green-200 dark:border-emerald-800/50' 
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                             }`}>
                               {plan.status}
                             </span>
@@ -363,14 +363,14 @@ export default function SubscriptionRequests() {
                           <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => handleOpenEdit(plan)}
-                              className="p-2 text-slate-500 hover:text-[#a14000] hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+                              className="p-2 text-slate-500 hover:text-[#a14000] dark:text-slate-400 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                               title="Edit"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeletePlan(plan._id)}
-                              className="p-2 text-slate-500 hover:text-red-600 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+                              className="p-2 text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-rose-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                               title="Delete"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -379,37 +379,37 @@ export default function SubscriptionRequests() {
                         </div>
 
                         <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-black text-[#0f172a]">₹{plan.price}</span>
-                          <span className="text-[10px] text-slate-400 font-bold">/ month</span>
+                          <span className="text-2xl font-black text-[#0f172a] dark:text-white">₹{plan.price}</span>
+                          <span className="text-xs text-slate-400 dark:text-slate-300 font-bold">/ month</span>
                         </div>
 
-                        <p className="text-[11px] font-medium text-slate-500 min-h-[40px] leading-relaxed">
+                        <p className="text-[11px] font-medium text-slate-500 dark:text-slate-300 min-h-[40px] leading-relaxed">
                           {plan.description}
                         </p>
 
-                        <div className="text-[10px] text-[#b45309] font-bold bg-[#FFF3E8] px-2.5 py-1 rounded inline-block">
+                        <div className="text-[10px] text-[#b45309] dark:text-amber-300 font-bold bg-[#FFF3E8] dark:bg-[#A14000]/30 border border-transparent dark:border-[#A14000]/40 px-2.5 py-1 rounded inline-block">
                           Duration: {plan.duration} Days (Order: {plan.displayOrder || 1})
                         </div>
 
                         {/* Displays limits dynamically */}
-                        <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-slate-600 pt-1 border-t border-slate-100">
-                          <div className="bg-slate-50 border border-slate-100 p-1.5 rounded">
-                            <span className="block text-slate-800 font-extrabold">{plan.maxVehicles || 0}</span>
-                            <span className="text-[7.5px] text-slate-400 font-bold uppercase tracking-wider">Vehicles</span>
+                        <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-100 dark:border-slate-800">
+                          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-1.5 rounded">
+                            <span className="block text-slate-800 dark:text-white font-extrabold">{plan.maxVehicles || 0}</span>
+                            <span className="text-[7.5px] text-slate-400 dark:text-slate-300 font-bold uppercase tracking-wider">Vehicles</span>
                           </div>
-                          <div className="bg-slate-50 border border-slate-100 p-1.5 rounded">
-                            <span className="block text-slate-800 font-extrabold">{plan.maxDrivers || 0}</span>
-                            <span className="text-[7.5px] text-slate-400 font-bold uppercase tracking-wider">Drivers</span>
+                          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-1.5 rounded">
+                            <span className="block text-slate-800 dark:text-white font-extrabold">{plan.maxDrivers || 0}</span>
+                            <span className="text-[7.5px] text-slate-400 dark:text-slate-300 font-bold uppercase tracking-wider">Drivers</span>
                           </div>
-                          <div className="bg-slate-50 border border-slate-100 p-1.5 rounded">
-                            <span className="block text-slate-800 font-extrabold">{plan.maxTrips || 0}</span>
-                            <span className="text-[7.5px] text-slate-400 font-bold uppercase tracking-wider">Trips</span>
+                          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-1.5 rounded">
+                            <span className="block text-slate-800 dark:text-white font-extrabold">{plan.maxTrips || 0}</span>
+                            <span className="text-[7.5px] text-slate-400 dark:text-slate-300 font-bold uppercase tracking-wider">Trips</span>
                           </div>
                         </div>
 
-                        <ul className="space-y-1.5 pt-3 border-t border-slate-100">
+                        <ul className="space-y-1.5 pt-3 border-t border-slate-100 dark:border-slate-800">
                           {plan.features.slice(0, 3).map((f, i) => (
-                            <li key={i} className="flex items-center gap-2 text-[10px] text-slate-600 font-medium">
+                            <li key={i} className="flex items-center gap-2 text-[10px] text-slate-600 dark:text-slate-300 font-medium">
                               <Check className="w-3 h-3 text-green-500 shrink-0" />
                               <span className="truncate">{f}</span>
                             </li>

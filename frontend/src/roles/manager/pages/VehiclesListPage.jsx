@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { vehicleApi } from "@/api/vehicleApi";
 import L from "leaflet";
 import { managerApi } from "../api/managerApi";
+import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 
 
 // Fix Leaflet marker icons
@@ -115,7 +116,6 @@ export default function VehiclesListPage() {
 
   const fetchVehicles = async (isInitial = false) => {
     try {
-      if (isInitial) setLoading(true);
       const res = await vehicleApi.list();
       const raw = res.data?.data ?? [];
       setVehicles(raw.map(normaliseVehicle));
@@ -257,8 +257,8 @@ export default function VehiclesListPage() {
   const getMarkerColor = (status) => {
     const s = String(status || '').toLowerCase().trim();
     if (s.includes('available')) return "#22c55e"; // green
-    if (s.includes('trip')) return "#f97316";      // orange
-    if (s.includes('assigned')) return "#f97316";   // orange / on trip
+    if (s.includes('trip')) return "#A14000";      // orange
+    if (s.includes('assigned')) return "#A14000";   // orange / on trip
     if (s.includes('maintenance')) return "#ef4444"; // red
     return "#6b7280";                              // grey (Idle / Out of Service)
   };
@@ -390,7 +390,7 @@ export default function VehiclesListPage() {
             onClick={() => navigate("/manager/add-vehicle")}
             disabled={isViewOnly}
             title={isViewOnly ? "This feature is available after activating a subscription." : ""}
-            className={`px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
+            className={`px-5 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#A14000]/20 cursor-pointer ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             <Plus className="w-4.5 h-4.5" />
             <span>Add Vehicle</span>
@@ -412,7 +412,7 @@ export default function VehiclesListPage() {
             </div>
             <div className="bg-white rounded-xl border border-[#E7EAF0] p-4">
               <p className="text-xs font-bold text-[#64748B] uppercase tracking-wider">ON TRIP</p>
-              <p className="text-2xl font-extrabold text-orange-600 mt-2">
+              <p className="text-2xl font-extrabold text-[#A14000] mt-2">
                 {vehicles.filter((v) => v.status === "On Trip").length}
               </p>
             </div>
@@ -435,7 +435,7 @@ export default function VehiclesListPage() {
                   placeholder="Search vehicles..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white"
+                  className="w-full pl-10 pr-4 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white"
                 />
               </div>
 
@@ -444,7 +444,7 @@ export default function VehiclesListPage() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-3.5 py-2.5 h-10 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+                  className="w-full px-3.5 py-2.5 h-10 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
                 >
                   <option>All Statuses</option>
                   <option>Available</option>
@@ -462,7 +462,7 @@ export default function VehiclesListPage() {
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
-                  className="w-full px-3.5 py-2.5 h-10 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+                  className="w-full px-3.5 py-2.5 h-10 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
                 >
                   <option>All Types</option>
                   <option>Truck</option>
@@ -505,7 +505,7 @@ export default function VehiclesListPage() {
                   <select
                     value={branchFilter}
                     onChange={(e) => setBranchFilter(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
                   >
                     <option>All Branches</option>
                     <option>Pune</option>
@@ -524,7 +524,7 @@ export default function VehiclesListPage() {
                   <select
                     value={fuelTypeFilter}
                     onChange={(e) => setFuelTypeFilter(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
                   >
                     <option>All Fuel Types</option>
                     <option>Diesel</option>
@@ -543,7 +543,7 @@ export default function VehiclesListPage() {
                   <select
                     value={ownershipFilter}
                     onChange={(e) => setOwnershipFilter(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
                   >
                     <option>All Ownerships</option>
                     <option>Owned</option>
@@ -561,7 +561,7 @@ export default function VehiclesListPage() {
                   <select
                     value={availabilityFilter}
                     onChange={(e) => setAvailabilityFilter(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
                   >
                     <option>All Availabilities</option>
                     <option>Immediate</option>
@@ -578,7 +578,7 @@ export default function VehiclesListPage() {
                   <select
                     value={insuranceFilter}
                     onChange={(e) => setInsuranceFilter(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
                   >
                     <option>All Insurances</option>
                     <option value="Active">Active</option>
@@ -597,7 +597,7 @@ export default function VehiclesListPage() {
                   <select
                     value={permitFilter}
                     onChange={(e) => setPermitFilter(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+                    className="w-full px-3 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
                   >
                     <option>All Permits</option>
                     <option value="Active">Active</option>
@@ -650,14 +650,7 @@ export default function VehiclesListPage() {
                 </thead>
                 <tbody>
                    {loading ? (
-                    <tr>
-                      <td colSpan={9} className="py-16 text-center">
-                        <div className="flex flex-col items-center gap-3 text-[#64748B]">
-                          <Loader className="w-7 h-7 animate-spin text-[#B45A0A]" />
-                          <span className="text-sm font-semibold">Loading vehicles...</span>
-                        </div>
-                      </td>
-                    </tr>
+                    <TableRowSkeleton columns={9} rows={5} />
                   ) : paginatedVehicles.length > 0 ? (
                     paginatedVehicles.map((vehicle, idx) => (
                       <tr key={vehicle._id} className="border-b border-[#E7EAF0]/60 hover:bg-[#F5F7FB]/50 transition-colors">
@@ -670,11 +663,12 @@ export default function VehiclesListPage() {
                               <img
                                 src={vehicle.vehicleImage?.secure_url || vehicle.image}
                                 alt={vehicle.name}
+                                loading="lazy"
                                 className="w-10 h-10 rounded-xl object-cover border border-gray-200 shrink-0 shadow-sm"
                               />
                             ) : (
-                              <div className="w-10 h-10 rounded-xl bg-[#FDF3EC] border border-[#B45A0A]/20 flex items-center justify-center shrink-0">
-                                <Truck className="w-5 h-5 text-[#B45A0A]" />
+                              <div className="w-10 h-10 rounded-xl bg-[#FDF3EC] border border-[#A14000]/20 flex items-center justify-center shrink-0">
+                                <Truck className="w-5 h-5 text-[#A14000]" />
                               </div>
                             )}
                             <div className="flex flex-col">
@@ -757,19 +751,25 @@ export default function VehiclesListPage() {
             </div>
 
             {/* Table Footer */}
-            <div className="px-6 py-4 bg-[#F5F7FB] border-t border-[#E7EAF0] flex items-center justify-between flex-wrap gap-4 select-none">
-              <p className="text-xs font-medium text-[#64748B]">
-                Showing <span className="font-bold text-[#1E293B]">{paginatedVehicles.length}</span> of{" "}
-                <span className="font-bold text-[#1E293B]">{processedVehicles.length}</span> vehicles
+            <div className="px-6 py-4 bg-slate-50 dark:bg-[#0F172A] border-t border-slate-200 dark:border-[#1E293B] flex items-center justify-between flex-wrap gap-4 select-none">
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                {loading ? (
+                  <span className="inline-block w-36 h-4 bg-slate-200 dark:bg-slate-700 animate-pulse rounded" />
+                ) : (
+                  <>
+                    Showing <span className="font-bold text-slate-900 dark:text-white">{paginatedVehicles.length}</span> of{" "}
+                    <span className="font-bold text-slate-900 dark:text-white">{processedVehicles.length}</span> vehicles
+                  </>
+                )}
               </p>
               
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="flex items-center gap-1.5 ml-auto">
+                <div className="flex items-center gap-1.5 ml-auto font-poppins">
                   <button
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    className="px-3 py-1.5 border border-[#E7EAF0] rounded-lg text-xs font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-white transition-colors cursor-pointer disabled:opacity-40 disabled:hover:bg-transparent"
+                    className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                   >
                     Previous
                   </button>
@@ -777,10 +777,10 @@ export default function VehiclesListPage() {
                     <button
                       key={i + 1}
                       onClick={() => setCurrentPage(i + 1)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                         currentPage === i + 1
-                          ? "bg-[#B45A0A] text-white"
-                          : "border border-[#E7EAF0] text-[#64748B] hover:text-[#1E293B] hover:bg-white"
+                          ? "bg-[#A14000] text-white border border-[#A14000]"
+                          : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
                       }`}
                     >
                       {i + 1}
@@ -789,7 +789,7 @@ export default function VehiclesListPage() {
                   <button
                     disabled={currentPage === totalPages}
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    className="px-3 py-1.5 border border-[#E7EAF0] rounded-lg text-xs font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-white transition-colors cursor-pointer disabled:opacity-40 disabled:hover:bg-transparent"
+                    className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                   >
                     Next
                   </button>
@@ -802,7 +802,7 @@ export default function VehiclesListPage() {
           <div className="bg-white rounded-xl border border-[#E7EAF0] overflow-hidden">
             <div className="p-6 border-b border-[#E7EAF0]">
               <h2 className="text-lg font-bold text-[#1E293B] flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-[#B45A0A]" />
+                <MapPin className="w-5 h-5 text-[#A14000]" />
                 Fleet Location Map
               </h2>
               <p className="text-xs text-[#64748B] mt-1">Real-time vehicle locations across regions</p>
@@ -823,7 +823,7 @@ export default function VehiclesListPage() {
                   <span className="text-xs text-[#64748B] font-medium">Available</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-orange-500" />
+                  <div className="w-3 h-3 rounded-full bg-[#A14000]" />
                   <span className="text-xs text-[#64748B] font-medium">On Trip</span>
                 </div>
                 <div className="flex items-center gap-2">

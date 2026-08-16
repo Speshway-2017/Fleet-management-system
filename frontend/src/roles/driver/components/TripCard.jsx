@@ -95,7 +95,7 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
         {/* Header */}
         <div className="flex items-center justify-between gap-2 pb-4 border-b border-slate-100">
           <div>
-            <span className="text-xs font-mono font-bold text-[#B45A0A]">{tripNumber}</span>
+            <span className="text-xs font-mono font-bold text-[#A14000]">{tripNumber}</span>
             <div className="flex items-center gap-1.5 mt-0.5">
               <Truck className="w-3.5 h-3.5 text-slate-400" />
               <p className="text-xs text-slate-600 font-semibold">{vehicleReg}</p>
@@ -109,7 +109,7 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
         <div className="py-4 space-y-3">
           <div className="flex items-start gap-3">
             <div className="w-7 h-7 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 mt-0.5">
-              <MapPin className="w-3.5 h-3.5 text-[#B45A0A]" />
+              <MapPin className="w-3.5 h-3.5 text-[#A14000]" />
             </div>
             <div>
               <p className="text-[10px] text-slate-400 uppercase font-bold font-poppins">Origin</p>
@@ -133,11 +133,11 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
         {/* Specs Pill */}
         <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 font-medium">
           <div className="flex items-center gap-2">
-            <Package className="w-4 h-4 text-[#B45A0A]" />
+            <Package className="w-4 h-4 text-[#A14000]" />
             <span className="truncate">{trip.cargoDetails?.cargoType || trip.cargoType || "Standard Freight"}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-[#B45A0A]" />
+            <Calendar className="w-4 h-4 text-[#A14000]" />
             <span>{departureTime ? new Date(departureTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "Today"}</span>
           </div>
         </div>
@@ -165,7 +165,7 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
               to={`/driver/trips/${tripId}`}
               className="w-full py-2 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-1.5 transition border border-slate-200"
             >
-              <Eye className="w-3.5 h-3.5 text-[#B45A0A]" /> View Details First
+              <Eye className="w-3.5 h-3.5 text-[#A14000]" /> View Details First
             </Link>
           </div>
         ) : isUpcoming ? (
@@ -174,7 +174,7 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
               onClick={handleStartTripClick}
               disabled={!isStartEnabled}
               className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold font-poppins flex items-center justify-center gap-2 transition shadow-sm ${isStartEnabled
-                  ? "bg-[#B45A0A] hover:bg-[#9A4D08] text-white cursor-pointer"
+                  ? "bg-[#A14000] hover:bg-[#853400] text-white cursor-pointer"
                   : "bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed"
                 }`}
             >
@@ -198,7 +198,7 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
               className="w-full py-2 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-1.5 transition border border-slate-200"
             >
               <span>View Details & Tracking</span>
-              <ArrowRight className="w-3.5 h-3.5 text-[#B45A0A]" />
+              <ArrowRight className="w-3.5 h-3.5 text-[#A14000]" />
             </Link>
           </div>
         ) : (
@@ -207,7 +207,7 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
             className="w-full py-2.5 px-3 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition cursor-pointer"
           >
             <span>View Details & Tracking</span>
-            <ArrowRight className="w-4 h-4 text-[#B45A0A]" />
+            <ArrowRight className="w-4 h-4 text-[#A14000]" />
           </Link>
         )}
       </div>

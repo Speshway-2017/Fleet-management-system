@@ -7,7 +7,9 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import KPICard from "@/components/common/KPICard";
 import { driverApi } from "@/api/driverApi";
+import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 
 export default function DriversManagementPage() {
   const navigate = useNavigate();
@@ -24,7 +26,6 @@ export default function DriversManagementPage() {
 
   const fetchDrivers = useCallback(async (isInitial = false) => {
     try {
-      if (isInitial) setLoading(true);
       const res = await driverApi.list({ limit: 1000 });
       const loadedDrivers = res.data?.data || [];
       setDrivers(loadedDrivers);
@@ -52,6 +53,8 @@ export default function DriversManagementPage() {
     return () => clearInterval(interval);
   }, [fetchDrivers]);
 
+
+
   // KPIs using accurate Mongo countDocuments stats
   const totalDrivers     = stats?.totalDrivers ?? drivers.length;
   const activeDrivers    = stats?.activeDrivers ?? drivers.filter((d) => d.driverStatus === "AVAILABLE" || d.driverStatus === "ON_TRIP" || d.driverStatus === "ASSIGNED").length;
@@ -78,108 +81,143 @@ export default function DriversManagementPage() {
 
   const getStatusLabel = (s) => ({ AVAILABLE: "Available", ON_TRIP: "On Trip", ASSIGNED: "Assigned", SUSPENDED: "Suspended" }[s] || s);
   const getStatusBadge = (s) => ({
-    AVAILABLE: "bg-emerald-50 text-emerald-600 border border-emerald-100",
-    ON_TRIP: "bg-amber-50 text-amber-600 border border-amber-100",
-    ASSIGNED: "bg-blue-50 text-blue-600 border border-blue-100",
-    SUSPENDED: "bg-rose-50 text-rose-600 border border-rose-100"
-  }[s] || "bg-gray-100 text-gray-500");
+    AVAILABLE: "bg-emerald-50 text-[#22C55E] border-emerald-200 font-bold",
+    ON_TRIP:   "bg-amber-50 text-[#A14000] border-amber-200 font-bold",
+    ASSIGNED:  "bg-blue-50 text-[#3B82F6] border-blue-200 font-bold",
+    SUSPENDED: "bg-red-50 text-[#EF4444] border-red-200 font-bold",
+  }[s] || "bg-gray-100 text-gray-600 border-gray-200");
   const getInitials = (name = "") => name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
   const filteredDrivers = drivers.filter((d) => {
-    const q = search.toLowerCase();
-    const matchSearch = (d.fullName || "").toLowerCase().includes(q) || (d.phoneNumber || "").includes(q) || (d.email || "").toLowerCase().includes(q) || (d.licenseNumber || "").toLowerCase().includes(q);
+    const matchSearch =
+      !search ||
+      d.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+      d.phone?.includes(search) ||
+      d.email?.toLowerCase().includes(search.toLowerCase()) ||
+      d.licenseNumber?.toLowerCase().includes(search.toLowerCase());
     const matchStatus  = statusFilter === "All Statuses" || d.driverStatus === statusFilter;
     const matchLicense = licenseFilter === "All Types" || d.licenseType === licenseFilter;
     return matchSearch && matchStatus && matchLicense;
   });
 
-  const displayedDrivers = filteredDrivers.slice(0, 5);
+  const displayedDrivers = filteredDrivers;
 
   return (
-    <div className="p-6 lg:p-8 space-y-4 animate-fade-in">
+    <div className="p-8 bg-[#F5F7FB] dark:bg-[#0D1117] min-h-screen space-y-8 text-[#1E293B] dark:text-white font-nunito">
       <Breadcrumb />
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Driver Management</h1>
-          <p className="text-[18px] text-[#64748B] mt-[12px]">Track compliance certificates, service history, and assign vehicles to active roster.</p>
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] dark:text-white leading-none">Driver Management</h1>
+          <p className="text-[18px] text-[#64748B] dark:text-white mt-[12px]">Track compliance certificates, service history, and assign vehicles to active roster.</p>
         </div>
-        <button onClick={() => navigate("/manager/add-driver")} className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 font-poppins cursor-pointer">
+        <button onClick={() => navigate("/manager/add-driver")} className="px-5 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-xl text-sm font-bold text-white flex items-center gap-2 shadow-md font-poppins cursor-pointer">
           <Plus className="w-4.5 h-4.5" /><span>Add Driver</span>
         </button>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { label: "Total Drivers",  value: totalDrivers,    icon: <Users className="w-6 h-6" />,   color: "bg-[#FDF3EC] text-[#B45A0A]", sub: `${totalDrivers} active roles` },
-          { label: "Active Drivers", value: activeDrivers,   icon: <UserCheck className="w-6 h-6" />, color: "bg-emerald-50 text-[#22C55E]", sub: `${Math.round((activeDrivers / (totalDrivers || 1)) * 100)}% utility rate` },
-          { label: "On Trip",        value: onTripDrivers,   icon: <RefreshCw className="w-6 h-6" />, color: "bg-amber-50 text-[#B45A0A]",   sub: `${onTripDrivers} currently en route` },
-          { label: "Suspended",      value: suspendedDrivers, icon: <UserX className="w-6 h-6" />,   color: "bg-red-50 text-[#EF4444]",     sub: "Requires compliance review" },
-        ].map((kpi) => (
-          <div key={kpi.label} className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm group">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">{kpi.label}</span>
-                <h3 className="text-3xl font-extrabold text-[#1E293B] mt-2 font-poppins">{loading ? "—" : kpi.value}</h3>
-              </div>
-              <div className={`${kpi.color} p-3.5 rounded-xl transition-all group-hover:scale-110`}>{kpi.icon}</div>
-            </div>
-            <div className="mt-4 text-xs text-[#64748B] font-medium">{kpi.sub}</div>
-          </div>
-        ))}
+        <KPICard
+          title="Total Drivers"
+          value={loading ? null : totalDrivers}
+          loading={loading}
+          subtitle="VS last month"
+          icon={<Users className="w-4 h-4" />}
+          variant="indigo"
+          filledBarsRatio={0.85}
+          trendText="+5.4%"
+          isTrendUp={true}
+        />
+        <KPICard
+          title="Active Drivers"
+          value={loading ? null : activeDrivers}
+          loading={loading}
+          subtitle="On shift"
+          icon={<UserCheck className="w-4 h-4" />}
+          variant="green"
+          filledBarsRatio={Math.max(0.2, activeDrivers / (totalDrivers || 1))}
+          trendText="+12.0%"
+          isTrendUp={true}
+        />
+        <KPICard
+          title="On Trip"
+          value={loading ? null : onTripDrivers}
+          loading={loading}
+          subtitle="En route"
+          icon={<RefreshCw className="w-4 h-4" />}
+          variant="amber"
+          filledBarsRatio={Math.max(0.1, onTripDrivers / (totalDrivers || 1))}
+          trendText="+3.2%"
+          isTrendUp={true}
+        />
+        <KPICard
+          title="Suspended"
+          value={loading ? null : suspendedDrivers}
+          loading={loading}
+          subtitle="Review needed"
+          icon={<UserX className="w-4 h-4" />}
+          variant="rose"
+          filledBarsRatio={Math.max(0.05, suspendedDrivers / (totalDrivers || 1))}
+          trendText="-1.0%"
+          isTrendUp={false}
+        />
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4">
+      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-[#E7EAF0] dark:border-[#1E293B] shadow-sm p-6 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="md:col-span-2 relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#94A3B8]" />
             <input type="text" placeholder="Search drivers by name, phone, email, or DL number..." value={search} onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A]" />
+              className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white dark:bg-slate-900 border border-[#E7EAF0] dark:border-slate-800 rounded-xl text-sm text-[#1E293B] dark:text-white focus:outline-none focus:border-[#A14000]" />
           </div>
           <div className="relative">
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none">
-              <option value="All Statuses">All Statuses</option>
-              <option value="AVAILABLE">Available</option>
-              <option value="ON_TRIP">On Trip</option>
-              <option value="SUSPENDED">Suspended</option>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full px-3.5 py-2 h-[44px] bg-white dark:bg-slate-900 border border-[#E7EAF0] dark:border-slate-800 rounded-xl text-sm text-[#1E293B] dark:text-white focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer">
+              <option value="All Statuses" className="dark:bg-[#0F172A] dark:text-white">All Statuses</option>
+              <option value="AVAILABLE" className="dark:bg-[#0F172A] dark:text-white">Available</option>
+              <option value="ON_TRIP" className="dark:bg-[#0F172A] dark:text-white">On Trip</option>
+              <option value="SUSPENDED" className="dark:bg-[#0F172A] dark:text-white">Suspended</option>
             </select>
-            <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-4 h-4 text-[#64748B] dark:text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
           <div className="relative">
-            <select value={licenseFilter} onChange={(e) => setLicenseFilter(e.target.value)} className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none">
-              <option value="All Types">All Types</option>
-              <option value="HMV">HMV</option>
-              <option value="LMV">LMV</option>
-              <option value="MCWG">MCWG</option>
+            <select value={licenseFilter} onChange={(e) => setLicenseFilter(e.target.value)} className="w-full px-3.5 py-2 h-[44px] bg-white dark:bg-slate-900 border border-[#E7EAF0] dark:border-slate-800 rounded-xl text-sm text-[#1E293B] dark:text-white focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer">
+              <option value="All Types" className="dark:bg-[#0F172A] dark:text-white">All Types</option>
+              <option value="HMV" className="dark:bg-[#0F172A] dark:text-white">HMV</option>
+              <option value="LMV" className="dark:bg-[#0F172A] dark:text-white">LMV</option>
+              <option value="MCWG" className="dark:bg-[#0F172A] dark:text-white">MCWG</option>
             </select>
-            <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-4 h-4 text-[#64748B] dark:text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         </div>
-        <div className="flex items-center justify-between border-t border-[#E7EAF0]/60 pt-4">
+        <div className="flex items-center justify-between border-t border-[#E7EAF0]/60 dark:border-slate-800 pt-4">
           {(search || statusFilter !== "All Statuses" || licenseFilter !== "All Types") && (
             <button onClick={() => { setSearch(""); setStatusFilter("All Statuses"); setLicenseFilter("All Types"); }} className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer">
               <RefreshCw className="w-3 h-3" /><span>Reset</span>
             </button>
           )}
-          <div className="text-xs text-[#64748B] font-medium font-poppins ml-auto">
-            Showing <strong>{displayedDrivers.length}</strong> of {filteredDrivers.length} drivers
+          <div className="text-xs text-[#64748B] dark:text-white font-medium font-poppins ml-auto">
+            {loading ? (
+              <span className="inline-block w-32 h-4 bg-slate-200 dark:bg-slate-700 animate-pulse rounded" />
+            ) : (
+              <>Showing <strong>{displayedDrivers.length}</strong> of {filteredDrivers.length} drivers</>
+            )}
           </div>
         </div>
       </div>
 
       {/* Drivers Table */}
-      <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-[#E7EAF0] flex items-center justify-between">
-          <h3 className="font-poppins font-black text-lg text-[#1E293B]">Drivers List</h3>
-          <button onClick={() => navigate("/manager/drivers-list")} className="text-xs text-[#B45A0A] hover:underline font-bold font-poppins cursor-pointer">View All Drivers</button>
+      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-[#E7EAF0] dark:border-[#1E293B] shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-[#E7EAF0] dark:border-[#1E293B] flex items-center justify-between">
+          <h3 className="font-poppins font-black text-lg text-[#1E293B] dark:text-white">Drivers List</h3>
+          <button onClick={() => navigate("/manager/drivers-list")} className="text-xs text-[#A14000] hover:underline font-bold font-poppins cursor-pointer">View All Drivers</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-sm font-nunito">
             <thead>
-              <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none">
+              <tr className="bg-[#F5F7FB] dark:bg-slate-900 border-b border-[#E7EAF0] dark:border-slate-800 text-[#64748B] dark:text-white font-poppins font-semibold uppercase text-[10px] tracking-wider select-none">
                 <th className="py-4 px-6 whitespace-nowrap">Driver</th>
                 <th className="py-4 px-6 whitespace-nowrap">Contact Number</th>
                 <th className="py-4 px-6 whitespace-nowrap">License Details</th>
@@ -188,25 +226,31 @@ export default function DriversManagementPage() {
                 <th className="py-4 px-6 text-center whitespace-nowrap">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E7EAF0]/60">
+            <tbody className="divide-y divide-[#E7EAF0]/60 dark:divide-slate-800">
               {loading ? (
-                <tr><td colSpan={6} className="py-16 text-center"><div className="flex flex-col items-center gap-3"><Loader className="w-7 h-7 animate-spin text-[#B45A0A]" /><span className="text-sm font-semibold text-[#64748B]">Loading drivers...</span></div></td></tr>
+                <TableRowSkeleton columns={6} rows={5} />
               ) : displayedDrivers.length === 0 ? (
-                <tr><td colSpan={6} className="py-12 text-center text-gray-400 font-medium">{drivers.length === 0 ? "No drivers found. Add your first driver to get started." : "No drivers match the current filters."}</td></tr>
+                <tr><td colSpan={6} className="py-12 text-center text-gray-400 dark:text-white font-medium">{drivers.length === 0 ? "No drivers found. Add your first driver to get started." : "No drivers match the current filters."}</td></tr>
               ) : (
                 displayedDrivers.map((d) => (
-                  <tr key={d._id} className="hover:bg-[#F5F7FB]/50 transition-colors group">
+                  <tr key={d._id} className="hover:bg-[#F5F7FB]/50 dark:hover:bg-slate-800/50 transition-colors group">
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[#FDF3EC] text-[#B45A0A] rounded-xl flex items-center justify-center font-poppins font-bold text-sm">{getInitials(d.fullName)}</div>
+                        <div className="w-10 h-10 bg-[#FDF3EC] dark:bg-[#A14000]/20 text-[#A14000] dark:text-amber-400 rounded-xl flex items-center justify-center font-poppins font-bold text-sm overflow-hidden shrink-0">
+                          {d.profileImage ? (
+                            <img src={d.profileImage} alt={d.fullName} loading="lazy" className="w-full h-full object-cover" />
+                          ) : (
+                            getInitials(d.fullName)
+                          )}
+                        </div>
                         <div>
-                          <p className="font-bold text-[#1E293B] font-poppins text-sm group-hover:text-[#B45A0A] leading-tight">{d.fullName}</p>
-                          <span className="text-[11px] text-[#64748B] font-semibold block mt-0.5">{d.email}</span>
+                          <p className="font-bold text-[#1E293B] dark:text-white font-poppins text-sm group-hover:text-[#A14000] leading-tight">{d.fullName}</p>
+                          <span className="text-[11px] text-[#64748B] dark:text-white font-semibold block mt-0.5">{d.email}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-6 whitespace-nowrap text-xs text-[#1E293B] font-medium">
-                      <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-[#64748B]" /><span>{d.phoneNumber}</span></div>
+                    <td className="py-4 px-6 whitespace-nowrap text-xs text-[#1E293B] dark:text-white font-medium">
+                      <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-[#64748B] dark:text-slate-400" /><span>{d.phoneNumber}</span></div>
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex flex-col">
@@ -237,7 +281,7 @@ export default function DriversManagementPage() {
       </div>
 
       {/* FAB */}
-      <button onClick={() => navigate("/manager/add-driver")} className="fixed bottom-6 right-6 w-14 h-14 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-all z-30 group cursor-pointer">
+      <button onClick={() => navigate("/manager/add-driver")} className="fixed bottom-6 right-6 w-14 h-14 bg-[#A14000] hover:bg-[#853400] text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-all z-30 group cursor-pointer">
         <Plus className="w-7 h-7 group-hover:rotate-90 transition-transform" />
       </button>
 

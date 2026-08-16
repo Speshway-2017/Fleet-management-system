@@ -58,7 +58,7 @@ export default function TripCommunicationSection({ trip }) {
       {/* Top Driver Header Card */}
       <div className="bg-white rounded-2xl p-6 border border-[#E7EAF0] shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-gradient-to-br from-[#C65D0E] to-amber-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0">
+          <div className="w-14 h-14 bg-gradient-to-br from-[#853400] to-amber-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0">
             {driverName.charAt(0).toUpperCase()}
           </div>
           <div>
