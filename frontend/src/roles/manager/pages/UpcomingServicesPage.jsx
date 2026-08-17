@@ -21,11 +21,10 @@ export default function UpcomingServicesPage() {
   const navigate = useNavigate();
   const [workOrders, setWorkOrders] = useState([]);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const fetchWorkOrders = async (isInitial = false) => {
     try {
-      if (isInitial) setLoading(true);
       const [maintRes, complaintsRes] = await Promise.all([
         managerApi.getMaintenance().catch(() => null),
         managerApi.getVehicleComplaints().catch(() => null)
@@ -179,7 +178,7 @@ export default function UpcomingServicesPage() {
           </button>
           <button
             onClick={() => navigate("/manager/maintenance/upcoming")}
-            className="px-4 py-2 bg-[#B45A0A] text-white border border-[#B45A0A] rounded-xl text-xs font-bold transition-all cursor-pointer"
+            className="px-4 py-2 bg-[#A14000] text-white border border-[#A14000] rounded-xl text-xs font-bold transition-all cursor-pointer"
           >
             Upcoming Services
           </button>
@@ -216,7 +215,7 @@ export default function UpcomingServicesPage() {
         {/* Card 3 */}
         <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm hover-card-trigger">
           <span className="text-[11px] font-bold text-[#64748B] tracking-wider uppercase font-poppins">In Service</span>
-          <h3 className="text-2xl font-extrabold text-[#B45A0A] mt-2 font-poppins">{inServiceCount} Services</h3>
+          <h3 className="text-2xl font-extrabold text-[#A14000] mt-2 font-poppins">{inServiceCount} Services</h3>
           <div className="mt-3 text-[10px] text-gray-400 font-medium">Active in workshop</div>
         </div>
 
@@ -241,7 +240,7 @@ export default function UpcomingServicesPage() {
               placeholder="Search queue..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 pr-4 py-1.5 border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-medium w-[180px] bg-white"
+              className="pl-8 pr-4 py-1.5 border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#A14000] font-medium w-[180px] bg-white"
             />
           </div>
         </div>
@@ -255,10 +254,10 @@ export default function UpcomingServicesPage() {
             <div
               key={w.id}
               onClick={() => navigate(`/manager/maintenance/details/${w.id}`)}
-              className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm hover:border-[#B45A0A] transition-all cursor-pointer flex items-center justify-between select-none"
+              className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm hover:border-[#A14000] transition-all cursor-pointer flex items-center justify-between select-none"
             >
               <div className="flex items-center gap-4">
-                <div className="bg-[#FDF3EC] text-[#B45A0A] p-3 rounded-xl shrink-0">
+                <div className="bg-[#FDF3EC] text-[#A14000] p-3 rounded-xl shrink-0">
                   <Truck className="w-6 h-6" />
                 </div>
                 <div>

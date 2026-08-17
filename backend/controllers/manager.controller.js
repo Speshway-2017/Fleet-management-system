@@ -48,6 +48,7 @@ import { processVehicleDocuments } from '../utils/documentHelper.js';
 import Trip from '../models/Trip.js';
 import { calculateTripFinance } from '../utils/earningsCalculator.js';
 import Driver from '../models/Driver.js';
+import User from '../models/User.js';
 import Vehicle from '../models/Vehicle.js';
 import Notification from '../models/Notification.js';
 import EWayBill from '../models/EWayBill.js';
@@ -668,7 +669,9 @@ export const createDriver = async (req, res, next) => {
       licenseType: licenseType || 'HMV',
       licenseExpiry: licenseExpiry ? new Date(licenseExpiry) : undefined,
       assignedVehicle: assignedVehicle || 'Unassigned',
-      driverStatus: driverStatus || 'AVAILABLE',
+      driverStatus: driverStatus || 'OFFLINE',
+      isDuty: false,
+      isOnline: false,
       accountStatus: 'Active',
       status: status || 'Active',
       employeeId: generatedEmpId,
@@ -876,6 +879,87 @@ export const getTripDetails = async (req, res, next) => {
         };
       }
     }
+
+    // Resolve fuel entries for this trip
+    const fuelEntries = await Fuel.find({
+      $or: [
+        { tripId: trip._id.toString() },
+        { tripId: trip.tripNumber },
+        { tripId: trip.tripNumber?.replace('#', '') },
+        { tripId: '#' + trip.tripNumber?.replace('#', '') }
+      ]
+    }).sort({ createdAt: -1 });
+
+    const fuel = fuelEntries.length > 0 ? fuelEntries[0] : null;
+    const fuelUrl = fuel ? (fuel.billUrl || fuel.receiptImage || '') : '';
+    const fuelDetailsObj = fuel ? {
+      fuelStation: fuel.fuelStation || 'Fuel Station',
+      location: fuel.location || fuel.city || '',
+      amount: fuel.amount,
+      liters: fuel.liters,
+      odometer: fuel.odometer,
+      approvalStatus: fuel.approvalStatus || fuel.billStatus || 'Pending',
+      rejectionReason: fuel.rejectionReason || '',
+      billUrl: fuelUrl,
+    } : null;
+
+    const formattedFuelEntries = fuelEntries.map(f => ({
+      _id: f._id,
+      fuelStation: f.fuelStation,
+      location: f.location || f.city || '',
+      amount: f.amount,
+      liters: f.liters,
+      odometer: f.odometer,
+      dateTime: f.dateTime || f.createdAt,
+      approvalStatus: f.approvalStatus || f.billStatus || 'Pending',
+      billUrl: f.billUrl || f.receiptImage || ''
+    }));
+
+    // Resolve toll transactions
+    const tollsList = await TollTransaction.find({ trip: trip._id }).sort({ dateTime: -1 });
+    const toll = tollsList.length > 0 ? tollsList[0] : null;
+
+    // Direct compatibility fields for mobile screens and web
+    tripObj.podUrl = podUrl || '';
+    tripObj.podDetails = {
+      podNumber: podDoc?.podNumber || `POD-${tripObj.tripNumber || Date.now()}`,
+      customerName: podDoc?.customerName || '',
+      receiverName: podDoc?.receiverName || '',
+      status: resolvedPodStatus,
+      rejectionReason: podDoc?.rejectionReason || '',
+      deliveryDate: podDoc?.deliveryDate || null,
+      podDocumentUrl: podUrl || '',
+      customerSignatureUrl: podDoc?.customerSignatureUrl || '',
+      deliveryPhotoUrl: podDoc?.deliveryPhotoUrl || podUrl || ''
+    };
+
+    tripObj.weighbridgeUrl = wbUrl || '';
+    tripObj.weighbridgeDetails = {
+      slipNumber: wbDoc?.slipNumber || `WB-${tripObj.tripNumber || Date.now()}`,
+      grossWeight: wbDoc?.grossWeight || 0,
+      tareWeight: wbDoc?.tareWeight || 0,
+      netWeight: wbDoc?.netWeight || 0,
+      location: wbDoc?.location || 'Highway Weighbridge Station',
+      status: resolvedWbStatus,
+      rejectionReason: wbDoc?.rejectionReason || '',
+      documentUrl: wbUrl || ''
+    };
+
+    tripObj.fuelUrl = fuelUrl;
+    tripObj.fuelDetails = fuelDetailsObj;
+    tripObj.fuelEntries = formattedFuelEntries;
+    tripObj.fuelStatus = fuel ? (fuel.approvalStatus || fuel.billStatus || 'Uploaded') : 'Not Uploaded';
+
+    tripObj.tollUrl = toll ? (toll.receiptUrl || '') : '';
+    tripObj.tollStatus = toll ? 'Uploaded' : 'Not Uploaded';
+    tripObj.tollDetails = toll ? {
+      tollPlazaName: toll.tollPlazaName,
+      amountPaid: toll.amountPaid,
+      dateTime: toll.dateTime,
+      fastagTransactionId: toll.fastagTransactionId,
+      receiptStatus: toll.receiptStatus,
+      receiptUrl: toll.receiptUrl
+    } : null;
 
     const storedDist = (tripObj.actualDistance && Number(tripObj.actualDistance) > 0)
       ? Number(tripObj.actualDistance)
@@ -2537,21 +2621,53 @@ export const deleteEWayBill = async (req, res, next) => {
 export const listActivities = async (req, res, next) => {
   try {
     const managerId = req.user._id;
-
-    console.log(`\n====================================`);
-    console.log(`Fetching Recent Vehicle Activities...`);
-
     const limit = parseInt(req.query.limit) || 10;
-    const activities = await ActivityLog.find({ assignedManager: managerId })
+
+    let activities = await ActivityLog.find({ assignedManager: managerId })
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
 
-    console.log(`\nLatest Activities Found: ${activities.length}`);
-    console.log(`\nReturning Activity Logs...`);
-    console.log(`====================================\n`);
+    // Populate recent real trip dispatches/updates for manager
+    const recentTrips = await Trip.find({
+      $or: [{ assignedManager: managerId }, { createdBy: managerId }]
+    })
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .limit(10)
+      .populate('driver', 'fullName name phone')
+      .populate('vehicle', 'vehicleNumber brand model')
+      .lean();
 
-    return sendSuccess(res, 200, activities, 'Recent vehicle activities fetched successfully');
+    const tripActivities = recentTrips.map(t => {
+      const tripNum = t.tripNumber || (t._id ? `TRP-${t._id.toString().slice(-6).toUpperCase()}` : 'TRP-101');
+      const originStr = typeof t.origin === 'object' ? (t.origin.city || t.origin.name || 'Origin') : (t.origin || 'Origin');
+      const destStr = typeof t.destination === 'object' ? (t.destination.city || t.destination.name || 'Destination') : (t.destination || 'Destination');
+      const driverName = t.driver ? (t.driver.fullName || t.driver.name) : 'Assigned Driver';
+      const statusText = (t.status || 'DISPATCHED').replace(/_/g, ' ');
+
+      return {
+        _id: `trip-act-${t._id}`,
+        tripId: t._id,
+        title: `${tripNum} (${originStr} → ${destStr})`,
+        desc: `Status: ${statusText} • Driver: ${driverName}`,
+        message: `${tripNum} (${originStr} → ${destStr}) - ${statusText}`,
+        action: t.status || 'DISPATCHED',
+        createdAt: t.updatedAt || t.createdAt || new Date(),
+      };
+    });
+
+    const combined = [...(activities || []), ...tripActivities];
+    combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // Deduplicate by title
+    const seen = new Set();
+    const finalActivities = combined.filter(act => {
+      if (seen.has(act.title)) return false;
+      seen.add(act.title);
+      return true;
+    }).slice(0, limit);
+
+    return sendSuccess(res, 200, finalActivities, 'Recent vehicle activities fetched successfully');
   } catch (error) {
     next(error);
   }
@@ -2627,31 +2743,51 @@ export const getPODByTripId = async (req, res, next) => {
     if (!tripId) {
       return sendSuccess(res, 200, null, 'No POD uploaded yet');
     }
+
+    let tripDoc = null;
+    if (mongoose.Types.ObjectId.isValid(tripId)) {
+      tripDoc = await Trip.findById(tripId).populate('driver');
+    } else {
+      const cleanId = String(tripId).replaceAll('#', '').trim();
+      tripDoc = await Trip.findOne({
+        $or: [
+          { tripNumber: cleanId },
+          { tripNumber: `#${cleanId}` },
+          { tripNumber: cleanId.startsWith('TRP-') ? cleanId : `TRP-${cleanId}` }
+        ]
+      }).populate('driver');
+    }
+
+    if (tripDoc && tripDoc.proofOfDelivery && (tripDoc.proofOfDelivery.url || tripDoc.proofOfDelivery.podDocumentUrl || tripDoc.proofOfDelivery.deliveryPhotoUrl)) {
+      const podData = {
+        _id: tripDoc.proofOfDelivery._id || tripDoc._id,
+        trip: tripDoc._id,
+        podNumber: tripDoc.proofOfDelivery.podNumber || `POD-${tripDoc.tripNumber || Date.now()}`,
+        customerName: tripDoc.proofOfDelivery.customerName || 'Customer Receiver',
+        receiverName: tripDoc.proofOfDelivery.receiverName || 'Verified Receiver',
+        customerSignatureUrl: tripDoc.proofOfDelivery.customerSignatureUrl || '',
+        deliveryPhotoUrl: tripDoc.proofOfDelivery.deliveryPhotoUrl || tripDoc.proofOfDelivery.url || '',
+        podDocumentUrl: tripDoc.proofOfDelivery.podDocumentUrl || tripDoc.proofOfDelivery.url || '',
+        status: tripDoc.proofOfDelivery.status || tripDoc.podStatus || 'Uploaded'
+      };
+      return sendSuccess(res, 200, podData, 'POD fetched successfully');
+    }
+
     const query = {
       $or: [
         { trip: tripId },
-        ...(mongoose.Types.ObjectId.isValid(tripId) ? [{ trip: new mongoose.Types.ObjectId(tripId) }] : [])
+        ...(mongoose.Types.ObjectId.isValid(tripId) ? [{ trip: new mongoose.Types.ObjectId(tripId) }] : []),
+        ...(tripDoc ? [{ trip: tripDoc._id }] : [])
       ]
     };
 
     let pod = await ProofOfDelivery.findOne(query).populate('driver').catch(() => null);
 
-    if (!pod && mongoose.Types.ObjectId.isValid(tripId)) {
-      const targetTrip = await Trip.findById(tripId).catch(() => null);
-      if (targetTrip?.driver) {
-        pod = await ProofOfDelivery.findOne({ driver: targetTrip.driver }).sort({ createdAt: -1 }).populate('driver').catch(() => null);
-        if (pod && !pod.trip) {
-          pod.trip = targetTrip._id;
-          await pod.save().catch(() => {});
-        }
-      }
-    }
-
     if (!pod) {
       return sendSuccess(res, 200, null, 'No POD uploaded yet');
     }
 
-    return sendSuccess(res, 200, null, 'No POD uploaded yet');
+    return sendSuccess(res, 200, pod, 'POD fetched successfully');
   } catch (error) {
     next(error);
   }
@@ -2870,17 +3006,6 @@ export const getWeighbridgeByTripId = async (req, res, next) => {
     };
 
     let slip = await WeighbridgeSlip.findOne(query).populate('driver').catch(() => null);
-
-    if (!slip && mongoose.Types.ObjectId.isValid(tripId)) {
-      const targetTrip = await Trip.findById(tripId).catch(() => null);
-      if (targetTrip?.driver) {
-        slip = await WeighbridgeSlip.findOne({ driver: targetTrip.driver }).sort({ createdAt: -1 }).populate('driver').catch(() => null);
-        if (slip && !slip.trip) {
-          slip.trip = targetTrip._id;
-          await slip.save().catch(() => {});
-        }
-      }
-    }
 
     if (!slip) {
       return sendSuccess(res, 200, null, 'No Weighbridge slip uploaded yet');
@@ -3816,6 +3941,60 @@ export const rejectTripDocuments = async (req, res, next) => {
     }
 
     return sendSuccess(res, 200, trip, 'Trip documents rejected. Driver notified to re-upload.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET Manager Support Helpline Settings
+ * GET /api/manager/support-settings
+ */
+export const getSupportSettings = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    return sendSuccess(res, 200, {
+      officeName: user?.primaryHub || (user?.name ? `${user.name} Office` : 'Fleet Manager Office'),
+      phone: user?.phone || '+919876543210',
+      email: user?.email || 'manager@fleet.com',
+      whatsappNumber: user?.whatsappNumber || user?.phone || '+919876543210',
+      dispatchName: user?.jobTitle ? `${user.jobTitle} Dispatch` : 'Central Dispatch Desk',
+      dispatchPhone: user?.dispatchPhone || user?.phone || '+919876543211',
+      dispatchEmail: user?.dispatchEmail || user?.email || 'dispatch@fleet.com'
+    }, 'Support settings retrieved');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT Update Manager Support Helpline Settings
+ * PUT /api/manager/support-settings
+ */
+export const updateSupportSettings = async (req, res, next) => {
+  try {
+    const { officeName, phone, email, whatsappNumber, dispatchName, dispatchPhone, dispatchEmail } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user) return sendError(res, 404, 'User not found');
+
+    if (officeName) user.primaryHub = officeName;
+    if (phone) user.phone = phone;
+    if (email) user.email = email;
+    if (whatsappNumber !== undefined) user.whatsappNumber = whatsappNumber;
+    if (dispatchName) user.jobTitle = dispatchName;
+    if (dispatchPhone !== undefined) user.dispatchPhone = dispatchPhone;
+    if (dispatchEmail !== undefined) user.dispatchEmail = dispatchEmail;
+
+    await user.save();
+    return sendSuccess(res, 200, {
+      officeName: user.primaryHub,
+      phone: user.phone,
+      email: user.email,
+      whatsappNumber: user.whatsappNumber,
+      dispatchName: user.jobTitle,
+      dispatchPhone: user.dispatchPhone,
+      dispatchEmail: user.dispatchEmail
+    }, 'Driver Support Helpline details saved successfully!');
   } catch (error) {
     next(error);
   }

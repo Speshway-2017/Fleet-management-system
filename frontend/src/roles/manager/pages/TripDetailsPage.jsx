@@ -173,7 +173,7 @@ export default function TripDetailsPage() {
 
       // Start Location Marker
       const startIcon = L.divIcon({
-        html: `<div class="bg-[#B45A0A] rounded-full w-6 h-6 flex items-center justify-center text-white shadow-lg border-2 border-white animate-pulse">
+        html: `<div class="bg-[#A14000] rounded-full w-6 h-6 flex items-center justify-center text-white shadow-lg border-2 border-white animate-pulse">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -202,7 +202,7 @@ export default function TripDetailsPage() {
 
       // Road Polyline connecting locations
       const polyline = L.polyline(pathCoords, {
-        color: '#B45A0A',
+        color: '#A14000',
         weight: 4,
         dashArray: '6, 8',
         opacity: 0.8
@@ -525,23 +525,23 @@ export default function TripDetailsPage() {
         <head>
           <title>Invoice ${invoice.invoiceNumber}</title>
           <style>
-            body { font-family: 'Nunito', sans-serif; color: #1E293B; padding: 40px; margin: 0; }
+            body { font-family: 'Manrope', sans-serif; color: #1E293B; padding: 40px; margin: 0; }
             .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #E7EAF0; border-radius: 12px; }
             .header { display: flex; justify-content: space-between; border-bottom: 2px solid #E7EAF0; padding-bottom: 20px; margin-bottom: 30px; }
             .logo-section { display: flex; align-items: center; gap: 10px; }
-            .logo-icon { width: 32px; height: 32px; background: #B45A0A; border-radius: 8px; }
-            .logo-text { font-family: 'Poppins', sans-serif; font-weight: bold; font-size: 20px; color: #1E293B; }
+            .logo-icon { width: 32px; height: 32px; background: #A14000; border-radius: 8px; }
+            .logo-text { font-family: 'Manrope', sans-serif; font-weight: bold; font-size: 20px; color: #1E293B; }
             .company-details { text-align: right; font-size: 11px; color: #64748B; line-height: 1.5; }
             .details-grid { display: grid; grid-cols: 2; gap: 20px; margin-bottom: 30px; }
             .details-col { font-size: 12px; }
-            .section-title { font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: bold; color: #64748B; text-transform: uppercase; border-bottom: 1px solid #E7EAF0; padding-bottom: 6px; margin-bottom: 12px; margin-top: 24px; }
+            .section-title { font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: bold; color: #64748B; text-transform: uppercase; border-bottom: 1px solid #E7EAF0; padding-bottom: 6px; margin-bottom: 12px; margin-top: 24px; }
             .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 12px; }
             .info-item { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #F1F5F9; }
             .info-label { color: #64748B; }
             .info-val { font-weight: bold; color: #1E293B; }
             .address-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 20px; }
             .address-box { background: #F8FAFC; border: 1px solid #E7EAF0; border-radius: 8px; padding: 16px; font-size: 12px; line-height: 1.6; }
-            .address-title { font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: bold; color: #B45A0A; text-transform: uppercase; border-bottom: 1px solid #E7EAF0; padding-bottom: 6px; margin-bottom: 10px; }
+            .address-title { font-family: 'Manrope', sans-serif; font-size: 11px; font-weight: bold; color: #A14000; text-transform: uppercase; border-bottom: 1px solid #E7EAF0; padding-bottom: 6px; margin-bottom: 10px; }
             .field-label { color: #64748B; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-top: 6px; }
             .field-val { font-weight: bold; color: #1E293B; margin-bottom: 4px; }
             .footer { margin-top: 40px; border-top: 1px solid #E7EAF0; padding-top: 20px; font-size: 11px; color: #64748B; text-align: center; }
@@ -758,7 +758,7 @@ export default function TripDetailsPage() {
         <div className="flex flex-col items-center gap-3">
           <AlertCircle className="w-9 h-9 text-red-500 animate-bounce" />
           <p className="text-gray-500 font-semibold">Trip record not found</p>
-          <button onClick={() => navigate("/manager/trips")} className="text-xs text-[#B45A0A] hover:underline font-bold font-poppins mt-2">
+          <button onClick={() => navigate("/manager/trips")} className="text-xs text-[#A14000] hover:underline font-bold font-poppins mt-2">
             Back to Trips
           </button>
         </div>
@@ -827,7 +827,7 @@ export default function TripDetailsPage() {
   const getStatusBadge = (status) => {
     switch (status) {
       case "On Transit":
-        return "bg-[#FDF3EC] text-[#B45A0A] border border-[#FDF3EC]";
+        return "bg-[#FDF3EC] text-[#A14000] border border-[#FDF3EC]";
       case "Scheduled":
         return "bg-indigo-50 text-indigo-700 border border-indigo-100";
       case "Completed":
@@ -934,7 +934,7 @@ export default function TripDetailsPage() {
               }}
               className={`px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
                 isActive
-                  ? "bg-[#B45A0A] text-white shadow-md shadow-[#B45A0A]/20"
+                  ? "bg-[#A14000] text-white shadow-md shadow-[#A14000]/20"
                   : "text-[#64748B] hover:text-[#1E293B] hover:bg-slate-50"
               }`}
             >
@@ -1076,7 +1076,7 @@ export default function TripDetailsPage() {
               {/* Floating Route indicators */}
               <div className="absolute bottom-3 left-3 z-[1000] flex flex-col gap-2 max-w-[220px] bg-white/95 backdrop-blur-sm border border-[#E7EAF0] p-3.5 rounded-xl shadow-lg font-poppins text-[10px] text-[#1E293B]">
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#B45A0A]"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#A14000]"></div>
                   <span><strong>Start:</strong> {trip.startLocation}</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1114,7 +1114,7 @@ export default function TripDetailsPage() {
           <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4 font-nunito">
             <h3 className="font-poppins font-bold text-[#1E293B] text-[14px] border-b border-gray-100 pb-3 flex items-center justify-between">
               <span>Pickup & Delivery Address Details</span>
-              <span className="text-[10px] text-[#B45A0A] font-bold uppercase tracking-wider bg-amber-50 px-2.5 py-1 rounded-md border border-amber-100">Logistics Addresses</span>
+              <span className="text-[10px] text-[#A14000] font-bold uppercase tracking-wider bg-amber-50 px-2.5 py-1 rounded-md border border-amber-100">Logistics Addresses</span>
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1122,28 +1122,28 @@ export default function TripDetailsPage() {
               {(() => {
                 const from = getFormattedInvoiceAddress(trip.pickupAddress || trip.fromAddress, trip.startLocation);
                 return (
-                  <div className="bg-slate-50/80 p-5 rounded-xl border border-slate-200/80 space-y-2.5 text-xs">
-                    <h4 className="font-poppins font-bold text-[11px] text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-2">
+                  <div className="bg-slate-50/80 dark:bg-[#1E293B] p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-2.5 text-xs">
+                    <h4 className="font-poppins font-bold text-[11px] text-[#A14000] dark:text-amber-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 pb-2">
                       FROM ADDRESS
                     </h4>
-                    <div className="font-bold text-slate-800 text-sm">{from.companyName}</div>
+                    <div className="font-bold text-slate-800 dark:text-white text-sm">{from.companyName}</div>
 
                     <div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact Person</div>
-                      <div className="font-bold text-slate-700 text-xs mt-0.5">{from.contactPerson}</div>
+                      <div className="text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Contact Person</div>
+                      <div className="font-bold text-slate-700 dark:text-white text-xs mt-0.5">{from.contactPerson}</div>
                     </div>
 
                     <div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mobile</div>
-                      <div className="font-bold text-slate-700 text-xs mt-0.5">{from.mobile}</div>
+                      <div className="text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Mobile</div>
+                      <div className="font-bold text-slate-700 dark:text-white text-xs mt-0.5">{from.mobile}</div>
                     </div>
 
-                    <div className="text-slate-700">
+                    <div className="text-slate-700 dark:text-slate-200">
                       <div>{from.streetAddress}</div>
                       {from.area && <div>{from.area}</div>}
                     </div>
 
-                    <div className="text-slate-800 font-bold pt-1.5 border-t border-slate-200/60">
+                    <div className="text-slate-800 dark:text-white font-bold pt-1.5 border-t border-slate-200/60 dark:border-slate-700">
                       <div>{from.city}</div>
                       <div>{from.state}{from.pincode ? ` - ${from.pincode}` : ''}</div>
                     </div>
@@ -1155,28 +1155,28 @@ export default function TripDetailsPage() {
               {(() => {
                 const to = getFormattedInvoiceAddress(trip.deliveryAddress || trip.toAddress, trip.endLocation);
                 return (
-                  <div className="bg-slate-50/80 p-5 rounded-xl border border-slate-200/80 space-y-2.5 text-xs">
-                    <h4 className="font-poppins font-bold text-[11px] text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-2">
+                  <div className="bg-slate-50/80 dark:bg-[#1E293B] p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-2.5 text-xs">
+                    <h4 className="font-poppins font-bold text-[11px] text-[#A14000] dark:text-amber-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 pb-2">
                       TO ADDRESS
                     </h4>
-                    <div className="font-bold text-slate-800 text-sm">{to.companyName}</div>
+                    <div className="font-bold text-slate-800 dark:text-white text-sm">{to.companyName}</div>
 
                     <div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact Person</div>
-                      <div className="font-bold text-slate-700 text-xs mt-0.5">{to.contactPerson}</div>
+                      <div className="text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Contact Person</div>
+                      <div className="font-bold text-slate-700 dark:text-white text-xs mt-0.5">{to.contactPerson}</div>
                     </div>
 
                     <div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mobile</div>
-                      <div className="font-bold text-slate-700 text-xs mt-0.5">{to.mobile}</div>
+                      <div className="text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Mobile</div>
+                      <div className="font-bold text-slate-700 dark:text-white text-xs mt-0.5">{to.mobile}</div>
                     </div>
 
-                    <div className="text-slate-700">
+                    <div className="text-slate-700 dark:text-slate-200">
                       <div>{to.streetAddress}</div>
                       {to.area && <div>{to.area}</div>}
                     </div>
 
-                    <div className="text-slate-800 font-bold pt-1.5 border-t border-slate-200/60">
+                    <div className="text-slate-800 dark:text-white font-bold pt-1.5 border-t border-slate-200/60 dark:border-slate-700">
                       <div>{to.city}</div>
                       <div>{to.state}{to.pincode ? ` - ${to.pincode}` : ''}</div>
                     </div>
@@ -1223,7 +1223,7 @@ export default function TripDetailsPage() {
 
                   {/* Net Profit */}
                   <div className="p-3 bg-amber-50/50 border border-[#FFF3E8] rounded-xl">
-                    <div className="flex items-center gap-1.5 text-[#B45A0A]">
+                    <div className="flex items-center gap-1.5 text-[#A14000]">
                       <Wallet className="w-3.5 h-3.5" />
                       <span className="text-[9px] font-bold uppercase tracking-wider font-poppins block">Net Earnings</span>
                     </div>
@@ -1320,15 +1320,15 @@ export default function TripDetailsPage() {
 
                 <div className="flex items-center justify-between p-3.5 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100/70 rounded-xl">
                   <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-white rounded-lg shadow-sm border border-orange-100 text-[#B45A0A]">
+                    <div className="p-1.5 bg-white rounded-lg shadow-sm border border-orange-100 text-[#A14000]">
                       <TrendingUp className="w-4 h-4" />
                     </div>
                     <div>
                       <span className="text-[9px] text-[#64748B] font-bold uppercase tracking-wider block">Projected Profit Margin</span>
-                      <span className="text-xs text-[#B45A0A] font-black font-poppins">{tripMargin}% efficiency index</span>
+                      <span className="text-xs text-[#A14000] font-black font-poppins">{tripMargin}% efficiency index</span>
                     </div>
                   </div>
-                  <span className="text-lg font-black text-[#B45A0A] font-poppins">{tripMargin}%</span>
+                  <span className="text-lg font-black text-[#A14000] font-poppins">{tripMargin}%</span>
                 </div>
               </div>
             </div>
@@ -1340,7 +1340,7 @@ export default function TripDetailsPage() {
             
             <div className="relative pl-6 border-l-2 border-dashed border-gray-200 ml-3 space-y-6 pt-2">
               <div className="relative">
-                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-[#B45A0A] rounded-full border-4 border-orange-100 z-10"></div>
+                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-[#A14000] rounded-full border-4 border-orange-100 z-10"></div>
                 <div>
                   <p className="text-xs font-bold text-[#1E293B] font-poppins">Dispatch Initialized</p>
                   <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">
@@ -1406,38 +1406,38 @@ export default function TripDetailsPage() {
           </div>
 
           {/* Assigned Driver Profile Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
-            <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Assigned Driver</h4>
+          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-[#E7EAF0] dark:border-[#1E293B] p-5 shadow-sm space-y-4">
+            <h4 className="font-poppins font-bold text-xs text-[#64748B] dark:text-slate-300 uppercase tracking-wider">Assigned Driver</h4>
             
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-orange-100 text-[#B45A0A] rounded-xl flex items-center justify-center shrink-0 font-poppins font-black text-base border border-orange-200">
+              <div className="w-12 h-12 bg-orange-100 dark:bg-[#A14000]/20 text-[#A14000] dark:text-amber-400 rounded-xl flex items-center justify-center shrink-0 font-poppins font-black text-base border border-orange-200 dark:border-amber-800/40">
                 {trip.driverName ? trip.driverName.split(" ").map(n => n[0]).join("").toUpperCase() : "DR"}
               </div>
               <div>
-                <h5 className="font-poppins font-bold text-[#1E293B] text-sm">{trip.driverName || "Unassigned"}</h5>
-                <span className="text-[10px] text-gray-500 font-bold block mt-0.5">
+                <h5 className="font-poppins font-bold text-[#1E293B] dark:text-white text-sm">{trip.driverName || "Unassigned"}</h5>
+                <span className="text-[10px] text-gray-500 dark:text-slate-300 font-bold block mt-0.5">
                   ID: {trip.driver?._id || "N/A"}
                 </span>
               </div>
             </div>
 
-            <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2 text-xs">
+            <div className="p-3 bg-gray-50 dark:bg-[#1E293B] border border-gray-100 dark:border-slate-800 rounded-xl space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-gray-500">License Number</span>
-                <span className="font-bold text-gray-700">{trip.driver?.licenseNumber || "N/A"}</span>
+                <span className="text-gray-500 dark:text-slate-300">License Number</span>
+                <span className="font-bold text-gray-700 dark:text-white">{trip.driver?.licenseNumber || "N/A"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">License Expiry</span>
-                <span className="font-bold text-gray-700">
+                <span className="text-gray-500 dark:text-slate-300">License Expiry</span>
+                <span className="font-bold text-gray-700 dark:text-white">
                   {trip.driver?.licenseExpiry ? new Date(trip.driver.licenseExpiry).toLocaleDateString("en-IN") : "N/A"}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Driver Status</span>
+                <span className="text-gray-500 dark:text-slate-300">Driver Status</span>
                 <span className={`font-bold px-1.5 py-0.5 rounded text-[9px] uppercase ${
                   trip.driver?.driverStatus === "AVAILABLE"
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-amber-50 text-amber-700"
+                    ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50"
+                    : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50"
                 }`}>
                   {trip.driver?.driverStatus || "N/A"}
                 </span>
@@ -1447,14 +1447,14 @@ export default function TripDetailsPage() {
             <div className="grid grid-cols-2 gap-2 pt-2">
               <button
                 onClick={() => setIsChatOpen(true)}
-                className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-[10px] font-bold text-emerald-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="px-3 py-2 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/50 rounded-xl text-[10px] font-bold text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Phone className="w-3.5 h-3.5" />
                 Call Driver
               </button>
               <button
                 onClick={() => setIsChatOpen(true)}
-                className="px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl text-[10px] font-bold text-blue-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="px-3 py-2 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800/50 rounded-xl text-[10px] font-bold text-blue-700 dark:text-blue-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Mail className="w-3.5 h-3.5" />
                 Message Driver
@@ -1463,58 +1463,59 @@ export default function TripDetailsPage() {
           </div>
 
           {/* Vehicle Details Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
-            <h4 className="font-poppins font-bold text-xs text-[#64748B] uppercase tracking-wider">Vehicle Details</h4>
+          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-[#E7EAF0] dark:border-[#1E293B] p-5 shadow-sm space-y-4">
+            <h4 className="font-poppins font-bold text-xs text-[#64748B] dark:text-slate-300 uppercase tracking-wider">Vehicle Details</h4>
             
-            <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
+            <div className="flex items-center gap-3 pb-2 border-b border-gray-100 dark:border-slate-800">
               {trip.vehicle?.vehicleImage?.secure_url || trip.vehicle?.image ? (
                 <img
                   src={trip.vehicle?.vehicleImage?.secure_url || trip.vehicle?.image}
                   alt={trip.vehicleName}
-                  className="w-12 h-12 rounded-xl object-cover border border-gray-200 shadow-sm shrink-0"
+                  loading="lazy"
+                  className="w-12 h-12 rounded-xl object-cover border border-gray-200 dark:border-slate-700 shadow-sm shrink-0"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-xl bg-[#FDF3EC] border border-[#B45A0A]/20 flex items-center justify-center shrink-0">
-                  <Truck className="w-6 h-6 text-[#B45A0A]" />
+                <div className="w-12 h-12 rounded-xl bg-[#FDF3EC] dark:bg-[#A14000]/20 border border-[#A14000]/20 dark:border-amber-800/40 flex items-center justify-center shrink-0">
+                  <Truck className="w-6 h-6 text-[#A14000] dark:text-amber-400" />
                 </div>
               )}
               <div>
-                <h5 className="font-poppins font-bold text-[#1E293B] text-sm">{trip.vehicleName || "Unassigned"}</h5>
-                <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider block mt-0.5">
+                <h5 className="font-poppins font-bold text-[#1E293B] dark:text-white text-sm">{trip.vehicleName || "Unassigned"}</h5>
+                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider block mt-0.5">
                   {trip.vehiclePlate || "N/A"}
                 </span>
               </div>
             </div>
 
-            <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2">
+            <div className="p-3 bg-gray-50 dark:bg-[#1E293B] border border-gray-100 dark:border-slate-800 rounded-xl space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-[#64748B] font-medium font-poppins">Model</span>
-                <span className="font-bold text-[#1E293B]">{trip.vehicleName || "N/A"}</span>
+                <span className="text-[#64748B] dark:text-slate-300 font-medium font-poppins">Model</span>
+                <span className="font-bold text-[#1E293B] dark:text-white">{trip.vehicleName || "N/A"}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-[#64748B] font-medium font-poppins">Plate Number</span>
-                <span className="font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded font-poppins uppercase text-[10px] tracking-wide border border-indigo-100">
+                <span className="text-[#64748B] dark:text-slate-300 font-medium font-poppins">Plate Number</span>
+                <span className="font-bold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded font-poppins uppercase text-[10px] tracking-wide border border-indigo-100 dark:border-indigo-800/50">
                   {trip.vehiclePlate || "N/A"}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-[#64748B] font-medium font-poppins">Vehicle Status</span>
+                <span className="text-[#64748B] dark:text-slate-300 font-medium font-poppins">Vehicle Status</span>
                 <span className={`font-bold px-1.5 py-0.5 rounded text-[9px] uppercase ${
                   trip.vehicle?.currentStatus === "Available"
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-indigo-50 text-indigo-700"
+                    ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50"
+                    : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50"
                 }`}>
                   {trip.vehicle?.currentStatus || "N/A"}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-[#64748B] font-medium font-poppins">Fuel Type</span>
-                <span className="font-bold text-gray-700 font-poppins">{trip.vehicle?.fuelType || "Diesel"}</span>
+                <span className="text-[#64748B] dark:text-slate-300 font-medium font-poppins">Fuel Type</span>
+                <span className="font-bold text-gray-700 dark:text-white font-poppins">{trip.vehicle?.fuelType || "Diesel"}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-[#64748B] font-medium font-poppins">FASTag Balance</span>
+                <span className="text-[#64748B] dark:text-slate-300 font-medium font-poppins">FASTag Balance</span>
                 <span className={`font-bold font-poppins ${
-                  (trip.vehicle?.fastagBalance ?? 0) < 1000 ? 'text-rose-600' : 'text-emerald-600'
+                  (trip.vehicle?.fastagBalance ?? 0) < 1000 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
                 }`}>
                   ₹{trip.vehicle?.fastagBalance?.toLocaleString("en-IN") ?? 0}
                 </span>
@@ -1565,7 +1566,7 @@ export default function TripDetailsPage() {
             
             <div className="relative pl-6 border-l-2 border-dashed border-gray-200 ml-3 space-y-6 pt-2">
               <div className="relative">
-                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-[#B45A0A] rounded-full border-4 border-orange-100 z-10"></div>
+                <div className="absolute -left-[31px] top-0 w-4.5 h-4.5 bg-[#A14000] rounded-full border-4 border-orange-100 z-10"></div>
                 <div>
                   <p className="text-xs font-bold text-[#1E293B] font-poppins">Dispatch Initialized</p>
                   <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">
@@ -1703,7 +1704,7 @@ export default function TripDetailsPage() {
                     <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
                       pod.status === "Approved" || pod.status === "APPROVED" ? "bg-emerald-50 text-emerald-700" :
                       pod.status === "Rejected" || pod.status === "REJECTED" ? "bg-red-50 text-red-600" :
-                      "bg-amber-50 text-[#B45A0A]"
+                      "bg-amber-50 text-[#A14000]"
                     }`}>
                       {pod.status === "Approved" || pod.status === "APPROVED" ? "🟢 Approved" : pod.status === "Rejected" || pod.status === "REJECTED" ? "🔴 Rejected" : "🟡 PENDING"}
                     </span>
@@ -1811,7 +1812,7 @@ export default function TripDetailsPage() {
                     <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
                       weighbridge.status === "Approved" || weighbridge.status === "APPROVED" ? "bg-emerald-50 text-emerald-700" :
                       weighbridge.status === "Rejected" || weighbridge.status === "REJECTED" ? "bg-red-50 text-red-600" :
-                      "bg-amber-50 text-[#B45A0A]"
+                      "bg-amber-50 text-[#A14000]"
                     }`}>
                       {weighbridge.status === "Approved" || weighbridge.status === "APPROVED" ? "🟢 Approved" : weighbridge.status === "Rejected" || weighbridge.status === "REJECTED" ? "🔴 Rejected" : "🟡 PENDING"}
                     </span>
@@ -1914,7 +1915,7 @@ export default function TripDetailsPage() {
                           <span className={`font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider ${
                             record.approvalStatus === "Approved" || record.approvalStatus === "APPROVED" ? "bg-emerald-50 text-emerald-700" :
                             record.approvalStatus === "Rejected" || record.approvalStatus === "REJECTED" ? "bg-red-50 text-red-600" :
-                            "bg-amber-50 text-[#B45A0A]"
+                            "bg-amber-50 text-[#A14000]"
                           }`}>
                             {record.approvalStatus === "Approved" || record.approvalStatus === "APPROVED" ? "🟢 Approved" : record.approvalStatus === "Rejected" || record.approvalStatus === "REJECTED" ? "🔴 Rejected" : "🟡 PENDING"}
                           </span>
@@ -2057,7 +2058,7 @@ export default function TripDetailsPage() {
               {/* Header */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-[#E7EAF0]">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 bg-[#B45A0A] rounded-xl flex items-center justify-center text-white font-poppins font-black text-sm">SF</div>
+                  <div className="w-9 h-9 bg-[#A14000] rounded-xl flex items-center justify-center text-white font-poppins font-black text-sm">SF</div>
                   <div>
                     <h3 className="font-poppins font-bold text-[#1E293B] text-[18px] leading-tight">Speshway Fleet</h3>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Management System</p>
@@ -2143,7 +2144,7 @@ export default function TripDetailsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[#E7EAF0] font-nunito">
                     {/* FROM ADDRESS */}
                     <div className="bg-slate-50/80 p-4.5 rounded-xl border border-slate-200/80 space-y-2 text-xs">
-                      <h4 className="font-poppins font-bold text-[11px] text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-2 mb-2">
+                      <h4 className="font-poppins font-bold text-[11px] text-[#A14000] uppercase tracking-wider border-b border-slate-200 pb-2 mb-2">
                         FROM ADDRESS
                       </h4>
                       <div className="font-bold text-slate-800 text-sm mb-1">{fromAddr.companyName}</div>
@@ -2171,7 +2172,7 @@ export default function TripDetailsPage() {
 
                     {/* TO ADDRESS */}
                     <div className="bg-slate-50/80 p-4.5 rounded-xl border border-slate-200/80 space-y-2 text-xs">
-                      <h4 className="font-poppins font-bold text-[11px] text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-2 mb-2">
+                      <h4 className="font-poppins font-bold text-[11px] text-[#A14000] uppercase tracking-wider border-b border-slate-200 pb-2 mb-2">
                         TO ADDRESS
                       </h4>
                       <div className="font-bold text-slate-800 text-sm mb-1">{toAddr.companyName}</div>
@@ -2225,7 +2226,7 @@ export default function TripDetailsPage() {
                 <button
                   type="button"
                   onClick={handleDownloadInvoice}
-                  className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer flex items-center gap-1.5"
                 >
                   Download PDF
                 </button>
@@ -2251,7 +2252,7 @@ export default function TripDetailsPage() {
               {pod.customerSignatureUrl ? (
                 <div>
                   <h4 className="font-bold text-[#1E293B]">Customer Signature Preview</h4>
-                  <img src={pod.customerSignatureUrl} alt="Customer Signature" className="mt-2 max-h-40 border border-gray-200 rounded-lg" />
+                  <img src={pod.customerSignatureUrl} alt="Customer Signature" loading="lazy" className="mt-2 max-h-40 border border-gray-200 rounded-lg" />
                 </div>
               ) : (
                 <p>No customer signature preview available.</p>
@@ -2259,7 +2260,7 @@ export default function TripDetailsPage() {
               {pod.deliveryPhotoUrl ? (
                 <div>
                   <h4 className="font-bold text-[#1E293B]">Delivery Photo Preview</h4>
-                  <img src={pod.deliveryPhotoUrl} alt="Delivery Photo" className="mt-2 max-h-60 border border-gray-200 rounded-lg object-contain" />
+                  <img src={pod.deliveryPhotoUrl} alt="Delivery Photo" loading="lazy" className="mt-2 max-h-60 border border-gray-200 rounded-lg object-contain" />
                 </div>
               ) : (
                 <p>No delivery photo available.</p>
@@ -2377,7 +2378,7 @@ export default function TripDetailsPage() {
                       <head>
                         <title>FASTag Receipt</title>
                         <style>
-                          body { font-family: 'Nunito', sans-serif; color: #1E293B; padding: 40px; text-align: center; }
+                          body { font-family: 'Inter', sans-serif; color: #1E293B; padding: 40px; text-align: center; }
                           .receipt-box { max-width: 400px; margin: auto; padding: 20px; border: 1px dashed #B2C2D3; border-radius: 12px; }
                           .nhai-logo { width: 50px; height: 50px; background: #2563EB; border-radius: 12px; margin: 0 auto 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px; }
                           .amount { font-size: 24px; font-weight: bold; color: #4F46E5; margin: 15px 0; }
@@ -2442,7 +2443,7 @@ export default function TripDetailsPage() {
             <textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg p-3 text-sm mb-4 outline-none focus:border-[#B45A0A]"
+              className="w-full border border-gray-300 rounded-lg p-3 text-sm mb-4 outline-none focus:border-[#A14000]"
               placeholder="Enter rejection reason..."
               rows={3}
             />
@@ -2522,7 +2523,7 @@ export default function TripDetailsPage() {
             <textarea
               value={weighbridgeRejectReason}
               onChange={(e) => setWeighbridgeRejectReason(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg p-3 text-sm mb-4 outline-none focus:border-[#B45A0A]"
+              className="w-full border border-gray-300 rounded-lg p-3 text-sm mb-4 outline-none focus:border-[#A14000]"
               placeholder="Enter rejection reason..."
               rows={3}
             />
@@ -2605,7 +2606,7 @@ export default function TripDetailsPage() {
             <textarea
               value={tollRejectReason}
               onChange={(e) => setTollRejectReason(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg p-3 text-sm mb-4 outline-none focus:border-[#B45A0A]"
+              className="w-full border border-gray-300 rounded-lg p-3 text-sm mb-4 outline-none focus:border-[#A14000]"
               placeholder="Enter rejection reason..."
               rows={3}
             />
@@ -2721,7 +2722,7 @@ export default function TripDetailsPage() {
                         <head>
                           <title>FASTag Receipt</title>
                           <style>
-                            body { font-family: 'Nunito', sans-serif; color: #1E293B; padding: 40px; text-align: center; }
+                            body { font-family: 'Inter', sans-serif; color: #1E293B; padding: 40px; text-align: center; }
                             .receipt-box { max-width: 400px; margin: auto; padding: 20px; border: 1px dashed #B2C2D3; border-radius: 12px; }
                             .nhai-logo { width: 50px; height: 50px; background: #2563EB; border-radius: 12px; margin: 0 auto 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px; }
                             .amount { font-size: 24px; font-weight: bold; color: #4F46E5; margin: 15px 0; }

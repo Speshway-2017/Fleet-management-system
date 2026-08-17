@@ -21,10 +21,77 @@ export default function IssueCard({ ticket, onStatusUpdated, highlighted = false
   const [resolveNotes, setResolveNotes] = useState("");
   const [resolving, setResolving] = useState(false);
 
+  // Modal State for Viewing Uploaded Bills & Photos
+  const [showMediaModal, setShowMediaModal] = useState(false);
+  const [zoomMedia, setZoomMedia] = useState(null);
+
   if (!ticket) return null;
 
   const currentStatus = localStatus || ticket.status || "Open";
   const priorityStr = ticket.severity || ticket.priority || "MEDIUM";
+
+  const getMediaFiles = () => {
+    const files = [];
+    const seen = new Set();
+
+    const add = (url, typeLabel, originalName) => {
+      if (!url || typeof url !== "string") return;
+      const clean = url.trim();
+      if (!clean || seen.has(clean)) return;
+      seen.add(clean);
+
+      const lower = clean.toLowerCase();
+      const isPdf = lower.endsWith(".pdf") || lower.includes("/pdf") || lower.includes(".pdf?");
+
+      files.push({
+        url: clean,
+        typeLabel: typeLabel || "Uploaded File",
+        filename: originalName || (isPdf ? "Document.pdf" : "Attachment.jpg"),
+        isPdf
+      });
+    };
+
+    // 1. Service Bill / Invoice
+    if (ticket.serviceBillUrl) add(ticket.serviceBillUrl, "Service Bill / Receipt");
+    if (ticket.billUrl) add(ticket.billUrl, "Service Bill / Receipt");
+    if (ticket.invoiceUrl) add(ticket.invoiceUrl, "Service Bill / Receipt");
+
+    // 2. Attachments
+    if (Array.isArray(ticket.attachments)) {
+      ticket.attachments.forEach((att, idx) => {
+        const u = typeof att === "string" ? att : att?.url;
+        const fn = typeof att === "object" ? att?.filename : "";
+        let label = fn || `Attachment #${idx + 1}`;
+        if (u === ticket.serviceBillUrl || u === ticket.billUrl) {
+          label = "Service Bill / Receipt";
+        } else if (u === ticket.photoUrl) {
+          label = "Issue Photo";
+        }
+        add(u, label, fn);
+      });
+    }
+
+    // 3. Photo URL (issue photo)
+    if (ticket.photoUrl) add(ticket.photoUrl, "Issue Photo");
+
+    // 4. Timeline logs
+    if (Array.isArray(ticket.repairTimeline)) {
+      ticket.repairTimeline.forEach((log) => {
+        if (log.billUrl) add(log.billUrl, "Service Bill / Receipt");
+        if (log.photoUrl) add(log.photoUrl, "Repair Photo");
+        if (Array.isArray(log.attachments)) {
+          log.attachments.forEach((att) => {
+            const u = typeof att === "string" ? att : att?.url;
+            add(u, "Timeline Attachment");
+          });
+        }
+      });
+    }
+
+    return files;
+  };
+
+  const mediaFiles = getMediaFiles();
 
   const getPriorityBadge = (priority) => {
     switch (priority?.toUpperCase()) {
@@ -58,7 +125,7 @@ export default function IssueCard({ ticket, onStatusUpdated, highlighted = false
     if (s === "NEED MAINTENANCE") {
       return (
         <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-orange-50 text-orange-700 border border-orange-200 flex items-center gap-1 font-poppins animate-pulse">
-          <Wrench className="w-3.5 h-3.5 text-orange-600" /> Maintenance Needed
+          <Wrench className="w-3.5 h-3.5 text-[#A14000]" /> Maintenance Needed
         </span>
       );
     }
@@ -196,7 +263,7 @@ export default function IssueCard({ ticket, onStatusUpdated, highlighted = false
           </div>
         ) : isNeedMaintenance ? (
           <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl text-xs font-semibold text-orange-900 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-orange-600 shrink-0" />
+            <AlertTriangle className="w-4 h-4 text-[#A14000] shrink-0" />
             <span>Vehicle repair incomplete / needs maintenance! Manager notified. Upload bill to resolve.</span>
           </div>
         ) : null}
@@ -208,7 +275,7 @@ export default function IssueCard({ ticket, onStatusUpdated, highlighted = false
               <span className="font-bold text-blue-900 flex items-center gap-1 font-poppins">
                 <User className="w-3.5 h-3.5 text-blue-600" /> Mechanic: {mechanic.name || "Assigned"}
               </span>
-              {mechanic.phone && (
+              {mechanic.phone && !isResolvedOrCompleted && (
                 <a
                   href={`tel:${mechanic.phone}`}
                   className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 transition"
@@ -289,7 +356,7 @@ export default function IssueCard({ ticket, onStatusUpdated, highlighted = false
               <button
                 onClick={() => handleUpdateStatus("Need Maintenance", "Vehicle is not repaired yet. Further maintenance required.")}
                 disabled={updating}
-                className="py-2.5 px-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold font-poppins transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                className="py-2.5 px-3 bg-[#A14000] hover:bg-[#853400] disabled:opacity-50 text-white rounded-xl text-xs font-bold font-poppins transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Wrench className="w-4 h-4" />
                 <span>Need Maintenance</span>
@@ -302,17 +369,163 @@ export default function IssueCard({ ticket, onStatusUpdated, highlighted = false
       {/* Footer Section */}
       <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
         <span>Timeline: {ticket.repairTimeline?.length || 1} logs</span>
-        {photoUrl && (
-          <a
-            href={photoUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[#B45A0A] hover:underline flex items-center gap-1 font-semibold"
+        {mediaFiles.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowMediaModal(true)}
+            className="text-[#A14000] hover:text-[#8a4406] hover:underline flex items-center gap-1.5 font-bold cursor-pointer transition text-xs"
           >
-            <Image className="w-3.5 h-3.5" /> View Bill / Photo
-          </a>
+            <Image className="w-4 h-4 text-[#A14000]" />
+            <span>View Bill / Photo {mediaFiles.length > 1 ? `(${mediaFiles.length})` : ""}</span>
+          </button>
         )}
       </div>
+
+      {/* Modal: View All Ticket Bills & Uploaded Photos */}
+      {showMediaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-2xl shadow-2xl relative font-nunito flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+              <div>
+                <h3 className="text-base font-bold font-poppins text-slate-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-[#A14000]" />
+                  Uploaded Bills & Photos
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5 font-sans">
+                  Ticket <span className="font-bold text-slate-700">#{ticket.ticketId || ticket._id}</span> • {ticket.issueType}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMediaModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="overflow-y-auto py-4 space-y-4 flex-1 pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {mediaFiles.map((file, index) => {
+                  const isBill = file.typeLabel.toLowerCase().includes("bill") || file.typeLabel.toLowerCase().includes("receipt") || file.typeLabel.toLowerCase().includes("invoice");
+                  return (
+                    <div
+                      key={index}
+                      className="border border-slate-200 rounded-xl p-3.5 bg-slate-50 hover:bg-white hover:border-[#A14000]/40 transition shadow-sm flex flex-col justify-between group"
+                    >
+                      <div>
+                        {/* Type Badge Header */}
+                        <div className="flex items-center justify-between mb-2">
+                          <span
+                            className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border font-poppins flex items-center gap-1.5 ${
+                              isBill
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                : "bg-amber-50 text-amber-800 border-amber-200"
+                            }`}
+                          >
+                            {isBill ? <FileText className="w-3.5 h-3.5 text-emerald-600" /> : <Image className="w-3.5 h-3.5 text-amber-600" />}
+                            {file.typeLabel}
+                          </span>
+                        </div>
+
+                        {/* File Preview */}
+                        <div className="relative rounded-lg overflow-hidden border border-slate-200 bg-slate-900/5 h-44 flex items-center justify-center">
+                          {file.isPdf ? (
+                            <div className="text-center p-4">
+                              <FileText className="w-12 h-12 text-rose-500 mx-auto mb-2" />
+                              <span className="text-xs font-bold text-slate-700 block truncate max-w-[200px]">
+                                {file.filename}
+                              </span>
+                              <span className="text-[10px] text-slate-400 block mt-1">PDF Document</span>
+                            </div>
+                          ) : (
+                            <img
+                              src={file.url}
+                              alt={file.typeLabel}
+                              className="w-full h-full object-contain bg-slate-950/20 cursor-pointer group-hover:scale-105 transition-transform duration-200"
+                              onClick={() => setZoomMedia(file)}
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Card Action Buttons */}
+                      <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-xs">
+                        {!file.isPdf && (
+                          <button
+                            type="button"
+                            onClick={() => setZoomMedia(file)}
+                            className="text-slate-600 hover:text-slate-900 font-semibold flex items-center gap-1 cursor-pointer"
+                          >
+                            🔍 Zoom
+                          </button>
+                        )}
+                        <a
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#A14000] hover:underline font-bold flex items-center gap-1 ml-auto text-xs"
+                        >
+                          Open Original ↗
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="pt-3 border-t border-slate-100 flex justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowMediaModal(false)}
+                className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold font-poppins rounded-xl transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox / Zoom View for selected image */}
+      {zoomMedia && (
+        <div
+          className="fixed inset-0 z-60 bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
+          onClick={() => setZoomMedia(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center justify-center">
+            <button
+              type="button"
+              onClick={() => setZoomMedia(null)}
+              className="absolute -top-12 right-0 text-white bg-white/20 hover:bg-white/40 p-2 rounded-full backdrop-blur transition cursor-pointer"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <span className="text-white text-xs font-bold font-poppins mb-2 bg-white/10 px-3 py-1 rounded-full backdrop-blur">
+              {zoomMedia.typeLabel}
+            </span>
+            <img
+              src={zoomMedia.url}
+              alt={zoomMedia.typeLabel}
+              className="max-h-[80vh] max-w-full object-contain rounded-xl shadow-2xl border border-white/10"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <a
+              href={zoomMedia.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 px-4 py-2 bg-[#A14000] text-white rounded-xl text-xs font-bold shadow hover:bg-[#8c4506] transition flex items-center gap-1.5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Open Full Resolution Image ↗
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Resolve Ticket & Upload Service Bill */}
       {showResolveModal && (

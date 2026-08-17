@@ -43,7 +43,7 @@ export default function NotificationDetailsPage() {
   const [showDispatchWarningModal, setShowDispatchWarningModal] = useState(false);
   const [showContactDriverModal, setShowContactDriverModal] = useState(false);
   const [notification, setNotification] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -149,13 +149,7 @@ export default function NotificationDetailsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="p-6 lg:p-8 flex items-center justify-center min-h-[300px]">
-        <Icon icon="mdi:loading" className="w-8 h-8 animate-spin text-[#B45A0A]" />
-      </div>
-    );
-  }
+
 
   if (!notification) return null;
 

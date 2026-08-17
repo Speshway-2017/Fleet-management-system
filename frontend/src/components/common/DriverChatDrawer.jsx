@@ -61,7 +61,7 @@ export default function DriverChatDrawer({
         <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="w-11 h-11 bg-gradient-to-br from-[#C65D0E] to-amber-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
+              <div className="w-11 h-11 bg-gradient-to-br from-[#853400] to-amber-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
                 {getInitials(driverName)}
               </div>
               <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-900 rounded-full" />

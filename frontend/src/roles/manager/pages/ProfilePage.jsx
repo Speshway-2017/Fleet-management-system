@@ -30,12 +30,11 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ vehiclesCount: 0, tripsCount: 0 });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        setLoading(true);
         const [profileRes, vehiclesRes, tripsRes] = await Promise.all([
           managerApi.getProfile().catch(() => null),
           managerApi.getVehicles().catch(() => ({ data: { data: [] } })),
@@ -66,13 +65,7 @@ export default function ProfilePage() {
     toast.success(`Action triggered: ${actionName}`);
   };
 
-  if (loading) {
-    return (
-      <div className="p-6 lg:p-8 space-y-6 flex items-center justify-center min-h-[300px]">
-        <Loader className="w-8 h-8 animate-spin text-[#B45A0A]" />
-      </div>
-    );
-  }
+
 
   const nameVal = profile?.name || user?.name || "—";
   const emailVal = profile?.email || user?.email || "—";
@@ -102,7 +95,7 @@ export default function ProfilePage() {
             className="w-24 h-24 rounded-lg object-cover shadow-sm shrink-0 border border-gray-150"
           />
         ) : (
-          <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-[#B45A0A] to-amber-500 flex items-center justify-center text-white text-3xl font-black shadow-sm shrink-0 select-none">
+          <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-[#A14000] to-amber-500 flex items-center justify-center text-white text-3xl font-black shadow-sm shrink-0 select-none">
             {nameVal.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2)}
           </div>
         )}
@@ -114,7 +107,7 @@ export default function ProfilePage() {
               <h2 className="font-poppins font-black text-2xl text-gray-900 leading-none">
                 {nameVal}
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide bg-orange-50 text-[#B45A0A] border border-orange-100 uppercase select-none">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide bg-orange-50 text-[#A14000] border border-orange-100 uppercase select-none">
                 Active
               </span>
             </div>
@@ -127,7 +120,7 @@ export default function ProfilePage() {
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-1">
             <button
               onClick={() => navigate("/manager/profile/edit")}
-              className="px-4 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer border-none"
+              className="px-4 py-2.5 bg-[#A14000] hover:bg-[#853400] text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer border-none"
             >
               <Edit3 className="w-3.5 h-3.5" />
               <span>Edit Profile</span>
@@ -135,7 +128,7 @@ export default function ProfilePage() {
 
             <button
               onClick={() => handleAction("Export Credentials")}
-              className="px-4 py-2.5 bg-white hover:bg-gray-50 text-[#B45A0A] border border-gray-250 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2.5 bg-white hover:bg-gray-50 text-[#A14000] border border-gray-250 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
             >
               <FileDown className="w-3.5 h-3.5" />
               <span>Export Credentials</span>
@@ -150,7 +143,7 @@ export default function ProfilePage() {
         {/* Card A: Personal Info */}
         <div className="lg:col-span-4 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
           <div className="flex items-center gap-2.5 mb-6 border-b border-gray-100 pb-3">
-            <User className="w-4 h-4 text-[#B45A0A]" />
+            <User className="w-4 h-4 text-[#A14000]" />
             <h3 className="font-poppins font-black text-sm text-gray-900">Personal Info</h3>
           </div>
 
@@ -182,7 +175,7 @@ export default function ProfilePage() {
         <div className="lg:col-span-5 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-6">
             <div className="flex items-center gap-2.5">
-              <Building2 className="w-4 h-4 text-[#B45A0A]" />
+              <Building2 className="w-4 h-4 text-[#A14000]" />
               <h3 className="font-poppins font-black text-sm text-gray-900">Organization Details</h3>
             </div>
             {orgObj?.status && (
@@ -212,7 +205,7 @@ export default function ProfilePage() {
 
             <div>
               <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">Active Plan</span>
-              <p className="text-xs font-bold text-[#B45A0A] mt-1 font-poppins font-semibold">
+              <p className="text-xs font-bold text-[#A14000] mt-1 font-poppins font-semibold">
                 {(() => {
                   const p = orgObj?.plan || (typeof user?.subscriptionPlan === 'object' ? user?.subscriptionPlan?.name : user?.subscriptionPlan);
                   if (!p) return "Standard";
@@ -268,12 +261,12 @@ export default function ProfilePage() {
             <div className="space-y-4">
               {/* Metric 1 */}
               <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 flex items-center gap-3">
-                <div className="p-2.5 bg-orange-100 rounded-lg text-[#B45A0A]">
+                <div className="p-2.5 bg-orange-100 rounded-lg text-[#A14000]">
                   <Truck className="w-4 h-4" />
                 </div>
                 <div>
                   <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block leading-none">Managed Vehicles</span>
-                  <p className="text-sm font-black text-[#B45A0A] mt-1.5 font-poppins">{stats.vehiclesCount} Units</p>
+                  <p className="text-sm font-black text-[#A14000] mt-1.5 font-poppins">{stats.vehiclesCount} Units</p>
                 </div>
               </div>
 
@@ -294,10 +287,10 @@ export default function ProfilePage() {
               <div>
                 <div className="flex justify-between items-center text-xs font-bold text-gray-600 mb-1">
                   <span className="font-poppins uppercase tracking-wider text-[10px]">Efficiency KPI</span>
-                  <span className="text-[#B45A0A]">{stats.tripsCount > 0 ? "92%" : "0%"}</span>
+                  <span className="text-[#A14000]">{stats.tripsCount > 0 ? "92%" : "0%"}</span>
                 </div>
                 <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#B45A0A] rounded-full transition-all duration-1000" style={{ width: stats.tripsCount > 0 ? "92%" : "0%" }} />
+                  <div className="h-full bg-[#A14000] rounded-full transition-all duration-1000" style={{ width: stats.tripsCount > 0 ? "92%" : "0%" }} />
                 </div>
               </div>
               <p className="text-xs text-gray-500 leading-relaxed font-medium">
@@ -322,7 +315,7 @@ export default function ProfilePage() {
 
             <button
               onClick={() => handleAction("Open Sector Chat")}
-              className="p-3 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-full shadow-lg shadow-[#B45A0A]/30 transition-all cursor-pointer border-none flex items-center justify-center"
+              className="p-3 bg-[#A14000] hover:bg-[#853400] text-white rounded-full shadow-lg shadow-[#A14000]/30 transition-all cursor-pointer border-none flex items-center justify-center"
             >
               <MessageSquare className="w-5 h-5" />
             </button>

@@ -17,7 +17,7 @@ import EmptyDocumentsState from "./EmptyDocumentsState";
 
 export default function VehicleDocuments({ vehicleId }) {
   const [documents, setDocuments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -173,18 +173,7 @@ export default function VehicleDocuments({ vehicleId }) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="w-8 h-8 border-3 border-[#E7EAF0] border-t-[#B45A0A] rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm text-[#64748B]">Loading documents...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
@@ -200,7 +189,7 @@ export default function VehicleDocuments({ vehicleId }) {
         </div>
         <button
           onClick={handleUploadClick}
-          className="px-4 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 cursor-pointer"
+          className="px-4 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#A14000]/20 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Upload Document</span>

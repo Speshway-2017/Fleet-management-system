@@ -12,7 +12,7 @@ export default function ProfileSettings() {
   const navigate = useNavigate();
   const { logout, checkAuth, user, login } = useAuth(); // login to potentially update user session
   const { setAdminProfile } = useAdmin();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [profileUrl, setProfileUrl] = useState(null);
   const [profileFile, setProfileFile] = useState(null);
@@ -271,7 +271,7 @@ export default function ProfileSettings() {
                 <div>
                   <h4 className="text-lg font-bold text-slate-800">{form.firstName} {form.lastName}</h4>
                   <p className="text-sm text-slate-500 font-medium mb-1.5">{form.email}</p>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-orange-50 text-orange-600">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-orange-50 text-[#A14000]">
                     Super Admin
                   </span>
                 </div>

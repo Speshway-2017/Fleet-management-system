@@ -16,7 +16,7 @@ class CompletedTripsScreen extends StatefulWidget {
 }
 
 class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
-  bool _isLoading = true;
+  bool _isLoading = false;
   List<Map<String, dynamic>> _completedTrips = [];
 
   @override
@@ -27,7 +27,6 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
 
   Future<void> _fetchCompletedTrips() async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
     try {
       final res = await ApiService.get('/driver/trips?status=Completed');
       if (res != null && res['data'] is List) {
@@ -75,7 +74,7 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
                   ? _buildEmptyState()
                   : ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(AppSpacing.md),
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
                       itemCount: _completedTrips.length,
                       itemBuilder: (context, index) {
                         final trip = _completedTrips[index];

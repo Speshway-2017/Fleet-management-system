@@ -1,14 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
-import LandingHeader from "@/components/layout/LandingHeader";
-import LandingFooter from "@/components/layout/LandingFooter";
+import anime from "animejs";
 import axiosClient from "@/api/axiosClient";
+import ParallaxDepthSection from "@/components/common/ParallaxDepthSection";
+import CountUpNumber from "@/components/common/CountUpNumber";
+import GoldFrameCard from "@/components/common/GoldFrameCard";
+import { AnimeScrollReveal, AnimeStaggerGroup } from "@/components/common/AnimeScrollReveal";
+import WordRevealParagraph from "@/components/common/WordRevealParagraph";
+import { heroBackgroundAnimation } from "@/utils/animeUtils";
+import { Sparkles, ShieldCheck, Award, Eye, Clock, CheckCircle } from "lucide-react";
 
 export default function About() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [aboutData, setAboutData] = useState(null);
+  const bgRef = useRef(null);
 
   useEffect(() => {
     const fetchAbout = async () => {
@@ -23,6 +29,18 @@ export default function About() {
       }
     };
     fetchAbout();
+  }, []);
+
+  useEffect(() => {
+    let bgAnim = null;
+    if (bgRef.current) {
+      bgAnim = heroBackgroundAnimation(bgRef.current);
+    }
+    return () => {
+      if (bgAnim) {
+        try { bgAnim.pause(); } catch (_) {}
+      }
+    };
   }, []);
 
   const storyTitle = aboutData?.storyTitle || "Built for Fleet Operators, by Logistics Experts";
@@ -49,198 +67,236 @@ export default function About() {
   ];
 
   return (
-    <div className="bg-bg-page min-h-screen flex flex-col font-sans">
-      <LandingHeader />
+    <div className="bg-bg-page flex-1 flex flex-col font-sans text-body">
+      {/* 1. Hero Banner - Compact & Clean Top Gap */}
+      <section className="relative w-full overflow-hidden border-b border-border-custom bg-[#0B1B3D] text-white py-8 sm:py-10 md:py-12 flex items-center">
+        <div
+          ref={bgRef}
+          className="absolute inset-0 bg-cover bg-center opacity-25 pointer-events-none"
+          style={{
+            backgroundImage: "url('/hero-bg.jpg')",
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0B1B3D] via-[#0B1B3D]/85 to-transparent" />
+        
+        <AnimeScrollReveal direction="top" className="relative max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 z-10 space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#A14000]/20 border border-[#A14000]/40 text-[#FFDBCC] text-xs font-bold w-fit">
+            <Sparkles className="w-3.5 h-3.5 text-[#A14000]" />
+            <span>Empowering Global Logistics Intelligence</span>
+          </div>
 
-      {loading ? (
-        <div className="flex-1 flex justify-center items-center py-24 bg-white">
-          <div className="animate-spin rounded-full h-10 w-10 border-4 border-secondary border-t-transparent" />
+          <h1 className="font-display text-2xl sm:text-4xl md:text-5xl font-black text-white leading-tight tracking-tight max-w-3xl">
+            Driving Efficiency Across <br />
+            <span className="text-[#A14000]">Every Mile of Your Fleet</span>
+          </h1>
+
+          <p className="text-xs sm:text-sm text-gray-300 max-w-2xl font-normal leading-relaxed">
+            Discover how FleetManagement connects vehicles, drivers, and operations teams with real-time intelligence, automated workflows, and documented cost savings.
+          </p>
+        </AnimeScrollReveal>
+      </section>
+
+      {/* 2. Our Story Section with Image 1 (/about-delivery-man.png) */}
+      <section className="py-8 sm:py-12 px-4 sm:px-6 md:px-8 bg-white border-b border-border-custom">
+        <div className="max-w-[1550px] mx-auto space-y-8">
+          <AnimeScrollReveal direction="top">
+            <ParallaxDepthSection
+              title={storyTitle}
+              subtitle="Building the future of fleet intelligence"
+            />
+          </AnimeScrollReveal>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+            {/* Left Column: Story Text */}
+            <AnimeScrollReveal direction="top" className="lg:col-span-6 space-y-4">
+              <h2 className="text-[#A14000] font-black text-xl sm:text-2xl md:text-3xl uppercase tracking-wider block font-display">
+                Our Vision & History
+              </h2>
+              <div className="space-y-3.5 text-body font-medium">
+                {storyContent.map((paragraph, idx) => (
+                  <p key={idx} className="text-body font-medium text-sm sm:text-base leading-relaxed">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            </AnimeScrollReveal>
+
+            {/* Right Column: High-Res Fleet Vision & Telemetry Graphic (/about-fleet-vision.jpg) */}
+            <AnimeScrollReveal direction="top" className="lg:col-span-6 relative">
+              <div className="relative z-10 rounded-3xl overflow-hidden shadow-xl border-4 border-white anime-card-lift max-w-md mx-auto lg:max-w-none bg-[#0B1B3D] h-[340px] sm:h-[380px]">
+                <img
+                  src="/about-fleet-vision.jpg"
+                  alt="Fleet Management Digital Operations & Telemetry Architecture"
+                  className="w-full h-full object-cover object-center"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B1B3D]/80 via-transparent to-transparent flex items-end p-5">
+                  <div className="text-white space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#FFDBCC] bg-[#A14000]/80 px-2.5 py-1 rounded-md">Smart Fleet Telemetry & Logistics Suite</span>
+                    <p className="font-bold text-xs sm:text-sm">Real-Time GPS Tracking, Asset Health & Driver Analytics</p>
+                  </div>
+                </div>
+              </div>
+            </AnimeScrollReveal>
+          </div>
+
+          {/* Stats Grid */}
+          <AnimeStaggerGroup direction="top" className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
+            <GoldFrameCard>
+              <div className="p-4 text-center space-y-1">
+                <CountUpNumber endValue={parseInt(statsFounded) || 2018} duration={1.5} className="text-2xl text-heading block font-black" />
+                <span className="text-[9px] font-bold text-secondary uppercase tracking-wider block font-display">Founded</span>
+              </div>
+            </GoldFrameCard>
+
+            <GoldFrameCard>
+              <div className="p-4 text-center space-y-1">
+                <CountUpNumber endValue={340} suffix="+" className="text-2xl text-heading block font-black" />
+                <span className="text-[9px] font-bold text-secondary uppercase tracking-wider block font-display">Enterprises</span>
+              </div>
+            </GoldFrameCard>
+
+            <GoldFrameCard>
+              <div className="p-4 text-center space-y-1">
+                <CountUpNumber endValue={1.2} decimals={1} suffix="M+" className="text-2xl text-heading block font-black" />
+                <span className="text-[8.5px] font-bold text-secondary uppercase tracking-wider block font-display leading-tight">Vehicles Tracked</span>
+              </div>
+            </GoldFrameCard>
+
+            <GoldFrameCard>
+              <div className="p-4 text-center space-y-1">
+                <CountUpNumber endValue={180} prefix="$" suffix="M+" className="text-2xl text-heading block font-black" />
+                <span className="text-[8.5px] font-bold text-secondary uppercase tracking-wider block font-display leading-tight">Customer Savings</span>
+              </div>
+            </GoldFrameCard>
+          </AnimeStaggerGroup>
         </div>
-      ) : (
-        <>
-          {/* 2. Our Story Section */}
-          <section className="py-12 sm:py-20 px-4 sm:px-6 md:px-8 bg-white border-b border-border-custom">
-            <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center">
-              {/* Left Column: Text Content */}
-              <div className="space-y-6">
-                <span className="text-secondary font-bold text-xs uppercase tracking-widest block font-display">
-                  Our Story
-                </span>
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold font-display text-heading tracking-tight leading-tight">
-                  {storyTitle}
-                </h2>
-                <div className="space-y-4 text-sm md:text-base text-body font-medium leading-relaxed">
-                  {storyContent.map((paragraph, idx) => (
-                    <p key={idx}>{paragraph}</p>
-                  ))}
-                </div>
+      </section>
+
+      {/* 3. Our Mission Section (Left Text + Right Image 2 /about-delivery-truck.png) */}
+      <section className="py-8 sm:py-12 px-4 sm:px-6 md:px-8 bg-slate-50/70 border-b border-border-custom">
+        <div className="max-w-[1550px] mx-auto space-y-8">
+          <AnimeScrollReveal direction="top">
+            <ParallaxDepthSection
+              title={missionTitle}
+              subtitle="Our Core Principles & Purpose"
+            />
+          </AnimeScrollReveal>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+            {/* Left Column: Text & Principles */}
+            <AnimeScrollReveal direction="top" className="lg:col-span-6 space-y-6">
+              <div className="space-y-4 text-body font-medium">
+                {missionContent.map((paragraph, idx) => (
+                  <p key={idx} className="text-body font-medium text-base sm:text-lg leading-relaxed">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+              
+              {/* Quote Block */}
+              <div className="border-l-4 border-[#A14000] pl-4 italic text-[#0B1B3D] font-semibold text-sm sm:text-base bg-orange-50/60 py-3 rounded-r-xl">
+                "{missionQuote}"
               </div>
 
-              {/* Right Column: 2x2 Stats Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-6 pt-4">
-                {/* Card 1 */}
-                <div className="bg-[#FFDBCC] rounded-3xl p-4 sm:p-6 text-center space-y-1 shadow-sm">
-                  <span className="text-2xl sm:text-3xl font-extrabold text-heading font-display block tracking-tight">{statsFounded}</span>
-                  <span className="text-[9px] sm:text-[10px] font-bold text-secondary uppercase tracking-wider block font-display">Founded</span>
-                </div>
-                {/* Card 2 */}
-                <div className="bg-[#FFDBCC] rounded-3xl p-4 sm:p-6 text-center space-y-1 shadow-sm">
-                  <span className="text-2xl sm:text-3xl font-extrabold text-heading font-display block tracking-tight">{statsEnterprises}</span>
-                  <span className="text-[9px] sm:text-[10px] font-bold text-secondary uppercase tracking-wider block font-display">Enterprises</span>
-                </div>
-                {/* Card 3 */}
-                <div className="bg-[#FFDBCC] rounded-3xl p-4 sm:p-6 text-center space-y-1 shadow-sm">
-                  <span className="text-2xl sm:text-3xl font-extrabold text-heading font-display block tracking-tight">{statsVehicles}</span>
-                  <span className="text-[8.5px] sm:text-[10px] font-bold text-secondary uppercase tracking-wider block font-display leading-tight">Vehicles Tracked</span>
-                </div>
-                {/* Card 4 */}
-                <div className="bg-[#FFDBCC] rounded-3xl p-4 sm:p-6 text-center space-y-1 shadow-sm flex flex-col justify-center">
-                  <span className="text-xl sm:text-3xl font-extrabold text-heading font-display block tracking-tight">{statsSavings}</span>
-                  <span className="text-[8.5px] sm:text-[10px] font-bold text-secondary uppercase tracking-wider block font-display leading-tight">Customer Savings</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* 3. Our Mission Section */}
-          <section className="py-12 sm:py-20 px-4 sm:px-6 md:px-8 bg-bg-page border-b border-border-custom">
-            <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-start">
-              {/* Left Column: Mission Content */}
-              <div className="space-y-6">
-                <span className="text-secondary font-bold text-xs uppercase tracking-widest block font-display">
-                  Our Mission
-                </span>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-display text-heading tracking-tight leading-tight">
-                  {missionTitle}
-                </h2>
-                <div className="space-y-4 text-sm md:text-base text-body font-medium leading-relaxed">
-                  {missionContent.map((paragraph, idx) => (
-                    <p key={idx}>{paragraph}</p>
-                  ))}
-                </div>
-                {/* Quote Block */}
-                <div className="border-l-4 border-secondary pl-5 italic text-heading font-semibold text-sm md:text-base my-4 max-w-md">
-                  "{missionQuote}"
-                </div>
-              </div>
-
-              {/* Right Column: Attributes List */}
-              <div className="space-y-5">
-                {/* Item 1 */}
-                <div className="bg-white rounded-2xl border border-border-custom p-5 flex items-start gap-4 shadow-sm">
-                  <div className="h-9 w-9 rounded-xl bg-primary text-secondary flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
+              {/* Core Principles List */}
+              <div className="space-y-4 pt-2">
+                <div className="flex items-start gap-3.5">
+                  <div className="h-8 w-8 rounded-xl bg-[#0B1B3D] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Eye className="h-4.5 w-4.5 text-[#FFDBCC]" />
                   </div>
-                  <div className="space-y-1">
+                  <div>
                     <h4 className="font-display text-sm font-bold text-heading">Total Transparency</h4>
-                    <p className="text-xs text-body leading-relaxed">
-                      We give fleet operators complete visibility — every vehicle, every driver, every mile.
-                    </p>
+                    <p className="text-xs text-body leading-relaxed">We give fleet operators complete visibility — every vehicle, every driver, every mile.</p>
                   </div>
                 </div>
 
-                {/* Item 2 */}
-                <div className="bg-white rounded-2xl border border-border-custom p-5 flex items-start gap-4 shadow-sm">
-                  <div className="h-9 w-9 rounded-xl bg-primary text-secondary flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
+                <div className="flex items-start gap-3.5">
+                  <div className="h-8 w-8 rounded-xl bg-[#0B1B3D] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <ShieldCheck className="h-4.5 w-4.5 text-[#FFDBCC]" />
                   </div>
-                  <div className="space-y-1">
+                  <div>
                     <h4 className="font-display text-sm font-bold text-heading">Reliability First</h4>
-                    <p className="text-xs text-body leading-relaxed">
-                      Our 99.97% uptime SLA keeps your operations moving. Never depend on a flaky platform.
-                    </p>
+                    <p className="text-xs text-body leading-relaxed">Our 99.97% uptime SLA keeps your operations moving. Never depend on a flaky platform.</p>
                   </div>
                 </div>
 
-                {/* Item 3 */}
-                <div className="bg-white rounded-2xl border border-border-custom p-5 flex items-start gap-4 shadow-sm">
-                  <div className="h-9 w-9 rounded-xl bg-primary text-secondary flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                <div className="flex items-start gap-3.5">
+                  <div className="h-8 w-8 rounded-xl bg-[#0B1B3D] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Award className="h-4.5 w-4.5 text-[#FFDBCC]" />
                   </div>
-                  <div className="space-y-1">
+                  <div>
                     <h4 className="font-display text-sm font-bold text-heading">Outcome-Driven</h4>
-                    <p className="text-xs text-body leading-relaxed">
-                      We measure our success by your cost savings, not just platform adoption.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Item 4 */}
-                <div className="bg-white rounded-2xl border border-border-custom p-5 flex items-start gap-4 shadow-sm">
-                  <div className="h-9 w-9 rounded-xl bg-primary text-secondary flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="font-display text-sm font-bold text-heading">Customer Obsession</h4>
-                    <p className="text-xs text-body leading-relaxed">
-                      Dedicated success managers, 24/7 support, and onboarding that gets you live fast.
-                    </p>
+                    <p className="text-xs text-body leading-relaxed">We measure our success by your cost savings, not just platform adoption.</p>
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </AnimeScrollReveal>
 
-          {/* 4. Journey Timeline Section */}
-          <section className="py-12 sm:py-20 px-4 sm:px-6 md:px-8 bg-white border-b border-border-custom text-center">
-            <div className="max-w-3xl mx-auto space-y-8 sm:space-y-12">
-              <div className="space-y-2">
-                <span className="text-secondary font-bold text-xs uppercase tracking-widest block font-display">
-                  Timeline
+            {/* Right Column: Image 2 (/about-delivery-truck.png - Clean Red Delivery Cargo Loading Illustration) */}
+            <AnimeScrollReveal direction="top" className="lg:col-span-6 relative">
+              <div className="rounded-3xl overflow-hidden border border-slate-200/90 bg-white p-5 sm:p-6 shadow-xl text-center anime-card-lift">
+                <div className="relative overflow-hidden rounded-2xl bg-white p-2 sm:p-4 flex items-center justify-center border border-slate-100">
+                  <img
+                    src="/about-delivery-truck.png"
+                    alt="Commercial Red Delivery Cargo Truck Loading Operations"
+                    className="w-full h-auto max-h-[340px] sm:max-h-[380px] object-contain mx-auto"
+                  />
+                </div>
+                <span className="text-xs font-bold text-[#0B1B3D] font-display uppercase tracking-wider block mt-4">
+                  Smart Fleet Freight & Logistics Architecture
                 </span>
-                <h3 className="text-2xl sm:text-3xl font-extrabold font-display text-heading tracking-tight">
-                  Our Journey
-                </h3>
               </div>
+            </AnimeScrollReveal>
+          </div>
+        </div>
+      </section>
 
-              {/* Timeline Nodes */}
-              <div className="relative space-y-8 md:space-y-12 before:absolute before:top-0 before:bottom-0 before:left-3 md:before:left-1/2 before:w-[1px] before:bg-border-custom">
-                {timelineItems.map((item, idx) => {
-                  const isEven = idx % 2 === 0;
-                  return (
-                    <div
-                      key={idx}
-                      className={`relative flex flex-col md:flex-row items-start md:items-center ${
-                        isEven ? "md:justify-start" : "md:justify-end"
-                      } pl-8 md:pl-0`}
-                    >
-                      {/* Timeline Bullet Point */}
-                      <div className="absolute left-[5px] md:left-1/2 top-1.5 md:top-1/2 -translate-y-0 md:-translate-y-1/2 -translate-x-0 md:-translate-x-1/2 h-3.5 w-3.5 rounded-full bg-secondary border-2 border-white shadow-sm z-10" />
+      {/* 4. Journey Timeline Section - Compact Spacing */}
+      <section className="py-8 sm:py-10 px-4 sm:px-6 md:px-8 bg-white text-center border-b border-border-custom">
+        <div className="max-w-[1400px] mx-auto space-y-8">
+          <AnimeScrollReveal direction="top">
+            <ParallaxDepthSection
+              title="Our Journey"
+              subtitle="Milestones & Growth Along the Way"
+            />
+          </AnimeScrollReveal>
 
-                      {/* Timeline Content */}
-                      <div
-                        className={`w-full md:w-[calc(50%-2rem)] text-left ${
-                          isEven ? "md:text-right md:pr-8" : "md:text-left md:pl-8"
-                        } space-y-1`}
-                      >
-                        <h4 className="font-display font-extrabold text-sm text-heading tracking-wide">
-                          {item.year}
-                        </h4>
-                        <p className={`text-xs text-body font-medium leading-relaxed max-w-sm md:max-w-none ${
-                          isEven ? "md:ml-auto md:mr-0" : "md:mr-auto md:ml-0"
-                        }`}>
-                          {item.text}
-                        </p>
+          <AnimeStaggerGroup direction="top" className="relative space-y-6 md:space-y-8 before:absolute before:top-0 before:bottom-0 before:left-3 md:before:left-1/2 before:w-[2px] before:bg-gradient-to-b before:from-secondary/20 before:via-secondary/40 before:to-secondary/20">
+            {timelineItems.map((item, idx) => {
+              const isEven = idx % 2 === 0;
+              return (
+                <div
+                  key={idx}
+                  className={`timeline-item-group relative flex flex-col md:flex-row items-start md:items-center ${
+                    isEven ? "md:justify-start" : "md:justify-end"
+                  } pl-8 md:pl-0 group`}
+                >
+                  <div
+                    className="timeline-dot absolute left-[4px] md:left-1/2 top-3 md:top-1/2 -translate-y-0 md:-translate-y-1/2 -translate-x-0 md:-translate-x-1/2 h-4 w-4 rounded-full bg-secondary border-2 border-white shadow-md z-10"
+                    title={`Milestone ${item.year}`}
+                  />
+                  <div
+                    className={`w-full md:w-[calc(50%-2rem)] text-left ${
+                      isEven ? "md:text-right md:pr-8" : "md:text-left md:pl-8"
+                    }`}
+                  >
+                    <div className="timeline-card-box p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/80 shadow-xs space-y-1">
+                      <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-[#A14000]/10 text-[#A14000] font-black text-xs font-display">
+                        {item.year}
                       </div>
+                      <p className={`text-xs text-body font-medium leading-relaxed max-w-sm md:max-w-none ${
+                        isEven ? "md:ml-auto md:mr-0" : "md:mr-auto md:ml-0"
+                      }`}>
+                        {item.text}
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-        </>
-      )}
-
-      <LandingFooter />
+                  </div>
+                </div>
+              );
+            })}
+          </AnimeStaggerGroup>
+        </div>
+      </section>
     </div>
   );
 }

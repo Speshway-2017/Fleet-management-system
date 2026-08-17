@@ -8,7 +8,7 @@ import { adminApi } from "../../../api/adminApi";
 
 export default function ReviewsSettings() {
   const [reviews, setReviews] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     fetchReviews();

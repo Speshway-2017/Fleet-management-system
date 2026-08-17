@@ -46,7 +46,7 @@ export default function DriverLogin() {
     <div className="min-h-screen bg-[#F5F7FA] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-nunito relative overflow-hidden">
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#0F0F10] border border-[#1B1B1D] p-3 shadow-md flex items-center justify-center text-[#B45A0A]">
+          <div className="w-16 h-16 rounded-2xl bg-[#0F0F10] border border-[#1B1B1D] p-3 shadow-md flex items-center justify-center text-[#A14000]">
             <Truck className="w-9 h-9" />
           </div>
         </div>
@@ -75,7 +75,7 @@ export default function DriverLogin() {
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   placeholder="e.g. driver@fleet.com or EMP-102"
-                  className="block w-full pl-11 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] text-sm transition"
+                  className="block w-full pl-11 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] text-sm transition"
                 />
               </div>
             </div>
@@ -94,7 +94,7 @@ export default function DriverLogin() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="block w-full pl-11 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] text-sm transition"
+                  className="block w-full pl-11 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] text-sm transition"
                 />
               </div>
             </div>
@@ -103,7 +103,7 @@ export default function DriverLogin() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold font-poppins text-white bg-[#B45A0A] hover:bg-[#9A4D08] focus:outline-none disabled:opacity-50 transition flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold font-poppins text-white bg-[#A14000] hover:bg-[#853400] focus:outline-none disabled:opacity-50 transition flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -119,7 +119,7 @@ export default function DriverLogin() {
 
           <div className="mt-6 pt-6 border-t border-slate-100 text-center">
             <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
-              <ShieldCheck className="w-4 h-4 text-[#B45A0A]" />
+              <ShieldCheck className="w-4 h-4 text-[#A14000]" />
               <span>Secured by Fleet Management System</span>
             </div>
           </div>

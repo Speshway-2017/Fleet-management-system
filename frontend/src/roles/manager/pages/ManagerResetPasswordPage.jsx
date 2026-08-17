@@ -42,8 +42,8 @@ export default function ManagerResetPasswordPage() {
       {/* ── FORM CARD ── */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="bg-orange-50/30 px-6 py-3 border-b border-gray-100 flex items-center gap-2">
-          <Key className="w-4 h-4 text-[#B45A0A]" />
-          <h3 className="font-poppins font-black text-xs text-[#B45A0A] uppercase tracking-wider">
+          <Key className="w-4 h-4 text-[#A14000]" />
+          <h3 className="font-poppins font-black text-xs text-[#A14000] uppercase tracking-wider">
             Update Security Credentials
           </h3>
         </div>
@@ -58,7 +58,7 @@ export default function ManagerResetPasswordPage() {
                 type={showCurrent ? "text" : "password"}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full pl-9 pr-10 py-2 border border-gray-250 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#B45A0A] bg-white text-gray-800"
+                className="w-full pl-9 pr-10 py-2 border border-gray-250 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#A14000] bg-white text-gray-800"
                 required
               />
               <button
@@ -80,7 +80,7 @@ export default function ManagerResetPasswordPage() {
                 type={showNew ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full pl-9 pr-10 py-2 border border-gray-250 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#B45A0A] bg-white text-gray-800"
+                className="w-full pl-9 pr-10 py-2 border border-gray-250 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#A14000] bg-white text-gray-800"
                 required
               />
               <button
@@ -102,7 +102,7 @@ export default function ManagerResetPasswordPage() {
                 type={showConfirm ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full pl-9 pr-10 py-2 border border-gray-250 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#B45A0A] bg-white text-gray-800"
+                className="w-full pl-9 pr-10 py-2 border border-gray-250 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#A14000] bg-white text-gray-800"
                 required
               />
               <button
@@ -126,7 +126,7 @@ export default function ManagerResetPasswordPage() {
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer border-none"
+              className="px-5 py-2.5 bg-[#A14000] hover:bg-[#853400] text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer border-none"
             >
               Update Password
             </button>

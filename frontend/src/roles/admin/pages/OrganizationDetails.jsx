@@ -278,7 +278,7 @@ export default function OrganizationDetails() {
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-b border-slate-50 last:border-0">
                   <span className="text-sm font-semibold text-slate-500">Status</span>
-                  <span className={`text-sm font-bold sm:text-right mt-1 sm:mt-0 ${org.status === 'Active' ? 'text-green-600' : org.status === 'Pending' ? 'text-orange-500' : 'text-slate-600'}`}>{org.status || "—"}</span>
+                  <span className={`text-sm font-bold sm:text-right mt-1 sm:mt-0 ${org.status === 'Active' ? 'text-green-600' : org.status === 'Pending' ? 'text-[#A14000]' : 'text-slate-600'}`}>{org.status || "—"}</span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-b border-slate-50 last:border-0">
                   <span className="text-sm font-semibold text-slate-500">Created</span>

@@ -8,7 +8,7 @@ import { Plus, Edit2, Trash2, X } from "lucide-react";
 
 export default function SettingsBlogs() {
   const [blogs, setBlogs] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingBlog, setEditingBlog] = useState(null);
 

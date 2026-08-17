@@ -72,6 +72,8 @@ import {
   createVehicleComplaint,
   listVehicleComplaints,
   updateVehicleComplaint,
+  getSupportSettings,
+  updateSupportSettings,
   // Trip Communication
   getTripChat,
   sendTripMessage,
@@ -184,9 +186,15 @@ router.put('/pod/:id/status', ...auth, updatePODStatus);
 // Weighbridge Slip
 router.get('/weighbridge/trip/:tripId', ...auth, getWeighbridgeSlipByTripId);
 router.put('/weighbridge/:id/status', ...auth, updateWeighbridgeSlipStatus);
+
 // Vehicle Complaints (Simulated Driver Tickets)
-router.post('/vehicle-complaints', ...auth, createVehicleComplaint);
 router.get('/vehicle-complaints', ...auth, listVehicleComplaints);
-router.put('/vehicle-complaints/:id', ...auth, updateVehicleComplaint);
+router.post('/vehicle-complaints', ...auth, checkActiveSubscription, createVehicleComplaint);
+router.put('/vehicle-complaints/:id', ...auth, checkActiveSubscription, updateVehicleComplaint);
+router.patch('/vehicle-complaints/:id', ...auth, checkActiveSubscription, updateVehicleComplaint);
+
+// Support Helpline Settings for Drivers
+router.get('/support-settings', ...auth, getSupportSettings);
+router.put('/support-settings', ...auth, updateSupportSettings);
 
 export default router;

@@ -234,38 +234,41 @@ export default function ContactRequests() {
 
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
           
-          {/* Analytics KPI Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {/* KPI Summary Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <KPICard 
               title="Total Requests" 
               value={analytics.summary.total}
               subtitle="All Time Submissions"
-              icon={<MessageSquare className="w-5 h-5 text-indigo-600" />}
-              iconBg="bg-indigo-50"
+              icon="material-symbols:mail-outline"
+              variant="blue"
+              filledBarsRatio={0.8}
             />
             <KPICard 
               title="New Inquiries" 
               value={analytics.summary.new}
               subtitle="Awaiting First Review"
-              icon={<Mail className="w-5 h-5 text-blue-600" />}
-              iconBg="bg-blue-50"
+              icon="material-symbols:mark-email-unread-outline"
+              variant="amber"
+              filledBarsRatio={0.65}
               trendText={analytics.timeframes.today > 0 ? `+${analytics.timeframes.today} today` : ""}
-              trendColor="text-blue-600"
               isTrendUp={analytics.timeframes.today > 0}
             />
             <KPICard 
               title="In Progress" 
               value={analytics.summary.pending}
               subtitle="Follow-ups Pending"
-              icon={<Calendar className="w-5 h-5 text-amber-600" />}
-              iconBg="bg-amber-50"
+              icon="material-symbols:pending-actions"
+              variant="rose"
+              filledBarsRatio={0.4}
             />
             <KPICard 
               title="Resolved" 
               value={analytics.summary.resolved}
               subtitle="Closed Tickets"
-              icon={<Check className="w-5 h-5 text-emerald-600" />}
-              iconBg="bg-emerald-50"
+              icon="material-symbols:task-alt"
+              variant="green"
+              filledBarsRatio={0.9}
             />
           </div>
 

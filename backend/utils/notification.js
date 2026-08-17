@@ -53,32 +53,42 @@ export const createAndEmitNotification = async (params) => {
     });
 
     const savedNotification = await notification.save();
+    const notifData = savedNotification.toObject();
 
-    // Emit to super admin room if recipientRole is SUPER_ADMIN
-    if (recipientRole === 'SUPER_ADMIN' && io) {
-      io.to('role:SUPER_ADMIN').emit('notification:new', savedNotification.toObject());
+    // Broadcast globally to socket listeners
+    if (io) {
+      io.emit('notification:new', notifData);
+      io.emit('new_notification', notifData);
+    }
+
+    // Emit to super admin room if recipientRole is SUPER_ADMIN or for system-wide alerts
+    if ((recipientRole === 'SUPER_ADMIN' || !recipientRole) && io) {
+      io.to('role:SUPER_ADMIN').emit('notification:new', notifData);
     }
 
     // Emit to specific recipient room if recipient exists
     if (recipient && io) {
       if (recipientRole === 'DRIVER') {
-        io.to(`driver:${recipient}`).emit('notification:new', savedNotification.toObject());
+        io.to(`driver:${recipient}`).emit('notification:new', notifData);
+        io.to(`driver:${recipient}`).emit('new_notification', notifData);
       } else {
-        io.to(`manager:${recipient}`).emit('notification:new', savedNotification.toObject());
+        io.to(`manager:${recipient}`).emit('notification:new', notifData);
+        io.to(`manager:${recipient}`).emit('new_notification', notifData);
       }
     }
 
     // Emit to organization room if organization exists
     if (organization && io) {
-      io.to(`organization:${organization}`).emit('notification:new', savedNotification.toObject());
+      io.to(`organization:${organization}`).emit('notification:new', notifData);
     }
 
-    // If recipientRole is 'FLEET_MANAGER' and no specific recipient but organization exists,
-    // send to all managers in the organization
-    if (recipientRole === 'FLEET_MANAGER' && organization && !recipient && io) {
-      const managers = await User.find({ organization, role: 'FLEET_MANAGER' });
+    // If recipientRole is 'FLEET_MANAGER' and no specific recipient, send to all managers
+    if (recipientRole === 'FLEET_MANAGER' && !recipient && io) {
+      const query = organization ? { organization, role: 'FLEET_MANAGER' } : { role: 'FLEET_MANAGER' };
+      const managers = await User.find(query);
       for (const manager of managers) {
-        io.to(`manager:${manager._id}`).emit('notification:new', savedNotification.toObject());
+        io.to(`manager:${manager._id}`).emit('notification:new', notifData);
+        io.to(`manager:${manager._id}`).emit('new_notification', notifData);
       }
     }
 

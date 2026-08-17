@@ -35,13 +35,12 @@ export default function EditProfilePage() {
   const [jobTitle, setJobTitle] = useState("");
   const [primaryHub, setPrimaryHub] = useState("");
   const [profileImage, setProfileImage] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        setLoading(true);
         const res = await managerApi.getProfile();
         const data = res.data?.data || res.data;
         if (data) {
@@ -129,13 +128,7 @@ export default function EditProfilePage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="p-6 lg:p-8 space-y-6 flex items-center justify-center min-h-[300px]">
-        <Loader className="w-8 h-8 animate-spin text-[#B45A0A]" />
-      </div>
-    );
-  }
+
 
   return (
     <div className="p-6 lg:p-8 space-y-6 animate-fade-in font-nunito text-gray-800">
@@ -164,11 +157,11 @@ export default function EditProfilePage() {
                   className="w-24 h-24 rounded-full object-cover shadow-sm shrink-0 border border-gray-150"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#B45A0A] to-amber-500 flex items-center justify-center text-white text-3xl font-black shadow-sm shrink-0 select-none">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#A14000] to-amber-500 flex items-center justify-center text-white text-3xl font-black shadow-sm shrink-0 select-none">
                   {fullName.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2)}
                 </div>
               )}
-              <label className="absolute bottom-0 right-0 p-1.5 bg-[#B45A0A] text-white rounded-full border-2 border-white shadow cursor-pointer hover:bg-[#9A4D08] transition-colors">
+              <label className="absolute bottom-0 right-0 p-1.5 bg-[#A14000] text-white rounded-full border-2 border-white shadow cursor-pointer hover:bg-[#853400] transition-colors">
                 <Camera className="w-3.5 h-3.5" />
                 <input
                   type="file"
@@ -192,7 +185,7 @@ export default function EditProfilePage() {
         <div className="lg:col-span-8 space-y-6">
           <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
             <div className="border-b border-gray-100 pb-3 flex items-center gap-2">
-              <User className="w-4 h-4 text-[#B45A0A]" />
+              <User className="w-4 h-4 text-[#A14000]" />
               <h3 className="font-poppins font-black text-sm text-gray-900">Personal & Job Info</h3>
             </div>
 
@@ -206,7 +199,7 @@ export default function EditProfilePage() {
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-250 rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-poppins"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-250 rounded-xl text-xs focus:outline-none focus:border-[#A14000] font-poppins"
                     placeholder="e.g. Alex Thompson"
                   />
                 </div>
@@ -221,7 +214,7 @@ export default function EditProfilePage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-250 rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-poppins"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-250 rounded-xl text-xs focus:outline-none focus:border-[#A14000] font-poppins"
                     placeholder="manager@fleet.com"
                   />
                 </div>
@@ -237,7 +230,7 @@ export default function EditProfilePage() {
                     type="text"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-250 rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-poppins"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-250 rounded-xl text-xs focus:outline-none focus:border-[#A14000] font-poppins"
                     placeholder="+91 99999 88888"
                   />
                 </div>
@@ -251,7 +244,7 @@ export default function EditProfilePage() {
                     type="text"
                     value={jobTitle}
                     onChange={(e) => setJobTitle(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-250 rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-poppins"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-250 rounded-xl text-xs focus:outline-none focus:border-[#A14000] font-poppins"
                     placeholder="e.g. Senior Fleet Manager"
                   />
                 </div>
@@ -266,7 +259,7 @@ export default function EditProfilePage() {
                   type="text"
                   value={primaryHub}
                   onChange={(e) => setPrimaryHub(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-250 rounded-xl text-xs focus:outline-none focus:border-[#B45A0A] font-poppins"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-250 rounded-xl text-xs focus:outline-none focus:border-[#A14000] font-poppins"
                   placeholder="e.g. Mumbai Corporate Hub, India"
                 />
               </div>
@@ -283,7 +276,7 @@ export default function EditProfilePage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow border-none disabled:opacity-50"
+                className="px-6 py-2.5 bg-[#A14000] hover:bg-[#853400] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow border-none disabled:opacity-50"
               >
                 {saving ? "Saving..." : "Save Details"}
               </button>

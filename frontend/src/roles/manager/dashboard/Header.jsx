@@ -56,10 +56,10 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
                 handleNotificationClick(newNotif);
               }}
               className={`${t.visible ? 'animate-enter' : 'animate-leave'
-                } max-w-sm w-full bg-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-black/5 p-4 cursor-pointer hover:bg-orange-50/50 transition-all font-poppins border-l-4 border-[#B45A0A]`}
+                } max-w-sm w-full bg-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-black/5 p-4 cursor-pointer hover:bg-orange-50/50 transition-all font-poppins border-l-4 border-[#A14000]`}
             >
               <div className="flex-1">
-                <p className="text-xs font-bold text-[#B45A0A] uppercase tracking-wider">{newNotif.title || "Driver Update"}</p>
+                <p className="text-xs font-bold text-[#A14000] uppercase tracking-wider">{newNotif.title || "Driver Update"}</p>
                 <p className="text-sm font-semibold text-gray-800 mt-0.5">{newNotif.message || newNotif.description}</p>
               </div>
             </div>
@@ -268,7 +268,7 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
           >
             <Bell className="w-5.5 h-5.5" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 px-1.5 py-0.5 bg-[#B45A0A] text-white text-[10px] font-bold rounded-full border-2 border-white font-poppins min-w-[18px] text-center leading-none">
+              <span className="absolute top-1 right-1 px-1.5 py-0.5 bg-[#A14000] text-white text-[10px] font-bold rounded-full border-2 border-white font-poppins min-w-[18px] text-center leading-none">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -282,7 +282,7 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-gray-900 text-sm">Notifications</h3>
                     {unreadCount > 0 && (
-                      <span className="px-2 py-0.5 bg-orange-100 text-[#B45A0A] text-[10px] font-bold rounded-full">
+                      <span className="px-2 py-0.5 bg-orange-100 text-[#A14000] text-[10px] font-bold rounded-full">
                         {unreadCount} new
                       </span>
                     )}
@@ -290,7 +290,7 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
                   {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllRead}
-                      className="text-xs text-[#B45A0A] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                      className="text-xs text-[#A14000] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
                     >
                       <CheckCheck className="w-3.5 h-3.5" /> Mark all read
                     </button>
@@ -310,7 +310,7 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
                         className={`p-3.5 hover:bg-orange-50/40 transition-colors cursor-pointer flex items-start gap-3 ${!notif.isRead ? "bg-amber-50/30 font-semibold" : "bg-white"
                           }`}
                       >
-                        <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${!notif.isRead ? "bg-[#B45A0A]" : "bg-gray-300"}`} />
+                        <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${!notif.isRead ? "bg-[#A14000]" : "bg-gray-300"}`} />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-bold text-gray-900 truncate">{notif.title}</p>
                           <p className="text-xs text-gray-600 font-normal line-clamp-2 mt-0.5">{notif.message || notif.description}</p>
@@ -329,7 +329,7 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
                       setNotifDropdownOpen(false);
                       navigate("/manager/notifications");
                     }}
-                    className="text-xs font-bold text-[#B45A0A] hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-bold text-[#A14000] hover:underline inline-flex items-center gap-1 cursor-pointer"
                   >
                     <span>View All Notifications</span>
                     <ExternalLink className="w-3 h-3" />

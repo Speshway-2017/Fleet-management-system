@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Wrench,
@@ -53,8 +54,9 @@ const resolveVehiclePlate = (t) => {
 
 export default function ViewTicketsPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const highlightedTicketId = searchParams.get("ticketId") || searchParams.get("id");
+  const handledTicketIdRef = useRef(null);
 
   const [tickets, setTickets] = useState([]);
   const [loadingTickets, setLoadingTickets] = useState(false);
@@ -86,6 +88,13 @@ export default function ViewTicketsPage() {
       resolutionComment: ""
     }
   });
+
+  const handleCloseModal = () => {
+    setSelectedTicket(null);
+    if (searchParams.get("ticketId") || searchParams.get("id")) {
+      setSearchParams({}, { replace: true });
+    }
+  };
 
   const formatDateSafe = (dateVal, options = { dateStyle: 'medium', timeStyle: 'short' }) => {
     if (!dateVal) return "Recently";
@@ -462,7 +471,6 @@ export default function ViewTicketsPage() {
               />
             </div>
 
-            {/* New Estimated Delivery Date & Time & Offline Customer Notification */}
             <div className="p-3 bg-purple-50/80 border border-purple-200/80 rounded-xl space-y-2 font-nunito">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-purple-600" />
@@ -525,7 +533,6 @@ export default function ViewTicketsPage() {
               ></textarea>
             </div>
 
-            {/* Service Bill & Invoice Attachment Section */}
             <div className="pt-3 border-t border-blue-200/80 space-y-2 font-nunito">
               <div className="flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-emerald-600" />
@@ -565,7 +572,6 @@ export default function ViewTicketsPage() {
 
   const fetchTickets = async (isInitial = false) => {
     try {
-      if (isInitial) setLoadingTickets(true);
       const res = await managerApi.getVehicleComplaints();
       const data = res.data?.data || res.data;
       let finalTickets = [];
@@ -579,13 +585,14 @@ export default function ViewTicketsPage() {
         setTickets(sanitized);
       }
 
-      if (highlightedTicketId && finalTickets.length > 0) {
+      if (highlightedTicketId && finalTickets.length > 0 && handledTicketIdRef.current !== highlightedTicketId) {
         const matched = finalTickets.find(t =>
           String(t._id) === String(highlightedTicketId) ||
           String(t.ticketId || "").toUpperCase() === String(highlightedTicketId).toUpperCase() ||
           String(t.complaintId || "").toUpperCase() === String(highlightedTicketId).toUpperCase()
         );
         if (matched) {
+          handledTicketIdRef.current = highlightedTicketId;
           setSelectedTicket(matched);
           setModalMode("view");
         }
@@ -654,11 +661,11 @@ export default function ViewTicketsPage() {
         ));
 
         toast.success("Ticket updated successfully! (Simulation Fallback)");
-        setSelectedTicket(null);
+        handleCloseModal();
       } else {
         await managerApi.updateVehicleComplaint(selectedTicket._id, updateData);
         toast.success("Ticket updated successfully!");
-        setSelectedTicket(null);
+        handleCloseModal();
         await fetchTickets();
       }
     } catch (err) {
@@ -696,17 +703,19 @@ export default function ViewTicketsPage() {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedTickets = filteredTickets.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
+
+
   return (
-    <div className="p-6 lg:p-8 bg-[#F5F7FB] min-h-screen text-[#1E293B] font-nunito">
+    <div className="p-6 lg:p-8 bg-[#F5F7FB] dark:bg-[#0D1117] min-h-screen text-[#1E293B] dark:text-white font-nunito">
       <Breadcrumb />
 
       {/* Header Row */}
-      <div className="border-b border-[#E7EAF0] pb-4 mb-6 select-none">
+      <div className="border-b border-[#E7EAF0] dark:border-[#1E293B] pb-4 mb-6 select-none">
         <div>
-          <h1 className="font-poppins font-bold text-[32px] leading-none text-[#1E293B]">
+          <h1 className="font-poppins font-bold text-[32px] leading-none text-[#1E293B] dark:text-white">
             Vehicle Issue Tickets
           </h1>
-          <p className="text-[16px] text-[#64748B] mt-2">
+          <p className="text-[16px] text-[#64748B] dark:text-white mt-2">
             Resolve breakdowns, log repair costs, and track reported faults.
           </p>
         </div>
@@ -714,59 +723,59 @@ export default function ViewTicketsPage() {
 
       {/* Dashboard Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-        <div className="p-4 bg-white border border-[#E7EAF0] rounded-2xl space-y-2 shadow-sm">
-          <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider font-poppins block">Total Tickets</span>
+        <div className="p-4 bg-white dark:bg-[#0F172A] border border-[#E7EAF0] dark:border-[#1E293B] rounded-2xl space-y-2 shadow-sm">
+          <span className="text-[10px] text-[#64748B] dark:text-white font-bold uppercase tracking-wider font-poppins block">Total Tickets</span>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-[#1E293B] font-poppins">{tickets.length}</span>
-            <span className="text-[10px] text-gray-400 font-medium">overall</span>
+            <span className="text-2xl font-bold text-[#1E293B] dark:text-white font-poppins">{tickets.length}</span>
+            <span className="text-[10px] text-gray-400 dark:text-white font-medium">overall</span>
           </div>
         </div>
 
-        <div className="p-4 bg-blue-50/30 border border-blue-100/50 rounded-2xl space-y-2 shadow-sm">
-          <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider font-poppins block">Open</span>
+        <div className="p-4 bg-blue-50/30 dark:bg-[#08203B] border border-blue-100/50 dark:border-blue-800/50 rounded-2xl space-y-2 shadow-sm">
+          <span className="text-[10px] text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider font-poppins block">Open</span>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-[#1E293B] font-poppins">{tickets.filter(t => t.status === "Open").length}</span>
-            <span className="text-[10px] text-blue-500 font-bold">pending</span>
+            <span className="text-2xl font-bold text-[#1E293B] dark:text-white font-poppins">{tickets.filter(t => t.status === "Open").length}</span>
+            <span className="text-[10px] text-blue-500 dark:text-blue-300 font-bold">pending</span>
           </div>
         </div>
 
-        <div className="p-4 bg-amber-50/30 border border-amber-100/40 rounded-2xl space-y-2 shadow-sm">
-          <span className="text-[10px] text-[#B45A0A] font-bold uppercase tracking-wider font-poppins block">In Progress</span>
+        <div className="p-4 bg-amber-50/30 dark:bg-[#2A1C06] border border-amber-100/40 dark:border-amber-800/50 rounded-2xl space-y-2 shadow-sm">
+          <span className="text-[10px] text-[#A14000] dark:text-amber-300 font-bold uppercase tracking-wider font-poppins block">In Progress</span>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-[#1E293B] font-poppins">{tickets.filter(t => t.status === "In Progress").length}</span>
-            <span className="text-[10px] text-amber-500 font-bold">active</span>
+            <span className="text-2xl font-bold text-[#1E293B] dark:text-white font-poppins">{tickets.filter(t => t.status === "In Progress").length}</span>
+            <span className="text-[10px] text-amber-500 dark:text-amber-300 font-bold">active</span>
           </div>
         </div>
 
-        <div className="p-4 bg-emerald-50/30 border border-emerald-100/40 rounded-2xl space-y-2 shadow-sm">
-          <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider font-poppins block">Resolved</span>
+        <div className="p-4 bg-emerald-50/30 dark:bg-[#06291C] border border-emerald-100/40 dark:border-emerald-800/50 rounded-2xl space-y-2 shadow-sm">
+          <span className="text-[10px] text-emerald-600 dark:text-emerald-300 font-bold uppercase tracking-wider font-poppins block">Resolved</span>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-[#1E293B] font-poppins">{tickets.filter(t => t.status === "Resolved" || t.status === "Closed").length}</span>
-            <span className="text-[10px] text-emerald-500 font-bold">solved</span>
+            <span className="text-2xl font-bold text-[#1E293B] dark:text-white font-poppins">{tickets.filter(t => t.status === "Resolved" || t.status === "Closed").length}</span>
+            <span className="text-[10px] text-emerald-500 dark:text-emerald-300 font-bold">solved</span>
           </div>
         </div>
 
-        <div className="p-4 bg-indigo-50/20 border border-indigo-100/30 rounded-2xl space-y-2 shadow-sm">
-          <span className="text-[10px] text-indigo-650 font-bold uppercase tracking-wider font-poppins block">Total Cost</span>
+        <div className="p-4 bg-indigo-50/20 dark:bg-[#1E1B4B] border border-indigo-100/30 dark:border-indigo-800/50 rounded-2xl space-y-2 shadow-sm">
+          <span className="text-[10px] text-indigo-650 dark:text-indigo-300 font-bold uppercase tracking-wider font-poppins block">Total Cost</span>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-indigo-650 font-poppins">₹{tickets.reduce((sum, t) => sum + (Number(t.actualCost) || 0), 0).toLocaleString('en-IN')}</span>
+            <span className="text-2xl font-black text-indigo-650 dark:text-white font-poppins">₹{tickets.reduce((sum, t) => sum + (Number(t.actualCost) || 0), 0).toLocaleString('en-IN')}</span>
           </div>
         </div>
 
-        <div className="p-4 bg-purple-50/20 border border-purple-100/30 rounded-2xl space-y-2 shadow-sm">
-          <span className="text-[10px] text-purple-600 font-bold uppercase tracking-wider font-poppins block">Avg Cost</span>
+        <div className="p-4 bg-purple-50/20 dark:bg-[#2E1065] border border-purple-100/30 dark:border-purple-800/50 rounded-2xl space-y-2 shadow-sm">
+          <span className="text-[10px] text-purple-600 dark:text-purple-300 font-bold uppercase tracking-wider font-poppins block">Avg Cost</span>
           <div className="flex items-baseline justify-between">
             {(() => {
               const costList = tickets.filter(t => (Number(t.actualCost) || 0) > 0);
               const avg = costList.length > 0 ? Math.round(costList.reduce((sum, t) => sum + t.actualCost, 0) / costList.length) : 0;
-              return <span className="text-2xl font-bold text-purple-700 font-poppins">₹{avg.toLocaleString('en-IN')}</span>;
+              return <span className="text-2xl font-bold text-purple-700 dark:text-white font-poppins">₹{avg.toLocaleString('en-IN')}</span>;
             })()}
           </div>
         </div>
       </div>
 
       {/* Main panel card */}
-      <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-6">
+      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-[#E7EAF0] dark:border-[#1E293B] p-6 shadow-sm space-y-6">
         {/* Filters & Search Row */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 select-none">
           {/* Search */}
@@ -777,21 +786,21 @@ export default function ViewTicketsPage() {
               value={ticketSearch}
               onChange={(e) => setTicketSearch(e.target.value)}
               placeholder="Search Ticket, Vehicle, Driver..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-xs font-semibold text-[#1E293B] focus:outline-none focus:border-indigo-300"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-[#1E293B] dark:text-white bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-300"
             />
           </div>
 
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-3">
             {/* Status Tabs */}
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/60 p-1 rounded-xl text-xs">
+            <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-1 rounded-xl text-xs">
               {["All", "Open", "In Progress", "Need Maintenance", "Resolved", "Closed"].map((st) => (
                 <button
                   key={st}
                   onClick={() => setTicketStatusFilter(st)}
                   className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${ticketStatusFilter === st
-                    ? "bg-white text-slate-900 shadow-sm border border-slate-200/50"
-                    : "text-[#64748B] hover:text-[#1E293B]"
+                    ? "bg-white dark:bg-[#A14000] text-slate-900 dark:text-white shadow-sm border border-slate-200/50 dark:border-[#A14000]"
+                    : "text-[#64748B] dark:text-white hover:text-[#1E293B] dark:hover:text-white"
                     }`}
                 >
                   {st}
@@ -800,17 +809,17 @@ export default function ViewTicketsPage() {
             </div>
 
             {/* Severity Filter Dropdown */}
-            <div className="flex items-center gap-1.5 border border-gray-200 p-1.5 rounded-xl text-xs bg-white">
+            <div className="flex items-center gap-1.5 border border-gray-200 dark:border-slate-800 p-1.5 rounded-xl text-xs bg-white dark:bg-slate-900">
               <Filter className="w-3.5 h-3.5 text-slate-400" />
               <select
                 value={ticketSeverityFilter}
                 onChange={(e) => setTicketSeverityFilter(e.target.value)}
-                className="bg-transparent font-bold text-[#64748B] focus:outline-none"
+                className="bg-transparent font-bold text-[#64748B] dark:text-white focus:outline-none cursor-pointer"
               >
-                <option value="All">All Severities</option>
-                <option value="Low">Low Severity</option>
-                <option value="Medium">Medium Severity</option>
-                <option value="High">High Severity</option>
+                <option value="All" className="dark:bg-[#0F172A] dark:text-white">All Severities</option>
+                <option value="Low" className="dark:bg-[#0F172A] dark:text-white">Low Severity</option>
+                <option value="Medium" className="dark:bg-[#0F172A] dark:text-white">Medium Severity</option>
+                <option value="High" className="dark:bg-[#0F172A] dark:text-white">High Severity</option>
                 <option value="Critical">Critical Severity</option>
               </select>
             </div>
@@ -857,7 +866,7 @@ export default function ViewTicketsPage() {
                         <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[9px] font-bold uppercase ${t.severity === 'Critical'
                           ? 'bg-red-50 text-red-600 border border-red-100'
                           : t.severity === 'High'
-                            ? 'bg-orange-50 text-orange-600 border border-orange-100'
+                            ? 'bg-orange-50 text-[#A14000] border border-orange-100'
                             : t.severity === 'Medium'
                               ? 'bg-blue-50 text-blue-600 border border-blue-100'
                               : 'bg-slate-100 text-slate-600 border border-slate-200'
@@ -943,30 +952,30 @@ export default function ViewTicketsPage() {
         </div>
 
         {/* Footer Pagination Bar */}
-        <div className="pt-4 border-t border-[#E7EAF0]/60 flex flex-col sm:flex-row items-center justify-between gap-4 select-none font-nunito">
-          <span className="text-xs text-[#64748B] font-medium font-poppins">
-            Showing <span className="font-bold text-[#1E293B]">{filteredTickets.length === 0 ? 0 : startIndex + 1}</span> to{" "}
-            <span className="font-bold text-[#1E293B]">{Math.min(startIndex + ITEMS_PER_PAGE, filteredTickets.length)}</span> of{" "}
-            <span className="font-bold text-[#1E293B]">{filteredTickets.length}</span> entries (Page {currentPage} of {totalPages})
+        <div className="pt-4 border-t border-slate-200 dark:border-[#1E293B] flex flex-col sm:flex-row items-center justify-between gap-4 select-none font-nunito">
+          <span className="text-xs text-slate-600 dark:text-slate-300 font-medium font-poppins">
+            Showing <span className="font-bold text-slate-900 dark:text-white">{filteredTickets.length === 0 ? 0 : startIndex + 1}</span> to{" "}
+            <span className="font-bold text-slate-900 dark:text-white">{Math.min(startIndex + ITEMS_PER_PAGE, filteredTickets.length)}</span> of{" "}
+            <span className="font-bold text-slate-900 dark:text-white">{filteredTickets.length}</span> entries (Page {currentPage} of {totalPages})
           </span>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="px-4 py-1.5 bg-white border border-[#E7EAF0] hover:bg-[#F5F7FB] rounded-xl text-xs font-bold text-[#1E293B] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+              className="px-4 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
             >
               Prev
             </button>
 
-            <span className="text-xs font-bold text-slate-700 px-2">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200 px-2">
               {currentPage} / {totalPages}
             </span>
 
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage >= totalPages || filteredTickets.length === 0}
-              className="px-4 py-1.5 bg-white border border-[#E7EAF0] hover:bg-[#F5F7FB] rounded-xl text-xs font-bold text-[#1E293B] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+              className="px-4 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
             >
               Next
             </button>
@@ -984,10 +993,10 @@ export default function ViewTicketsPage() {
                 <h4 className="font-poppins font-bold text-[#1E293B] text-[14px]">
                   {modalMode === "view" ? "Vehicle Ticket Details" : "Update Issue Ticket"}
                 </h4>
-                <p className="text-[9px] text-[#B45A0A] font-bold uppercase tracking-wider mt-0.5">Ticket ID: {selectedTicket.ticketId}</p>
+                <p className="text-[9px] text-[#A14000] font-bold uppercase tracking-wider mt-0.5">Ticket ID: {selectedTicket.ticketId}</p>
               </div>
               <button
-                onClick={() => setSelectedTicket(null)}
+                onClick={handleCloseModal}
                 className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -1015,7 +1024,7 @@ export default function ViewTicketsPage() {
                     <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[9px] font-bold uppercase ${selectedTicket.severity === 'Critical'
                       ? 'bg-red-50 text-red-600 border border-red-100'
                       : selectedTicket.severity === 'High'
-                        ? 'bg-orange-50 text-orange-600 border border-orange-100'
+                        ? 'bg-orange-50 text-[#A14000] border border-orange-100'
                         : selectedTicket.severity === 'Medium'
                           ? 'bg-blue-50 text-blue-600 border border-blue-100'
                           : 'bg-slate-100 text-slate-600 border border-slate-200'
@@ -1140,7 +1149,7 @@ export default function ViewTicketsPage() {
                 <div className="flex gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedTicket(null)}
+                    onClick={handleCloseModal}
                     className="flex-1 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer text-center"
                   >
                     Close
@@ -1206,7 +1215,7 @@ export default function ViewTicketsPage() {
                 <div className="flex gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedTicket(null)}
+                    onClick={handleCloseModal}
                     className="flex-1 py-2.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer text-center"
                   >
                     Cancel

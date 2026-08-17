@@ -24,18 +24,49 @@ export default function MapView({
     if (routeCoordinates && routeCoordinates.length > 0) return;
     if (!origin?.lat || !origin?.lng || !destination?.lat || !destination?.lng) return;
 
+    const generateFallbackRoute = (orig, dest) => {
+      const start = [orig.lat, orig.lng];
+      const end = [dest.lat, dest.lng];
+      const points = [];
+      const numPoints = 12;
+      const midLat = (start[0] + end[0]) / 2;
+      const midLon = (start[1] + end[1]) / 2;
+      const dx = end[0] - start[0];
+      const dy = end[1] - start[1];
+      const curveFactor = 0.08;
+      const ctrlLat = midLat - dy * curveFactor;
+      const ctrlLon = midLon + dx * curveFactor;
+
+      for (let i = 0; i <= numPoints; i++) {
+        const t = i / numPoints;
+        const lat = (1 - t) * (1 - t) * start[0] + 2 * (1 - t) * t * ctrlLat + t * t * end[0];
+        const lon = (1 - t) * (1 - t) * start[1] + 2 * (1 - t) * t * ctrlLon + t * t * end[1];
+        points.push([lat, lon]);
+      }
+      return points;
+    };
+
     const fetchOsrmRoute = async () => {
+      const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
+
       try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
-        const res = await fetch(url).catch(() => null);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch(url, { signal: controller.signal }).catch(() => null);
+        clearTimeout(timeoutId);
+
         if (res && res.ok) {
           const data = await res.json().catch(() => null);
           if (data?.routes?.[0]?.geometry?.coordinates) {
             const coords = data.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon]);
             setOsrmRoute(coords);
+            return;
           }
         }
       } catch (_) {}
+
+      // Fallback: Generate curved polyline
+      setOsrmRoute(generateFallbackRoute(origin, destination));
     };
 
     fetchOsrmRoute();
@@ -67,12 +98,12 @@ export default function MapView({
     // Driver Vehicle Marker with pulsing halo
     const driverIcon = L.divIcon({
       className: "custom-driver-marker",
-      html: `<div class="relative w-9 h-9 rounded-full bg-[#B45A0A] border-2 border-white text-white flex items-center justify-center shadow-xl">
+      html: `<div class="relative w-9 h-9 rounded-full bg-[#A14000] border-2 border-white text-white flex items-center justify-center shadow-xl">
         <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10M21 16v-4a1 1 0 00-1-1h-7m8 5h-8" />
         </svg>
-        <span class="absolute -top-1 -right-1 flex h-3.5 w-3.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-orange-500 border border-white"></span></span>
+        <span class="absolute -top-1 -right-1 flex h-3.5 w-3.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#A14000] border border-white"></span></span>
       </div>`,
       iconSize: [36, 36],
       iconAnchor: [18, 18],
@@ -153,7 +184,7 @@ export default function MapView({
       }).addTo(map);
 
       polylineRef.current = L.polyline(linePoints, {
-        color: "#B45A0A",
+        color: "#A14000",
         weight: 5,
         opacity: 0.95,
         lineCap: "round",

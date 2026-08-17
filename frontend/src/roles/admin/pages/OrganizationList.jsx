@@ -19,6 +19,7 @@ import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import KPICard from "@/components/common/KPICard";
 import OrganizationTabs from "@/components/admin/OrganizationTabs";
+import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 
 // --- Mock Data Removed ---
 
@@ -27,7 +28,7 @@ function StatusBadge({ status }) {
     return <span className="text-[11px] font-bold text-green-600 tracking-wide">Active</span>;
   }
   if (status === "Pending") {
-    return <span className="text-[11px] font-bold text-orange-500 tracking-wide">Pending</span>;
+    return <span className="text-[11px] font-bold text-[#A14000] tracking-wide">Pending</span>;
   }
   if (status === "Suspended") {
     return <span className="text-[11px] font-bold text-red-500 tracking-wide">Suspended</span>;
@@ -37,12 +38,17 @@ function StatusBadge({ status }) {
 
 export default function OrganizationList() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
   const { organizations, fetchOrganizations } = useAdmin();
 
   useEffect(() => {
-    if (fetchOrganizations) {
-      fetchOrganizations();
-    }
+    const loadData = async () => {
+      if (fetchOrganizations) {
+        await fetchOrganizations();
+      }
+      setLoading(false);
+    };
+    loadData();
   }, []);
 
   const handleDelete = async (id) => {
@@ -107,27 +113,35 @@ export default function OrganizationList() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-8">
             <KPICard 
               title="Total Organizations" 
-              value={organizations.length} 
-              icon={<Building2 className="w-5 h-5 text-slate-600" />}
-              iconBg="bg-slate-100"
+              value={loading ? null : organizations.length} 
+              loading={loading}
+              icon="material-symbols:domain-outline"
+              variant="blue"
+              filledBarsRatio={0.8}
             />
             <KPICard 
               title="Active" 
-              value={organizations.filter(o => o.status === "Active").length} 
-              icon={<CheckCircle2 className="w-5 h-5 text-green-600" />}
-              iconBg="bg-green-50"
+              value={loading ? null : organizations.filter(o => o.status === "Active").length} 
+              loading={loading}
+              icon="material-symbols:check-circle-outline"
+              variant="green"
+              filledBarsRatio={0.85}
             />
             <KPICard 
               title="Pending Approval" 
-              value={organizations.filter(o => o.status === "Pending").length} 
-              icon={<Clock className="w-5 h-5 text-orange-500" />}
-              iconBg="bg-orange-50"
+              value={loading ? null : organizations.filter(o => o.status === "Pending").length} 
+              loading={loading}
+              icon="material-symbols:hourglass-empty"
+              variant="amber"
+              filledBarsRatio={0.5}
             />
             <KPICard 
               title="Suspended" 
-              value={organizations.filter(o => o.status === "Suspended").length} 
-              icon={<XCircle className="w-5 h-5 text-red-500" />}
-              iconBg="bg-red-50"
+              value={loading ? null : organizations.filter(o => o.status === "Suspended").length} 
+              loading={loading}
+              icon="material-symbols:cancel-outline"
+              variant="rose"
+              filledBarsRatio={0.25}
             />
           </div>
 
@@ -166,18 +180,30 @@ export default function OrganizationList() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {organizations
-                    .filter(org => 
+                  {loading ? (
+                    <TableRowSkeleton columns={7} rows={5} />
+                  ) : organizations.filter(org => 
                       org.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                       org.industry.toLowerCase().includes(searchTerm.toLowerCase())
-                    )
-                    .map((org) => (
+                    ).length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-slate-400 font-medium font-nunito">
+                        No organizations found matching the search.
+                      </td>
+                    </tr>
+                  ) : (
+                    organizations
+                      .filter(org => 
+                        org.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        org.industry.toLowerCase().includes(searchTerm.toLowerCase())
+                      )
+                      .map((org) => (
                     <tr key={org.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="py-4 px-6 whitespace-nowrap text-left">
                         <div className="flex items-center justify-start gap-3">
                           <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
                             {org.logoUrl ? (
-                              <img src={org.logoUrl} alt={org.name} className="w-full h-full object-cover" />
+                              <img src={org.logoUrl} alt={org.name} loading="lazy" className="w-full h-full object-cover" />
                             ) : (
                               <span className="text-sm font-bold text-slate-500">
                                 {org.name.substring(0, 2).toUpperCase()}
@@ -204,7 +230,7 @@ export default function OrganizationList() {
                           </Link>
                           <button
                             onClick={() => handleSuspend(org.id, org.status)}
-                            className={`transition-colors ${org.status === 'Suspended' ? 'text-green-600 hover:text-green-800' : 'text-slate-400 hover:text-orange-600'}`}
+                            className={`transition-colors ${org.status === 'Suspended' ? 'text-green-600 hover:text-green-800' : 'text-slate-400 hover:text-[#A14000]'}`}
                             title={org.status === 'Suspended' ? 'Reactivate Organization' : 'Suspend Organization'}
                           >
                             {org.status === 'Suspended' ? <CheckCircle2 className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
@@ -215,7 +241,7 @@ export default function OrganizationList() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </table>
             </div>
@@ -266,7 +292,7 @@ export default function OrganizationList() {
                     </Link>
                     <button
                       onClick={() => handleSuspend(org.id, org.status)}
-                      className={`transition-colors ${org.status === 'Suspended' ? 'text-green-600 hover:text-green-800' : 'text-slate-400 hover:text-orange-600'}`}
+                      className={`transition-colors ${org.status === 'Suspended' ? 'text-green-600 hover:text-green-800' : 'text-slate-400 hover:text-[#A14000]'}`}
                       title={org.status === 'Suspended' ? 'Reactivate Organization' : 'Suspend Organization'}
                     >
                       {org.status === 'Suspended' ? <CheckCircle2 className="w-4 h-4" /> : <Ban className="w-4 h-4" />}

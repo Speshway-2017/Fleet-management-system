@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import managerApi from "@/roles/manager/api/managerApi";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -16,7 +17,19 @@ export default function SettingsPage() {
     operational: { push: false, email: true, sms: false },
   });
 
+  const [supportSettings, setSupportSettings] = useState({
+    officeName: "",
+    phone: "",
+    email: "",
+    whatsappNumber: "",
+    dispatchName: "",
+    dispatchPhone: "",
+    dispatchEmail: ""
+  });
+  const [savingSupport, setSavingSupport] = useState(false);
+
   useEffect(() => {
+    fetchSupportSettings();
     if (window.location.hash) {
       const hashId = window.location.hash.substring(1);
       setTimeout(() => {
@@ -27,6 +40,40 @@ export default function SettingsPage() {
       }, 100);
     }
   }, []);
+
+  const fetchSupportSettings = async () => {
+    try {
+      const res = await managerApi.getSupportSettings();
+      if (res?.data) {
+        setSupportSettings({
+          officeName: res.data.officeName || "",
+          phone: res.data.phone || "",
+          email: res.data.email || "",
+          whatsappNumber: res.data.whatsappNumber || "",
+          dispatchName: res.data.dispatchName || "",
+          dispatchPhone: res.data.dispatchPhone || "",
+          dispatchEmail: res.data.dispatchEmail || ""
+        });
+      }
+    } catch (err) {
+      console.error("Error loading support settings:", err);
+    }
+  };
+
+  const handleSaveSupportSettings = async (e) => {
+    if (e) e.preventDefault();
+    setSavingSupport(true);
+    try {
+      const res = await managerApi.updateSupportSettings(supportSettings);
+      if (res?.success) {
+        toast.success("Driver Support Helpline contacts updated!");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to save support settings");
+    } finally {
+      setSavingSupport(false);
+    }
+  };
 
   const handleNotificationChange = (type, channel) => {
     setNotifications((prev) => ({
@@ -163,7 +210,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Notification Preferences Card */}
-      <div id="notifications" className="bg-white rounded-2xl border border-gray-300 p-6 shadow-sm">
+      <div id="notifications" className="bg-white rounded-2xl border border-gray-300 p-6 shadow-sm mb-6">
         <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-300">
           <Icon icon="mdi:bell-outline" className="w-7 h-7 text-amber-700" />
           <h2 className="text-xl font-bold text-gray-800">Notification Preferences</h2>
@@ -287,6 +334,121 @@ export default function SettingsPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Driver Support Helpline Configuration Card */}
+      <div id="driver-support" className="bg-white rounded-2xl border border-gray-300 p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-300">
+          <div className="flex items-center gap-3">
+            <Icon icon="mdi:headset" className="w-7 h-7 text-amber-700" />
+            <div>
+              <h2 className="text-xl font-bold text-gray-800">Driver Support Helpline Configuration</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Manage office and dispatch contact details shown to drivers on their Support page.</p>
+            </div>
+          </div>
+          <button
+            onClick={handleSaveSupportSettings}
+            disabled={savingSupport}
+            className="px-5 py-2 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-xl text-xs transition shadow-sm disabled:opacity-50"
+          >
+            {savingSupport ? "Saving Support Contacts..." : "Save Support Contacts"}
+          </button>
+        </div>
+
+        <form onSubmit={handleSaveSupportSettings} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Fleet Manager Office Section */}
+          <div className="bg-amber-50/50 p-5 rounded-2xl border border-amber-200/60 space-y-4">
+            <h3 className="font-bold text-sm text-gray-800 flex items-center gap-2">
+              <Icon icon="mdi:office-building" className="w-5 h-5 text-amber-700" />
+              Fleet Manager Office Details
+            </h3>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Office / Hub Title</label>
+              <input
+                type="text"
+                placeholder="e.g. Fleet Manager Office"
+                value={supportSettings.officeName}
+                onChange={(e) => setSupportSettings(prev => ({ ...prev, officeName: e.target.value }))}
+                className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-amber-700"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Manager Call Phone Number</label>
+              <input
+                type="text"
+                placeholder="e.g. +919876543210"
+                value={supportSettings.phone}
+                onChange={(e) => setSupportSettings(prev => ({ ...prev, phone: e.target.value }))}
+                className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-amber-700"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">WhatsApp Chat Support Number</label>
+              <input
+                type="text"
+                placeholder="e.g. +919876543210"
+                value={supportSettings.whatsappNumber}
+                onChange={(e) => setSupportSettings(prev => ({ ...prev, whatsappNumber: e.target.value }))}
+                className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-amber-700"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Manager Office Email</label>
+              <input
+                type="email"
+                placeholder="e.g. manager@fleet.com"
+                value={supportSettings.email}
+                onChange={(e) => setSupportSettings(prev => ({ ...prev, email: e.target.value }))}
+                className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-amber-700"
+              />
+            </div>
+          </div>
+
+          {/* 24/7 Central Dispatch Desk Section */}
+          <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-200/60 space-y-4">
+            <h3 className="font-bold text-sm text-gray-800 flex items-center gap-2">
+              <Icon icon="mdi:phone-in-talk" className="w-5 h-5 text-blue-700" />
+              24/7 Emergency Dispatch Helpline
+            </h3>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Dispatch Desk Title</label>
+              <input
+                type="text"
+                placeholder="e.g. Central Dispatch Desk"
+                value={supportSettings.dispatchName}
+                onChange={(e) => setSupportSettings(prev => ({ ...prev, dispatchName: e.target.value }))}
+                className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-blue-700"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">24/7 Emergency Call Number</label>
+              <input
+                type="text"
+                placeholder="e.g. +919876543211"
+                value={supportSettings.dispatchPhone}
+                onChange={(e) => setSupportSettings(prev => ({ ...prev, dispatchPhone: e.target.value }))}
+                className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-blue-700"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Dispatch Desk Email</label>
+              <input
+                type="email"
+                placeholder="e.g. dispatch@fleet.com"
+                value={supportSettings.dispatchEmail}
+                onChange={(e) => setSupportSettings(prev => ({ ...prev, dispatchEmail: e.target.value }))}
+                className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-blue-700"
+              />
+            </div>
+          </div>
+        </form>
       </div>
 
 

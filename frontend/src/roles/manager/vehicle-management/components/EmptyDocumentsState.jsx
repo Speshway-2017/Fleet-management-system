@@ -4,7 +4,7 @@ export default function EmptyDocumentsState({ onUploadClick }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4">
       <div className="bg-[#FDF3EC] p-6 rounded-2xl mb-4">
-        <FileText className="w-16 h-16 text-[#B45A0A] opacity-50" />
+        <FileText className="w-16 h-16 text-[#A14000] opacity-50" />
       </div>
       
       <h3 className="text-xl font-bold text-[#1E293B] text-center mb-2">
@@ -17,7 +17,7 @@ export default function EmptyDocumentsState({ onUploadClick }) {
       
       <button
         onClick={onUploadClick}
-        className="px-6 py-3 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 cursor-pointer"
+        className="px-6 py-3 bg-[#A14000] hover:bg-[#853400] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#A14000]/20 cursor-pointer"
       >
         <Plus className="w-4 h-4" />
         <span>Upload First Document</span>

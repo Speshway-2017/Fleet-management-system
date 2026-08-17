@@ -29,6 +29,9 @@ class LocationTrackingService {
 
   static Future<void> _sendCurrentLocation(String? tripId) async {
     try {
+      final token = await ApiService.getToken();
+      if (token == null || token.isEmpty) return;
+
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );

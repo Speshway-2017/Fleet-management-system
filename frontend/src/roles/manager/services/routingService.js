@@ -81,9 +81,34 @@ const LOCAL_CITY_COORDINATES = {
   nizamabad: [18.6725, 78.0941]
 };
 
-// In-memory cache maps
+// In-memory cache maps & rate limit circuit-breaker backoff
 const geocodeCache = new Map();
 const routeCache = new Map();
+let osrmRateLimitBackoffUntil = 0;
+
+/**
+ * Generate a smooth curved polyline between two coordinates for Leaflet maps
+ */
+function generateCurvedPolyline(start, end, numPoints = 12) {
+  if (!start || !end) return [];
+  const points = [];
+  const midLat = (start[0] + end[0]) / 2;
+  const midLon = (start[1] + end[1]) / 2;
+  const dx = end[0] - start[0];
+  const dy = end[1] - start[1];
+  
+  const curveFactor = 0.08;
+  const ctrlLat = midLat - dy * curveFactor;
+  const ctrlLon = midLon + dx * curveFactor;
+
+  for (let i = 0; i <= numPoints; i++) {
+    const t = i / numPoints;
+    const lat = (1 - t) * (1 - t) * start[0] + 2 * (1 - t) * t * ctrlLat + t * t * end[0];
+    const lon = (1 - t) * (1 - t) * start[1] + 2 * (1 - t) * t * ctrlLon + t * t * end[1];
+    points.push([lat, lon]);
+  }
+  return points;
+}
 
 /**
  * Geocode a location string into [lat, lon]
@@ -282,44 +307,55 @@ export async function calculateDrivingRoute(startLocation, endLocation) {
     };
   }
 
-  // 2. Query OSRM Driving Route API (lon,lat format)
-  const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startCoords[1]},${startCoords[0]};${endCoords[1]},${endCoords[0]}?overview=full&geometries=geojson`;
+  let isBackoffActive = Date.now() < osrmRateLimitBackoffUntil;
 
-  try {
-    const response = await fetch(osrmUrl).catch(() => null);
-    if (response && response.ok) {
-      const data = await response.json().catch(() => null);
-      if (data && data.code === 'Ok' && Array.isArray(data.routes) && data.routes.length > 0) {
-        const primaryRoute = data.routes[0];
-        const distanceMeters = primaryRoute.distance; // meters
-        const durationSecs = primaryRoute.duration; // seconds
+  // 2. Query OSRM Driving Route API with silent timeout & circuit breaker
+  if (!isBackoffActive) {
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startCoords[1]},${startCoords[0]};${endCoords[1]},${endCoords[0]}?overview=full&geometries=geojson`;
 
-        const distanceKm = Math.round(distanceMeters / 1000);
-        const durationHours = parseFloat((durationSecs / 3600).toFixed(1));
-        const durationFormatted = formatDuration(durationSecs);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const response = await fetch(osrmUrl, { signal: controller.signal }).catch(() => null);
+      clearTimeout(timeoutId);
 
-        // GeoJSON coordinates are [longitude, latitude]. Map to Leaflet [latitude, longitude].
-        const routeGeometry = primaryRoute.geometry?.coordinates
-          ? primaryRoute.geometry.coordinates.map(([lon, lat]) => [lat, lon])
-          : [startCoords, endCoords];
+      if (response && response.ok) {
+        const data = await response.json().catch(() => null);
+        if (data && data.code === 'Ok' && Array.isArray(data.routes) && data.routes.length > 0) {
+          const primaryRoute = data.routes[0];
+          const distanceMeters = primaryRoute.distance; // meters
+          const durationSecs = primaryRoute.duration; // seconds
 
-        const result = {
-          success: true,
-          distanceKm,
-          durationSeconds: durationSecs,
-          durationHours,
-          durationFormatted,
-          startCoords,
-          endCoords,
-          routeGeometry
-        };
+          const distanceKm = Math.round(distanceMeters / 1000);
+          const durationHours = parseFloat((durationSecs / 3600).toFixed(1));
+          const durationFormatted = formatDuration(durationSecs);
 
-        routeCache.set(cacheKey, result);
-        return result;
+          // GeoJSON coordinates are [longitude, latitude]. Map to Leaflet [latitude, longitude].
+          const routeGeometry = primaryRoute.geometry?.coordinates
+            ? primaryRoute.geometry.coordinates.map(([lon, lat]) => [lat, lon])
+            : generateCurvedPolyline(startCoords, endCoords);
+
+          const result = {
+            success: true,
+            distanceKm,
+            durationSeconds: durationSecs,
+            durationHours,
+            durationFormatted,
+            startCoords,
+            endCoords,
+            routeGeometry
+          };
+
+          routeCache.set(cacheKey, result);
+          return result;
+        }
+      } else if (response && (response.status === 429 || response.status === 503)) {
+        // Activate backoff window for 60s if rate limited
+        osrmRateLimitBackoffUntil = Date.now() + 60000;
       }
+    } catch (_) {
+      // Silent catch
     }
-  } catch (err) {
-    // Silent catch for network restrictions
   }
 
   // Fallback: Haversine distance multiplier if OSRM is unreachable or network blocked
@@ -343,7 +379,7 @@ export async function calculateDrivingRoute(startLocation, endLocation) {
     durationFormatted: formatDuration(estSecs),
     startCoords,
     endCoords,
-    routeGeometry: [startCoords, endCoords],
+    routeGeometry: generateCurvedPolyline(startCoords, endCoords),
     isFallback: true
   };
 

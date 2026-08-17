@@ -77,7 +77,7 @@ export default function DocumentPreviewModal({
               <p className="text-[#64748B] mb-4">Preview not available for this file type</p>
               <button
                 onClick={handleDownload}
-                className="px-4 py-2 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-semibold text-white transition-all flex items-center gap-2 cursor-pointer"
+                className="px-4 py-2 bg-[#A14000] hover:bg-[#853400] rounded-lg text-sm font-semibold text-white transition-all flex items-center gap-2 cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 Download File
@@ -94,7 +94,7 @@ export default function DocumentPreviewModal({
           <div className="flex gap-2">
             <button
               onClick={handleDownload}
-              className="px-4 py-2 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-lg text-sm font-semibold text-white transition-all flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2 bg-[#A14000] hover:bg-[#853400] rounded-lg text-sm font-semibold text-white transition-all flex items-center gap-2 cursor-pointer"
             >
               <Download className="w-4 h-4" />
               Download

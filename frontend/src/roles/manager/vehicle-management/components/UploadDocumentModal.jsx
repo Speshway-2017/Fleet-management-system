@@ -156,7 +156,7 @@ export default function UploadDocumentModal({
               value={formData.category}
               onChange={handleInputChange}
               disabled={isReplacing}
-              className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B] disabled:bg-gray-100"
+              className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B] disabled:bg-gray-100"
             >
               <option value="">Select a category...</option>
               {DOCUMENT_CATEGORIES.map(cat => (
@@ -182,7 +182,7 @@ export default function UploadDocumentModal({
               value={formData.documentName}
               onChange={handleInputChange}
               placeholder="e.g., Car Insurance Policy 2024"
-              className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+              className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
             />
             {errors.documentName && (
               <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
@@ -203,7 +203,7 @@ export default function UploadDocumentModal({
               value={formData.documentNumber}
               onChange={handleInputChange}
               placeholder="e.g., POL-2024-001234"
-              className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+              className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
             />
           </div>
 
@@ -218,7 +218,7 @@ export default function UploadDocumentModal({
                 name="issueDate"
                 value={formData.issueDate}
                 onChange={handleInputChange}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
               />
               {errors.issueDate && (
                 <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
@@ -237,7 +237,7 @@ export default function UploadDocumentModal({
                 name="expiryDate"
                 value={formData.expiryDate}
                 onChange={handleInputChange}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
               />
               {errors.expiryDate && (
                 <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
@@ -253,7 +253,7 @@ export default function UploadDocumentModal({
             <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">
               {isReplacing ? "New File *" : "Upload File *"}
             </label>
-            <label className="block border-2 border-dashed border-[#B45A0A] rounded-xl p-6 cursor-pointer hover:bg-[#FDF3EC] transition-colors group bg-white">
+            <label className="block border-2 border-dashed border-[#A14000] rounded-xl p-6 cursor-pointer hover:bg-[#FDF3EC] transition-colors group bg-white">
               <input
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
@@ -263,7 +263,7 @@ export default function UploadDocumentModal({
               />
               <div className="flex flex-col items-center justify-center text-center gap-3">
                 <div className="bg-[#FDF3EC] p-3 rounded-lg group-hover:scale-110 transition-transform">
-                  <Upload className="w-6 h-6 text-[#B45A0A]" />
+                  <Upload className="w-6 h-6 text-[#A14000]" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-[#1E293B]">
@@ -292,7 +292,7 @@ export default function UploadDocumentModal({
               onChange={handleInputChange}
               placeholder="Add any additional notes about this document..."
               rows="3"
-              className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B] resize-none"
+              className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B] resize-none"
             />
           </div>
         </form>
@@ -311,7 +311,7 @@ export default function UploadDocumentModal({
             type="submit"
             onClick={handleSubmit}
             disabled={isUploading}
-            className="px-6 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 cursor-pointer disabled:opacity-50 disabled:hover:bg-[#B45A0A]"
+            className="px-6 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#A14000]/20 cursor-pointer disabled:opacity-50 disabled:hover:bg-[#A14000]"
           >
             {isUploading ? (
               <>

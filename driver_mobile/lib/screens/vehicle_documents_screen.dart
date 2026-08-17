@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../widgets/document_preview_dialog.dart';
 import '../services/api_service.dart';
 
 /// Represents a Vehicle Document item data structure.
@@ -277,29 +278,18 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
     final sanitizedUrl = _sanitizeUrl(doc.fileUrl);
 
     if (sanitizedUrl.isNotEmpty) {
-      try {
-        final uri = Uri.parse(sanitizedUrl);
-        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-        if (launched) return;
-      } catch (e) {
-        debugPrint('[VehicleDocuments] Launch attempt 1 error: $e');
-      }
-
-      try {
-        final uri = Uri.parse(sanitizedUrl);
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        return;
-      } catch (e) {
-        debugPrint('[VehicleDocuments] Launch attempt 2 error: $e');
-      }
+      await DocumentPreviewDialog.open(
+        context,
+        title: doc.title,
+        documentUrl: sanitizedUrl,
+      );
+      return;
     }
 
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(
-        content: Text(sanitizedUrl.isNotEmpty
-            ? 'Could not open ${doc.title} file ($sanitizedUrl)'
-            : 'No document file uploaded by manager for ${doc.title}'),
+        content: Text('No document file uploaded by manager for ${doc.title}'),
         duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(

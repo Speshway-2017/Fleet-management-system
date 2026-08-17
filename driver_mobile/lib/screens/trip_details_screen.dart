@@ -719,20 +719,29 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.nunito(
-              fontSize: 13,
-              color: AppColors.secondaryText,
-              fontWeight: FontWeight.w500,
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.nunito(
+                fontSize: 13,
+                color: AppColors.secondaryText,
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primaryText,
+          const SizedBox(width: 10),
+          Flexible(
+            child: Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryText,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],
@@ -827,7 +836,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.md),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -1820,12 +1829,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 children: [
                                   const Icon(Icons.location_on_outlined, size: 14, color: AppColors.secondaryText),
                                   const SizedBox(width: 4),
-                                  Text(
-                                    isFirst ? 'Origin (${node.city})' : (isLast ? 'Destination (${node.city})' : node.city),
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13.5,
-                                      fontWeight: isFirst || isLast ? FontWeight.bold : FontWeight.w600,
-                                      color: AppColors.primaryText,
+                                  Expanded(
+                                    child: Text(
+                                      isFirst ? 'Origin (${node.city})' : (isLast ? 'Destination (${node.city})' : node.city),
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13.5,
+                                        fontWeight: isFirst || isLast ? FontWeight.bold : FontWeight.w600,
+                                        color: AppColors.primaryText,
+                                      ),
                                     ),
                                   ),
                                 ],

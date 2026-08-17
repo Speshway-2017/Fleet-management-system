@@ -399,12 +399,9 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
   }
 
   Future<void> _showSubmitFeedback(BuildContext context) async {
-    if (!_isVehicleAssigned || _assignedVehicle == 'No Vehicle Assigned' || _assignedVehicle == 'Unassigned' || _assignedVehicle.isEmpty) {
-      _showWarning('Fuel refill logging is disabled. No vehicle is currently assigned to you. Fuel logging requires an assigned vehicle AND an active trip.');
-      return;
-    }
-    if (!_hasActiveTrip) {
-      _showWarning('Fuel refill logging is disabled. You currently have 0 active trips. Fuel logging requires an assigned vehicle AND an active trip.');
+    final isVehAssigned = _isVehicleAssigned && _assignedVehicle != 'No Vehicle Assigned' && _assignedVehicle != 'Unassigned' && _assignedVehicle.isNotEmpty;
+    if (!isVehAssigned && !_hasActiveTrip) {
+      _showWarning('Fuel refill logging is disabled. Fuel logging requires an assigned vehicle or an active trip.');
       return;
     }
     if (_selectedStation == null) {

@@ -27,7 +27,7 @@ import {
 import toast from "react-hot-toast";
 
 export default function EarningsPage() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview"); // overview or details
   const [data, setData] = useState({
     stats: { totalRevenue: 0, totalExpenses: 0, totalNetEarnings: 0, tripCount: 0 },
@@ -198,16 +198,7 @@ export default function EarningsPage() {
     };
   }, [filteredEarnings]);
 
-  if (loading) {
-    return (
-      <div className="w-full h-[80vh] flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-500 font-medium">Loading earnings records...</p>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="w-full px-6 md:px-8 py-8 overflow-x-hidden">
@@ -226,7 +217,7 @@ export default function EarningsPage() {
             onClick={() => setActiveTab("overview")}
             className={`px-4 py-2 rounded-lg font-poppins text-xs font-bold transition-all ${
               activeTab === "overview" 
-                ? "bg-white text-[#B45A0A] shadow-sm" 
+                ? "bg-white text-[#A14000] shadow-sm" 
                 : "text-[#64748B] hover:text-[#475569]"
             }`}
           >
@@ -236,7 +227,7 @@ export default function EarningsPage() {
             onClick={() => setActiveTab("details")}
             className={`px-4 py-2 rounded-lg font-poppins text-xs font-bold transition-all ${
               activeTab === "details" 
-                ? "bg-white text-[#B45A0A] shadow-sm" 
+                ? "bg-white text-[#A14000] shadow-sm" 
                 : "text-[#64748B] hover:text-[#475569]"
             }`}
           >
@@ -287,7 +278,7 @@ export default function EarningsPage() {
         <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-5 hover:-translate-y-0.5 transition-transform duration-300">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Net Earnings</span>
-            <div className="p-2 rounded-xl bg-[#FFF3E8] text-[#B45A0A]">
+            <div className="p-2 rounded-xl bg-[#FFF3E8] text-[#A14000]">
               <TrendingUp className="w-5 h-5" />
             </div>
           </div>
@@ -295,7 +286,7 @@ export default function EarningsPage() {
             <h3 className="text-2xl font-bold font-poppins text-[#1E293B]">
               {formatCurrency(dynamicStats.totalNetEarnings)}
             </h3>
-            <span className="text-[11px] text-[#B45A0A] font-semibold flex items-center gap-1 mt-1.5">
+            <span className="text-[11px] text-[#A14000] font-semibold flex items-center gap-1 mt-1.5">
               After operating deductions
             </span>
           </div>
@@ -422,7 +413,7 @@ export default function EarningsPage() {
               onClick={handleExportCSV}
               className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-700 text-xs font-bold font-poppins transition-all shadow-sm cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5 text-[#B45A0A]" />
+              <Download className="w-3.5 h-3.5 text-[#A14000]" />
               Export CSV
             </button>
           </div>
@@ -538,7 +529,7 @@ export default function EarningsPage() {
                     onClick={() => setCurrentPage(i + 1)}
                     className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                       currentPage === i + 1
-                        ? "bg-[#B45A0A] text-white"
+                        ? "bg-[#A14000] text-white"
                         : "border border-gray-200 hover:bg-gray-50 text-gray-600"
                     }`}
                   >

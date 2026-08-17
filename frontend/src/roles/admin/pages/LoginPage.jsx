@@ -44,6 +44,7 @@ export default function LoginPage() {
   }, [isAuthenticated, role, navigate]);
 
   useEffect(() => {
+    document.documentElement.classList.remove("dark");
     setForm({ email: "", password: "" });
   }, []);
 
@@ -142,12 +143,12 @@ export default function LoginPage() {
             to="/"
             className="group inline-flex items-center gap-2 px-4 py-1.5 text-[15px] md:text-[16px] font-display font-medium text-[#475569] hover:text-[#A14000] hover:bg-[#A14000]/5 rounded-full transition-all duration-[250ms] ease-in-out cursor-pointer -ml-4"
           >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-4 w-4 transform group-hover:-translate-x-1.5 transition-transform duration-[250ms] ease-in-out" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor" 
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 transform group-hover:-translate-x-1.5 transition-transform duration-[250ms] ease-in-out"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
               strokeWidth={2.5}
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -188,8 +189,8 @@ export default function LoginPage() {
                 value={form.email}
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 className={`w-full pl-11 py-3 rounded-xl border text-xs text-[#1E293B] placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${emailError
-                    ? 'focus:ring-red-500/20 pr-10'
-                    : 'pr-4 focus:ring-[#A14000]/15 focus:border-[#A14000]'
+                  ? 'focus:ring-red-500/20 pr-10'
+                  : 'pr-4 focus:ring-[#A14000]/15 focus:border-[#A14000]'
                   }`}
                 style={{
                   borderColor: emailError ? '#DC2626' : '#E5E7EB',
@@ -226,8 +227,8 @@ export default function LoginPage() {
                 value={form.password}
                 onChange={(e) => handleInputChange("password", e.target.value)}
                 className={`w-full pl-11 py-3 rounded-xl border text-xs text-[#1E293B] placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${passwordError
-                    ? 'pr-16 focus:ring-red-500/20'
-                    : 'pr-11 focus:ring-[#A14000]/15 focus:border-[#A14000]'
+                  ? 'pr-16 focus:ring-red-500/20'
+                  : 'pr-11 focus:ring-[#A14000]/15 focus:border-[#A14000]'
                   }`}
                 style={{
                   borderColor: passwordError ? '#DC2626' : '#E5E7EB',
@@ -289,32 +290,6 @@ export default function LoginPage() {
               </>
             )}
           </button>
-
-          {/* Divider */}
-          <div className="relative flex items-center justify-center my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
-            </div>
-            <span className="relative px-3 bg-white text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-              Or Continue With
-            </span>
-          </div>
-
-          {/* Secondary Outline button: Continue with Microsoft */}
-          <button
-            type="button"
-            onClick={() => toast.success("Redirecting to Microsoft identity provider...")}
-            className="w-full rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-[#1E293B] font-bold text-xs py-3.5 flex items-center justify-center gap-2 cursor-pointer transition-colors"
-          >
-            <svg className="h-4.5 w-4.5" viewBox="0 0 23 23" fill="none">
-              <path d="M0 0h11v11H0z" fill="#F25022" />
-              <path d="M12 0h11v11H12z" fill="#7FBA00" />
-              <path d="M0 12h11v11H0z" fill="#00A4EF" />
-              <path d="M12 12h11v11H12z" fill="#FFB900" />
-            </svg>
-            Continue with Microsoft
-          </button>
-
         </form>
 
         {/* Footer inside card */}

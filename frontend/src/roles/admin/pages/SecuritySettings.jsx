@@ -11,7 +11,7 @@ export default function SecuritySettings() {
   const navigate = useNavigate();
   const { logout } = useAuth();
   
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [activeCard, setActiveCard] = useState(null);
 

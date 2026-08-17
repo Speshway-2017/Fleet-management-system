@@ -18,7 +18,7 @@ class UpcomingTripsScreen extends StatefulWidget {
 }
 
 class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
-  bool _isLoading = true;
+  bool _isLoading = false;
   Map<String, dynamic>? _currentTrip;
 
   @override
@@ -47,10 +47,6 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
 
   Future<void> _fetchTripData() async {
     if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
       final res = await ApiService.getCurrentTrip();
       if (res != null && res['data'] != null) {
@@ -179,7 +175,7 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
           onRefresh: _fetchTripData,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
             child: _isLoading
                 ? const Center(
                     child: Padding(

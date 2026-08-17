@@ -285,7 +285,7 @@ export default function NotificationDetails() {
                 {/* Timeline / Activity */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
                   <div className="flex items-center gap-2 mb-6">
-                    <Clock className="w-5 h-5 text-orange-500" />
+                    <Clock className="w-5 h-5 text-[#A14000]" />
                     <h3 className="text-[15px] font-extrabold text-slate-800">Activity History</h3>
                   </div>
 
@@ -294,7 +294,7 @@ export default function NotificationDetails() {
                     <div className="space-y-6">
                       {notification.timeline.map((event, index) => (
                         <div key={event.id} className="relative pl-6">
-                          <div className={`absolute left-[-5px] top-1 w-[10px] h-[10px] rounded-full border-2 border-white ${event.active ? 'bg-orange-500 ring-4 ring-orange-50' : 'bg-slate-300'}`}></div>
+                          <div className={`absolute left-[-5px] top-1 w-[10px] h-[10px] rounded-full border-2 border-white ${event.active ? 'bg-[#A14000] ring-4 ring-orange-50' : 'bg-slate-300'}`}></div>
                           <div>
                             <h4 className={`text-[13px] font-bold mb-0.5 ${event.active ? 'text-slate-800' : 'text-slate-500'}`}>{event.action}</h4>
                             <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400">

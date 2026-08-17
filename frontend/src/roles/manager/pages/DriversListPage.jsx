@@ -128,7 +128,7 @@ export default function DriversListPage() {
   const getStatusBadge = (status) => {
     switch (status) {
       case "AVAILABLE": return "bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold";
-      case "ON_TRIP":   return "bg-amber-50 text-[#B45A0A] border border-amber-200 font-bold";
+      case "ON_TRIP":   return "bg-amber-50 text-[#A14000] border border-amber-200 font-bold";
       case "ON_LEAVE":  return "bg-blue-50 text-blue-700 border border-blue-200 font-bold";
       case "SUSPENDED": return "bg-red-50 text-red-600 border border-red-200 font-bold";
       case "OFFLINE":   return "bg-red-50 text-red-600 border border-red-200 font-bold";
@@ -229,7 +229,7 @@ export default function DriversListPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/manager/add-driver")}
-            className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 cursor-pointer"
+            className="px-5 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#A14000]/20 cursor-pointer"
           >
             <Plus className="w-4.5 h-4.5" />
             <span>Add Driver</span>
@@ -247,7 +247,7 @@ export default function DriversListPage() {
               placeholder="Search by name, employee ID, phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+              className="w-full pl-10 pr-4 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
             />
           </div>
         </div>
@@ -258,7 +258,7 @@ export default function DriversListPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
             >
               <option value="All Statuses">All Statuses</option>
               <option value="AVAILABLE">Available</option>
@@ -274,7 +274,7 @@ export default function DriversListPage() {
             <select
               value={licenseFilter}
               onChange={(e) => setLicenseFilter(e.target.value)}
-              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
             >
               <option value="All Types">All License Types</option>
               <option value="HMV">HMV</option>
@@ -289,7 +289,7 @@ export default function DriversListPage() {
             <select
               value={vehicleFilter}
               onChange={(e) => setVehicleFilter(e.target.value)}
-              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
             >
               <option value="All Vehicles">All Vehicles</option>
               <option value="Assigned">Assigned Only</option>
@@ -303,7 +303,7 @@ export default function DriversListPage() {
             <select
               value={licenseStatusFilter}
               onChange={(e) => setLicenseStatusFilter(e.target.value)}
-              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
             >
               <option value="All License Statuses">All License Statuses</option>
               <option value="Valid">Valid</option>
@@ -318,7 +318,7 @@ export default function DriversListPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none"
+              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
             >
               <option value="createdAt">Sort by Newest</option>
               <option value="fullName">Sort by Name</option>
@@ -366,7 +366,7 @@ export default function DriversListPage() {
                 <tr>
                   <td colSpan={7} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3 text-[#64748B]">
-                      <Loader className="w-7 h-7 animate-spin text-[#B45A0A]" />
+                      <Loader className="w-7 h-7 animate-spin text-[#A14000]" />
                       <span className="text-sm font-semibold">Loading drivers...</span>
                     </div>
                   </td>
@@ -382,11 +382,11 @@ export default function DriversListPage() {
                   <tr key={d._id} className="hover:bg-[#F5F7FB]/50 transition-colors group">
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[#FDF3EC] text-[#B45A0A] rounded-xl flex items-center justify-center shrink-0 font-poppins font-bold text-sm">
+                        <div className="w-10 h-10 bg-[#FDF3EC] text-[#A14000] rounded-xl flex items-center justify-center shrink-0 font-poppins font-bold text-sm">
                           {getInitials(d.fullName)}
                         </div>
                         <div>
-                          <p className="font-bold text-[#1E293B] font-poppins text-sm group-hover:text-[#B45A0A] transition-colors leading-tight">{d.fullName}</p>
+                          <p className="font-bold text-[#1E293B] font-poppins text-sm group-hover:text-[#A14000] transition-colors leading-tight">{d.fullName}</p>
                           <span className="text-[11px] text-[#64748B] font-semibold mt-0.5 block">{d.email}</span>
                         </div>
                       </div>
@@ -449,32 +449,54 @@ export default function DriversListPage() {
 
         {/* Pagination */}
         {!loading && filteredDrivers.length > 0 && (
-          <div className="px-6 py-4 border-t border-[#E7EAF0] flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#FDFDFD]">
-            <div className="flex items-center gap-4 text-xs text-[#64748B] font-semibold font-poppins">
+          <div className="px-6 py-4 border-t border-slate-200 dark:border-[#1E293B] flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-[#0F172A]">
+            <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-300 font-semibold font-poppins">
               <div className="flex items-center gap-2">
                 <span>Rows per page:</span>
                 <div className="relative">
                   <select
                     value={rowsPerPage}
                     onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                    className="pl-2.5 pr-8 py-1.5 bg-white border border-[#E7EAF0] rounded-lg text-xs font-bold text-[#1E293B] focus:outline-none focus:border-[#B45A0A] appearance-none cursor-pointer"
+                    className="pl-2.5 pr-8 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer"
                   >
                     <option value={5}>5</option>
                     <option value={10}>10</option>
                     <option value={20}>20</option>
                     <option value={50}>50</option>
                   </select>
-                  <ChevronDown className="w-3 h-3 text-[#64748B] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
-              <span>| {indexOfFirstRow + 1}–{indexOfLastRow} of {filteredDrivers.length}</span>
+              <span>| Showing {indexOfFirstRow + 1}–{indexOfLastRow} of {filteredDrivers.length} drivers</span>
             </div>
             <div className="flex items-center gap-1.5 select-none font-poppins">
-              <button disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)} className="px-3 py-1.5 border border-[#E7EAF0] rounded-lg text-xs font-bold text-[#64748B] hover:bg-[#F5F7FB] disabled:opacity-50 disabled:pointer-events-none cursor-pointer">Previous</button>
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+                className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition-all"
+              >
+                Previous
+              </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <button key={page} onClick={() => setCurrentPage(page)} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${currentPage === page ? "bg-[#B45A0A] text-white border border-[#B45A0A]" : "border border-[#E7EAF0] text-[#64748B] hover:bg-[#F5F7FB]"}`}>{page}</button>
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-extrabold cursor-pointer transition-all ${
+                    currentPage === page
+                      ? "bg-[#A14000] text-white border border-[#A14000] shadow-2xs"
+                      : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  {page}
+                </button>
               ))}
-              <button disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)} className="px-3 py-1.5 border border-[#E7EAF0] rounded-lg text-xs font-bold text-[#64748B] hover:bg-[#F5F7FB] disabled:opacity-50 disabled:pointer-events-none cursor-pointer">Next</button>
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+                className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition-all"
+              >
+                Next
+              </button>
             </div>
           </div>
         )}

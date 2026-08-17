@@ -30,7 +30,11 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import { getSocket } from "@/api/socket";
 import { managerApi } from "../api/managerApi";
 import { calculateDrivingRoute, calculateEtaFromDuration } from "../services/routingService";
-import { getNormalizedTripCategory, calculateTripKPIs } from "@/utils/tripStatusHelper";
+import KPICard from "@/components/common/KPICard";
+import StatusBadge from "@/components/common/StatusBadge";
+import PillTabs from "@/components/common/PillTabs";
+
+import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 
 export default function TripsManagementPage() {
   const navigate = useNavigate();
@@ -177,7 +181,6 @@ export default function TripsManagementPage() {
 
   const fetchTrips = async (isInitial = false) => {
     try {
-      if (isInitial) setLoading(true);
       const response = await managerApi.getTrips();
       const result = response.data?.data || response.data;
       if (Array.isArray(result)) {
@@ -520,14 +523,11 @@ export default function TripsManagementPage() {
   const currentRows = finalFilteredTrips.slice(0, 10);
 
   const getStatusBadge = (status) => {
-    const category = getNormalizedTripCategory(status);
-    switch (category) {
-      case "active":
-        return "bg-[#FDF3EC] text-[#B45A0A] border border-[#FDF3EC] font-semibold";
-      case "scheduled":
-        if (status === "Pending Driver Acceptance") {
-          return "bg-amber-50 text-amber-700 border border-amber-200 font-semibold";
-        }
+    switch (status) {
+      case "In Progress":
+      case "On Transit":
+        return "bg-[#FDF3EC] text-[#A14000] border border-[#FDF3EC] font-semibold";
+      case "Scheduled":
         return "bg-blue-50 text-blue-700 border border-blue-100 font-semibold";
       case "completed":
         return "bg-slate-900 text-white border border-slate-950 font-semibold";
@@ -556,128 +556,101 @@ export default function TripsManagementPage() {
           <Breadcrumb />
           
           {/* Header Area */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#E7EAF0] pb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200/80 dark:border-[#242E42] pb-6">
             <div>
-              <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
-                Trips Management
+              <h1 className="font-poppins font-black text-2xl sm:text-3xl text-[#0D1B2A] dark:text-white tracking-tight">
+                Trips Operations Workspace
               </h1>
-              <p className="text-[18px] text-[#64748B] mt-[12px]">
-                Monitor logistics routing, ETAs, active drivers and trip statuses
+              <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
+                Monitor logistics dispatches, route ETAs, live drivers and delivery completion logs.
               </p>
             </div>
             
             <div className="flex items-center gap-2 select-none w-full sm:w-auto">
               <button
                 onClick={() => navigate("/manager/create-trip")}
-                className="px-5 py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] rounded-xl text-sm font-bold text-white transition-all flex items-center gap-2 shadow-md shadow-[#B45A0A]/20 cursor-pointer w-full sm:w-auto justify-center"
+                className="px-5 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-xl text-xs font-bold font-poppins text-white transition-all flex items-center gap-2 shadow-xs cursor-pointer w-full sm:w-auto justify-center"
               >
-                <Plus className="w-4.5 h-4.5" />
+                <Plus className="w-4 h-4" />
                 <span>Create New Trip</span>
               </button>
             </div>
           </div>
 
           {/* KPI Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            
-            {/* Card 1: Total Trips */}
-            <div className="bg-white rounded-xl border-l-4 border-l-blue-600 border border-[#E7EAF0] p-5 flex items-center justify-between shadow-sm">
-              <div>
-                <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Total Trips</p>
-                <p className="text-3xl font-black text-[#1E293B] mt-2 font-poppins">{totalTrips}</p>
-                <span className="text-[10px] text-[#64748B] mt-1 block font-medium">
-                  {cancelledTripsCount + otherTripsCount > 0 
-                    ? `Includes ${cancelledTripsCount + otherTripsCount} cancelled/other`
-                    : "All dispatch logs"}
-                </span>
-              </div>
-              <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                <Route className="w-6 h-6" />
-              </div>
-            </div>
-
-            {/* Card 2: Active Trips */}
-            <div className="bg-white rounded-xl border-l-4 border-l-[#B45A0A] border border-[#E7EAF0] p-5 shadow-sm flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Active Trips</p>
-                <p className="text-3xl font-black text-[#1E293B] mt-2 font-poppins">{activeTripsCount}</p>
-                <span className="text-[10px] text-[#64748B] mt-1 block font-medium">Currently in transit</span>
-              </div>
-              <div className="p-3 bg-orange-50 text-[#B45A0A] rounded-xl">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-            </div>
-
-            {/* Card 3: Scheduled Trips */}
-            <div className="bg-white rounded-xl border-l-4 border-l-indigo-600 border border-[#E7EAF0] p-5 shadow-sm flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Scheduled Trips</p>
-                <p className="text-3xl font-black text-[#1E293B] mt-2 font-poppins">{scheduledTripsCount}</p>
-                <span className="text-[10px] text-[#64748B] mt-1 block font-medium">Upcoming & assigned</span>
-              </div>
-              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-                <Calendar className="w-6 h-6" />
-              </div>
-            </div>
-
-            {/* Card 4: Completed */}
-            <div className="bg-white rounded-xl border-l-4 border-l-[#1E293B] border border-[#E7EAF0] p-5 shadow-sm flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black text-[#64748B] uppercase tracking-wider font-poppins">Completed</p>
-                <p className="text-3xl font-black text-[#1E293B] mt-2 font-poppins">{completedTripsCount}</p>
-                <span className="text-[10px] text-[#64748B] mt-1 block font-medium">Successfully completed</span>
-              </div>
-              <div className="p-3 bg-gray-50 text-[#1E293B] rounded-xl">
-                <CheckSquare className="w-6 h-6" />
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <KPICard
+              title="Total Trips"
+              value={loading ? null : trips.length}
+              loading={loading}
+              subtitle="VS last week"
+              icon={<Route className="w-4.5 h-4.5" />}
+              variant="blue"
+              filledBarsRatio={0.8}
+              trendText="+6.2%"
+              isTrendUp={true}
+            />
+            <KPICard
+              title="Active Trips"
+              value={loading ? null : activeTripsCount}
+              loading={loading}
+              subtitle="VS last week"
+              icon={<TrendingUp className="w-4.5 h-4.5" />}
+              variant="amber"
+              filledBarsRatio={0.65}
+              trendText="+12.5%"
+              isTrendUp={true}
+            />
+            <KPICard
+              title="Completed Trips"
+              value={loading ? null : completedTripsCount}
+              loading={loading}
+              subtitle="VS last week"
+              icon={<CheckSquare className="w-4.5 h-4.5" />}
+              variant="green"
+              filledBarsRatio={0.9}
+              trendText="+9.1%"
+              isTrendUp={true}
+            />
           </div>
 
-          {/* Search bar and Filters Card */}
-          <div className="bg-white rounded-xl border border-[#E7EAF0] p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
-            
+          {/* Search bar & PillTabs filter */}
+          <div className="bg-white dark:bg-[#151C28] rounded-2xl border border-slate-100 dark:border-[#242E42] p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs">
             {/* Search Input */}
             <div className="relative flex-1 max-w-md w-full">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#94A3B8]" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search trip ID, driver, vehicle, or route..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] bg-white text-[#1E293B]"
+                className="w-full pl-10 pr-4 py-2 border border-slate-200/80 dark:border-slate-700/80 rounded-xl text-xs font-poppins focus:outline-none focus:border-[#A14000] bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white"
               />
             </div>
+
+            {/* PillTabs */}
+            <PillTabs
+              tabs={[
+                { id: "All Trips", label: "All Trips", count: trips.length },
+                { id: "Active", label: "In Transit", count: activeTripsCount },
+                { id: "Scheduled", label: "Scheduled" },
+                { id: "Completed", label: "Completed", count: completedTripsCount },
+                { id: "Delayed", label: "Delayed" }
+              ]}
+              activeTab={activeTab}
+              onChange={(id) => setActiveTab(id)}
+            />
 
             {/* Reset Button */}
             {(search || activeTab !== "All Trips") && (
               <button
                 onClick={handleResetFilters}
-                className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer py-2 self-start md:self-auto"
+                className="text-xs text-rose-500 hover:underline font-bold font-poppins flex items-center gap-1 cursor-pointer py-2"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Clear Filters</span>
+                <span>Clear</span>
               </button>
             )}
-          </div>
-
-          {/* Tab filters header */}
-          <div className="border-b border-[#E7EAF0] flex items-center overflow-x-auto custom-scrollbar select-none gap-2">
-            {["All Trips", "Active", "Scheduled", "Completed", "Delayed"].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => {
-                  setActiveTab(tab);
-                }}
-                className={`py-3.5 px-6 font-poppins text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === tab
-                    ? "border-[#B45A0A] text-[#B45A0A]"
-                    : "border-transparent text-[#64748B] hover:text-[#1E293B]"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
           </div>
 
           {/* Trips Table Component */}
@@ -686,7 +659,7 @@ export default function TripsManagementPage() {
               <h3 className="font-poppins font-black text-lg text-[#1E293B]">Trips List</h3>
               <button
                 onClick={() => navigate("/manager/trips-list")}
-                className="text-xs text-[#B45A0A] hover:text-[#9A4D08] hover:underline font-bold font-poppins flex items-center gap-1 cursor-pointer"
+                className="text-xs text-[#A14000] hover:text-[#853400] hover:underline font-bold font-poppins flex items-center gap-1 cursor-pointer"
               >
                 <span>View All Trips</span>
               </button>
@@ -709,7 +682,9 @@ export default function TripsManagementPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E7EAF0]/60">
-                  {currentRows.length === 0 ? (
+                  {loading ? (
+                    <TableRowSkeleton columns={10} rows={5} />
+                  ) : currentRows.length === 0 ? (
                     <tr>
                       <td colSpan={10} className="py-12 text-center text-gray-400 font-medium font-nunito">
                         No trips found matching the selections.
@@ -746,7 +721,7 @@ export default function TripsManagementPage() {
                         {/* Driver */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex flex-col">
-                            <span className="font-bold text-sm text-[#1E293B] font-poppins group-hover:text-[#B45A0A] transition-colors">
+                            <span className="font-bold text-sm text-[#1E293B] font-poppins group-hover:text-[#A14000] transition-colors">
                               {t.driverName || "Unassigned"}
                             </span>
                             <span className="text-[10px] text-[#64748B] mt-0.5 block font-semibold">
@@ -928,7 +903,7 @@ export default function TripsManagementPage() {
                     required
                     value={formData.startLocation}
                     onChange={(e) => setFormData({ ...formData, startLocation: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium"
                   />
                 </div>
 
@@ -942,7 +917,7 @@ export default function TripsManagementPage() {
                     required
                     value={formData.endLocation}
                     onChange={(e) => setFormData({ ...formData, endLocation: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium"
                   />
                 </div>
               </div>
@@ -960,7 +935,7 @@ export default function TripsManagementPage() {
                     onChange={(e) => handleDepartureTimeChange(e.target.value)}
                     onBlur={handleBlur}
                     min={getCurrentDateTimeString()}
-                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium ${
+                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium ${
                       departureError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
                     }`}
                   />
@@ -981,7 +956,7 @@ export default function TripsManagementPage() {
                     onChange={(e) => handleEtaChange(e.target.value)}
                     onBlur={handleBlur}
                     min={getMinEtaString(formData.departureTime)}
-                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium ${
+                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium ${
                       etaError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
                     }`}
                   />
@@ -1001,7 +976,7 @@ export default function TripsManagementPage() {
                     type="text"
                     value={formData.cargoType}
                     onChange={(e) => setFormData({ ...formData, cargoType: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium"
                   />
                 </div>
 
@@ -1014,7 +989,7 @@ export default function TripsManagementPage() {
                     type="number"
                     value={formData.cargoWeight}
                     onChange={(e) => setFormData({ ...formData, cargoWeight: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium"
                   />
                 </div>
               </div>
@@ -1029,7 +1004,7 @@ export default function TripsManagementPage() {
                     type="text"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium"
                   />
                 </div>
 
@@ -1042,14 +1017,14 @@ export default function TripsManagementPage() {
                     type="text"
                     value={formData.tripNotes}
                     onChange={(e) => setFormData({ ...formData, tripNotes: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#B45A0A] text-[#1E293B] font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium"
                   />
                 </div>
               </div>
 
               {/* Pickup Address Edit Section */}
               <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3 font-nunito">
-                <h4 className="font-poppins font-bold text-xs text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-1.5">
+                <h4 className="font-poppins font-bold text-xs text-[#A14000] uppercase tracking-wider border-b border-slate-200 pb-1.5">
                   Pickup Address (From Address)
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
@@ -1160,7 +1135,7 @@ export default function TripsManagementPage() {
 
               {/* Delivery Address Edit Section */}
               <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3 font-nunito">
-                <h4 className="font-poppins font-bold text-xs text-[#B45A0A] uppercase tracking-wider border-b border-slate-200 pb-1.5">
+                <h4 className="font-poppins font-bold text-xs text-[#A14000] uppercase tracking-wider border-b border-slate-200 pb-1.5">
                   Delivery Address (To Address)
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
@@ -1284,7 +1259,7 @@ export default function TripsManagementPage() {
                   className={`px-6 py-2.5 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md ${
                     (departureError || etaError || !formData.departureTime || !formData.eta)
                       ? "bg-gray-300 shadow-none cursor-not-allowed opacity-60"
-                      : "bg-[#B45A0A] hover:bg-[#9A4D08]"
+                      : "bg-[#A14000] hover:bg-[#853400]"
                   }`}
                 >
                   Save Changes

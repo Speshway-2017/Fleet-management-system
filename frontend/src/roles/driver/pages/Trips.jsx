@@ -7,7 +7,7 @@ import { Navigation, RefreshCw } from "lucide-react";
 
 export default function DriverTripsPage() {
   const [activeTab, setActiveTab] = useState("all");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [trips, setTrips] = useState([]);
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function DriverTripsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
         <div>
           <h1 className="text-2xl font-bold font-poppins text-slate-900 flex items-center gap-2">
-            <Navigation className="w-6 h-6 text-[#B45A0A]" />
+            <Navigation className="w-6 h-6 text-[#A14000]" />
             My Trips Management
           </h1>
           <p className="text-slate-500 text-xs mt-1">
@@ -118,7 +118,7 @@ export default function DriverTripsPage() {
             onClick={() => setActiveTab(tab.key)}
             className={`px-4 py-2.5 rounded-xl text-xs font-semibold font-poppins whitespace-nowrap transition flex items-center gap-2 ${
               activeTab === tab.key
-                ? "bg-amber-50 text-[#B45A0A] border border-amber-200 shadow-sm"
+                ? "bg-amber-50 text-[#A14000] border border-amber-200 shadow-sm"
                 : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
             }`}
           >
@@ -126,9 +126,9 @@ export default function DriverTripsPage() {
             <span
               className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                 tab.highlight
-                  ? "bg-[#B45A0A] text-white animate-pulse"
+                  ? "bg-[#A14000] text-white animate-pulse"
                   : activeTab === tab.key
-                  ? "bg-amber-100 text-[#B45A0A]"
+                  ? "bg-amber-100 text-[#A14000]"
                   : "bg-slate-100 text-slate-500"
               }`}
             >
@@ -141,7 +141,7 @@ export default function DriverTripsPage() {
       {/* Content Grid */}
       {loading ? (
         <div className="min-h-[50vh] flex items-center justify-center font-poppins">
-          <RefreshCw className="w-8 h-8 text-[#B45A0A] animate-spin" />
+          <RefreshCw className="w-8 h-8 text-[#A14000] animate-spin" />
         </div>
       ) : filteredTrips.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -15,6 +15,7 @@ export default function DriverFuelPage() {
   const [quantity, setQuantity] = useState("");
   const [totalCost, setTotalCost] = useState("");
   const [stationName, setStationName] = useState("");
+  const [purchaseLocation, setPurchaseLocation] = useState("");
   const [odometerReading, setOdometerReading] = useState("");
   const [receiptFile, setReceiptFile] = useState(null);
 
@@ -73,23 +74,27 @@ export default function DriverFuelPage() {
     }
   };
 
-  const hasVehicle = Boolean(
-    assignedVehicle &&
-      (assignedVehicle._id || assignedVehicle.id || assignedVehicle.vehicleNumber) &&
-      assignedVehicle.vehicleNumber !== "Unassigned" &&
-      assignedVehicle.vehicleNumber !== "No Vehicle Assigned"
+  const vehObj = assignedVehicle?.vehicle || assignedVehicle;
+  const isPermanentVehicleAssigned = Boolean(
+    (assignedVehicle?.assigned && vehObj) ||
+      (vehObj &&
+        (vehObj._id || vehObj.id || vehObj.vehicleNumber) &&
+        vehObj.vehicleNumber !== "Unassigned" &&
+        vehObj.vehicleNumber !== "No Vehicle Assigned")
   );
-  const hasActiveTrip = Boolean(activeTrip && (activeTrip._id || activeTrip.id || activeTrip.tripId));
-  const isFuelLogEnabled = hasVehicle && hasActiveTrip;
+  const isTripAccepted = Boolean(
+    activeTrip &&
+      (activeTrip.status === "ACCEPTED" ||
+        activeTrip.status === "IN_PROGRESS" ||
+        activeTrip.status === "ON_TRIP" ||
+        activeTrip.acceptStatus === "ACCEPTED")
+  );
+  const isFuelLogEnabled = isPermanentVehicleAssigned || isTripAccepted;
 
   const handleCreateFuelEntry = async (e) => {
     e.preventDefault();
-    if (!hasVehicle) {
-      toast.error("🔒 Fuel entries can only be logged when a vehicle is assigned to you!");
-      return;
-    }
-    if (!hasActiveTrip) {
-      toast.error("🔒 Fuel entries can only be logged when you have an active trip!");
+    if (!isFuelLogEnabled) {
+      toast.error("🔒 Fuel logging is locked until you accept your assigned trip or a permanent vehicle is assigned to you!");
       return;
     }
     if (!quantity || !totalCost || !stationName) {
@@ -99,14 +104,25 @@ export default function DriverFuelPage() {
 
     setSubmitting(true);
     try {
+      const locVal = activeTrip?.destination || activeTrip?.location || activeTrip?.origin || purchaseLocation.trim() || stationName.trim() || 'GPS Station';
       const formData = new FormData();
       formData.append("quantity", quantity);
+      formData.append("liters", quantity);
       formData.append("totalCost", totalCost);
+      formData.append("amount", totalCost);
       formData.append("stationName", stationName);
+      formData.append("fuelStation", stationName);
+      formData.append("location", locVal);
+      formData.append("city", locVal);
+      formData.append("purchaseLocation", locVal);
+      formData.append("fuelLocation", locVal);
       if (activeTrip?._id || activeTrip?.id) {
         formData.append("tripId", activeTrip._id || activeTrip.id);
       }
-      if (odometerReading) formData.append("odometerReading", odometerReading);
+      if (odometerReading) {
+        formData.append("odometerReading", odometerReading);
+        formData.append("odometer", odometerReading);
+      }
       if (receiptFile) formData.append("file", receiptFile);
 
       const res = await driverApi.createFuelEntry(formData);
@@ -116,6 +132,7 @@ export default function DriverFuelPage() {
         setQuantity("");
         setTotalCost("");
         setStationName("");
+        setPurchaseLocation("");
         setOdometerReading("");
         setReceiptFile(null);
         fetchFuelRecords();
@@ -133,7 +150,7 @@ export default function DriverFuelPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
         <div>
           <h1 className="text-2xl font-bold font-poppins text-slate-900 flex items-center gap-2">
-            <Fuel className="w-6 h-6 text-[#B45A0A]" />
+            <Fuel className="w-6 h-6 text-[#A14000]" />
             Fuel Log & Expense Records
           </h1>
           <p className="text-slate-500 text-xs mt-1">
@@ -143,12 +160,8 @@ export default function DriverFuelPage() {
 
         <button
           onClick={() => {
-            if (!hasVehicle) {
-              toast.error("🔒 Fuel logging requires an assigned vehicle!");
-              return;
-            }
-            if (!hasActiveTrip) {
-              toast.error("🔒 Fuel logging requires an active trip!");
+            if (!isFuelLogEnabled) {
+              toast.error("🔒 Fuel logging requires an assigned vehicle or an active trip!");
               return;
             }
             setShowModal(true);
@@ -156,14 +169,12 @@ export default function DriverFuelPage() {
           disabled={!isFuelLogEnabled}
           title={
             !isFuelLogEnabled
-              ? !hasVehicle
-                ? "Fuel logging disabled. No vehicle is currently assigned to you."
-                : "Fuel logging disabled. You currently have 0 active trips."
-              : "Log fuel refill for your active trip"
+              ? "Fuel logging disabled. Please ensure a vehicle is assigned or you have an active trip."
+              : "Log fuel refill for your trip or vehicle"
           }
           className={`px-4 py-2.5 rounded-xl text-xs font-bold font-poppins flex items-center justify-center gap-2 transition shadow-sm ${
             isFuelLogEnabled
-              ? "bg-[#B45A0A] hover:bg-[#9A4D08] text-white cursor-pointer"
+              ? "bg-[#A14000] hover:bg-[#853400] text-white cursor-pointer"
               : "bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed"
           }`}
         >
@@ -176,17 +187,13 @@ export default function DriverFuelPage() {
       {!isFuelLogEnabled && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-3 text-amber-900 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-100 text-[#B45A0A] shrink-0">
+            <div className="p-2.5 rounded-xl bg-amber-100 text-[#A14000] shrink-0">
               <Lock className="w-5 h-5" />
             </div>
             <div>
               <h4 className="text-xs font-bold font-poppins text-slate-900">🔒 Fuel Refill Logging Disabled</h4>
               <p className="text-xs text-amber-800 mt-0.5">
-                {!hasVehicle && !hasActiveTrip
-                  ? "Fuel refill logs are locked because no vehicle is assigned to you AND you currently have 0 active trips. Fuel logging requires an assigned vehicle and an active trip."
-                  : !hasVehicle
-                  ? "Fuel refill logs are locked because no vehicle is currently assigned to you. Please ask your Fleet Manager to assign a vehicle."
-                  : "Fuel refill logs can only be submitted when you have an active trip in progress (active trips > 0)."}
+                Fuel refill logs are locked because no vehicle is currently assigned to you AND you have no active trip. Fuel logging requires an assigned vehicle or an active trip.
               </p>
             </div>
           </div>
@@ -196,7 +203,7 @@ export default function DriverFuelPage() {
       {/* Fuel Cards Grid */}
       {loading ? (
         <div className="min-h-[50vh] flex items-center justify-center font-poppins">
-          <RefreshCw className="w-8 h-8 text-[#B45A0A] animate-spin" />
+          <RefreshCw className="w-8 h-8 text-[#A14000] animate-spin" />
         </div>
       ) : fuelRecords.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -218,7 +225,7 @@ export default function DriverFuelPage() {
           <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-md shadow-xl relative font-nunito">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <h3 className="text-base font-bold font-poppins text-slate-900 flex items-center gap-2">
-                <Fuel className="w-5 h-5 text-[#B45A0A]" /> Log Fuel Refill
+                <Fuel className="w-5 h-5 text-[#A14000]" /> Log Fuel Refill
               </h3>
               <button
                 onClick={() => setShowModal(false)}
@@ -230,15 +237,24 @@ export default function DriverFuelPage() {
 
             <form onSubmit={handleCreateFuelEntry} className="space-y-4 mt-4">
               <div>
-                <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">Station Name / Location</label>
+                <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">Station Name</label>
                 <input
                   type="text"
                   required
                   value={stationName}
                   onChange={(e) => setStationName(e.target.value)}
-                  placeholder="e.g. Indian Oil, Expressway Station"
-                  className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
+                  placeholder="e.g. Bharat Petroleum / Indian Oil"
+                  className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
                 />
+              </div>
+
+              <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl flex items-center justify-between text-xs text-amber-900 font-medium font-poppins">
+                <span className="flex items-center gap-1.5 font-bold">
+                  📍 Purchase Location:
+                </span>
+                <span className="text-slate-700 font-semibold font-mono text-[11px]">
+                  {activeTrip?.destination || activeTrip?.location || activeTrip?.origin || "Auto-captured via GPS Telematics"}
+                </span>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -251,7 +267,7 @@ export default function DriverFuelPage() {
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                     placeholder="e.g. 120"
-                    className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
+                    className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
                   />
                 </div>
                 <div>
@@ -263,7 +279,7 @@ export default function DriverFuelPage() {
                     value={totalCost}
                     onChange={(e) => setTotalCost(e.target.value)}
                     placeholder="e.g. 11400"
-                    className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
+                    className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
                   />
                 </div>
               </div>
@@ -275,7 +291,7 @@ export default function DriverFuelPage() {
                   value={odometerReading}
                   onChange={(e) => setOdometerReading(e.target.value)}
                   placeholder="e.g. 45210"
-                  className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:ring-1 focus:ring-[#B45A0A] focus:border-[#B45A0A] focus:outline-none"
+                  className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
                 />
               </div>
 
@@ -285,7 +301,7 @@ export default function DriverFuelPage() {
                   type="file"
                   accept="image/*,.pdf"
                   onChange={(e) => setReceiptFile(e.target.files[0])}
-                  className="mt-1 block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-[#B45A0A] hover:file:bg-amber-100 cursor-pointer"
+                  className="mt-1 block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-[#A14000] hover:file:bg-amber-100 cursor-pointer"
                 />
               </div>
 
@@ -300,7 +316,7 @@ export default function DriverFuelPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 bg-[#B45A0A] hover:bg-[#9A4D08] text-white text-xs font-bold font-poppins rounded-xl disabled:opacity-50 shadow-sm"
+                  className="px-4 py-2 bg-[#A14000] hover:bg-[#853400] text-white text-xs font-bold font-poppins rounded-xl disabled:opacity-50 shadow-sm"
                 >
                   {submitting ? "Submitting..." : "Save Fuel Entry"}
                 </button>

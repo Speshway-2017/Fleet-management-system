@@ -8,7 +8,7 @@ const ALL_REPORTS = [
   { id: 1, name: "Q3 Fuel Efficiency Audit", type: "Financial", format: "PDF", date: "Oct 24, 2023 · 14:30", size: "2.4 MB", generatedBy: "Auto-Schedule", icon: "mdi:file-chart", iconColor: "text-red-500" },
   { id: 2, name: "Weekly Driver Log Sheets", type: "Operational", format: "CSV", date: "Oct 23, 2023 · 09:12", size: "512 KB", generatedBy: "Manual", icon: "mdi:file-table", iconColor: "text-green-500" },
   { id: 3, name: "Annual Compliance Certificate", type: "Compliance", format: "PDF", date: "Oct 20, 2023 · 16:55", size: "1.8 MB", generatedBy: "Auto-Schedule", icon: "mdi:file-shield", iconColor: "text-blue-500" },
-  { id: 4, name: "Monthly Maintenance Summary", type: "Operational", format: "PDF", date: "Oct 18, 2023 · 08:00", size: "3.1 MB", generatedBy: "Manual", icon: "mdi:file-cog", iconColor: "text-orange-500" },
+  { id: 4, name: "Monthly Maintenance Summary", type: "Operational", format: "PDF", date: "Oct 18, 2023 · 08:00", size: "3.1 MB", generatedBy: "Manual", icon: "mdi:file-cog", iconColor: "text-[#A14000]" },
   { id: 5, name: "Q3 Driver Safety Report", type: "Safety", format: "PDF", date: "Oct 15, 2023 · 11:30", size: "1.2 MB", generatedBy: "Auto-Schedule", icon: "mdi:file-star", iconColor: "text-purple-500" },
   { id: 6, name: "Toll & FASTag Expense Report", type: "Financial", format: "XLSX", date: "Oct 12, 2023 · 13:00", size: "890 KB", generatedBy: "Manual", icon: "mdi:file-chart", iconColor: "text-red-500" },
   { id: 7, name: "Fleet Uptime Analysis", type: "Operational", format: "PDF", date: "Oct 10, 2023 · 09:45", size: "2.7 MB", generatedBy: "Auto-Schedule", icon: "mdi:file-table", iconColor: "text-green-500" },
@@ -80,7 +80,7 @@ export default function ArchivedReportsPage() {
             placeholder="Search by report name or type..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-9 pr-4 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium focus:outline-none focus:border-[#B45A0A] shadow-sm"
+            className="w-full pl-9 pr-4 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium focus:outline-none focus:border-[#A14000] shadow-sm"
           />
         </div>
 
@@ -102,7 +102,7 @@ export default function ArchivedReportsPage() {
         {/* Export all */}
         <button
           onClick={() => toast.success("Exporting all reports...")}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#B45A0A] text-white rounded-xl text-xs font-bold hover:bg-[#9A4D08] transition-colors shadow-sm"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#A14000] text-white rounded-xl text-xs font-bold hover:bg-[#853400] transition-colors shadow-sm"
         >
           <Download className="w-3.5 h-3.5" />
           Export All

@@ -311,7 +311,7 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
           onRefresh: _fetchActiveTrip,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
             child: _isLoading
                 ? const Center(
                     child: Padding(
@@ -372,223 +372,232 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
         : (vehicleRaw?.toString() ?? 'Unassigned');
     final eta = _activeTrip?['eta'] ?? 'N/A';
 
-    return CustomCard(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 1. Trip Header & Map Card
+        CustomCard(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'TRIP ID',
-                    style: TextStyle(
-                      color: AppColors.secondaryText,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 10,
-                      letterSpacing: 0.5,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'TRIP ID',
+                          style: TextStyle(
+                            color: AppColors.secondaryText,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '#$tripNumber',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: AppColors.primaryText,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '#$tripNumber',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppColors.primaryText,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(AppRadius.round),
+                    ),
+                    child: const Text(
+                      'In Progress',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.round),
-                ),
-                child: const Text(
-                  'In Progress',
-                  style: TextStyle(
-                    color: Colors.blue,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
+
+              const SizedBox(height: 16),
+
+              LiveTrackingMapWidget(
+                height: 220,
+                pickupAddress: pickup,
+                destinationAddress: destination,
+              ),
+
+              const SizedBox(height: 16),
+
+              _buildRouteTimeline(
+                context,
+                pickupLabel: 'PICKUP',
+                pickupAddress: pickup,
+                destLabel: 'DESTINATION (CUSTOMER LOCATION)',
+                destAddress: destination,
+                isMuted: false,
+              ),
+
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12.0),
+                child: Divider(color: AppColors.divider),
+              ),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildDetailsColumn(
+                      context,
+                      label: 'VEHICLE',
+                      value: vehicle.toString(),
+                      icon: Icons.local_shipping_outlined,
+                      isMuted: false,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildDetailsColumn(
+                      context,
+                      label: 'ETA',
+                      value: eta.toString(),
+                      icon: Icons.access_time_outlined,
+                      isMuted: false,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
+        ),
 
-          const SizedBox(height: 16),
+        const SizedBox(height: 16),
 
-          LiveTrackingMapWidget(
-            height: 220,
-            pickupAddress: pickup,
-            destinationAddress: destination,
-          ),
-
-          const SizedBox(height: 16),
-
-          _buildRouteTimeline(
-            context,
-            pickupLabel: 'PICKUP',
-            pickupAddress: pickup,
-            destLabel: 'DESTINATION (CUSTOMER LOCATION)',
-            destAddress: destination,
-            isMuted: false,
-          ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12.0),
-            child: Divider(color: AppColors.divider),
-          ),
-
-          // Customer Location Toggle Card
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _reachedCustomer ? const Color(0xFFF0FDF4) : Colors.white,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(
-                color: _reachedCustomer ? AppColors.success.withAlpha(120) : AppColors.divider,
-                width: 1.2,
-              ),
+        // 2. Customer Location Toggle Card
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _reachedCustomer ? const Color(0xFFF0FDF4) : Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: _reachedCustomer ? AppColors.success.withAlpha(120) : AppColors.divider,
+              width: 1.2,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
                   children: [
+                    Icon(
+                      _reachedCustomer ? Icons.gps_fixed : Icons.location_on_outlined,
+                      color: _reachedCustomer ? AppColors.success : AppColors.secondary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            _reachedCustomer ? Icons.gps_fixed : Icons.location_on_outlined,
-                            color: _reachedCustomer ? AppColors.success : AppColors.secondary,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Customer Location Reached',
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                    color: AppColors.primaryText,
-                                  ),
-                                ),
-                                Text(
-                                  _reachedCustomer ? 'Arrival Toggled ON (Uploads Enabled)' : 'Toggle ON when arrived at destination',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    color: _reachedCustomer ? AppColors.success : AppColors.secondaryText,
-                                    fontWeight: _reachedCustomer ? FontWeight.w600 : FontWeight.normal,
-                                  ),
-                                ),
-                              ],
+                          Text(
+                            'Customer Location Reached',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: AppColors.primaryText,
                             ),
+                          ),
+                          Text(
+                            _reachedCustomer ? 'Arrival Toggled ON (Uploads Enabled)' : 'Toggle ON when arrived at destination',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              color: _reachedCustomer ? AppColors.success : AppColors.secondaryText,
+                              fontWeight: _reachedCustomer ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
                           ),
                         ],
                       ),
                     ),
-                    Switch(
-                      value: _reachedCustomer,
-                      onChanged: _toggleCustomerArrival,
-                      activeTrackColor: AppColors.success.withAlpha(120),
-                      activeThumbColor: AppColors.success,
-                    ),
                   ],
                 ),
-              ],
-            ),
-          ),
-
-          if (_reachedCustomer) ...[
-            const SizedBox(height: 16),
-
-            _buildSlipUploadCard(
-              title: '1. Proof of Delivery (POD) Slip',
-              subtitle: 'Upload signed customer delivery acknowledgment',
-              fileName: _podFileName,
-              fileSize: _podFileSize,
-              isUploaded: _podUploaded,
-              icon: Icons.assignment_turned_in_outlined,
-              badgeColor: Colors.blue,
-              onUploadPressed: _pickPodSlip,
-              onDeletePressed: () {
-                setState(() {
-                  _podUploaded = false;
-                  _podFileName = null;
-                  _podFileSize = null;
-                });
-              },
-            ),
-
-            const SizedBox(height: 12),
-
-            _buildWeighbridgeUploadCard(),
-          ],
-
-          const SizedBox(height: 16),
-
-          Row(
-            children: [
-              Expanded(
-                child: _buildDetailsColumn(
-                  context,
-                  label: 'VEHICLE',
-                  value: vehicle.toString(),
-                  icon: Icons.local_shipping_outlined,
-                  isMuted: false,
-                ),
               ),
-              Expanded(
-                child: _buildDetailsColumn(
-                  context,
-                  label: 'ETA',
-                  value: eta.toString(),
-                  icon: Icons.access_time_outlined,
-                  isMuted: false,
-                ),
+              Switch(
+                value: _reachedCustomer,
+                onChanged: _toggleCustomerArrival,
+                activeTrackColor: AppColors.success.withAlpha(120),
+                activeThumbColor: AppColors.success,
               ),
             ],
           ),
+        ),
 
+        if (_reachedCustomer) ...[
           const SizedBox(height: 16),
 
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TripDetailsScreen(tripId: tripId.toString()),
-                ),
-              );
+          _buildSlipUploadCard(
+            title: '1. Proof of Delivery (POD) Slip',
+            subtitle: 'Upload signed customer delivery acknowledgment',
+            fileName: _podFileName,
+            fileSize: _podFileSize,
+            isUploaded: _podUploaded,
+            icon: Icons.assignment_turned_in_outlined,
+            badgeColor: Colors.blue,
+            onUploadPressed: _pickPodSlip,
+            onDeletePressed: () {
+              setState(() {
+                _podUploaded = false;
+                _podFileName = null;
+                _podFileSize = null;
+              });
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.secondary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(vertical: 12.0),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.sm),
+          ),
+
+          const SizedBox(height: 12),
+
+          _buildWeighbridgeUploadCard(),
+        ],
+
+        const SizedBox(height: 16),
+
+        ElevatedButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TripDetailsScreen(tripId: tripId.toString()),
               ),
-            ),
-            child: const Text(
-              'View Full Trip Details',
-              style: TextStyle(
-                fontSize: 14.0,
-                fontWeight: FontWeight.bold,
-              ),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.secondary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 14.0),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
           ),
-        ],
-      ),
+          child: const Text(
+            'View Full Trip Details',
+            style: TextStyle(
+              fontSize: 14.0,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -879,13 +888,20 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
       children: [
         Icon(icon, color: iconColor, size: 16),
         const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(color: AppColors.secondaryText, fontSize: 9, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 2),
-            Text(value, style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(color: AppColors.secondaryText, fontSize: 9, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ],
+          ),
         ),
       ],
     );

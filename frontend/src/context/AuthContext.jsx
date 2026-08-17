@@ -251,6 +251,7 @@ export function AuthProvider({ children }) {
     } finally {
       clearAuthStorage();
       setUser(null);
+      document.documentElement.classList.remove("dark");
     }
   };
 

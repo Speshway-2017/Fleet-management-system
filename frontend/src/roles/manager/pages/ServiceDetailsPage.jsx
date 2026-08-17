@@ -121,7 +121,7 @@ export default function ServiceDetailsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">
         <div className="flex flex-col items-center gap-2">
-          <div className="w-8 h-8 border-4 border-t-[#B45A0A] border-r-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-t-[#A14000] border-r-transparent rounded-full animate-spin" />
           <p className="text-xs font-bold font-poppins">Loading Service details...</p>
         </div>
       </div>
@@ -191,7 +191,7 @@ export default function ServiceDetailsPage() {
             <div className="bg-white rounded-2xl border border-[#E7EAF0] p-4 shadow-sm">
               <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Specialist Mechanic</span>
               <p className="text-sm font-black text-slate-800 mt-1 flex items-center gap-1">
-                <User className="w-4 h-4 text-[#B45A0A]" />
+                <User className="w-4 h-4 text-[#A14000]" />
                 {order.specialist}
               </p>
             </div>
@@ -199,7 +199,7 @@ export default function ServiceDetailsPage() {
             {/* Meta 4: Cost */}
             <div className="bg-white rounded-2xl border border-[#E7EAF0] p-4 shadow-sm">
               <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Total Bill Amount</span>
-              <p className="text-sm font-black text-[#B45A0A] mt-1 font-poppins">{order.cost}</p>
+              <p className="text-sm font-black text-[#A14000] mt-1 font-poppins">{order.cost}</p>
             </div>
 
           </div>
@@ -254,7 +254,7 @@ export default function ServiceDetailsPage() {
 
                 <div className="border-t border-[#E7EAF0]/60 pt-4 flex items-center justify-between select-none">
                   <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">Total Estimated Service Cost:</span>
-                  <span className="text-base font-black text-[#B45A0A] font-poppins">₹9,300.00</span>
+                  <span className="text-base font-black text-[#A14000] font-poppins">₹9,300.00</span>
                 </div>
               </div>
 
@@ -301,11 +301,11 @@ export default function ServiceDetailsPage() {
                 
                 <div className="space-y-3.5 text-xs text-gray-200">
                   <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                    <input type="checkbox" defaultChecked className="h-4 w-4 accent-[#B45A0A] rounded cursor-pointer" />
+                    <input type="checkbox" defaultChecked className="h-4 w-4 accent-[#A14000] rounded cursor-pointer" />
                     <span>Please check oil levels.</span>
                   </label>
                   <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                    <input type="checkbox" defaultChecked className="h-4 w-4 accent-[#B45A0A] rounded cursor-pointer" />
+                    <input type="checkbox" defaultChecked className="h-4 w-4 accent-[#A14000] rounded cursor-pointer" />
                     <span>Brake pedal feels spongy on highways.</span>
                   </label>
                 </div>
@@ -313,7 +313,7 @@ export default function ServiceDetailsPage() {
                 {order.status !== "Completed" && (
                   <button
                     onClick={handleCompleteOrder}
-                    className="w-full py-2.5 bg-[#B45A0A] hover:bg-[#9A4D08] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#B45A0A]/20 cursor-pointer"
+                    className="w-full py-2.5 bg-[#A14000] hover:bg-[#853400] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#A14000]/20 cursor-pointer"
                   >
                     Complete Service
                   </button>

@@ -20,7 +20,7 @@ export default function VehicleCard({ vehicle }) {
     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm font-nunito">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-[#B45A0A] shrink-0">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-[#A14000] shrink-0">
             <Truck className="w-6 h-6 sm:w-7 sm:h-7" />
           </div>
           <div className="min-w-0 flex-1">
@@ -39,7 +39,7 @@ export default function VehicleCard({ vehicle }) {
         </div>
 
         <div className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-xs flex items-center gap-1.5 font-poppins font-medium self-start sm:self-center shrink-0">
-          <Eye className="w-3.5 h-3.5 text-[#B45A0A]" />
+          <Eye className="w-3.5 h-3.5 text-[#A14000]" />
           <span>View Only</span>
         </div>
       </div>
@@ -48,7 +48,7 @@ export default function VehicleCard({ vehicle }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 min-w-0">
           <div className="flex items-center gap-1.5 text-slate-500 text-xs mb-1 font-poppins font-semibold truncate">
-            <Fuel className="w-3.5 h-3.5 text-[#B45A0A] shrink-0" />
+            <Fuel className="w-3.5 h-3.5 text-[#A14000] shrink-0" />
             <span className="truncate">Fuel Specs</span>
           </div>
           <p className="text-sm font-semibold text-slate-900 font-poppins truncate">{vehicle.fuelType || "Diesel"}</p>
@@ -59,7 +59,7 @@ export default function VehicleCard({ vehicle }) {
 
         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 min-w-0">
           <div className="flex items-center gap-1.5 text-slate-500 text-xs mb-1 font-poppins font-semibold truncate">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#B45A0A] shrink-0" />
+            <ShieldCheck className="w-3.5 h-3.5 text-[#A14000] shrink-0" />
             <span className="truncate">Insurance</span>
           </div>
           <div className="flex items-center gap-1.5 mt-1">
@@ -79,7 +79,7 @@ export default function VehicleCard({ vehicle }) {
 
         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 min-w-0">
           <div className="flex items-center gap-1.5 text-slate-500 text-xs mb-1 font-poppins font-semibold truncate">
-            <Wrench className="w-3.5 h-3.5 text-[#B45A0A] shrink-0" />
+            <Wrench className="w-3.5 h-3.5 text-[#A14000] shrink-0" />
             <span className="truncate">Maintenance</span>
           </div>
           <p className="text-sm font-semibold text-slate-900 font-poppins truncate">{vehicle.currentStatus === 'Under Maintenance' ? 'Under Repair' : 'Good Health'}</p>
