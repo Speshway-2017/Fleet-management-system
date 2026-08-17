@@ -74,7 +74,13 @@ function SearchableSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredOptions = options.filter((opt) => {
+  const sortedOptions = [...options].sort((a, b) => {
+    const aName = String(typeof a === "object" ? a.name : a);
+    const bName = String(typeof b === "object" ? b.name : b);
+    return aName.localeCompare(bName);
+  });
+
+  const filteredOptions = sortedOptions.filter((opt) => {
     const optName = typeof opt === "object" ? opt.name : opt;
     return String(optName).toLowerCase().includes(searchTerm.toLowerCase());
   });

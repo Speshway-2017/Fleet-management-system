@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Plus, Search, ChevronDown, Eye, Edit2, Trash2, FileText, MapPin, X, AlertTriangle, SlidersHorizontal, Users, Loader } from "lucide-react";
+import { ArrowLeft, Plus, Search, ChevronDown, Eye, Edit2, Trash2, FileText, MapPin, X, AlertTriangle, SlidersHorizontal, Users, Loader, Truck } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -65,7 +65,7 @@ export default function VehiclesListPage() {
   const [sortField, setSortField] = useState("createdAt");
   const [sortDirection, setSortDirection] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [loading, setLoading] = useState(true);
 
@@ -379,13 +379,6 @@ export default function VehiclesListPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/manager/drivers")}
-            className="px-4 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm font-semibold text-[#64748B] hover:text-[#1E293B] hover:bg-[#F5F7FB] transition-all flex items-center gap-2 shadow-sm font-poppins cursor-pointer"
-          >
-            <Users className="w-4 h-4" />
-            <span>View All Drivers</span>
-          </button>
           <button
             onClick={() => navigate("/manager/add-vehicle")}
             disabled={isViewOnly}
@@ -783,7 +776,7 @@ export default function VehiclesListPage() {
                           : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
                       }`}
                     >
-                      {i + 1}
+                      Previous
                     </button>
                   ))}
                   <button

@@ -203,8 +203,22 @@ export default function TripsManagementPage() {
 
   useEffect(() => {
     fetchTrips(true);
+    const socket = getSocket();
+    const handleRefresh = () => fetchTrips(false);
+
+    socket.on("trip:created", handleRefresh);
+    socket.on("trip:updated", handleRefresh);
+    socket.on("trip:status-updated", handleRefresh);
+    socket.on("trip:deleted", handleRefresh);
+
     const interval = setInterval(() => fetchTrips(false), 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      socket.off("trip:created", handleRefresh);
+      socket.off("trip:updated", handleRefresh);
+      socket.off("trip:status-updated", handleRefresh);
+      socket.off("trip:deleted", handleRefresh);
+    };
   }, []);
 
   // Compute dynamic driving distances for fetched trips
@@ -455,27 +469,33 @@ export default function TripsManagementPage() {
     }
   };
 
-  // KPIs Calculations
-  const activeTripsCount = trips.filter(t => t.status === "In Progress" || t.status === "On Transit").length;
-  const urgentTripsCount = trips.filter(t => t.status === "Delayed").length;
-  const completedTripsCount = trips.filter(t => t.status === "Completed").length;
-  // Compute on-time rate based on mock data
-  const totalFinished = trips.filter(t => t.status === "Completed" || t.status === "Delayed").length;
+  // KPIs Calculations using standard normalization
+  const {
+    totalTrips,
+    activeTripsCount,
+    scheduledTripsCount,
+    completedTripsCount,
+    delayedTripsCount,
+    cancelledTripsCount,
+    otherTripsCount
+  } = calculateTripKPIs(trips);
+
+  const totalFinished = completedTripsCount + delayedTripsCount;
   const onTimeRate = totalFinished > 0 
-    ? Math.round((trips.filter(t => t.status === "Completed").length / totalFinished) * 100) 
+    ? Math.round((completedTripsCount / totalFinished) * 100) 
     : 94; // fallback to 94%
 
   // Tab Filtering
   const getTabFilteredTrips = () => {
     switch (activeTab) {
       case "Active":
-        return trips.filter(t => t.status === "In Progress" || t.status === "On Transit");
+        return trips.filter(t => getNormalizedTripCategory(t.status) === "active");
       case "Scheduled":
-        return trips.filter(t => t.status === "Scheduled" || t.status === "Assigned");
+        return trips.filter(t => getNormalizedTripCategory(t.status) === "scheduled");
       case "Completed":
-        return trips.filter(t => t.status === "Completed");
+        return trips.filter(t => getNormalizedTripCategory(t.status) === "completed");
       case "Delayed":
-        return trips.filter(t => t.status === "Delayed");
+        return trips.filter(t => getNormalizedTripCategory(t.status) === "delayed");
       default:
         return trips;
     }
@@ -509,11 +529,11 @@ export default function TripsManagementPage() {
         return "bg-[#FDF3EC] text-[#A14000] border border-[#FDF3EC] font-semibold";
       case "Scheduled":
         return "bg-blue-50 text-blue-700 border border-blue-100 font-semibold";
-      case "Assigned":
-        return "bg-indigo-50 text-indigo-700 border border-indigo-150 font-semibold";
-      case "Completed":
+      case "completed":
         return "bg-slate-900 text-white border border-slate-950 font-semibold";
-      case "Cancelled":
+      case "delayed":
+        return "bg-rose-50 text-rose-700 border border-rose-200 font-semibold";
+      case "cancelled":
         return "bg-red-50 text-red-600 border border-red-100 font-semibold";
       default:
         return "bg-gray-100 text-gray-500";

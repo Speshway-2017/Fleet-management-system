@@ -50,10 +50,25 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
     try {
       final res = await ApiService.getCurrentTrip();
       if (res != null && res['data'] != null) {
-        setState(() {
-          _currentTrip = res['data'];
-          _isLoading = false;
-        });
+        final trip = res['data'];
+        final status = trip['status']?.toString() ?? '';
+        const upcomingStatuses = [
+          'Pending Driver Acceptance',
+          'Assigned',
+          'Scheduled',
+          'Accepted'
+        ];
+        if (upcomingStatuses.contains(status)) {
+          setState(() {
+            _currentTrip = trip;
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _currentTrip = null;
+            _isLoading = false;
+          });
+        }
       } else {
         setState(() {
           _currentTrip = null;

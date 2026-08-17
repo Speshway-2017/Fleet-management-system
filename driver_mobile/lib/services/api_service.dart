@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'secure_storage_helper.dart';
 
 class ApiService {
   static Function()? onUnauthorized;
@@ -16,6 +17,46 @@ class ApiService {
   // Primary local network IP (PC Wi-Fi / Hotspot)
   static const String defaultLocalIp = '10.166.118.1';
   static String? _cachedBaseUrl;
+
+  static String formatServerUrl(String raw) {
+    var formattedUrl = raw.trim();
+    if (formattedUrl.isEmpty) {
+      formattedUrl = defaultServerUrl;
+    }
+    if (!formattedUrl.startsWith('http://') &&
+        !formattedUrl.startsWith('https://')) {
+      formattedUrl = 'https://$formattedUrl';
+    }
+    if (!formattedUrl.endsWith('/api')) {
+      if (formattedUrl.endsWith('/')) {
+        formattedUrl = '${formattedUrl}api';
+      } else {
+        formattedUrl = '$formattedUrl/api';
+      }
+    }
+    return formattedUrl;
+  }
+
+  static String get defaultUrl {
+    if (kDebugMode) {
+      return kIsWeb ? 'http://localhost:5000/api' : 'http://192.168.88.15:5000/api';
+    }
+    if (defaultServerUrl.startsWith('http://') ||
+        defaultServerUrl.startsWith('https://')) {
+      return formatServerUrl(defaultServerUrl);
+    }
+    return kIsWeb ? 'http://localhost:5000/api' : 'http://$defaultServerUrl:5000/api';
+  }
+
+  static String getHostFromUrl(String rawUrl) {
+    try {
+      final uri = Uri.parse(rawUrl.trim());
+      if (uri.hasScheme && uri.hasAuthority) {
+        return '${uri.scheme}://${uri.authority}';
+      }
+    } catch (_) {}
+    return kDebugMode ? 'http://localhost:5000' : 'https://fleet.speshway.site';
+  }
 
   static Future<String> getBaseUrl() async {
     if (_cachedBaseUrl != null && _cachedBaseUrl!.isNotEmpty) {
@@ -37,18 +78,7 @@ class ApiService {
   }
 
   static Future<void> setBaseUrl(String url) async {
-    var formattedUrl = url.trim();
-    if (!formattedUrl.startsWith('http://') &&
-        !formattedUrl.startsWith('https://')) {
-      formattedUrl = 'http://$formattedUrl';
-    }
-    if (!formattedUrl.endsWith('/api')) {
-      if (formattedUrl.endsWith('/')) {
-        formattedUrl = '${formattedUrl}api';
-      } else {
-        formattedUrl = '$formattedUrl/api';
-      }
-    }
+    var formattedUrl = formatServerUrl(url);
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('server_url', formattedUrl);
@@ -58,11 +88,7 @@ class ApiService {
   /// Fast health-check probe to test if a candidate backend URL is reachable.
   static Future<bool> testConnection(String targetUrl) async {
     try {
-      var formattedUrl = targetUrl.trim();
-      if (!formattedUrl.startsWith('http://') &&
-          !formattedUrl.startsWith('https://')) {
-        formattedUrl = 'http://$formattedUrl';
-      }
+      var formattedUrl = formatServerUrl(targetUrl);
       final healthUri = Uri.parse(
         '${formattedUrl.replaceAll('/api', '')}/health',
       );
@@ -122,6 +148,12 @@ class ApiService {
       'Accept': 'application/json',
       if (token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
+    final loggedHeaders = Map<String, String>.from(headers);
+    if (loggedHeaders.containsKey('Authorization')) {
+      loggedHeaders['Authorization'] = 'Bearer [MASKED]';
+    }
+    debugPrint('[ApiService] Final API request headers: $loggedHeaders');
+    return headers;
   }
 
   static Future<dynamic> get(String endpoint) async {

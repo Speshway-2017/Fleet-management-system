@@ -21,6 +21,7 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import { getSocket } from "@/api/socket";
 import { managerApi } from "../api/managerApi";
 import { calculateDrivingRoute } from "../services/routingService";
+import { getNormalizedTripCategory } from "@/utils/tripStatusHelper";
 
 import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 
@@ -364,7 +365,13 @@ export default function TripsListPage() {
       (t.endLocation || "").toLowerCase().includes(query) ||
       (t.description || "").toLowerCase().includes(query);
 
-    const matchesStatus = statusFilter === "All Statuses" || t.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "All Statuses" ||
+      t.status === statusFilter ||
+      (statusFilter === "Scheduled" && getNormalizedTripCategory(t.status) === "scheduled") ||
+      (statusFilter === "In Progress" && getNormalizedTripCategory(t.status) === "active") ||
+      (statusFilter === "Completed" && getNormalizedTripCategory(t.status) === "completed") ||
+      (statusFilter === "Cancelled" && getNormalizedTripCategory(t.status) === "cancelled");
 
     const matchesDriver = driverFilter === "All Drivers" || String(t.driver) === String(driverFilter);
 

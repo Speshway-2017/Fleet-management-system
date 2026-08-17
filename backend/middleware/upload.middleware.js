@@ -40,7 +40,7 @@ const fileFilter = (_req, file, cb) => {
 export const uploadDocument = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 }).single('document');
 
 /** Default export for backward compatibility */

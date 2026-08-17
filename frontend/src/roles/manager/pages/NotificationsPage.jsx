@@ -327,13 +327,6 @@ export default function NotificationsPage() {
               <span className="whitespace-nowrap">Mark all as read</span>
             </button>
           )}
-          <button
-            onClick={() => navigate("/manager/profile")}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors w-full sm:w-auto cursor-pointer"
-          >
-            <Icon icon="mdi:cog-outline" className="w-5 h-5" />
-            Profile Settings
-          </button>
         </div>
       </div>
 

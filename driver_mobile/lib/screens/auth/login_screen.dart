@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../main_navigation_screen.dart';
 import 'forgot_password_screen.dart';
+import '../../main.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

@@ -1,11 +1,23 @@
 import axios from "axios";
 
-const getApiBaseUrl = () => {
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
+export const getApiBaseUrl = () => {
+  if (typeof window !== "undefined" && window.location) {
+    const { hostname, origin } = window.location;
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.")
+    ) {
+      return `http://${hostname}:5000/api`;
+    }
+    const envUrl = import.meta.env.VITE_API_BASE_URL;
+    if (envUrl && !envUrl.includes("localhost")) {
+      return envUrl;
+    }
+    return `${origin}/api`;
   }
-  const hostname = (typeof window !== "undefined" && window.location.hostname) ? window.location.hostname : "localhost";
-  return `http://${hostname}:5000/api`;
+  return import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 };
 
 const axiosClient = axios.create({

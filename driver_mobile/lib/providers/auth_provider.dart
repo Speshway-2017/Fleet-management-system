@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../repositories/auth_repository.dart';
 import '../models/driver_model.dart';
 import '../screens/settings/notification_settings_screen.dart';
@@ -47,15 +49,43 @@ class AuthProvider extends ChangeNotifier {
     try {
       final hasToken = await _authRepository.hasToken();
       if (hasToken) {
-        final profile = await _authRepository.fetchProfile();
-        if (profile != null) {
-          _driver = profile;
-          _syncNotificationPreferences();
-          _isAuthenticated = true;
-          SocketService.initSocket();
-        } else {
-          _isAuthenticated = false;
-          await _authRepository.logout();
+        final prefs = await SharedPreferences.getInstance();
+        final cachedProfileStr = prefs.getString('driver_profile');
+        if (cachedProfileStr != null && cachedProfileStr.isNotEmpty) {
+          try {
+            _driver = DriverModel.fromJson(jsonDecode(cachedProfileStr));
+            _syncNotificationPreferences();
+            _isAuthenticated = true;
+            SocketService.initSocket();
+          } catch (_) {}
+        }
+
+        try {
+          final profile = await _authRepository.fetchProfile();
+          if (profile != null) {
+            _driver = profile;
+            _syncNotificationPreferences();
+            _isAuthenticated = true;
+            SocketService.initSocket();
+          } else {
+            _isAuthenticated = false;
+            await _authRepository.logout();
+          }
+        } catch (e) {
+          debugPrint('Failed to refresh profile on initialization: $e');
+          if (e.toString().contains('401') || e.toString().contains('Unauthorized') || e.toString().contains('unauthorized')) {
+            _isAuthenticated = false;
+            await _authRepository.logout();
+          } else {
+            // Keep the cached profile session active
+            if (_driver != null) {
+              _isAuthenticated = true;
+              SocketService.initSocket();
+            } else {
+              _isAuthenticated = false;
+              await _authRepository.logout();
+            }
+          }
         }
       } else {
         _isAuthenticated = false;
@@ -103,18 +133,22 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Clear FCM Token on backend first while still authenticated
+      try {
+        await _authRepository.updateProfile({'fcmToken': ''});
+      } catch (_) {}
+
       await _authRepository.logout();
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+    } finally {
       _driver = null;
       _isAuthenticated = false;
       SocketService.disconnect();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      return false;
-    } finally {
       _isLoading = false;
       notifyListeners();
     }
+    return _errorMessage == null;
   }
 
   Future<bool> forgotPassword(String email) async {
@@ -128,6 +162,7 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isAuthenticated = false;
       return false;
     } finally {
       _isLoading = false;
@@ -211,13 +246,13 @@ class AuthProvider extends ChangeNotifier {
         _driver = profile;
         _syncNotificationPreferences();
         _isAuthenticated = true;
-      } else {
-        _isAuthenticated = false;
-        await _authRepository.logout();
       }
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
-      if (e.toString().contains('401') || e.toString().contains('Unauthorized') || e.toString().contains('unauthorized')) {
+      if (e.toString().contains('401') ||
+          e.toString().contains('Unauthorized') ||
+          e.toString().contains('unauthorized') ||
+          e.toString().contains('No token provided')) {
         _isAuthenticated = false;
         await _authRepository.logout();
       }
@@ -233,6 +268,14 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final token = await _authRepository.getToken();
+      if (token == null || token.trim().isEmpty) {
+        _errorMessage = 'Authentication token is missing. Please log in again.';
+        _isAuthenticated = false;
+        await _authRepository.logout();
+        return false;
+      }
+
       final profile = await _authRepository.updateProfile(data);
       if (profile != null) {
         _driver = profile;
@@ -242,7 +285,10 @@ class AuthProvider extends ChangeNotifier {
       return false;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
-      if (e.toString().contains('401') || e.toString().contains('Unauthorized') || e.toString().contains('unauthorized')) {
+      if (e.toString().contains('401') ||
+          e.toString().contains('Unauthorized') ||
+          e.toString().contains('unauthorized') ||
+          e.toString().contains('No token provided')) {
         _isAuthenticated = false;
         await _authRepository.logout();
       }
@@ -263,7 +309,10 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
-      if (e.toString().contains('401') || e.toString().contains('Unauthorized') || e.toString().contains('unauthorized')) {
+      if (e.toString().contains('401') ||
+          e.toString().contains('Unauthorized') ||
+          e.toString().contains('unauthorized') ||
+          e.toString().contains('No token provided')) {
         _isAuthenticated = false;
         await _authRepository.logout();
       }
