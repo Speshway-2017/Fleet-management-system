@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import axiosClient from "@/api/axiosClient";
+import { getDaysRemaining } from "@/utils/dateUtils";
 
 const DEFAULT_PLANS = [
   {
@@ -109,15 +110,7 @@ export default function SubscriptionPage() {
     }
   };
 
-  // Calculate days remaining
-  const getDaysRemaining = () => {
-    if (user?.subscriptionStatus !== "ACTIVE" || !user?.subscriptionExpiry) return "--";
-    const expiry = new Date(user.subscriptionExpiry);
-    const now = new Date();
-    const diffTime = expiry.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 0;
-  };
+
 
   return (
     <div className="w-full px-6 md:px-8 py-8 overflow-x-hidden">
@@ -155,7 +148,7 @@ export default function SubscriptionPage() {
             </div>
             {user?.subscriptionStatus === "ACTIVE" && user?.subscriptionExpiry && (
               <div className="text-[11px] text-gray-500 dark:text-white font-medium mt-1">
-                Expires: <span className="font-bold text-gray-700 dark:text-white">{new Date(user.subscriptionExpiry).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}</span> ({getDaysRemaining()} days left)
+                Expires: <span className="font-bold text-gray-700 dark:text-white">{new Date(user.subscriptionExpiry).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}</span> ({getDaysRemaining(user?.subscriptionExpiry, user?.subscriptionStatus)} days left)
               </div>
             )}
             {pendingRequest && (

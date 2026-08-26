@@ -20,3 +20,13 @@ export const formatIFDWithTime = (dateString) => {
   const time = d.toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
   return `${day}-${month}-${year}, ${time}`;
 };
+
+export const getDaysRemaining = (expiryDate, status = "ACTIVE") => {
+  if (status !== "ACTIVE" || !expiryDate) return "--";
+  const expiry = new Date(expiryDate);
+  if (isNaN(expiry.getTime())) return "--";
+  const now = new Date();
+  const diffTime = expiry.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays > 0 ? diffDays : 0;
+};
