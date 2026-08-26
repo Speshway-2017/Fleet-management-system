@@ -21,7 +21,9 @@ import {
   Menu,
   X,
   Sun,
-  Moon
+  Moon,
+  ChevronRight,
+  Home
 } from "lucide-react";
 
 export default function DriverLayout() {
@@ -105,6 +107,65 @@ export default function DriverLayout() {
     }
   };
 
+  const renderBreadcrumbs = () => {
+    const pathnames = location.pathname.split("/").filter((x) => x);
+    if (pathnames.length === 0) return null;
+
+    // Hide breadcrumbs entirely on the dashboard page
+    const isDashboardPage = pathnames.length <= 2 && pathnames.includes("dashboard");
+    if (isDashboardPage) return null;
+
+    const labelMap = {
+      driver: "Driver Portal",
+      dashboard: "Dashboard",
+      trips: "My Trips",
+      vehicles: "My Vehicle",
+      fuel: "Fuel Purchases",
+      maintenance: "Maintenance Requests",
+      documents: "Compliance Documents",
+      notifications: "Alerts & Notifications",
+      support: "Help & Support",
+      settings: "Profile Settings",
+      profile: "Driver Profile"
+    };
+
+    return (
+      <nav className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-6 px-1 py-0.5 select-none font-poppins">
+        <Link
+          to="/driver/dashboard"
+          className="flex items-center gap-1 hover:text-[#A14000] dark:hover:text-amber-400 transition-colors font-medium"
+        >
+          <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />
+          <span>Dashboard</span>
+        </Link>
+
+        {pathnames.map((value, index) => {
+          if (value.toLowerCase() === "driver" || value.toLowerCase() === "dashboard") return null;
+
+          const to = `/${pathnames.slice(0, index + 1).join("/")}`;
+          const isLast = index === pathnames.length - 1;
+          const displayValue = labelMap[value.toLowerCase()] || (value.startsWith("TRIP") || value.match(/^[0-9a-fA-F]{24}$/) ? `Details (#${value.slice(-6)})` : value.charAt(0).toUpperCase() + value.slice(1));
+
+          return (
+            <div key={to} className="flex items-center gap-1.5">
+              <ChevronRight className="w-3.5 h-3.5 shrink-0 text-slate-400 dark:text-slate-600" />
+              {isLast ? (
+                <span className="font-bold text-[#A14000] dark:text-amber-500">{displayValue}</span>
+              ) : (
+                <Link
+                  to={to}
+                  className="hover:text-[#A14000] dark:hover:text-amber-400 transition-colors font-medium"
+                >
+                  {displayValue}
+                </Link>
+              )}
+            </div>
+          );
+        })}
+      </nav>
+    );
+  };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -178,24 +239,11 @@ export default function DriverLayout() {
 
         {/* Driver Profile Card in Sidebar */}
         <div className="p-4 border-b border-slate-800/80 bg-transparent">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#FFDBCC]/60 border border-[#A14000]/40 flex items-center justify-center text-[#A14000] font-bold font-poppins shrink-0 overflow-hidden">
-              {driverProfile?.profileImage ? (
-                <img src={driverProfile.profileImage} alt={driverName} className="w-full h-full object-cover" />
-              ) : (
-                driverName.charAt(0).toUpperCase()
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-sm font-extrabold text-white font-poppins truncate">{driverName}</h2>
-              <p className="text-xs font-semibold text-slate-400 truncate">{driverProfile?.email || user?.email || user?.phoneNumber || "Driver Account"}</p>
-            </div>
-          </div>
           {/* Duty Toggle Button */}
           <button
             onClick={handleToggleDuty}
             disabled={updatingDuty}
-            className={`mt-3 w-full py-1.5 px-3 rounded-lg text-xs font-extrabold font-poppins flex items-center justify-center gap-2 transition cursor-pointer ${
+            className={`w-full py-1.5 px-3 rounded-lg text-xs font-extrabold font-poppins flex items-center justify-center gap-2 transition cursor-pointer ${
               isOnDuty
                 ? "bg-emerald-950/80 text-[#6EE7B7] border border-emerald-700/60 hover:bg-emerald-900/90"
                 : "bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700"
@@ -293,6 +341,7 @@ export default function DriverLayout() {
 
         {/* Scrollable Page Body Workspace */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8 max-w-7xl w-full mx-auto custom-scrollbar">
+          {renderBreadcrumbs()}
           <Outlet />
         </main>
       </div>

@@ -45,7 +45,7 @@ export default function VehicleDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
-  const isViewOnly = user?.subscriptionStatus !== "ACTIVE";
+  const isViewOnly = user?.subscriptionStatus !== "ACTIVE" && !import.meta.env.DEV;
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const gpsMapRef = useRef(null);
@@ -57,6 +57,7 @@ export default function VehicleDetailsPage() {
   const [loading, setLoading] = useState(false);
   const [previewDocument, setPreviewDocument] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [hasActiveTrip, setHasActiveTrip] = useState(false);
 
   // Tab & sub-sections state
   const [activeTab, setActiveTab] = useState("info");
@@ -140,82 +141,80 @@ export default function VehicleDetailsPage() {
     };
   };
 
-  useEffect(() => {
-    const fetchVehicleDetails = async () => {
-      try {
-        setLoading(true);
-        const res = await vehicleApi.getById(id);
-        const found = res.data?.data;
-        if (found) {
-          const norm = normaliseVehicle(found);
-          const isAvailableStatus = found.currentStatus === 'Available' || found.status === 'Available' || found.currentStatus === 'Under Maintenance' || found.currentStatus === 'Out of Service';
+  const loadVehicleData = async () => {
+    try {
+      setLoading(true);
+      const res = await vehicleApi.getById(id);
+      const found = res.data?.data;
+      if (found) {
+        const norm = normaliseVehicle(found);
+        const isAvailableStatus = found.currentStatus === 'Available' || found.status === 'Available' || found.currentStatus === 'Under Maintenance' || found.currentStatus === 'Out of Service';
 
-          if (isAvailableStatus) {
-            norm.driver = 'Unassigned';
-          } else if (!norm.driver || norm.driver === 'Unassigned' || norm.driver === 'N/A' || isObjectIdString(norm.driver)) {
-            try {
-              const rawDriverId = found.assignedDriver?._id || found.assignedDriver;
-              if (rawDriverId && isObjectIdString(String(rawDriverId))) {
-                const driverRes = await managerApi.getDrivers();
-                const driversList = driverRes.data?.data || driverRes.data || [];
-                const matchedDriver = driversList.find(d => String(d._id || d.id) === String(rawDriverId));
-                if (matchedDriver) {
-                  norm.driver = matchedDriver.fullName || matchedDriver.name || matchedDriver.email;
-                }
+        let activeTrip = null;
+        try {
+          const tripsRes = await managerApi.getTrips({ vehicle: id });
+          const tripsData = tripsRes.data?.data || [];
+          activeTrip = tripsData.find(t => {
+            const status = t.status?.toLowerCase() || "";
+            const isTripActive = status !== "completed" && status !== "cancelled" && status !== "rejected";
+            const matchesVehicle = String(t.vehicle?._id || t.vehicle) === String(id) || 
+                                   (found.vehicleNumber && String(t.vehiclePlate).toLowerCase() === String(found.vehicleNumber).toLowerCase());
+            return isTripActive && matchesVehicle;
+          });
+          setHasActiveTrip(!!activeTrip);
+        } catch (err) {
+          console.error("Failed to load trips for active trip check:", err);
+        }
+
+        if (isAvailableStatus) {
+          norm.driver = 'Unassigned';
+        } else if (!norm.driver || norm.driver === 'Unassigned' || norm.driver === 'N/A' || isObjectIdString(norm.driver)) {
+          try {
+            const rawDriverId = found.assignedDriver?._id || found.assignedDriver;
+            if (rawDriverId && isObjectIdString(String(rawDriverId))) {
+              const driverRes = await managerApi.getDrivers();
+              const driversList = driverRes.data?.data || driverRes.data || [];
+              const matchedDriver = driversList.find(d => String(d._id || d.id) === String(rawDriverId));
+              if (matchedDriver) {
+                norm.driver = matchedDriver.fullName || matchedDriver.name || matchedDriver.email;
               }
-            } catch (_) {}
+            }
+          } catch (_) {}
 
-            if (!norm.driver || norm.driver === 'Unassigned' || norm.driver === 'N/A' || isObjectIdString(norm.driver)) {
-              try {
-                const tripsRes = await managerApi.getTrips({ vehicle: id });
-                const tripsData = tripsRes.data?.data || [];
-                const activeTrip = tripsData.find(t =>
-                  (t.status === 'In Progress' || t.status === 'On Transit' || t.status === 'Enroute' || t.status === 'Assigned') &&
-                  (String(t.vehicle?._id || t.vehicle) === String(id) || (found.vehicleNumber && t.vehiclePlate === found.vehicleNumber))
-                );
-                if (activeTrip && (activeTrip.driverName || activeTrip.driver?.fullName || activeTrip.driver?.name)) {
-                  norm.driver = activeTrip.driverName || activeTrip.driver?.fullName || activeTrip.driver?.name;
-                }
-              } catch (_) {}
+          if ((!norm.driver || norm.driver === 'Unassigned' || norm.driver === 'N/A' || isObjectIdString(norm.driver)) && activeTrip) {
+            if (activeTrip.driverName || activeTrip.driver?.fullName || activeTrip.driver?.name) {
+              norm.driver = activeTrip.driverName || activeTrip.driver?.fullName || activeTrip.driver?.name;
             }
           }
-
-          if (isAvailableStatus || isObjectIdString(norm.driver)) {
-            norm.driver = 'Unassigned';
-          }
-          setVehicle(norm);
-        } else {
-          toast.error("Vehicle not found");
-          navigate("/manager/vehicles-list");
         }
-      } catch (err) {
-        console.error("Failed to load vehicle:", err);
-        toast.error("Failed to load vehicle details from server.");
+
+        if (isAvailableStatus || isObjectIdString(norm.driver)) {
+          norm.driver = 'Unassigned';
+        }
+        setVehicle(norm);
+      } else {
+        toast.error("Vehicle not found");
         navigate("/manager/vehicles-list");
-      } finally {
-        setLoading(false);
       }
-    };
-    fetchVehicleDetails();
-  }, [id, navigate]);
+    } catch (err) {
+      console.error("Failed to load vehicle:", err);
+      toast.error("Failed to load vehicle details from server.");
+      navigate("/manager/vehicles-list");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadVehicleData();
+  }, [id]);
 
   useEffect(() => {
     const socket = getSocket();
     if (socket) {
       const handleTripStatusUpdated = (updatedTrip) => {
         if (updatedTrip && (String(updatedTrip.vehicle) === String(id) || (updatedTrip.vehicle && String(updatedTrip.vehicle._id) === String(id)))) {
-          const fetchVehicleDetails = async () => {
-            try {
-              const res = await vehicleApi.getById(id);
-              const found = res.data?.data;
-              if (found) {
-                setVehicle(normaliseVehicle(found));
-              }
-            } catch (err) {
-              console.error("Failed to reload vehicle details on trip completion:", err);
-            }
-          };
-          fetchVehicleDetails();
+          loadVehicleData();
         }
       };
 
@@ -359,6 +358,20 @@ export default function VehicleDetailsPage() {
     return () => clearTimeout(timer);
   }, [activeTab, selectedTrip]);
 
+
+  // Prevent body scrolling when document preview or management modals are open
+  useEffect(() => {
+    const isAnyModalOpen = !!previewDocument || showDeleteConfirm || showAssignModal;
+    if (isAnyModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [previewDocument, showDeleteConfirm, showAssignModal]);
+
   const handleDelete = async () => {
     try {
       setIsDeletingVehicle(true);
@@ -473,6 +486,7 @@ export default function VehicleDetailsPage() {
 
           {/* Right side - Actions */}
           <div className="flex items-center gap-2 md:ml-auto">
+
             <button
               onClick={() => navigate(`/manager/vehicle-edit/${vehicle._id}`)}
               disabled={isViewOnly}
@@ -1084,6 +1098,7 @@ export default function VehicleDetailsPage() {
           </div>
         </div>
       )}
+
 
 
       {/* Maintenance Details Modal */}

@@ -33,6 +33,7 @@ import { calculateDrivingRoute, calculateEtaFromDuration } from "../services/rou
 import KPICard from "@/components/common/KPICard";
 import StatusBadge from "@/components/common/StatusBadge";
 import PillTabs from "@/components/common/PillTabs";
+import { getNormalizedTripCategory, calculateTripKPIs } from "@/utils/tripStatusHelper";
 
 import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 

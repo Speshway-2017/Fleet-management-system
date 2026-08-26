@@ -204,6 +204,14 @@ export default function AnalyticsPage() {
             <Icon icon="mdi:download" className="w-4 h-4" />
             Export Report
           </button>
+
+          <button
+            onClick={() => setShowInsights(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-bold font-poppins transition-colors shadow-xs w-full sm:w-auto cursor-pointer"
+          >
+            <Icon icon="mdi:lightbulb-on-outline" className="w-4 h-4" />
+            AI Insights
+          </button>
         </div>
       </div>
 
@@ -398,14 +406,7 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Floating Action Button */}
-      <button 
-        onClick={() => setShowInsights(true)}
-        className="fixed bottom-8 right-8 w-16 h-16 bg-amber-700 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-amber-800 transition-all cursor-pointer active:scale-95 z-50 animate-bounce"
-        title="AI Operational Insights"
-      >
-        <Icon icon="mdi:lightbulb-on-outline" className="w-8 h-8" />
-      </button>
+
 
       {/* AI Operational Insights Drawer */}
       {showInsights && (
