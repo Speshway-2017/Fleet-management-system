@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
 import {
   Truck,
   Zap,
@@ -262,6 +263,18 @@ export default function VehicleManagement() {
   // Modals & CRUD UI States
   const [modalType, setModalType] = useState(null); // 'add' | 'edit' | 'delete' | 'assign' | 'details'
   const [selectedVehicle, setSelectedVehicle] = useState(null);
+
+  // Prevent body scrolling when management modals are open
+  useEffect(() => {
+    if (modalType) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [modalType]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -1333,16 +1346,19 @@ export default function VehicleManagement() {
 
 
       {/* Floating Add Vehicle Button */}
-      <button
-        onClick={openAddModal}
-        title="Add new vehicle"
-        className="fixed bottom-6 right-6 w-14 h-14 bg-[#A14000] hover:bg-[#853400] text-white rounded-full flex items-center justify-center shadow-xl hover:shadow-[#A14000]/35 hover:scale-108 transition-all z-30 group cursor-pointer"
-      >
-        <Plus className="w-7 h-7 transition-transform group-hover:rotate-90" />
-      </button>
+      {createPortal(
+        <button
+          onClick={openAddModal}
+          title="Add new vehicle"
+          className="fixed bottom-6 right-6 w-14 h-14 bg-[#A14000] hover:bg-[#853400] text-white rounded-full flex items-center justify-center shadow-xl hover:shadow-[#A14000]/35 hover:scale-108 transition-all z-30 group cursor-pointer"
+        >
+          <Plus className="w-7 h-7 transition-transform group-hover:rotate-90" />
+        </button>,
+        document.body
+      )}
 
       {/* --- ADD / EDIT / DRIVER ASSIGNMENT / DETAILS MODALS --- */}
-      {modalType && (
+      {modalType && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
 
           {/* Modal Container */}
@@ -1717,7 +1733,8 @@ export default function VehicleManagement() {
 
           </div>
 
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

@@ -2,6 +2,16 @@ import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import driverApi from "../api/driverApi";
 import MapView from "../components/MapView";
+
+const resolveDocumentUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  const hostname = typeof window !== "undefined" ? window.location.hostname : "localhost";
+  const backendBase = `http://${hostname}:5000`;
+  return `${backendBase}${url.startsWith("/") ? "" : "/"}${url}`;
+};
 import { useDriverSocket } from "../hooks/useDriverSocket";
 import { toast } from "react-hot-toast";
 import {
@@ -23,7 +33,8 @@ import {
   Receipt,
   Printer,
   X,
-  Download
+  Download,
+  Fuel
 } from "lucide-react";
 import { calculateDrivingRoute } from "../../manager/services/routingService";
 
@@ -54,6 +65,17 @@ export default function DriverTripDetailsPage() {
   const [invoiceData, setInvoiceData] = useState(null);
   const [tollData, setTollData] = useState(null);
   const [loadingBill, setLoadingBill] = useState(false);
+
+  const [showAddFuelModal, setShowAddFuelModal] = useState(false);
+  const [submittingFuel, setSubmittingFuel] = useState(false);
+  const [fuelForm, setFuelForm] = useState({
+    stationName: "",
+    quantity: "",
+    totalCost: "",
+    odometerReading: "",
+    purchaseLocation: ""
+  });
+  const [receiptFile, setReceiptFile] = useState(null);
 
   const handleOpenInvoice = async () => {
     if (!tripId) return;
@@ -135,6 +157,59 @@ export default function DriverTripDetailsPage() {
       console.error("Error fetching trip details:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddFuelSubmit = async (e) => {
+    e.preventDefault();
+    if (!fuelForm.stationName || !fuelForm.quantity || !fuelForm.totalCost) {
+      toast.error("Please fill in required fields (Station Name, Liters, Amount)");
+      return;
+    }
+
+    try {
+      setSubmittingFuel(true);
+      const locVal = trip?.destination || trip?.location || trip?.endLocation || trip?.origin || fuelForm.purchaseLocation.trim() || fuelForm.stationName.trim() || 'GPS Station';
+      
+      const formData = new FormData();
+      formData.append("quantity", fuelForm.quantity);
+      formData.append("liters", fuelForm.quantity);
+      formData.append("totalCost", fuelForm.totalCost);
+      formData.append("amount", fuelForm.totalCost);
+      formData.append("stationName", fuelForm.stationName);
+      formData.append("fuelStation", fuelForm.stationName);
+      formData.append("location", locVal);
+      formData.append("city", locVal);
+      formData.append("purchaseLocation", locVal);
+      formData.append("fuelLocation", locVal);
+      formData.append("tripId", tripId);
+      
+      if (fuelForm.odometerReading) {
+        formData.append("odometerReading", fuelForm.odometerReading);
+        formData.append("odometer", fuelForm.odometerReading);
+      }
+      
+      if (receiptFile) {
+        formData.append("file", receiptFile);
+      }
+
+      const res = await driverApi.createFuelEntry(formData);
+      if (res?.success) {
+        toast.success("Fuel log entry submitted successfully!");
+        setShowAddFuelModal(false);
+        setFuelForm({
+          stationName: "",
+          quantity: "",
+          totalCost: "",
+          odometerReading: "",
+          purchaseLocation: ""
+        });
+        setReceiptFile(null);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to submit fuel entry");
+    } finally {
+      setSubmittingFuel(false);
     }
   };
 
@@ -751,6 +826,24 @@ export default function DriverTripDetailsPage() {
                 </span>
               </div>
             </div>
+            <button
+              onClick={() => navigate("/driver/vehicles", { state: { tab: "documents" } })}
+              className="mt-3.5 w-full py-2 bg-slate-50 hover:bg-slate-100 text-[#A14000] dark:bg-[#1E293B] dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+            >
+              <FileText className="w-3.5 h-3.5" /> View Vehicle Documents
+            </button>
+            {(() => {
+              const statusLower = trip?.status?.toLowerCase() || "";
+              const isActiveTrip = statusLower !== "completed" && statusLower !== "cancelled" && statusLower !== "rejected";
+              return isActiveTrip && (
+                <button
+                  onClick={() => setShowAddFuelModal(true)}
+                  className="mt-2 w-full py-2 bg-[#059669] hover:bg-[#047857] text-white border border-transparent font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                >
+                  <Fuel className="w-3.5 h-3.5" /> Add Fuel Log
+                </button>
+              );
+            })()}
           </div>
 
           {/* Cargo Specs */}
@@ -815,7 +908,7 @@ export default function DriverTripDetailsPage() {
                             }
                           }
                           if (url && !url.includes("unsplash.com") && !url.includes("via.placeholder.com")) {
-                            window.open(url, "_blank");
+                            window.open(resolveDocumentUrl(url), "_blank");
                           } else {
                             toast.error("No valid POD document uploaded yet.");
                           }
@@ -869,7 +962,7 @@ export default function DriverTripDetailsPage() {
                             }
                           }
                           if (url && !url.includes("unsplash.com") && !url.includes("via.placeholder.com")) {
-                            window.open(url, "_blank");
+                            window.open(resolveDocumentUrl(url), "_blank");
                           } else {
                             toast.error("No valid Weighbridge slip uploaded yet.");
                           }
@@ -901,6 +994,134 @@ export default function DriverTripDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Add Fuel Entry Modal */}
+      {showAddFuelModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 border border-slate-200 relative animate-scale-up">
+            <button
+              onClick={() => setShowAddFuelModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-emerald-100 text-emerald-600 p-3 rounded-xl">
+                <Fuel className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Record Fuel Log</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Log fuel purchase details for this active trip.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleAddFuelSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Fuel Station</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Shell Petrol Pump, Bengaluru"
+                  value={fuelForm.stationName}
+                  onChange={(e) => setFuelForm({ ...fuelForm, stationName: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#A14000] focus:bg-white transition-all"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Liters</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    step="0.01"
+                    placeholder="e.g. 50"
+                    value={fuelForm.quantity}
+                    onChange={(e) => setFuelForm({ ...fuelForm, quantity: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#A14000] focus:bg-white transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Amount (INR)</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    step="0.01"
+                    placeholder="e.g. 5000"
+                    value={fuelForm.totalCost}
+                    onChange={(e) => setFuelForm({ ...fuelForm, totalCost: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#A14000] focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Odometer (Optional)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 12450"
+                    value={fuelForm.odometerReading}
+                    onChange={(e) => setFuelForm({ ...fuelForm, odometerReading: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#A14000] focus:bg-white transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Purchase City (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Pune"
+                    value={fuelForm.purchaseLocation}
+                    onChange={(e) => setFuelForm({ ...fuelForm, purchaseLocation: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#A14000] focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Receipt Slip (Optional)</label>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => setReceiptFile(e.target.files[0])}
+                  className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddFuelModal(false)}
+                  disabled={submittingFuel}
+                  className="px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingFuel}
+                  className="px-4 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-xl text-sm font-semibold text-white transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                >
+                  {submittingFuel ? (
+                    <>
+                      <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-white" />
+                      Save Log
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Invoice Bill View Modal */}
       {invoiceModalOpen && invoiceData && (

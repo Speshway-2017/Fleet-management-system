@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
 import {
   Users, UserCheck, UserX, AlertTriangle, Plus,
   Search, ChevronDown, RefreshCw, Eye, Trash2,
@@ -23,6 +24,18 @@ export default function DriversManagementPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const [stats, setStats] = useState(null);
+
+  // Prevent body scrolling when delete confirmation modal is open
+  useEffect(() => {
+    if (deleteModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [deleteModalOpen]);
 
   const fetchDrivers = useCallback(async (isInitial = false) => {
     try {
@@ -281,12 +294,15 @@ export default function DriversManagementPage() {
       </div>
 
       {/* FAB */}
-      <button onClick={() => navigate("/manager/add-driver")} className="fixed bottom-6 right-6 w-14 h-14 bg-[#A14000] hover:bg-[#853400] text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-all z-30 group cursor-pointer">
-        <Plus className="w-7 h-7 group-hover:rotate-90 transition-transform" />
-      </button>
+      {createPortal(
+        <button onClick={() => navigate("/manager/add-driver")} className="fixed bottom-6 right-6 w-14 h-14 bg-[#A14000] hover:bg-[#853400] text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-all z-30 group cursor-pointer">
+          <Plus className="w-7 h-7 group-hover:rotate-90 transition-transform" />
+        </button>,
+        document.body
+      )}
 
       {/* Delete Modal */}
-      {deleteModalOpen && selectedDriver && (
+      {deleteModalOpen && selectedDriver && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 border border-[#E7EAF0] relative">
             <button onClick={() => { setDeleteModalOpen(false); setSelectedDriver(null); }} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl cursor-pointer"><X className="w-5 h-5" /></button>
@@ -310,7 +326,8 @@ export default function DriversManagementPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

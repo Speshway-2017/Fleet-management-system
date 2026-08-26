@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { createPortal } from "react-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -78,6 +79,7 @@ export default function TripDetailsPage() {
   const [weighbridgeRejectReason, setWeighbridgeRejectReason] = useState("");
   const [showWeighbridgeRejectModal, setShowWeighbridgeRejectModal] = useState(false);
   const [fuelRecords, setFuelRecords] = useState([]);
+  const [previewFuelReceipt, setPreviewFuelReceipt] = useState(null);
 
   const [tolls, setTolls] = useState([]);
   const [isTollOpen, setIsTollOpen] = useState(false);
@@ -104,13 +106,6 @@ export default function TripDetailsPage() {
   // Reset Trip Invoice scroll position to top whenever modal opens
   useEffect(() => {
     if (showInvoiceModal && invoice) {
-      console.log("=====================================");
-      console.log("Opening Trip Invoice...");
-      console.log("Resetting Invoice Scroll Position...");
-
-      // Reset main window scroll position
-      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-
       // Reset modal container scroll positions
       if (invoiceModalOverlayRef.current) {
         invoiceModalOverlayRef.current.scrollTop = 0;
@@ -118,12 +113,29 @@ export default function TripDetailsPage() {
       if (invoiceModalContentRef.current) {
         invoiceModalContentRef.current.scrollTop = 0;
       }
-
-      console.log("Scroll Position: Top");
-      console.log("Invoice Ready");
-      console.log("=====================================");
     }
   }, [showInvoiceModal, invoice]);
+
+  // Prevent body scrolling when any document preview modal is open
+  useEffect(() => {
+    const isAnyModalOpen = showInvoiceModal || 
+                           showPodModal || 
+                           showWeighbridgeModal || 
+                           !!selectedTollReceipt || 
+                           !!previewFuelReceipt ||
+                           showCancelConfirm ||
+                           showRejectModal ||
+                           showTollRejectModal ||
+                           showWeighbridgeRejectModal;
+    if (isAnyModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showInvoiceModal, showPodModal, showWeighbridgeModal, selectedTollReceipt, previewFuelReceipt, showCancelConfirm, showRejectModal, showTollRejectModal, showWeighbridgeRejectModal]);
 
   // Initialize Leaflet map
   useEffect(() => {
@@ -1948,7 +1960,7 @@ export default function TripDetailsPage() {
                           <div className="grid grid-cols-2 gap-3 pt-2">
                             <button
                               type="button"
-                              onClick={() => window.open(img, "_blank")}
+                              onClick={() => setPreviewFuelReceipt({ url: img, name: record.fuelStation || 'Fuel Station' })}
                               className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                             >
                               <Eye className="w-3.5 h-3.5" />
@@ -1974,7 +1986,7 @@ export default function TripDetailsPage() {
       )}
 
       {/* --- CANCEL DISPATCH CONFIRMATION MODAL --- */}
-      {showCancelConfirm && (
+      {showCancelConfirm && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 border border-[#E7EAF0] relative animate-scale-up">
             <button
@@ -2011,7 +2023,8 @@ export default function TripDetailsPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {trip && (
@@ -2037,14 +2050,14 @@ export default function TripDetailsPage() {
         />
       )}
       {/* --- INVOICE VIEW MODAL --- */}
-      {showInvoiceModal && invoice && (
+      {showInvoiceModal && invoice && createPortal(
         <div 
           ref={invoiceModalOverlayRef}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-6 md:pt-10 animate-fade-in overflow-y-auto"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto"
         >
           <div 
             ref={invoiceModalContentRef}
-            className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl p-6 md:p-8 border border-[#E7EAF0] relative my-4 md:my-6 animate-scale-up max-h-[85vh] overflow-y-auto"
+            className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl p-6 md:p-8 border border-[#E7EAF0] relative animate-scale-up max-h-[85vh] overflow-y-auto"
           >
             <button
               onClick={() => setShowInvoiceModal(false)}
@@ -2233,13 +2246,14 @@ export default function TripDetailsPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* --- POD VIEW MODAL --- */}
-      {showPodModal && pod && (
+      {showPodModal && pod && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl p-6 border border-[#E7EAF0] relative my-8 animate-scale-up">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl p-6 border border-[#E7EAF0] relative animate-scale-up max-h-[85vh] overflow-y-auto">
             <button
               onClick={() => setShowPodModal(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
@@ -2267,10 +2281,14 @@ export default function TripDetailsPage() {
               )}
               {pod.podDocumentUrl ? (
                 <div>
-                  <h4 className="font-bold text-[#1E293B]">POD Document</h4>
-                  <a href={pod.podDocumentUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline mt-1 inline-block">
-                    View POD Document (PDF/Image)
-                  </a>
+                  <h4 className="font-bold text-[#1E293B] mb-2">POD Document</h4>
+                  {pod.podDocumentUrl.endsWith(".pdf") || pod.podDocumentUrl.includes("/raw/upload/") ? (
+                    <div className="w-full h-80">
+                      <iframe src={pod.podDocumentUrl} className="w-full h-full border border-gray-200 rounded-lg" title="POD Document" />
+                    </div>
+                  ) : (
+                    <img src={pod.podDocumentUrl} alt="POD Document" loading="lazy" className="max-h-60 border border-gray-200 rounded-lg object-contain" />
+                  )}
                 </div>
               ) : (
                 <p>No POD document uploaded.</p>
@@ -2286,13 +2304,14 @@ export default function TripDetailsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* --- RECEIPT VIEW MODAL --- */}
-      {selectedTollReceipt && (
+      {selectedTollReceipt && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 border border-[#E7EAF0] relative my-8 animate-scale-up font-nunito">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 border border-[#E7EAF0] relative animate-scale-up font-nunito max-h-[85vh] overflow-y-auto">
             <button
               onClick={() => setSelectedTollReceipt(null)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
@@ -2418,11 +2437,12 @@ export default function TripDetailsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* --- REJECT REASON MODAL --- */}
-      {showRejectModal && (
+      {showRejectModal && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6 border border-[#E7EAF0] relative animate-scale-up">
             <button
@@ -2466,13 +2486,75 @@ export default function TripDetailsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {/* --- FUEL RECEIPT VIEW MODAL --- */}
+      {previewFuelReceipt && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl p-6 border border-[#E7EAF0] relative animate-scale-up max-h-[85vh] overflow-y-auto">
+            <button
+              onClick={() => setPreviewFuelReceipt(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-xl font-bold font-poppins text-[#1E293B] mb-4">Fuel Purchase Receipt</h3>
+            <p className="text-xs text-[#64748B] mb-4">{previewFuelReceipt.name}</p>
+
+            <div className="space-y-4 text-sm text-[#64748B] flex flex-col items-center">
+              {previewFuelReceipt.url ? (
+                previewFuelReceipt.url.endsWith(".pdf") || previewFuelReceipt.url.includes("/raw/upload/") ? (
+                  <div className="w-full h-80">
+                    <iframe
+                      src={previewFuelReceipt.url}
+                      className="w-full h-full border border-gray-200 rounded-lg"
+                      title="Fuel Receipt PDF"
+                    />
+                  </div>
+                ) : (
+                  <img
+                    src={previewFuelReceipt.url}
+                    alt="Fuel Receipt"
+                    loading="lazy"
+                    className="max-h-60 max-w-full border border-gray-200 rounded-lg object-contain shadow-sm"
+                  />
+                )
+              ) : (
+                <p>No receipt image available.</p>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-4 mt-6 border-t border-[#E7EAF0] gap-3">
+              {previewFuelReceipt.url && (
+                <a
+                  href={previewFuelReceipt.url}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+                >
+                  Download File
+                </a>
+              )}
+              <button
+                onClick={() => setPreviewFuelReceipt(null)}
+                className="px-4.5 py-2.5 bg-slate-900 hover:bg-black rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* --- WEIGHBRIDGE VIEW MODAL --- */}
-      {showWeighbridgeModal && weighbridge && (
+      {showWeighbridgeModal && weighbridge && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl p-6 border border-[#E7EAF0] relative my-8 animate-scale-up">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl p-6 border border-[#E7EAF0] relative animate-scale-up max-h-[85vh] overflow-y-auto">
             <button
               onClick={() => setShowWeighbridgeModal(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
@@ -2483,10 +2565,14 @@ export default function TripDetailsPage() {
             <div className="space-y-4 text-sm text-[#64748B]">
               {weighbridge.documentUrl ? (
                 <div>
-                  <h4 className="font-bold text-[#1E293B]">Weighbridge Document</h4>
-                  <a href={weighbridge.documentUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline mt-1 inline-block">
-                    View Document (PDF/Image)
-                  </a>
+                  <h4 className="font-bold text-[#1E293B] mb-2">Weighbridge Document</h4>
+                  {weighbridge.documentUrl.endsWith(".pdf") || weighbridge.documentUrl.includes("/raw/upload/") ? (
+                    <div className="w-full h-80">
+                      <iframe src={weighbridge.documentUrl} className="w-full h-full border border-gray-200 rounded-lg" title="Weighbridge Document" />
+                    </div>
+                  ) : (
+                    <img src={weighbridge.documentUrl} alt="Weighbridge Slip" loading="lazy" className="max-h-60 border border-gray-200 rounded-lg object-contain" />
+                  )}
                 </div>
               ) : (
                 <p>No document available.</p>
@@ -2501,11 +2587,12 @@ export default function TripDetailsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* --- WEIGHBRIDGE REJECT REASON MODAL --- */}
-      {showWeighbridgeRejectModal && (
+      {showWeighbridgeRejectModal && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6 border border-[#E7EAF0] relative animate-scale-up">
             <button
@@ -2545,11 +2632,12 @@ export default function TripDetailsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* --- TOLL RECEIPTS VIEW MODAL --- */}
-      {showTollModal && toll && (
+      {showTollModal && toll && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl p-6 border border-[#E7EAF0] relative my-8 animate-scale-up">
             <button
@@ -2584,11 +2672,12 @@ export default function TripDetailsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* --- TOLL REJECT REASON MODAL --- */}
-      {showTollRejectModal && (
+      {showTollRejectModal && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6 border border-[#E7EAF0] relative animate-scale-up">
             <button
@@ -2628,142 +2717,8 @@ export default function TripDetailsPage() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* --- RECEIPT VIEW MODAL --- */}
-      {selectedTollReceipt && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 border border-[#E7EAF0] relative my-8 animate-scale-up font-nunito">
-            <button
-              onClick={() => setSelectedTollReceipt(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {/* Receipt Content */}
-            <div className="space-y-5">
-              {/* Header */}
-              <div className="text-center pb-4 border-b border-dashed border-gray-200">
-                <div className="mx-auto w-12 h-12 bg-blue-600 rounded-2xl flex flex-col items-center justify-center text-white font-poppins font-black text-xs shadow-md shadow-blue-200">
-                  <span className="leading-none text-[8px] uppercase tracking-wider font-bold opacity-85">NHAI</span>
-                  <span className="leading-none text-[10px] font-black tracking-tighter">FASTag</span>
-                </div>
-                <h3 className="font-poppins font-bold text-[#1E293B] text-[15px] mt-2.5">Toll Transaction Receipt</h3>
-                <p className="text-[9px] text-[#64748B] font-bold uppercase tracking-wider mt-0.5">National Highways Authority of India</p>
-              </div>
-
-              {/* Amount Display */}
-              <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center">
-                <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider block">Transaction Amount</span>
-                <span className="text-2xl font-black text-indigo-600 font-poppins mt-1 block">₹{selectedTollReceipt.amountPaid.toFixed(2)}</span>
-                <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-emerald-50 text-emerald-600 border border-emerald-100/60">
-                  Transaction {selectedTollReceipt.receiptStatus}
-                </span>
-              </div>
-
-              {/* Receipt Details */}
-              <div className="space-y-2.5 text-xs border-b border-dashed border-gray-200 pb-4">
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">Toll Plaza Name</span>
-                  <span className="font-bold text-gray-700">{selectedTollReceipt.tollPlazaName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">Location</span>
-                  <span className="font-bold text-gray-700">{selectedTollReceipt.location}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">Date & Time</span>
-                  <span className="font-bold text-gray-700">
-                    {new Date(selectedTollReceipt.dateTime).toLocaleString('en-IN', {
-                      dateStyle: 'medium',
-                      timeStyle: 'medium'
-                    })}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">Vehicle Plate</span>
-                  <span className="font-bold text-gray-700">{selectedTollReceipt.vehiclePlate}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">Payment Mode</span>
-                  <span className="font-bold text-[#1E293B] flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                    {selectedTollReceipt.paymentMethod}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">FASTag Tx ID</span>
-                  <span className="font-bold font-mono text-gray-600">{selectedTollReceipt.fastagTransactionId}</span>
-                </div>
-              </div>
-
-              {/* Footer text */}
-              <p className="text-[10px] text-[#64748B] text-center font-medium leading-relaxed">
-                This transaction was processed electronically via FASTag system. No signature is required.
-              </p>
-
-              {/* Action buttons */}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedTollReceipt(null)}
-                  className="flex-1 py-2 border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-gray-50 transition-all cursor-pointer"
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const printWindow = window.open("", "_blank");
-                    printWindow.document.write(`
-                      <html>
-                        <head>
-                          <title>FASTag Receipt</title>
-                          <style>
-                            body { font-family: 'Inter', sans-serif; color: #1E293B; padding: 40px; text-align: center; }
-                            .receipt-box { max-width: 400px; margin: auto; padding: 20px; border: 1px dashed #B2C2D3; border-radius: 12px; }
-                            .nhai-logo { width: 50px; height: 50px; background: #2563EB; border-radius: 12px; margin: 0 auto 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px; }
-                            .amount { font-size: 24px; font-weight: bold; color: #4F46E5; margin: 15px 0; }
-                            .details { text-align: left; margin: 20px 0; }
-                            .row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; }
-                            .label { color: #64748B; }
-                            .val { font-weight: bold; }
-                          </style>
-                        </head>
-                        <body onload="window.print(); window.close();">
-                          <div class="receipt-box">
-                            <div class="nhai-logo">
-                              <span style="font-size:8px;opacity:0.8;">NHAI</span>
-                              <span>FASTag</span>
-                            </div>
-                            <h3>FASTag Toll Receipt</h3>
-                            <div class="amount">₹\${selectedTollReceipt.amountPaid.toFixed(2)}</div>
-                            <div class="details">
-                              <div class="row"><span class="label">Toll Plaza</span><span class="val">\${selectedTollReceipt.tollPlazaName}</span></div>
-                              <div class="row"><span class="label">Location</span><span class="val">\${selectedTollReceipt.location}</span></div>
-                              <div class="row"><span class="label">Date & Time</span><span class="val">\${new Date(selectedTollReceipt.dateTime).toLocaleString('en-IN')}</span></div>
-                              <div class="row"><span class="label">Vehicle Plate</span><span class="val">\${selectedTollReceipt.vehiclePlate}</span></div>
-                              <div class="row"><span class="label">Payment Method</span><span class="val">\${selectedTollReceipt.paymentMethod}</span></div>
-                              <div class="row"><span class="label">Transaction ID</span><span class="val">\${selectedTollReceipt.fastagTransactionId}</span></div>
-                              <div class="row"><span class="label">Status</span><span class="val">\${selectedTollReceipt.receiptStatus}</span></div>
-                            </div>
-                            <p style="font-size:10px;color:#64748B;">This is a computer generated receipt for electronic toll collection.</p>
-                          </div>
-                        </body>
-                      </html>
-                    `);
-                    printWindow.document.close();
-                  }}
-                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-xs font-bold text-white transition-all shadow-md cursor-pointer"
-                >
-                  Print Receipt
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

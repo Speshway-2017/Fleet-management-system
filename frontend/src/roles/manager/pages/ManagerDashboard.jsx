@@ -28,6 +28,15 @@ export default function ManagerDashboard() {
 
   const dashboardRef = useRef(null);
 
+  const getDaysRemaining = () => {
+    if (user?.subscriptionStatus !== "ACTIVE" || !user?.subscriptionExpiry) return "--";
+    const expiry = new Date(user.subscriptionExpiry);
+    const now = new Date();
+    const diffTime = expiry.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  };
+
   useEffect(() => {
     if (!loading && dashboardRef.current) {
       animateDashboardEntrance(dashboardRef.current);

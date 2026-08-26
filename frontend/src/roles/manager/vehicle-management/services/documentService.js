@@ -1,5 +1,12 @@
 import { vehicleApi } from "@/api/vehicleApi";
 
+const resolveDocumentUrl = (url) => {
+  if (!url || typeof url !== "string") return "";
+  if (url.startsWith("http")) return url;
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").replace("/api", "");
+  return `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+};
+
 /**
  * Get all documents for a specific vehicle
  * @param {string} vehicleId - Vehicle MongoDB ID
@@ -34,7 +41,7 @@ export const getVehicleDocuments = async (vehicleId) => {
           uploadDate: doc.uploadDate || doc.uploadedAt || new Date().toISOString(),
           uploadedBy: doc.uploadedBy || "Manager",
           status: getDocumentStatus(doc.expiryDate),
-          fileData: doc.fileUrl || "",
+          fileData: resolveDocumentUrl(doc.fileUrl || ""),
           fileName: doc.fileName || doc.originalName || "",
           fileSize: doc.fileSize || 0,
           fileType: doc.mimeType || ""
@@ -74,7 +81,7 @@ export const uploadVehicleDocument = async (vehicleId, formData) => {
       uploadedBy: "Manager",
       status: "Valid",
       fileUrl: uploadData.secure_url || uploadData.url,
-      fileData: uploadData.secure_url || uploadData.url,
+      fileData: resolveDocumentUrl(uploadData.secure_url || uploadData.url),
       public_id: uploadData.public_id,
       fileName: fileObj.name,
       fileSize: fileObj.size,
@@ -107,7 +114,7 @@ export const uploadVehicleDocument = async (vehicleId, formData) => {
           uploadedBy: doc.uploadedBy || "Manager",
           status: getDocumentStatus(doc.expiryDate),
           fileUrl: doc.fileUrl || "",
-          fileData: doc.fileUrl || "",
+          fileData: resolveDocumentUrl(doc.fileUrl || ""),
           fileName: doc.fileName || doc.originalName || "",
           fileSize: doc.fileSize || 0,
           fileType: doc.mimeType || "",
@@ -172,7 +179,7 @@ export const replaceVehicleDocument = async (vehicleId, documentId, formData) =>
           uploadedBy: doc.uploadedBy || "Manager",
           status: getDocumentStatus(doc.expiryDate),
           fileUrl: doc.fileUrl || "",
-          fileData: doc.fileUrl || "",
+          fileData: resolveDocumentUrl(doc.fileUrl || ""),
           fileName: doc.fileName || doc.originalName || "",
           fileSize: doc.fileSize || 0,
           fileType: doc.mimeType || "",
@@ -193,7 +200,7 @@ export const replaceVehicleDocument = async (vehicleId, documentId, formData) =>
       expiryDate: formData.get("expiryDate"),
       notes: formData.get("notes") || "",
       fileUrl: uploadData.secure_url || uploadData.url,
-      fileData: uploadData.secure_url || uploadData.url,
+      fileData: resolveDocumentUrl(uploadData.secure_url || uploadData.url),
       public_id: uploadData.public_id,
       fileName: fileObj.name,
       fileSize: fileObj.size,
@@ -248,7 +255,7 @@ export const deleteVehicleDocument = async (vehicleId, documentId) => {
           uploadDate: doc.uploadDate || doc.uploadedAt || new Date().toISOString(),
           uploadedBy: doc.uploadedBy || "Manager",
           status: getDocumentStatus(doc.expiryDate),
-          fileData: doc.fileUrl || "",
+          fileData: resolveDocumentUrl(doc.fileUrl || ""),
           fileName: doc.fileName || doc.originalName || "",
           fileSize: doc.fileSize || 0,
           fileType: doc.mimeType || ""

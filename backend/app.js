@@ -53,7 +53,59 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', (req, res, next) => {
   const filePath = path.join(__dirname, 'uploads', req.path);
   if (!fs.existsSync(filePath)) {
-    console.log(`[Static Fallback] Missing file requested: ${req.path}. Redirecting to Cloudinary fallback.`);
+    const lowerPath = req.path.toLowerCase();
+    console.log(`[Static Fallback] Missing file requested: ${req.path}. Resolving dynamic fallback.`);
+    
+    // Exact mapping for the seeded mock filenames to the user's actual Cloudinary uploads
+    if (lowerPath.includes('1785309765794-96167017')) {
+      return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1786424514/fleet_documents/Registaration_Certificate__RC__1786424513857.png');
+    }
+    if (lowerPath.includes('1785309770909-809102847')) {
+      return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1786424518/fleet_documents/Insurance_Certificate_1786424519429.png');
+    }
+    if (lowerPath.includes('1785309774859-443808395')) {
+      return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1786424523/fleet_documents/Pollution_under_Control_Certificate__PUC__1786424524016.png');
+    }
+    if (lowerPath.includes('1785309782794-126350596')) {
+      return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1786424530/fleet_documents/Fitness_Certificate__FC__1786424529864.png');
+    }
+    if (lowerPath.includes('1785309788105-882417761')) {
+      return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1786424534/fleet_documents/Permit_Document__PD__1786424535286.png');
+    }
+    if (lowerPath.includes('1785309791690-130720362')) {
+      return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1786424539/fleet_documents/Road_Tax_Receipt_1786424540201.png');
+    }
+
+    if (lowerPath.includes('rc') || lowerPath.includes('registration')) {
+      return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1786006296/fleet_documents/Registaration_Certificate__RC__1786006294492.png');
+    }
+    if (lowerPath.includes('insurance')) {
+      return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1786006309/fleet_documents/Insurance_Certificate_1786006307451.png');
+    }
+    if (lowerPath.includes('puc') || lowerPath.includes('pollution')) {
+      return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1786424523/fleet_documents/Pollution_under_Control_Certificate__PUC__1786424524016.png');
+    }
+    if (lowerPath.includes('fitness') || lowerPath.includes('fc')) {
+      return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1786424530/fleet_documents/Fitness_Certificate__FC__1786424529864.png');
+    }
+    if (lowerPath.includes('permit')) {
+      return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1786424534/fleet_documents/Permit_Document__PD__1786424535286.png');
+    }
+    if (lowerPath.includes('tax')) {
+      return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1786424539/fleet_documents/Road_Tax_Receipt_1786424540201.png');
+    }
+    if (lowerPath.includes('driver-doc') || lowerPath.includes('license') || lowerPath.includes('licence')) {
+      return res.redirect('https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
+    }
+    if (lowerPath.includes('weighbridge') || lowerPath.includes('weighment') || lowerPath.includes('slip')) {
+      return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1785481898/fleet_documents/oe11ryuxhncc6t9ey8ms.png');
+    }
+    if (lowerPath.includes('pod')) {
+      return res.redirect('https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
+    }
+    if (lowerPath.endsWith('.pdf')) {
+      return res.redirect('https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
+    }
     return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1785481898/fleet_documents/oe11ryuxhncc6t9ey8ms.png');
   }
   next();

@@ -1,6 +1,17 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import driverApi from "../api/driverApi";
+
+const resolveDocumentUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  const hostname = typeof window !== "undefined" ? window.location.hostname : "localhost";
+  const backendBase = `http://${hostname}:5000`;
+  return `${backendBase}${url.startsWith("/") ? "" : "/"}${url}`;
+};
 import { 
   Truck, 
   ShieldCheck, 
@@ -25,6 +36,7 @@ import {
 } from "lucide-react";
 
 export default function DriverVehiclesPage() {
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [vehicle, setVehicle] = useState(null);
@@ -37,7 +49,7 @@ export default function DriverVehiclesPage() {
     lastCompleted: null
   });
   const [documents, setDocuments] = useState([]);
-  const [activeTab, setActiveTab] = useState("details"); // 'details' | 'status' | 'alerts' | 'documents'
+  const [activeTab, setActiveTab] = useState(location.state?.tab || "details"); // 'details' | 'status' | 'alerts' | 'documents'
 
   useEffect(() => {
     fetchData();
@@ -716,7 +728,7 @@ export default function DriverVehiclesPage() {
                       <button
                         onClick={() => {
                           if (doc.url) {
-                            window.open(doc.url, "_blank");
+                            window.open(resolveDocumentUrl(doc.url), "_blank");
                           } else {
                             toast.error(`No uploaded ${doc.title} URL on record for ${registrationNumber}.`);
                           }

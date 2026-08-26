@@ -36,7 +36,7 @@ export default function NotificationCard({ notification, onMarkRead }) {
     } else if (type.includes("support") || title.includes("support") || message.includes("support")) {
       navigate("/driver/support", navState);
     } else if (type.includes("vehicle") || title.includes("vehicle") || message.includes("vehicle")) {
-      navigate("/driver/vehicle", navState);
+      navigate("/driver/vehicles", navState);
     } else {
       navigate("/driver/trips", navState);
     }

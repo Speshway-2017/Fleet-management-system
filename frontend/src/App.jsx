@@ -104,6 +104,7 @@ const DriverNotificationsPage = lazy(() => import("@/roles/driver/pages/Notifica
 const DriverSupportPage = lazy(() => import("@/roles/driver/pages/Support"));
 const DriverSelfProfilePage = lazy(() => import("@/roles/driver/pages/Profile"));
 const DriverSettingsPage = lazy(() => import("@/roles/driver/pages/Settings"));
+const DriverDocumentsPage = lazy(() => import("@/roles/driver/pages/Documents"));
 
 function PublicRoute({ children }) {
   const { isAuthenticated, role } = useAuth();
@@ -241,7 +242,7 @@ export default function App() {
                       <Route path="/driver/vehicles" element={<DriverVehiclesPage />} />
                       <Route path="/driver/fuel" element={<DriverFuelPage />} />
                       <Route path="/driver/maintenance" element={<DriverMaintenancePage />} />
-                      <Route path="/driver/documents" element={<Navigate to="/driver/dashboard" replace />} />
+                      <Route path="/driver/documents" element={<DriverDocumentsPage />} />
                       <Route path="/driver/notifications" element={<DriverNotificationsPage />} />
                       <Route path="/driver/support" element={<DriverSupportPage />} />
                       <Route path="/driver/profile" element={<DriverSelfProfilePage />} />

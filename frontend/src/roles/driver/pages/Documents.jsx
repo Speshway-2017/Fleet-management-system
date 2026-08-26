@@ -2,6 +2,16 @@ import { useState, useEffect } from "react";
 import driverApi from "../api/driverApi";
 import { FileText, Download, CheckCircle2, RefreshCw } from "lucide-react";
 
+const resolveDocumentUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  const hostname = typeof window !== "undefined" ? window.location.hostname : "localhost";
+  const backendBase = `http://${hostname}:5000`;
+  return `${backendBase}${url.startsWith("/") ? "" : "/"}${url}`;
+};
+
 export default function DriverDocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState([]);
@@ -13,18 +23,113 @@ export default function DriverDocumentsPage() {
   const fetchDocuments = async () => {
     setLoading(true);
     try {
-      const res = await driverApi.getDocuments();
-      if (res?.success && Array.isArray(res.data)) {
-        setDocuments(res.data);
-      } else {
-        // Fallback default structure for License, RC, Insurance, PUC
-        setDocuments([
-          { type: "Driving License", title: "Driver License", status: "VALID", expiryDate: "2028-12-31" },
-          { type: "Vehicle RC", title: "Registration Certificate (RC)", status: "VALID", expiryDate: "2030-05-15" },
-          { type: "Insurance", title: "Vehicle Commercial Insurance", status: "VALID", expiryDate: "2027-04-10" },
-          { type: "PUC Certificate", title: "Pollution Under Control (PUC)", status: "VALID", expiryDate: "2026-11-20" },
-        ]);
+      // 1. Fetch profile to get license details
+      let licenseUrl = "";
+      let licenseExpiryDate = "";
+      try {
+        const profileRes = await driverApi.getProfile();
+        if (profileRes?.success && profileRes.data) {
+          const profile = profileRes.data;
+          licenseUrl = profile.licenseDocument || profile.documents?.license || "";
+          licenseExpiryDate = profile.licenseExpiry || "";
+        }
+      } catch (err) {
+        console.warn("Failed to fetch driver profile:", err);
       }
+
+      // 2. Fetch assigned vehicle to get vehicle compliance documents (RC, Insurance, PUC)
+      let rcUrl = "";
+      let rcExpiryDate = "";
+      let insUrl = "";
+      let insExpiryDate = "";
+      let pucUrl = "";
+      let pucExpiryDate = "";
+      let fitnessUrl = "";
+      let fitnessExpiryDate = "";
+      let permitUrl = "";
+      let permitExpiryDate = "";
+      let registrationNumber = "";
+
+      try {
+        const vehicleRes = await driverApi.getAssignedVehicle();
+        if (vehicleRes?.success && vehicleRes.data?.vehicle) {
+          const vehicle = vehicleRes.data.vehicle;
+          registrationNumber = vehicle.registrationNumber || vehicle.vehicleNumber || "";
+          
+          rcUrl = vehicle.documents?.rc?.fileUrl || vehicle.rcUrl || "";
+          rcExpiryDate = vehicle.documents?.rc?.expiryDate || vehicle.rcExpiry || "";
+          
+          insUrl = vehicle.documents?.insurance?.fileUrl || vehicle.insuranceUrl || "";
+          insExpiryDate = vehicle.documents?.insurance?.expiryDate || vehicle.insuranceExpiry || "";
+          
+          pucUrl = vehicle.documents?.puc?.fileUrl || vehicle.pucUrl || "";
+          pucExpiryDate = vehicle.documents?.puc?.expiryDate || vehicle.pollutionExpiry || "";
+
+          fitnessUrl = vehicle.documents?.fitness?.fileUrl || vehicle.fitnessUrl || "";
+          fitnessExpiryDate = vehicle.documents?.fitness?.expiryDate || vehicle.fitnessExpiry || "";
+
+          permitUrl = vehicle.documents?.permit?.fileUrl || vehicle.permitUrl || "";
+          permitExpiryDate = vehicle.documents?.permit?.expiryDate || vehicle.permitExpiry || "";
+        }
+      } catch (err) {
+        console.warn("Failed to fetch assigned vehicle:", err);
+      }
+
+      const getStatus = (exp) => {
+        if (!exp) return "Valid";
+        const days = Math.ceil((new Date(exp) - new Date()) / (1000 * 60 * 60 * 24));
+        if (days < 0) return "Expired";
+        if (days <= 30) return "Expiring Soon";
+        return "Valid";
+      };
+
+      // 3. Build the compliance documents list dynamically
+      const complianceDocs = [
+        {
+          type: "Driving License",
+          title: "Driving License Certificate",
+          fileUrl: licenseUrl,
+          expiryDate: licenseExpiryDate,
+          status: getStatus(licenseExpiryDate)
+        },
+        {
+          type: "Vehicle RC",
+          title: `Registration Certificate (RC) ${registrationNumber ? `- ${registrationNumber}` : ""}`,
+          fileUrl: rcUrl,
+          expiryDate: rcExpiryDate,
+          status: getStatus(rcExpiryDate)
+        },
+        {
+          type: "Insurance",
+          title: "Vehicle Commercial Insurance",
+          fileUrl: insUrl,
+          expiryDate: insExpiryDate,
+          status: getStatus(insExpiryDate)
+        },
+        {
+          type: "PUC Certificate",
+          title: "Pollution Under Control (PUC)",
+          fileUrl: pucUrl,
+          expiryDate: pucExpiryDate,
+          status: getStatus(pucExpiryDate)
+        },
+        {
+          type: "Fitness Certificate",
+          title: "Vehicle Fitness Certificate",
+          fileUrl: fitnessUrl,
+          expiryDate: fitnessExpiryDate,
+          status: getStatus(fitnessExpiryDate)
+        },
+        {
+          type: "National Permit",
+          title: "National Goods Permit",
+          fileUrl: permitUrl,
+          expiryDate: permitExpiryDate,
+          status: getStatus(permitExpiryDate)
+        }
+      ];
+
+      setDocuments(complianceDocs);
     } catch (err) {
       console.error("Error fetching driver documents:", err);
     } finally {
@@ -66,8 +171,14 @@ export default function DriverDocumentsPage() {
                       <p className="text-xs text-slate-500 mt-0.5">{doc.type}</p>
                     </div>
                   </div>
-                  <span className="px-3 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 font-poppins">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Valid
+                  <span className={`px-3 py-1 text-xs font-bold rounded-full flex items-center gap-1 font-poppins ${
+                    doc.status === "Expired"
+                      ? "bg-red-50 text-red-700 border border-red-200"
+                      : doc.status === "Expiring Soon"
+                      ? "bg-amber-50 text-amber-700 border border-amber-200"
+                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  }`}>
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {doc.status}
                   </span>
                 </div>
 
@@ -88,7 +199,7 @@ export default function DriverDocumentsPage() {
               <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                 {doc.fileUrl ? (
                   <a
-                    href={doc.fileUrl}
+                    href={resolveDocumentUrl(doc.fileUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 text-[#A14000] border border-slate-200 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition"
