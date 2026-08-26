@@ -10,6 +10,7 @@ import KPICard from "@/components/common/KPICard";
 import StatusBadge from "@/components/common/StatusBadge";
 import { Phone, MapPin, ExternalLink, Activity, AlertTriangle, ShieldCheck, Truck, Users } from "lucide-react";
 import { animateDashboardEntrance } from "@/utils/animeUtils";
+import { getDaysRemaining } from "@/utils/dateUtils";
 
 export default function ManagerDashboard() {
   const navigate = useNavigate();
@@ -27,15 +28,6 @@ export default function ManagerDashboard() {
   const [callingDriver, setCallingDriver] = useState(null);
 
   const dashboardRef = useRef(null);
-
-  const getDaysRemaining = () => {
-    if (user?.subscriptionStatus !== "ACTIVE" || !user?.subscriptionExpiry) return "--";
-    const expiry = new Date(user.subscriptionExpiry);
-    const now = new Date();
-    const diffTime = expiry.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 0;
-  };
 
   useEffect(() => {
     if (!loading && dashboardRef.current) {
@@ -256,7 +248,7 @@ export default function ManagerDashboard() {
       <Breadcrumb />
 
       {/* Subscription Warning Banners */}
-      {user?.subscriptionStatus === 'ACTIVE' && getDaysRemaining() !== '--' && getDaysRemaining() <= 10 && (
+      {user?.subscriptionStatus === 'ACTIVE' && getDaysRemaining(user?.subscriptionExpiry, user?.subscriptionStatus) !== '--' && getDaysRemaining(user?.subscriptionExpiry, user?.subscriptionStatus) <= 10 && (
         <div 
           data-dash-banner
           style={{ backgroundColor: "#1E293B", borderColor: "rgba(245, 158, 11, 0.4)" }}
@@ -271,7 +263,7 @@ export default function ManagerDashboard() {
                 Subscription Warning: Expiring Soon
               </p>
               <p style={{ color: "#FDE68A" }} className="text-xs font-bold font-poppins mt-0.5">
-                Your subscription will expire in {getDaysRemaining()} days on {new Date(user.subscriptionExpiry).toLocaleDateString("en-IN")}.
+                Your subscription will expire in {getDaysRemaining(user?.subscriptionExpiry, user?.subscriptionStatus)} days on {new Date(user.subscriptionExpiry).toLocaleDateString("en-IN")}.
               </p>
             </div>
           </div>

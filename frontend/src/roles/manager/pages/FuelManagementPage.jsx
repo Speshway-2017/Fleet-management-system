@@ -70,7 +70,9 @@ export default function FuelManagementPage() {
   const handleViewBill = (log) => {
     setSelectedLog(log);
     const url = log?.receiptImage || log?.billUrl || "";
-    const fullUrl = url && url.startsWith("/uploads") ? `http://localhost:5000${url}` : url;
+    const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+    const baseOrigin = apiBase.replace("/api", "");
+    const fullUrl = url && url.startsWith("/uploads") ? `${baseOrigin}${url}` : url;
     setActiveBillUrl(fullUrl);
     setBillModalOpen(true);
   };

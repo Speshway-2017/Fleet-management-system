@@ -277,11 +277,11 @@ export const deleteVehicleDocument = async (vehicleId, documentId) => {
  * @param {Object} document - Document object containing file data
  * @returns {void}
  */
-export const downloadVehicleDocument = (document) => {
+export const downloadVehicleDocument = (doc) => {
   try {
-    const link = document.createElement("a");
-    link.href = document.fileData;
-    link.download = document.fileName;
+    const link = window.document.createElement("a");
+    link.href = doc.fileData;
+    link.download = doc.fileName;
     link.click();
   } catch (error) {
     console.error("Error downloading document:", error);
