@@ -4,12 +4,24 @@ import toast from "react-hot-toast";
 import driverApi from "../api/driverApi";
 
 const resolveDocumentUrl = (url) => {
-  if (!url) return "";
+  if (!url || typeof url !== "string") return "";
   if (url.startsWith("http://") || url.startsWith("https://")) {
     return url;
   }
-  const hostname = typeof window !== "undefined" ? window.location.hostname : "localhost";
-  const backendBase = `http://${hostname}:5000`;
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  let backendBase = apiBase.replace("/api", "");
+  
+  if (typeof window !== "undefined") {
+    const { hostname } = window.location;
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.")
+    ) {
+      backendBase = `http://${hostname}:5000`;
+    }
+  }
   return `${backendBase}${url.startsWith("/") ? "" : "/"}${url}`;
 };
 import { 
@@ -659,7 +671,7 @@ export default function DriverVehiclesPage() {
                       title: "Registration Certificate (RC)",
                       type: "RC",
                       url: vehicle?.documents?.rc?.fileUrl || vehicle?.rcUrl || "",
-                      fileName: vehicle?.documents?.rc?.fileName || `${registrationNumber}_RC.pdf`,
+                      fileName: vehicle?.documents?.rc?.fileName || vehicle?.documents?.rc?.originalName || `${registrationNumber}_RC.pdf`,
                       expiryDate: vehicle?.documents?.rc?.expiryDate || vehicle?.rcExpiry,
                       status: "Valid ✓"
                     },
@@ -667,7 +679,7 @@ export default function DriverVehiclesPage() {
                       title: "Insurance Policy",
                       type: "Insurance",
                       url: vehicle?.documents?.insurance?.fileUrl || vehicle?.insuranceUrl || "",
-                      fileName: vehicle?.documents?.insurance?.fileName || `${registrationNumber}_Insurance.pdf`,
+                      fileName: vehicle?.documents?.insurance?.fileName || vehicle?.documents?.insurance?.originalName || `${registrationNumber}_Insurance.pdf`,
                       expiryDate: vehicle?.documents?.insurance?.expiryDate || vehicle?.insuranceExpiry,
                       status: "Active ✓"
                     },
@@ -675,7 +687,7 @@ export default function DriverVehiclesPage() {
                       title: "Pollution Certificate (PUC)",
                       type: "PUC",
                       url: vehicle?.documents?.puc?.fileUrl || vehicle?.pucUrl || "",
-                      fileName: vehicle?.documents?.puc?.fileName || `${registrationNumber}_PUC.pdf`,
+                      fileName: vehicle?.documents?.puc?.fileName || vehicle?.documents?.puc?.originalName || `${registrationNumber}_PUC.pdf`,
                       expiryDate: vehicle?.documents?.puc?.expiryDate || vehicle?.pollutionExpiry,
                       status: "Valid ✓"
                     },
@@ -683,7 +695,7 @@ export default function DriverVehiclesPage() {
                       title: "Fitness Certificate",
                       type: "Fitness",
                       url: vehicle?.documents?.fitness?.fileUrl || vehicle?.fitnessUrl || "",
-                      fileName: vehicle?.documents?.fitness?.fileName || `${registrationNumber}_Fitness.pdf`,
+                      fileName: vehicle?.documents?.fitness?.fileName || vehicle?.documents?.fitness?.originalName || `${registrationNumber}_Fitness.pdf`,
                       expiryDate: vehicle?.documents?.fitness?.expiryDate || vehicle?.fitnessExpiry,
                       status: "Approved ✓"
                     },
@@ -691,9 +703,17 @@ export default function DriverVehiclesPage() {
                       title: "National Goods Permit",
                       type: "Permit",
                       url: vehicle?.documents?.permit?.fileUrl || vehicle?.permitUrl || "",
-                      fileName: vehicle?.documents?.permit?.fileName || `${registrationNumber}_Permit.pdf`,
+                      fileName: vehicle?.documents?.permit?.fileName || vehicle?.documents?.permit?.originalName || `${registrationNumber}_Permit.pdf`,
                       expiryDate: vehicle?.documents?.permit?.expiryDate || vehicle?.permitExpiry,
                       status: "Active ✓"
+                    },
+                    {
+                      title: "Road Tax Receipt",
+                      type: "Road Tax",
+                      url: vehicle?.documents?.roadTax?.fileUrl || vehicle?.roadTaxUrl || "",
+                      fileName: vehicle?.documents?.roadTax?.fileName || vehicle?.documents?.roadTax?.originalName || `${registrationNumber}_RoadTax.pdf`,
+                      expiryDate: vehicle?.documents?.roadTax?.expiryDate || vehicle?.roadTaxExpiry,
+                      status: "Valid ✓"
                     }
                   ].map((doc, idx) => (
                     <div key={idx} className="p-5 bg-slate-50 dark:bg-[#1E293B] rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4 shadow-xs">
@@ -727,8 +747,10 @@ export default function DriverVehiclesPage() {
 
                       <button
                         onClick={() => {
+                          const resolvedUrl = resolveDocumentUrl(doc.url);
+                          console.log("[Driver View Vehicle Document] Type:", doc.type, "Title:", doc.title, "Raw URL:", doc.url, "Resolved URL:", resolvedUrl);
                           if (doc.url) {
-                            window.open(resolveDocumentUrl(doc.url), "_blank");
+                            window.open(resolvedUrl, "_blank");
                           } else {
                             toast.error(`No uploaded ${doc.title} URL on record for ${registrationNumber}.`);
                           }

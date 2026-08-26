@@ -59,6 +59,7 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
 
     try {
       final res = await ApiService.getAssignedVehicle();
+      debugPrint('[VehicleDocumentsScreen] API RESPONSE: $res');
       if (mounted && res != null && res['success'] == true) {
         final data = res['data'];
         if (data != null && data['vehicle'] is Map) {
@@ -66,6 +67,7 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
             _vehicle = Map<String, dynamic>.from(data['vehicle']);
             _isLoading = false;
           });
+          debugPrint('[VehicleDocumentsScreen] Loaded vehicle documents: ${_vehicle?['documents']}');
           return;
         }
       }
@@ -276,6 +278,8 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
   void _showDocumentAction(BuildContext context, String action, VehicleDocumentItem doc) async {
     final messenger = ScaffoldMessenger.of(context);
     final sanitizedUrl = _sanitizeUrl(doc.fileUrl);
+
+    debugPrint('[VehicleDocumentsScreen] [ACTION CLICKED] Action: $action | Document Type/Title: "${doc.title}" | Raw URL: "${doc.fileUrl}" | Sanitized URL: "$sanitizedUrl"');
 
     if (sanitizedUrl.isNotEmpty) {
       await DocumentPreviewDialog.open(

@@ -2,9 +2,23 @@ import { vehicleApi } from "@/api/vehicleApi";
 
 const resolveDocumentUrl = (url) => {
   if (!url || typeof url !== "string") return "";
-  if (url.startsWith("http")) return url;
-  const baseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").replace("/api", "");
-  return `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) return url;
+  
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  let backendBase = apiBase.replace("/api", "");
+  
+  if (typeof window !== "undefined") {
+    const { hostname } = window.location;
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.")
+    ) {
+      backendBase = `http://${hostname}:5000`;
+    }
+  }
+  return `${backendBase}${url.startsWith("/") ? "" : "/"}${url}`;
 };
 
 /**

@@ -8,18 +8,49 @@ export default function DocumentPreviewModal({
 }) {
   if (!isOpen || !document) return null;
 
-  const isPdf = document.fileType === "application/pdf";
-  const isImage = document.fileType?.startsWith("image/");
+  const detectFileType = (url, filename = "", defaultMime = "application/pdf") => {
+    const checkStr = `${String(url).toLowerCase()} ${String(filename).toLowerCase()}`;
+    if (checkStr.includes(".pdf")) {
+      return "application/pdf";
+    }
+    if (
+      checkStr.includes(".png") ||
+      checkStr.includes(".jpg") ||
+      checkStr.includes(".jpeg") ||
+      checkStr.includes(".webp") ||
+      checkStr.includes("/image/upload/")
+    ) {
+      return "image/png";
+    }
+    if (checkStr.includes("/raw/upload/")) {
+      if (checkStr.includes("rc") || checkStr.includes("insurance") || checkStr.includes("puc") || checkStr.includes("fitness") || checkStr.includes("permit") || checkStr.includes("tax")) {
+        return "image/png";
+      }
+      return "application/pdf";
+    }
+    return defaultMime;
+  };
+
+  const fileMime = detectFileType(document.fileData, document.fileName || document.name, document.fileType);
+  const isPdf = fileMime === "application/pdf";
+  const isImage = fileMime?.startsWith("image/");
   const canPreview = isPdf || isImage;
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     try {
-      const link = document.createElement("a");
-      link.href = document.fileData;
+      const response = await fetch(document.fileData);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = window.document.createElement("a");
+      link.href = blobUrl;
       link.download = document.fileName;
+      window.document.body.appendChild(link);
       link.click();
+      window.document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
-      console.error("Error downloading document:", error);
+      console.warn("Direct download failed, falling back to window.open", error);
+      window.open(document.fileData, "_blank");
     }
   };
 

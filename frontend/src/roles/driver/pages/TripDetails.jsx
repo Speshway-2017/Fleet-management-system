@@ -4,12 +4,24 @@ import driverApi from "../api/driverApi";
 import MapView from "../components/MapView";
 
 const resolveDocumentUrl = (url) => {
-  if (!url) return "";
+  if (!url || typeof url !== "string") return "";
   if (url.startsWith("http://") || url.startsWith("https://")) {
     return url;
   }
-  const hostname = typeof window !== "undefined" ? window.location.hostname : "localhost";
-  const backendBase = `http://${hostname}:5000`;
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  let backendBase = apiBase.replace("/api", "");
+  
+  if (typeof window !== "undefined") {
+    const { hostname } = window.location;
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.")
+    ) {
+      backendBase = `http://${hostname}:5000`;
+    }
+  }
   return `${backendBase}${url.startsWith("/") ? "" : "/"}${url}`;
 };
 import { useDriverSocket } from "../hooks/useDriverSocket";
@@ -499,10 +511,23 @@ export default function DriverTripDetailsPage() {
   const checkIsStartEnabled = (departureTimeStr) => {
     if (!departureTimeStr) return true;
     try {
-      const dep = new Date(departureTimeStr);
+      let cleanStr = String(departureTimeStr).trim();
+      if (!cleanStr.endsWith('Z') && !cleanStr.includes('+') && !cleanStr.includes('-') && !/[-+]\d{2}:\d{2}$/.test(cleanStr)) {
+        cleanStr = cleanStr.includes('T') ? cleanStr + '+05:30' : cleanStr + ' +05:30';
+      }
+      const dep = new Date(cleanStr);
       if (isNaN(dep.getTime())) return true;
       const now = new Date();
       const marginMs = 15 * 60 * 1000;
+      
+      console.log(`[TripDetails Start Validation]`, {
+        currentTimeUTC: now.toISOString(),
+        departureTimeUTC: dep.toISOString(),
+        timezoneOffset: "+05:30",
+        diffMinutes: (now.getTime() - dep.getTime()) / (60 * 1000),
+        isStartEnabled: now.getTime() >= dep.getTime() - marginMs
+      });
+
       return now.getTime() >= dep.getTime() - marginMs;
     } catch (_) {
       return true;
@@ -514,7 +539,11 @@ export default function DriverTripDetailsPage() {
   const getLockTimeText = (departureTimeStr) => {
     if (!departureTimeStr) return "";
     try {
-      const dep = new Date(departureTimeStr);
+      let cleanStr = String(departureTimeStr).trim();
+      if (!cleanStr.endsWith('Z') && !cleanStr.includes('+') && !cleanStr.includes('-') && !/[-+]\d{2}:\d{2}$/.test(cleanStr)) {
+        cleanStr = cleanStr.includes('T') ? cleanStr + '+05:30' : cleanStr + ' +05:30';
+      }
+      const dep = new Date(cleanStr);
       if (isNaN(dep.getTime())) return "";
       const unlockTime = new Date(dep.getTime() - 15 * 60 * 1000);
       return unlockTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
