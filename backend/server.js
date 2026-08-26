@@ -288,8 +288,11 @@ const startServer = async () => {
       });
 
       for (const trip of upcomingTrips) {
-        if (!trip.departureTime) continue;
-        const depTime = new Date(trip.departureTime);
+        let depTimeStr = String(trip.departureTime).trim();
+        if (!depTimeStr.endsWith('Z') && !depTimeStr.includes('+') && !depTimeStr.includes('-') && !/[-+]\d{2}:\d{2}$/.test(depTimeStr)) {
+          depTimeStr = depTimeStr.includes('T') ? depTimeStr + '+05:30' : depTimeStr + ' +05:30';
+        }
+        const depTime = new Date(depTimeStr);
         if (isNaN(depTime.getTime())) continue;
 
         const diff = depTime.getTime() - now.getTime();

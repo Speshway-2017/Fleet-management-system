@@ -3,12 +3,24 @@ import driverApi from "../api/driverApi";
 import { FileText, Download, CheckCircle2, RefreshCw } from "lucide-react";
 
 const resolveDocumentUrl = (url) => {
-  if (!url) return "";
+  if (!url || typeof url !== "string") return "";
   if (url.startsWith("http://") || url.startsWith("https://")) {
     return url;
   }
-  const hostname = typeof window !== "undefined" ? window.location.hostname : "localhost";
-  const backendBase = `http://${hostname}:5000`;
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  let backendBase = apiBase.replace("/api", "");
+  
+  if (typeof window !== "undefined") {
+    const { hostname } = window.location;
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.")
+    ) {
+      backendBase = `http://${hostname}:5000`;
+    }
+  }
   return `${backendBase}${url.startsWith("/") ? "" : "/"}${url}`;
 };
 
@@ -48,6 +60,8 @@ export default function DriverDocumentsPage() {
       let fitnessExpiryDate = "";
       let permitUrl = "";
       let permitExpiryDate = "";
+      let roadTaxUrl = "";
+      let roadTaxExpiryDate = "";
       let registrationNumber = "";
 
       try {
@@ -70,6 +84,9 @@ export default function DriverDocumentsPage() {
 
           permitUrl = vehicle.documents?.permit?.fileUrl || vehicle.permitUrl || "";
           permitExpiryDate = vehicle.documents?.permit?.expiryDate || vehicle.permitExpiry || "";
+
+          roadTaxUrl = vehicle.documents?.roadTax?.fileUrl || vehicle.roadTaxUrl || "";
+          roadTaxExpiryDate = vehicle.documents?.roadTax?.expiryDate || vehicle.roadTaxExpiry || "";
         }
       } catch (err) {
         console.warn("Failed to fetch assigned vehicle:", err);
@@ -126,6 +143,13 @@ export default function DriverDocumentsPage() {
           fileUrl: permitUrl,
           expiryDate: permitExpiryDate,
           status: getStatus(permitExpiryDate)
+        },
+        {
+          type: "Road Tax",
+          title: "Road Tax Receipt",
+          fileUrl: roadTaxUrl,
+          expiryDate: roadTaxExpiryDate,
+          status: getStatus(roadTaxExpiryDate)
         }
       ];
 
@@ -198,14 +222,16 @@ export default function DriverDocumentsPage() {
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                 {doc.fileUrl ? (
-                  <a
-                    href={resolveDocumentUrl(doc.fileUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 text-[#A14000] border border-slate-200 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition"
+                  <button
+                    onClick={() => {
+                      const resolvedUrl = resolveDocumentUrl(doc.fileUrl);
+                      console.log("[Driver View/Download Document] Type:", doc.type, "Title:", doc.title, "Raw URL:", doc.fileUrl, "Resolved URL:", resolvedUrl);
+                      window.open(resolvedUrl, "_blank");
+                    }}
+                    className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 text-[#A14000] border border-slate-200 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition cursor-pointer"
                   >
-                    <Download className="w-4 h-4" /> Download Certificate
-                  </a>
+                    <Download className="w-4 h-4" /> View / Download Document
+                  </button>
                 ) : (
                   <span className="text-xs text-slate-400 italic">Certificate file available in mobile & manager records</span>
                 )}

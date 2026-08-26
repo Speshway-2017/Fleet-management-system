@@ -48,10 +48,23 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
   const checkIsStartEnabled = (departureTimeStr) => {
     if (!departureTimeStr) return true;
     try {
-      const dep = new Date(departureTimeStr);
+      let cleanStr = String(departureTimeStr).trim();
+      if (!cleanStr.endsWith('Z') && !cleanStr.includes('+') && !cleanStr.includes('-') && !/[-+]\d{2}:\d{2}$/.test(cleanStr)) {
+        cleanStr = cleanStr.includes('T') ? cleanStr + '+05:30' : cleanStr + ' +05:30';
+      }
+      const dep = new Date(cleanStr);
       if (isNaN(dep.getTime())) return true;
       const now = new Date();
       const marginMs = 15 * 60 * 1000;
+      
+      console.log(`[TripCard Start Validation]`, {
+        currentTimeUTC: now.toISOString(),
+        departureTimeUTC: dep.toISOString(),
+        timezoneOffset: "+05:30",
+        diffMinutes: (now.getTime() - dep.getTime()) / (60 * 1000),
+        isStartEnabled: now.getTime() >= dep.getTime() - marginMs
+      });
+
       return now.getTime() >= dep.getTime() - marginMs;
     } catch (_) {
       return true;
@@ -63,7 +76,11 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
   const getLockTimeText = (departureTimeStr) => {
     if (!departureTimeStr) return "";
     try {
-      const dep = new Date(departureTimeStr);
+      let cleanStr = String(departureTimeStr).trim();
+      if (!cleanStr.endsWith('Z') && !cleanStr.includes('+') && !cleanStr.includes('-') && !/[-+]\d{2}:\d{2}$/.test(cleanStr)) {
+        cleanStr = cleanStr.includes('T') ? cleanStr + '+05:30' : cleanStr + ' +05:30';
+      }
+      const dep = new Date(cleanStr);
       if (isNaN(dep.getTime())) return "";
       const unlockTime = new Date(dep.getTime() - 15 * 60 * 1000);
       return unlockTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

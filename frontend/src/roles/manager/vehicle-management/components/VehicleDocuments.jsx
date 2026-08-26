@@ -83,36 +83,27 @@ export default function VehicleDocuments({ vehicleId }) {
   };
 
   const handleViewDocument = (doc) => {
-    const url = doc.fileData;
-    if (!url || typeof url !== "string" || !url.startsWith("http")) {
-      toast.error("Document unavailable");
-      return;
-    }
-
-    const lowerUrl = url.toLowerCase();
-    if (
-      lowerUrl.includes("placeholder") ||
-      lowerUrl.includes("dummy") ||
-      lowerUrl.includes("example") ||
-      lowerUrl.includes("broken")
-    ) {
-      toast.error("Document unavailable");
-      return;
-    }
-
-    window.open(url, "_blank");
+    setSelectedDocument(doc);
+    setPreviewModalOpen(true);
   };
 
-  const handleDownloadDocument = (doc) => {
+  const handleDownloadDocument = async (doc) => {
+    if (!doc?.fileData) return;
     try {
-      const link = document.createElement("a");
-      link.href = doc.fileData;
+      const response = await fetch(doc.fileData);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = window.document.createElement("a");
+      link.href = blobUrl;
       link.download = doc.fileName;
+      window.document.body.appendChild(link);
       link.click();
+      window.document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
       toast.success("Document downloaded successfully");
     } catch (error) {
-      console.error("Error downloading document:", error);
-      toast.error("Failed to download document");
+      console.warn("Direct download failed, falling back to window.open", error);
+      window.open(doc.fileData, "_blank");
     }
   };
 

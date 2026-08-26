@@ -855,13 +855,22 @@ export const updateTripStatus = async (req, res, next) => {
         return sendError(res, 400, `Cannot start trip with status '${trip.status}'. Trip must be in Scheduled/Accepted status before starting.`);
       }
       if (trip.departureTime) {
-        let depTimeStr = trip.departureTime;
-        if (typeof depTimeStr === 'string' && !depTimeStr.endsWith('Z') && !depTimeStr.includes('+') && !depTimeStr.includes('-')) {
-          depTimeStr = depTimeStr.trim() + '+05:30';
+        let depTimeStr = String(trip.departureTime).trim();
+        if (!depTimeStr.endsWith('Z') && !depTimeStr.includes('+') && !depTimeStr.includes('-') && !/[-+]\d{2}:\d{2}$/.test(depTimeStr)) {
+          depTimeStr = depTimeStr.includes('T') ? depTimeStr + '+05:30' : depTimeStr + ' +05:30';
         }
         const departureTime = new Date(depTimeStr);
         const now = new Date();
         const fifteenMinBefore = new Date(departureTime.getTime() - 15 * 60 * 1000);
+        
+        console.log(`[Backend Trip Start Validation]`, {
+          currentTimeUTC: now.toISOString(),
+          departureTimeUTC: departureTime.toISOString(),
+          timezoneOffset: "+05:30",
+          diffMinutes: (now.getTime() - departureTime.getTime()) / (60 * 1000),
+          isStartAllowed: now >= fifteenMinBefore
+        });
+
         if (now < fifteenMinBefore) {
           return sendError(res, 400, 'Cannot start trip before the 15-minute departure window.');
         }
@@ -1977,6 +1986,16 @@ export const getAssignedVehicle = async (req, res, next) => {
           fileName: vehicle.documents.permit.fileName || "Permit_Doc.pdf",
           expiryDate: vehicle.documents.permit.expiryDate || vehicle.permitExpiry,
           status: "Active ✓"
+        });
+      }
+      if (vehicle.documents.roadTax?.fileUrl) {
+        complianceDocuments.push({
+          title: "Road Tax Receipt",
+          type: "Road Tax",
+          url: vehicle.documents.roadTax.fileUrl,
+          fileName: vehicle.documents.roadTax.fileName || "RoadTax_Receipt.pdf",
+          expiryDate: vehicle.documents.roadTax.expiryDate || vehicle.roadTaxExpiry,
+          status: "Valid ✓"
         });
       }
     }
