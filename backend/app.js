@@ -49,8 +49,7 @@ app.use(
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Serve uploaded files statically with graceful fallback redirection for missing files
-app.use('/uploads', (req, res, next) => {
+const uploadsFallback = (req, res, next) => {
   const filePath = path.join(__dirname, 'uploads', req.path);
   if (!fs.existsSync(filePath)) {
     const lowerPath = req.path.toLowerCase();
@@ -109,8 +108,12 @@ app.use('/uploads', (req, res, next) => {
     return res.redirect('https://res.cloudinary.com/dgi3amv5d/image/upload/v1785481898/fleet_documents/oe11ryuxhncc6t9ey8ms.png');
   }
   next();
-});
+};
+
+app.use('/uploads', uploadsFallback);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/uploads', uploadsFallback);
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok', service: 'fleet-management-backend', customFlag: 'verified-antigravity' });

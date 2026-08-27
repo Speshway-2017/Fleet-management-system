@@ -1946,7 +1946,10 @@ export const getAssignedVehicle = async (req, res, next) => {
           url: vehicle.documents.rc.fileUrl,
           fileName: vehicle.documents.rc.fileName || "RC_Document.pdf",
           expiryDate: vehicle.documents.rc.expiryDate || vehicle.rcExpiry,
-          status: "Valid ✓"
+          status: "Valid ✓",
+          mimeType: vehicle.documents.rc.mimeType || "",
+          fileSize: vehicle.documents.rc.fileSize || 0,
+          uploadDate: vehicle.documents.rc.uploadDate || vehicle.documents.rc.uploadedAt || null
         });
       }
       if (vehicle.documents.insurance?.fileUrl) {
@@ -1956,7 +1959,10 @@ export const getAssignedVehicle = async (req, res, next) => {
           url: vehicle.documents.insurance.fileUrl,
           fileName: vehicle.documents.insurance.fileName || "Insurance_Policy.pdf",
           expiryDate: vehicle.documents.insurance.expiryDate || vehicle.insuranceExpiry,
-          status: "Active ✓"
+          status: "Active ✓",
+          mimeType: vehicle.documents.insurance.mimeType || "",
+          fileSize: vehicle.documents.insurance.fileSize || 0,
+          uploadDate: vehicle.documents.insurance.uploadDate || vehicle.documents.insurance.uploadedAt || null
         });
       }
       if (vehicle.documents.puc?.fileUrl) {
@@ -1966,7 +1972,10 @@ export const getAssignedVehicle = async (req, res, next) => {
           url: vehicle.documents.puc.fileUrl,
           fileName: vehicle.documents.puc.fileName || "PUC_Certificate.pdf",
           expiryDate: vehicle.documents.puc.expiryDate || vehicle.pollutionExpiry,
-          status: "Valid ✓"
+          status: "Valid ✓",
+          mimeType: vehicle.documents.puc.mimeType || "",
+          fileSize: vehicle.documents.puc.fileSize || 0,
+          uploadDate: vehicle.documents.puc.uploadDate || vehicle.documents.puc.uploadedAt || null
         });
       }
       if (vehicle.documents.fitness?.fileUrl) {
@@ -1976,7 +1985,10 @@ export const getAssignedVehicle = async (req, res, next) => {
           url: vehicle.documents.fitness.fileUrl,
           fileName: vehicle.documents.fitness.fileName || "Fitness_Certificate.pdf",
           expiryDate: vehicle.documents.fitness.expiryDate || vehicle.fitnessExpiry,
-          status: "Approved ✓"
+          status: "Approved ✓",
+          mimeType: vehicle.documents.fitness.mimeType || "",
+          fileSize: vehicle.documents.fitness.fileSize || 0,
+          uploadDate: vehicle.documents.fitness.uploadDate || vehicle.documents.fitness.uploadedAt || null
         });
       }
       if (vehicle.documents.permit?.fileUrl) {
@@ -1986,7 +1998,10 @@ export const getAssignedVehicle = async (req, res, next) => {
           url: vehicle.documents.permit.fileUrl,
           fileName: vehicle.documents.permit.fileName || "Permit_Doc.pdf",
           expiryDate: vehicle.documents.permit.expiryDate || vehicle.permitExpiry,
-          status: "Active ✓"
+          status: "Active ✓",
+          mimeType: vehicle.documents.permit.mimeType || "",
+          fileSize: vehicle.documents.permit.fileSize || 0,
+          uploadDate: vehicle.documents.permit.uploadDate || vehicle.documents.permit.uploadedAt || null
         });
       }
       if (vehicle.documents.roadTax?.fileUrl) {
@@ -1996,7 +2011,10 @@ export const getAssignedVehicle = async (req, res, next) => {
           url: vehicle.documents.roadTax.fileUrl,
           fileName: vehicle.documents.roadTax.fileName || "RoadTax_Receipt.pdf",
           expiryDate: vehicle.documents.roadTax.expiryDate || vehicle.roadTaxExpiry,
-          status: "Valid ✓"
+          status: "Valid ✓",
+          mimeType: vehicle.documents.roadTax.mimeType || "",
+          fileSize: vehicle.documents.roadTax.fileSize || 0,
+          uploadDate: vehicle.documents.roadTax.uploadDate || vehicle.documents.roadTax.uploadedAt || null
         });
       }
     }
@@ -2011,7 +2029,10 @@ export const getAssignedVehicle = async (req, res, next) => {
             url: doc.fileUrl,
             fileName: doc.fileName || 'Vehicle_Doc.pdf',
             expiryDate: doc.expiryDate,
-            status: doc.status || 'Valid ✓'
+            status: doc.status || 'Valid ✓',
+            mimeType: doc.mimeType || "",
+            fileSize: doc.fileSize || 0,
+            uploadDate: doc.uploadDate || doc.createdAt || null
           });
         }
       });
