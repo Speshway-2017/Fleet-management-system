@@ -55,6 +55,7 @@ export default function DriverTripDetailsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   const handleBack = () => {
     if (location.state?.fromNotification || location.state?.from === "/driver/notifications") {
@@ -345,7 +346,7 @@ export default function DriverTripDetailsPage() {
   );
 
   const handleStatusChange = async (newStatus) => {
-    if (!tripId) return;
+    if (!tripId || updatingStatus) return;
 
     const isDeliveryStep = ["Delivered", "Completed", "Complete Trip"].includes(newStatus);
     if (isDeliveryStep && !isDocsUploaded) {
@@ -354,11 +355,16 @@ export default function DriverTripDetailsPage() {
     }
 
     try {
+      setUpdatingStatus(true);
       const res = await driverApi.updateTripStatus(tripId, { status: newStatus });
       if (res?.success) {
-}
+        toast.success(`Trip status updated to: ${newStatus === "Start Trip" ? "In Progress" : newStatus}`);
+        fetchTripDetails();
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to update trip status");
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -667,13 +673,17 @@ export default function DriverTripDetailsPage() {
           <div className="flex flex-col sm:items-end gap-1">
             <button
               onClick={() => handleStatusChange("Start Trip")}
-              disabled={!isStartEnabled}
-              className={`py-2.5 px-6 rounded-xl text-xs font-bold font-poppins flex items-center gap-2 transition shadow-sm ${isStartEnabled
+              disabled={!isStartEnabled || updatingStatus}
+              className={`py-2.5 px-6 rounded-xl text-xs font-bold font-poppins flex items-center gap-2 transition shadow-sm ${(isStartEnabled && !updatingStatus)
                 ? "bg-[#A14000] hover:bg-[#853400] text-white cursor-pointer"
                 : "bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed"
                 }`}
             >
-              {isStartEnabled ? (
+              {updatingStatus ? (
+                <>
+                  <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-slate-500 border-t-transparent rounded-full"></span> Starting...
+                </>
+              ) : isStartEnabled ? (
                 <>
                   <Play className="w-4 h-4 fill-white" /> Start Trip Now
                 </>
