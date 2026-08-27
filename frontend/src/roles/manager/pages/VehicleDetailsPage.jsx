@@ -37,27 +37,49 @@ const CITY_COORDINATES = {
 
 const getDocumentUrl = (path) => {
   if (!path || typeof path !== "string") return "";
-  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) return path;
-  
+  let cleanUrl = path.trim();
+
+  if (cleanUrl.startsWith("data:")) return cleanUrl;
+
   const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-  let backendBase = apiBase.replace("/api", "");
-  
-  if (typeof window !== "undefined") {
-    const { hostname } = window.location;
-    if (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname.startsWith("192.168.") ||
-      hostname.startsWith("10.")
-    ) {
-      backendBase = `http://${hostname}:5000`;
-    }
+  const backendBase = apiBase.replace(/\/api\/?$/, "");
+
+  if (
+    cleanUrl.includes("cloudinary.com") ||
+    cleanUrl.includes("amazonaws.com") ||
+    cleanUrl.includes("storage.googleapis.com") ||
+    cleanUrl.includes("blob.core.windows.net")
+  ) {
+    return cleanUrl;
   }
-  return `${backendBase}${path.startsWith("/") ? "" : "/"}${path}`;
+
+  if (cleanUrl.includes("localhost:") || cleanUrl.includes("127.0.0.1:")) {
+    if (backendBase && !backendBase.includes("localhost") && !backendBase.includes("127.0.0.1")) {
+      cleanUrl = cleanUrl.replace(/^https?:\/\/[^\/]+/, backendBase);
+    }
+    return cleanUrl;
+  }
+
+  if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+    return cleanUrl;
+  }
+
+  if (cleanUrl.startsWith("/")) {
+    cleanUrl = cleanUrl.substring(1);
+  }
+  if (cleanUrl.startsWith("uploads/")) {
+    return `${apiBase}/${cleanUrl}`;
+  }
+  return `${backendBase}/${cleanUrl}`;
 };
 
-const detectFileType = (url, filename = "", defaultMime = "application/pdf") => {
-  if (!url) return defaultMime;
+const detectFileType = (url, filename = "", defaultMime = "") => {
+  if (defaultMime && typeof defaultMime === "string" && defaultMime.trim()) {
+    const mimeLower = defaultMime.toLowerCase();
+    if (mimeLower.startsWith("image/") || mimeLower === "application/pdf") {
+      return mimeLower;
+    }
+  }
   const checkStr = `${String(url).toLowerCase()} ${String(filename).toLowerCase()}`;
   if (checkStr.includes(".pdf")) {
     return "application/pdf";
@@ -67,17 +89,71 @@ const detectFileType = (url, filename = "", defaultMime = "application/pdf") => 
     checkStr.includes(".jpg") ||
     checkStr.includes(".jpeg") ||
     checkStr.includes(".webp") ||
-    checkStr.includes("/image/upload/")
+    checkStr.includes(".gif") ||
+    checkStr.includes("/image/upload/") ||
+    checkStr.includes("cloudinary") ||
+    checkStr.includes("cloudinary.com") ||
+    checkStr.includes("rc") ||
+    checkStr.includes("insurance") ||
+    checkStr.includes("puc") ||
+    checkStr.includes("fitness") ||
+    checkStr.includes("permit") ||
+    checkStr.includes("tax")
   ) {
     return "image/png";
   }
   if (checkStr.includes("/raw/upload/")) {
-    if (checkStr.includes("rc") || checkStr.includes("insurance") || checkStr.includes("puc") || checkStr.includes("fitness") || checkStr.includes("permit") || checkStr.includes("tax")) {
-      return "image/png";
-    }
-    return "application/pdf";
+    return "image/png";
   }
-  return defaultMime;
+  return defaultMime || "image/png";
+};
+
+const getVehicleDoc = (vehicle, key) => {
+  if (!vehicle) return null;
+  const doc = vehicle.documents?.[key];
+  const fallbacks = {
+    rc: vehicle.rcUrl || vehicle.rcDocument,
+    insurance: vehicle.insuranceUrl || vehicle.insuranceDocument,
+    puc: vehicle.pucUrl || vehicle.pollutionUrl || vehicle.pucDocument,
+    fitness: vehicle.fitnessUrl || vehicle.fitnessDocument,
+    permit: vehicle.permitUrl || vehicle.permitDocument,
+    roadTax: vehicle.roadTaxUrl || vehicle.roadTaxDocument
+  };
+
+  let rawUrl = "";
+  let fileName = "";
+  let mimeType = "";
+  let fileSize = 0;
+  let uploadDate = null;
+
+  if (typeof doc === "string" && doc.trim()) {
+    rawUrl = doc;
+  } else if (doc && typeof doc === "object") {
+    rawUrl = doc.fileUrl || doc.url || doc.secure_url || doc.path || "";
+    fileName = doc.fileName || doc.originalName || "";
+    mimeType = doc.mimeType || doc.fileType || "";
+    fileSize = doc.fileSize || 0;
+    uploadDate = doc.uploadDate || doc.uploadedAt || null;
+  }
+
+  if (!rawUrl && fallbacks[key]) {
+    if (typeof fallbacks[key] === "string") {
+      rawUrl = fallbacks[key];
+    } else if (typeof fallbacks[key] === "object") {
+      rawUrl = fallbacks[key].fileUrl || fallbacks[key].url || fallbacks[key].secure_url || "";
+    }
+  }
+
+  if (!rawUrl) return null;
+
+  return {
+    rawUrl,
+    resolvedUrl: getDocumentUrl(rawUrl),
+    fileName: fileName || `${key}_document`,
+    mimeType,
+    fileSize,
+    uploadDate
+  };
 };
 
 export default function VehicleDetailsPage() {
@@ -679,289 +755,77 @@ export default function VehicleDetailsPage() {
             </div>
 
 
-
             {/* Documents Section */}
             <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6">
               <h3 className="text-sm font-bold text-[#1E293B] uppercase mb-6 pb-4 border-b border-[#E7EAF0]">
                 Vehicle Documents
-              </h3>              {vehicle.documents && (Array.isArray(vehicle.documents) ? vehicle.documents.length > 0 : Object.keys(vehicle.documents).some(k => vehicle.documents[k]?.fileUrl)) ? (
-                <div className="space-y-3">
-                  {/* RC (Registration Certificate) */}
-                  {vehicle.documents?.rc?.fileUrl && (
-                    <div className="flex items-center justify-between p-3 bg-[#F5F7FB] border border-[#E7EAF0] rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <FileText className="w-5 h-5 text-[#A14000] flex-shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#1E293B] truncate">RC (Registration Certificate)</p>
-                          <p className="text-[10px] text-[#64748B] truncate">{vehicle.documents.rc.originalName || "rc_document"}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 ml-2">
-                        <button
-                          onClick={() => {
-                            const doc = vehicle.documents.rc;
-                            const resolvedUrl = getDocumentUrl(doc.fileUrl);
-                            console.log("[View Document Clicked] RC Object:", doc, "Resolved URL:", resolvedUrl);
-                            setPreviewDocument({ 
-                              name: "RC (Registration Certificate)", 
-                              data: resolvedUrl, 
-                              type: detectFileType(resolvedUrl, doc.fileName || doc.originalName, doc.mimeType), 
-                              size: doc.fileSize || 0, 
-                              uploadDate: doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString("en-IN") : "N/A"
-                            });
-                          }}
-                          className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
-                          title="View Document"
-                        >
-                          <Eye className="w-4 h-4 text-blue-600" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            const doc = vehicle.documents.rc;
-                            const resolvedUrl = getDocumentUrl(doc.fileUrl);
-                            console.log("[Download Document Clicked] RC Object:", doc, "Resolved URL:", resolvedUrl);
-                            handleDownload(doc.fileUrl, doc.originalName || "rc_document");
-                          }}
-                          className="p-2 hover:bg-green-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
-                          title="Download Document"
-                        >
-                          <Download className="w-4 h-4 text-green-600" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+              </h3>
+              {(() => {
+                const docTypes = [
+                  { key: "rc", title: "RC (Registration Certificate)" },
+                  { key: "insurance", title: "Insurance Certificate" },
+                  { key: "puc", title: "Pollution Under Control (PUC)" },
+                  { key: "fitness", title: "Fitness Certificate" },
+                  { key: "permit", title: "Permit Document" },
+                  { key: "roadTax", title: "Road Tax Receipt" }
+                ];
 
-                  {/* Insurance Certificate */}
-                  {vehicle.documents?.insurance?.fileUrl && (
-                    <div className="flex items-center justify-between p-3 bg-[#F5F7FB] border border-[#E7EAF0] rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <FileText className="w-5 h-5 text-[#A14000] flex-shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#1E293B] truncate">Insurance Certificate</p>
-                          <p className="text-[10px] text-[#64748B] truncate">{vehicle.documents.insurance.originalName || "insurance_document"}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 ml-2">
-                        <button
-                          onClick={() => {
-                            const doc = vehicle.documents.insurance;
-                            const resolvedUrl = getDocumentUrl(doc.fileUrl);
-                            console.log("[View Document Clicked] Insurance Object:", doc, "Resolved URL:", resolvedUrl);
-                            setPreviewDocument({ 
-                              name: "Insurance Certificate", 
-                              data: resolvedUrl, 
-                              type: detectFileType(resolvedUrl, doc.fileName || doc.originalName, doc.mimeType), 
-                              size: doc.fileSize || 0, 
-                              uploadDate: doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString("en-IN") : "N/A"
-                            });
-                          }}
-                          className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
-                          title="View Document"
-                        >
-                          <Eye className="w-4 h-4 text-blue-600" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            const doc = vehicle.documents.insurance;
-                            const resolvedUrl = getDocumentUrl(doc.fileUrl);
-                            console.log("[Download Document Clicked] Insurance Object:", doc, "Resolved URL:", resolvedUrl);
-                            handleDownload(doc.fileUrl, doc.originalName || "insurance_document");
-                          }}
-                          className="p-2 hover:bg-green-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
-                          title="Download Document"
-                        >
-                          <Download className="w-4 h-4 text-green-600" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                const availableDocs = docTypes
+                  .map(({ key, title }) => ({ key, title, doc: getVehicleDoc(vehicle, key) }))
+                  .filter(item => item.doc !== null);
 
-                  {/* Pollution Under Control (PUC) */}
-                  {vehicle.documents?.puc?.fileUrl && (
-                    <div className="flex items-center justify-between p-3 bg-[#F5F7FB] border border-[#E7EAF0] rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <FileText className="w-5 h-5 text-[#A14000] flex-shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#1E293B] truncate">Pollution Under Control (PUC)</p>
-                          <p className="text-[10px] text-[#64748B] truncate">{vehicle.documents.puc.originalName || "puc_document"}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 ml-2">
-                        <button
-                          onClick={() => {
-                            const doc = vehicle.documents.puc;
-                            const resolvedUrl = getDocumentUrl(doc.fileUrl);
-                            console.log("[View Document Clicked] PUC Object:", doc, "Resolved URL:", resolvedUrl);
-                            setPreviewDocument({ 
-                              name: "Pollution Under Control (PUC)", 
-                              data: resolvedUrl, 
-                              type: detectFileType(resolvedUrl, doc.fileName || doc.originalName, doc.mimeType), 
-                              size: doc.fileSize || 0, 
-                              uploadDate: doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString("en-IN") : "N/A"
-                            });
-                          }}
-                          className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
-                          title="View Document"
-                        >
-                          <Eye className="w-4 h-4 text-blue-600" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            const doc = vehicle.documents.puc;
-                            const resolvedUrl = getDocumentUrl(doc.fileUrl);
-                            console.log("[Download Document Clicked] PUC Object:", doc, "Resolved URL:", resolvedUrl);
-                            handleDownload(doc.fileUrl, doc.originalName || "puc_document");
-                          }}
-                          className="p-2 hover:bg-green-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
-                          title="Download Document"
-                        >
-                          <Download className="w-4 h-4 text-green-600" />
-                        </button>
-                      </div>
+                if (availableDocs.length === 0) {
+                  return (
+                    <div className="text-center py-8 bg-[#F5F7FB] rounded-lg border border-dashed border-[#E7EAF0]">
+                      <FileText className="w-12 h-12 text-[#94A3B8] mx-auto mb-3 opacity-50" />
+                      <p className="text-sm text-[#64748B]">No documents uploaded for this vehicle yet.</p>
                     </div>
-                  )}
+                  );
+                }
 
-                  {/* Fitness Certificate */}
-                  {vehicle.documents?.fitness?.fileUrl && (
-                    <div className="flex items-center justify-between p-3 bg-[#F5F7FB] border border-[#E7EAF0] rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <FileText className="w-5 h-5 text-[#A14000] flex-shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#1E293B] truncate">Fitness Certificate</p>
-                          <p className="text-[10px] text-[#64748B] truncate">{vehicle.documents.fitness.originalName || "fitness_document"}</p>
+                return (
+                  <div className="space-y-3">
+                    {availableDocs.map(({ key, title, doc }) => (
+                      <div key={key} className="flex items-center justify-between p-3 bg-[#F5F7FB] border border-[#E7EAF0] rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <FileText className="w-5 h-5 text-[#A14000] flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-[#1E293B] truncate">{title}</p>
+                            <p className="text-[10px] text-[#64748B] truncate">{doc.fileName}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 ml-2">
+                          <button
+                            onClick={() => {
+                              console.log(`[View Document Clicked] ${title}:`, doc.resolvedUrl);
+                              setPreviewDocument({ 
+                                name: title, 
+                                data: doc.resolvedUrl, 
+                                type: detectFileType(doc.resolvedUrl, doc.fileName, doc.mimeType), 
+                                size: doc.fileSize || 0, 
+                                uploadDate: doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString("en-IN") : "N/A"
+                              });
+                            }}
+                            className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                            title="View Document"
+                          >
+                            <Eye className="w-4 h-4 text-blue-600" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDownload(doc.resolvedUrl, doc.fileName);
+                            }}
+                            className="p-2 hover:bg-green-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                            title="Download Document"
+                          >
+                            <Download className="w-4 h-4 text-green-600" />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 ml-2">
-                        <button
-                          onClick={() => {
-                            const doc = vehicle.documents.fitness;
-                            const resolvedUrl = getDocumentUrl(doc.fileUrl);
-                            console.log("[View Document Clicked] Fitness Object:", doc, "Resolved URL:", resolvedUrl);
-                            setPreviewDocument({ 
-                              name: "Fitness Certificate", 
-                              data: resolvedUrl, 
-                              type: detectFileType(resolvedUrl, doc.fileName || doc.originalName, doc.mimeType), 
-                              size: doc.fileSize || 0, 
-                              uploadDate: doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString("en-IN") : "N/A"
-                            });
-                          }}
-                          className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
-                          title="View Document"
-                        >
-                          <Eye className="w-4 h-4 text-blue-600" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            const doc = vehicle.documents.fitness;
-                            const resolvedUrl = getDocumentUrl(doc.fileUrl);
-                            console.log("[Download Document Clicked] Fitness Object:", doc, "Resolved URL:", resolvedUrl);
-                            handleDownload(doc.fileUrl, doc.originalName || "fitness_document");
-                          }}
-                          className="p-2 hover:bg-green-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
-                          title="Download Document"
-                        >
-                          <Download className="w-4 h-4 text-green-600" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Permit Document */}
-                  {vehicle.documents?.permit?.fileUrl && (
-                    <div className="flex items-center justify-between p-3 bg-[#F5F7FB] border border-[#E7EAF0] rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <FileText className="w-5 h-5 text-[#A14000] flex-shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#1E293B] truncate">Permit Document</p>
-                          <p className="text-[10px] text-[#64748B] truncate">{vehicle.documents.permit.originalName || "permit_document"}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 ml-2">
-                        <button
-                          onClick={() => {
-                            const doc = vehicle.documents.permit;
-                            const resolvedUrl = getDocumentUrl(doc.fileUrl);
-                            console.log("[View Document Clicked] Permit Object:", doc, "Resolved URL:", resolvedUrl);
-                            setPreviewDocument({ 
-                              name: "Permit Document", 
-                              data: resolvedUrl, 
-                              type: detectFileType(resolvedUrl, doc.fileName || doc.originalName, doc.mimeType), 
-                              size: doc.fileSize || 0, 
-                              uploadDate: doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString("en-IN") : "N/A"
-                            });
-                          }}
-                          className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
-                          title="View Document"
-                        >
-                          <Eye className="w-4 h-4 text-blue-600" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            const doc = vehicle.documents.permit;
-                            const resolvedUrl = getDocumentUrl(doc.fileUrl);
-                            console.log("[Download Document Clicked] Permit Object:", doc, "Resolved URL:", resolvedUrl);
-                            handleDownload(doc.fileUrl, doc.originalName || "permit_document");
-                          }}
-                          className="p-2 hover:bg-green-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
-                          title="Download Document"
-                        >
-                          <Download className="w-4 h-4 text-green-600" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Road Tax Receipt */}
-                  {vehicle.documents?.roadTax?.fileUrl && (
-                    <div className="flex items-center justify-between p-3 bg-[#F5F7FB] border border-[#E7EAF0] rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <FileText className="w-5 h-5 text-[#A14000] flex-shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#1E293B] truncate">Road Tax Receipt</p>
-                          <p className="text-[10px] text-[#64748B] truncate">{vehicle.documents.roadTax.originalName || "roadTax_document"}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 ml-2">
-                        <button
-                          onClick={() => {
-                            const doc = vehicle.documents.roadTax;
-                            const resolvedUrl = getDocumentUrl(doc.fileUrl);
-                            console.log("[View Document Clicked] Road Tax Object:", doc, "Resolved URL:", resolvedUrl);
-                            setPreviewDocument({ 
-                              name: "Road Tax Receipt", 
-                              data: resolvedUrl, 
-                              type: detectFileType(resolvedUrl, doc.fileName || doc.originalName, doc.mimeType), 
-                              size: doc.fileSize || 0, 
-                              uploadDate: doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString("en-IN") : "N/A"
-                            });
-                          }}
-                          className="p-2 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
-                          title="View Document"
-                        >
-                          <Eye className="w-4 h-4 text-blue-600" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            const doc = vehicle.documents.roadTax;
-                            const resolvedUrl = getDocumentUrl(doc.fileUrl);
-                            console.log("[Download Document Clicked] Road Tax Object:", doc, "Resolved URL:", resolvedUrl);
-                            handleDownload(doc.fileUrl, doc.originalName || "roadTax_document");
-                          }}
-                          className="p-2 hover:bg-green-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
-                          title="Download Document"
-                        >
-                          <Download className="w-4 h-4 text-green-600" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8 bg-[#F5F7FB] rounded-lg border border-dashed border-[#E7EAF0]">
-                  <FileText className="w-12 h-12 text-[#94A3B8] mx-auto mb-3 opacity-50" />
-                  <p className="text-sm text-[#64748B]">No documents uploaded</p>
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Summary Card */}
@@ -1218,35 +1082,25 @@ export default function VehicleDetailsPage() {
             <div className="flex-1 overflow-y-auto p-6">
               {previewDocument.type === "application/pdf" ? (
                 <div className="space-y-4">
-                  <embed
+                  <iframe
                     src={previewDocument.data}
-                    type="application/pdf"
                     className="w-full h-[500px] rounded-lg border border-[#E7EAF0]"
+                    title={previewDocument.name}
                   />
                   <p className="text-xs text-[#94A3B8] text-center">PDF Preview</p>
                 </div>
-              ) : previewDocument.type?.startsWith("image/") ? (
+              ) : (
                 <div className="space-y-4">
                   <img
                     src={previewDocument.data}
                     alt={previewDocument.name}
                     loading="lazy"
                     className="w-full rounded-lg border border-[#E7EAF0] object-contain max-h-[500px]"
+                    onError={(e) => {
+                      console.warn("Failed to load image preview:", previewDocument.data);
+                    }}
                   />
                   <p className="text-xs text-[#94A3B8] text-center">Image Preview</p>
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <FileText className="w-16 h-16 text-[#94A3B8] mx-auto mb-3 opacity-50" />
-                  <p className="text-sm text-[#64748B] mb-2">Preview not available for this file type</p>
-                  <p className="text-xs text-[#94A3B8] mb-6">{previewDocument.type}</p>
-                  <button
-                    onClick={() => handleDownload(previewDocument.data, previewDocument.name)}
-                    className="px-4 py-2.5 bg-[#A14000] hover:bg-[#853400] rounded-lg text-sm font-bold text-white transition-all inline-flex items-center gap-2 cursor-pointer"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download Document
-                  </button>
                 </div>
               )}
 
