@@ -17,6 +17,7 @@ import { seedTolls } from './utils/seedTolls.js';
 import { syncAllVehicleStatuses } from './utils/syncVehicleStatus.js';
 import { syncDriverLocations } from './utils/syncDriverLocations.js';
 import cloudinary from './config/cloudinary.config.js';
+import { parseDateTimeIST } from './utils/dateHelper.js';
 import http from 'http';
 import { Server } from 'socket.io';
 
@@ -288,11 +289,7 @@ const startServer = async () => {
       });
 
       for (const trip of upcomingTrips) {
-        let depTimeStr = String(trip.departureTime).trim();
-        if (!depTimeStr.endsWith('Z') && !depTimeStr.includes('+') && !depTimeStr.includes('-') && !/[-+]\d{2}:\d{2}$/.test(depTimeStr)) {
-          depTimeStr = depTimeStr.includes('T') ? depTimeStr + '+05:30' : depTimeStr + ' +05:30';
-        }
-        const depTime = new Date(depTimeStr);
+        const depTime = parseDateTimeIST(trip.departureTime);
         if (isNaN(depTime.getTime())) continue;
 
         const diff = depTime.getTime() - now.getTime();

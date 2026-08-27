@@ -20,6 +20,7 @@ import cloudinary from '../utils/cloudinary.js';
 import { createAndEmitNotification } from '../utils/notification.js';
 import { getClosestCity, calculateDistance } from '../utils/distanceCalculator.js';
 import { syncDriverLocationFromLatestTrip, updateDriverAndVehicleOnCompletion } from '../utils/driverLocationHelper.js';
+import { parseDateTimeIST } from '../utils/dateHelper.js';
 
 // Helper to resolve trip by ObjectId or Trip Number
 export async function resolveTripHelper(idOrNumber) {
@@ -855,11 +856,7 @@ export const updateTripStatus = async (req, res, next) => {
         return sendError(res, 400, `Cannot start trip with status '${trip.status}'. Trip must be in Scheduled/Accepted status before starting.`);
       }
       if (trip.departureTime) {
-        let depTimeStr = String(trip.departureTime).trim();
-        if (!depTimeStr.endsWith('Z') && !depTimeStr.includes('+') && !depTimeStr.includes('-') && !/[-+]\d{2}:\d{2}$/.test(depTimeStr)) {
-          depTimeStr = depTimeStr.includes('T') ? depTimeStr + '+05:30' : depTimeStr + ' +05:30';
-        }
-        const departureTime = new Date(depTimeStr);
+        const departureTime = parseDateTimeIST(trip.departureTime);
         const now = new Date();
         const fifteenMinBefore = new Date(departureTime.getTime() - 15 * 60 * 1000);
         

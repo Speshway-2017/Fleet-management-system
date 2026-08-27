@@ -49,7 +49,7 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
     if (!departureTimeStr) return true;
     try {
       let cleanStr = String(departureTimeStr).trim();
-      if (!cleanStr.endsWith('Z') && !cleanStr.includes('+') && !cleanStr.includes('-') && !/[-+]\d{2}:\d{2}$/.test(cleanStr)) {
+      if (!/(?:Z|[-+]\d{2}(?::?\d{2})?)$/i.test(cleanStr) && !cleanStr.includes('GMT') && !cleanStr.includes('UTC')) {
         cleanStr = cleanStr.includes('T') ? cleanStr + '+05:30' : cleanStr + ' +05:30';
       }
       const dep = new Date(cleanStr);
@@ -77,7 +77,7 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
     if (!departureTimeStr) return "";
     try {
       let cleanStr = String(departureTimeStr).trim();
-      if (!cleanStr.endsWith('Z') && !cleanStr.includes('+') && !cleanStr.includes('-') && !/[-+]\d{2}:\d{2}$/.test(cleanStr)) {
+      if (!/(?:Z|[-+]\d{2}(?::?\d{2})?)$/i.test(cleanStr) && !cleanStr.includes('GMT') && !cleanStr.includes('UTC')) {
         cleanStr = cleanStr.includes('T') ? cleanStr + '+05:30' : cleanStr + ' +05:30';
       }
       const dep = new Date(cleanStr);
