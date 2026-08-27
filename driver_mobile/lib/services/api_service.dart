@@ -14,8 +14,9 @@ class ApiService {
     // Initialization setup if required
   }
 
-  // Primary local network IP (PC Wi-Fi / Hotspot)
-  static const String defaultLocalIp = '10.166.118.1';
+  // Default Android Emulator IP for local host machine
+  static const String defaultLocalIp = '10.0.2.2';
+  static const String defaultServerUrl = 'fleet.speshway.site';
   static String? _cachedBaseUrl;
 
   static String formatServerUrl(String raw) {
@@ -39,7 +40,7 @@ class ApiService {
 
   static String get defaultUrl {
     if (kDebugMode) {
-      return kIsWeb ? 'http://localhost:5000/api' : 'http://192.168.88.15:5000/api';
+      return kIsWeb ? 'http://localhost:5000/api' : 'http://10.0.2.2:5000/api';
     }
     if (defaultServerUrl.startsWith('http://') ||
         defaultServerUrl.startsWith('https://')) {
@@ -66,14 +67,24 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     final savedUrl = prefs.getString('server_url')?.trim();
 
-    if (savedUrl != null && savedUrl.isNotEmpty) {
+    if (savedUrl != null &&
+        savedUrl.isNotEmpty &&
+        !savedUrl.contains('10.166.118.1') &&
+        !savedUrl.contains('192.168.88.15')) {
       _cachedBaseUrl = savedUrl;
       return _cachedBaseUrl!;
     }
 
-    final defaultUrl =
-        kIsWeb ? 'http://localhost:5000/api' : 'http://$defaultLocalIp:5000/api';
-    _cachedBaseUrl = defaultUrl;
+    // Auto-discover the first reachable backend URL among [10.0.2.2, 127.0.0.1, localhost, production]
+    final discovered = await autoDiscoverWorkingBaseUrl();
+    if (discovered != null && discovered.isNotEmpty) {
+      _cachedBaseUrl = discovered;
+      return _cachedBaseUrl!;
+    }
+
+    final fallbackUrl =
+        kIsWeb ? 'http://localhost:5000/api' : 'http://10.0.2.2:5000/api';
+    _cachedBaseUrl = fallbackUrl;
     return _cachedBaseUrl!;
   }
 
@@ -86,34 +97,36 @@ class ApiService {
   }
 
   /// Fast health-check probe to test if a candidate backend URL is reachable.
-  static Future<bool> testConnection(String targetUrl) async {
+  static Future<bool> testConnection(String targetUrl,
+      {Duration timeout = const Duration(milliseconds: 1500)}) async {
     try {
       var formattedUrl = formatServerUrl(targetUrl);
       final healthUri = Uri.parse(
         '${formattedUrl.replaceAll('/api', '')}/health',
       );
-      final response = await http
-          .get(healthUri)
-          .timeout(const Duration(seconds: 3));
+      final response = await http.get(healthUri).timeout(timeout);
       return response.statusCode == 200;
     } catch (_) {
       return false;
     }
   }
 
-  /// Automatically probes candidate URLs (ADB reverse 127.0.0.1, Wi-Fi IP, Emulator 10.0.2.2)
+  /// Automatically probes candidate URLs (ADB reverse 127.0.0.1, Emulator 10.0.2.2, Localhost, Production)
   /// and returns the first reachable URL while persisting it in SharedPreferences.
   static Future<String?> autoDiscoverWorkingBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
     final savedUrl = prefs.getString('server_url')?.trim();
 
     final List<String> candidates = [
-      if (savedUrl != null && savedUrl.isNotEmpty) savedUrl,
-      'http://127.0.0.1:5000/api',
-      'http://10.166.118.1:5000/api',
-      'http://10.0.2.2:5000/api',
-      'http://192.168.1.17:5000/api',
-      'http://localhost:5000/api',
+      if (savedUrl != null &&
+          savedUrl.isNotEmpty &&
+          !savedUrl.contains('10.166.118.1') &&
+          !savedUrl.contains('192.168.88.15'))
+        savedUrl,
+      'http://10.0.2.2:5000/api',         // Android Emulator default
+      'http://127.0.0.1:5000/api',        // ADB reverse / Localhost
+      'http://localhost:5000/api',        // Web / Desktop
+      'https://fleet.speshway.site/api',   // Production fallback
     ];
 
     final uniqueCandidates = candidates.toSet().toList();
@@ -143,16 +156,18 @@ class ApiService {
   static Future<Map<String, String>> _getHeaders() async {
     String? token = await getToken();
     token ??= '';
-    return {
+    final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       if (token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
-    final loggedHeaders = Map<String, String>.from(headers);
-    if (loggedHeaders.containsKey('Authorization')) {
-      loggedHeaders['Authorization'] = 'Bearer [MASKED]';
+    if (kDebugMode) {
+      final loggedHeaders = Map<String, String>.from(headers);
+      if (loggedHeaders.containsKey('Authorization')) {
+        loggedHeaders['Authorization'] = 'Bearer [MASKED]';
+      }
+      debugPrint('[ApiService] Final API request headers: $loggedHeaders');
     }
-    debugPrint('[ApiService] Final API request headers: $loggedHeaders');
     return headers;
   }
 

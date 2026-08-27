@@ -41,23 +41,24 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
+    // 1. Delete local secure storage token immediately
     try {
-      await ApiService.post('/driver/logout', {});
-    } catch (_) {}
-
-    try {
-      // Clear secure storage token
       await SecureStorageHelper.delete(key: 'jwt_token');
     } catch (_) {}
 
+    // 2. Clear shared_preferences session data immediately
     try {
-      // Clear shared_preferences session data
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('jwt_token');
       await prefs.remove('driver_id');
       await prefs.remove('manager_id');
       await prefs.remove('organization_id');
       await prefs.remove('driver_profile');
+    } catch (_) {}
+
+    // 3. Fire-and-forget backend notification (unawaited)
+    try {
+      ApiService.post('/driver/logout', {}).catchError((_) => null);
     } catch (_) {}
   }
 

@@ -128,27 +128,26 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> logout() async {
-    _isLoading = true;
+    _isLoading = false;
     _errorMessage = null;
-    notifyListeners();
 
     try {
-      // Clear FCM Token on backend first while still authenticated
-      try {
-        await _authRepository.updateProfile({'fcmToken': ''});
-      } catch (_) {}
+      // Fire-and-forget FCM Token reset (do not await)
+      _authRepository.updateProfile({'fcmToken': ''}).catchError((_) => null);
 
+      // Perform immediate local storage purge
       await _authRepository.logout();
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
       _driver = null;
       _isAuthenticated = false;
+      _isSessionInitialized = true;
       SocketService.disconnect();
       _isLoading = false;
       notifyListeners();
     }
-    return _errorMessage == null;
+    return true;
   }
 
   Future<bool> forgotPassword(String email) async {

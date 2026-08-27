@@ -399,25 +399,15 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
 
   Future<void> _handleLogout(BuildContext context) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final navigator = Navigator.of(context, rootNavigator: true);
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-          ),
-        );
-      },
-    );
 
     await authProvider.logout();
 
-    navigator.popUntil((route) => route.isFirst);
-
     if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Logged out successfully.'),
