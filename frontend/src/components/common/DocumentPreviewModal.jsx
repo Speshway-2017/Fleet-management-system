@@ -1,5 +1,43 @@
 import { X, Download } from "lucide-react";
 
+const resolveUrl = (url) => {
+  if (!url || typeof url !== "string") return "";
+  let cleanUrl = url.trim();
+
+  if (cleanUrl.startsWith("data:")) return cleanUrl;
+
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  const backendBase = apiBase.replace(/\/api\/?$/, "");
+
+  if (
+    cleanUrl.includes("cloudinary.com") ||
+    cleanUrl.includes("amazonaws.com") ||
+    cleanUrl.includes("storage.googleapis.com") ||
+    cleanUrl.includes("blob.core.windows.net")
+  ) {
+    return cleanUrl;
+  }
+
+  if (cleanUrl.includes("localhost:") || cleanUrl.includes("127.0.0.1:")) {
+    if (backendBase && !backendBase.includes("localhost") && !backendBase.includes("127.0.0.1")) {
+      cleanUrl = cleanUrl.replace(/^https?:\/\/[^\/]+/, backendBase);
+    }
+    return cleanUrl;
+  }
+
+  if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+    return cleanUrl;
+  }
+
+  if (cleanUrl.startsWith("/")) {
+    cleanUrl = cleanUrl.substring(1);
+  }
+  if (cleanUrl.startsWith("uploads/")) {
+    return `${apiBase}/${cleanUrl}`;
+  }
+  return `${backendBase}/${cleanUrl}`;
+};
+
 export default function DocumentPreviewModal({
   isOpen,
   document,
@@ -7,13 +45,14 @@ export default function DocumentPreviewModal({
 }) {
   if (!isOpen || !document) return null;
 
-  const fileUrl = document.fileData || document.fileUrl || document.url || "";
+  const rawUrl = document.fileData || document.fileUrl || document.url || "";
+  const fileUrl = resolveUrl(rawUrl);
   const name = document.name || document.title || "Document";
   const category = document.category || document.type || "Other";
   const fileName = document.fileName || name;
 
-  const detectFileType = (url, filename = "", defaultMime = "application/pdf") => {
-    if (defaultMime && typeof defaultMime === "string") {
+  const detectFileType = (url, filename = "", defaultMime = "") => {
+    if (defaultMime && typeof defaultMime === "string" && defaultMime.trim()) {
       const mimeLower = defaultMime.toLowerCase();
       if (mimeLower.startsWith("image/") || mimeLower === "application/pdf") {
         return mimeLower;
@@ -28,22 +67,28 @@ export default function DocumentPreviewModal({
       checkStr.includes(".jpg") ||
       checkStr.includes(".jpeg") ||
       checkStr.includes(".webp") ||
-      checkStr.includes("/image/upload/")
+      checkStr.includes(".gif") ||
+      checkStr.includes("/image/upload/") ||
+      checkStr.includes("cloudinary") ||
+      checkStr.includes("cloudinary.com") ||
+      checkStr.includes("rc") ||
+      checkStr.includes("insurance") ||
+      checkStr.includes("puc") ||
+      checkStr.includes("fitness") ||
+      checkStr.includes("permit") ||
+      checkStr.includes("tax")
     ) {
       return "image/png";
     }
     if (checkStr.includes("/raw/upload/")) {
-      if (checkStr.includes("rc") || checkStr.includes("insurance") || checkStr.includes("puc") || checkStr.includes("fitness") || checkStr.includes("permit") || checkStr.includes("tax")) {
-        return "image/png";
-      }
-      return "application/pdf";
+      return "image/png";
     }
-    return defaultMime;
+    return defaultMime || "image/png";
   };
 
   const fileMime = detectFileType(fileUrl, fileName, document.fileType);
   const isPdf = fileMime === "application/pdf";
-  const isImage = fileMime?.startsWith("image/");
+  const isImage = fileMime?.startsWith("image/") || !isPdf;
   const canPreview = isPdf || isImage;
 
   const handleDownload = async () => {

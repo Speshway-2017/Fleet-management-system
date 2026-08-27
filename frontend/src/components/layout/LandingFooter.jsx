@@ -22,7 +22,9 @@ export default function LandingFooter() {
             <img src={platformSettings?.logoUrl || "/logo.png"} alt="Fleet Management Logo" className="h-9 w-auto object-contain bg-white rounded-lg p-1" />
           </div>
           <p className="text-xs text-gray-400 leading-relaxed">
-            {platformSettings?.footerDescription || "A next-generation fleet management platform designed to help businesses streamline operations, improve efficiency, and drive growth."}
+            {platformSettings?.footerDescription && !platformSettings.footerDescription.includes("jjj") && !platformSettings.footerDescription.includes("ujjj")
+              ? platformSettings.footerDescription
+              : "A next-generation fleet management platform designed to help businesses streamline operations, improve efficiency, and drive growth."}
           </p>
           {/* Social Icons */}
           <div className="flex items-center gap-3 pt-2">

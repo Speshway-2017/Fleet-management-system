@@ -20,7 +20,39 @@ router.get('/blogs', async (req, res, next) => {
 router.get('/settings', async (req, res, next) => {
   try {
     const settings = await Settings.findOne();
-    const data = settings || { platformName: 'Fleet Management', logoUrl: '/logo.png' };
+    const defaults = {
+      platformName: 'Fleet Management',
+      logoUrl: '/logo.png',
+      footerDescription: 'A next-generation fleet management platform designed to help businesses streamline operations, improve efficiency, and drive growth.',
+      contactPhone: '+91 1800 200 4567',
+      contactEmail: 'support@fleetmanagement.io',
+      contactAddress: 'Bengaluru, Karnataka, India',
+      facebookUrl: 'https://facebook.com',
+      linkedinUrl: 'https://linkedin.com',
+      twitterUrl: 'https://twitter.com',
+      youtubeUrl: 'https://youtube.com',
+    };
+
+    if (!settings) {
+      return sendSuccess(res, 200, defaults, 'Settings fetched successfully');
+    }
+
+    const data = settings.toObject();
+    let needsUpdate = false;
+    const updates = {};
+
+    for (const key of Object.keys(defaults)) {
+      if (!data[key] || (typeof data[key] === 'string' && (data[key].includes('jjj') || data[key].includes('ujjj')))) {
+        data[key] = defaults[key];
+        updates[key] = defaults[key];
+        needsUpdate = true;
+      }
+    }
+
+    if (needsUpdate && settings._id) {
+      await Settings.updateOne({ _id: settings._id }, { $set: updates });
+    }
+
     return sendSuccess(res, 200, data, 'Settings fetched successfully');
   } catch (error) {
     next(error);
