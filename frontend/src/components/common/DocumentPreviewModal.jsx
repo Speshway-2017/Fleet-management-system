@@ -1,5 +1,4 @@
 import { X, Download } from "lucide-react";
-import { downloadVehicleDocument } from "../services/documentService";
 
 export default function DocumentPreviewModal({
   isOpen,
@@ -7,6 +6,11 @@ export default function DocumentPreviewModal({
   onClose
 }) {
   if (!isOpen || !document) return null;
+
+  const fileUrl = document.fileData || document.fileUrl || document.url || "";
+  const name = document.name || document.title || "Document";
+  const category = document.category || document.type || "Other";
+  const fileName = document.fileName || name;
 
   const detectFileType = (url, filename = "", defaultMime = "application/pdf") => {
     const checkStr = `${String(url).toLowerCase()} ${String(filename).toLowerCase()}`;
@@ -31,26 +35,26 @@ export default function DocumentPreviewModal({
     return defaultMime;
   };
 
-  const fileMime = detectFileType(document.fileData, document.fileName || document.name, document.fileType);
+  const fileMime = detectFileType(fileUrl, fileName, document.fileType);
   const isPdf = fileMime === "application/pdf";
   const isImage = fileMime?.startsWith("image/");
   const canPreview = isPdf || isImage;
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(document.fileData);
+      const response = await fetch(fileUrl);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const link = window.document.createElement("a");
       link.href = blobUrl;
-      link.download = document.fileName;
+      link.download = fileName;
       window.document.body.appendChild(link);
       link.click();
       window.document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.warn("Direct download failed, falling back to window.open", error);
-      window.open(document.fileData, "_blank");
+      window.open(fileUrl, "_blank");
     }
   };
 
@@ -60,11 +64,15 @@ export default function DocumentPreviewModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#E7EAF0] bg-[#F5F7FB]">
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold text-[#1E293B] truncate">{document.name}</h3>
+            <h3 className="text-lg font-bold text-[#1E293B] truncate">{name}</h3>
             <div className="flex items-center gap-2 mt-2 text-xs text-[#64748B]">
-              <span>{document.category}</span>
-              <span>•</span>
-              <span>{new Date(document.uploadDate).toLocaleDateString("en-IN")}</span>
+              <span>{category}</span>
+              {document.uploadDate && (
+                <>
+                  <span>•</span>
+                  <span>Uploaded: {new Date(document.uploadDate).toLocaleDateString("en-IN")}</span>
+                </>
+              )}
               {document.expiryDate && (
                 <>
                   <span>•</span>
@@ -82,22 +90,22 @@ export default function DocumentPreviewModal({
         </div>
 
         {/* Content */}
-        <div className="relative w-full max-h-[500px] bg-white overflow-auto">
+        <div className="relative w-full max-h-[500px] bg-white overflow-auto font-nunito">
           {canPreview ? (
             <>
               {isPdf ? (
                 <div className="w-full h-96 bg-gray-100 flex items-center justify-center">
                   <iframe
-                    src={document.fileData}
-                    className="w-full h-full"
+                    src={fileUrl}
+                    className="w-full h-full border-none"
                     title="PDF Preview"
                   />
                 </div>
               ) : isImage ? (
                 <div className="w-full flex items-center justify-center bg-gray-50 p-4">
                   <img
-                    src={document.fileData}
-                    alt={document.name}
+                    src={fileUrl}
+                    alt={name}
                     className="max-w-full max-h-96 object-contain rounded-lg"
                   />
                 </div>
@@ -118,9 +126,13 @@ export default function DocumentPreviewModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t border-[#E7EAF0] bg-[#F5F7FB]">
+        <div className="flex items-center justify-between p-4 border-t border-[#E7EAF0] bg-[#F5F7FB] font-nunito">
           <div className="text-xs text-[#64748B]">
-            <span className="font-semibold text-[#1E293B]">{document.fileSize}</span> KB
+            {document.fileSize && (
+              <>
+                <span className="font-semibold text-[#1E293B]">{document.fileSize}</span> KB
+              </>
+            )}
           </div>
           <div className="flex gap-2">
             <button

@@ -10,7 +10,7 @@ import {
 } from "../services/documentService";
 import DocumentCard from "./DocumentCard";
 import UploadDocumentModal from "./UploadDocumentModal";
-import DocumentPreviewModal from "./DocumentPreviewModal";
+import DocumentPreviewModal from "../../../../components/common/DocumentPreviewModal";
 import DeleteDocumentModal from "./DeleteDocumentModal";
 import DocumentFilters from "./DocumentFilters";
 import EmptyDocumentsState from "./EmptyDocumentsState";

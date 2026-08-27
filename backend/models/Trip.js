@@ -11,7 +11,13 @@ const addressSchema = new mongoose.Schema({
   longitude: { type: Number, default: null },
   contactPerson: { type: String, default: '' },
   contactPhone: { type: String, default: '' },
-  notes: { type: String, default: '' }
+  notes: { type: String, default: '' },
+  // Compatibility fields
+  companyName: { type: String, default: '' },
+  streetAddress: { type: String, default: '' },
+  area: { type: String, default: '' },
+  pincode: { type: String, default: '' },
+  mobile: { type: String, default: '' }
 }, { _id: false });
 
 const tripSchema = new mongoose.Schema(
