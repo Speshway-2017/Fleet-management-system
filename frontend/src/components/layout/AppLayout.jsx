@@ -46,7 +46,11 @@ import {
   Plus,
   Coins,
   Sun,
-  Moon
+  Moon,
+  Boxes,
+  PieChart,
+  Sliders,
+  Layers
 } from "lucide-react";
 
 const MENU_ITEMS = [
@@ -109,29 +113,16 @@ export default function AppLayout() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : false);
   const [openSections, setOpenSections] = useState({
-    overview: true,
-    logistics: true,
-    fleetServices: true,
-    analytics: true,
-    system: true,
+    overview: false,
+    logistics: false,
+    fleetServices: false,
+    analytics: false,
+    system: false,
   });
 
   const toggleSection = (sec) => {
     setOpenSections((prev) => ({ ...prev, [sec]: !prev[sec] }));
   };
-
-  useEffect(() => {
-    const path = location.pathname;
-    if (path.startsWith("/manager/vehicle") || path.startsWith("/manager/drivers") || path.startsWith("/manager/trips") || path.startsWith("/manager/map")) {
-      setOpenSections((prev) => ({ ...prev, logistics: true }));
-    } else if (path.startsWith("/manager/fuel") || path.startsWith("/manager/maintenance")) {
-      setOpenSections((prev) => ({ ...prev, fleetServices: true }));
-    } else if (path.startsWith("/manager/analytics") || path.startsWith("/manager/earnings") || path.startsWith("/manager/reports")) {
-      setOpenSections((prev) => ({ ...prev, analytics: true }));
-    } else if (path.startsWith("/manager/notifications") || path.startsWith("/manager/subscription") || path.startsWith("/manager/settings")) {
-      setOpenSections((prev) => ({ ...prev, system: true }));
-    }
-  }, [location.pathname]);
   const links = role === "admin" ? ADMIN_ITEMS : MENU_ITEMS;
   const mobileLinks = role === "admin" ? ADMIN_MOBILE_ITEMS : MANAGER_MOBILE_ITEMS;
   const pageTitle = location.pathname.startsWith("/manager/reports") ? "Reports Center" : role === "admin" ? "Fleet Management" : "Fleet Center";
@@ -257,50 +248,32 @@ export default function AppLayout() {
                   );
                 })
               ) : (
-                <div className="px-2 py-2 space-y-3">
-                  {/* OVERVIEW */}
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => toggleSection("overview")}
-                      className="w-full flex items-center justify-between px-3 py-1.5 font-poppins text-[10px] font-extrabold uppercase tracking-widest text-slate-400 hover:text-slate-700 transition-colors cursor-pointer select-none"
-                    >
-                      <span>Overview</span>
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openSections.overview ? "" : "-rotate-90"}`} />
-                    </button>
-                    <AnimatePresence initial={false}>
-                      {openSections.overview && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
-                          className="overflow-hidden"
-                        >
-                          <NavLink
-                            to="/manager"
-                            onClick={() => setMobileSidebarOpen(false)}
-                            className={`flex items-center gap-3.5 px-4 py-2.5 text-sm rounded-xl transition-all ${location.pathname === "/manager"
-                                ? "bg-[#A14000]/10 text-[#A14000] font-bold border-l-4 border-[#A14000]"
-                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                              }`}
-                          >
-                            <LayoutDashboard className="w-4.5 h-4.5 shrink-0" />
-                            <span>Dashboard</span>
-                          </NavLink>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                <div className="px-2 py-2 space-y-2">
+                  {/* DASHBOARD */}
+                  <NavLink
+                    to="/manager"
+                    onClick={() => setMobileSidebarOpen(false)}
+                    className={`flex items-center gap-3 px-3.5 py-2.5 font-poppins text-xs font-bold rounded-xl transition-all ${
+                      location.pathname === "/manager"
+                        ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/25"
+                        : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <LayoutDashboard className="w-4.5 h-4.5 shrink-0" />
+                    <span>Dashboard</span>
+                  </NavLink>
 
                   {/* LOGISTICS */}
                   <div>
                     <button
                       type="button"
                       onClick={() => toggleSection("logistics")}
-                      className="w-full flex items-center justify-between px-3 py-1.5 font-poppins text-[10px] font-extrabold uppercase tracking-widest text-slate-400 hover:text-slate-700 transition-colors cursor-pointer select-none"
+                      className="w-full flex items-center justify-between px-3 py-2 font-poppins text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none"
                     >
-                      <span>Logistics</span>
+                      <div className="flex items-center gap-2">
+                        <Boxes className="w-4 h-4 text-slate-400 shrink-0" />
+                        <span>Logistics</span>
+                      </div>
                       <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openSections.logistics ? "" : "-rotate-90"}`} />
                     </button>
                     <AnimatePresence initial={false}>
@@ -319,18 +292,19 @@ export default function AppLayout() {
                             { label: "Live Tracking", to: "/manager/map", icon: MapPin },
                           ].map((item) => {
                             const Icon = item.icon;
-                            const isActive = location.pathname === item.to || (item.to !== "/manager" && location.pathname.startsWith(item.to));
+                            const isActive = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
                             return (
                               <NavLink
                                 key={item.label}
                                 to={item.to}
                                 onClick={() => setMobileSidebarOpen(false)}
-                                className={`flex items-center gap-3.5 px-4 py-2.5 text-sm rounded-xl transition-all ${isActive
-                                    ? "bg-[#A14000]/10 text-[#A14000] font-bold border-l-4 border-[#A14000]"
-                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                                  }`}
+                                className={`flex items-center gap-3 px-3.5 py-2 my-0.5 font-poppins text-[11px] font-semibold rounded-xl transition-all ${
+                                  isActive
+                                    ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/25"
+                                    : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                                }`}
                               >
-                                <Icon className="w-4.5 h-4.5 shrink-0" />
+                                <Icon className="w-4 h-4 shrink-0" />
                                 <span>{item.label}</span>
                               </NavLink>
                             );
@@ -345,9 +319,12 @@ export default function AppLayout() {
                     <button
                       type="button"
                       onClick={() => toggleSection("fleetServices")}
-                      className="w-full flex items-center justify-between px-3 py-1.5 font-poppins text-[10px] font-extrabold uppercase tracking-widest text-slate-400 hover:text-slate-700 transition-colors cursor-pointer select-none"
+                      className="w-full flex items-center justify-between px-3 py-2 font-poppins text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none"
                     >
-                      <span>Fleet Services</span>
+                      <div className="flex items-center gap-2">
+                        <Wrench className="w-4 h-4 text-slate-400 shrink-0" />
+                        <span>Fleet Services</span>
+                      </div>
                       <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openSections.fleetServices ? "" : "-rotate-90"}`} />
                     </button>
                     <AnimatePresence initial={false}>
@@ -364,18 +341,19 @@ export default function AppLayout() {
                             { label: "Maintenance", to: "/manager/maintenance", icon: Wrench },
                           ].map((item) => {
                             const Icon = item.icon;
-                            const isActive = location.pathname === item.to || location.pathname.startsWith(item.to);
+                            const isActive = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
                             return (
                               <NavLink
                                 key={item.label}
                                 to={item.to}
                                 onClick={() => setMobileSidebarOpen(false)}
-                                className={`flex items-center gap-3.5 px-4 py-2.5 text-sm rounded-xl transition-all ${isActive
-                                    ? "bg-[#A14000]/10 text-[#A14000] font-bold border-l-4 border-[#A14000]"
-                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                                  }`}
+                                className={`flex items-center gap-3 px-3.5 py-2 my-0.5 font-poppins text-[11px] font-semibold rounded-xl transition-all ${
+                                  isActive
+                                    ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/25"
+                                    : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                                }`}
                               >
-                                <Icon className="w-4.5 h-4.5 shrink-0" />
+                                <Icon className="w-4 h-4 shrink-0" />
                                 <span>{item.label}</span>
                               </NavLink>
                             );
@@ -390,9 +368,12 @@ export default function AppLayout() {
                     <button
                       type="button"
                       onClick={() => toggleSection("analytics")}
-                      className="w-full flex items-center justify-between px-3 py-1.5 font-poppins text-[10px] font-extrabold uppercase tracking-widest text-slate-400 hover:text-slate-700 transition-colors cursor-pointer select-none"
+                      className="w-full flex items-center justify-between px-3 py-2 font-poppins text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none"
                     >
-                      <span>Analytics & Reports</span>
+                      <div className="flex items-center gap-2">
+                        <PieChart className="w-4 h-4 text-slate-400 shrink-0" />
+                        <span>Analytics & Reports</span>
+                      </div>
                       <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openSections.analytics ? "" : "-rotate-90"}`} />
                     </button>
                     <AnimatePresence initial={false}>
@@ -410,18 +391,19 @@ export default function AppLayout() {
                             { label: "Reports", to: "/manager/reports", icon: ClipboardList },
                           ].map((item) => {
                             const Icon = item.icon;
-                            const isActive = location.pathname === item.to || location.pathname.startsWith(item.to);
+                            const isActive = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
                             return (
                               <NavLink
                                 key={item.label}
                                 to={item.to}
                                 onClick={() => setMobileSidebarOpen(false)}
-                                className={`flex items-center gap-3.5 px-4 py-2.5 text-sm rounded-xl transition-all ${isActive
-                                    ? "bg-[#A14000]/10 text-[#A14000] font-bold border-l-4 border-[#A14000]"
-                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                                  }`}
+                                className={`flex items-center gap-3 px-3.5 py-2 my-0.5 font-poppins text-[11px] font-semibold rounded-xl transition-all ${
+                                  isActive
+                                    ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/25"
+                                    : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                                }`}
                               >
-                                <Icon className="w-4.5 h-4.5 shrink-0" />
+                                <Icon className="w-4 h-4 shrink-0" />
                                 <span>{item.label}</span>
                               </NavLink>
                             );
@@ -436,9 +418,12 @@ export default function AppLayout() {
                     <button
                       type="button"
                       onClick={() => toggleSection("system")}
-                      className="w-full flex items-center justify-between px-3 py-1.5 font-poppins text-[10px] font-extrabold uppercase tracking-widest text-slate-400 hover:text-slate-700 transition-colors cursor-pointer select-none"
+                      className="w-full flex items-center justify-between px-3 py-2 font-poppins text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none"
                     >
-                      <span>System</span>
+                      <div className="flex items-center gap-2">
+                        <Sliders className="w-4 h-4 text-slate-400 shrink-0" />
+                        <span>System</span>
+                      </div>
                       <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openSections.system ? "" : "-rotate-90"}`} />
                     </button>
                     <AnimatePresence initial={false}>
@@ -456,18 +441,19 @@ export default function AppLayout() {
                             { label: "Settings", to: "/manager/settings", icon: Settings },
                           ].map((item) => {
                             const Icon = item.icon;
-                            const isActive = location.pathname === item.to || location.pathname.startsWith(item.to);
+                            const isActive = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
                             return (
                               <NavLink
                                 key={item.label}
                                 to={item.to}
                                 onClick={() => setMobileSidebarOpen(false)}
-                                className={`flex items-center gap-3.5 px-4 py-2.5 text-sm rounded-xl transition-all ${isActive
-                                    ? "bg-[#A14000]/10 text-[#A14000] font-bold border-l-4 border-[#A14000]"
-                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                                  }`}
+                                className={`flex items-center gap-3 px-3.5 py-2 my-0.5 font-poppins text-[11px] font-semibold rounded-xl transition-all ${
+                                  isActive
+                                    ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/25"
+                                    : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                                }`}
                               >
-                                <Icon className="w-4.5 h-4.5 shrink-0" />
+                                <Icon className="w-4 h-4 shrink-0" />
                                 <span>{item.label}</span>
                               </NavLink>
                             );
@@ -480,13 +466,14 @@ export default function AppLayout() {
 
               )}
             </nav>
-            <div className="border-t border-slate-100 px-4 py-4">
+            <div className="border-t border-slate-800/80 p-4 mt-auto shrink-0 bg-[#0D1B2A]">
               <button
+                type="button"
                 onClick={handleLogoutRequest}
-                className="flex w-full items-center justify-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-500/20"
+                className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all font-poppins text-xs font-bold cursor-pointer"
               >
-                <LogOut className="h-4 w-4" />
-                <span>Logout</span>
+                <LogOut className="w-4 h-4 shrink-0" />
+                <span>Sign Out</span>
               </button>
             </div>
           </aside>
@@ -538,50 +525,33 @@ export default function AppLayout() {
               );
             })
           ) : (
-            <div className="space-y-3">
-              {/* OVERVIEW */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => toggleSection("overview")}
-                  className="w-full flex items-center justify-between px-5 pt-2.5 pb-1.5 font-manrope text-[12px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-700 transition-colors cursor-pointer select-none"
-                >
-                  <span className="hidden lg:block">Overview</span>
-                  <ChevronDown className={`hidden lg:block w-3.5 h-3.5 transition-transform duration-200 ${openSections.overview ? "" : "-rotate-90"}`} />
-                </button>
-                <AnimatePresence initial={false}>
-                  {openSections.overview && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
-                      className="overflow-hidden"
-                    >
-                      <NavLink
-                        to="/manager"
-                        className={`flex items-center justify-center lg:justify-start gap-3 px-4 py-2.5 my-0.5 text-sm font-semibold font-poppins rounded-xl transition-all ${
-                          location.pathname === "/manager"
-                            ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/20"
-                            : "text-slate-300 hover:text-white hover:bg-slate-800/60"
-                        }`}
-                      >
-                        <LayoutDashboard className={`w-5 h-5 shrink-0 ${location.pathname === "/manager" ? "text-white" : "text-slate-400"}`} />
-                        <span className="hidden lg:block">Dashboard</span>
-                      </NavLink>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+            <div className="space-y-2">
+              {/* DASHBOARD */}
+              <NavLink
+                to="/manager"
+                className={`flex items-center justify-center lg:justify-start gap-3 px-4 py-2.5 my-0.5 font-poppins text-xs font-bold rounded-xl transition-all ${
+                  location.pathname === "/manager"
+                    ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/20"
+                    : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                }`}
+                title="Dashboard"
+              >
+                <LayoutDashboard className={`w-4.5 h-4.5 shrink-0 ${location.pathname === "/manager" ? "text-white" : "text-slate-400"}`} />
+                <span className="hidden lg:block">Dashboard</span>
+              </NavLink>
 
               {/* LOGISTICS & OPERATIONS */}
               <div>
                 <button
                   type="button"
                   onClick={() => toggleSection("logistics")}
-                  className="w-full flex items-center justify-between px-5 pt-2.5 pb-1.5 font-manrope text-[12px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-700 transition-colors cursor-pointer select-none"
+                  className="w-full flex items-center justify-center lg:justify-between px-4 pt-3 pb-1.5 font-poppins text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none"
+                  title="Logistics"
                 >
-                  <span className="hidden lg:block">Logistics</span>
+                  <div className="flex items-center gap-2">
+                    <Boxes className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span className="hidden lg:block">Logistics</span>
+                  </div>
                   <ChevronDown className={`hidden lg:block w-3.5 h-3.5 transition-transform duration-200 ${openSections.logistics ? "" : "-rotate-90"}`} />
                 </button>
                 <AnimatePresence initial={false}>
@@ -600,18 +570,18 @@ export default function AppLayout() {
                         { label: "Live Tracking", to: "/manager/map", icon: MapPin },
                       ].map((item) => {
                         const Icon = item.icon;
-                        const isActive = location.pathname === item.to || (item.to !== "/manager" && location.pathname.startsWith(item.to));
+                        const isActive = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
                         return (
                           <NavLink
                             key={item.label}
                             to={item.to}
-                            className={`flex items-center justify-center lg:justify-start gap-3 px-4 py-2.5 my-0.5 text-sm font-semibold font-poppins rounded-xl transition-all ${
+                            className={`flex items-center justify-center lg:justify-start gap-3 px-4 py-2 my-0.5 text-[11px] font-semibold font-poppins rounded-xl transition-all ${
                               isActive
                                 ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/20"
                                 : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                             }`}
                           >
-                            <Icon className={`w-5 h-5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                            <Icon className={`w-4.5 h-4.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
                             <span className="hidden lg:block">{item.label}</span>
                           </NavLink>
                         );
@@ -626,9 +596,13 @@ export default function AppLayout() {
                 <button
                   type="button"
                   onClick={() => toggleSection("fleetServices")}
-                  className="w-full flex items-center justify-between px-5 pt-2.5 pb-1.5 font-manrope text-[12px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-700 transition-colors cursor-pointer select-none"
+                  className="w-full flex items-center justify-center lg:justify-between px-4 pt-3 pb-1.5 font-poppins text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none"
+                  title="Fleet Services"
                 >
-                  <span className="hidden lg:block">Fleet Services</span>
+                  <div className="flex items-center gap-2">
+                    <Wrench className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span className="hidden lg:block">Fleet Services</span>
+                  </div>
                   <ChevronDown className={`hidden lg:block w-3.5 h-3.5 transition-transform duration-200 ${openSections.fleetServices ? "" : "-rotate-90"}`} />
                 </button>
                 <AnimatePresence initial={false}>
@@ -645,18 +619,18 @@ export default function AppLayout() {
                         { label: "Maintenance", to: "/manager/maintenance", icon: Wrench },
                       ].map((item) => {
                         const Icon = item.icon;
-                        const isActive = location.pathname === item.to || location.pathname.startsWith(item.to);
+                        const isActive = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
                         return (
                           <NavLink
                             key={item.label}
                             to={item.to}
-                            className={`flex items-center justify-center lg:justify-start gap-3 px-4 py-2.5 my-0.5 text-sm font-semibold font-poppins rounded-xl transition-all ${
+                            className={`flex items-center justify-center lg:justify-start gap-3 px-4 py-2 my-0.5 text-[11px] font-semibold font-poppins rounded-xl transition-all ${
                               isActive
                                 ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/20"
                                 : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                             }`}
                           >
-                            <Icon className={`w-5 h-5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                            <Icon className={`w-4.5 h-4.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
                             <span className="hidden lg:block">{item.label}</span>
                           </NavLink>
                         );
@@ -671,9 +645,13 @@ export default function AppLayout() {
                 <button
                   type="button"
                   onClick={() => toggleSection("analytics")}
-                  className="w-full flex items-center justify-between px-5 pt-2.5 pb-1.5 font-manrope text-[12px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-700 transition-colors cursor-pointer select-none"
+                  className="w-full flex items-center justify-center lg:justify-between px-4 pt-3 pb-1.5 font-poppins text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none"
+                  title="Analytics & Reports"
                 >
-                  <span className="hidden lg:block">Analytics & Reports</span>
+                  <div className="flex items-center gap-2">
+                    <PieChart className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span className="hidden lg:block">Analytics & Reports</span>
+                  </div>
                   <ChevronDown className={`hidden lg:block w-3.5 h-3.5 transition-transform duration-200 ${openSections.analytics ? "" : "-rotate-90"}`} />
                 </button>
                 <AnimatePresence initial={false}>
@@ -691,18 +669,18 @@ export default function AppLayout() {
                         { label: "Reports", to: "/manager/reports", icon: ClipboardList },
                       ].map((item) => {
                         const Icon = item.icon;
-                        const isActive = location.pathname === item.to || location.pathname.startsWith(item.to);
+                        const isActive = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
                         return (
                           <NavLink
                             key={item.label}
                             to={item.to}
-                            className={`flex items-center justify-center lg:justify-start gap-3 px-4 py-2.5 my-0.5 text-sm font-semibold font-poppins rounded-xl transition-all ${
+                            className={`flex items-center justify-center lg:justify-start gap-3 px-4 py-2 my-0.5 text-[11px] font-semibold font-poppins rounded-xl transition-all ${
                               isActive
                                 ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/20"
                                 : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                             }`}
                           >
-                            <Icon className={`w-5 h-5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                            <Icon className={`w-4.5 h-4.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
                             <span className="hidden lg:block">{item.label}</span>
                           </NavLink>
                         );
@@ -717,9 +695,13 @@ export default function AppLayout() {
                 <button
                   type="button"
                   onClick={() => toggleSection("system")}
-                  className="w-full flex items-center justify-between px-5 pt-2.5 pb-1.5 font-manrope text-[12px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-700 transition-colors cursor-pointer select-none"
+                  className="w-full flex items-center justify-center lg:justify-between px-4 pt-3 pb-1.5 font-poppins text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none"
+                  title="System"
                 >
-                  <span className="hidden lg:block">System</span>
+                  <div className="flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span className="hidden lg:block">System</span>
+                  </div>
                   <ChevronDown className={`hidden lg:block w-3.5 h-3.5 transition-transform duration-200 ${openSections.system ? "" : "-rotate-90"}`} />
                 </button>
                 <AnimatePresence initial={false}>
@@ -737,18 +719,18 @@ export default function AppLayout() {
                         { label: "Settings", to: "/manager/settings", icon: Settings },
                       ].map((item) => {
                         const Icon = item.icon;
-                        const isActive = location.pathname === item.to || location.pathname.startsWith(item.to);
+                        const isActive = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
                         return (
                           <NavLink
                             key={item.label}
                             to={item.to}
-                            className={`flex items-center justify-center lg:justify-start gap-3 px-4 py-2.5 my-0.5 text-sm font-semibold font-poppins rounded-xl transition-all ${
+                            className={`flex items-center justify-center lg:justify-start gap-3 px-4 py-2 my-0.5 text-[11px] font-semibold font-poppins rounded-xl transition-all ${
                               isActive
                                 ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/20"
                                 : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                             }`}
                           >
-                            <Icon className={`w-5 h-5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                            <Icon className={`w-4.5 h-4.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
                             <span className="hidden lg:block">{item.label}</span>
                           </NavLink>
                         );
@@ -761,6 +743,19 @@ export default function AppLayout() {
 
           )}
         </nav>
+
+        {/* Bottom Fixed Sign Out Button */}
+        <div className="border-t border-slate-800/80 p-3 shrink-0 bg-[#0D1B2A] mt-auto">
+          <button
+            type="button"
+            onClick={handleLogoutRequest}
+            className="w-full flex items-center justify-center lg:justify-start gap-3 px-3.5 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all font-poppins text-xs font-bold cursor-pointer"
+            title="Sign Out"
+          >
+            <LogOut className="w-4.5 h-4.5 shrink-0" />
+            <span className="hidden lg:block">Sign Out</span>
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
