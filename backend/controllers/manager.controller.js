@@ -71,6 +71,7 @@ import { generateTollsForTrip } from '../utils/seedTolls.js';
 import VehicleComplaint from '../models/VehicleComplaint.js';
 import { syncDriverLocationFromLatestTrip, updateDriverAndVehicleOnCompletion } from '../utils/driverLocationHelper.js';
 import { processFastagDeduction } from '../services/fastag.service.js';
+import { parseDateTimeIST } from '../utils/dateHelper.js';
 
 export const getDashboard = async (req, res, next) => {
   try {
@@ -1060,14 +1061,14 @@ export const createTrip = async (req, res, next) => {
     }
 
     // Validation: Departure Date cannot be in the past
-    const pickupDate = new Date(departureTime);
+    const pickupDate = parseDateTimeIST(departureTime);
     const currentDate = new Date();
     // Allow a small grace margin of 5 minutes for latency
     if (pickupDate.getTime() + 300000 < currentDate.getTime()) {
       return sendError(res, 400, 'Departure Time cannot be in the past.');
     }
 
-    const etaDate = new Date(eta);
+    const etaDate = parseDateTimeIST(eta);
     if (etaDate.getTime() <= pickupDate.getTime()) {
       return sendError(res, 400, 'Estimated Arrival (ETA) must be later than the Departure Time.');
     }
@@ -1307,14 +1308,14 @@ export const updateTrip = async (req, res, next) => {
     const etaTime = req.body.eta !== undefined ? req.body.eta : existingTrip.eta;
 
     if (depTime) {
-      const depDate = new Date(depTime);
+      const depDate = parseDateTimeIST(depTime);
       const currentDate = new Date();
       if (req.body.departureTime !== undefined && depDate.getTime() + 300000 < currentDate.getTime()) {
         return sendError(res, 400, 'Departure Time cannot be in the past.');
       }
 
       if (etaTime) {
-        const etaDate = new Date(etaTime);
+        const etaDate = parseDateTimeIST(etaTime);
         if (etaDate.getTime() <= depDate.getTime()) {
           return sendError(res, 400, 'Estimated Arrival (ETA) must be later than the Departure Time.');
         }
