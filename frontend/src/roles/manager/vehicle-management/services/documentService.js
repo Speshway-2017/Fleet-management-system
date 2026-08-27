@@ -1,18 +1,45 @@
 import { vehicleApi } from "@/api/vehicleApi";
 
-const resolveDocumentUrl = (url) => {
+export const resolveDocumentUrl = (url) => {
   if (!url || typeof url !== "string") return "";
-  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) return url;
-  
-  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
   let cleanUrl = url.trim();
+
+  // Data URLs
+  if (cleanUrl.startsWith("data:")) return cleanUrl;
+
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  const backendBase = apiBase.replace(/\/api\/?$/, "");
+
+  // Cloudinary / S3 / External Cloud Storage URLs
+  if (
+    cleanUrl.includes("cloudinary.com") ||
+    cleanUrl.includes("amazonaws.com") ||
+    cleanUrl.includes("storage.googleapis.com") ||
+    cleanUrl.includes("blob.core.windows.net")
+  ) {
+    return cleanUrl;
+  }
+
+  // Localhost or 127.0.0.1 hardcoded URLs (from dev database / seeding)
+  if (cleanUrl.includes("localhost:") || cleanUrl.includes("127.0.0.1:")) {
+    if (backendBase && !backendBase.includes("localhost") && !backendBase.includes("127.0.0.1")) {
+      cleanUrl = cleanUrl.replace(/^https?:\/\/[^\/]+/, backendBase);
+    }
+    return cleanUrl;
+  }
+
+  // Absolute HTTP / HTTPS URLs
+  if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+    return cleanUrl;
+  }
+
+  // Relative paths (/uploads/..., uploads/...)
   if (cleanUrl.startsWith("/")) {
     cleanUrl = cleanUrl.substring(1);
   }
   if (cleanUrl.startsWith("uploads/")) {
     return `${apiBase}/${cleanUrl}`;
   }
-  const backendBase = apiBase.replace("/api", "");
   return `${backendBase}/${cleanUrl}`;
 };
 
@@ -24,7 +51,8 @@ const resolveDocumentUrl = (url) => {
 export const getVehicleDocuments = async (vehicleId) => {
   try {
     const res = await vehicleApi.getById(vehicleId);
-    const docsObj = res.data?.data?.documents || {};
+    const vehicle = res.data?.data || res.data || {};
+    const docsObj = vehicle.documents || {};
     
     const docsArray = [];
     const categories = {
@@ -35,25 +63,76 @@ export const getVehicleDocuments = async (vehicleId) => {
       permit: "Permit Document",
       roadTax: "Road Tax Receipt"
     };
+
+    const fallbacks = {
+      rc: vehicle.rcUrl || vehicle.rcDocument,
+      insurance: vehicle.insuranceUrl || vehicle.insuranceDocument,
+      puc: vehicle.pucUrl || vehicle.pollutionUrl || vehicle.pucDocument,
+      fitness: vehicle.fitnessUrl || vehicle.fitnessDocument,
+      permit: vehicle.permitUrl || vehicle.permitDocument,
+      roadTax: vehicle.roadTaxUrl || vehicle.roadTaxDocument
+    };
     
     Object.keys(categories).forEach(key => {
       const doc = docsObj[key];
-      if (doc) {
+      let rawUrl = "";
+      let docName = categories[key];
+      let docNum = "";
+      let issueDate = "";
+      let expiryDate = "";
+      let notes = "";
+      let uploadDate = new Date().toISOString();
+      let uploadedBy = "Manager";
+      let fileSize = 0;
+      let fileType = "";
+      let fileName = "";
+      let public_id = "";
+
+      if (typeof doc === "string" && doc.trim()) {
+        rawUrl = doc;
+      } else if (doc && typeof doc === "object") {
+        rawUrl = doc.fileUrl || doc.url || doc.secure_url || doc.path || "";
+        docName = doc.fileName || doc.originalName || doc.name || categories[key];
+        docNum = doc.documentNumber || "";
+        issueDate = doc.issueDate || doc.uploadDate || "";
+        expiryDate = doc.expiryDate || "";
+        notes = doc.notes || "";
+        uploadDate = doc.uploadDate || doc.uploadedAt || uploadDate;
+        uploadedBy = doc.uploadedBy || "Manager";
+        fileSize = doc.fileSize || 0;
+        fileType = doc.mimeType || doc.fileType || "";
+        fileName = doc.fileName || doc.originalName || "";
+        public_id = doc.public_id || "";
+      }
+
+      if (!rawUrl && fallbacks[key]) {
+        if (typeof fallbacks[key] === "string") {
+          rawUrl = fallbacks[key];
+        } else if (typeof fallbacks[key] === "object") {
+          rawUrl = fallbacks[key].fileUrl || fallbacks[key].url || fallbacks[key].secure_url || "";
+        }
+      }
+
+      if (rawUrl) {
+        const resolvedUrl = resolveDocumentUrl(rawUrl);
         docsArray.push({
           id: key,
-          name: doc.fileName || doc.originalName || categories[key],
+          name: docName,
           category: categories[key],
-          documentNumber: doc.documentNumber || "",
-          issueDate: doc.issueDate || doc.uploadDate || "",
-          expiryDate: doc.expiryDate || "",
-          notes: doc.notes || "",
-          uploadDate: doc.uploadDate || doc.uploadedAt || new Date().toISOString(),
-          uploadedBy: doc.uploadedBy || "Manager",
-          status: getDocumentStatus(doc.expiryDate),
-          fileData: resolveDocumentUrl(doc.fileUrl || ""),
-          fileName: doc.fileName || doc.originalName || "",
-          fileSize: doc.fileSize || 0,
-          fileType: doc.mimeType || ""
+          documentNumber: docNum,
+          issueDate: issueDate,
+          expiryDate: expiryDate,
+          notes: notes,
+          uploadDate: uploadDate,
+          uploadedBy: uploadedBy,
+          status: getDocumentStatus(expiryDate),
+          fileUrl: rawUrl,
+          fileData: resolvedUrl,
+          url: resolvedUrl,
+          fileName: fileName || `${categories[key].replace(/[\s()]+/g, "_")}.png`,
+          fileSize: fileSize,
+          fileType: fileType,
+          public_id: public_id
         });
       }
     });
@@ -68,7 +147,7 @@ export const getVehicleDocuments = async (vehicleId) => {
 export const uploadVehicleDocument = async (vehicleId, formData) => {
   try {
     const res = await vehicleApi.getById(vehicleId);
-    const vehicle = res.data?.data;
+    const vehicle = res.data?.data || res.data;
     if (!vehicle) throw new Error("Vehicle not found");
 
     const fileObj = formData.get("file");
@@ -76,66 +155,64 @@ export const uploadVehicleDocument = async (vehicleId, formData) => {
 
     // 1. Upload to Cloudinary first
     const uploadRes = await vehicleApi.uploadDocument(fileObj);
-    const uploadData = uploadRes.data?.data || uploadRes.data;
+    const uploadData = uploadRes.data?.data || uploadRes.data || {};
+    const uploadedUrl = uploadData.secure_url || uploadData.url || uploadData.fileUrl || "";
 
-    const newDocument = {
-      id: Math.random().toString(36).substring(2, 11),
-      name: formData.get("documentName"),
-      category: formData.get("category"),
-      documentNumber: formData.get("documentNumber") || "",
-      issueDate: formData.get("issueDate"),
-      expiryDate: formData.get("expiryDate"),
-      notes: formData.get("notes") || "",
-      uploadDate: new Date().toISOString().split('T')[0],
-      uploadedBy: "Manager",
-      status: "Valid",
-      fileUrl: uploadData.secure_url || uploadData.url,
-      fileData: resolveDocumentUrl(uploadData.secure_url || uploadData.url),
-      public_id: uploadData.public_id,
+    const category = formData.get("category");
+    const categoryKeyMap = {
+      "Registration Certificate (RC)": "rc",
+      "Insurance Certificate": "insurance",
+      "Pollution Under Control (PUC)": "puc",
+      "Fitness Certificate": "fitness",
+      "Permit Document": "permit",
+      "Road Tax Receipt": "roadTax"
+    };
+
+    const docKey = categoryKeyMap[category] || "rc";
+
+    const newDocObj = {
+      fileUrl: uploadedUrl,
+      public_id: uploadData.public_id || "",
       fileName: fileObj.name,
-      fileSize: fileObj.size,
+      originalName: fileObj.name,
+      uploadDate: new Date().toISOString(),
+      expiryDate: formData.get("expiryDate") || null,
+      uploadedAt: new Date().toISOString(),
+      fileSize: Math.round(fileObj.size / 1024),
+      mimeType: fileObj.type,
+      uploadedBy: "Manager",
+      documentNumber: formData.get("documentNumber") || "",
+      notes: formData.get("notes") || ""
+    };
+
+    const currentDocs = vehicle.documents || {};
+    const updatedDocs = {
+      ...currentDocs,
+      [docKey]: newDocObj
+    };
+
+    await vehicleApi.update(vehicleId, { documents: updatedDocs });
+
+    const resolvedUrl = resolveDocumentUrl(uploadedUrl);
+    return {
+      id: docKey,
+      name: formData.get("documentName") || category,
+      category: category,
+      documentNumber: formData.get("documentNumber") || "",
+      issueDate: formData.get("issueDate") || "",
+      expiryDate: formData.get("expiryDate") || "",
+      notes: formData.get("notes") || "",
+      uploadDate: new Date().toISOString().split("T")[0],
+      uploadedBy: "Manager",
+      status: getDocumentStatus(formData.get("expiryDate")),
+      fileUrl: uploadedUrl,
+      fileData: resolvedUrl,
+      url: resolvedUrl,
+      public_id: uploadData.public_id || "",
+      fileName: fileObj.name,
+      fileSize: Math.round(fileObj.size / 1024),
       fileType: fileObj.type
     };
-
-    const docsObj = vehicle.documents || {};
-    const categories = {
-      rc: "Registration Certificate (RC)",
-      insurance: "Insurance Certificate",
-      puc: "Pollution Under Control (PUC)",
-      fitness: "Fitness Certificate",
-      permit: "Permit Document",
-      roadTax: "Road Tax Receipt"
-    };
-    
-    const docsArray = [];
-    Object.keys(categories).forEach(key => {
-      const doc = docsObj[key];
-      if (doc) {
-        docsArray.push({
-          id: key,
-          name: doc.fileName || doc.originalName || categories[key],
-          category: categories[key],
-          documentNumber: doc.documentNumber || "",
-          issueDate: doc.issueDate || doc.uploadDate || "",
-          expiryDate: doc.expiryDate || "",
-          notes: doc.notes || "",
-          uploadDate: doc.uploadDate || doc.uploadedAt || new Date().toISOString(),
-          uploadedBy: doc.uploadedBy || "Manager",
-          status: getDocumentStatus(doc.expiryDate),
-          fileUrl: doc.fileUrl || "",
-          fileData: resolveDocumentUrl(doc.fileUrl || ""),
-          fileName: doc.fileName || doc.originalName || "",
-          fileSize: doc.fileSize || 0,
-          fileType: doc.mimeType || "",
-          public_id: doc.public_id || ""
-        });
-      }
-    });
-
-    const documents = [...docsArray, newDocument];
-    await vehicleApi.update(vehicleId, { documents });
-    
-    return newDocument;
   } catch (error) {
     console.error("Error uploading document:", error);
     throw error;
@@ -152,7 +229,7 @@ export const uploadVehicleDocument = async (vehicleId, formData) => {
 export const replaceVehicleDocument = async (vehicleId, documentId, formData) => {
   try {
     const res = await vehicleApi.getById(vehicleId);
-    const vehicle = res.data?.data;
+    const vehicle = res.data?.data || res.data;
     if (!vehicle) throw new Error("Vehicle not found");
 
     const fileObj = formData.get("file");
@@ -160,67 +237,64 @@ export const replaceVehicleDocument = async (vehicleId, documentId, formData) =>
 
     // 1. Upload to Cloudinary first
     const uploadRes = await vehicleApi.uploadDocument(fileObj);
-    const uploadData = uploadRes.data?.data || uploadRes.data;
+    const uploadData = uploadRes.data?.data || uploadRes.data || {};
+    const uploadedUrl = uploadData.secure_url || uploadData.url || uploadData.fileUrl || "";
 
-    const docsObj = vehicle.documents || {};
-    const categories = {
-      rc: "Registration Certificate (RC)",
-      insurance: "Insurance Certificate",
-      puc: "Pollution Under Control (PUC)",
-      fitness: "Fitness Certificate",
-      permit: "Permit Document",
-      roadTax: "Road Tax Receipt"
+    const category = formData.get("category");
+    const categoryKeyMap = {
+      "Registration Certificate (RC)": "rc",
+      "Insurance Certificate": "insurance",
+      "Pollution Under Control (PUC)": "puc",
+      "Fitness Certificate": "fitness",
+      "Permit Document": "permit",
+      "Road Tax Receipt": "roadTax"
     };
-    
-    const docsArray = [];
-    Object.keys(categories).forEach(key => {
-      const doc = docsObj[key];
-      if (doc) {
-        docsArray.push({
-          id: key,
-          name: doc.fileName || doc.originalName || categories[key],
-          category: categories[key],
-          documentNumber: doc.documentNumber || "",
-          issueDate: doc.issueDate || doc.uploadDate || "",
-          expiryDate: doc.expiryDate || "",
-          notes: doc.notes || "",
-          uploadDate: doc.uploadDate || doc.uploadedAt || new Date().toISOString(),
-          uploadedBy: doc.uploadedBy || "Manager",
-          status: getDocumentStatus(doc.expiryDate),
-          fileUrl: doc.fileUrl || "",
-          fileData: resolveDocumentUrl(doc.fileUrl || ""),
-          fileName: doc.fileName || doc.originalName || "",
-          fileSize: doc.fileSize || 0,
-          fileType: doc.mimeType || "",
-          public_id: doc.public_id || ""
-        });
-      }
-    });
 
-    const docIndex = docsArray.findIndex(d => d.id === documentId);
-    if (docIndex === -1) throw new Error("Document not found");
+    const docKey = categoryKeyMap[category] || documentId || "rc";
 
-    const updatedDocument = {
-      ...docsArray[docIndex],
-      name: formData.get("documentName"),
-      category: formData.get("category"),
-      documentNumber: formData.get("documentNumber") || "",
-      issueDate: formData.get("issueDate"),
-      expiryDate: formData.get("expiryDate"),
-      notes: formData.get("notes") || "",
-      fileUrl: uploadData.secure_url || uploadData.url,
-      fileData: resolveDocumentUrl(uploadData.secure_url || uploadData.url),
-      public_id: uploadData.public_id,
+    const updatedDocObj = {
+      fileUrl: uploadedUrl,
+      public_id: uploadData.public_id || "",
       fileName: fileObj.name,
-      fileSize: fileObj.size,
-      fileType: fileObj.type,
-      replacedDate: new Date().toISOString().split('T')[0]
+      originalName: fileObj.name,
+      uploadDate: new Date().toISOString(),
+      expiryDate: formData.get("expiryDate") || null,
+      uploadedAt: new Date().toISOString(),
+      fileSize: Math.round(fileObj.size / 1024),
+      mimeType: fileObj.type,
+      uploadedBy: "Manager",
+      documentNumber: formData.get("documentNumber") || "",
+      notes: formData.get("notes") || ""
     };
 
-    const documents = docsArray.map(d => d.id === documentId ? updatedDocument : d);
-    await vehicleApi.update(vehicleId, { documents });
-    
-    return updatedDocument;
+    const currentDocs = vehicle.documents || {};
+    const updatedDocs = {
+      ...currentDocs,
+      [docKey]: updatedDocObj
+    };
+
+    await vehicleApi.update(vehicleId, { documents: updatedDocs });
+    const resolvedUrl = resolveDocumentUrl(uploadedUrl);
+
+    return {
+      id: docKey,
+      name: formData.get("documentName") || category,
+      category: category,
+      documentNumber: formData.get("documentNumber") || "",
+      issueDate: formData.get("issueDate") || "",
+      expiryDate: formData.get("expiryDate") || "",
+      notes: formData.get("notes") || "",
+      uploadDate: new Date().toISOString().split("T")[0],
+      uploadedBy: "Manager",
+      status: getDocumentStatus(formData.get("expiryDate")),
+      fileUrl: uploadedUrl,
+      fileData: resolvedUrl,
+      url: resolvedUrl,
+      public_id: uploadData.public_id || "",
+      fileName: fileObj.name,
+      fileSize: Math.round(fileObj.size / 1024),
+      fileType: fileObj.type
+    };
   } catch (error) {
     console.error("Error replacing document:", error);
     throw error;
@@ -236,44 +310,13 @@ export const replaceVehicleDocument = async (vehicleId, documentId, formData) =>
 export const deleteVehicleDocument = async (vehicleId, documentId) => {
   try {
     const res = await vehicleApi.getById(vehicleId);
-    const vehicle = res.data?.data;
+    const vehicle = res.data?.data || res.data;
     if (!vehicle) throw new Error("Vehicle not found");
 
-    const docsObj = vehicle.documents || {};
-    const categories = {
-      rc: "Registration Certificate (RC)",
-      insurance: "Insurance Certificate",
-      puc: "Pollution Under Control (PUC)",
-      fitness: "Fitness Certificate",
-      permit: "Permit Document",
-      roadTax: "Road Tax Receipt"
-    };
-    
-    const docsArray = [];
-    Object.keys(categories).forEach(key => {
-      const doc = docsObj[key];
-      if (doc) {
-        docsArray.push({
-          id: key,
-          name: doc.fileName || doc.originalName || categories[key],
-          category: categories[key],
-          documentNumber: doc.documentNumber || "",
-          issueDate: doc.issueDate || doc.uploadDate || "",
-          expiryDate: doc.expiryDate || "",
-          notes: doc.notes || "",
-          uploadDate: doc.uploadDate || doc.uploadedAt || new Date().toISOString(),
-          uploadedBy: doc.uploadedBy || "Manager",
-          status: getDocumentStatus(doc.expiryDate),
-          fileData: resolveDocumentUrl(doc.fileUrl || ""),
-          fileName: doc.fileName || doc.originalName || "",
-          fileSize: doc.fileSize || 0,
-          fileType: doc.mimeType || ""
-        });
-      }
-    });
+    const currentDocs = { ...(vehicle.documents || {}) };
+    delete currentDocs[documentId];
 
-    const documents = docsArray.filter(d => d.id !== documentId);
-    await vehicleApi.update(vehicleId, { documents });
+    await vehicleApi.update(vehicleId, { documents: currentDocs });
     return { success: true };
   } catch (error) {
     console.error("Error deleting document:", error);
@@ -289,8 +332,8 @@ export const deleteVehicleDocument = async (vehicleId, documentId) => {
 export const downloadVehicleDocument = (doc) => {
   try {
     const link = window.document.createElement("a");
-    link.href = doc.fileData;
-    link.download = doc.fileName;
+    link.href = doc.fileData || doc.url || resolveDocumentUrl(doc.fileUrl);
+    link.download = doc.fileName || `${doc.name || "document"}.pdf`;
     link.click();
   } catch (error) {
     console.error("Error downloading document:", error);
@@ -306,10 +349,8 @@ export const downloadVehicleDocument = (doc) => {
  */
 export const getDocumentById = async (vehicleId, documentId) => {
   try {
-    const res = await vehicleApi.getById(vehicleId);
-    const vehicle = res.data?.data;
-    const document = vehicle?.documents?.find(d => d.id === documentId);
-    
+    const docs = await getVehicleDocuments(vehicleId);
+    const document = docs.find(d => d.id === documentId);
     if (!document) throw new Error("Document not found");
     return document;
   } catch (error) {

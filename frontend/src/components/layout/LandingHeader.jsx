@@ -16,90 +16,88 @@ export default function LandingHeader() {
   };
 
   return (
-    <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 md:px-8 h-20 flex items-center sticky top-0 z-50 w-full transition-all duration-300 shadow-[0_2px_15px_rgba(0,0,0,0.02)]">
-      <div className="max-w-[1550px] mx-auto w-full flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <NavLink to="/" className="flex items-center gap-3 group">
-            <img src={platformSettings?.logoUrl || "/logo.png"} alt="Fleet Management Logo" className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105" />
-            <span className="font-display font-black text-[#0D1B2A] text-lg tracking-wide">
-              {platformSettings?.platformName || "Fleet Management"}
+    <header className="bg-white border-b border-border-custom px-4 sm:px-6 md:px-8 h-20 flex items-center justify-between sticky top-0 z-30">
+      <div className="flex items-center gap-3">
+        <NavLink to="/" className="flex items-center gap-3">
+          <img src={platformSettings?.logoUrl || "/logo.png"} alt="Fleet Management Logo" className="h-10 w-auto object-contain" />
+          <span className="font-display font-black text-[#0B1B3D] text-lg tracking-wide">
+            {platformSettings?.platformName && !platformSettings.platformName.includes("jjj") && !platformSettings.platformName.includes("ujjj")
+              ? platformSettings.platformName
+              : "Fleet Management"}
+          </span>
+        </NavLink>
+      </div>
+
+      <nav className="hidden md:flex items-center gap-6">
+        <NavLink to="/" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`} end>
+          Home
+        </NavLink>
+        <NavLink to="/about" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
+          About
+        </NavLink>
+        <NavLink to="/features" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
+          Features
+        </NavLink>
+        <NavLink to="/performance" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
+          Performance
+        </NavLink>
+        <NavLink to="/security" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
+          Security
+        </NavLink>
+        <NavLink to="/pricing" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
+          Pricing
+        </NavLink>
+        <NavLink to="/blogs" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
+          Blogs
+        </NavLink>
+        <NavLink to="/contact" className={({ isActive }) => `text-sm font-semibold py-2 transition-all duration-200 ${isActive ? "text-[#A14000] border-b-2 border-[#A14000]" : "text-body hover:text-[#A14000]"}`}>
+          Contact Us
+        </NavLink>
+      </nav>
+
+      <div className="flex items-center gap-4">
+        {isAuthenticated ? (
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-body hidden sm:inline-block">
+              {user?.name || "Admin"}
             </span>
-          </NavLink>
-        </div>
-
-        <nav className="hidden md:flex items-center gap-6">
-          {[
-            { to: "/", label: "Home", end: true },
-            { to: "/about", label: "About" },
-            { to: "/features", label: "Features" },
-            { to: "/performance", label: "Performance" },
-            { to: "/security", label: "Security" },
-            { to: "/pricing", label: "Pricing" },
-            { to: "/blogs", label: "Blogs" },
-            { to: "/contact", label: "Contact Us" },
-          ].map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `cube-roll-wrap font-bold text-xs uppercase tracking-wider py-1.5 transition-colors duration-200 cursor-pointer ${
-                  isActive ? "text-[#A14000]" : "text-body hover:text-[#A14000]"
-                }`
-              }
-            >
-              <span className="cube-roll">
-                <span className="cube-roll-front">{item.label}</span>
-                <span className="cube-roll-bottom">{item.label}</span>
-              </span>
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="flex items-center gap-4">
-          {isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-body hidden sm:inline-block">
-                {user?.name || "Admin"}
-              </span>
-              <button
-                onClick={() => {
-                  logout();
-                  navigate("/login");
-                }}
-                className="px-4 py-2 rounded-xl bg-[#A14000]/10 text-[#A14000] font-semibold text-xs transition-all hover:bg-[#A14000]/20 active:scale-[0.98] cursor-pointer"
-              >
-                Logout
-              </button>
-            </div>
-          ) : (
             <button
-              onClick={() => navigate("/login")}
-              className="bg-[#A14000] hover:bg-[#853400] px-6 py-2.5 rounded-xl font-bold text-xs text-white flex items-center gap-2 shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+              onClick={() => {
+                logout();
+                navigate("/login");
+              }}
+              className="px-4 py-2 rounded-xl bg-secondary/10 text-secondary font-semibold text-xs transition-all hover:bg-secondary/20 active:scale-[0.98] cursor-pointer"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h3a3 3 0 013 3v1" />
-              </svg>
-              <span>Login</span>
+              Logout
             </button>
-          )}
-
+          </div>
+        ) : (
           <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-xl text-secondary hover:bg-secondary/10 transition-colors cursor-pointer"
-            aria-label="Toggle mobile menu"
+            onClick={() => navigate("/login")}
+            className="px-5 py-2 rounded-xl bg-[#0B1B3D] text-white font-semibold text-xs flex items-center gap-2 hover:bg-[#152e5c] transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-sm"
           >
-            {mobileMenuOpen ? (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            )}
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h3a3 3 0 013 3v1" />
+            </svg>
+            Login
           </button>
-        </div>
+        )}
+
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="md:hidden p-2 rounded-xl text-secondary hover:bg-secondary/10 transition-colors cursor-pointer"
+          aria-label="Toggle mobile menu"
+        >
+          {mobileMenuOpen ? (
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          )}
+        </button>
       </div>
 
       {/* Mobile Dropdown Menu */}
@@ -134,4 +132,3 @@ export default function LandingHeader() {
     </header>
   );
 }
-

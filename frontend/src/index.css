@@ -485,53 +485,6 @@ html.dark .bg-purple-50\/50 {
    Public Pages Custom Animations & Micro-Interactions
    ========================================================================== */
 
-/* 1. Header Navigation 3D Cube Roll Text Animation with Slow Rolling */
-.cube-roll-wrap {
-  perspective: 600px;
-  display: inline-block;
-  height: 1.5rem;
-  line-height: 1.5rem;
-  overflow: hidden;
-  position: relative;
-  vertical-align: middle;
-}
-
-.cube-roll {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-  transition: transform 0.85s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-.cube-roll-wrap:hover .cube-roll {
-  transform: rotateX(-90deg);
-}
-
-.cube-roll-front,
-.cube-roll-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  width: 100%;
-  backface-visibility: hidden;
-  white-space: nowrap;
-}
-
-.cube-roll-front {
-  transform: translateZ(0.75rem);
-}
-
-.cube-roll-bottom {
-  position: absolute;
-  top: 0;
-  left: 0;
-  transform: rotateX(90deg) translateZ(0.75rem);
-  color: #A14000;
-  font-weight: 700;
-}
 
 /* 2. Slow Continuous Background Vehicle Movement / Drive Animation */
 @keyframes bgVehicleSlowMove {
