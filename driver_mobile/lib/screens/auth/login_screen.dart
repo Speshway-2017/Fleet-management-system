@@ -22,7 +22,60 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   bool _isPasswordVisible = false;
   bool _isLoading = false;
   bool _rememberMe = false;
-  final String _selectedLang = 'EN';
+  String _selectedLang = 'English (US)';
+
+  void _showLanguageSelector() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+      ),
+      builder: (BuildContext context) {
+        final languages = ['English (US)', 'Spanish', 'French', 'German', 'Hindi'];
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                child: Text(
+                  'Select Language',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF0B1B3D),
+                  ),
+                ),
+              ),
+              const Divider(color: Color(0xFFE2E8F0), height: 1),
+              ...languages.map(
+                (lang) => ListTile(
+                  title: Text(
+                    lang,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: _selectedLang == lang ? FontWeight.bold : FontWeight.w500,
+                      color: _selectedLang == lang ? const Color(0xFFF97316) : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  trailing: _selectedLang == lang
+                      ? const Icon(Icons.check_circle_rounded, color: Color(0xFFF97316), size: 20)
+                      : null,
+                  onTap: () {
+                    setState(() {
+                      _selectedLang = lang;
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
@@ -157,9 +210,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       spacing: 6,
                       runSpacing: 6,
                       children: [
+                        _buildPresetChip('http://10.0.2.2:5000/api', 'Emulator (10.0.2.2)', urlController),
                         _buildPresetChip('http://127.0.0.1:5000/api', 'ADB Reverse', urlController),
-                        _buildPresetChip('http://10.166.118.1:5000/api', 'Wi-Fi IP', urlController),
-                        _buildPresetChip('http://10.0.2.2:5000/api', 'Emulator', urlController),
+                        _buildPresetChip('https://fleet.speshway.site/api', 'Production', urlController),
                         _buildPresetChip('http://localhost:5000/api', 'Localhost', urlController),
                       ],
                     ),
@@ -408,51 +461,42 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                         const SizedBox(width: 12),
 
-                        // Language Selector Pill & Server Settings
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.settings_suggest_outlined, color: Color(0xFF475569), size: 20),
-                              tooltip: 'Server Settings',
-                              onPressed: _showServerConfigDialog,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
+                        // Language Selector Pill Button
+                        InkWell(
+                          onTap: _showLanguageSelector,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.92),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFFCBD5E1)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.92),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: const Color(0xFFCBD5E1)),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.04),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.language_rounded, size: 14, color: Color(0xFF0F172A)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _selectedLang,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF0F172A),
                                   ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.language_rounded, size: 14, color: Color(0xFF0F172A)),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    _selectedLang,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF0F172A),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 2),
-                                  const Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: Color(0xFF0F172A)),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(width: 2),
+                                const Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: Color(0xFF0F172A)),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ],
                     ),

@@ -64,27 +64,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(dialogContext); // Close confirmation dialog
-                final navigator = Navigator.of(outerContext, rootNavigator: true);
-                
-                // Show loading spinner
-                showDialog(
-                  context: outerContext,
-                  barrierDismissible: false,
-                  builder: (BuildContext loadingContext) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                      ),
-                    );
-                  },
-                );
 
                 final auth = Provider.of<AuthProvider>(outerContext, listen: false);
                 await auth.logout();
 
-                navigator.popUntil((route) => route.isFirst);
-
                 if (outerContext.mounted) {
+                  Navigator.of(outerContext, rootNavigator: true).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    (route) => false,
+                  );
+
                   ScaffoldMessenger.of(outerContext).showSnackBar(
                     const SnackBar(
                       content: Text('Logged out successfully.'),
