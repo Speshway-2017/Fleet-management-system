@@ -6,24 +6,19 @@ import DocumentPreviewModal from "../../../components/common/DocumentPreviewModa
 
 const resolveDocumentUrl = (url) => {
   if (!url || typeof url !== "string") return "";
-  if (url.startsWith("http://") || url.startsWith("https://")) {
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
     return url;
   }
   const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-  let backendBase = apiBase.replace("/api", "");
-  
-  if (typeof window !== "undefined") {
-    const { hostname } = window.location;
-    if (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname.startsWith("192.168.") ||
-      hostname.startsWith("10.")
-    ) {
-      backendBase = `http://${hostname}:5000`;
-    }
+  let cleanUrl = url.trim();
+  if (cleanUrl.startsWith("/")) {
+    cleanUrl = cleanUrl.substring(1);
   }
-  return `${backendBase}${url.startsWith("/") ? "" : "/"}${url}`;
+  if (cleanUrl.startsWith("uploads/")) {
+    return `${apiBase}/${cleanUrl}`;
+  }
+  const backendBase = apiBase.replace("/api", "");
+  return `${backendBase}/${cleanUrl}`;
 };
 
 export default function DriverDocumentsPage() {
@@ -42,7 +37,10 @@ export default function DriverDocumentsPage() {
       category: doc.type,
       fileData: resolveDocumentUrl(doc.fileUrl),
       fileName: doc.fileName || `${doc.title.replace(/\s+/g, "_")}.pdf`,
-      expiryDate: doc.expiryDate
+      expiryDate: doc.expiryDate,
+      fileType: doc.mimeType || doc.fileType || "",
+      fileSize: doc.fileSize || 0,
+      uploadDate: doc.uploadDate || null
     });
     setPreviewModalOpen(true);
   };

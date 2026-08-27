@@ -13,6 +13,12 @@ export default function DocumentPreviewModal({
   const fileName = document.fileName || name;
 
   const detectFileType = (url, filename = "", defaultMime = "application/pdf") => {
+    if (defaultMime && typeof defaultMime === "string") {
+      const mimeLower = defaultMime.toLowerCase();
+      if (mimeLower.startsWith("image/") || mimeLower === "application/pdf") {
+        return mimeLower;
+      }
+    }
     const checkStr = `${String(url).toLowerCase()} ${String(filename).toLowerCase()}`;
     if (checkStr.includes(".pdf")) {
       return "application/pdf";
