@@ -480,6 +480,10 @@ export const getCurrentTrip = async (req, res, next) => {
       startLocation: currentTrip.startLocation,
       endLocation: currentTrip.endLocation,
       status: currentTrip.status,
+      pickupAddress: currentTrip.pickupAddress || currentTrip.fromAddress || null,
+      deliveryAddress: currentTrip.deliveryAddress || currentTrip.toAddress || null,
+      fromAddress: currentTrip.pickupAddress || currentTrip.fromAddress || null,
+      toAddress: currentTrip.deliveryAddress || currentTrip.toAddress || null,
       eta: currentTrip.eta,
       departureTime: currentTrip.departureTime,
       cargoType: currentTrip.cargoType,
@@ -2838,6 +2842,10 @@ export const getDriverTripById = async (req, res, next) => {
       startLocation: trip.startLocation,
       endLocation: trip.endLocation,
       status: trip.status,
+      pickupAddress: trip.pickupAddress || trip.fromAddress || null,
+      deliveryAddress: trip.deliveryAddress || trip.toAddress || null,
+      fromAddress: trip.pickupAddress || trip.fromAddress || null,
+      toAddress: trip.deliveryAddress || trip.toAddress || null,
       eta: trip.eta,
       departureTime: trip.departureTime,
       cargoType: trip.cargoType,
@@ -3202,13 +3210,13 @@ export const getDriverInvoiceByTripId = async (req, res, next) => {
     const resolvedDriverName = trip.driverName || driverObj?.fullName || driverObj?.name || `${driverObj?.firstName || ''} ${driverObj?.lastName || ''}`.trim() || '';
     const resolvedDriverPhone = trip.driverPhone || driverObj?.phone || driverObj?.phoneNumber || driverObj?.mobile || '';
 
-    const resolvedManagerPhone = managerInfo?.phoneNumber || managerInfo?.phone || trip.assignedManager?.phoneNumber || trip.assignedManager?.phone || '9876543210';
+    const resolvedManagerPhone = managerInfo?.phoneNumber || managerInfo?.phone || trip.assignedManager?.phoneNumber || trip.assignedManager?.phone || '';
 
     const pickupAddress = {
       ...(trip.pickupAddress || trip.fromAddress || {}),
       companyName: (trip.pickupAddress?.companyName || trip.fromAddress?.companyName || `${trip.startLocation || 'Pickup'} Logistics Hub`),
       contactPerson: (trip.pickupAddress?.contactPerson || trip.fromAddress?.contactPerson || 'Dispatch Desk'),
-      mobile: (trip.pickupAddress?.mobile || trip.pickupAddress?.mobileNumber || trip.fromAddress?.mobile || trip.fromAddress?.mobileNumber || trip.senderPhone || trip.pickupPhone || resolvedManagerPhone),
+      mobile: (trip.pickupAddress?.mobile || trip.pickupAddress?.mobileNumber || trip.pickupAddress?.contactPhone || trip.pickupAddress?.phone || trip.fromAddress?.mobile || trip.fromAddress?.mobileNumber || trip.fromAddress?.contactPhone || trip.fromAddress?.phone || trip.senderPhone || trip.pickupPhone || resolvedManagerPhone),
       streetAddress: (trip.pickupAddress?.streetAddress || trip.fromAddress?.streetAddress || trip.startLocation || ''),
       city: (trip.pickupAddress?.city || trip.fromAddress?.city || trip.startLocation || ''),
       state: (trip.pickupAddress?.state || trip.fromAddress?.state || '')
@@ -3232,7 +3240,7 @@ export const getDriverInvoiceByTripId = async (req, res, next) => {
       trip.customerPhone ||
       trip.proofOfDelivery?.customerPhone ||
       trip.proofOfDelivery?.receiverPhone ||
-      '9876987698';
+      '';
 
     const deliveryAddress = {
       ...(trip.deliveryAddress || trip.toAddress || {}),

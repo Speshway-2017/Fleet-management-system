@@ -83,7 +83,6 @@ export default function TripsManagementPage() {
   const [selectedTrip, setSelectedTrip] = useState(null);
   const [editingTrip, setEditingTrip] = useState(null);
 
-  // Form State
   const [formData, setFormData] = useState({
     driverId: "",
     vehicleId: "",
@@ -92,7 +91,30 @@ export default function TripsManagementPage() {
     departureTime: "",
     eta: "",
     status: "Assigned",
-    description: ""
+    description: "",
+    cargoType: "",
+    cargoWeight: "",
+    tripNotes: "",
+    pickupAddress: {
+      companyName: "",
+      contactPerson: "",
+      mobile: "",
+      streetAddress: "",
+      area: "",
+      city: "",
+      state: "",
+      pincode: ""
+    },
+    deliveryAddress: {
+      companyName: "",
+      contactPerson: "",
+      mobile: "",
+      streetAddress: "",
+      area: "",
+      city: "",
+      state: "",
+      pincode: ""
+    }
   });
 
   const [departureError, setDepartureError] = useState("");
@@ -308,7 +330,12 @@ export default function TripsManagementPage() {
         description: formData.description || "General Transport",
         cargoType: formData.cargoType || "",
         cargoWeight: formData.cargoWeight ? Number(formData.cargoWeight) : undefined,
-        tripNotes: formData.tripNotes || ""
+        tripNotes: formData.tripNotes || "",
+        pickupAddress: formData.pickupAddress,
+        deliveryAddress: formData.deliveryAddress,
+        fromAddress: formData.pickupAddress,
+        toAddress: formData.deliveryAddress,
+        estimatedDistance: editRouteInfo.distanceKm || undefined
       });
 
       setShowCreateModal(false);
@@ -323,7 +350,27 @@ export default function TripsManagementPage() {
         description: "",
         cargoType: "",
         cargoWeight: "",
-        tripNotes: ""
+        tripNotes: "",
+        pickupAddress: {
+          companyName: "",
+          contactPerson: "",
+          mobile: "",
+          streetAddress: "",
+          area: "",
+          city: "",
+          state: "",
+          pincode: ""
+        },
+        deliveryAddress: {
+          companyName: "",
+          contactPerson: "",
+          mobile: "",
+          streetAddress: "",
+          area: "",
+          city: "",
+          state: "",
+          pincode: ""
+        }
       });
       toast.success("New trip created successfully!");
       fetchTrips();
@@ -389,22 +436,22 @@ export default function TripsManagementPage() {
       pickupAddress: {
         companyName: pAddr.companyName || "",
         contactPerson: pAddr.contactPerson || "",
-        mobile: pAddr.mobile || pAddr.mobileNumber || "",
-        streetAddress: pAddr.streetAddress || "",
+        mobile: pAddr.mobile || pAddr.mobileNumber || pAddr.contactPhone || "",
+        streetAddress: pAddr.streetAddress || pAddr.street || "",
         area: pAddr.area || pAddr.areaLocality || "",
         city: pAddr.city || "",
         state: pAddr.state || "",
-        pincode: pAddr.pincode || ""
+        pincode: pAddr.pincode || pAddr.zipCode || ""
       },
       deliveryAddress: {
         companyName: dAddr.companyName || "",
         contactPerson: dAddr.contactPerson || "",
-        mobile: dAddr.mobile || dAddr.mobileNumber || "",
-        streetAddress: dAddr.streetAddress || "",
+        mobile: dAddr.mobile || dAddr.mobileNumber || dAddr.contactPhone || "",
+        streetAddress: dAddr.streetAddress || dAddr.street || "",
         area: dAddr.area || dAddr.areaLocality || "",
         city: dAddr.city || "",
         state: dAddr.state || "",
-        pincode: dAddr.pincode || ""
+        pincode: dAddr.pincode || dAddr.zipCode || ""
       }
     });
     setDepartureError("");
@@ -431,6 +478,19 @@ export default function TripsManagementPage() {
     }
 
     try {
+      const enrichedPickup = {
+        ...formData.pickupAddress,
+        contactPhone: formData.pickupAddress?.mobile || "",
+        phone: formData.pickupAddress?.mobile || "",
+        mobileNumber: formData.pickupAddress?.mobile || ""
+      };
+      const enrichedDelivery = {
+        ...formData.deliveryAddress,
+        contactPhone: formData.deliveryAddress?.mobile || "",
+        phone: formData.deliveryAddress?.mobile || "",
+        mobileNumber: formData.deliveryAddress?.mobile || ""
+      };
+
       await managerApi.updateTrip(editingTrip._id || editingTrip.id, {
         startLocation: formData.startLocation,
         endLocation: formData.endLocation,
@@ -440,10 +500,10 @@ export default function TripsManagementPage() {
         cargoType: formData.cargoType,
         cargoWeight: formData.cargoWeight ? Number(formData.cargoWeight) : undefined,
         tripNotes: formData.tripNotes,
-        pickupAddress: formData.pickupAddress,
-        deliveryAddress: formData.deliveryAddress,
-        fromAddress: formData.pickupAddress,
-        toAddress: formData.deliveryAddress,
+        pickupAddress: enrichedPickup,
+        deliveryAddress: enrichedDelivery,
+        fromAddress: enrichedPickup,
+        toAddress: enrichedDelivery,
         estimatedDistance: editRouteInfo.distanceKm || undefined
       });
       toast.success("Trip updated successfully");

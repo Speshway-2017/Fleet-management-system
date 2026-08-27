@@ -44,8 +44,10 @@ import {
   MapPin,
   Clock,
   Shield,
-  ExternalLink
+  ExternalLink,
+  Download
 } from "lucide-react";
+import DocumentPreviewModal from "../../../components/common/DocumentPreviewModal";
 
 export default function DriverVehiclesPage() {
   const location = useLocation();
@@ -62,6 +64,47 @@ export default function DriverVehiclesPage() {
   });
   const [documents, setDocuments] = useState([]);
   const [activeTab, setActiveTab] = useState(location.state?.tab || "details"); // 'details' | 'status' | 'alerts' | 'documents'
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState(null);
+
+  const handleViewDocument = (doc) => {
+    if (!doc.url) {
+      toast.error(`No uploaded ${doc.title} URL on record.`);
+      return;
+    }
+    setSelectedDocument({
+      name: doc.title,
+      category: doc.type,
+      fileData: resolveDocumentUrl(doc.url),
+      fileName: doc.fileName,
+      expiryDate: doc.expiryDate
+    });
+    setPreviewModalOpen(true);
+  };
+
+  const handleDownloadDocument = async (doc) => {
+    if (!doc.url) {
+      toast.error(`No uploaded ${doc.title} URL on record.`);
+      return;
+    }
+    const resolvedUrl = resolveDocumentUrl(doc.url);
+    try {
+      const response = await fetch(resolvedUrl);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = window.document.createElement("a");
+      link.href = blobUrl;
+      link.download = doc.fileName;
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+      toast.success("Document downloaded successfully");
+    } catch (error) {
+      console.warn("Direct download failed, falling back to window.open", error);
+      window.open(resolvedUrl, "_blank");
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -745,20 +788,21 @@ export default function DriverVehiclesPage() {
                         )}
                       </div>
 
-                      <button
-                        onClick={() => {
-                          const resolvedUrl = resolveDocumentUrl(doc.url);
-                          console.log("[Driver View Vehicle Document] Type:", doc.type, "Title:", doc.title, "Raw URL:", doc.url, "Resolved URL:", resolvedUrl);
-                          if (doc.url) {
-                            window.open(resolvedUrl, "_blank");
-                          } else {
-                            toast.error(`No uploaded ${doc.title} URL on record for ${registrationNumber}.`);
-                          }
-                        }}
-                        className="w-full py-2.5 bg-[#0D1B2A] hover:bg-[#1E293B] text-white font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-sm cursor-pointer"
-                      >
-                        <ExternalLink className="w-4 h-4" /> View Document
-                      </button>
+                      <div className="flex gap-2 w-full">
+                        <button
+                          onClick={() => handleViewDocument(doc)}
+                          className="flex-1 py-2.5 bg-[#0D1B2A] hover:bg-[#1E293B] text-white font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-sm cursor-pointer"
+                        >
+                          <FileText className="w-4 h-4" /> View
+                        </button>
+                        <button
+                          onClick={() => handleDownloadDocument(doc)}
+                          className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 hover:text-slate-900 font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-sm cursor-pointer"
+                          title="Download"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -809,9 +853,16 @@ export default function DriverVehiclesPage() {
 
             </div>
           </div>
-
         </div>
       )}
+      <DocumentPreviewModal
+        isOpen={previewModalOpen}
+        document={selectedDocument}
+        onClose={() => {
+          setPreviewModalOpen(false);
+          setSelectedDocument(null);
+        }}
+      />
     </div>
   );
 }

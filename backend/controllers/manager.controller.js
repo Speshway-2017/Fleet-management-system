@@ -999,6 +999,57 @@ export const getTripTolls = async (req, res, next) => {
   }
 };
 
+const normalizeAddress = (addr) => {
+  if (!addr) return {
+    street: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: 'India',
+    formattedAddress: '',
+    contactPerson: '',
+    contactPhone: '',
+    notes: '',
+    companyName: '',
+    streetAddress: '',
+    area: '',
+    pincode: '',
+    mobile: ''
+  };
+  const companyName = addr.companyName || '';
+  const street = addr.street || addr.streetAddress || addr.line1 || '';
+  const area = addr.area || addr.areaLocality || addr.locality || addr.landmark || '';
+  const city = addr.city || addr.town || '';
+  const state = addr.state || '';
+  const zipCode = addr.zipCode || addr.pincode || addr.postalCode || '';
+  const country = addr.country || 'India';
+  const contactPerson = addr.contactPerson || '';
+  const contactPhone = addr.contactPhone || addr.mobile || addr.mobileNumber || addr.phone || addr.phoneNumber || '';
+  const notes = addr.notes || '';
+  
+  let formattedAddress = addr.formattedAddress || '';
+  if (!formattedAddress && (street || city || state)) {
+    formattedAddress = [companyName, street, area, city, state, zipCode].filter(Boolean).join(', ');
+  }
+
+  return {
+    companyName,
+    street,
+    area,
+    city,
+    state,
+    zipCode,
+    country,
+    formattedAddress,
+    contactPerson,
+    contactPhone,
+    notes,
+    streetAddress: street,
+    pincode: zipCode,
+    mobile: contactPhone
+  };
+};
+
 export const createTrip = async (req, res, next) => {
   try {
     const {
@@ -1025,17 +1076,8 @@ export const createTrip = async (req, res, next) => {
       estimatedDistance
     } = req.body;
 
-    const finalPickupAddress = pickupAddress || fromAddress || {};
-    const rawDelivery = deliveryAddress || toAddress || {};
-    const finalDeliveryAddress = {
-      ...rawDelivery,
-      streetAddress: (rawDelivery.streetAddress || rawDelivery.street || rawDelivery.line1 || ''),
-      area: (rawDelivery.area || rawDelivery.areaLocality || rawDelivery.locality || rawDelivery.landmark || ''),
-      city: (rawDelivery.city || rawDelivery.town || ''),
-      state: (rawDelivery.state || ''),
-      pincode: (rawDelivery.pincode || rawDelivery.postalCode || rawDelivery.zipCode || ''),
-      mobile: (rawDelivery.mobile || rawDelivery.mobileNumber || rawDelivery.phone || rawDelivery.phoneNumber || rawDelivery.contactPhone || req.body.receiverPhone || req.body.customerPhone || req.body.deliveryPhone || req.body.receiverMobile || req.body.customerMobile || '')
-    };
+    const finalPickupAddress = normalizeAddress(pickupAddress || fromAddress);
+    const finalDeliveryAddress = normalizeAddress(deliveryAddress || toAddress);
 
     // Auto-generate tripNumber if missing or duplicate
     let finalTripNumber = tripNumber;
@@ -1348,6 +1390,19 @@ export const updateTrip = async (req, res, next) => {
       } catch (fastagErr) {
         return sendError(res, 400, fastagErr.message);
       }
+    }
+
+    if (req.body.pickupAddress !== undefined) {
+      req.body.pickupAddress = normalizeAddress(req.body.pickupAddress);
+    }
+    if (req.body.fromAddress !== undefined) {
+      req.body.fromAddress = normalizeAddress(req.body.fromAddress);
+    }
+    if (req.body.deliveryAddress !== undefined) {
+      req.body.deliveryAddress = normalizeAddress(req.body.deliveryAddress);
+    }
+    if (req.body.toAddress !== undefined) {
+      req.body.toAddress = normalizeAddress(req.body.toAddress);
     }
 
     const updatedTrip = await updateTripInRepo(tripId, req.body);

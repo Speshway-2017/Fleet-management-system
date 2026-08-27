@@ -37,6 +37,7 @@ import {
   Play,
   Lock,
   UserCheck,
+  User,
   MapPin,
   Navigation,
   CheckCircle,
@@ -599,10 +600,50 @@ export default function DriverTripDetailsPage() {
   ];
 
   const vehicleObj = typeof trip.vehicle === 'object' ? trip.vehicle : null;
-  const vehiclePlate = vehicleObj?.registrationNumber || trip.vehiclePlate || (typeof trip.vehicle === 'string' ? trip.vehicle : 'Assigned Truck');
-  const vehicleModel = vehicleObj?.model || trip.vehicleName || 'Fleet Heavy Transport';
+  const vehiclePlate = vehicleObj?.vehicleNumber || vehicleObj?.registrationNumber || trip.vehiclePlate || (typeof trip.vehicle === 'string' ? trip.vehicle : 'Assigned Truck');
+  const vehicleModel = vehicleObj?.vehicleModel || vehicleObj?.model || trip.vehicleName || 'Fleet Heavy Transport';
   const vehicleStatus = vehicleObj?.currentStatus || 'On Trip';
   const vehicleFuel = vehicleObj?.fuelLevel ? `${vehicleObj.fuelLevel}%` : '88%';
+
+  const getFormattedAddress = (addrObj, defaultLocString = '', isPickup = true) => {
+    if (!addrObj) {
+      let rawMobile = '';
+      if (isPickup) {
+        rawMobile = trip?.senderPhone || trip?.pickupPhone || '';
+      } else {
+        rawMobile = trip?.receiverPhone || trip?.deliveryPhone || trip?.proofOfDelivery?.customerPhone || trip?.proofOfDelivery?.receiverPhone || '';
+      }
+      const mobile = rawMobile ? (rawMobile.startsWith('+91') ? rawMobile : `+91 ${rawMobile}`) : 'N/A';
+      return { companyName: defaultLocString || '', contactPerson: 'N/A', mobile, streetAddress: '', city: defaultLocString || 'N/A', state: 'N/A', pincode: '' };
+    }
+    const company = addrObj.companyName || (defaultLocString ? `${defaultLocString} Hub` : '');
+    const street = addrObj.streetAddress || addrObj.street || addrObj.formattedAddress || '';
+    const contactPerson = addrObj.contactPerson || 'N/A';
+    let rawMobile = addrObj.mobile || addrObj.mobileNumber || addrObj.contactPhone || '';
+    if (!rawMobile) {
+      if (isPickup) {
+        rawMobile = trip?.senderPhone || trip?.pickupPhone || '';
+      } else {
+        rawMobile = trip?.receiverPhone || trip?.deliveryPhone || trip?.proofOfDelivery?.customerPhone || trip?.proofOfDelivery?.receiverPhone || '';
+      }
+    }
+    const mobile = rawMobile ? (rawMobile.startsWith('+91') ? rawMobile : `+91 ${rawMobile}`) : 'N/A';
+    const city = addrObj.city || defaultLocString || 'N/A';
+    const state = addrObj.state || 'N/A';
+    const pincode = addrObj.pincode || addrObj.zipCode || '';
+    return {
+      companyName: company,
+      contactPerson,
+      mobile,
+      streetAddress: street,
+      city,
+      state,
+      pincode
+    };
+  };
+
+  const pickupAddr = getFormattedAddress(trip.pickupAddress || trip.fromAddress, trip.startLocation, true);
+  const deliveryAddr = getFormattedAddress(trip.deliveryAddress || trip.toAddress, trip.endLocation, false);
 
   const customerReached = Boolean(trip.customerLocationReached);
 
@@ -802,6 +843,72 @@ export default function DriverTripDetailsPage() {
               </div>
             </div>
           </div>
+
+          {/* Cargo Specs (Moved from Sidebar) */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider">Trip Specs & Cargo Info</h3>
+              <span className="text-xs font-semibold text-[#A14000] uppercase font-poppins tracking-wider">Specs</span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 py-2">
+              <div className="flex-1 min-w-[120px] space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins block">Cargo Type</span>
+                <p className="text-sm font-bold text-slate-800">{trip.cargoType || "Standard Freight"}</p>
+              </div>
+              <div className="flex-1 min-w-[120px] space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins block">Weight</span>
+                <p className="text-sm font-bold text-slate-800">
+                  {(trip.cargoWeight !== undefined && trip.cargoWeight !== null) ? `${trip.cargoWeight} kg` : (trip.weight ? `${trip.weight} Tons` : "N/A")}
+                </p>
+              </div>
+              <div className="flex-1 min-w-[120px] space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins block">Departure Time</span>
+                <p className="text-sm font-bold text-slate-800">
+                  {trip.departureTime ? new Date(trip.departureTime).toLocaleString('en-IN') : 'N/A'}
+                </p>
+              </div>
+              <div className="flex-1 min-w-[120px] space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins block">ETA</span>
+                <p className="text-sm font-bold text-slate-800">
+                  {trip.eta ? new Date(trip.eta).toLocaleString('en-IN') : 'N/A'}
+                </p>
+              </div>
+              <div className="flex-1 min-w-[100px] space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins block">Distance</span>
+                <p className="text-sm font-bold text-slate-800">
+                  {trip.estimatedDistance || trip.distance ? `${trip.estimatedDistance || trip.distance} km` : 'N/A'}
+                </p>
+              </div>
+            </div>
+
+            {/* Address Details (Horizontal Row) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
+              <div className="space-y-1 p-3 bg-slate-50 rounded-xl border border-slate-200/80 font-nunito">
+                <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins block mb-1">Pickup / From Address</span>
+                {pickupAddr.companyName && <p className="font-bold text-[#A14000]">{pickupAddr.companyName}</p>}
+                {pickupAddr.streetAddress && <p className="text-slate-600 font-semibold">{pickupAddr.streetAddress}</p>}
+                <p className="text-slate-500 font-bold">{pickupAddr.city}, {pickupAddr.state}{(!pickupAddr.streetAddress && pickupAddr.pincode) ? ` - ${pickupAddr.pincode}` : ''}</p>
+                {pickupAddr.streetAddress && pickupAddr.pincode && <p className="text-xs text-slate-500 font-semibold">Pincode: {pickupAddr.pincode}</p>}
+                <p className="text-[10px] text-slate-400 mt-1 border-t border-slate-100 pt-1 font-sans">Contact: {pickupAddr.contactPerson} ({pickupAddr.mobile})</p>
+              </div>
+              <div className="space-y-1 p-3 bg-slate-50 rounded-xl border border-slate-200/80 font-nunito">
+                <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins block mb-1">Destination / To Address</span>
+                {deliveryAddr.companyName && <p className="font-bold text-[#A14000]">{deliveryAddr.companyName}</p>}
+                {deliveryAddr.streetAddress && <p className="text-slate-600 font-semibold">{deliveryAddr.streetAddress}</p>}
+                <p className="text-slate-500 font-bold">{deliveryAddr.city}, {deliveryAddr.state}{(!deliveryAddr.streetAddress && deliveryAddr.pincode) ? ` - ${deliveryAddr.pincode}` : ''}</p>
+                {deliveryAddr.streetAddress && deliveryAddr.pincode && <p className="text-xs text-slate-500 font-semibold">Pincode: {deliveryAddr.pincode}</p>}
+                <p className="text-[10px] text-slate-400 mt-1 border-t border-slate-100 pt-1 font-sans">Contact: {deliveryAddr.contactPerson} ({deliveryAddr.mobile})</p>
+              </div>
+            </div>
+
+            {(trip.tripNotes || trip.description) && (
+              <div className="pt-3 border-t border-slate-100">
+                <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins block mb-1">Trip Notes</span>
+                <p className="text-slate-700 italic bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 leading-relaxed font-nunito">{trip.tripNotes || trip.description}</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right Sidebar: Vehicle Details & Dynamic Document Uploads & Real Bills */}
@@ -842,6 +949,27 @@ export default function DriverTripDetailsPage() {
                 </p>
               </div>
             )}
+          </div>
+
+          {/* Driver Information */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+            <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center gap-2">
+              <User className="w-4 h-4 text-[#A14000]" /> Assigned Driver Details
+            </h3>
+            <div className="space-y-3 text-xs">
+              <div className="flex justify-between items-center py-1">
+                <span className="text-slate-500 font-semibold">Driver Name:</span>
+                <span className="font-bold text-slate-800">{trip.driverName || trip.driver?.fullName || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-slate-500 font-semibold">Employee ID:</span>
+                <span className="font-bold text-slate-800 font-mono">{trip.driver?.employeeId || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-slate-500 font-semibold">Mobile Number:</span>
+                <span className="font-bold text-slate-800">{trip.driverPhone || trip.driver?.phoneNumber || 'N/A'}</span>
+              </div>
+            </div>
           </div>
 
           {/* Vehicle Information */}
@@ -885,30 +1013,7 @@ export default function DriverTripDetailsPage() {
             })()}
           </div>
 
-          {/* Cargo Specs */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-100">
-              Trip Specs & Cargo Info
-            </h3>
-            <div className="space-y-3 text-xs">
-              <div>
-                <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins block">Origin</span>
-                <p className="font-bold text-slate-900 text-xs mt-0.5">{startLocationName}</p>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins block">Destination</span>
-                <p className="font-bold text-slate-900 text-xs mt-0.5">{endLocationName}</p>
-              </div>
-              <div className="pt-2 border-t border-slate-100 flex justify-between">
-                <span className="text-slate-500 font-semibold">Cargo Type:</span>
-                <span className="font-bold text-slate-800">{trip.cargoType || "Standard Freight"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-semibold">Weight:</span>
-                <span className="font-bold text-slate-800">{trip.weight ? `${trip.weight} Tons` : "15 Tons"}</span>
-              </div>
-            </div>
-          </div>
+
 
           {/* Proof of Delivery (POD) & Weighbridge Upload Forms */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">

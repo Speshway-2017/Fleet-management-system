@@ -494,7 +494,7 @@ export default function TripDetailsPage() {
 
 
 
-  const getFormattedInvoiceAddress = (addrObj, defaultLocString = '') => {
+  const getFormattedInvoiceAddress = (addrObj, defaultLocString = '', isPickup = true) => {
     const cleanLocation = (defaultLocString || '')
       .replace(/\(?-?\d+\.\d+,\s*-?\d+\.\d+\)?/g, '')
       .replace(/^\s*,\s*|\s*,\s*$/g, '')
@@ -504,21 +504,28 @@ export default function TripDetailsPage() {
     const fallbackCity = parts[0] || 'N/A';
     const fallbackState = parts.length > 1 ? parts[1] : (parts[0] || 'N/A');
 
-    const companyName = addrObj?.companyName || (cleanLocation ? `${cleanLocation} Logistics Hub` : 'N/A');
+    const companyName = addrObj?.companyName || (cleanLocation ? `${cleanLocation} Logistics Hub` : '');
     const contactPerson = addrObj?.contactPerson || 'N/A';
-    const rawMobile = addrObj?.mobile || addrObj?.mobileNumber || '';
+    let rawMobile = addrObj?.mobile || addrObj?.mobileNumber || addrObj?.contactPhone || '';
+    if (!rawMobile && trip) {
+      if (isPickup) {
+        rawMobile = trip.senderPhone || trip.pickupPhone || '';
+      } else {
+        rawMobile = trip.receiverPhone || trip.deliveryPhone || trip.proofOfDelivery?.customerPhone || trip.proofOfDelivery?.receiverPhone || '';
+      }
+    }
     const mobile = rawMobile ? (rawMobile.startsWith('+91') ? rawMobile : `+91 ${rawMobile}`) : 'N/A';
-    const streetAddress = addrObj?.streetAddress || 'N/A';
+    const streetAddress = addrObj?.streetAddress || addrObj?.street || addrObj?.formattedAddress || '';
     const area = addrObj?.area || addrObj?.areaLocality || '';
     const city = addrObj?.city || fallbackCity;
     const state = addrObj?.state || fallbackState;
-    const pincode = addrObj?.pincode || '';
+    const pincode = addrObj?.pincode || addrObj?.zipCode || '';
 
     return {
-      companyName: companyName || 'N/A',
+      companyName: companyName || '',
       contactPerson: contactPerson || 'N/A',
       mobile: mobile || 'N/A',
-      streetAddress: streetAddress || 'N/A',
+      streetAddress: streetAddress || '',
       area: area || '',
       city: city || 'N/A',
       state: state || 'N/A',
@@ -528,8 +535,8 @@ export default function TripDetailsPage() {
 
   const handlePrintInvoice = () => {
     if (!invoice) return;
-    const fromAddr = getFormattedInvoiceAddress(trip.pickupAddress || trip.fromAddress, trip.startLocation);
-    const toAddr = getFormattedInvoiceAddress(trip.deliveryAddress || trip.toAddress, trip.endLocation);
+    const fromAddr = getFormattedInvoiceAddress(trip.pickupAddress || trip.fromAddress, trip.startLocation, true);
+    const toAddr = getFormattedInvoiceAddress(trip.deliveryAddress || trip.toAddress, trip.endLocation, false);
 
     const printWindow = window.open("", "_blank");
     printWindow.document.write(`
@@ -1100,26 +1107,33 @@ export default function TripDetailsPage() {
           </div>
 
           {/* Cargo Details Card */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm space-y-4">
-            <h3 className="font-poppins font-bold text-[#1E293B] text-[14px] border-b border-gray-100 pb-3">Cargo & Dispatch Specifications</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Cargo Type</span>
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="font-poppins font-bold text-[#1E293B] text-[14px]">Cargo & Dispatch Specifications</h3>
+              <span className="text-[10px] font-bold text-[#A14000] uppercase tracking-wider bg-amber-50 px-2 py-0.5 rounded border border-amber-100 font-poppins">Specs</span>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 py-1">
+              <div className="flex-1 min-w-[120px] space-y-1">
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block">Cargo Type</span>
                 <p className="text-sm font-bold text-[#1E293B]">{trip.cargoType || "Not Specified"}</p>
               </div>
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Cargo Weight</span>
+              <div className="flex-1 min-w-[120px] space-y-1">
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block">Cargo Weight</span>
                 <p className="text-sm font-bold text-[#1E293B]">{trip.cargoWeight ? `${trip.cargoWeight} kg` : "N/A"}</p>
               </div>
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Cargo Description</span>
-                <p className="text-sm font-semibold text-[#1E293B]">{trip.description || "No description provided"}</p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Trip Notes</span>
-                <p className="text-sm font-medium text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100">{trip.tripNotes || "No notes available for this dispatch"}</p>
+              <div className="flex-[2] min-w-[200px] space-y-1">
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block">Cargo Description</span>
+                <p className="text-sm font-semibold text-[#1E293B] line-clamp-2" title={trip.description}>{trip.description || "No description provided"}</p>
               </div>
             </div>
+
+            {(trip.tripNotes) && (
+              <div className="pt-3 border-t border-gray-100/70 space-y-1">
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block">Trip Notes</span>
+                <p className="text-xs font-medium text-gray-600 bg-gray-50/50 p-2.5 rounded-lg border border-gray-100/70 italic leading-relaxed">{trip.tripNotes}</p>
+              </div>
+            )}
           </div>
 
           {/* Pickup Address & Delivery Address Details Card */}
@@ -1132,7 +1146,7 @@ export default function TripDetailsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Pickup Address (From Address) */}
               {(() => {
-                const from = getFormattedInvoiceAddress(trip.pickupAddress || trip.fromAddress, trip.startLocation);
+                const from = getFormattedInvoiceAddress(trip.pickupAddress || trip.fromAddress, trip.startLocation, true);
                 return (
                   <div className="bg-slate-50/80 dark:bg-[#1E293B] p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-2.5 text-xs">
                     <h4 className="font-poppins font-bold text-[11px] text-[#A14000] dark:text-amber-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 pb-2">
@@ -1151,13 +1165,14 @@ export default function TripDetailsPage() {
                     </div>
 
                     <div className="text-slate-700 dark:text-slate-200">
-                      <div>{from.streetAddress}</div>
+                      {from.streetAddress && <div>{from.streetAddress}</div>}
                       {from.area && <div>{from.area}</div>}
+                      {from.streetAddress && from.pincode && <div className="text-[10px] text-slate-400">Pincode: {from.pincode}</div>}
                     </div>
 
                     <div className="text-slate-800 dark:text-white font-bold pt-1.5 border-t border-slate-200/60 dark:border-slate-700">
                       <div>{from.city}</div>
-                      <div>{from.state}{from.pincode ? ` - ${from.pincode}` : ''}</div>
+                      <div>{from.state}{(!from.streetAddress && from.pincode) ? ` - ${from.pincode}` : ''}</div>
                     </div>
                   </div>
                 );
@@ -1165,7 +1180,7 @@ export default function TripDetailsPage() {
 
               {/* Delivery Address (To Address) */}
               {(() => {
-                const to = getFormattedInvoiceAddress(trip.deliveryAddress || trip.toAddress, trip.endLocation);
+                const to = getFormattedInvoiceAddress(trip.deliveryAddress || trip.toAddress, trip.endLocation, false);
                 return (
                   <div className="bg-slate-50/80 dark:bg-[#1E293B] p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-2.5 text-xs">
                     <h4 className="font-poppins font-bold text-[11px] text-[#A14000] dark:text-amber-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 pb-2">
@@ -1184,13 +1199,14 @@ export default function TripDetailsPage() {
                     </div>
 
                     <div className="text-slate-700 dark:text-slate-200">
-                      <div>{to.streetAddress}</div>
+                      {to.streetAddress && <div>{to.streetAddress}</div>}
                       {to.area && <div>{to.area}</div>}
+                      {to.streetAddress && to.pincode && <div className="text-[10px] text-slate-400">Pincode: {to.pincode}</div>}
                     </div>
 
                     <div className="text-slate-800 dark:text-white font-bold pt-1.5 border-t border-slate-200/60 dark:border-slate-700">
                       <div>{to.city}</div>
-                      <div>{to.state}{to.pincode ? ` - ${to.pincode}` : ''}</div>
+                      <div>{to.state}{(!to.streetAddress && to.pincode) ? ` - ${to.pincode}` : ''}</div>
                     </div>
                   </div>
                 );
@@ -2151,8 +2167,8 @@ export default function TripDetailsPage() {
 
               {/* FROM ADDRESS & TO ADDRESS Two-Column Section */}
               {(() => {
-                const fromAddr = getFormattedInvoiceAddress(trip.pickupAddress || trip.fromAddress, trip.startLocation);
-                const toAddr = getFormattedInvoiceAddress(trip.deliveryAddress || trip.toAddress, trip.endLocation);
+                const fromAddr = getFormattedInvoiceAddress(trip.pickupAddress || trip.fromAddress, trip.startLocation, true);
+                const toAddr = getFormattedInvoiceAddress(trip.deliveryAddress || trip.toAddress, trip.endLocation, false);
                 return (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[#E7EAF0] font-nunito">
                     {/* FROM ADDRESS */}

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import driverApi from "../api/driverApi";
 import { FileText, Download, CheckCircle2, RefreshCw } from "lucide-react";
+import toast from "react-hot-toast";
+import DocumentPreviewModal from "../../../components/common/DocumentPreviewModal";
 
 const resolveDocumentUrl = (url) => {
   if (!url || typeof url !== "string") return "";
@@ -27,6 +29,47 @@ const resolveDocumentUrl = (url) => {
 export default function DriverDocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState([]);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState(null);
+
+  const handleViewDocument = (doc) => {
+    if (!doc.fileUrl) {
+      toast.error(`No uploaded ${doc.title} URL on record.`);
+      return;
+    }
+    setSelectedDocument({
+      name: doc.title,
+      category: doc.type,
+      fileData: resolveDocumentUrl(doc.fileUrl),
+      fileName: doc.fileName || `${doc.title.replace(/\s+/g, "_")}.pdf`,
+      expiryDate: doc.expiryDate
+    });
+    setPreviewModalOpen(true);
+  };
+
+  const handleDownloadDocument = async (doc) => {
+    if (!doc.fileUrl) {
+      toast.error(`No uploaded ${doc.title} URL on record.`);
+      return;
+    }
+    const resolvedUrl = resolveDocumentUrl(doc.fileUrl);
+    try {
+      const response = await fetch(resolvedUrl);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = window.document.createElement("a");
+      link.href = blobUrl;
+      link.download = doc.fileName || `${doc.title.replace(/\s+/g, "_")}.pdf`;
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+      toast.success("Document downloaded successfully");
+    } catch (error) {
+      console.warn("Direct download failed, falling back to window.open", error);
+      window.open(resolvedUrl, "_blank");
+    }
+  };
 
   useEffect(() => {
     fetchDocuments();
@@ -222,16 +265,21 @@ export default function DriverDocumentsPage() {
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                 {doc.fileUrl ? (
-                  <button
-                    onClick={() => {
-                      const resolvedUrl = resolveDocumentUrl(doc.fileUrl);
-                      console.log("[Driver View/Download Document] Type:", doc.type, "Title:", doc.title, "Raw URL:", doc.fileUrl, "Resolved URL:", resolvedUrl);
-                      window.open(resolvedUrl, "_blank");
-                    }}
-                    className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 text-[#A14000] border border-slate-200 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition cursor-pointer"
-                  >
-                    <Download className="w-4 h-4" /> View / Download Document
-                  </button>
+                  <div className="flex gap-2 w-full">
+                    <button
+                      onClick={() => handleViewDocument(doc)}
+                      className="flex-1 py-2.5 bg-slate-50 hover:bg-slate-100 text-[#A14000] border border-slate-200 font-semibold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4" /> View
+                    </button>
+                    <button
+                      onClick={() => handleDownloadDocument(doc)}
+                      className="px-3.5 py-2.5 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-sm cursor-pointer"
+                      title="Download"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                  </div>
                 ) : (
                   <span className="text-xs text-slate-400 italic">Certificate file available in mobile & manager records</span>
                 )}
@@ -240,6 +288,14 @@ export default function DriverDocumentsPage() {
           ))}
         </div>
       )}
+      <DocumentPreviewModal
+        isOpen={previewModalOpen}
+        document={selectedDocument}
+        onClose={() => {
+          setPreviewModalOpen(false);
+          setSelectedDocument(null);
+        }}
+      />
     </div>
   );
 }
