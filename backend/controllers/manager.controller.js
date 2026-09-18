@@ -793,14 +793,51 @@ export const deleteDriver = async (req, res, next) => {
 // Trips Controllers
 export const listTrips = async (req, res, next) => {
   try {
-    const filter = { assignedManager: req.user._id };
+    const managerId = req.user._id;
+    const orgId = req.user.organization;
+
+    const andConditions = [];
     if (req.query.vehicle) {
-      filter.vehicle = req.query.vehicle;
+      andConditions.push({ vehicle: req.query.vehicle });
     }
     if (req.query.driver) {
-      filter.driver = req.query.driver;
+      andConditions.push({ driver: req.query.driver });
     }
-    const trips = await getTrips(filter);
+
+    // Try finding manager-specific trips first
+    const managerSpecificFilter = andConditions.length > 0
+      ? { $and: [{ assignedManager: managerId }, ...andConditions] }
+      : { assignedManager: managerId };
+
+    let trips = await getTrips(managerSpecificFilter);
+
+    // If manager has no direct trips (or only 1 legacy unassigned), fallback to organization/all fleet trips
+    if (!trips || trips.length <= 1) {
+      const broaderConditions = [];
+      if (orgId) {
+        broaderConditions.push({ organization: orgId });
+      }
+      broaderConditions.push({ assignedManager: null });
+      broaderConditions.push({ assignedManager: { $exists: false } });
+
+      const broaderFilter = andConditions.length > 0
+        ? { $and: [{ $or: broaderConditions }, ...andConditions] }
+        : { $or: broaderConditions };
+
+      const broaderTrips = await getTrips(broaderFilter);
+
+      if (broaderTrips && broaderTrips.length > trips.length) {
+        trips = broaderTrips;
+      }
+
+      // If still fewer trips and no strict vehicle/driver filter, load all fleet trips
+      if ((!trips || trips.length <= 1) && andConditions.length === 0) {
+        const allTrips = await getTrips({});
+        if (allTrips && allTrips.length > 0) {
+          trips = allTrips;
+        }
+      }
+    }
 
     // Map over trips and preserve exact stored distance from MongoDB
     const processedTrips = trips.map(t => {
@@ -825,6 +862,18 @@ export const listTrips = async (req, res, next) => {
   }
 };
 
+const isAuthorizedForTrip = (reqUser, trip) => {
+  if (!trip || !reqUser) return false;
+  const role = reqUser.role;
+  if (role === 'SUPER_ADMIN' || role === 'admin' || role === 'FLEET_MANAGER' || role === 'manager') {
+    return true;
+  }
+  if (!trip.assignedManager) return true;
+  if (String(trip.assignedManager) === String(reqUser._id)) return true;
+  if (reqUser.organization && trip.organization && String(trip.organization) === String(reqUser.organization)) return true;
+  return false;
+};
+
 export const getTripDetails = async (req, res, next) => {
   try {
     const trip = await getTripById(req.params.id);
@@ -832,7 +881,7 @@ export const getTripDetails = async (req, res, next) => {
       return sendError(res, 404, 'Trip not found');
     }
     // Ownership check
-    if (String(trip.assignedManager) !== String(req.user._id)) {
+    if (!isAuthorizedForTrip(req.user, trip)) {
       return sendError(res, 403, 'Access denied: this trip belongs to another manager');
     }
 
@@ -988,7 +1037,7 @@ export const getTripTolls = async (req, res, next) => {
       return sendError(res, 404, 'Trip not found');
     }
     // Ownership check
-    if (String(trip.assignedManager) !== String(req.user._id)) {
+    if (!isAuthorizedForTrip(req.user, trip)) {
       return sendError(res, 403, 'Access denied: this trip belongs to another manager');
     }
 
@@ -1336,7 +1385,7 @@ export const updateTrip = async (req, res, next) => {
     }
 
     // Ownership check
-    if (String(existingTrip.assignedManager) !== String(req.user._id)) {
+    if (!isAuthorizedForTrip(req.user, existingTrip)) {
       return sendError(res, 403, 'Access denied: this trip belongs to another manager');
     }
 
@@ -1673,7 +1722,7 @@ export const deleteTrip = async (req, res, next) => {
     }
 
     // Ownership check
-    if (String(trip.assignedManager) !== String(req.user._id)) {
+    if (!isAuthorizedForTrip(req.user, trip)) {
       return sendError(res, 403, 'Access denied: this trip belongs to another manager');
     }
 
@@ -3699,7 +3748,7 @@ export const getTripChat = async (req, res, next) => {
     }
 
     // Access check: Ensure user owns or is assigned to trip
-    if (String(trip.assignedManager) !== String(req.user._id)) {
+    if (!isAuthorizedForTrip(req.user, trip)) {
       return sendError(res, 403, 'Access denied: trip belongs to another manager');
     }
 
@@ -3909,7 +3958,7 @@ export const approveTripCompletion = async (req, res, next) => {
     const trip = await Trip.findById(id);
     if (!trip) return sendError(res, 404, 'Trip not found');
 
-    if (String(trip.assignedManager) !== String(req.user._id)) {
+    if (!isAuthorizedForTrip(req.user, trip)) {
       return sendError(res, 403, 'Access denied: this trip belongs to another manager');
     }
 
@@ -3963,7 +4012,7 @@ export const rejectTripDocuments = async (req, res, next) => {
     const trip = await Trip.findById(id);
     if (!trip) return sendError(res, 404, 'Trip not found');
 
-    if (String(trip.assignedManager) !== String(req.user._id)) {
+    if (!isAuthorizedForTrip(req.user, trip)) {
       return sendError(res, 403, 'Access denied: this trip belongs to another manager');
     }
 

@@ -45,9 +45,9 @@ export default function ManagerDashboard() {
       id: v._id,
       name: v.vehicleName || `${v.brand || ''} ${v.model || ''}`,
       plateNumber: v.vehicleNumber || "",
-      driver: v.assignedDriver && typeof v.assignedDriver === 'object'
-        ? v.assignedDriver.fullName
-        : (typeof v.assignedDriver === 'string' ? v.assignedDriver : 'Unassigned'),
+      driver: (v.assignedDriver && typeof v.assignedDriver === 'object')
+        ? (v.assignedDriver.fullName || v.assignedDriver.name || 'Assigned Driver')
+        : (typeof v.assignedDriver === 'string' && v.assignedDriver.trim() ? v.assignedDriver : 'Unassigned'),
       branch: v.branch || 'Pune',
       status: mappedStatus,
     };
@@ -59,14 +59,13 @@ export default function ManagerDashboard() {
     if (isNaN(date.getTime())) return "Today";
     const now = new Date();
     const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffMins < 2) return "Just now";
+    if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays === 1) return "Yesterday";
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
   };
@@ -82,10 +81,17 @@ export default function ManagerDashboard() {
     }));
 
     const tripActs = trips.map(t => {
-      const tripNum = t.tripNumber || (t._id ? `TRP-${t._id.slice(-6).toUpperCase()}` : 'TRP-101');
-      const originStr = typeof t.origin === 'object' ? (t.origin.city || t.origin.name || 'Origin') : (t.origin || 'Origin');
-      const destStr = typeof t.destination === 'object' ? (t.destination.city || t.destination.name || 'Destination') : (t.destination || 'Destination');
-      const driverName = typeof t.driver === 'object' ? (t.driver.fullName || t.driver.name || 'Driver') : (t.driver || 'Assigned Driver');
+      if (!t) return null;
+      const tripNum = t.tripNumber || (t._id ? `TRP-${String(t._id).slice(-6).toUpperCase()}` : 'TRP-101');
+      const originStr = (t.origin && typeof t.origin === 'object')
+        ? (t.origin.city || t.origin.name || 'Origin')
+        : (t.origin || t.startLocation || t.pickupLocation || 'Origin');
+      const destStr = (t.destination && typeof t.destination === 'object')
+        ? (t.destination.city || t.destination.name || 'Destination')
+        : (t.destination || t.endLocation || t.dropLocation || 'Destination');
+      const driverName = (t.driver && typeof t.driver === 'object')
+        ? (t.driver.fullName || t.driver.name || 'Driver')
+        : (typeof t.driver === 'string' && t.driver.trim() ? t.driver : 'Assigned Driver');
       const statusText = (t.status || 'DISPATCHED').replace(/_/g, ' ');
 
       return {
@@ -96,7 +102,7 @@ export default function ManagerDashboard() {
         time: formatTimeAgo(t.updatedAt || t.createdAt || t.dispatchDate),
         rawTime: new Date(t.updatedAt || t.createdAt || t.dispatchDate || Date.now()).getTime(),
       };
-    });
+    }).filter(Boolean);
 
     const combined = [...serverActs, ...tripActs];
     combined.sort((a, b) => b.rawTime - a.rawTime);

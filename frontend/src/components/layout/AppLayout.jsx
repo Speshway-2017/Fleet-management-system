@@ -112,13 +112,29 @@ export default function AppLayout() {
   const [fabOpen, setFabOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : false);
-  const [openSections, setOpenSections] = useState({
-    overview: false,
-    logistics: false,
-    fleetServices: false,
-    analytics: false,
-    system: false,
+  const [openSections, setOpenSections] = useState(() => {
+    const p = typeof window !== "undefined" ? window.location.pathname : "";
+    return {
+      overview: p === "/manager",
+      logistics: p.includes("/manager/vehicle") || p.includes("/manager/driver") || p.includes("/manager/trip") || p.includes("/manager/map") || p.includes("/manager/tracking"),
+      fleetServices: p.includes("/manager/fuel") || p.includes("/manager/maintenance"),
+      analytics: p.includes("/manager/analytics") || p.includes("/manager/earnings") || p.includes("/manager/reports"),
+      system: p.includes("/manager/notifications") || p.includes("/manager/subscription") || p.includes("/manager/settings"),
+    };
   });
+
+  useEffect(() => {
+    const p = location.pathname;
+    if (p.includes("/manager/vehicle") || p.includes("/manager/driver") || p.includes("/manager/trip") || p.includes("/manager/map") || p.includes("/manager/tracking")) {
+      setOpenSections(prev => ({ ...prev, logistics: true }));
+    } else if (p.includes("/manager/fuel") || p.includes("/manager/maintenance")) {
+      setOpenSections(prev => ({ ...prev, fleetServices: true }));
+    } else if (p.includes("/manager/analytics") || p.includes("/manager/earnings") || p.includes("/manager/reports")) {
+      setOpenSections(prev => ({ ...prev, analytics: true }));
+    } else if (p.includes("/manager/notifications") || p.includes("/manager/subscription") || p.includes("/manager/settings")) {
+      setOpenSections(prev => ({ ...prev, system: true }));
+    }
+  }, [location.pathname]);
 
   const toggleSection = (sec) => {
     setOpenSections((prev) => ({ ...prev, [sec]: !prev[sec] }));
@@ -805,7 +821,7 @@ export default function AppLayout() {
 
     {/* Page Content */}
     <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[120px] md:pb-0 bg-[#FAFBFC] dark:bg-[#0D1117]">
-      <div key={location.pathname} className="animate-page-enter h-full w-full">
+      <div className="h-full w-full">
         <Outlet />
       </div>
     </main>

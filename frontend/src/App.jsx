@@ -70,10 +70,9 @@ const DriversListPage = lazy(() => import("@/roles/manager/pages/DriversListPage
 const DriverProfilePage = lazy(() => import("@/roles/manager/pages/DriverProfilePage"));
 const AssignVehiclePage = lazy(() => import("@/roles/manager/pages/AssignVehiclePage"));
 const AddDriverPage = lazy(() => import("@/roles/manager/pages/AddDriverPage"));
-const TripsManagementPage = lazy(() => import("@/roles/manager/pages/TripsManagementPage"));
-const TripsListPage = lazy(() => import("@/roles/manager/pages/TripsListPage"));
 const CreateTripPage = lazy(() => import("@/roles/manager/pages/CreateTripPage"));
 const TripDetailsPage = lazy(() => import("@/roles/manager/pages/TripDetailsPage"));
+const TripsManagementPage = lazy(() => import("@/roles/manager/pages/TripsManagementPage"));
 const FuelManagementPage = lazy(() => import("@/roles/manager/pages/FuelManagementPage"));
 const MaintenanceManagementPage = lazy(() => import("@/roles/manager/pages/MaintenanceManagementPage"));
 const UpcomingServicesPage = lazy(() => import("@/roles/manager/pages/UpcomingServicesPage"));
@@ -205,7 +204,7 @@ export default function App() {
                       <Route path="/manager/tracking" element={<FleetMapPage />} />
                       <Route path="/manager/settings" element={<SettingsPage />} />
                       <Route path="/manager/trips" element={<TripsManagementPage />} />
-                      <Route path="/manager/trips-list" element={<TripsListPage />} />
+                      <Route path="/manager/trips-list" element={<Navigate to="/manager/trips" replace />} />
                       <Route path="/manager/create-trip" element={<CreateTripPage />} />
                       <Route path="/manager/trip-details/:id" element={<TripDetailsPage />} />
 
