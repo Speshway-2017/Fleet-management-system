@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   RefreshCw,
   Plus,
   Route,
@@ -44,6 +46,10 @@ export default function TripsManagementPage() {
   const [tripDistances, setTripDistances] = useState({});
   const [editRouteInfo, setEditRouteInfo] = useState({ distanceKm: 0, loading: false, errorMessage: "" });
   const [unreadCounts, setUnreadCounts] = useState({});
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const fetchUnreadCounts = async () => {
     try {
@@ -234,9 +240,7 @@ export default function TripsManagementPage() {
     socket.on("trip:status-updated", handleRefresh);
     socket.on("trip:deleted", handleRefresh);
 
-    const interval = setInterval(() => fetchTrips(false), 5000);
     return () => {
-      clearInterval(interval);
       socket.off("trip:created", handleRefresh);
       socket.off("trip:updated", handleRefresh);
       socket.off("trip:status-updated", handleRefresh);
@@ -244,18 +248,29 @@ export default function TripsManagementPage() {
     };
   }, []);
 
-  // Compute dynamic driving distances for fetched trips
+  // Compute dynamic driving distances for fetched trips with a single batched state update
   useEffect(() => {
     if (!trips.length) return;
-    trips.forEach(async (t) => {
-      if (t.startLocation && t.endLocation) {
-        const tripKey = t.id || t._id;
-        const res = await calculateDrivingRoute(t.startLocation, t.endLocation);
-        if (res.success && res.distanceKm) {
-          setTripDistances(prev => ({ ...prev, [tripKey]: res.distanceKm }));
-        }
+    let isMounted = true;
+    const computeAll = async () => {
+      const updates = {};
+      await Promise.all(
+        trips.map(async (t) => {
+          const tripKey = t.id || t._id;
+          if (t.startLocation && t.endLocation && !tripDistances[tripKey] && (!t.actualDistance || t.actualDistance <= 0) && (!t.estimatedDistance || t.estimatedDistance <= 0)) {
+            const res = await calculateDrivingRoute(t.startLocation, t.endLocation);
+            if (res.success && res.distanceKm) {
+              updates[tripKey] = res.distanceKm;
+            }
+          }
+        })
+      );
+      if (isMounted && Object.keys(updates).length > 0) {
+        setTripDistances(prev => ({ ...prev, ...updates }));
       }
-    });
+    };
+    computeAll();
+    return () => { isMounted = false; };
   }, [trips]);
 
   // Recalculate route whenever edit modal location inputs change
@@ -565,31 +580,60 @@ export default function TripsManagementPage() {
   // Search Filtering
   const getFilteredTrips = () => {
     const tabFiltered = getTabFilteredTrips();
-    return tabFiltered.filter(t => {
-      const q = search.toLowerCase();
+    return tabFiltered.filter((t) => {
+      const q = search.toLowerCase().trim();
+      const tripNum = String(t.tripNumber || t._id || t.id || "").toLowerCase();
+      const driverName = String(
+        t.driverName || (typeof t.driver === "object" && (t.driver?.fullName || t.driver?.name)) || ""
+      ).toLowerCase();
+      const driverPhone = String(
+        t.driverPhone || (typeof t.driver === "object" && (t.driver?.phone || t.driver?.mobileNumber || t.driver?.phoneNumber)) || ""
+      ).toLowerCase();
+      const vehiclePlate = String(
+        t.vehiclePlate || (typeof t.vehicle === "object" && (t.vehicle?.vehicleNumber || t.vehicle?.plateNumber)) || ""
+      ).toLowerCase();
+      const vehicleName = String(
+        t.vehicleName || (typeof t.vehicle === "object" && (t.vehicle?.name || t.vehicle?.vehicleName || `${t.vehicle?.make || ""} ${t.vehicle?.model || ""}`.trim())) || ""
+      ).toLowerCase();
+      const startLoc = String(t.startLocation || t.pickupLocation || t.fromAddress?.formattedAddress || t.pickupAddress?.formattedAddress || "").toLowerCase();
+      const endLoc = String(t.endLocation || t.destination || t.toAddress?.formattedAddress || t.deliveryAddress?.formattedAddress || "").toLowerCase();
+      const desc = String(t.description || t.cargoType || "").toLowerCase();
+
       return (
-        (t.tripNumber || "").toLowerCase().includes(q) ||
-        (t.driverName || "").toLowerCase().includes(q) ||
-        (t.vehicleName || "").toLowerCase().includes(q) ||
-        (t.vehiclePlate || "").toLowerCase().includes(q) ||
-        (t.startLocation || "").toLowerCase().includes(q) ||
-        (t.endLocation || "").toLowerCase().includes(q) ||
-        (t.description || "").toLowerCase().includes(q)
+        !q ||
+        tripNum.includes(q) ||
+        driverName.includes(q) ||
+        driverPhone.includes(q) ||
+        vehiclePlate.includes(q) ||
+        vehicleName.includes(q) ||
+        startLoc.includes(q) ||
+        endLoc.includes(q) ||
+        desc.includes(q)
       );
     });
   };
 
   const finalFilteredTrips = getFilteredTrips();
 
-  const currentRows = finalFilteredTrips.slice(0, 10);
+  // Reset to first page when search or tab filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, activeTab]);
+
+  const totalPages = Math.max(1, Math.ceil(finalFilteredTrips.length / rowsPerPage));
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = Math.min(startIndex + rowsPerPage, finalFilteredTrips.length);
+  const currentRows = finalFilteredTrips.slice(startIndex, endIndex);
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case "In Progress":
-      case "On Transit":
+    const normalized = getNormalizedTripCategory(status);
+    switch (normalized) {
+      case "active":
         return "bg-[#FDF3EC] text-[#A14000] border border-[#FDF3EC] font-semibold";
-      case "Scheduled":
+      case "scheduled":
         return "bg-blue-50 text-blue-700 border border-blue-100 font-semibold";
+      case "assigned":
+        return "bg-indigo-50 text-indigo-700 border border-indigo-150 font-semibold";
       case "completed":
         return "bg-slate-900 text-white border border-slate-950 font-semibold";
       case "delayed":
@@ -597,15 +641,42 @@ export default function TripsManagementPage() {
       case "cancelled":
         return "bg-red-50 text-red-600 border border-red-100 font-semibold";
       default:
-        return "bg-gray-100 text-gray-500";
+        switch (status) {
+          case "In Progress":
+          case "On Transit":
+          case "En Route":
+          case "In Transit":
+          case "Dispatched":
+          case "On Trip":
+            return "bg-[#FDF3EC] text-[#A14000] border border-[#FDF3EC] font-semibold";
+          case "Scheduled":
+          case "Ready to Dispatch":
+            return "bg-blue-50 text-blue-700 border border-blue-100 font-semibold";
+          case "Assigned":
+          case "Accepted":
+          case "Pending Driver Acceptance":
+            return "bg-indigo-50 text-indigo-700 border border-indigo-150 font-semibold";
+          case "Completed":
+          case "Complete Trip":
+          case "Delivered":
+            return "bg-slate-900 text-white border border-slate-950 font-semibold";
+          case "Cancelled":
+          case "Rejected":
+            return "bg-red-50 text-red-600 border border-red-100 font-semibold";
+          default:
+            return "bg-gray-100 text-gray-700 border border-gray-200 font-semibold";
+        }
     }
   };
 
   const formatDateTime = (dtString) => {
     if (!dtString) return "N/A";
-    return new Date(dtString).toLocaleDateString("en-IN", {
+    const d = new Date(dtString);
+    if (isNaN(d.getTime())) return "N/A";
+    return d.toLocaleDateString("en-IN", {
       day: '2-digit',
       month: 'short',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
@@ -715,21 +786,23 @@ export default function TripsManagementPage() {
           </div>
 
           {/* Trips Table Component */}
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm overflow-hidden">
-            <div className="px-6 py-5 border-b border-[#E7EAF0] flex items-center justify-between shrink-0">
-              <h3 className="font-poppins font-black text-lg text-[#1E293B]">Trips List</h3>
-              <button
-                onClick={() => navigate("/manager/trips-list")}
-                className="text-xs text-[#A14000] hover:text-[#853400] hover:underline font-bold font-poppins flex items-center gap-1 cursor-pointer"
-              >
-                <span>View All Trips</span>
-              </button>
+          <div className="bg-white dark:bg-[#151C28] rounded-2xl border border-[#E7EAF0] dark:border-[#242E42] shadow-sm overflow-hidden">
+            <div className="px-6 py-5 border-b border-[#E7EAF0] dark:border-[#242E42] flex items-center justify-between shrink-0">
+              <div>
+                <h3 className="font-poppins font-black text-lg text-[#1E293B] dark:text-white">All Dispatches & Trips</h3>
+                <p className="text-xs text-[#64748B] dark:text-slate-400 font-medium mt-0.5">
+                  Complete view of assigned, in-transit, scheduled, and completed trips
+                </p>
+              </div>
+              <div className="text-xs font-bold font-poppins px-3 py-1 bg-amber-50 dark:bg-amber-900/30 text-[#A14000] dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-full">
+                {finalFilteredTrips.length} {finalFilteredTrips.length === 1 ? "Trip" : "Trips"}
+              </div>
             </div>
 
             <div className="overflow-x-auto custom-scrollbar">
               <table className="w-full text-left border-collapse text-sm font-nunito">
                 <thead>
-                  <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
+                  <tr className="bg-[#F5F7FB] dark:bg-[#0D1522] border-b border-[#E7EAF0] dark:border-[#242E42] text-[#64748B] dark:text-slate-400 font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
                     <th className="py-4 px-6 whitespace-nowrap">Trip ID</th>
                     <th className="py-4 px-6 whitespace-nowrap">Pickup Location</th>
                     <th className="py-4 px-6 whitespace-nowrap">Destination</th>
@@ -742,51 +815,59 @@ export default function TripsManagementPage() {
                     <th className="py-4 px-6 text-center whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E7EAF0]/60">
+                <tbody className="divide-y divide-[#E7EAF0]/60 dark:divide-[#242E42]">
                   {loading ? (
-                    <TableRowSkeleton columns={10} rows={5} />
+                    <TableRowSkeleton columns={10} rows={rowsPerPage} />
                   ) : currentRows.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-12 text-center text-gray-400 font-medium font-nunito">
+                      <td colSpan={10} className="py-12 text-center text-gray-400 dark:text-slate-500 font-medium font-nunito">
                         No trips found matching the selections.
                       </td>
                     </tr>
                   ) : (
                     currentRows.map((t) => (
-                      <tr key={t.id} className="hover:bg-[#F5F7FB]/50 transition-colors group">
+                      <tr key={t.id || t._id} className="hover:bg-[#F5F7FB]/50 dark:hover:bg-slate-800/40 transition-colors group">
                         
-                        {/* Trip ID */}
+                        {/* Trip ID & Cargo */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex flex-col">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg w-max font-poppins">
-                                {t.tripNumber}
+                              <span className="font-bold text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-150 dark:border-indigo-800 px-2 py-0.5 rounded-lg w-max font-poppins">
+                                {t.tripNumber || (t._id ? `#${String(t._id).slice(-6).toUpperCase()}` : "N/A")}
                               </span>
                             </div>
-                            <span className="text-[10px] text-[#64748B] mt-1 block font-semibold max-w-[150px] truncate">
-                              {t.description}
-                            </span>
+                            {(t.cargoType || t.description) && (
+                              <span className="text-[10px] text-[#64748B] dark:text-slate-400 mt-1 block font-semibold max-w-[170px] truncate">
+                                {t.cargoType ? `${t.cargoType}${t.cargoWeight ? ` • ${t.cargoWeight} kg` : ''}` : t.description}
+                              </span>
+                            )}
                           </div>
                         </td>
 
                         {/* Pickup Location */}
-                        <td className="py-4 px-6 whitespace-nowrap font-semibold text-xs text-[#1E293B]">
-                          {t.startLocation}
+                        <td className="py-4 px-6 whitespace-nowrap font-semibold text-xs text-[#1E293B] dark:text-slate-200">
+                          <div className="flex items-center gap-1.5 max-w-[200px] truncate" title={t.startLocation || t.pickupLocation || t.fromAddress?.formattedAddress || t.pickupAddress?.formattedAddress || "N/A"}>
+                            <MapPin className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            <span className="truncate">{t.startLocation || t.pickupLocation || t.fromAddress?.formattedAddress || t.pickupAddress?.formattedAddress || "N/A"}</span>
+                          </div>
                         </td>
 
                         {/* Destination */}
-                        <td className="py-4 px-6 whitespace-nowrap font-semibold text-xs text-[#1E293B]">
-                          {t.endLocation}
+                        <td className="py-4 px-6 whitespace-nowrap font-semibold text-xs text-[#1E293B] dark:text-slate-200">
+                          <div className="flex items-center gap-1.5 max-w-[200px] truncate" title={t.endLocation || t.destination || t.toAddress?.formattedAddress || t.deliveryAddress?.formattedAddress || "N/A"}>
+                            <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                            <span className="truncate">{t.endLocation || t.destination || t.toAddress?.formattedAddress || t.deliveryAddress?.formattedAddress || "N/A"}</span>
+                          </div>
                         </td>
 
                         {/* Driver */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex flex-col">
-                            <span className="font-bold text-sm text-[#1E293B] font-poppins group-hover:text-[#A14000] transition-colors">
-                              {t.driverName || "Unassigned"}
+                            <span className="font-bold text-sm text-[#1E293B] dark:text-white font-poppins group-hover:text-[#A14000] transition-colors">
+                              {t.driverName || (typeof t.driver === "object" && (t.driver?.fullName || t.driver?.name)) || "Unassigned"}
                             </span>
-                            <span className="text-[10px] text-[#64748B] mt-0.5 block font-semibold">
-                              {t.driverPhone || ""}
+                            <span className="text-[10px] text-[#64748B] dark:text-slate-400 mt-0.5 block font-semibold">
+                              {t.driverPhone || (typeof t.driver === "object" && (t.driver?.phone || t.driver?.mobileNumber || t.driver?.phoneNumber)) || ""}
                             </span>
                           </div>
                         </td>
@@ -794,11 +875,11 @@ export default function TripsManagementPage() {
                         {/* Vehicle */}
                         <td className="py-4 px-6 whitespace-nowrap">
                           <div className="flex flex-col">
-                            <span className="font-bold text-xs text-[#1E293B]">
-                              {t.vehicleName || "Unassigned"}
+                            <span className="font-bold text-xs text-[#1E293B] dark:text-slate-200">
+                              {t.vehicleName || (typeof t.vehicle === "object" && (t.vehicle?.name || t.vehicle?.vehicleName || `${t.vehicle?.make || ""} ${t.vehicle?.model || ""}`.trim())) || "Unassigned"}
                             </span>
-                            <span className="text-[10px] font-bold text-indigo-500 mt-0.5 uppercase tracking-wide block font-poppins">
-                              {t.vehiclePlate || ""}
+                            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 mt-0.5 uppercase tracking-wide block font-poppins">
+                              {t.vehiclePlate || (typeof t.vehicle === "object" && (t.vehicle?.vehicleNumber || t.vehicle?.plateNumber)) || ""}
                             </span>
                           </div>
                         </td>
@@ -811,74 +892,72 @@ export default function TripsManagementPage() {
                         </td>
 
                         {/* Departure */}
-                        <td className="py-4 px-6 whitespace-nowrap text-xs text-[#1E293B] font-medium">
+                        <td className="py-4 px-6 whitespace-nowrap text-xs text-[#1E293B] dark:text-slate-300 font-medium">
                           <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-[#64748B]" />
-                            <span>{formatDateTime(t.departureTime)}</span>
+                            <Calendar className="w-3.5 h-3.5 text-[#64748B] dark:text-slate-400" />
+                            <span>{formatDateTime(t.departureTime || t.createdAt)}</span>
                           </div>
                         </td>
 
                         {/* ETA */}
-                        <td className="py-4 px-6 whitespace-nowrap text-xs text-[#1E293B] font-medium">
+                        <td className="py-4 px-6 whitespace-nowrap text-xs text-[#1E293B] dark:text-slate-300 font-medium">
                           <div className="flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-[#64748B]" />
+                            <Clock className="w-3.5 h-3.5 text-[#64748B] dark:text-slate-400" />
                             <span>{formatDateTime(t.eta)}</span>
                           </div>
                         </td>
 
                         {/* Distance */}
-                        <td className="py-4 px-6 whitespace-nowrap text-xs text-[#1E293B] font-bold">
+                        <td className="py-4 px-6 whitespace-nowrap text-xs text-[#1E293B] dark:text-slate-200 font-bold">
                           {(() => {
                             const tripKey = t.id || t._id;
                             const dynamicDist = tripDistances[tripKey];
                             const est = (dynamicDist && dynamicDist < 4000)
                               ? dynamicDist
-                              : ((t.estimatedDistance && t.estimatedDistance > 0 && t.estimatedDistance < 4000) ? t.estimatedDistance : 0);
+                              : ((t.estimatedDistance && t.estimatedDistance > 0 && t.estimatedDistance < 4000) ? t.estimatedDistance : (t.distance && t.distance > 0 && t.distance < 4000 ? t.distance : 0));
                             const act = (t.actualDistance && t.actualDistance > 0 && t.actualDistance < 4000) ? t.actualDistance : est;
                             const finalDist = t.status === "Completed" ? act : est;
-                            return finalDist > 0 ? `${finalDist} KM` : "Calculating...";
+                            return finalDist > 0 ? `${finalDist} KM` : (dynamicDist === undefined && t.startLocation && t.endLocation ? "Calculating..." : "N/A");
                           })()}
                         </td>
 
-                        {/* Actions */}
+                        {/* Actions Column */}
                         <td className="py-4 px-6 text-center select-none whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1.5">
-                            {/* View */}
+                            {/* View Button - Always visible, navigates to TripDetailsPage */}
                             <button
-                              onClick={() => navigate(`/manager/trip-details/${t.id}`)}
-                              title="View details"
-                              className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+                              onClick={() => navigate(`/manager/trip-details/${t.id || t._id}`)}
+                              title="View trip details"
+                              className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 rounded-xl active:scale-95 transition-all cursor-pointer shadow-2xs"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
 
-
-
-
-
-                            {/* Edit */}
-                            {(t.status === "Scheduled" || t.status === "Assigned") && (
-                              <button
-                                onClick={() => handleOpenEdit(t)}
-                                title="Edit trip"
-                                className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                            )}
-
-                            {/* Delete */}
-                            {(t.status === "Scheduled" || t.status === "Assigned") && (
-                              <button
-                                onClick={() => {
-                                  setSelectedTrip(t);
-                                  setShowDeleteConfirm(true);
-                                }}
-                                title="Delete trip record"
-                                className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                            {/* Non-completed trips: Show Edit & Delete for manageable states */}
+                            {t.status !== "Completed" && t.status !== "Delivered" && t.status !== "Complete Trip" && (
+                              <>
+                                {(t.status === "Scheduled" || t.status === "Assigned" || t.status === "Pending Driver Acceptance") && (
+                                  <>
+                                    <button
+                                      onClick={() => handleOpenEdit(t)}
+                                      title="Edit trip"
+                                      className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 rounded-xl active:scale-95 transition-all cursor-pointer shadow-2xs"
+                                    >
+                                      <Pencil className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setSelectedTrip(t);
+                                        setShowDeleteConfirm(true);
+                                      }}
+                                      title="Delete trip record"
+                                      className="p-2 text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-xl active:scale-95 transition-all cursor-pointer shadow-2xs"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
+                              </>
                             )}
                           </div>
                         </td>
@@ -889,6 +968,90 @@ export default function TripsManagementPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {!loading && finalFilteredTrips.length > 0 && (
+              <div className="px-6 py-4 bg-white dark:bg-[#151C28] border-t border-[#E7EAF0] dark:border-[#242E42] flex flex-col sm:flex-row items-center justify-between gap-4 select-none">
+                {/* Left: Summary text */}
+                <div className="text-xs text-[#64748B] dark:text-slate-400 font-medium font-poppins">
+                  Showing <span className="font-bold text-[#1E293B] dark:text-white">{startIndex + 1}</span> to{" "}
+                  <span className="font-bold text-[#1E293B] dark:text-white">{endIndex}</span> of{" "}
+                  <span className="font-bold text-[#1E293B] dark:text-white">{finalFilteredTrips.length}</span> trips
+                </div>
+
+                {/* Middle: Rows Per Page */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[#64748B] dark:text-slate-400 font-medium">Rows per page:</span>
+                  <select
+                    value={rowsPerPage}
+                    onChange={(e) => {
+                      setRowsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="px-2.5 py-1 text-xs font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+
+                {/* Right: Previous & Next Buttons */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                    disabled={currentPage === 1}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold font-poppins flex items-center gap-1.5 transition-all cursor-pointer ${
+                      currentPage === 1
+                        ? "bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed"
+                        : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 shadow-2xs"
+                    }`}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Previous</span>
+                  </button>
+
+                  {/* Page indicator pills */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                      .map((page, idx, arr) => {
+                        const prevPage = arr[idx - 1];
+                        const showEllipsis = prevPage && page - prevPage > 1;
+                        return (
+                          <React.Fragment key={page}>
+                            {showEllipsis && <span className="px-1 text-xs text-slate-400">...</span>}
+                            <button
+                              onClick={() => setCurrentPage(page)}
+                              className={`w-8 h-8 rounded-xl text-xs font-bold font-poppins transition-all cursor-pointer ${
+                                currentPage === page
+                                  ? "bg-[#A14000] text-white shadow-xs"
+                                  : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          </React.Fragment>
+                        );
+                      })}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                    disabled={currentPage === totalPages || finalFilteredTrips.length === 0}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold font-poppins flex items-center gap-1.5 transition-all cursor-pointer ${
+                      currentPage === totalPages || finalFilteredTrips.length === 0
+                        ? "bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed"
+                        : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 shadow-2xs"
+                    }`}
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
       {/* --- DELETE CONFIRMATION MODAL --- */}

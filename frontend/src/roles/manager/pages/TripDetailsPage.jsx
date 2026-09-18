@@ -46,6 +46,7 @@ export default function TripDetailsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth();
   const [trip, setTrip] = useState(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState(() => {
     const tabParam = searchParams.get("tab");
@@ -241,7 +242,8 @@ export default function TripDetailsPage() {
   }, [trip, activeTab]);
 
   // Load trip record & invoice
-  const fetchTripAndInvoice = async () => {
+  const fetchTripAndInvoice = async (isInitial = false) => {
+    if (isInitial) setPageLoading(true);
     try {
       const response = await managerApi.getTripById(id);
       const data = response.data?.data || response.data;
@@ -348,35 +350,23 @@ export default function TripDetailsPage() {
             { name: 'Khalapur Toll Plaza', location: 'Mumbai-Pune Expressway' },
             { name: 'Electronic City Toll Plaza', location: 'Bengaluru, KA' },
             { name: 'Lalru Toll Plaza', location: 'Ambala-Chandigarh Highway' },
-            { name: 'Vasad Toll Plaza', location: 'Vadodara-Ahmedabad NH-8' },
-            { name: 'Kherki Daula Toll Plaza', location: 'Gurugram, HR' },
-            { name: 'Chennai Bypass Toll', location: 'Chennai, TN' },
-            { name: 'NICE Road Plaza', location: 'Bengaluru, KA' }
+            { name: 'Khed Shivapur Toll Plaza', location: 'NH 48, Pune' },
+            { name: 'Vashi Toll Plaza', location: 'Sion-Panvel Highway' }
           ];
 
-          const numTolls = 3;
-          const tripDate = new Date(tripObj.departureTime || Date.now());
           const mockList = [];
-
+          const numTolls = Math.floor(Math.random() * 3) + 1;
           for (let i = 0; i < numTolls; i++) {
-            const plaza = plazas[(i + 2) % plazas.length];
-            const amount = [120, 230, 310][i];
-            const hoursOffset = 1.5 + (i * 2.5);
-            const dateTime = new Date(tripDate.getTime() + hoursOffset * 3600 * 1000); 
-            const txId = 'FT' + (984210000000 + i * 1421);
-
+            const plaza = plazas[Math.floor(Math.random() * plazas.length)];
             mockList.push({
-              _id: `mock-toll-${tripObj._id || '123'}-${i}`,
-              trip: tripObj._id || '123',
-              vehiclePlate: tripObj.vehiclePlate || 'MH-12-PQ-4567',
-              tollPlazaName: plaza.name,
+              _id: `toll-${tripObj._id || tripObj.id}-${i + 1}`,
+              trip: tripObj._id || tripObj.id,
+              plazaName: plaza.name,
               location: plaza.location,
-              dateTime: dateTime.toISOString(),
-              amountPaid: amount,
-              paymentMethod: 'FASTag',
-              fastagTransactionId: txId,
-              receiptStatus: 'Settled',
-              receiptUrl: ''
+              amount: (Math.floor(Math.random() * 25) + 8) * 10,
+              timestamp: new Date(Date.now() - (i + 1) * 3600000).toISOString(),
+              status: 'Paid',
+              paymentMethod: 'FASTag Auto-Debit'
             });
           }
           return mockList;
@@ -401,11 +391,13 @@ export default function TripDetailsPage() {
     } catch (error) {
       toast.error("Failed to load trip details");
       console.error(error);
+    } finally {
+      if (isInitial) setPageLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTripAndInvoice();
+    fetchTripAndInvoice(true);
   }, [id]);
 
   // Listen for real-time POD uploads from driver
@@ -771,6 +763,24 @@ export default function TripDetailsPage() {
     }
   };
 
+  if (pageLoading) {
+    return (
+      <div className="p-6 lg:p-8 space-y-6 min-h-screen bg-[#F5F7FB] font-nunito animate-fade-in">
+        <Breadcrumb />
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-xs animate-pulse space-y-4">
+          <div className="h-8 w-64 bg-slate-200 rounded-xl" />
+          <div className="h-4 w-96 bg-slate-100 rounded-lg" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-24 bg-slate-100 rounded-xl" />
+            ))}
+          </div>
+          <div className="h-96 bg-slate-100 rounded-2xl mt-6" />
+        </div>
+      </div>
+    );
+  }
+
   if (!trip) {
     return (
       <div className="min-h-screen bg-[#F5F7FB] flex items-center justify-center p-6 lg:p-8 font-poppins">
@@ -886,6 +896,35 @@ export default function TripDetailsPage() {
   };
 
 
+
+  if (pageLoading && !trip) {
+    return (
+      <div className="min-h-screen bg-[#F5F7FB] flex flex-col items-center justify-center p-6">
+        <div className="w-12 h-12 border-4 border-[#3B82F6] border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-slate-600 font-poppins font-medium text-sm">Loading trip details...</p>
+      </div>
+    );
+  }
+
+  if (!trip) {
+    return (
+      <div className="min-h-screen bg-[#F5F7FB] p-6 lg:p-8 font-nunito flex flex-col items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center max-w-md">
+          <div className="w-14 h-14 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-7 h-7" />
+          </div>
+          <h3 className="font-poppins font-bold text-lg text-slate-800 mb-2">Trip Not Found</h3>
+          <p className="text-sm text-slate-500 mb-6">The requested trip could not be loaded or you do not have permission to view it.</p>
+          <button
+            onClick={() => navigate("/manager/trips")}
+            className="px-6 py-2.5 bg-[#3B82F6] text-white font-poppins font-bold text-xs rounded-xl shadow-sm hover:bg-blue-600 transition-all cursor-pointer"
+          >
+            Back to Trips
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
