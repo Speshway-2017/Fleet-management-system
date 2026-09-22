@@ -23,8 +23,7 @@ import {
   Sun,
   Moon,
   ChevronRight,
-  Home,
-  Compass
+  Home
 } from "lucide-react";
 
 export default function DriverLayout() {
@@ -257,11 +256,6 @@ export default function DriverLayout() {
 
         {/* Navigation Items */}
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto no-scrollbar">
-          <div className="px-3 pt-2 pb-1.5 font-poppins text-xs font-black uppercase tracking-wider text-slate-400 select-none flex items-center gap-2 mb-1">
-            <Compass className="w-4 h-4 text-slate-400 shrink-0" />
-            <span>Main Menu</span>
-          </div>
-
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname.startsWith(item.path);
@@ -331,6 +325,7 @@ export default function DriverLayout() {
               <NotificationOverlay
                 isOpen={showNotifications}
                 onClose={() => setShowNotifications(false)}
+                onUnreadCountChange={setUnreadCount}
               />
             </div>
 

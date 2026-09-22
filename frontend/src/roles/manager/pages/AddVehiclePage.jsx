@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { identifyDocumentType } from "../utils/documentParser";
 import { vehicleApi } from "@/api/vehicleApi";
 import { INDIAN_STATES } from "@/constants/indianStates";
+import { vehicleSchema, validateForm } from "@/validations";
 
 export default function AddVehiclePage() {
   const navigate = useNavigate();
@@ -201,6 +202,18 @@ export default function AddVehiclePage() {
 
     if (isViewOnly) {
       toast.error("Your subscription is inactive. Adding vehicles is disabled.");
+      return;
+    }
+
+    const validationResult = validateForm(vehicleSchema, {
+      ...formData,
+      vehicleNumber: formData.plateNumber,
+      brand: formData.manufacturer
+    });
+
+    if (!validationResult.isValid) {
+      const firstError = Object.values(validationResult.errors)[0];
+      toast.error(firstError || "Please fix vehicle validation errors.");
       return;
     }
 

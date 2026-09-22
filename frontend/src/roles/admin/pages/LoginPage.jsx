@@ -11,6 +11,8 @@ import {
   AlertCircle
 } from "lucide-react";
 import TermsModal from "@/components/common/TermsModal";
+import { loginSchema, validateForm, validateField } from "@/validations";
+
 
 export default function LoginPage() {
   const { login, loading, isAuthenticated, role } = useAuth();
@@ -59,23 +61,15 @@ export default function LoginPage() {
   };
 
   const validate = () => {
-    let isValid = true;
-
-    if (!form.email) {
-      setEmailError("Email, Phone Number or Employee ID is required.");
-      isValid = false;
-    } else {
-      setEmailError("");
+    const result = validateForm(loginSchema, form);
+    if (!result.isValid) {
+      if (result.errors.email) setEmailError(result.errors.email);
+      if (result.errors.password) setPasswordError(result.errors.password);
+      return false;
     }
-
-    if (!form.password) {
-      setPasswordError("Password is required.");
-      isValid = false;
-    } else {
-      setPasswordError("");
-    }
-
-    return isValid;
+    setEmailError("");
+    setPasswordError("");
+    return true;
   };
 
   const handleSubmit = async (e) => {

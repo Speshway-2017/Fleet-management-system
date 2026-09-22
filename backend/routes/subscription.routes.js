@@ -13,6 +13,8 @@ import {
   approveRequest,
   rejectRequest
 } from '../controllers/subscription.controller.js';
+import { validate } from '../middleware/validate.middleware.js';
+import { createSubscriptionPlanSchema, updateSubscriptionPlanSchema, requestSubscriptionSchema } from '../validations/index.js';
 
 const router = express.Router();
 
@@ -23,12 +25,12 @@ router.get('/public/plans', getPublicPlans);
 router.get('/plans', protect, getPlans);
 
 // Admin-only plans CRUD
-router.post('/plans', protect, authorizeRoles('SUPER_ADMIN'), createPlan);
-router.put('/plans/:id', protect, authorizeRoles('SUPER_ADMIN'), updatePlan);
+router.post('/plans', protect, authorizeRoles('SUPER_ADMIN'), validate(createSubscriptionPlanSchema), createPlan);
+router.put('/plans/:id', protect, authorizeRoles('SUPER_ADMIN'), validate(updateSubscriptionPlanSchema), updatePlan);
 router.delete('/plans/:id', protect, authorizeRoles('SUPER_ADMIN'), deletePlan);
 
 // Manager requests
-router.post('/requests', protect, authorizeRoles('FLEET_MANAGER'), submitRequest);
+router.post('/requests', protect, authorizeRoles('FLEET_MANAGER'), validate(requestSubscriptionSchema), submitRequest);
 router.get('/requests/my', protect, authorizeRoles('FLEET_MANAGER'), getMyRequest);
 
 // Admin requests approval

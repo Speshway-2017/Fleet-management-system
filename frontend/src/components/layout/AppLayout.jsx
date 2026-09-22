@@ -109,6 +109,7 @@ export default function AppLayout() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isNotifOverlayOpen, setIsNotifOverlayOpen] = useState(false);
+  const [notifUnreadCount, setNotifUnreadCount] = useState(0);
   const [fabOpen, setFabOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : false);
@@ -798,12 +799,15 @@ export default function AppLayout() {
                 title="Notifications"
               >
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-[#A14000] border-2 border-white dark:border-[#151C28] rounded-full animate-pulse" />
+                {notifUnreadCount > 0 && (
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-[#A14000] border-2 border-white dark:border-[#151C28] rounded-full animate-pulse" />
+                )}
               </button>
 
               <NotificationOverlay
                 isOpen={isNotifOverlayOpen}
                 onClose={() => setIsNotifOverlayOpen(false)}
+                onUnreadCountChange={setNotifUnreadCount}
               />
             </div>
             <div className="relative hidden md:block">

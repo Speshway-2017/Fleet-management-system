@@ -12,8 +12,7 @@ import {
   MoreHorizontal,
   MessageSquare,
   CreditCard,
-  ClipboardList,
-  Compass
+  ClipboardList
 } from "lucide-react";
 
 export default function NewAdminSidebar({ activeItem = "dashboard" }) {
@@ -48,29 +47,24 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
       )}
 
       {/* Sidebar - Unified Dark Navy */}
-      <div className={`w-[260px] bg-[#0D1B2A] text-slate-300 border-r border-slate-800/80 flex flex-col h-screen fixed lg:sticky top-0 z-50 flex-shrink-0 overflow-hidden transition-transform duration-300 ease-in-out ${
+      <div className={`w-[220px] bg-[#0D1B2A] text-slate-300 border-r border-slate-800/80 flex flex-col h-screen fixed lg:sticky top-0 z-50 flex-shrink-0 overflow-hidden transition-transform duration-300 ease-in-out ${
         isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       }`}>
       {/* Logo Area */}
-      <div className="p-6 pb-4 border-b border-slate-800/80">
-        <div className="flex items-center gap-3">
+      <div className="p-4 pb-3.5 border-b border-slate-800/80">
+        <div className="flex items-center gap-2.5">
           <div className="p-1 rounded-xl bg-slate-900/60 border border-slate-800 shrink-0">
-            <img src={platformSettings?.logoUrl || "/logo.png"} className="w-8 h-8 object-contain rounded-md shrink-0" alt="Logo" />
+            <img src={platformSettings?.logoUrl || "/logo.png"} className="w-7 h-7 object-contain rounded-md shrink-0" alt="Logo" />
           </div>
-          <div className="border-l border-slate-700/60 pl-3 py-0.5">
-            <h1 className="font-poppins font-black text-white text-base tracking-wide leading-none whitespace-nowrap">{platformSettings?.platformName || "Fleet Management"}</h1>
-            <span className="text-[10px] text-[#A14000] font-extrabold font-poppins uppercase tracking-wider mt-1.5 block">Super Admin</span>
+          <div className="border-l border-slate-700/60 pl-2.5 py-0.5 min-w-0">
+            <h1 className="font-poppins font-black text-white text-[13px] tracking-wide leading-none truncate">{platformSettings?.platformName || "Fleet Management"}</h1>
+            <span className="text-[9px] text-[#A14000] font-extrabold font-poppins uppercase tracking-wider mt-1 block">Super Admin</span>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
       <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto no-scrollbar">
-        <div className="px-3 pt-2 pb-1.5 font-poppins text-xs font-black uppercase tracking-wider text-slate-400 select-none flex items-center gap-2 mb-1">
-          <Compass className="w-4 h-4 text-slate-400 shrink-0" />
-          <span>Main Menu</span>
-        </div>
-        
         {navItems.map((item) => {
           const isActive = activeItem === item.id;
           const Icon = item.icon;

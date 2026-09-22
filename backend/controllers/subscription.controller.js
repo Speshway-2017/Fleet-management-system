@@ -30,21 +30,58 @@ export const getPlans = async (req, res, next) => {
 export const createPlan = async (req, res, next) => {
   try {
     const { name, description, price, duration, status, displayOrder, features, maxVehicles, maxDrivers, maxTrips } = req.body;
-    if (!name || !description || price === undefined || !duration) {
+    if (!name || !name.toString().trim() || !description || !description.toString().trim() || price === undefined || !duration) {
       return sendError(res, 400, 'Name, description, price, and duration are required');
     }
 
+    const trimmedName = name.toString().trim();
+    if (/\d/.test(trimmedName)) {
+      return sendError(res, 400, 'Plan name must not contain numbers.');
+    }
+    if (trimmedName.length > 50) {
+      return sendError(res, 400, 'Plan name must not exceed 50 characters.');
+    }
+
+    const trimmedDescription = description.toString().trim();
+    if (/\d/.test(trimmedDescription)) {
+      return sendError(res, 400, 'Description must not contain numbers.');
+    }
+    if (trimmedDescription.length > 100) {
+      return sendError(res, 400, 'Description must not exceed 100 characters.');
+    }
+
+    if (maxVehicles !== undefined && maxVehicles !== null && maxVehicles !== '') {
+      const v = Number(maxVehicles);
+      if (isNaN(v) || !Number.isInteger(v) || v < 0) {
+        return sendError(res, 400, 'Number of vehicles must be a whole number.');
+      }
+    }
+
+    if (maxDrivers !== undefined && maxDrivers !== null && maxDrivers !== '') {
+      const d = Number(maxDrivers);
+      if (isNaN(d) || !Number.isInteger(d) || d < 0) {
+        return sendError(res, 400, 'Number of drivers must be a whole number.');
+      }
+    }
+
+    if (maxTrips !== undefined && maxTrips !== null && maxTrips !== '') {
+      const t = Number(maxTrips);
+      if (isNaN(t) || !Number.isInteger(t) || t < 0) {
+        return sendError(res, 400, 'Number of trips must be a whole number.');
+      }
+    }
+
     const plan = new SubscriptionPlan({
-      name,
-      description,
+      name: trimmedName,
+      description: trimmedDescription,
       price,
       duration,
       status,
       displayOrder,
       features,
-      maxVehicles: maxVehicles || 0,
-      maxDrivers: maxDrivers || 0,
-      maxTrips: maxTrips || 0
+      maxVehicles: maxVehicles !== undefined ? Number(maxVehicles) : 0,
+      maxDrivers: maxDrivers !== undefined ? Number(maxDrivers) : 0,
+      maxTrips: maxTrips !== undefined ? Number(maxTrips) : 0
     });
     await plan.save();
 
@@ -52,6 +89,10 @@ export const createPlan = async (req, res, next) => {
   } catch (error) {
     if (error.code === 11000) {
       return sendError(res, 400, 'A plan with this name already exists');
+    }
+    if (error.name === 'ValidationError') {
+      const message = Object.values(error.errors).map(val => val.message).join(', ');
+      return sendError(res, 400, message || 'Validation Error');
     }
     next(error);
   }
@@ -61,12 +102,68 @@ export const createPlan = async (req, res, next) => {
 export const updatePlan = async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (req.body.name !== undefined) {
+      const trimmedName = req.body.name ? req.body.name.toString().trim() : '';
+      if (!trimmedName) {
+        return sendError(res, 400, 'Plan name is required');
+      }
+      if (/\d/.test(trimmedName)) {
+        return sendError(res, 400, 'Plan name must not contain numbers.');
+      }
+      if (trimmedName.length > 50) {
+        return sendError(res, 400, 'Plan name must not exceed 50 characters.');
+      }
+      req.body.name = trimmedName;
+    }
+
+    if (req.body.description !== undefined) {
+      const trimmedDesc = req.body.description ? req.body.description.toString().trim() : '';
+      if (!trimmedDesc) {
+        return sendError(res, 400, 'Description is required');
+      }
+      if (/\d/.test(trimmedDesc)) {
+        return sendError(res, 400, 'Description must not contain numbers.');
+      }
+      if (trimmedDesc.length > 100) {
+        return sendError(res, 400, 'Description must not exceed 100 characters.');
+      }
+      req.body.description = trimmedDesc;
+    }
+
+    if (req.body.maxVehicles !== undefined && req.body.maxVehicles !== null && req.body.maxVehicles !== '') {
+      const v = Number(req.body.maxVehicles);
+      if (isNaN(v) || !Number.isInteger(v) || v < 0) {
+        return sendError(res, 400, 'Number of vehicles must be a whole number.');
+      }
+      req.body.maxVehicles = v;
+    }
+
+    if (req.body.maxDrivers !== undefined && req.body.maxDrivers !== null && req.body.maxDrivers !== '') {
+      const d = Number(req.body.maxDrivers);
+      if (isNaN(d) || !Number.isInteger(d) || d < 0) {
+        return sendError(res, 400, 'Number of drivers must be a whole number.');
+      }
+      req.body.maxDrivers = d;
+    }
+
+    if (req.body.maxTrips !== undefined && req.body.maxTrips !== null && req.body.maxTrips !== '') {
+      const t = Number(req.body.maxTrips);
+      if (isNaN(t) || !Number.isInteger(t) || t < 0) {
+        return sendError(res, 400, 'Number of trips must be a whole number.');
+      }
+      req.body.maxTrips = t;
+    }
+
     const plan = await SubscriptionPlan.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
     if (!plan) return sendError(res, 404, 'Subscription plan not found');
     return sendSuccess(res, 200, plan, 'Subscription plan updated successfully');
   } catch (error) {
     if (error.code === 11000) {
       return sendError(res, 400, 'A plan with this name already exists');
+    }
+    if (error.name === 'ValidationError') {
+      const message = Object.values(error.errors).map(val => val.message).join(', ');
+      return sendError(res, 400, message || 'Validation Error');
     }
     next(error);
   }

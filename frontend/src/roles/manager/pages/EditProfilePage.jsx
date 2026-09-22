@@ -15,6 +15,8 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
 import { vehicleApi } from "@/api/vehicleApi";
+import { managerProfileSchema, validateForm } from "@/validations";
+
 
 const getImageUrl = (url) => {
   if (!url) return "";
@@ -62,8 +64,17 @@ export default function EditProfilePage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!fullName || !email) {
-      toast.error("Full Name and Email are required");
+    const result = validateForm(managerProfileSchema, {
+      name: fullName,
+      email,
+      phone,
+      jobTitle,
+      primaryHub
+    });
+
+    if (!result.isValid) {
+      const firstError = Object.values(result.errors)[0];
+      toast.error(firstError || "Please fix profile validation errors");
       return;
     }
 

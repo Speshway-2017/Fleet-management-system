@@ -88,16 +88,18 @@ export default function UserProfileCard({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-3 p-1.5 hover:bg-gray-100/80 rounded-2xl focus:outline-none transition-all duration-150 cursor-pointer"
+        className="flex items-center gap-3 p-1.5 hover:bg-gray-100/80 dark:hover:bg-slate-800/60 rounded-2xl focus:outline-none transition-all duration-150 cursor-pointer"
       >
         <div className="relative">
-          <div className="w-[44px] h-[44px] rounded-full bg-[#A14000]/10 border border-[#A14000]/20 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-            {user?.profileImage ? (
+          <div className="w-[40px] h-[40px] rounded-full bg-[#A14000]/10 border border-[#A14000]/20 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+            {user?.profileImage || user?.avatarUrl ? (
               <img
-                src={getImageUrl(user.profileImage)}
+                src={getImageUrl(user.profileImage || user.avatarUrl)}
                 alt={displayName}
                 className="w-full h-full object-cover"
               />
+            ) : user?.initials ? (
+              <span className="text-xs font-bold text-[#A14000]">{user.initials}</span>
             ) : (
               <User className="w-5 h-5 text-[#A14000]" />
             )}
@@ -116,7 +118,11 @@ export default function UserProfileCard({
           <p className="font-poppins font-bold text-sm text-[#1B2430] dark:text-white leading-none max-w-[140px] truncate">
             {displayName}
           </p>
-          <span className="text-[11px] text-[#6B7280] dark:text-slate-300 font-nunito font-semibold mt-1 block leading-none">
+          <span className={`block leading-none mt-1 ${
+            displayRole?.toUpperCase() === "ONLINE"
+              ? "text-[9px] font-bold text-emerald-500 uppercase tracking-widest"
+              : "text-[11px] text-[#6B7280] dark:text-slate-300 font-nunito font-semibold"
+          }`}>
             {displayRole}
           </span>
         </div>

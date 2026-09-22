@@ -2,6 +2,7 @@ import { useState } from "react";
 import driverApi from "../api/driverApi";
 import { toast } from "react-hot-toast";
 import { Truck, KeyRound, UserCheck, ArrowRight, ShieldCheck } from "lucide-react";
+import { driverLoginSchema, validateForm } from "@/validations";
 
 export default function DriverLogin() {
   const [identifier, setIdentifier] = useState("");
@@ -10,10 +11,13 @@ export default function DriverLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!identifier || !password) {
-      toast.error("Please enter email/phone/employee ID and password");
+    const result = validateForm(driverLoginSchema, { identifier, password });
+    if (!result.isValid) {
+      const firstError = Object.values(result.errors)[0];
+      toast.error(firstError || "Please enter email/phone/employee ID and password");
       return;
     }
+
 
     setLoading(true);
     try {

@@ -3,6 +3,8 @@ import driverApi from "../api/driverApi";
 import FuelCard from "../components/FuelCard";
 import { toast } from "react-hot-toast";
 import { Fuel, Plus, X, RefreshCw, Lock } from "lucide-react";
+import { fuelSchema, validateForm } from "@/validations";
+
 
 export default function DriverFuelPage() {
   const [loading, setLoading] = useState(true);
@@ -97,8 +99,23 @@ export default function DriverFuelPage() {
       toast.error("🔒 Fuel logging is locked until you accept your assigned trip or a permanent vehicle is assigned to you!");
       return;
     }
-    if (!quantity || !totalCost || !stationName) {
-      toast.error("Please fill in required fields (Station Name, Liters, Amount)");
+
+    const validationResult = validateForm(fuelSchema, {
+      liters: quantity,
+      amount: totalCost,
+      fuelStation: stationName,
+      purchaseCity: purchaseLocation,
+      odometer: odometerReading || undefined
+    });
+
+    if (!validationResult.isValid) {
+      const firstError = Object.values(validationResult.errors)[0];
+      toast.error(firstError || "Please fill in required fields (Station Name, Liters, Amount)");
+      return;
+    }
+
+    if (!stationName.trim()) {
+      toast.error("Station Name is required");
       return;
     }
 

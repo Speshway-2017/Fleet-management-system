@@ -1,4 +1,5 @@
 import axiosClient from './axiosClient';
+import { securitySettingsSchema } from '@/validations';
 
 export const adminApi = {
   getDashboard: async () => {
@@ -67,8 +68,9 @@ export const adminApi = {
     } };
   },
   updateSecuritySettings: async (data) => {
-    localStorage.setItem('mockSecuritySettings', JSON.stringify(data));
-    return { data };
+    const parsed = securitySettingsSchema.parse(data);
+    localStorage.setItem('mockSecuritySettings', JSON.stringify(parsed));
+    return { data: parsed };
   },
 
   // Notification Settings (Mocked via localStorage)

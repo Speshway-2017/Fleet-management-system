@@ -6,6 +6,7 @@ import { useAdmin } from "@/roles/admin/context/AdminContext";
 import { Upload, Eye, EyeOff } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
+import { createOrganizationSchema, managerItemSchema, validateForm, validateField } from "@/validations";
 
 export default function AddOrganization() {
   const navigate = useNavigate();
@@ -34,21 +35,31 @@ export default function AddOrganization() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
-    setErrors(prev => ({ ...prev, [name]: "" }));
+    const updatedForm = { ...form, [name]: value };
+    setForm(updatedForm);
+
+    const errorMsg = validateField(createOrganizationSchema, name, value, updatedForm);
+    setErrors(prev => ({ ...prev, [name]: errorMsg }));
   };
 
   const handleManagerChange = (index, field, value) => {
     const newManagers = [...managers];
-    newManagers[index][field] = value;
-    setManagers(newManagers);
-    
-    // clear specific error
     const newManagerErrors = [...managerErrors];
-    if (newManagerErrors[index]) {
-      newManagerErrors[index][field] = "";
-      setManagerErrors(newManagerErrors);
+    if (!newManagerErrors[index]) newManagerErrors[index] = {};
+
+    newManagers[index][field] = value;
+
+    const errorMsg = validateField(managerItemSchema, field, value, newManagers[index]);
+    newManagerErrors[index][field] = errorMsg;
+
+    if (field === 'password' && newManagers[index].confirmPassword) {
+      newManagerErrors[index].confirmPassword = value !== newManagers[index].confirmPassword ? 'Passwords do not match.' : '';
+    } else if (field === 'confirmPassword' && newManagers[index].password) {
+      newManagerErrors[index].confirmPassword = value !== newManagers[index].password ? 'Passwords do not match.' : '';
     }
+
+    setManagers(newManagers);
+    setManagerErrors(newManagerErrors);
   };
 
   const addManager = () => {
@@ -57,40 +68,27 @@ export default function AddOrganization() {
   };
 
   const removeManager = (index) => {
-    if (managers.length > 1) {
-      const newManagers = managers.filter((_, i) => i !== index);
-      const newManagerErrors = managerErrors.filter((_, i) => i !== index);
-      setManagers(newManagers);
-      setManagerErrors(newManagerErrors);
-    }
+    if (managers.length === 1) return;
+    setManagers(managers.filter((_, i) => i !== index));
+    setManagerErrors(managerErrors.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newErrors = {};
-    if (!form.name) newErrors.name = "Organization Name is required";
-    if (!form.industry) newErrors.industry = "Industry is required";
-    if (!form.email) newErrors.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = "Invalid email format";
-    if (form.phone && !/^\+?[0-9\s-]{7,15}$/.test(form.phone)) newErrors.phone = "Invalid phone format";
+
+    const orgValidation = validateForm(createOrganizationSchema, form);
+    const newErrors = { ...orgValidation.errors };
 
     let hasManagerErrors = false;
-    const newManagerErrors = managers.map((manager, index) => {
-      const mErr = {};
-      if (!manager.name) mErr.name = "Manager Name is required";
-      if (!manager.email) mErr.email = "Manager Email is required";
-      else if (!/\S+@\S+\.\S+/.test(manager.email)) mErr.email = "Invalid email format";
-      if (!manager.password) mErr.password = "Password is required";
-      else if (manager.password.length < 6) mErr.password = "Password must be at least 6 characters";
-      if (manager.password !== manager.confirmPassword) mErr.confirmPassword = "Passwords do not match";
-      
-      if (Object.keys(mErr).length > 0) hasManagerErrors = true;
-      return mErr;
+    const newManagerErrors = managers.map((manager) => {
+      const mVal = validateForm(managerItemSchema, manager);
+      if (!mVal.isValid) hasManagerErrors = true;
+      return mVal.errors;
     });
 
     setErrors(newErrors);
     setManagerErrors(newManagerErrors);
-    if (Object.keys(newErrors).length > 0 || hasManagerErrors) return;
+    if (!orgValidation.isValid || hasManagerErrors) return;
 
     setIsSubmitting(true);
     
@@ -112,6 +110,20 @@ export default function AddOrganization() {
       toast.success("Organization created successfully!");
       if (fetchOrganizations) await fetchOrganizations(); // Refresh the list
       if (fetchNotifications) await fetchNotifications(); // Refresh notifications
+      
+      // Reset form state and sensitive credentials
+      setForm({
+        name: "", industry: "", email: "", phone: "", address: "",
+        city: "", state: "", country: "", plan: "", status: ""
+      });
+      setManagers([
+        { name: "", email: "", phone: "", password: "", confirmPassword: "", showPassword: false, showConfirmPassword: false }
+      ]);
+      setLogoFile(null);
+      setLogoPreview(null);
+      setErrors({});
+      setManagerErrors([]);
+
       navigate("/admin/organizations");
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || "Failed to create organization");
@@ -149,7 +161,11 @@ export default function AddOrganization() {
             </Link>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="off">
+            {/* Hidden dummy fields to prevent browser credential autofill */}
+            <input type="text" name="fake_username_remembered" style={{ position: "absolute", opacity: 0, height: 0, width: 0, pointerEvents: "none", zIndex: -1 }} tabIndex="-1" readOnly aria-hidden="true" />
+            <input type="password" name="fake_password_remembered" style={{ position: "absolute", opacity: 0, height: 0, width: 0, pointerEvents: "none", zIndex: -1 }} tabIndex="-1" readOnly aria-hidden="true" />
+
             {/* Header Actions */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <h2 className="text-lg font-bold text-slate-800">Add New Organization</h2>
@@ -171,47 +187,162 @@ export default function AddOrganization() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                   {/* Org Name */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 block">Organization Name</label>
-                    <input type="text" name="name" placeholder="Organization Name" value={form.name} onChange={handleChange} className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.name ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`} />
-                    {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Organization Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      maxLength={20}
+                      autoComplete="off"
+                      placeholder="Organization Name (letters only)"
+                      value={form.name}
+                      onKeyDown={(e) => {
+                        if (!/^[a-zA-Z\s]$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.name ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                    />
+                    {errors.name && <p className="text-xs text-red-500 mt-1 font-medium">{errors.name}</p>}
                   </div>
                   {/* Industry */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 block">Industry</label>
-                    <input type="text" name="industry" placeholder="Industry" value={form.industry} onChange={handleChange} className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.industry ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`} />
-                    {errors.industry && <p className="text-xs text-red-500 mt-1">{errors.industry}</p>}
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Industry <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="industry"
+                      maxLength={20}
+                      autoComplete="off"
+                      placeholder="Industry (letters only)"
+                      value={form.industry}
+                      onKeyDown={(e) => {
+                        if (!/^[a-zA-Z\s]$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.industry ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                    />
+                    {errors.industry && <p className="text-xs text-red-500 mt-1 font-medium">{errors.industry}</p>}
                   </div>
                   {/* Email */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 block">Email Address</label>
-                    <input type="email" name="email" placeholder="Email Address" value={form.email} onChange={handleChange} className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.email ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`} />
-                    {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Email Address <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      maxLength={30}
+                      autoComplete="off"
+                      placeholder="Email Address"
+                      value={form.email}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.email ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                    />
+                    {errors.email && <p className="text-xs text-red-500 mt-1 font-medium">{errors.email}</p>}
                   </div>
                   {/* Phone */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 block">Phone Number</label>
-                    <input type="tel" name="phone" placeholder="Phone Number" value={form.phone} onChange={handleChange} className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.phone ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`} />
-                    {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Phone Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
+                      name="phone"
+                      autoComplete="off"
+                      placeholder="Phone Number (10 digits)"
+                      value={form.phone}
+                      onKeyDown={(e) => {
+                        if (!/^\d$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.phone ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                    />
+                    {errors.phone && <p className="text-xs text-red-500 mt-1 font-medium">{errors.phone}</p>}
                   </div>
                   {/* Address */}
                   <div className="space-y-1.5 md:col-span-2">
                     <label className="text-xs font-bold text-slate-700 block">Street Address</label>
-                    <input type="text" name="address" placeholder="Street Address" value={form.address} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
+                    <input
+                      type="text"
+                      name="address"
+                      maxLength={100}
+                      autoComplete="off"
+                      placeholder="Street Address"
+                      value={form.address}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.address ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                    />
+                    {errors.address && <p className="text-xs text-red-500 mt-1 font-medium">{errors.address}</p>}
                   </div>
                   {/* City */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">City</label>
-                    <input type="text" name="city" placeholder="City" value={form.city} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
+                    <input
+                      type="text"
+                      name="city"
+                      maxLength={20}
+                      autoComplete="off"
+                      placeholder="City"
+                      value={form.city}
+                      onKeyDown={(e) => {
+                        if (!/^[a-zA-Z\s]$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.city ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                    />
+                    {errors.city && <p className="text-xs text-red-500 mt-1 font-medium">{errors.city}</p>}
                   </div>
                   {/* State */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">State</label>
-                    <input type="text" name="state" placeholder="State" value={form.state} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
+                    <input
+                      type="text"
+                      name="state"
+                      maxLength={20}
+                      autoComplete="off"
+                      placeholder="State"
+                      value={form.state}
+                      onKeyDown={(e) => {
+                        if (!/^[a-zA-Z\s]$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.state ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                    />
+                    {errors.state && <p className="text-xs text-red-500 mt-1 font-medium">{errors.state}</p>}
                   </div>
                   {/* Country */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">Country</label>
-                    <input type="text" name="country" placeholder="Country" value={form.country} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" />
+                    <input
+                      type="text"
+                      name="country"
+                      maxLength={20}
+                      autoComplete="off"
+                      placeholder="Country"
+                      value={form.country}
+                      onKeyDown={(e) => {
+                        if (!/^[a-zA-Z\s]$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.country ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                    />
+                    {errors.country && <p className="text-xs text-red-500 mt-1 font-medium">{errors.country}</p>}
                   </div>
                 </div>
 
@@ -242,20 +373,62 @@ export default function AddOrganization() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mt-2">
                         {/* Manager Name */}
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700 block">Full Name</label>
-                          <input type="text" value={manager.name} onChange={(e) => handleManagerChange(index, 'name', e.target.value)} placeholder="Full Name" className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${mErr.name ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`} />
-                          {mErr.name && <p className="text-xs text-red-500 mt-1">{mErr.name}</p>}
+                          <label className="text-xs font-bold text-slate-700 block">
+                            Full Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            maxLength={20}
+                            autoComplete="off"
+                            value={manager.name}
+                            onKeyDown={(e) => {
+                              if (!/^[a-zA-Z\s]$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                                e.preventDefault();
+                              }
+                            }}
+                            onChange={(e) => handleManagerChange(index, 'name', e.target.value)}
+                            placeholder="Full Name"
+                            className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${mErr.name ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                          />
+                          {mErr.name && <p className="text-xs text-red-500 mt-1 font-medium">{mErr.name}</p>}
                         </div>
                         {/* Manager Email */}
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700 block">Email Address</label>
-                          <input type="email" value={manager.email} onChange={(e) => handleManagerChange(index, 'email', e.target.value)} placeholder="Email Address" className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${mErr.email ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`} />
-                          {mErr.email && <p className="text-xs text-red-500 mt-1">{mErr.email}</p>}
+                          <label className="text-xs font-bold text-slate-700 block">
+                            Email Address <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="email"
+                            maxLength={30}
+                            autoComplete="off"
+                            value={manager.email}
+                            onChange={(e) => handleManagerChange(index, 'email', e.target.value)}
+                            placeholder="Email Address"
+                            className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${mErr.email ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                          />
+                          {mErr.email && <p className="text-xs text-red-500 mt-1 font-medium">{mErr.email}</p>}
                         </div>
                         {/* Manager Phone */}
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700 block">Phone Number</label>
-                          <input type="tel" value={manager.phone} onChange={(e) => handleManagerChange(index, 'phone', e.target.value)} placeholder="Phone Number" className="w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]" />
+                          <label className="text-xs font-bold text-slate-700 block">
+                            Phone Number <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="tel"
+                            inputMode="numeric"
+                            maxLength={10}
+                            autoComplete="off"
+                            value={manager.phone}
+                            onKeyDown={(e) => {
+                              if (!/^\d$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                                e.preventDefault();
+                              }
+                            }}
+                            onChange={(e) => handleManagerChange(index, 'phone', e.target.value)}
+                            placeholder="Phone Number (10 digits)"
+                            className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${mErr.phone ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                          />
+                          {mErr.phone && <p className="text-xs text-red-500 mt-1 font-medium">{mErr.phone}</p>}
                         </div>
                         {/* Role (Read Only) */}
                         <div className="space-y-1.5">
@@ -264,25 +437,51 @@ export default function AddOrganization() {
                         </div>
                         {/* Password */}
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700 block">Password</label>
+                          <label className="text-xs font-bold text-slate-700 block">
+                            Password <span className="text-red-500">*</span>
+                          </label>
                           <div className="relative">
-                            <input type={manager.showPassword ? "text" : "password"} value={manager.password} onChange={(e) => handleManagerChange(index, 'password', e.target.value)} placeholder="Create Password" className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 pr-10 ${mErr.password ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`} />
-                            <button type="button" onClick={() => handleManagerChange(index, 'showPassword', !manager.showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                            <input
+                              type={manager.showPassword ? "text" : "password"}
+                              autoComplete="new-password"
+                              value={manager.password}
+                              onChange={(e) => handleManagerChange(index, 'password', e.target.value)}
+                              placeholder="Create Password"
+                              className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 pr-10 ${mErr.password ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleManagerChange(index, 'showPassword', !manager.showPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
                               {manager.showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                           </div>
-                          {mErr.password && <p className="text-xs text-red-500 mt-1">{mErr.password}</p>}
+                          {mErr.password && <p className="text-xs text-red-500 mt-1 font-medium">{mErr.password}</p>}
                         </div>
                         {/* Confirm Password */}
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700 block">Confirm Password</label>
+                          <label className="text-xs font-bold text-slate-700 block">
+                            Confirm Password <span className="text-red-500">*</span>
+                          </label>
                           <div className="relative">
-                            <input type={manager.showConfirmPassword ? "text" : "password"} value={manager.confirmPassword} onChange={(e) => handleManagerChange(index, 'confirmPassword', e.target.value)} placeholder="Confirm Password" className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 pr-10 ${mErr.confirmPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`} />
-                            <button type="button" onClick={() => handleManagerChange(index, 'showConfirmPassword', !manager.showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                            <input
+                              type={manager.showConfirmPassword ? "text" : "password"}
+                              autoComplete="new-password"
+                              value={manager.confirmPassword}
+                              onChange={(e) => handleManagerChange(index, 'confirmPassword', e.target.value)}
+                              placeholder="Confirm Password"
+                              className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 pr-10 ${mErr.confirmPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleManagerChange(index, 'showConfirmPassword', !manager.showConfirmPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
                               {manager.showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                           </div>
-                          {mErr.confirmPassword && <p className="text-xs text-red-500 mt-1">{mErr.confirmPassword}</p>}
+                          {mErr.confirmPassword && <p className="text-xs text-red-500 mt-1 font-medium">{mErr.confirmPassword}</p>}
                         </div>
                       </div>
                     </div>

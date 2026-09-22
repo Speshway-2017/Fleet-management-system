@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronDown, LogOut } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { ChevronDown } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import toast from "react-hot-toast";
 import { adminApi } from "@/api/adminApi";
+import { ipAllowlistSchema, isValidIpv4 } from "@/validations";
 
 export default function SecuritySettings() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -26,6 +25,26 @@ export default function SecuritySettings() {
   const [requireSpecial, setRequireSpecial] = useState(true);
   const [ipAllowlistEnabled, setIpAllowlistEnabled] = useState(false);
   const [allowedIps, setAllowedIps] = useState("");
+  const [ipError, setIpError] = useState("");
+
+  const validateIps = (value) => {
+    if (!value || !value.trim()) {
+      setIpError("");
+      return true;
+    }
+    const ips = value.split(/[\n,\s]+/).map((s) => s.trim()).filter(Boolean);
+    if (ips.length === 0) {
+      setIpError("");
+      return true;
+    }
+    const allValid = ips.every((ip) => isValidIpv4(ip));
+    if (!allValid) {
+      setIpError("Invalid Parameter");
+      return false;
+    }
+    setIpError("");
+    return true;
+  };
 
   const fetchSecuritySettings = async () => {
     try {
@@ -44,7 +63,9 @@ export default function SecuritySettings() {
         }
         
         setIpAllowlistEnabled(settings.ipAllowlistEnabled ?? false);
-        setAllowedIps(settings.allowedIps || "");
+        const ips = settings.allowedIps || "";
+        setAllowedIps(ips);
+        validateIps(ips);
       }
     } catch (error) {
       toast.error("Failed to fetch security settings");
@@ -62,6 +83,12 @@ export default function SecuritySettings() {
   };
 
   const handleSave = async () => {
+    const isIpValid = validateIps(allowedIps);
+    if (!isIpValid) {
+      toast.error("Invalid Parameter");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const payload = {
@@ -82,7 +109,7 @@ export default function SecuritySettings() {
       toast.success("Security settings saved successfully!");
       await fetchSecuritySettings();
     } catch (error) {
-      toast.error("Failed to save security settings");
+      toast.error(error.message || "Failed to save security settings");
     } finally {
       setIsSaving(false);
     }
@@ -123,15 +150,11 @@ export default function SecuritySettings() {
               </Link>
             </div>
 
-            <div className="flex flex-row items-stretch sm:items-center gap-3 shrink-0 w-full sm:w-auto">
-              <button onClick={() => { logout(); navigate('/login'); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-2 sm:px-4 py-2.5 bg-white hover:bg-[#b45309]/10 border border-[#b45309]/30 text-[#b45309] text-xs sm:text-sm font-bold rounded-lg shadow-sm transition-colors text-center w-full sm:w-auto truncate">
-                <LogOut className="w-4 h-4 shrink-0" />
-                <span className="hidden min-[360px]:inline">Logout</span>
-              </button>
+            <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
               <button 
                 onClick={handleSave}
                 disabled={isSaving}
-                className="flex-[2] sm:flex-none px-2 sm:px-6 py-2.5 bg-[#b45309] hover:bg-[#92400e] text-white text-xs sm:text-sm font-bold rounded-lg shadow-sm transition-colors disabled:opacity-70 disabled:cursor-wait text-center w-full sm:w-auto truncate"
+                className="w-full sm:w-auto px-6 py-2.5 bg-[#b45309] hover:bg-[#92400e] text-white text-sm font-bold rounded-lg shadow-sm transition-colors disabled:opacity-70 disabled:cursor-wait text-center"
               >
                 {isSaving ? "Saving..." : "Save Settings"}
               </button>
@@ -310,15 +333,27 @@ export default function SecuritySettings() {
                     </div>
                   </div>
                 </div>
-                <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'ip' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+                <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'ip' ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'}`}>
                   <div className="pb-5 pt-2 pl-4 border-l-2 border-[#b45309] ml-2">
                     <label className="block text-[12px] font-bold text-slate-600 mb-1">Allowed IP Addresses</label>
                     <textarea 
                       value={allowedIps}
-                      onChange={(e) => setAllowedIps(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAllowedIps(val);
+                        validateIps(val);
+                      }}
+                      onBlur={() => validateIps(allowedIps)}
                       placeholder="Enter IP addresses separated by commas (e.g. 192.168.1.1, 10.0.0.5)"
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all resize-none h-20"
+                      className={`w-full px-3 py-2 bg-white border ${
+                        ipError 
+                          ? 'border-red-500 ring-2 ring-red-500/20 focus:border-red-500 focus:ring-red-500/20' 
+                          : 'border-slate-200 focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309]'
+                      } rounded-lg text-[13px] text-slate-700 focus:outline-none transition-all resize-none h-20`}
                     />
+                    {ipError && (
+                      <p className="text-xs text-red-500 font-medium mt-1">{ipError}</p>
+                    )}
                   </div>
                 </div>
               </div>

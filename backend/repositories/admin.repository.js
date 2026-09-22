@@ -50,11 +50,30 @@ export const getPendingRequestsCount = async () => {
 };
 
 export const getRevenueAggregate = async () => {
-  const result = await Trip.aggregate([
-    { $group: { _id: null, totalDistance: { $sum: '$estimatedDistance' }, totalWeight: { $sum: '$cargoWeight' } } }
-  ]);
-  if (result.length > 0) {
-    return (result[0].totalDistance || 0) * 12 + (result[0].totalWeight || 0) * 0.5;
+  try {
+    const result = await Trip.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalDistance: { $sum: { $toDouble: { $ifNull: ['$estimatedDistance', 0] } } },
+          totalWeight: { $sum: { $toDouble: { $ifNull: ['$cargoWeight', 0] } } }
+        }
+      }
+    ]);
+    if (result.length > 0) {
+      const dist = Number(result[0].totalDistance) || 0;
+      const weight = Number(result[0].totalWeight) || 0;
+      return Math.round(dist * 52 + weight * 4.5);
+    }
+  } catch (_) {
+    const trips = await Trip.find().lean();
+    let total = 0;
+    trips.forEach(t => {
+      const dist = Number(t.estimatedDistance || t.actualDistance) || 0;
+      const weight = Number(t.cargoWeight) || 0;
+      total += Math.round(dist * 52 + weight * 4.5);
+    });
+    return total;
   }
   return 0;
 };
@@ -63,12 +82,31 @@ export const getTodayRevenueAggregate = async () => {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const result = await Trip.aggregate([
-    { $match: { createdAt: { $gte: startOfDay } } },
-    { $group: { _id: null, totalDistance: { $sum: '$estimatedDistance' }, totalWeight: { $sum: '$cargoWeight' } } }
-  ]);
-  if (result.length > 0) {
-    return (result[0].totalDistance || 0) * 12 + (result[0].totalWeight || 0) * 0.5;
+  try {
+    const result = await Trip.aggregate([
+      { $match: { createdAt: { $gte: startOfDay } } },
+      {
+        $group: {
+          _id: null,
+          totalDistance: { $sum: { $toDouble: { $ifNull: ['$estimatedDistance', 0] } } },
+          totalWeight: { $sum: { $toDouble: { $ifNull: ['$cargoWeight', 0] } } }
+        }
+      }
+    ]);
+    if (result.length > 0) {
+      const dist = Number(result[0].totalDistance) || 0;
+      const weight = Number(result[0].totalWeight) || 0;
+      return Math.round(dist * 52 + weight * 4.5);
+    }
+  } catch (_) {
+    const trips = await Trip.find({ createdAt: { $gte: startOfDay } }).lean();
+    let total = 0;
+    trips.forEach(t => {
+      const dist = Number(t.estimatedDistance || t.actualDistance) || 0;
+      const weight = Number(t.cargoWeight) || 0;
+      total += Math.round(dist * 52 + weight * 4.5);
+    });
+    return total;
   }
   return 0;
 };
@@ -88,21 +126,39 @@ export const getAnalyticsSummary = async () => {
 };
 
 export const getRevenueChartData = async () => {
-  const result = await Trip.aggregate([
-    {
-      $group: {
-        _id: { $month: '$createdAt' },
-        totalDistance: { $sum: '$estimatedDistance' },
-        totalWeight: { $sum: '$cargoWeight' }
+  try {
+    const result = await Trip.aggregate([
+      {
+        $group: {
+          _id: { $month: '$createdAt' },
+          totalDistance: { $sum: { $toDouble: { $ifNull: ['$estimatedDistance', 0] } } },
+          totalWeight: { $sum: { $toDouble: { $ifNull: ['$cargoWeight', 0] } } }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    return result.map(item => ({
+      _id: Number(item._id) || 1,
+      total: Math.round((Number(item.totalDistance) || 0) * 52 + (Number(item.totalWeight) || 0) * 4.5)
+    }));
+  } catch (_) {
+    const trips = await Trip.find().lean();
+    const monthlyMap = {};
+    trips.forEach(t => {
+      if (t.createdAt) {
+        const m = new Date(t.createdAt).getMonth() + 1;
+        const dist = Number(t.estimatedDistance || t.actualDistance) || 0;
+        const weight = Number(t.cargoWeight) || 0;
+        const rev = Math.round(dist * 52 + weight * 4.5);
+        monthlyMap[m] = (monthlyMap[m] || 0) + rev;
       }
-    },
-    { $sort: { _id: 1 } }
-  ]);
-  
-  return result.map(item => ({
-    _id: item._id,
-    total: (item.totalDistance || 0) * 12 + (item.totalWeight || 0) * 0.5
-  }));
+    });
+    return Object.keys(monthlyMap).map(m => ({
+      _id: Number(m),
+      total: monthlyMap[m]
+    }));
+  }
 };
 
 // Organization update / delete

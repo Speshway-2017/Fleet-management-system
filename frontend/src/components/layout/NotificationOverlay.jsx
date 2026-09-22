@@ -18,7 +18,7 @@ function formatRelativeTime(dateStr) {
   return `${diffDay}d ago`;
 }
 
-export default function NotificationOverlay({ isOpen, onClose }) {
+export default function NotificationOverlay({ isOpen, onClose, onUnreadCountChange }) {
   const { role } = useAuth() || {};
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -73,11 +73,17 @@ export default function NotificationOverlay({ isOpen, onClose }) {
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
-  const isItemUnread = (n) => !n.isRead && n.unread !== false;
+  const isItemUnread = (n) => !n.isRead && n.unread !== false && n.status !== "READ";
 
   const unreadCount = notifications.filter(isItemUnread).length;
+
+  useEffect(() => {
+    if (typeof onUnreadCountChange === "function") {
+      onUnreadCountChange(unreadCount);
+    }
+  }, [unreadCount, onUnreadCountChange]);
+
+  if (!isOpen) return null;
 
   const getIcon = (type) => {
     const t = (type || "").toLowerCase();

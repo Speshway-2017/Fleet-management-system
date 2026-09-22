@@ -7,7 +7,6 @@ import {
   Users,
   Route,
   MapPin,
-  Compass,
   Fuel,
   Wrench,
   FileText,
@@ -80,11 +79,6 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
 
       {/* Navigation Links */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1 no-scrollbar">
-        <div className="px-3 pt-2 pb-1.5 font-poppins text-xs font-black uppercase tracking-wider text-slate-400 select-none flex items-center gap-2 mb-1">
-          <Compass className="w-4 h-4 text-slate-400 shrink-0" />
-          <span>Main Menu</span>
-        </div>
-
         {MENU_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.to || (location.pathname === "/manager" && item.to === "/manager");
