@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation, NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
 import { authApi } from "@/api/authApi";
+import { resetPasswordSchema, validateForm } from "@/validations";
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -29,15 +30,12 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newErrors = {};
-    if (!reqLength || !reqNumber || !reqSpecial) {
-      newErrors.password = "Please meet all password requirements.";
+    const result = validateForm(resetPasswordSchema, form);
+    if (!result.isValid) {
+      setErrors(result.errors);
+      return;
     }
-    if (form.password !== form.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match.";
-    }
-    setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
+    setErrors({});
 
     setLoading(true);
     try {
@@ -50,6 +48,7 @@ export default function ResetPasswordPage() {
       setLoading(false);
     }
   };
+
 
   const PasswordRule = ({ met, label }) => (
     <li className="flex items-center gap-2 text-xs text-gray-600">

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation, NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
 import { authApi } from "@/api/authApi";
+import { otpSchema, validateForm } from "@/validations";
 
 export default function OtpVerificationPage() {
   const navigate = useNavigate();
@@ -85,8 +86,9 @@ export default function OtpVerificationPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const otpValue = otp.join("");
-    if (otpValue.length < 6) {
-      toast.error("Please enter the complete 6-digit OTP.");
+    const result = validateForm(otpSchema, { otp: otpValue });
+    if (!result.isValid) {
+      toast.error(result.errors.otp || "Please enter the complete 6-digit OTP.");
       return;
     }
     
@@ -102,6 +104,7 @@ export default function OtpVerificationPage() {
       setLoading(false);
     }
   };
+
 
   return (
     <>

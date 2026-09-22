@@ -18,6 +18,7 @@ import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import KPICard from "@/components/common/KPICard";
 import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
+import { formatCurrency, parseNumericValue } from "@/utils/currencyFormatter";
 import {
   LineChart,
   Line,
@@ -37,7 +38,7 @@ import { format } from "date-fns";
 
 function Dashboard() {
   const navigate = useNavigate();
-  
+
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({
     statistics: {
@@ -74,7 +75,7 @@ function Dashboard() {
     };
 
     fetchDashboardData();
-    
+
     // Auto-refresh the dashboard every 30 seconds
     const intervalId = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(intervalId);
@@ -83,15 +84,26 @@ function Dashboard() {
   const { statistics, chartData } = data;
   const { notifications, fleetManagers } = useAdmin();
 
+  // Safely parse numeric chart data
+  const safeChartData = (chartData || []).map((item) => ({
+    name: item?.name || "N/A",
+    revenue: parseNumericValue(item?.revenue),
+  }));
+
+  const totalCalculatedRevenue = parseNumericValue(statistics?.revenue) ||
+    safeChartData.reduce((acc, curr) => acc + curr.revenue, 0);
+
+  const todayCalculatedRevenue = parseNumericValue(statistics?.todayRevenue);
+
   // Transform data for pie chart
   const pendingOrgs = statistics.pendingRequests || 0; // fallback if needed
-  const activeOrgs = statistics.activeOrganizations;
-  const suspendedOrgs = statistics.totalOrganizations - activeOrgs - pendingOrgs;
-  
+  const activeOrgs = statistics.activeOrganizations || 0;
+  const suspendedOrgs = Math.max(0, (statistics.totalOrganizations || 0) - activeOrgs - pendingOrgs);
+
   const orgStatusData = [
     { name: "Active", value: activeOrgs, color: "#22c55e" }, // green-500
     { name: "Pending", value: pendingOrgs, color: "#A14000" }, // orange-500
-    { name: "Suspended", value: Math.max(0, suspendedOrgs), color: "#ef4444" }, // red-500
+    { name: "Suspended", value: suspendedOrgs, color: "#ef4444" }, // red-500
   ];
 
   // Transform data for bar chart
@@ -115,7 +127,7 @@ function Dashboard() {
   };
 
   const getStatusColor = (status) => {
-    switch(status) {
+    switch (status) {
       case 'PENDING': return 'bg-[#A14000]';
       case 'COMPLETED': return 'bg-green-500';
       case 'IN_PROGRESS': return 'bg-blue-500';
@@ -128,11 +140,11 @@ function Dashboard() {
     // Try to extract from 'Organization "OrgName"'
     const orgMatch = message.match(/Organization "([^"]+)"/i);
     if (orgMatch) return orgMatch[1];
-    
+
     // Try to extract from 'assigned to "OrgName"'
     const assignMatch = message.match(/assigned to "([^"]+)"/i);
     if (assignMatch) return assignMatch[1];
-    
+
     // Try to extract Fleet Manager name and look it up
     const managerMatch = message.match(/Fleet Manager "([^"]+)"/i);
     if (managerMatch) {
@@ -144,26 +156,24 @@ function Dashboard() {
     if (title && title.toLowerCase().includes('system')) {
       return 'System';
     }
-    
+
     return 'N/A';
   };
-
-
 
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
       <NewAdminSidebar activeItem="dashboard" />
-      
+
       <div className="flex-1 flex flex-col min-w-0">
         <NewAdminTopNav title="Dashboard" />
-        
+
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
-          
+
           {/* KPI Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-6">
-            <KPICard 
-              title="Active Organizations" 
-              value={loading ? null : (statistics.activeOrganizations || 0).toString()} 
+            <KPICard
+              title="Active Organizations"
+              value={loading ? null : (statistics.activeOrganizations || 0).toString()}
               loading={loading}
               subtitle={`${statistics.totalOrganizations > 0 ? Math.round((statistics.activeOrganizations / statistics.totalOrganizations) * 100) : 0}% of total`}
               icon={<CheckCircle2 className="w-4 h-4 text-[#00C853]" />}
@@ -172,9 +182,9 @@ function Dashboard() {
               trendText="+6.2%"
               isTrendUp={true}
             />
-            <KPICard 
-              title="Active Fleet Managers" 
-              value={loading ? null : (statistics.activeFleetManagers || 0).toString()} 
+            <KPICard
+              title="Active Fleet Managers"
+              value={loading ? null : (statistics.activeFleetManagers || 0).toString()}
               loading={loading}
               subtitle="Currently active"
               icon={<Users className="w-4 h-4 text-[#0085FF]" />}
@@ -183,9 +193,9 @@ function Dashboard() {
               trendText="+12.4%"
               isTrendUp={true}
             />
-            <KPICard 
-              title="Today Revenue" 
-              value={loading ? null : `₹${(statistics.todayRevenue || 0).toLocaleString('en-IN')}`} 
+            <KPICard
+              title="Today Revenue"
+              value={loading ? null : formatCurrency(todayCalculatedRevenue)}
               loading={loading}
               subtitle="Today"
               icon={<TrendingUp className="w-4 h-4 text-[#A14000]" />}
@@ -194,9 +204,9 @@ function Dashboard() {
               trendText="+14.8%"
               isTrendUp={true}
             />
-            <KPICard 
-              title="Platform Health" 
-              value={loading ? null : "99.9%"} 
+            <KPICard
+              title="Platform Health"
+              value={loading ? null : "99.9%"}
               loading={loading}
               subtitle="All systems operational"
               icon={<Activity className="w-4 h-4 text-[#6366F1]" />}
@@ -209,29 +219,42 @@ function Dashboard() {
 
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
-            
+
             {/* Revenue Trend */}
             <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
-              <div className="flex items-start justify-between mb-6">
-                <h3 className="font-bold text-slate-800 text-sm">Revenue Trend</h3>
-                <div className="text-right">
-                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5">Total Revenue</div>
-                  <div className="text-lg font-black text-slate-800 leading-none">₹{(statistics.revenue || 0).toLocaleString('en-IN')}</div>
+              <div className="flex items-start justify-between gap-3 mb-6 min-w-0">
+                <div className="min-w-0">
+                  <h3 className="font-bold text-slate-800 text-sm truncate">Revenue Trend</h3>
+                </div>
+                <div className="text-right shrink-0 min-w-0 max-w-[55%]">
+                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5 truncate">Total Revenue</div>
+                  <div className="text-base sm:text-lg font-black text-slate-800 leading-none truncate" title={formatCurrency(totalCalculatedRevenue)}>
+                    {formatCurrency(totalCalculatedRevenue)}
+                  </div>
                 </div>
               </div>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                  <LineChart data={safeChartData} margin={{ top: 10, right: 15, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} dy={10} />
-                    <YAxis 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 11, fill: '#94a3b8' }} 
-                      tickFormatter={(value) => value >= 1000 ? `₹${(value / 1000).toFixed(0)}k` : `₹${value}`}
-                      width={45}
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#94a3b8' }}
+                      tickFormatter={(val) => {
+                        const num = parseNumericValue(val);
+                        if (num >= 10000000) return `₹${(num / 10000000).toFixed(1)}Cr`;
+                        if (num >= 100000) return `₹${(num / 100000).toFixed(0)}L`;
+                        if (num >= 1000) return `₹${(num / 1000).toFixed(0)}k`;
+                        return `₹${num}`;
+                      }}
+                      width={50}
                     />
-                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                    <Tooltip
+                      formatter={(value) => [formatCurrency(value), "Revenue"]}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                    />
                     <Line type="monotone" dataKey="revenue" stroke="#d97706" strokeWidth={3} dot={{ r: 4, fill: '#d97706', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -240,10 +263,12 @@ function Dashboard() {
 
             {/* Org Status */}
             <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
-              <div className="flex items-start justify-between mb-2">
-                <h3 className="font-bold text-slate-800 text-sm">Organization Status</h3>
-                <div className="text-right">
-                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5">Total Orgs</div>
+              <div className="flex items-start justify-between gap-3 mb-2 min-w-0">
+                <div className="min-w-0">
+                  <h3 className="font-bold text-slate-800 text-sm truncate">Organization Status</h3>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5 truncate">Total Orgs</div>
                   <div className="text-lg font-black text-slate-800 leading-none">{statistics.totalOrganizations || 0}</div>
                 </div>
               </div>
@@ -286,10 +311,12 @@ function Dashboard() {
 
             {/* Fleet Manager Status */}
             <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
-              <div className="flex items-start justify-between mb-6">
-                <h3 className="font-bold text-slate-800 text-sm">Fleet Manager Status</h3>
-                <div className="text-right">
-                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5">Total Managers</div>
+              <div className="flex items-start justify-between gap-3 mb-6 min-w-0">
+                <div className="min-w-0">
+                  <h3 className="font-bold text-slate-800 text-sm truncate">Fleet Manager Status</h3>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5 truncate">Total Managers</div>
                   <div className="text-lg font-black text-slate-800 leading-none">{statistics.fleetManagers || 0}</div>
                 </div>
               </div>
@@ -314,7 +341,7 @@ function Dashboard() {
 
           {/* Bottom Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            
+
             {/* Recent Activities */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
               <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
@@ -349,11 +376,11 @@ function Dashboard() {
                       }
 
                       return (
-                        <tr 
-                          key={act.id || act._id || i} 
+                        <tr
+                          key={act.id || act._id || i}
                           onClick={() => {
                             if (
-                              act.type === "subscription_request" || 
+                              act.type === "subscription_request" ||
                               act.type === "SUBSCRIPTION_REQUEST" ||
                               (act.title && act.title.toLowerCase().includes("subscription"))
                             ) {
@@ -392,7 +419,7 @@ function Dashboard() {
             {/* Quick Actions */}
             <div className="bg-[#1a2332] rounded-xl p-6 lg:col-span-1 flex flex-col">
               <h3 className="font-bold text-white text-sm mb-5">Quick Actions</h3>
-              
+
               <div className="space-y-3.5 flex-1">
                 <Link to="/admin/organizations/add" className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
                   <div className="w-10 h-10 rounded-full bg-[#A14000]/10 text-orange-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
@@ -403,7 +430,7 @@ function Dashboard() {
                     <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">Onboard a new enterprise partner</div>
                   </div>
                 </Link>
-                
+
                 <Link to="/admin/subscription-plans" className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
                   <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
                     <CreditCard className="w-4 h-4" />
@@ -413,7 +440,7 @@ function Dashboard() {
                     <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">Manage subscription plans</div>
                   </div>
                 </Link>
-                
+
                 <Link to="/admin/analytics" className="w-full bg-[#252f3f] hover:bg-[#2d3748] transition-colors rounded-xl p-4 flex items-center gap-4 text-left group border border-transparent hover:border-slate-700">
                   <div className="w-10 h-10 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
                     <BarChart3 className="w-4 h-4" />

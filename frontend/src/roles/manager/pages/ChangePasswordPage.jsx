@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import { changePasswordSchema, validateForm } from "@/validations";
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ export default function ChangePasswordPage() {
     newPassword: "",
     confirmPassword: "",
   });
+  const [errors, setErrors] = useState({});
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
@@ -20,17 +22,25 @@ export default function ChangePasswordPage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (formData.newPassword !== formData.confirmPassword) {
-      toast.error("Passwords do not match!");
+    const result = validateForm(changePasswordSchema, formData);
+    if (!result.isValid) {
+      setErrors(result.errors);
+      const firstError = Object.values(result.errors)[0];
+      toast.error(firstError || "Please fix validation errors");
       return;
     }
+    setErrors({});
     toast.success("Password changed successfully!");
     navigate("/manager/settings");
   };
+
 
   return (
     <div className="p-6 lg:p-8 max-w-2xl mx-auto">

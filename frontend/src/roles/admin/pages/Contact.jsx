@@ -5,6 +5,7 @@ import { AnimeScrollReveal, AnimeStaggerGroup } from "@/components/common/AnimeS
 import { useAuth } from "@/context/AuthContext";
 import ReCAPTCHA from "react-google-recaptcha";
 import { contactApi } from "@/api/contactApi";
+import { contactRequestSchema, validateForm, validateField as zodValidateField } from "@/validations";
 import {
   Phone,
   Mail,
@@ -36,6 +37,8 @@ export default function Contact() {
     subject: "",
     message: "",
   });
+  const [formErrors, setFormErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   const [activeFaq, setActiveFaq] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -43,6 +46,30 @@ export default function Contact() {
     { sender: "agent", text: "Hello! How can we help you with our Fleet Management System today?" }
   ]);
   const [chatInput, setChatInput] = useState("");
+
+  const validateField = (name, value) => {
+    return zodValidateField(contactRequestSchema, name, value, form);
+  };
+
+  const validateAll = (currentForm = form) => {
+    const val = validateForm(contactRequestSchema, currentForm);
+    return val.errors;
+  };
+
+  const handleChange = (field, value) => {
+    setForm((prev) => {
+      const updated = { ...prev, [field]: value };
+      const fieldError = zodValidateField(contactRequestSchema, field, value, updated);
+      setFormErrors((prevErr) => ({ ...prevErr, [field]: fieldError }));
+      return updated;
+    });
+  };
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const fieldError = zodValidateField(contactRequestSchema, field, form[field], form);
+    setFormErrors((prevErr) => ({ ...prevErr, [field]: fieldError }));
+  };
 
   const handleSendChatMessage = () => {
     if (!chatInput.trim()) return;
@@ -83,10 +110,24 @@ export default function Contact() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.fullName || !form.email || !form.message || !form.subject) {
-      toast.error("Please fill in all required fields.");
+    setTouched({
+      fullName: true,
+      email: true,
+      company: true,
+      phone: true,
+      subject: true,
+      message: true,
+    });
+
+    const errors = validateAll(form);
+    setFormErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      const firstError = Object.values(errors)[0];
+      toast.error(firstError || "Please fix the errors in the form.");
       return;
     }
+
     if (!captchaToken) {
       toast.error("Please verify that you are not a robot.");
       return;
@@ -107,6 +148,8 @@ export default function Contact() {
         subject: "",
         message: "",
       });
+      setFormErrors({});
+      setTouched({});
       recaptchaRef.current?.reset();
       setCaptchaToken(null);
     } catch (err) {
@@ -248,7 +291,7 @@ export default function Contact() {
             </div>
             <div>
               <h4 className="font-display font-bold text-sm text-[#0B1B3D]">Email Us</h4>
-              <p className="text-xs text-[#A14000] font-bold mt-1">support@fleetmanagement.com</p>
+              <p className="text-xs text-[#A14000] font-bold mt-1">support@fleet.com</p>
               <p className="text-[11px] text-gray-400 font-medium">We reply within 24 hours</p>
             </div>
           </div>
@@ -276,7 +319,7 @@ export default function Contact() {
           <h2 className="font-display text-2xl font-black text-[#0B1B3D] mb-2">Send Us a Message</h2>
           <p className="text-xs text-[#4B5563] mb-8 font-medium">Fill out the form and our team will get back to you soon.</p>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} noValidate className="space-y-6">
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-1.5">
@@ -287,10 +330,17 @@ export default function Contact() {
                   type="text"
                   placeholder="Enter your full name"
                   value={form.fullName}
-                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  className="w-full rounded-xl border border-[#E5E7EB] px-4 py-3 text-xs focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/15 focus:outline-none placeholder:text-gray-400 font-medium bg-white text-[#1E293B]"
-                  required
+                  onBlur={() => handleBlur("fullName")}
+                  onChange={(e) => handleChange("fullName", e.target.value)}
+                  className={`w-full rounded-xl border px-4 py-3 text-xs focus:outline-none placeholder:text-gray-400 font-medium bg-white text-[#1E293B] transition-colors ${
+                    formErrors.fullName && (touched.fullName || form.fullName)
+                      ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/15"
+                      : "border-[#E5E7EB] focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/15"
+                  }`}
                 />
+                {formErrors.fullName && (touched.fullName || form.fullName) && (
+                  <p className="text-[11px] text-red-500 mt-1 font-medium">{formErrors.fullName}</p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -301,10 +351,17 @@ export default function Contact() {
                   type="email"
                   placeholder="Enter your email address"
                   value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full rounded-xl border border-[#E5E7EB] px-4 py-3 text-xs focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/15 focus:outline-none placeholder:text-gray-400 font-medium bg-white text-[#1E293B]"
-                  required
+                  onBlur={() => handleBlur("email")}
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  className={`w-full rounded-xl border px-4 py-3 text-xs focus:outline-none placeholder:text-gray-400 font-medium bg-white text-[#1E293B] transition-colors ${
+                    formErrors.email && (touched.email || form.email)
+                      ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/15"
+                      : "border-[#E5E7EB] focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/15"
+                  }`}
                 />
+                {formErrors.email && (touched.email || form.email) && (
+                  <p className="text-[11px] text-red-500 mt-1 font-medium">{formErrors.email}</p>
+                )}
               </div>
             </div>
 
@@ -317,9 +374,17 @@ export default function Contact() {
                   type="text"
                   placeholder="Enter your company name"
                   value={form.company}
-                  onChange={(e) => setForm({ ...form, company: e.target.value })}
-                  className="w-full rounded-xl border border-[#E5E7EB] px-4 py-3 text-xs focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/15 focus:outline-none placeholder:text-gray-400 font-medium bg-white text-[#1E293B]"
+                  onBlur={() => handleBlur("company")}
+                  onChange={(e) => handleChange("company", e.target.value)}
+                  className={`w-full rounded-xl border px-4 py-3 text-xs focus:outline-none placeholder:text-gray-400 font-medium bg-white text-[#1E293B] transition-colors ${
+                    formErrors.company && (touched.company || form.company)
+                      ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/15"
+                      : "border-[#E5E7EB] focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/15"
+                  }`}
                 />
+                {formErrors.company && (touched.company || form.company) && (
+                  <p className="text-[11px] text-red-500 mt-1 font-medium">{formErrors.company}</p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -328,11 +393,24 @@ export default function Contact() {
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  maxLength={10}
                   placeholder="Enter your phone number"
                   value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="w-full rounded-xl border border-[#E5E7EB] px-4 py-3 text-xs focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/15 focus:outline-none placeholder:text-gray-400 font-medium bg-white text-[#1E293B]"
+                  onBlur={() => handleBlur("phone")}
+                  onChange={(e) => {
+                    const onlyNums = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    handleChange("phone", onlyNums);
+                  }}
+                  className={`w-full rounded-xl border px-4 py-3 text-xs focus:outline-none placeholder:text-gray-400 font-medium bg-white text-[#1E293B] transition-colors ${
+                    formErrors.phone && (touched.phone || form.phone)
+                      ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/15"
+                      : "border-[#E5E7EB] focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/15"
+                  }`}
                 />
+                {formErrors.phone && (touched.phone || form.phone) && (
+                  <p className="text-[11px] text-red-500 mt-1 font-medium">{formErrors.phone}</p>
+                )}
               </div>
             </div>
 
@@ -342,9 +420,13 @@ export default function Contact() {
               </label>
               <select
                 value={form.subject}
-                onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                className="w-full rounded-xl border border-[#E5E7EB] px-4 py-3 text-xs focus:border-[#A14000] focus:outline-none font-medium bg-white text-[#1E293B] cursor-pointer"
-                required
+                onBlur={() => handleBlur("subject")}
+                onChange={(e) => handleChange("subject", e.target.value)}
+                className={`w-full rounded-xl border px-4 py-3 text-xs focus:outline-none font-medium bg-white text-[#1E293B] cursor-pointer transition-colors ${
+                  formErrors.subject && (touched.subject || form.subject)
+                    ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/15"
+                    : "border-[#E5E7EB] focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/15"
+                }`}
               >
                 <option value="">Select a subject</option>
                 <option value="Sales">Sales Inquiry</option>
@@ -352,6 +434,9 @@ export default function Contact() {
                 <option value="Support">Technical Support</option>
                 <option value="Partnership">Partnership Opportunities</option>
               </select>
+              {formErrors.subject && (touched.subject || form.subject) && (
+                <p className="text-[11px] text-red-500 mt-1 font-medium">{formErrors.subject}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -362,10 +447,17 @@ export default function Contact() {
                 rows="5"
                 placeholder="Tell us how we can help you..."
                 value={form.message}
-                onChange={(e) => setForm({ ...form, message: e.target.value })}
-                className="w-full rounded-xl border border-[#E5E7EB] px-4 py-3 text-xs focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/15 focus:outline-none placeholder:text-gray-400 font-medium resize-none bg-white text-[#1E293B]"
-                required
+                onBlur={() => handleBlur("message")}
+                onChange={(e) => handleChange("message", e.target.value)}
+                className={`w-full rounded-xl border px-4 py-3 text-xs focus:outline-none placeholder:text-gray-400 font-medium resize-none bg-white text-[#1E293B] transition-colors ${
+                  formErrors.message && (touched.message || form.message)
+                    ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/15"
+                    : "border-[#E5E7EB] focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/15"
+                }`}
               />
+              {formErrors.message && (touched.message || form.message) && (
+                <p className="text-[11px] text-red-500 mt-1 font-medium">{formErrors.message}</p>
+              )}
             </div>
 
             {/* Google reCAPTCHA v2 Checkbox */}
@@ -564,8 +656,8 @@ export default function Contact() {
                   </div>
                 )}
                 <div className={`p-3 max-w-[80%] rounded-2xl shadow-sm leading-relaxed ${msg.sender === "user"
-                    ? "bg-[#A14000] text-white rounded-tr-none font-medium"
-                    : "bg-white border border-gray-200 text-slate-700 rounded-tl-none font-normal"
+                  ? "bg-[#A14000] text-white rounded-tr-none font-medium"
+                  : "bg-white border border-gray-200 text-slate-700 rounded-tl-none font-normal"
                   }`}>
                   {msg.text}
                 </div>

@@ -7,6 +7,7 @@ import { ChevronLeft, Upload } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import AdminEmptyState from "@/components/common/AdminEmptyState";
+import { updateOrganizationSchema, validateForm, validateField } from "@/validations";
 
 // ── Shared tab strip ──────────────────────────────────────────────────────
 function OrgTabs({ activeId, active }) {
@@ -34,7 +35,9 @@ function OrgTabs({ activeId, active }) {
 export default function EditOrganization() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getOrganization, fetchOrganizations } = useAdmin();
+  const { organizations, fetchOrganizations } = useAdmin();
+
+  const org = organizations.find(o => String(o._id || o.id) === String(id));
 
   const [form, setForm] = useState({
     name: "", industry: "", email: "", phone: "", address: "",
@@ -44,8 +47,6 @@ export default function EditOrganization() {
   const [saving, setSaving]   = useState(false);
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
-
-  const org = id ? getOrganization(id) : null;
 
   useEffect(() => {
     if (org) {
@@ -100,8 +101,11 @@ export default function EditOrganization() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
-    setSErrors(prev => ({ ...prev, [name]: "" }));
+    const updatedForm = { ...form, [name]: value };
+    setForm(updatedForm);
+
+    const errorMsg = validateField(updateOrganizationSchema, name, value, updatedForm);
+    setSErrors(prev => ({ ...prev, [name]: errorMsg }));
   };
 
   const handleLogoChange = (e) => {
@@ -116,14 +120,10 @@ export default function EditOrganization() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newErrors = {};
-    if (!form.name)     newErrors.name = "Organization Name is required";
-    if (!form.industry) newErrors.industry = "Industry is required";
-    if (!form.email)    newErrors.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = "Invalid email format";
-    if (form.phone && !/^\+?[0-9\s-]{7,15}$/.test(form.phone)) newErrors.phone = "Invalid phone format";
-    setSErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
+
+    const validation = validateForm(updateOrganizationSchema, form);
+    setSErrors(validation.errors);
+    if (!validation.isValid) return;
 
     setSaving(true);
     try {
@@ -190,7 +190,10 @@ export default function EditOrganization() {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
         <h2 className="text-lg font-bold text-slate-800 mb-6">Organization Information</h2>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} autoComplete="off" className="space-y-6">
+          {/* Hidden dummy fields to prevent browser credential autofill */}
+          <input type="text" name="fake_username_remembered" style={{ position: "absolute", opacity: 0, height: 0, width: 0, pointerEvents: "none", zIndex: -1 }} tabIndex="-1" readOnly aria-hidden="true" />
+          <input type="password" name="fake_password_remembered" style={{ position: "absolute", opacity: 0, height: 0, width: 0, pointerEvents: "none", zIndex: -1 }} tabIndex="-1" readOnly aria-hidden="true" />
 
           {/* Logo upload */}
           <div className="flex flex-col gap-2">
@@ -213,60 +216,148 @@ export default function EditOrganization() {
 
           {/* Name */}
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Organization Name *</label>
-            <input type="text" name="name" value={form.name} onChange={handleChange}
+            <label className="block text-sm font-bold text-slate-700 mb-2">
+              Organization Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="name"
+              maxLength={20}
+              autoComplete="off"
+              value={form.name}
+              onChange={handleChange}
+              onKeyDown={(e) => {
+                if (!/^[a-zA-Z\s]$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
               placeholder="e.g. ABC Logistics"
-              className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.name ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`} />
-            {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+              className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.name ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
+            />
+            {errors.name && <p className="text-xs text-red-500 mt-1 font-medium">{errors.name}</p>}
           </div>
 
           {/* Industry + Email */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Industry *</label>
-              <input type="text" name="industry" value={form.industry} onChange={handleChange}
-                className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.industry ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`} />
-              {errors.industry && <p className="text-xs text-red-500 mt-1">{errors.industry}</p>}
+              <label className="block text-sm font-bold text-slate-700 mb-2">
+                Industry <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="industry"
+                maxLength={20}
+                autoComplete="off"
+                placeholder="Industry (letters only)"
+                value={form.industry}
+                onKeyDown={(e) => {
+                  if (!/^[a-zA-Z\s]$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={handleChange}
+                className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.industry ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
+              />
+              {errors.industry && <p className="text-xs text-red-500 mt-1 font-medium">{errors.industry}</p>}
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Email Address *</label>
-              <input type="email" name="email" value={form.email} onChange={handleChange}
+              <label className="block text-sm font-bold text-slate-700 mb-2">
+                Email Address <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                name="email"
+                maxLength={30}
+                value={form.email}
+                onChange={handleChange}
+                autoComplete="off"
                 placeholder="contact@organization.com"
-                className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.email ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`} />
-              {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.email ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
+              />
+              {errors.email && <p className="text-xs text-red-500 mt-1 font-medium">{errors.email}</p>}
             </div>
           </div>
 
           {/* Phone */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
-              <input type="tel" name="phone" value={form.phone} onChange={handleChange}
-                placeholder="+91 00000 00000"
-                className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.phone ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`} />
-              {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+              <label className="block text-sm font-bold text-slate-700 mb-2">
+                Phone Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                inputMode="numeric"
+                maxLength={10}
+                name="phone"
+                value={form.phone}
+                onKeyDown={(e) => {
+                  if (!/^\d$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={handleChange}
+                placeholder="Enter 10-digit phone number"
+                className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.phone ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
+              />
+              {errors.phone && <p className="text-xs text-red-500 mt-1 font-medium">{errors.phone}</p>}
             </div>
           </div>
 
           {/* Address */}
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Address</label>
-            <input type="text" name="address" value={form.address} onChange={handleChange}
+            <label className="block text-sm font-bold text-slate-700 mb-2">Street Address</label>
+            <input
+              type="text"
+              name="address"
+              maxLength={100}
+              autoComplete="off"
+              value={form.address}
+              onChange={handleChange}
               placeholder="Street address"
-              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all" />
+              className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.address ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
+            />
+            {errors.address && <p className="text-xs text-red-500 mt-1 font-medium">{errors.address}</p>}
           </div>
 
           {/* City + State */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">City</label>
-              <input type="text" name="city" value={form.city} onChange={handleChange} placeholder="City"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all" />
+              <input
+                type="text"
+                name="city"
+                maxLength={20}
+                autoComplete="off"
+                value={form.city}
+                onKeyDown={(e) => {
+                  if (!/^[a-zA-Z\s]$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={handleChange}
+                placeholder="City"
+                className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.city ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
+              />
+              {errors.city && <p className="text-xs text-red-500 mt-1 font-medium">{errors.city}</p>}
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">State</label>
-              <input type="text" name="state" value={form.state} onChange={handleChange} placeholder="State"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all" />
+              <input
+                type="text"
+                name="state"
+                maxLength={20}
+                autoComplete="off"
+                value={form.state}
+                onKeyDown={(e) => {
+                  if (!/^[a-zA-Z\s]$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={handleChange}
+                placeholder="State"
+                className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.state ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
+              />
+              {errors.state && <p className="text-xs text-red-500 mt-1 font-medium">{errors.state}</p>}
             </div>
           </div>
 
@@ -274,8 +365,21 @@ export default function EditOrganization() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Country</label>
-              <input type="text" name="country" value={form.country} onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all" />
+              <input
+                type="text"
+                name="country"
+                maxLength={20}
+                autoComplete="off"
+                value={form.country}
+                onKeyDown={(e) => {
+                  if (!/^[a-zA-Z\s]$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={handleChange}
+                className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.country ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
+              />
+              {errors.country && <p className="text-xs text-red-500 mt-1 font-medium">{errors.country}</p>}
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Status</label>

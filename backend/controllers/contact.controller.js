@@ -32,6 +32,28 @@ export const createContactRequest = async (req, res, next) => {
     const cleanSubject = sanitize(subject);
     const cleanMessage = sanitize(message);
 
+    // Field validations
+    if (!cleanFullName || cleanFullName.length < 2) {
+      return sendError(res, 400, 'Please enter a valid full name.');
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      return sendError(res, 400, 'Please enter a valid email address.');
+    }
+
+    if (cleanPhone && cleanPhone.length > 0 && !/^\d{10}$/.test(cleanPhone)) {
+      return sendError(res, 400, 'Phone number must be a valid 10-digit number.');
+    }
+
+    if (!cleanSubject) {
+      return sendError(res, 400, 'Please select a subject.');
+    }
+
+    if (!cleanMessage || cleanMessage.length < 10) {
+      return sendError(res, 400, 'Message must be at least 10 characters.');
+    }
+
     // 2. Prevent multiple submissions (duplicate checks in 30s window)
     const duplicateRequest = await ContactRequest.findOne({
       email: cleanEmail.toLowerCase(),

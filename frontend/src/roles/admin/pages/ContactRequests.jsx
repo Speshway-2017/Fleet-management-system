@@ -227,10 +227,8 @@ export default function ContactRequests() {
     <div className="min-h-screen bg-[#f8fafc] flex font-sans text-slate-700">
       <NewAdminSidebar activeItem="contact-requests" />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden pt-[72px]">
-        <div className="fixed top-0 left-0 lg:left-[260px] right-0 z-30">
-          <NewAdminTopNav title="Contact Requests" />
-        </div>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <NewAdminTopNav title="Contact Requests" />
 
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
           

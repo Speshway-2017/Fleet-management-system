@@ -19,6 +19,8 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
 
 import TableRowSkeleton from "@/components/common/TableRowSkeleton";
+import { fuelSchema, validateForm } from "@/validations";
+
 
 export default function FuelManagementPage() {
   const [search, setSearch] = useState("");
@@ -214,6 +216,13 @@ export default function FuelManagementPage() {
 
   const handleAddFuel = async (e) => {
     e.preventDefault();
+    const result = validateForm(fuelSchema, form);
+    if (!result.isValid) {
+      const firstError = Object.values(result.errors)[0];
+      toast.error(firstError || "Please fill in required fields");
+      return;
+    }
+
     if (!form.vehicleId || !form.amount || !form.liters) {
       toast.error("Please fill in required fields");
       return;

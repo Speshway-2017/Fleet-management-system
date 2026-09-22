@@ -18,6 +18,8 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { formatDisplayLocation } from "@/utils/locationFormatter";
 import { driverApi } from "@/api/driverApi";
+import { driverSchema, validateForm } from "@/validations";
+
 
 // Format bytes to readable string
 const formatBytes = (bytes) => {
@@ -238,29 +240,26 @@ export default function AddDriverPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const validationResult = validateForm(driverSchema, formData);
+    if (!validationResult.isValid) {
+      const fieldErrors = validationResult.errors;
+      setErrors((prev) => ({
+        ...prev,
+        phoneNumber: fieldErrors.phoneNumber || fieldErrors.phone || "",
+        licenseNumber: fieldErrors.licenseNumber || ""
+      }));
+      const firstError = Object.values(fieldErrors)[0];
+      toast.error(firstError || "Please resolve the validation errors before submitting.");
+      return;
+    }
+
     if (
-      !formData.fullName ||
-      !formData.phoneNumber ||
-      !formData.email ||
-      !formData.licenseNumber ||
       !formData.dob ||
       !formData.gender ||
       !formData.address ||
       !formData.driverLocation
     ) {
       toast.error("Please fill in all required fields marked with *");
-      return;
-    }
-
-    const phoneError = validateField("phoneNumber", formData.phoneNumber);
-    const licenseError = validateField("licenseNumber", formData.licenseNumber);
-
-    if (phoneError || licenseError) {
-      setErrors({
-        phoneNumber: phoneError,
-        licenseNumber: licenseError,
-      });
-      toast.error("Please resolve the validation errors before submitting.");
       return;
     }
 

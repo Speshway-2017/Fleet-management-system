@@ -9,16 +9,54 @@ import { useSettings } from "@/context/SettingsContext";
 import toast from "react-hot-toast";
 import { adminApi } from "@/api/adminApi";
 
+const TIMEZONE_OPTIONS = [
+  { value: "Asia/Kolkata", label: "(GMT+05:30) India Standard Time (IST) - New Delhi, Mumbai, Kolkata" },
+  { value: "UTC", label: "(GMT+00:00) UTC / Greenwich Mean Time" },
+  { value: "America/New_York", label: "(GMT-05:00) Eastern Time (US & Canada) (EST/EDT)" },
+  { value: "America/Chicago", label: "(GMT-06:00) Central Time (US & Canada) (CST/CDT)" },
+  { value: "America/Denver", label: "(GMT-07:00) Mountain Time (US & Canada) (MST/MDT)" },
+  { value: "America/Los_Angeles", label: "(GMT-08:00) Pacific Time (US & Canada) (PST/PDT)" },
+  { value: "America/Anchorage", label: "(GMT-09:00) Alaska Time (AKST/AKDT)" },
+  { value: "Pacific/Honolulu", label: "(GMT-10:00) Hawaii Standard Time (HST)" },
+  { value: "America/Halifax", label: "(GMT-04:00) Atlantic Time (Canada)" },
+  { value: "America/Sao_Paulo", label: "(GMT-03:00) Brasilia Time - São Paulo, Buenos Aires" },
+  { value: "Europe/London", label: "(GMT+00:00 / +01:00) London, Dublin, Edinburgh (GMT/BST)" },
+  { value: "Europe/Paris", label: "(GMT+01:00) Central European Time - Paris, Berlin, Rome, Madrid" },
+  { value: "Europe/Athens", label: "(GMT+02:00) Eastern European Time - Athens, Cairo, Helsinki" },
+  { value: "Europe/Moscow", label: "(GMT+03:00) Moscow Standard Time, Baghdad, Riyadh, Nairobi" },
+  { value: "Asia/Dubai", label: "(GMT+04:00) Gulf Standard Time - Dubai, Abu Dhabi, Muscat" },
+  { value: "Asia/Karachi", label: "(GMT+05:00) Pakistan Standard Time, Islamabad, Karachi, Tashkent" },
+  { value: "Asia/Dhaka", label: "(GMT+06:00) Bangladesh Standard Time, Dhaka, Almaty" },
+  { value: "Asia/Bangkok", label: "(GMT+07:00) Indochina Time - Bangkok, Hanoi, Jakarta" },
+  { value: "Asia/Singapore", label: "(GMT+08:00) Singapore, Hong Kong, Beijing, Perth" },
+  { value: "Asia/Tokyo", label: "(GMT+09:00) Japan Standard Time - Tokyo, Osaka, Seoul" },
+  { value: "Australia/Sydney", label: "(GMT+10:00 / +11:00) Australian Eastern Time - Sydney, Melbourne" },
+  { value: "Pacific/Auckland", label: "(GMT+12:00 / +13:00) New Zealand Time - Auckland, Wellington" }
+];
+
+const LANGUAGE_OPTIONS = [
+  { value: "English", label: "English" },
+  { value: "Spanish", label: "Spanish (Español)" },
+  { value: "French", label: "French (Français)" },
+  { value: "German", label: "German (Deutsch)" },
+  { value: "Hindi", label: "Hindi (हिन्दी)" },
+  { value: "Arabic", label: "Arabic (العربية)" },
+  { value: "Chinese", label: "Chinese (Mandarin)" },
+  { value: "Japanese", label: "Japanese (日本語)" },
+  { value: "Portuguese", label: "Portuguese (Português)" }
+];
+
 export default function Settings() {
   const [platformName, setPlatformName] = useState("");
-  const [timezone, setTimezone] = useState("");
-  const [language, setLanguage] = useState("");
+  const [timezone, setTimezone] = useState("Asia/Kolkata");
+  const [language, setLanguage] = useState("English");
   const [logoUrl, setLogoUrl] = useState("/logo.png");
   const [logoFile, setLogoFile] = useState(null);
 
   // Footer & Contact Data
   const [footerDescription, setFooterDescription] = useState("");
   const [contactPhone, setContactPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactAddress, setContactAddress] = useState("");
   const [facebookUrl, setFacebookUrl] = useState("");
@@ -38,12 +76,13 @@ export default function Settings() {
       const settings = response.data?.data || response.data;
       if (settings) {
         setPlatformName(settings.platformName || "FleetCommand");
-        setTimezone(settings.timezone || "IFD");
+        setTimezone(settings.timezone && settings.timezone !== "IFD" ? settings.timezone : "Asia/Kolkata");
         setLanguage(settings.language || "English");
         setLogoUrl(settings.logoUrl || "/logo.png");
         setFooterDescription(settings.footerDescription || "A next-generation fleet management platform designed to help businesses streamline operations, improve efficiency, and drive growth.");
-        setContactPhone(settings.contactPhone || "+91 1800 200 4567");
-        setContactEmail(settings.contactEmail || "support@fleetmanagement.io");
+        const rawPhone = settings.contactPhone ? String(settings.contactPhone).replace(/\D/g, '').slice(-10) : "";
+        setContactPhone(rawPhone);
+        setContactEmail(settings.contactEmail || "support@fleet.com");
         setContactAddress(settings.contactAddress || "Logistics Hub Tower, Tech City, Bengaluru 560001, Karnataka, India");
         setFacebookUrl(settings.facebookUrl || "https://facebook.com");
         setLinkedinUrl(settings.linkedinUrl || "https://linkedin.com");
@@ -61,9 +100,52 @@ export default function Settings() {
     loadSettings();
   }, []);
 
+  const handlePhoneChange = (e) => {
+    const rawVal = e.target.value;
+    const cleanDigits = rawVal.replace(/\D/g, '').slice(0, 10);
+    setContactPhone(cleanDigits);
+
+    if (rawVal !== cleanDigits && rawVal.length > 0) {
+      setPhoneError("Please enter valid mobile number");
+    } else if (!cleanDigits) {
+      setPhoneError("Please enter valid mobile number");
+    } else if (cleanDigits.length < 10) {
+      setPhoneError("Please enter valid mobile number");
+    } else {
+      setPhoneError("");
+    }
+  };
+
+  const handlePhoneKeyDown = (e) => {
+    if (
+      ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) ||
+      ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase()))
+    ) {
+      return;
+    }
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+      setPhoneError("Please enter valid mobile number");
+    }
+  };
+
+  const handlePhoneBlur = () => {
+    if (!contactPhone || contactPhone.length !== 10 || !/^\d{10}$/.test(contactPhone)) {
+      setPhoneError("Please enter valid mobile number");
+    } else {
+      setPhoneError("");
+    }
+  };
+
   const handleSave = async () => {
     if (!platformName || !timezone || !language) {
       toast.error("Please fill in all required platform fields");
+      return;
+    }
+
+    if (!contactPhone || contactPhone.length !== 10 || !/^\d{10}$/.test(contactPhone)) {
+      setPhoneError("Please enter valid mobile number");
+      toast.error("Please enter valid mobile number");
       return;
     }
 
@@ -175,21 +257,39 @@ export default function Settings() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="block text-[13px] font-bold text-slate-600">Timezone</label>
-                  <input 
-                    type="text" 
+                  <select 
                     value={timezone}
                     onChange={(e) => setTimezone(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all"
-                  />
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all cursor-pointer"
+                  >
+                    <option value="" disabled>Select Timezone</option>
+                    {timezone && !TIMEZONE_OPTIONS.some(tz => tz.value === timezone || tz.label === timezone) && (
+                      <option value={timezone}>{timezone}</option>
+                    )}
+                    {TIMEZONE_OPTIONS.map((tz) => (
+                      <option key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <label className="block text-[13px] font-bold text-slate-600">Language</label>
-                  <input 
-                    type="text" 
+                  <select 
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all"
-                  />
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all cursor-pointer"
+                  >
+                    <option value="" disabled>Select Language</option>
+                    {language && !LANGUAGE_OPTIONS.some(lang => lang.value === language || lang.label === language) && (
+                      <option value={language}>{language}</option>
+                    )}
+                    {LANGUAGE_OPTIONS.map((lang) => (
+                      <option key={lang.value} value={lang.value}>
+                        {lang.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -251,12 +351,23 @@ export default function Settings() {
                   <div className="space-y-2">
                     <label className="block text-[13px] font-bold text-slate-600">Support / Contact Phone</label>
                     <input 
-                      type="text" 
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
                       value={contactPhone}
-                      onChange={(e) => setContactPhone(e.target.value)}
-                      placeholder="+91 1800 200 4567" 
-                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all"
+                      onChange={handlePhoneChange}
+                      onKeyDown={handlePhoneKeyDown}
+                      onBlur={handlePhoneBlur}
+                      placeholder="Enter 10-digit mobile number" 
+                      className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none transition-all ${
+                        phoneError 
+                          ? "border-red-500 focus:ring-2 focus:ring-red-500/20 focus:border-red-500" 
+                          : "border-slate-200 focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309]"
+                      }`}
                     />
+                    {phoneError && (
+                      <p className="text-xs text-red-500 font-medium mt-1">{phoneError}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <label className="block text-[13px] font-bold text-slate-600">Support / Contact Email</label>
@@ -264,7 +375,7 @@ export default function Settings() {
                       type="email" 
                       value={contactEmail}
                       onChange={(e) => setContactEmail(e.target.value)}
-                      placeholder="support@fleetmanagement.io" 
+                      placeholder="support@fleet.com" 
                       className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all"
                     />
                   </div>

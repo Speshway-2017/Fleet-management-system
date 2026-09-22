@@ -3,6 +3,7 @@ import driverApi from "../api/driverApi";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { User, Save, RefreshCw } from "lucide-react";
+import { driverSchema, validateForm } from "@/validations";
 
 export default function DriverProfilePage() {
   const { user } = useAuth();
@@ -37,6 +38,19 @@ export default function DriverProfilePage() {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+    const result = validateForm(driverSchema, {
+      fullName: name,
+      email,
+      phoneNumber,
+      licenseNumber
+    });
+
+    if (!result.isValid) {
+      const firstError = Object.values(result.errors)[0];
+      toast.error(firstError || "Please fix validation errors");
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await driverApi.updateProfile({
@@ -58,6 +72,7 @@ export default function DriverProfilePage() {
       setSaving(false);
     }
   };
+
 
 
 

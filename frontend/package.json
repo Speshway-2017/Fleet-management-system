@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@iconify/react": "^6.0.2",
     "@tanstack/react-query": "^5.101.2",
     "animejs": "^3.2.2",
@@ -31,6 +32,7 @@
     "recharts": "^3.9.2",
     "socket.io-client": "^4.8.3",
     "tesseract.js": "^7.0.0",
+    "zod": "^4.6.5",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

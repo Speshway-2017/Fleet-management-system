@@ -29,6 +29,10 @@ export default function NotificationList() {
     }
   };
 
+  const allCount = notifications.length;
+  const unreadCount = notifications.filter(n => n.unread).length;
+  const readCount = notifications.filter(n => !n.unread).length;
+
   const filteredNotifications = notifications.filter(n => {
     if (activeTab === "Unread") return n.unread;
     if (activeTab === "Read") return !n.unread;
@@ -65,12 +69,12 @@ export default function NotificationList() {
             <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 flex items-center justify-between shadow-sm">
               <div className="min-w-0 pr-2">
                 <p className="text-[9px] sm:text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1 truncate">Unread</p>
-                <h4 className="text-xl sm:text-2xl font-black text-[#b45309]">{notifications.filter(n => n.unread).length}</h4>
+                <h4 className="text-xl sm:text-2xl font-black text-[#b45309]">{unreadCount}</h4>
               </div>
               <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-orange-50 flex items-center justify-center text-[#b45309]">
                 <div className="relative">
                   <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-                  {notifications.some(n => n.unread) && (
+                  {unreadCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#b45309] rounded-full border border-orange-50 sm:border-2"></span>
                   )}
                 </div>
@@ -110,19 +114,19 @@ export default function NotificationList() {
                   onClick={() => setActiveTab("All")}
                   className={`px-5 py-2 text-[13px] font-bold rounded-full transition-colors ${activeTab === "All" ? "bg-[#0f172a] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
                 >
-                  All (10)
+                  All ({allCount})
                 </button>
                 <button 
                   onClick={() => setActiveTab("Unread")}
                   className={`px-5 py-2 text-[13px] font-bold rounded-full transition-colors ${activeTab === "Unread" ? "bg-[#0f172a] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
                 >
-                  Unread (4)
+                  Unread ({unreadCount})
                 </button>
                 <button 
                   onClick={() => setActiveTab("Read")}
                   className={`px-5 py-2 text-[13px] font-bold rounded-full transition-colors ${activeTab === "Read" ? "bg-[#0f172a] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
                 >
-                  Read (6)
+                  Read ({readCount})
                 </button>
               </div>
 

@@ -38,6 +38,8 @@ import PillTabs from "@/components/common/PillTabs";
 import { getNormalizedTripCategory, calculateTripKPIs } from "@/utils/tripStatusHelper";
 
 import TableRowSkeleton from "@/components/common/TableRowSkeleton";
+import { tripSchema, validateForm } from "@/validations";
+
 
 export default function TripsManagementPage() {
   const navigate = useNavigate();
@@ -314,7 +316,14 @@ export default function TripsManagementPage() {
 
   const handleCreateTrip = async (e) => {
     e.preventDefault();
-    if (!formData.vehicleId || !formData.startLocation || !formData.endLocation || !formData.departureTime || !formData.eta) {
+    const result = validateForm(tripSchema, formData);
+    if (!result.isValid) {
+      const firstError = Object.values(result.errors)[0];
+      toast.error(firstError || "Please fill in all required fields");
+      return;
+    }
+
+    if (!formData.startLocation || !formData.endLocation || !formData.departureTime || !formData.eta) {
       toast.error("Please fill in all required fields");
       return;
     }

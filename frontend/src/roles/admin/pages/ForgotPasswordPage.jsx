@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import { authApi } from "@/api/authApi";
+import { forgotPasswordSchema, validateForm } from "@/validations";
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -13,13 +14,9 @@ export default function ForgotPasswordPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!contact) {
-      setError("Please enter your email.");
-      return;
-    }
-    const isEmail = contact.includes("@");
-    if (!isEmail || !/^\S+@\S+\.\S+$/.test(contact)) {
-      setError("Invalid email format");
+    const result = validateForm(forgotPasswordSchema, { email: contact });
+    if (!result.isValid) {
+      setError(result.errors.email || "Please enter a valid email address.");
       return;
     }
     setError("");
@@ -34,6 +31,7 @@ export default function ForgotPasswordPage() {
       setLoading(false);
     }
   };
+
 
   return (
     <>

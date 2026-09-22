@@ -5,6 +5,7 @@ import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import axiosClient from "@/api/axiosClient";
 import { Check, X, Clock, Calendar, ShieldCheck, Mail, Building2, Plus, Edit2, Trash2 } from "lucide-react";
+import { subscriptionPlanSchema, validateForm, validateField } from "@/validations";
 
 export default function SubscriptionRequests() {
   const location = useLocation();
@@ -29,6 +30,7 @@ export default function SubscriptionRequests() {
   const [plansLoading, setPlansLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
 
   // Form State for Plans
   const [formData, setFormData] = useState({
@@ -94,6 +96,7 @@ export default function SubscriptionRequests() {
 
   const handleOpenAdd = () => {
     setEditingPlan(null);
+    setFormErrors({});
     setFormData({
       name: "",
       description: "",
@@ -111,6 +114,7 @@ export default function SubscriptionRequests() {
 
   const handleOpenEdit = (plan) => {
     setEditingPlan(plan);
+    setFormErrors({});
     setFormData({
       name: plan.name,
       description: plan.description,
@@ -137,15 +141,52 @@ export default function SubscriptionRequests() {
     }
   };
 
+  const handleFieldChange = (field, value) => {
+    const updated = { ...formData, [field]: value };
+    setFormData(updated);
+
+    const errorMsg = validateField(subscriptionPlanSchema, field, value, updated);
+    setFormErrors(prev => ({ ...prev, [field]: errorMsg }));
+  };
+
+  const validationCheck = validateForm(subscriptionPlanSchema, {
+    ...formData,
+    features: formData.featuresText ? formData.featuresText.split("\n").map(f => f.trim()).filter(Boolean) : []
+  });
+
+  const isSubmitDisabled = !validationCheck.isValid;
+
+  const getSubmitErrorTooltip = () => {
+    return Object.values(validationCheck.errors).join(" • ");
+  };
+
   const handleSubmitPlan = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.description || formData.price === undefined || !formData.duration) {
-      toast.error("Please fill in all required fields.");
+
+    const planPayload = {
+      ...formData,
+      features: formData.featuresText ? formData.featuresText.split("\n").map(f => f.trim()).filter(Boolean) : []
+    };
+
+    const validation = validateForm(subscriptionPlanSchema, planPayload);
+    if (!validation.isValid) {
+      setFormErrors(validation.errors);
+      const firstMsg = Object.values(validation.errors)[0];
+      if (firstMsg) toast.error(firstMsg);
       return;
     }
+    setFormErrors({});
 
     const payload = {
       ...formData,
+      name: (formData.name || "").trim(),
+      description: (formData.description || "").trim(),
+      price: Number(formData.price),
+      duration: Number(formData.duration),
+      displayOrder: Number(formData.displayOrder) || 1,
+      maxVehicles: Number(formData.maxVehicles),
+      maxDrivers: Number(formData.maxDrivers),
+      maxTrips: Number(formData.maxTrips),
       features: formData.featuresText.split("\n").map(f => f.trim()).filter(Boolean)
     };
 
@@ -158,9 +199,22 @@ export default function SubscriptionRequests() {
         toast.success(body.message || "Plan created successfully!");
       }
       setShowModal(false);
+      setFormErrors({});
       loadPlans();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to save plan.");
+      const errorMsg = err.response?.data?.message || "Failed to save plan.";
+      if (errorMsg.toLowerCase().includes("50 characters") || errorMsg.toLowerCase().includes("plan name") || errorMsg.toLowerCase().includes("name")) {
+        setFormErrors(prev => ({ ...prev, name: errorMsg }));
+      } else if (errorMsg.toLowerCase().includes("100 characters") || errorMsg.toLowerCase().includes("description")) {
+        setFormErrors(prev => ({ ...prev, description: errorMsg }));
+      } else if (errorMsg.toLowerCase().includes("driver")) {
+        setFormErrors(prev => ({ ...prev, maxDrivers: errorMsg }));
+      } else if (errorMsg.toLowerCase().includes("vehicle")) {
+        setFormErrors(prev => ({ ...prev, maxVehicles: errorMsg }));
+      } else if (errorMsg.toLowerCase().includes("trip")) {
+        setFormErrors(prev => ({ ...prev, maxTrips: errorMsg }));
+      }
+      toast.error(errorMsg);
     }
   };
 
@@ -434,7 +488,10 @@ export default function SubscriptionRequests() {
                 {editingPlan ? "Edit Subscription Plan" : "Create Subscription Plan"}
               </h3>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false);
+                  setFormErrors({});
+                }}
                 className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50 cursor-pointer"
               >
                 <X className="w-4.5 h-4.5" />
@@ -448,11 +505,24 @@ export default function SubscriptionRequests() {
                   <input
                     type="text"
                     required
+                    maxLength={50}
                     value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
-                    placeholder="e.g. Pro Plan"
+                    onKeyDown={(e) => {
+                      if (/\d/.test(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={(e) => handleFieldChange("name", e.target.value)}
+                    className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
+                      formErrors.name 
+                        ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' 
+                        : 'border-slate-200 focus:border-slate-300'
+                    }`}
+                    placeholder="e.g. Enterprise Plan"
                   />
+                  {formErrors.name && (
+                    <p className="text-xs text-red-500 mt-1">{formErrors.name}</p>
+                  )}
                 </div>
 
                 <div className="col-span-2">
@@ -460,11 +530,24 @@ export default function SubscriptionRequests() {
                   <input
                     type="text"
                     required
+                    maxLength={100}
                     value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
+                    onKeyDown={(e) => {
+                      if (/\d/.test(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={(e) => handleFieldChange("description", e.target.value)}
+                    className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
+                      formErrors.description 
+                        ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' 
+                        : 'border-slate-200 focus:border-slate-300'
+                    }`}
                     placeholder="e.g. Best choice for medium sized companies"
                   />
+                  {formErrors.description && (
+                    <p className="text-xs text-red-500 mt-1">{formErrors.description}</p>
+                  )}
                 </div>
 
                 <div>
@@ -474,7 +557,7 @@ export default function SubscriptionRequests() {
                     required
                     min="0"
                     value={formData.price}
-                    onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) }))}
+                    onChange={(e) => handleFieldChange("price", Number(e.target.value))}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
                   />
                 </div>
@@ -486,7 +569,7 @@ export default function SubscriptionRequests() {
                     required
                     min="1"
                     value={formData.duration}
-                    onChange={(e) => setFormData(prev => ({ ...prev, duration: Number(e.target.value) }))}
+                    onChange={(e) => handleFieldChange("duration", Number(e.target.value))}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
                   />
                 </div>
@@ -497,7 +580,7 @@ export default function SubscriptionRequests() {
                     type="number"
                     min="1"
                     value={formData.displayOrder}
-                    onChange={(e) => setFormData(prev => ({ ...prev, displayOrder: Number(e.target.value) }))}
+                    onChange={(e) => handleFieldChange("displayOrder", Number(e.target.value))}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
                   />
                 </div>
@@ -506,7 +589,7 @@ export default function SubscriptionRequests() {
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Status</label>
                   <select
                     value={formData.status}
-                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                    onChange={(e) => handleFieldChange("status", e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
                   >
                     <option value="Active">Active</option>
@@ -520,34 +603,73 @@ export default function SubscriptionRequests() {
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">No of Vehicles *</label>
                     <input
                       type="number"
-                      required
+                      step="1"
                       min="0"
+                      required
                       value={formData.maxVehicles}
-                      onChange={(e) => setFormData(prev => ({ ...prev, maxVehicles: Number(e.target.value) }))}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
+                      onKeyDown={(e) => {
+                        if (['.', 'e', 'E', '+', '-', ','].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={(e) => handleFieldChange("maxVehicles", e.target.value)}
+                      className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
+                        formErrors.maxVehicles 
+                          ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' 
+                          : 'border-slate-200 focus:border-slate-300'
+                      }`}
                     />
+                    {formErrors.maxVehicles && (
+                      <p className="text-[10px] text-red-500 mt-1 leading-tight">{formErrors.maxVehicles}</p>
+                    )}
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">No of Drivers *</label>
                     <input
                       type="number"
-                      required
+                      step="1"
                       min="0"
+                      required
                       value={formData.maxDrivers}
-                      onChange={(e) => setFormData(prev => ({ ...prev, maxDrivers: Number(e.target.value) }))}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
+                      onKeyDown={(e) => {
+                        if (['.', 'e', 'E', '+', '-', ','].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={(e) => handleFieldChange("maxDrivers", e.target.value)}
+                      className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
+                        formErrors.maxDrivers 
+                          ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' 
+                          : 'border-slate-200 focus:border-slate-300'
+                      }`}
                     />
+                    {formErrors.maxDrivers && (
+                      <p className="text-[10px] text-red-500 mt-1 leading-tight">{formErrors.maxDrivers}</p>
+                    )}
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">No of Trips *</label>
                     <input
                       type="number"
-                      required
+                      step="1"
                       min="0"
+                      required
                       value={formData.maxTrips}
-                      onChange={(e) => setFormData(prev => ({ ...prev, maxTrips: Number(e.target.value) }))}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
+                      onKeyDown={(e) => {
+                        if (['.', 'e', 'E', '+', '-', ','].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={(e) => handleFieldChange("maxTrips", e.target.value)}
+                      className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
+                        formErrors.maxTrips 
+                          ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' 
+                          : 'border-slate-200 focus:border-slate-300'
+                      }`}
                     />
+                    {formErrors.maxTrips && (
+                      <p className="text-[10px] text-red-500 mt-1 leading-tight">{formErrors.maxTrips}</p>
+                    )}
                   </div>
                 </div>
 
@@ -563,20 +685,43 @@ export default function SubscriptionRequests() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex justify-end gap-3 shrink-0">
+              <div className="pt-4 border-t border-slate-100 flex justify-end items-center gap-3 shrink-0">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setFormErrors({});
+                  }}
                   className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-[#a14000] hover:bg-[#853500] text-white text-xs font-bold rounded-lg transition-colors shadow-sm cursor-pointer"
+                <div
+                  className={`relative group inline-flex items-center ${
+                    isSubmitDisabled ? "cursor-not-allowed" : ""
+                  }`}
+                  title={isSubmitDisabled ? getSubmitErrorTooltip() : ""}
                 >
-                  {editingPlan ? "Update Plan" : "Create Plan"}
-                </button>
+                  {isSubmitDisabled && (
+                    <div className="absolute bottom-full right-0 mb-2 hidden group-hover:flex flex-col items-end pointer-events-none z-50">
+                      <div className="bg-[#0f172a] text-white text-[11px] font-semibold py-1.5 px-3 rounded-lg shadow-xl whitespace-nowrap border border-slate-700 max-w-xs text-center">
+                        {getSubmitErrorTooltip()}
+                      </div>
+                      <div className="w-2 h-2 bg-[#0f172a] rotate-45 -mt-1 mr-4 border-r border-b border-slate-700"></div>
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={isSubmitDisabled}
+                    className={`px-5 py-2.5 text-xs font-bold rounded-lg transition-all shadow-sm ${
+                      isSubmitDisabled
+                        ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-200 shadow-none pointer-events-none"
+                        : "bg-[#a14000] hover:bg-[#853500] text-white cursor-pointer"
+                    }`}
+                  >
+                    {editingPlan ? "Update Plan" : "Create Plan"}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
