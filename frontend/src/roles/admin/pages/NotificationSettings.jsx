@@ -4,6 +4,7 @@ import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import toast from "react-hot-toast";
 import { adminApi } from "@/api/adminApi";
+import { notificationSettingsSchema, validateField, validateForm } from "@/validations";
 
 export default function NotificationSettings() {
   const [isLoading, setIsLoading] = useState(false);
@@ -13,6 +14,7 @@ export default function NotificationSettings() {
   // Settings states
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [primaryEmailAddress, setPrimaryEmailAddress] = useState("admin@fleetcommand.io");
+  const [errors, setErrors] = useState({});
   
   const [systemAlerts, setSystemAlerts] = useState(true);
   const [systemAlertsSeverity, setSystemAlertsSeverity] = useState("warning");
@@ -31,8 +33,26 @@ export default function NotificationSettings() {
   const [newOrganizationAlerts, setNewOrganizationAlerts] = useState(true);
   const [requireAdminReview, setRequireAdminReview] = useState(true);
 
+  const getFormData = () => ({
+    emailNotifications,
+    primaryEmailAddress,
+    systemAlerts,
+    systemAlertsSeverity,
+    maintenanceAlerts,
+    maintenanceAlert48h,
+    maintenanceAlert1h,
+    inviteNotifications,
+    inviteSent,
+    inviteAccepted,
+    weeklyReports,
+    weeklyReportDay,
+    newOrganizationAlerts,
+    requireAdminReview
+  });
+
   const fetchSettings = async () => {
     try {
+      setIsLoading(true);
       const response = await adminApi.getNotificationSettings();
       const settings = response.data?.data || response.data;
       if (settings) {
@@ -71,31 +91,45 @@ export default function NotificationSettings() {
     setActiveCard(activeCard === cardId ? null : cardId);
   };
 
+  const handleEmailChange = (value) => {
+    const clean = value.slice(0, 50);
+    setPrimaryEmailAddress(clean);
+
+    if (/\s/.test(value)) {
+      setErrors(prev => ({ ...prev, primaryEmailAddress: "Primary email address must not contain spaces." }));
+      return;
+    }
+
+    const currentData = { ...getFormData(), primaryEmailAddress: clean };
+    const err = validateField(notificationSettingsSchema, 'primaryEmailAddress', clean, currentData);
+    setErrors(prev => ({ ...prev, primaryEmailAddress: err }));
+  };
+
+  const handleEmailBlur = () => {
+    const currentData = getFormData();
+    const err = validateField(notificationSettingsSchema, 'primaryEmailAddress', primaryEmailAddress, currentData);
+    setErrors(prev => ({ ...prev, primaryEmailAddress: err }));
+  };
+
   const handleSave = async () => {
+    const payload = getFormData();
+
+    const { isValid, errors: validationErrors } = validateForm(notificationSettingsSchema, payload);
+    if (!isValid) {
+      setErrors(validationErrors);
+      const firstErr = Object.values(validationErrors)[0];
+      toast.error(firstErr || "Please fix validation errors before saving.");
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const payload = {
-        emailNotifications,
-        primaryEmailAddress,
-        systemAlerts,
-        systemAlertsSeverity,
-        maintenanceAlerts,
-        maintenanceAlert48h,
-        maintenanceAlert1h,
-        inviteNotifications,
-        inviteSent,
-        inviteAccepted,
-        weeklyReports,
-        weeklyReportDay,
-        newOrganizationAlerts,
-        requireAdminReview
-      };
-      
       await adminApi.updateNotificationSettings(payload);
       toast.success("Notification preferences saved successfully!");
+      setErrors({});
       await fetchSettings();
     } catch (error) {
-      toast.error("Failed to save notification preferences");
+      toast.error(error.response?.data?.message || error.message || "Failed to save notification preferences");
     } finally {
       setIsSaving(false);
     }
@@ -184,8 +218,26 @@ export default function NotificationSettings() {
                 </div>
                 <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'email' ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
                   <div className="pb-5 pt-2 pl-4 border-l-2 border-[#b45309] ml-2">
-                    <label className="block text-[12px] font-bold text-slate-600 mb-1">Primary Email Address</label>
-                    <input type="email" className="w-full max-w-xs px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all" />
+                    <div className="flex items-center justify-between max-w-xs mb-1">
+                      <label className="block text-[12px] font-bold text-slate-600">Primary Email Address *</label>
+                      <span className="text-[11px] text-slate-400 font-medium">{primaryEmailAddress.length}/50</span>
+                    </div>
+                    <input 
+                      type="email" 
+                      maxLength={50}
+                      value={primaryEmailAddress}
+                      onChange={(e) => handleEmailChange(e.target.value)}
+                      onBlur={handleEmailBlur}
+                      placeholder="admin@fleetcommand.io (5-50 chars)"
+                      className={`w-full max-w-xs px-3 py-2 bg-white border ${
+                        errors.primaryEmailAddress
+                          ? 'border-red-500 ring-2 ring-red-500/20 focus:border-red-500 focus:ring-red-500/20'
+                          : 'border-slate-200 focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309]'
+                      } rounded-lg text-[13px] text-slate-700 focus:outline-none transition-all`} 
+                    />
+                    {errors.primaryEmailAddress && (
+                      <p className="text-xs text-red-500 font-medium mt-1">{errors.primaryEmailAddress}</p>
+                    )}
                   </div>
                 </div>
               </div>

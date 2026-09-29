@@ -20,23 +20,30 @@ export function AdminProvider({ children }) {
   const [notificationsLoading, setNotificationsLoading] = useState(true);
 
   const mapNotification = (n) => {
-    const createdDate = new Date(n.createdAt);
+    const createdDate = n.createdAt ? new Date(n.createdAt) : new Date();
     const isToday = createdDate.toDateString() === new Date().toDateString();
+    const isYesterday = new Date(Date.now() - 86400000).toDateString() === createdDate.toDateString();
+    const isRead = n.isRead === true || n.unread === false;
     return {
       ...n,
-      id:     n._id,
-      unread: !n.isRead,
-      group:  isToday ? "TODAY" : "YESTERDAY",
-      time:   formatIFDWithTime(n.createdAt),
+      id:     n._id || n.id,
+      _id:    n._id || n.id,
+      isRead: isRead,
+      unread: !isRead,
+      group:  isToday ? "TODAY" : (isYesterday ? "YESTERDAY" : "EARLIER"),
+      time:   n.createdAt ? formatIFDWithTime(n.createdAt) : "Just now",
       type:   n.type || "bell",
     };
   };
 
   const fetchNotifications = async () => {
     try {
+      setNotificationsLoading(true);
       const response = await adminApi.getNotifications();
       const raw = response.data?.data || response.data || [];
-      setNotifications(raw.map(mapNotification));
+      if (Array.isArray(raw)) {
+        setNotifications(raw.map(mapNotification));
+      }
     } catch (error) {
       console.error("Failed to fetch admin notifications:", error);
     } finally {
@@ -46,20 +53,22 @@ export function AdminProvider({ children }) {
 
   const markAllAsRead = async () => {
     try {
-      await adminApi.markAllNotificationsRead();
-      // No need to fetch, socket will handle update, but just in case
       setNotifications(prev => prev.map(n => ({ ...n, unread: false, isRead: true })));
+      await adminApi.markAllNotificationsRead();
+      toast.success("All notifications marked as read");
     } catch (error) {
       console.error("Failed to mark all as read:", error);
+      toast.error("Failed to mark all as read");
+      fetchNotifications();
     }
   };
 
   const markAsRead = async (id) => {
     try {
-      await adminApi.markNotificationRead(id);
       setNotifications(prev => prev.map(n => 
-        n.id === id ? { ...n, unread: false, isRead: true } : n
+        (n.id === id || n._id === id) ? { ...n, unread: false, isRead: true } : n
       ));
+      await adminApi.markNotificationRead(id);
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
     }
@@ -67,8 +76,8 @@ export function AdminProvider({ children }) {
 
   const deleteNotification = async (id) => {
     try {
+      setNotifications(prev => prev.filter(n => n.id !== id && n._id !== id));
       await adminApi.deleteNotification(id);
-      setNotifications(prev => prev.filter(n => n.id !== id));
     } catch (error) {
       console.error("Failed to delete notification:", error);
     }

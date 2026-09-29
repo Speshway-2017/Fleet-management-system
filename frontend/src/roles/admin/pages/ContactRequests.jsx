@@ -12,6 +12,19 @@ import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import KPICard from "@/components/common/KPICard";
 
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  return debouncedValue;
+}
+
 export default function ContactRequests() {
   const location = useLocation();
   const highlightId = new URLSearchParams(location.search).get("id");
@@ -30,10 +43,48 @@ export default function ContactRequests() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalContacts, setTotalContacts] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchError, setSearchError] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 400);
   const [statusFilter, setStatusFilter] = useState("All");
   const [subjectFilter, setSubjectFilter] = useState("All");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    if (!/^[a-zA-Z\s\-]$/.test(e.key)) {
+      e.preventDefault();
+      setSearchError("Numbers and symbols are not allowed in search (letters only)");
+    } else {
+      if (searchError === "Numbers and symbols are not allowed in search (letters only)") {
+        setSearchError("");
+      }
+    }
+  };
+
+  const handleSearchChange = (e) => {
+    const raw = e.target.value;
+    let val = raw;
+    let hasInvalid = false;
+    if (/[^a-zA-Z\s\-]/.test(raw)) {
+      hasInvalid = true;
+      val = raw.replace(/[^a-zA-Z\s\-]/g, '');
+    }
+
+    if (hasInvalid) {
+      setSearchError("Numbers and symbols are not allowed in search (letters only)");
+    } else if (val.length > 20) {
+      setSearchError("Search must not exceed 20 characters");
+    } else if (val.length === 1) {
+      setSearchError("Search must be at least 2 characters");
+    } else {
+      setSearchError("");
+    }
+    setSearchTerm(val);
+    setPage(1);
+  };
   
   const [loading, setLoading] = useState(true);
   const [selectedContact, setSelectedContact] = useState(null);
@@ -47,13 +98,14 @@ export default function ContactRequests() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Fetch all contact requests
-  const fetchContacts = async () => {
+  const fetchContacts = async (searchOverride) => {
     setLoading(true);
     try {
+      const activeSearch = typeof searchOverride === 'string' ? searchOverride : debouncedSearchTerm;
       const response = await adminApi.getContactRequests({
         page,
         limit,
-        search: searchTerm,
+        search: activeSearch,
         status: statusFilter,
         subject: subjectFilter,
         startDate,
@@ -89,7 +141,7 @@ export default function ContactRequests() {
 
   useEffect(() => {
     fetchContacts();
-  }, [page, statusFilter, subjectFilter, startDate, endDate]);
+  }, [page, statusFilter, subjectFilter, startDate, endDate, debouncedSearchTerm]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -321,16 +373,19 @@ export default function ContactRequests() {
                 {/* Search */}
                 <div className="space-y-1.5 md:col-span-2">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Search Inquiries</label>
-                  <div className="relative">
+                  <div className="relative flex items-center">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input 
                       type="text"
-                      placeholder="Search name, email, subject, or ticket ID..."
+                      maxLength={20}
+                      placeholder="Search inquiries..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full text-xs font-medium rounded-xl border border-slate-200 pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                      onKeyDown={handleSearchKeyDown}
+                      onChange={handleSearchChange}
+                      className={`w-full text-xs font-medium rounded-xl border pl-10 pr-4 py-3 focus:outline-none focus:ring-2 bg-white leading-normal ${searchError ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500'}`}
                     />
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   </div>
+                  {searchError && <p className="text-xs text-red-500 mt-1 font-medium">{searchError}</p>}
                 </div>
 
                 {/* Status Filter */}

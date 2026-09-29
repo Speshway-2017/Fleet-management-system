@@ -118,62 +118,79 @@ export default function Pricing() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
               {plans.map((plan) => {
                 const isPopular = plan.name === "Professional";
+                const featuresList = Array.isArray(plan.features)
+                  ? plan.features
+                  : typeof plan.features === "string"
+                    ? plan.features.split("\n").map(f => f.trim()).filter(Boolean)
+                    : [];
+
                 return (
                   <div
                     key={plan._id}
-                    className={`bg-white rounded-2xl p-6 sm:p-7 border transition-all duration-400 relative flex flex-col justify-between anime-card-lift ${isPopular
-                        ? "border-[#a14000]/60 shadow-lg shadow-[#a14000]/5 scale-[1.02] z-10"
+                    className={`bg-white rounded-2xl p-6 sm:p-7 border transition-all duration-300 relative flex flex-col justify-between h-full anime-card-lift ${isPopular
+                        ? "border-[#a14000]/60 shadow-lg shadow-[#a14000]/5 md:scale-[1.02] z-10"
                         : "border-border-custom hover:border-slate-300"
                       }`}
                   >
                     {isPopular && (
-                      <span className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 px-3.5 py-1 rounded-full bg-[#a14000] text-white text-[9px] font-bold uppercase tracking-widest shadow-sm">
+                      <span className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 px-3.5 py-1 rounded-full bg-[#a14000] text-white text-[9px] font-bold uppercase tracking-widest shadow-sm z-20">
                         Most Popular
                       </span>
                     )}
 
-                    <div className="space-y-5">
-                      <div className="space-y-1.5">
-                        <h3 className="text-lg sm:text-xl font-black font-display text-heading">{plan.name}</h3>
-                        <p className="text-xs text-body font-normal min-h-[36px] leading-relaxed">{plan.description}</p>
+                    <div className="flex-1 flex flex-col min-w-0">
+                      {/* Plan Header */}
+                      <div className="space-y-1.5 pb-4 border-b border-border-custom/60">
+                        <h3 className="text-lg sm:text-xl font-black font-display text-heading break-words break-all sm:break-words leading-snug line-clamp-2" title={plan.name}>
+                          {plan.name}
+                        </h3>
+                        <p className="text-xs text-body font-normal leading-relaxed break-words line-clamp-3 min-h-[48px]" title={plan.description}>
+                          {plan.description}
+                        </p>
                       </div>
 
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-3xl sm:text-4xl font-black font-display text-heading">₹{plan.price}</span>
-                        <span className="text-xs text-body font-bold">/ month</span>
-                      </div>
+                      {/* Pricing & Duration */}
+                      <div className="py-4 space-y-2.5">
+                        <div className="flex flex-wrap items-baseline gap-1.5 min-w-0">
+                          <span className="text-2xl sm:text-3xl lg:text-4xl font-black font-display text-heading break-all">
+                            ₹{typeof plan.price === "number" ? plan.price.toLocaleString("en-IN") : plan.price}
+                          </span>
+                          <span className="text-xs text-body font-bold shrink-0">/ month</span>
+                        </div>
 
-                      <div className="text-[10px] text-[#A14000] font-bold bg-[#FFDBCC]/40 px-2.5 py-1 rounded-md inline-block">
-                        Duration: {plan.duration} Days
+                        <div className="inline-flex items-center text-[10px] text-[#A14000] font-bold bg-[#FFDBCC]/40 px-2.5 py-1 rounded-md max-w-full">
+                          <span className="truncate">Duration: {plan.duration} Days</span>
+                        </div>
                       </div>
 
                       {/* Limits Statistics Panel */}
-                      <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <div className="text-center space-y-0.5">
-                          <span className="block text-xs font-black text-slate-800">
+                      <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 mb-4">
+                        <div className="text-center space-y-0.5 min-w-0">
+                          <span className="block text-xs font-black text-slate-800 truncate" title={String(plan.maxVehicles >= 9999 ? "Unlimited" : plan.maxVehicles)}>
                             {plan.maxVehicles >= 9999 ? "Unlimited" : plan.maxVehicles}
                           </span>
-                          <span className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wide">Vehicles</span>
+                          <span className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wide block truncate">Vehicles</span>
                         </div>
-                        <div className="text-center space-y-0.5 border-x border-slate-200">
-                          <span className="block text-xs font-black text-slate-800">
+                        <div className="text-center space-y-0.5 border-x border-slate-200 px-1 min-w-0">
+                          <span className="block text-xs font-black text-slate-800 truncate" title={String(plan.maxDrivers >= 9999 ? "Unlimited" : plan.maxDrivers)}>
                             {plan.maxDrivers >= 9999 ? "Unlimited" : plan.maxDrivers}
                           </span>
-                          <span className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wide">Drivers</span>
+                          <span className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wide block truncate">Drivers</span>
                         </div>
-                        <div className="text-center space-y-0.5">
-                          <span className="block text-xs font-black text-slate-800">
+                        <div className="text-center space-y-0.5 min-w-0">
+                          <span className="block text-xs font-black text-slate-800 truncate" title={String(plan.maxTrips >= 9999 ? "Unlimited" : plan.maxTrips)}>
                             {plan.maxTrips >= 9999 ? "Unlimited" : plan.maxTrips}
                           </span>
-                          <span className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wide">Trips</span>
+                          <span className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wide block truncate">Trips</span>
                         </div>
                       </div>
 
-                      <div className="border-t border-border-custom pt-4 space-y-3">
+                      {/* Features Included List */}
+                      <div className="border-t border-border-custom pt-4 space-y-3 flex-1 flex flex-col min-w-0">
                         <p className="text-xs font-bold text-heading uppercase tracking-wider">Features Included:</p>
-                        <ul className="space-y-2.5">
-                          {plan.features.map((feature, idx) => (
-                            <li key={idx} className="flex items-start gap-2.5 text-xs text-body font-medium">
+                        <ul className="space-y-2.5 flex-1 min-w-0">
+                          {featuresList.map((feature, idx) => (
+                            <li key={idx} className="flex items-start gap-2.5 text-xs text-body font-medium min-w-0">
                               <svg
                                 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5"
                                 fill="none"
@@ -183,14 +200,17 @@ export default function Pricing() {
                               >
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                               </svg>
-                              <span>{feature}</span>
+                              <span className="break-words break-all sm:break-words min-w-0 flex-1 leading-relaxed">
+                                {feature}
+                              </span>
                             </li>
                           ))}
                         </ul>
                       </div>
                     </div>
 
-                    <div className="pt-6">
+                    {/* Bottom CTA Button */}
+                    <div className="pt-6 mt-auto">
                       <button
                         onClick={() => handleChoosePlan(plan)}
                         className={`w-full py-3 rounded-xl font-bold text-xs transition-all active:scale-[0.98] cursor-pointer text-center ${isPopular

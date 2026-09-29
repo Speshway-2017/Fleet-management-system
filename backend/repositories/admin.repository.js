@@ -49,9 +49,72 @@ export const getPendingRequestsCount = async () => {
   return Organization.countDocuments({ status: 'Pending' });
 };
 
+export const VALID_SETTLED_TRIP_STATUSES = ['Completed', 'Delivered', 'Complete Trip'];
+
+export const calculateTripRevenue = (dist, weight) => {
+  return Math.round((Number(dist) || 0) * 52 + (Number(weight) || 0) * 4.5);
+};
+
+export const getSettledRevenueForOrganization = async (orgId) => {
+  try {
+    const orgManagers = await User.find({ role: 'FLEET_MANAGER', organization: orgId }).select('_id');
+    const orgManagerIds = orgManagers.map(m => m._id);
+
+    const trips = await Trip.find({
+      $or: [
+        { organization: orgId },
+        { assignedManager: { $in: orgManagerIds } }
+      ],
+      status: { $in: VALID_SETTLED_TRIP_STATUSES }
+    }).lean();
+
+    return trips.reduce((sum, t) => sum + calculateTripRevenue(t.estimatedDistance || t.actualDistance, t.cargoWeight), 0);
+  } catch (error) {
+    console.error('Error in getSettledRevenueForOrganization:', error);
+    return 0;
+  }
+};
+
+export const getSettledRevenueForManager = async (managerId, orgId = null) => {
+  try {
+    let trips = [];
+    if (orgId) {
+      const orgManagers = await User.find({ role: 'FLEET_MANAGER', organization: orgId }).select('_id');
+      if (orgManagers.length === 1) {
+        trips = await Trip.find({
+          $or: [
+            { organization: orgId },
+            { assignedManager: managerId }
+          ],
+          status: { $in: VALID_SETTLED_TRIP_STATUSES }
+        }).lean();
+      } else {
+        trips = await Trip.find({
+          $or: [
+            { assignedManager: managerId },
+            { organization: orgId, assignedManager: { $in: [null, undefined] } }
+          ],
+          status: { $in: VALID_SETTLED_TRIP_STATUSES }
+        }).lean();
+      }
+    } else {
+      trips = await Trip.find({
+        assignedManager: managerId,
+        status: { $in: VALID_SETTLED_TRIP_STATUSES }
+      }).lean();
+    }
+
+    return trips.reduce((sum, t) => sum + calculateTripRevenue(t.estimatedDistance || t.actualDistance, t.cargoWeight), 0);
+  } catch (error) {
+    console.error('Error in getSettledRevenueForManager:', error);
+    return 0;
+  }
+};
+
 export const getRevenueAggregate = async () => {
   try {
     const result = await Trip.aggregate([
+      { $match: { status: { $in: VALID_SETTLED_TRIP_STATUSES } } },
       {
         $group: {
           _id: null,
@@ -63,15 +126,15 @@ export const getRevenueAggregate = async () => {
     if (result.length > 0) {
       const dist = Number(result[0].totalDistance) || 0;
       const weight = Number(result[0].totalWeight) || 0;
-      return Math.round(dist * 52 + weight * 4.5);
+      return calculateTripRevenue(dist, weight);
     }
   } catch (_) {
-    const trips = await Trip.find().lean();
+    const trips = await Trip.find({ status: { $in: VALID_SETTLED_TRIP_STATUSES } }).lean();
     let total = 0;
     trips.forEach(t => {
       const dist = Number(t.estimatedDistance || t.actualDistance) || 0;
       const weight = Number(t.cargoWeight) || 0;
-      total += Math.round(dist * 52 + weight * 4.5);
+      total += calculateTripRevenue(dist, weight);
     });
     return total;
   }
@@ -84,7 +147,7 @@ export const getTodayRevenueAggregate = async () => {
 
   try {
     const result = await Trip.aggregate([
-      { $match: { createdAt: { $gte: startOfDay } } },
+      { $match: { createdAt: { $gte: startOfDay }, status: { $in: VALID_SETTLED_TRIP_STATUSES } } },
       {
         $group: {
           _id: null,
@@ -96,15 +159,15 @@ export const getTodayRevenueAggregate = async () => {
     if (result.length > 0) {
       const dist = Number(result[0].totalDistance) || 0;
       const weight = Number(result[0].totalWeight) || 0;
-      return Math.round(dist * 52 + weight * 4.5);
+      return calculateTripRevenue(dist, weight);
     }
   } catch (_) {
-    const trips = await Trip.find({ createdAt: { $gte: startOfDay } }).lean();
+    const trips = await Trip.find({ createdAt: { $gte: startOfDay }, status: { $in: VALID_SETTLED_TRIP_STATUSES } }).lean();
     let total = 0;
     trips.forEach(t => {
       const dist = Number(t.estimatedDistance || t.actualDistance) || 0;
       const weight = Number(t.cargoWeight) || 0;
-      total += Math.round(dist * 52 + weight * 4.5);
+      total += calculateTripRevenue(dist, weight);
     });
     return total;
   }
@@ -128,6 +191,7 @@ export const getAnalyticsSummary = async () => {
 export const getRevenueChartData = async () => {
   try {
     const result = await Trip.aggregate([
+      { $match: { status: { $in: VALID_SETTLED_TRIP_STATUSES } } },
       {
         $group: {
           _id: { $month: '$createdAt' },
@@ -143,7 +207,7 @@ export const getRevenueChartData = async () => {
       total: Math.round((Number(item.totalDistance) || 0) * 52 + (Number(item.totalWeight) || 0) * 4.5)
     }));
   } catch (_) {
-    const trips = await Trip.find().lean();
+    const trips = await Trip.find({ status: { $in: VALID_SETTLED_TRIP_STATUSES } }).lean();
     const monthlyMap = {};
     trips.forEach(t => {
       if (t.createdAt) {
@@ -233,7 +297,14 @@ export const createNotificationInRepo = async (data) => {
 };
 
 export const getAdminNotificationsInRepo = async () => {
-  return Notification.find({ recipientRole: 'SUPER_ADMIN' }).populate('organization', 'name email phone').sort({ createdAt: -1 });
+  return Notification.find({
+    $or: [
+      { recipientRole: { $in: ['SUPER_ADMIN', 'admin', 'ADMIN'] } },
+      { recipientRole: { $exists: false } },
+      { recipientRole: null },
+      { type: { $in: ['CONTACT_REQUEST', 'contact_request', 'SUBSCRIPTION_REQUEST', 'subscription_request', 'system', 'alert', 'maintenance_ticket', 'user_registered'] } }
+    ]
+  }).populate('organization', 'name email phone').sort({ createdAt: -1 });
 };
 
 export const markNotificationReadInRepo = async (id) => {
@@ -241,7 +312,15 @@ export const markNotificationReadInRepo = async (id) => {
 };
 
 export const markAllNotificationsReadInRepo = async () => {
-  return Notification.updateMany({ recipientRole: 'SUPER_ADMIN', isRead: false }, { isRead: true });
+  return Notification.updateMany({
+    $or: [
+      { recipientRole: { $in: ['SUPER_ADMIN', 'admin', 'ADMIN'] } },
+      { recipientRole: { $exists: false } },
+      { recipientRole: null },
+      { type: { $in: ['CONTACT_REQUEST', 'contact_request', 'SUBSCRIPTION_REQUEST', 'subscription_request', 'system', 'alert', 'maintenance_ticket', 'user_registered'] } }
+    ],
+    isRead: false
+  }, { isRead: true });
 };
 
 export const deleteNotificationInRepo = async (id) => {

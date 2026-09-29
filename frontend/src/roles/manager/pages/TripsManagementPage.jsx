@@ -762,6 +762,7 @@ export default function TripsManagementPage() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
+                maxLength={20}
                 placeholder="Search trip ID, driver, vehicle, or route..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}

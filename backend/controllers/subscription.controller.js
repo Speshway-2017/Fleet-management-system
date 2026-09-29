@@ -35,19 +35,35 @@ export const createPlan = async (req, res, next) => {
     }
 
     const trimmedName = name.toString().trim();
-    if (/\d/.test(trimmedName)) {
-      return sendError(res, 400, 'Plan name must not contain numbers.');
+    if (!/^[a-zA-Z\s]+$/.test(trimmedName)) {
+      return sendError(res, 400, 'Plan name must contain alphabets only (numbers & symbols are not allowed).');
     }
-    if (trimmedName.length > 50) {
-      return sendError(res, 400, 'Plan name must not exceed 50 characters.');
+    if (trimmedName.length < 2 || trimmedName.length > 50) {
+      return sendError(res, 400, 'Plan name must be between 2 and 50 characters.');
     }
 
     const trimmedDescription = description.toString().trim();
     if (/\d/.test(trimmedDescription)) {
-      return sendError(res, 400, 'Description must not contain numbers.');
+      return sendError(res, 400, 'Description must contain text only (numbers are not allowed).');
     }
-    if (trimmedDescription.length > 100) {
-      return sendError(res, 400, 'Description must not exceed 100 characters.');
+    if (trimmedDescription.length < 5 || trimmedDescription.length > 100) {
+      return sendError(res, 400, 'Description must be between 5 and 100 characters.');
+    }
+
+    let sanitizedFeatures = [];
+    if (Array.isArray(features)) {
+      for (const feat of features) {
+        const fStr = typeof feat === 'string' ? feat.trim() : '';
+        if (fStr) {
+          if (fStr.length < 2 || fStr.length > 100) {
+            return sendError(res, 400, 'Each feature must be between 2 and 100 characters.');
+          }
+          sanitizedFeatures.push(fStr);
+        }
+      }
+      if (sanitizedFeatures.length > 20) {
+        return sendError(res, 400, 'Maximum 20 features allowed.');
+      }
     }
 
     if (maxVehicles !== undefined && maxVehicles !== null && maxVehicles !== '') {
@@ -74,11 +90,11 @@ export const createPlan = async (req, res, next) => {
     const plan = new SubscriptionPlan({
       name: trimmedName,
       description: trimmedDescription,
-      price,
-      duration,
-      status,
-      displayOrder,
-      features,
+      price: Number(price),
+      duration: Number(duration),
+      status: status || 'Active',
+      displayOrder: displayOrder !== undefined ? Number(displayOrder) : 0,
+      features: sanitizedFeatures,
       maxVehicles: maxVehicles !== undefined ? Number(maxVehicles) : 0,
       maxDrivers: maxDrivers !== undefined ? Number(maxDrivers) : 0,
       maxTrips: maxTrips !== undefined ? Number(maxTrips) : 0
@@ -107,11 +123,11 @@ export const updatePlan = async (req, res, next) => {
       if (!trimmedName) {
         return sendError(res, 400, 'Plan name is required');
       }
-      if (/\d/.test(trimmedName)) {
-        return sendError(res, 400, 'Plan name must not contain numbers.');
+      if (!/^[a-zA-Z\s]+$/.test(trimmedName)) {
+        return sendError(res, 400, 'Plan name must contain alphabets only (numbers & symbols are not allowed).');
       }
-      if (trimmedName.length > 50) {
-        return sendError(res, 400, 'Plan name must not exceed 50 characters.');
+      if (trimmedName.length < 2 || trimmedName.length > 50) {
+        return sendError(res, 400, 'Plan name must be between 2 and 50 characters.');
       }
       req.body.name = trimmedName;
     }
@@ -122,12 +138,29 @@ export const updatePlan = async (req, res, next) => {
         return sendError(res, 400, 'Description is required');
       }
       if (/\d/.test(trimmedDesc)) {
-        return sendError(res, 400, 'Description must not contain numbers.');
+        return sendError(res, 400, 'Description must contain text only (numbers are not allowed).');
       }
-      if (trimmedDesc.length > 100) {
-        return sendError(res, 400, 'Description must not exceed 100 characters.');
+      if (trimmedDesc.length < 5 || trimmedDesc.length > 100) {
+        return sendError(res, 400, 'Description must be between 5 and 100 characters.');
       }
       req.body.description = trimmedDesc;
+    }
+
+    if (req.body.features !== undefined && Array.isArray(req.body.features)) {
+      const sanitizedFeatures = [];
+      for (const feat of req.body.features) {
+        const fStr = typeof feat === 'string' ? feat.trim() : '';
+        if (fStr) {
+          if (fStr.length < 2 || fStr.length > 100) {
+            return sendError(res, 400, 'Each feature must be between 2 and 100 characters.');
+          }
+          sanitizedFeatures.push(fStr);
+        }
+      }
+      if (sanitizedFeatures.length > 20) {
+        return sendError(res, 400, 'Maximum 20 features allowed.');
+      }
+      req.body.features = sanitizedFeatures;
     }
 
     if (req.body.maxVehicles !== undefined && req.body.maxVehicles !== null && req.body.maxVehicles !== '') {

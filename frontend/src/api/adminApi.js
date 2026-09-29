@@ -51,54 +51,20 @@ export const adminApi = {
     return axiosClient.put('/admin/settings', data);
   },
 
-  // Security Settings (Mocked via localStorage)
+  // Security Settings
   getSecuritySettings: async () => {
-    const saved = localStorage.getItem('mockSecuritySettings');
-    if (saved) {
-      return { data: JSON.parse(saved) };
-    }
-    return { data: {
-      twoFactorAdmin: true,
-      twoFactorManager: false,
-      sessionTimeout: 60,
-      maxLoginAttempts: 5,
-      passwordPolicy: { requireUppercase: true, requireNumber: true, requireSpecial: true },
-      ipAllowlistEnabled: false,
-      allowedIps: ""
-    } };
+    return axiosClient.get('/admin/settings/security');
   },
   updateSecuritySettings: async (data) => {
-    const parsed = securitySettingsSchema.parse(data);
-    localStorage.setItem('mockSecuritySettings', JSON.stringify(parsed));
-    return { data: parsed };
+    return axiosClient.put('/admin/settings/security', data);
   },
 
-  // Notification Settings (Mocked via localStorage)
+  // Notification Settings
   getNotificationSettings: async () => {
-    const saved = localStorage.getItem('mockNotificationSettings');
-    if (saved) {
-      return { data: JSON.parse(saved) };
-    }
-    return { data: {
-      emailNotifications: true,
-      primaryEmailAddress: "admin@fleetcommand.io",
-      systemAlerts: true,
-      systemAlertsSeverity: "warning",
-      maintenanceAlerts: true,
-      maintenanceAlert48h: true,
-      maintenanceAlert1h: true,
-      inviteNotifications: true,
-      inviteSent: true,
-      inviteAccepted: true,
-      weeklyReports: true,
-      weeklyReportDay: "monday",
-      newOrganizationAlerts: true,
-      requireAdminReview: true
-    } };
+    return axiosClient.get('/admin/settings/notifications');
   },
   updateNotificationSettings: async (data) => {
-    localStorage.setItem('mockNotificationSettings', JSON.stringify(data));
-    return { data };
+    return axiosClient.put('/admin/settings/notifications', data);
   },
 
   // Analytics
@@ -121,21 +87,9 @@ export const adminApi = {
     };
   },
   getAuditLogs: async (params) => {
-    // Mock audit logs
-    const logs = [
-      { id: 1, timestamp: new Date().toISOString(), user: "Super Admin", action: "Updated Organization", organization: "ARC Logistics", ip: "192.168.1.1", status: "Success" },
-      { id: 2, timestamp: new Date(Date.now() - 3600000).toISOString(), user: "System", action: "Daily Backup", organization: "System", ip: "localhost", status: "Success" },
-      { id: 3, timestamp: new Date(Date.now() - 7200000).toISOString(), user: "Super Admin", action: "Created Fleet Manager", organization: "XYZ Transport", ip: "192.168.1.1", status: "Success" }
-    ];
-    return {
-      data: {
-        data: {
-          logs,
-          pagination: { page: 1, limit: 15, totalPages: 1, total: logs.length }
-        }
-      }
-    };
+    return axiosClient.get('/admin/audit-logs', { params });
   },
+
 
   // Platform Issues
   getIssues: async () => {

@@ -237,6 +237,7 @@ export default function UpcomingServicesPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8]" />
             <input
               type="text"
+              maxLength={20}
               placeholder="Search queue..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}

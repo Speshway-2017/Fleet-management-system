@@ -170,7 +170,7 @@ function Dashboard() {
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
 
           {/* KPI Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-6 items-stretch">
             <KPICard
               title="Active Organizations"
               value={loading ? null : (statistics.activeOrganizations || 0).toString()}
@@ -221,12 +221,12 @@ function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
 
             {/* Revenue Trend */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col justify-between hover:-translate-y-1 hover:shadow-md transition-all duration-300">
               <div className="flex items-start justify-between gap-3 mb-6 min-w-0">
                 <div className="min-w-0">
                   <h3 className="font-bold text-slate-800 text-sm truncate">Revenue Trend</h3>
                 </div>
-                <div className="text-right shrink-0 min-w-0 max-w-[55%]">
+                <div className="text-right shrink-0 min-w-0 max-w-[60%]">
                   <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5 truncate">Total Revenue</div>
                   <div className="text-base sm:text-lg font-black text-slate-800 leading-none truncate" title={formatCurrency(totalCalculatedRevenue)}>
                     {formatCurrency(totalCalculatedRevenue)}

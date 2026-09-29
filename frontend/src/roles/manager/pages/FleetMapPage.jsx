@@ -601,6 +601,7 @@ export default function FleetMapPage() {
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
+              maxLength={20}
               placeholder="Search truck, driver..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}

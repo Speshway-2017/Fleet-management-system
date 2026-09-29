@@ -47,6 +47,7 @@ export default function EditOrganization() {
   const [saving, setSaving]   = useState(false);
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
+  const [logoError, setLogoError] = useState("");
 
   useEffect(() => {
     if (org) {
@@ -99,23 +100,93 @@ export default function EditOrganization() {
     />
   );
 
+  const handleTextKeyDown = (e, fieldName, fieldLabel = 'Field') => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    if (!/^[a-zA-Z\s]$/.test(e.key)) {
+      e.preventDefault();
+      setSErrors(prev => ({
+        ...prev,
+        [fieldName]: `${fieldLabel} must contain alphabets only (numbers & symbols are not allowed)`
+      }));
+    }
+  };
+
+  const handlePhoneKeyDown = (e, fieldName = 'phone') => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+      setSErrors(prev => ({
+        ...prev,
+        [fieldName]: 'Phone number must contain numbers only (letters are not allowed)'
+      }));
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const updatedForm = { ...form, [name]: value };
+    let sanitizedValue = value;
+    let customError = null;
+
+    if (['name', 'industry', 'city', 'state', 'country'].includes(name)) {
+      if (/[^a-zA-Z\s]/.test(value)) {
+        const labels = {
+          name: 'Organization name',
+          industry: 'Industry',
+          city: 'City',
+          state: 'State',
+          country: 'Country'
+        };
+        customError = `${labels[name] || name} must contain alphabets only (numbers & symbols are not allowed)`;
+        sanitizedValue = value.replace(/[^a-zA-Z\s]/g, '');
+      }
+    } else if (name === 'phone') {
+      if (/[^0-9]/.test(value)) {
+        customError = 'Phone number must contain numbers only (letters are not allowed)';
+        sanitizedValue = value.replace(/[^0-9]/g, '');
+      }
+    }
+
+    const updatedForm = { ...form, [name]: sanitizedValue };
     setForm(updatedForm);
 
-    const errorMsg = validateField(updateOrganizationSchema, name, value, updatedForm);
-    setSErrors(prev => ({ ...prev, [name]: errorMsg }));
+    if (customError) {
+      setSErrors(prev => ({ ...prev, [name]: customError }));
+    } else {
+      const errorMsg = validateField(updateOrganizationSchema, name, sanitizedValue, updatedForm);
+      setSErrors(prev => ({ ...prev, [name]: errorMsg }));
+    }
+  };
+
+  const handleBlur = (fieldName) => {
+    const errorMsg = validateField(updateOrganizationSchema, fieldName, form[fieldName], form);
+    setSErrors(prev => ({ ...prev, [fieldName]: errorMsg }));
   };
 
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setLogoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setLogoPreview(reader.result);
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    const fileName = file.name || "";
+    const fileExt = fileName.split('.').pop()?.toLowerCase();
+    const validExts = ['jpg', 'jpeg', 'png'];
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+
+    if (!validExts.includes(fileExt) && !validTypes.includes(file.type)) {
+      setLogoError("Invalid file type. Only JPG, JPEG, and PNG files are allowed.");
+      toast.error("Invalid file type. Only JPG, JPEG, and PNG files are allowed.");
+      e.target.value = "";
+      return;
     }
+
+    setLogoError("");
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setLogoPreview(reader.result);
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -209,9 +280,15 @@ export default function EditOrganization() {
               <label className="cursor-pointer px-4 py-2 border border-slate-200 bg-white text-slate-700 text-sm font-semibold rounded-lg shadow-sm hover:bg-slate-50 flex items-center gap-2">
                 <Upload className="w-4 h-4" />
                 Upload Logo
-                <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+                <input 
+                  type="file" 
+                  accept=".jpg,.jpeg,.png,image/jpeg,image/png" 
+                  className="hidden" 
+                  onChange={handleLogoChange} 
+                />
               </label>
             </div>
+            {logoError && <p className="text-xs text-red-500 font-medium mt-1">{logoError}</p>}
           </div>
 
           {/* Name */}
@@ -225,12 +302,9 @@ export default function EditOrganization() {
               maxLength={20}
               autoComplete="off"
               value={form.name}
+              onKeyDown={(e) => handleTextKeyDown(e, 'name', 'Organization name')}
+              onBlur={() => handleBlur('name')}
               onChange={handleChange}
-              onKeyDown={(e) => {
-                if (!/^[a-zA-Z\s]$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) {
-                  e.preventDefault();
-                }
-              }}
               placeholder="e.g. ABC Logistics"
               className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.name ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
             />
@@ -250,11 +324,8 @@ export default function EditOrganization() {
                 autoComplete="off"
                 placeholder="Industry (letters only)"
                 value={form.industry}
-                onKeyDown={(e) => {
-                  if (!/^[a-zA-Z\s]$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
+                onKeyDown={(e) => handleTextKeyDown(e, 'industry', 'Industry')}
+                onBlur={() => handleBlur('industry')}
                 onChange={handleChange}
                 className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.industry ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
               />
@@ -269,6 +340,7 @@ export default function EditOrganization() {
                 name="email"
                 maxLength={30}
                 value={form.email}
+                onBlur={() => handleBlur('email')}
                 onChange={handleChange}
                 autoComplete="off"
                 placeholder="contact@organization.com"
@@ -286,15 +358,11 @@ export default function EditOrganization() {
               </label>
               <input
                 type="tel"
-                inputMode="numeric"
                 maxLength={10}
                 name="phone"
                 value={form.phone}
-                onKeyDown={(e) => {
-                  if (!/^\d$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                    e.preventDefault();
-                  }
-                }}
+                onKeyDown={(e) => handlePhoneKeyDown(e, 'phone')}
+                onBlur={() => handleBlur('phone')}
                 onChange={handleChange}
                 placeholder="Enter 10-digit phone number"
                 className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.phone ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
@@ -305,15 +373,18 @@ export default function EditOrganization() {
 
           {/* Address */}
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Street Address</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">
+              Street Address <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               name="address"
-              maxLength={100}
+              maxLength={30}
               autoComplete="off"
               value={form.address}
+              onBlur={() => handleBlur('address')}
               onChange={handleChange}
-              placeholder="Street address"
+              placeholder="Street address (5-30 chars)"
               className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.address ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
             />
             {errors.address && <p className="text-xs text-red-500 mt-1 font-medium">{errors.address}</p>}
@@ -322,18 +393,17 @@ export default function EditOrganization() {
           {/* City + State */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">City</label>
+              <label className="block text-sm font-bold text-slate-700 mb-2">
+                City <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 name="city"
                 maxLength={20}
                 autoComplete="off"
                 value={form.city}
-                onKeyDown={(e) => {
-                  if (!/^[a-zA-Z\s]$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
+                onKeyDown={(e) => handleTextKeyDown(e, 'city', 'City')}
+                onBlur={() => handleBlur('city')}
                 onChange={handleChange}
                 placeholder="City"
                 className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.city ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
@@ -341,18 +411,17 @@ export default function EditOrganization() {
               {errors.city && <p className="text-xs text-red-500 mt-1 font-medium">{errors.city}</p>}
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">State</label>
+              <label className="block text-sm font-bold text-slate-700 mb-2">
+                State <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 name="state"
                 maxLength={20}
                 autoComplete="off"
                 value={form.state}
-                onKeyDown={(e) => {
-                  if (!/^[a-zA-Z\s]$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
+                onKeyDown={(e) => handleTextKeyDown(e, 'state', 'State')}
+                onBlur={() => handleBlur('state')}
                 onChange={handleChange}
                 placeholder="State"
                 className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.state ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
@@ -364,19 +433,19 @@ export default function EditOrganization() {
           {/* Country */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Country</label>
+              <label className="block text-sm font-bold text-slate-700 mb-2">
+                Country <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 name="country"
                 maxLength={20}
                 autoComplete="off"
                 value={form.country}
-                onKeyDown={(e) => {
-                  if (!/^[a-zA-Z\s]$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
+                onKeyDown={(e) => handleTextKeyDown(e, 'country', 'Country')}
+                onBlur={() => handleBlur('country')}
                 onChange={handleChange}
+                placeholder="Country"
                 className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.country ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
               />
               {errors.country && <p className="text-xs text-red-500 mt-1 font-medium">{errors.country}</p>}

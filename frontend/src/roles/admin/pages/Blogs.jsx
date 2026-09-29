@@ -42,6 +42,12 @@ export default function Blogs() {
 
   // Full-Page Article View
   if (selectedArticle) {
+    const contentParagraphs = Array.isArray(selectedArticle.content)
+      ? selectedArticle.content
+      : typeof selectedArticle.content === "string"
+        ? selectedArticle.content.split(/\n+/).map(p => p.trim()).filter(Boolean)
+        : [selectedArticle.summary || ""];
+
     return (
       <div className="bg-white flex-1 flex flex-col font-sans text-[#4B5563] min-h-screen">
         {/* Sticky Header Navigation Bar */}
@@ -53,8 +59,11 @@ export default function Blogs() {
             <ArrowLeft className="w-4 h-4" />
             <span>Back to All Blogs</span>
           </button>
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#A14000] bg-[#A14000]/10 px-3 py-1 rounded-full">
+          <div className="flex items-center gap-3 max-w-[50%]">
+            <span 
+              className="text-[11px] font-bold uppercase tracking-wider text-[#A14000] bg-[#A14000]/10 px-3 py-1 rounded-full truncate block"
+              title={selectedArticle.category}
+            >
               {selectedArticle.category}
             </span>
           </div>
@@ -64,26 +73,26 @@ export default function Blogs() {
         <header className="bg-slate-50/70 border-b border-slate-100 py-10 md:py-14 px-4 sm:px-6 md:px-8">
           <div className="max-w-4xl mx-auto space-y-4">
             <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-gray-500">
-              <span className="inline-flex items-center gap-1 text-[#A14000] font-bold">
-                <Tag className="w-3.5 h-3.5" />
-                {selectedArticle.category}
+              <span className="inline-flex items-center gap-1 text-[#A14000] font-bold max-w-full">
+                <Tag className="w-3.5 h-3.5 shrink-0" />
+                <span className="break-words">{selectedArticle.category}</span>
               </span>
               <span>•</span>
               <span className="inline-flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" />
-                {selectedArticle.date}
+                <Calendar className="w-3.5 h-3.5 shrink-0" />
+                <span>{selectedArticle.date}</span>
               </span>
               <span>•</span>
-              <span className="inline-flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" />
-                {selectedArticle.readTime}
+              <span className="inline-flex items-center gap-1 max-w-full">
+                <Clock className="w-3.5 h-3.5 shrink-0" />
+                <span className="break-words">{selectedArticle.readTime}</span>
               </span>
             </div>
 
-            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-black text-[#0B1B3D] leading-tight tracking-tight">
+            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-black text-[#0B1B3D] leading-tight tracking-tight break-words break-all sm:break-words">
               {selectedArticle.title}
             </h1>
-            <p className="text-sm sm:text-base text-body font-normal leading-relaxed">
+            <p className="text-sm sm:text-base text-body font-normal leading-relaxed break-words whitespace-pre-line">
               {selectedArticle.summary}
             </p>
           </div>
@@ -92,7 +101,7 @@ export default function Blogs() {
         {/* Main Article Content */}
         <main className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-10 space-y-8 flex-1">
           {/* Article Banner Image */}
-          <div className="relative h-[300px] sm:h-[420px] md:h-[480px] w-full rounded-3xl overflow-hidden shadow-xl border border-slate-100">
+          <div className="relative h-[300px] sm:h-[420px] md:h-[480px] w-full rounded-3xl overflow-hidden shadow-xl border border-slate-100 bg-slate-100">
             <img
               src={selectedArticle.image}
               alt={selectedArticle.title}
@@ -102,14 +111,14 @@ export default function Blogs() {
 
           {/* Article Text Content */}
           <div className="prose max-w-none space-y-6 text-slate-700 text-sm sm:text-base leading-relaxed">
-            {Array.isArray(selectedArticle.content) ? (
-              selectedArticle.content.map((paragraph, idx) => (
-                <p key={idx} className="font-normal text-slate-600 leading-relaxed">
+            {contentParagraphs.length > 0 ? (
+              contentParagraphs.map((paragraph, idx) => (
+                <p key={idx} className="font-normal text-slate-600 leading-relaxed break-words break-all sm:break-words whitespace-pre-line">
                   {paragraph}
                 </p>
               ))
             ) : (
-              <p className="font-normal text-slate-600 leading-relaxed">
+              <p className="font-normal text-slate-600 leading-relaxed break-words break-all sm:break-words whitespace-pre-line">
                 {selectedArticle.content || selectedArticle.summary}
               </p>
             )}
@@ -215,7 +224,7 @@ export default function Blogs() {
               </div>
 
               {/* Featured Cards (3 grid - No animation wrapper) */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
                 {featuredArticles.map((article, i) => (
                   <BlogCard
                     key={i}
@@ -247,7 +256,7 @@ export default function Blogs() {
                 </div>
 
                 {/* Grid of latest cards (No animation wrapper) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
                   {latestArticles.map((article, i) => (
                     <BlogCard
                       key={i}

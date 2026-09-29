@@ -869,6 +869,7 @@ export default function VehicleDetailsPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
               <input
                 type="text"
+                maxLength={20}
                 placeholder="Search by service type..."
                 value={maintenanceSearch}
                 onChange={(e) => {

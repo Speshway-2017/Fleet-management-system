@@ -198,7 +198,7 @@ export default function DriversManagementPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="md:col-span-2 relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#94A3B8]" />
-            <input type="text" placeholder="Search drivers by name, phone, email, or DL number..." value={search} onChange={(e) => setSearch(e.target.value)}
+            <input type="text" maxLength={20} placeholder="Search drivers by name, phone, email, or DL number..." value={search} onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white dark:bg-slate-900 border border-[#E7EAF0] dark:border-slate-800 rounded-xl text-sm text-[#1E293B] dark:text-white focus:outline-none focus:border-[#A14000]" />
           </div>
           <div className="relative">

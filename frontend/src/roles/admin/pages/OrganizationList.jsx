@@ -38,8 +38,45 @@ function StatusBadge({ status }) {
 
 export default function OrganizationList() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [loading, setLoading] = useState(true);
   const { organizations, fetchOrganizations } = useAdmin();
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    if (!/^[a-zA-Z\s\-]$/.test(e.key)) {
+      e.preventDefault();
+      setSearchError("Numbers and symbols are not allowed in search (letters only)");
+    } else {
+      if (searchError === "Numbers and symbols are not allowed in search (letters only)") {
+        setSearchError("");
+      }
+    }
+  };
+
+  const handleSearchChange = (e) => {
+    const raw = e.target.value;
+    let val = raw;
+    let hasInvalid = false;
+
+    if (/[^a-zA-Z\s\-]/.test(raw)) {
+      hasInvalid = true;
+      val = raw.replace(/[^a-zA-Z\s\-]/g, '');
+    }
+
+    if (hasInvalid) {
+      setSearchError("Numbers and symbols are not allowed in search (letters only)");
+    } else if (val.length > 20) {
+      setSearchError("Search must not exceed 20 characters");
+    } else if (val.length === 1) {
+      setSearchError("Search must be at least 2 characters");
+    } else {
+      setSearchError("");
+    }
+    setSearchTerm(val);
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -149,15 +186,20 @@ export default function OrganizationList() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             {/* Toolbar */}
             <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="relative w-full sm:w-80">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search organizations..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-                />
+              <div className="w-full sm:w-80">
+                <div className="relative flex items-center">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <input 
+                    type="text" 
+                    maxLength={20}
+                    placeholder="Search organizations..." 
+                    value={searchTerm}
+                    onKeyDown={handleSearchKeyDown}
+                    onChange={handleSearchChange}
+                    className={`w-full pl-9 pr-4 py-2 bg-slate-50 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all leading-normal ${searchError ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                  />
+                </div>
+                {searchError && <p className="text-xs text-red-500 mt-1 font-medium">{searchError}</p>}
               </div>
               <Link to="/admin/organizations/add" className="flex items-center w-full sm:w-auto justify-center gap-2 bg-[#A14000] hover:bg-[#8a3700] text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm whitespace-nowrap">
                 <Plus className="w-4 h-4" />

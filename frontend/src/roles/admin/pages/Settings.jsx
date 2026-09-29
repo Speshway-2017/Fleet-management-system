@@ -5,7 +5,7 @@ import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import { useAdmin } from "@/roles/admin/context/AdminContext";
 import { useSettings } from "@/context/SettingsContext";
-
+import { updateGeneralSettingsSchema, validateField, validateForm } from "@/validations";
 import toast from "react-hot-toast";
 import { adminApi } from "@/api/adminApi";
 
@@ -56,7 +56,6 @@ export default function Settings() {
   // Footer & Contact Data
   const [footerDescription, setFooterDescription] = useState("");
   const [contactPhone, setContactPhone] = useState("");
-  const [phoneError, setPhoneError] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactAddress, setContactAddress] = useState("");
   const [facebookUrl, setFacebookUrl] = useState("");
@@ -64,14 +63,30 @@ export default function Settings() {
   const [twitterUrl, setTwitterUrl] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   
+  const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const { fetchPlatformSettings: fetchAdminPlatformSettings } = useAdmin();
   const { fetchPlatformSettings: fetchGlobalPlatformSettings } = useSettings();
 
+  const getFormData = () => ({
+    platformName,
+    timezone,
+    language,
+    footerDescription,
+    contactPhone,
+    contactEmail,
+    contactAddress,
+    facebookUrl,
+    linkedinUrl,
+    twitterUrl,
+    youtubeUrl
+  });
+
   const loadSettings = async () => {
     try {
+      setIsLoading(true);
       const response = await adminApi.getSettings();
       const settings = response.data?.data || response.data;
       if (settings) {
@@ -100,69 +115,135 @@ export default function Settings() {
     loadSettings();
   }, []);
 
-  const handlePhoneChange = (e) => {
-    const rawVal = e.target.value;
-    const cleanDigits = rawVal.replace(/\D/g, '').slice(0, 10);
-    setContactPhone(cleanDigits);
+  const handleFieldChange = (field, value) => {
+    let cleanValue = value;
+    let customError = "";
 
-    if (rawVal !== cleanDigits && rawVal.length > 0) {
-      setPhoneError("Please enter valid mobile number");
-    } else if (!cleanDigits) {
-      setPhoneError("Please enter valid mobile number");
-    } else if (cleanDigits.length < 10) {
-      setPhoneError("Please enter valid mobile number");
-    } else {
-      setPhoneError("");
+    if (field === "platformName") {
+      cleanValue = value.replace(/[^a-zA-Z\s]/g, "").slice(0, 30);
+      if (value !== cleanValue && value.length > 0) {
+        customError = "Platform name must contain alphabets only (numbers & symbols are not allowed).";
+      }
+      setPlatformName(cleanValue);
+    } else if (field === "contactPhone") {
+      cleanValue = value.replace(/\D/g, "").slice(0, 10);
+      if (value !== cleanValue && value.length > 0) {
+        customError = "Phone number must contain numbers only (letters are not allowed).";
+      }
+      setContactPhone(cleanValue);
+    } else if (field === "contactEmail") {
+      cleanValue = value.slice(0, 30);
+      if (/\s/.test(value)) {
+        customError = "Email address must not contain spaces.";
+      }
+      setContactEmail(cleanValue);
+    } else if (field === "contactAddress") {
+      cleanValue = value.slice(0, 100);
+      setContactAddress(cleanValue);
+    } else if (field === "footerDescription") {
+      cleanValue = value.slice(0, 500);
+      setFooterDescription(cleanValue);
+    } else if (field === "timezone") {
+      cleanValue = value;
+      setTimezone(value);
+    } else if (field === "language") {
+      cleanValue = value;
+      setLanguage(value);
+    } else if (field === "facebookUrl") {
+      cleanValue = value.slice(0, 100);
+      setFacebookUrl(cleanValue);
+    } else if (field === "linkedinUrl") {
+      cleanValue = value.slice(0, 100);
+      setLinkedinUrl(cleanValue);
+    } else if (field === "twitterUrl") {
+      cleanValue = value.slice(0, 100);
+      setTwitterUrl(cleanValue);
+    } else if (field === "youtubeUrl") {
+      cleanValue = value.slice(0, 100);
+      setYoutubeUrl(cleanValue);
     }
+
+    if (customError) {
+      setErrors(prev => ({ ...prev, [field]: customError }));
+    } else {
+      const fieldError = validateField(updateGeneralSettingsSchema, field, cleanValue, { ...getFormData(), [field]: cleanValue });
+      setErrors(prev => ({ ...prev, [field]: fieldError }));
+    }
+  };
+
+  const handleBlur = (field) => {
+    const data = getFormData();
+    const fieldError = validateField(updateGeneralSettingsSchema, field, data[field], data);
+    setErrors(prev => ({ ...prev, [field]: fieldError }));
   };
 
   const handlePhoneKeyDown = (e) => {
-    if (
-      ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) ||
-      ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase()))
-    ) {
-      return;
-    }
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) return;
     if (!/^\d$/.test(e.key)) {
       e.preventDefault();
-      setPhoneError("Please enter valid mobile number");
+      setErrors(prev => ({ ...prev, contactPhone: "Phone number must contain numbers only (letters are not allowed)." }));
+    } else {
+      if (errors.contactPhone?.includes("must contain numbers only")) {
+        setErrors(prev => ({ ...prev, contactPhone: "" }));
+      }
     }
   };
 
-  const handlePhoneBlur = () => {
-    if (!contactPhone || contactPhone.length !== 10 || !/^\d{10}$/.test(contactPhone)) {
-      setPhoneError("Please enter valid mobile number");
+  const handlePlatformNameKeyDown = (e) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!/^[a-zA-Z\s]$/.test(e.key)) {
+      e.preventDefault();
+      setErrors(prev => ({ ...prev, platformName: "Platform name must contain alphabets only (numbers & symbols are not allowed)." }));
     } else {
-      setPhoneError("");
+      if (errors.platformName?.includes("must contain alphabets only")) {
+        setErrors(prev => ({ ...prev, platformName: "" }));
+      }
+    }
+  };
+
+  const handleLogoFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+      const validExts = /\.(jpg|jpeg|png)$/i;
+
+      if (!validTypes.includes(file.type) && !validExts.test(file.name)) {
+        setErrors(prev => ({ ...prev, logo: "Invalid file type. Only JPG, JPEG, and PNG files are allowed." }));
+        toast.error("Invalid file type. Only JPG, JPEG, and PNG files are allowed.");
+        e.target.value = "";
+        return;
+      }
+      setErrors(prev => ({ ...prev, logo: "" }));
+      setLogoFile(file);
+      setLogoUrl(URL.createObjectURL(file));
     }
   };
 
   const handleSave = async () => {
-    if (!platformName || !timezone || !language) {
-      toast.error("Please fill in all required platform fields");
-      return;
-    }
+    const formDataObj = getFormData();
+    const { isValid, errors: validationErrors } = validateForm(updateGeneralSettingsSchema, formDataObj);
 
-    if (!contactPhone || contactPhone.length !== 10 || !/^\d{10}$/.test(contactPhone)) {
-      setPhoneError("Please enter valid mobile number");
-      toast.error("Please enter valid mobile number");
+    if (!isValid) {
+      setErrors(validationErrors);
+      const firstError = Object.values(validationErrors)[0];
+      toast.error(firstError || "Please fix all validation errors before saving.");
       return;
     }
 
     setIsSaving(true);
     try {
       const formData = new FormData();
-      formData.append("platformName", platformName);
+      formData.append("platformName", platformName.trim());
       formData.append("timezone", timezone);
       formData.append("language", language);
-      formData.append("footerDescription", footerDescription);
-      formData.append("contactPhone", contactPhone);
-      formData.append("contactEmail", contactEmail);
-      formData.append("contactAddress", contactAddress);
-      formData.append("facebookUrl", facebookUrl);
-      formData.append("linkedinUrl", linkedinUrl);
-      formData.append("twitterUrl", twitterUrl);
-      formData.append("youtubeUrl", youtubeUrl);
+      formData.append("footerDescription", footerDescription.trim());
+      formData.append("contactPhone", contactPhone.trim());
+      formData.append("contactEmail", contactEmail.trim());
+      formData.append("contactAddress", contactAddress.trim());
+      formData.append("facebookUrl", facebookUrl.trim());
+      formData.append("linkedinUrl", linkedinUrl.trim());
+      formData.append("twitterUrl", twitterUrl.trim());
+      formData.append("youtubeUrl", youtubeUrl.trim());
 
       if (logoFile) {
         formData.append("logo", logoFile);
@@ -175,11 +256,13 @@ export default function Settings() {
         setLogoFile(null);
       }
       toast.success("Platform & Footer settings saved successfully!");
+      setErrors({});
       await loadSettings();
       await fetchAdminPlatformSettings();
       await fetchGlobalPlatformSettings();
     } catch (error) {
-      toast.error("Failed to save settings");
+      const serverMsg = error.response?.data?.message || "Failed to save settings";
+      toast.error(serverMsg);
     } finally {
       setIsSaving(false);
     }
@@ -224,7 +307,7 @@ export default function Settings() {
               <button 
                 onClick={handleSave}
                 disabled={isSaving}
-                className="w-full sm:w-auto px-6 py-2.5 bg-[#b45309] hover:bg-[#92400e] text-white text-sm font-bold rounded-lg shadow-sm transition-colors disabled:opacity-70 disabled:cursor-wait text-center"
+                className="w-full sm:w-auto px-6 py-2.5 bg-[#a14000] hover:bg-[#853400] text-white text-sm font-bold rounded-lg shadow-sm transition-colors disabled:opacity-70 disabled:cursor-wait text-center cursor-pointer"
               >
                 {isSaving ? "Saving..." : "Save Settings"}
               </button>
@@ -235,32 +318,45 @@ export default function Settings() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 relative">
             {isLoading && (
               <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-xl">
-                <div className="animate-spin w-8 h-8 border-4 border-[#b45309] border-t-transparent rounded-full"></div>
+                <div className="animate-spin w-8 h-8 border-4 border-[#a14000] border-t-transparent rounded-full"></div>
               </div>
             )}
             <h3 className="text-[15px] font-extrabold text-slate-800 mb-6">Platform Settings</h3>
             
             <div className="space-y-6 max-w-4xl">
               {/* Platform Name */}
-              <div className="space-y-2">
-                <label className="block text-[13px] font-bold text-slate-600">Platform Name</label>
+              <div className="space-y-1.5">
+                <label className="block text-[13px] font-bold text-slate-600">Platform Name *</label>
                 <input 
                   type="text" 
+                  maxLength={30}
                   value={platformName}
-                  onChange={(e) => setPlatformName(e.target.value)}
-                  placeholder="FleetCommand" 
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all"
+                  onKeyDown={handlePlatformNameKeyDown}
+                  onChange={(e) => handleFieldChange("platformName", e.target.value)}
+                  onBlur={() => handleBlur("platformName")}
+                  placeholder="FleetCommand (2-30 chars)" 
+                  className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none transition-all ${
+                    errors.platformName 
+                      ? "border-red-500 focus:ring-2 focus:ring-red-500/20" 
+                      : "border-slate-200 focus:ring-2 focus:ring-[#a14000]/20 focus:border-[#a14000]"
+                  }`}
                 />
+                {errors.platformName && <p className="text-xs text-red-500 font-medium">{errors.platformName}</p>}
               </div>
 
               {/* Timezone & Language */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="block text-[13px] font-bold text-slate-600">Timezone</label>
+                <div className="space-y-1.5">
+                  <label className="block text-[13px] font-bold text-slate-600">Timezone *</label>
                   <select 
                     value={timezone}
-                    onChange={(e) => setTimezone(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all cursor-pointer"
+                    onChange={(e) => handleFieldChange("timezone", e.target.value)}
+                    onBlur={() => handleBlur("timezone")}
+                    className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none transition-all cursor-pointer ${
+                      errors.timezone 
+                        ? "border-red-500 focus:ring-2 focus:ring-red-500/20" 
+                        : "border-slate-200 focus:ring-2 focus:ring-[#a14000]/20 focus:border-[#a14000]"
+                    }`}
                   >
                     <option value="" disabled>Select Timezone</option>
                     {timezone && !TIMEZONE_OPTIONS.some(tz => tz.value === timezone || tz.label === timezone) && (
@@ -272,13 +368,19 @@ export default function Settings() {
                       </option>
                     ))}
                   </select>
+                  {errors.timezone && <p className="text-xs text-red-500 font-medium">{errors.timezone}</p>}
                 </div>
-                <div className="space-y-2">
-                  <label className="block text-[13px] font-bold text-slate-600">Language</label>
+                <div className="space-y-1.5">
+                  <label className="block text-[13px] font-bold text-slate-600">Language *</label>
                   <select 
                     value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all cursor-pointer"
+                    onChange={(e) => handleFieldChange("language", e.target.value)}
+                    onBlur={() => handleBlur("language")}
+                    className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none transition-all cursor-pointer ${
+                      errors.language 
+                        ? "border-red-500 focus:ring-2 focus:ring-red-500/20" 
+                        : "border-slate-200 focus:ring-2 focus:ring-[#a14000]/20 focus:border-[#a14000]"
+                    }`}
                   >
                     <option value="" disabled>Select Language</option>
                     {language && !LANGUAGE_OPTIONS.some(lang => lang.value === language || lang.label === language) && (
@@ -290,12 +392,13 @@ export default function Settings() {
                       </option>
                     ))}
                   </select>
+                  {errors.language && <p className="text-xs text-red-500 font-medium">{errors.language}</p>}
                 </div>
               </div>
 
               {/* Platform Logo */}
-              <div className="space-y-3 pt-2">
-                <label className="block text-[13px] font-bold text-slate-600">Platform Logo</label>
+              <div className="space-y-2 pt-2">
+                <label className="block text-[13px] font-bold text-slate-600">Platform Logo (JPG, JPEG, PNG only)</label>
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-white rounded-lg border border-slate-200 flex items-center justify-center p-1.5 shadow-sm overflow-hidden">
                     <img src={logoUrl} alt="Platform Logo" className="w-full h-full object-contain" />
@@ -305,17 +408,12 @@ export default function Settings() {
                     type="file" 
                     id="logo-upload" 
                     className="hidden" 
-                    accept="image/*" 
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        const file = e.target.files[0];
-                        setLogoFile(file);
-                        setLogoUrl(URL.createObjectURL(file));
-                      }
-                    }} 
+                    accept=".jpg,.jpeg,.png,image/jpeg,image/png" 
+                    onChange={handleLogoFileChange} 
                   />
                   
                   <button 
+                    type="button"
                     onClick={() => document.getElementById('logo-upload').click()}
                     className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
                   >
@@ -323,6 +421,7 @@ export default function Settings() {
                     Upload New Logo
                   </button>
                 </div>
+                {errors.logo && <p className="text-xs text-red-500 font-medium">{errors.logo}</p>}
               </div>
 
               <hr className="border-slate-200 my-6" />
@@ -335,105 +434,160 @@ export default function Settings() {
                 </div>
 
                 {/* Footer Description */}
-                <div className="space-y-2">
-                  <label className="block text-[13px] font-bold text-slate-600">Footer Description</label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[13px] font-bold text-slate-600">Footer Description *</label>
+                    <span className="text-[11px] font-medium text-slate-400">{footerDescription.length}/500</span>
+                  </div>
                   <textarea 
                     rows={3}
+                    maxLength={500}
                     value={footerDescription}
-                    onChange={(e) => setFooterDescription(e.target.value)}
-                    placeholder="Enter short company description for landing footer..." 
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all resize-none"
+                    onChange={(e) => handleFieldChange("footerDescription", e.target.value)}
+                    onBlur={() => handleBlur("footerDescription")}
+                    placeholder="Enter short company description for landing footer (10-500 chars)..." 
+                    className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none transition-all resize-none ${
+                      errors.footerDescription 
+                        ? "border-red-500 focus:ring-2 focus:ring-red-500/20" 
+                        : "border-slate-200 focus:ring-2 focus:ring-[#a14000]/20 focus:border-[#a14000]"
+                    }`}
                   />
+                  {errors.footerDescription && <p className="text-xs text-red-500 font-medium">{errors.footerDescription}</p>}
                 </div>
 
                 {/* Contact Phone & Contact Email */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="block text-[13px] font-bold text-slate-600">Support / Contact Phone</label>
+                  <div className="space-y-1.5">
+                    <label className="block text-[13px] font-bold text-slate-600">Support / Contact Phone *</label>
                     <input 
                       type="tel"
                       inputMode="numeric"
                       maxLength={10}
                       value={contactPhone}
-                      onChange={handlePhoneChange}
+                      onChange={(e) => handleFieldChange("contactPhone", e.target.value)}
                       onKeyDown={handlePhoneKeyDown}
-                      onBlur={handlePhoneBlur}
-                      placeholder="Enter 10-digit mobile number" 
+                      onBlur={() => handleBlur("contactPhone")}
+                      placeholder="10-digit mobile number" 
                       className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none transition-all ${
-                        phoneError 
-                          ? "border-red-500 focus:ring-2 focus:ring-red-500/20 focus:border-red-500" 
-                          : "border-slate-200 focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309]"
+                        errors.contactPhone 
+                          ? "border-red-500 focus:ring-2 focus:ring-red-500/20" 
+                          : "border-slate-200 focus:ring-2 focus:ring-[#a14000]/20 focus:border-[#a14000]"
                       }`}
                     />
-                    {phoneError && (
-                      <p className="text-xs text-red-500 font-medium mt-1">{phoneError}</p>
+                    {errors.contactPhone && (
+                      <p className="text-xs text-red-500 font-medium">{errors.contactPhone}</p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <label className="block text-[13px] font-bold text-slate-600">Support / Contact Email</label>
+                  <div className="space-y-1.5">
+                    <label className="block text-[13px] font-bold text-slate-600">Support / Contact Email *</label>
                     <input 
                       type="email" 
+                      maxLength={30}
                       value={contactEmail}
-                      onChange={(e) => setContactEmail(e.target.value)}
-                      placeholder="support@fleet.com" 
-                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all"
+                      onChange={(e) => handleFieldChange("contactEmail", e.target.value)}
+                      onBlur={() => handleBlur("contactEmail")}
+                      placeholder="support@fleet.com (5-30 chars)" 
+                      className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none transition-all ${
+                        errors.contactEmail 
+                          ? "border-red-500 focus:ring-2 focus:ring-red-500/20" 
+                          : "border-slate-200 focus:ring-2 focus:ring-[#a14000]/20 focus:border-[#a14000]"
+                      }`}
                     />
+                    {errors.contactEmail && <p className="text-xs text-red-500 font-medium">{errors.contactEmail}</p>}
                   </div>
                 </div>
 
                 {/* Contact Address */}
-                <div className="space-y-2">
-                  <label className="block text-[13px] font-bold text-slate-600">HQ / Contact Address</label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[13px] font-bold text-slate-600">HQ / Contact Address *</label>
+                    <span className="text-[11px] font-medium text-slate-400">{contactAddress.length}/100</span>
+                  </div>
                   <input 
                     type="text" 
+                    maxLength={100}
                     value={contactAddress}
-                    onChange={(e) => setContactAddress(e.target.value)}
-                    placeholder="Tech City, Bengaluru, Karnataka, India" 
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all"
+                    onChange={(e) => handleFieldChange("contactAddress", e.target.value)}
+                    onBlur={() => handleBlur("contactAddress")}
+                    placeholder="Tech City, Bengaluru, Karnataka, India (5-100 chars)" 
+                    className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm text-slate-800 focus:outline-none transition-all ${
+                      errors.contactAddress 
+                        ? "border-red-500 focus:ring-2 focus:ring-red-500/20" 
+                        : "border-slate-200 focus:ring-2 focus:ring-[#a14000]/20 focus:border-[#a14000]"
+                    }`}
                   />
+                  {errors.contactAddress && <p className="text-xs text-red-500 font-medium">{errors.contactAddress}</p>}
                 </div>
 
                 {/* Social Media Links */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <label className="block text-[13px] font-bold text-slate-600">Facebook URL</label>
                     <input 
                       type="text" 
+                      maxLength={100}
                       value={facebookUrl}
-                      onChange={(e) => setFacebookUrl(e.target.value)}
+                      onChange={(e) => handleFieldChange("facebookUrl", e.target.value)}
+                      onBlur={() => handleBlur("facebookUrl")}
                       placeholder="https://facebook.com/yourbrand" 
-                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all"
+                      className={`w-full px-4 py-2 bg-white border rounded-lg text-xs text-slate-800 focus:outline-none transition-all ${
+                        errors.facebookUrl 
+                          ? "border-red-500 focus:ring-2 focus:ring-red-500/20" 
+                          : "border-slate-200 focus:ring-2 focus:ring-[#a14000]/20 focus:border-[#a14000]"
+                      }`}
                     />
+                    {errors.facebookUrl && <p className="text-xs text-red-500 font-medium">{errors.facebookUrl}</p>}
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <label className="block text-[13px] font-bold text-slate-600">LinkedIn URL</label>
                     <input 
                       type="text" 
+                      maxLength={100}
                       value={linkedinUrl}
-                      onChange={(e) => setLinkedinUrl(e.target.value)}
+                      onChange={(e) => handleFieldChange("linkedinUrl", e.target.value)}
+                      onBlur={() => handleBlur("linkedinUrl")}
                       placeholder="https://linkedin.com/company/yourbrand" 
-                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all"
+                      className={`w-full px-4 py-2 bg-white border rounded-lg text-xs text-slate-800 focus:outline-none transition-all ${
+                        errors.linkedinUrl 
+                          ? "border-red-500 focus:ring-2 focus:ring-red-500/20" 
+                          : "border-slate-200 focus:ring-2 focus:ring-[#a14000]/20 focus:border-[#a14000]"
+                      }`}
                     />
+                    {errors.linkedinUrl && <p className="text-xs text-red-500 font-medium">{errors.linkedinUrl}</p>}
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <label className="block text-[13px] font-bold text-slate-600">Twitter URL</label>
                     <input 
                       type="text" 
+                      maxLength={100}
                       value={twitterUrl}
-                      onChange={(e) => setTwitterUrl(e.target.value)}
+                      onChange={(e) => handleFieldChange("twitterUrl", e.target.value)}
+                      onBlur={() => handleBlur("twitterUrl")}
                       placeholder="https://twitter.com/yourbrand" 
-                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all"
+                      className={`w-full px-4 py-2 bg-white border rounded-lg text-xs text-slate-800 focus:outline-none transition-all ${
+                        errors.twitterUrl 
+                          ? "border-red-500 focus:ring-2 focus:ring-red-500/20" 
+                          : "border-slate-200 focus:ring-2 focus:ring-[#a14000]/20 focus:border-[#a14000]"
+                      }`}
                     />
+                    {errors.twitterUrl && <p className="text-xs text-red-500 font-medium">{errors.twitterUrl}</p>}
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <label className="block text-[13px] font-bold text-slate-600">YouTube URL</label>
                     <input 
                       type="text" 
+                      maxLength={100}
                       value={youtubeUrl}
-                      onChange={(e) => setYoutubeUrl(e.target.value)}
+                      onChange={(e) => handleFieldChange("youtubeUrl", e.target.value)}
+                      onBlur={() => handleBlur("youtubeUrl")}
                       placeholder="https://youtube.com/@yourbrand" 
-                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all"
+                      className={`w-full px-4 py-2 bg-white border rounded-lg text-xs text-slate-800 focus:outline-none transition-all ${
+                        errors.youtubeUrl 
+                          ? "border-red-500 focus:ring-2 focus:ring-red-500/20" 
+                          : "border-slate-200 focus:ring-2 focus:ring-[#a14000]/20 focus:border-[#a14000]"
+                      }`}
                     />
+                    {errors.youtubeUrl && <p className="text-xs text-red-500 font-medium">{errors.youtubeUrl}</p>}
                   </div>
                 </div>
               </div>

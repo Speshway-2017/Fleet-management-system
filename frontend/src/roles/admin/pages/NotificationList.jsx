@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Bell, AlertTriangle, Activity, Check, CheckCircle2, AlertCircle, Mail } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
@@ -7,8 +7,14 @@ import { useAdmin } from "@/roles/admin/context/AdminContext";
 
 export default function NotificationList() {
   const [activeTab, setActiveTab] = useState("All");
-  const { notifications, markAllAsRead, markAsRead } = useAdmin();
+  const { notifications, markAllAsRead, markAsRead, fetchNotifications } = useAdmin();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (typeof fetchNotifications === "function") {
+      fetchNotifications();
+    }
+  }, []);
 
   const getIcon = (type) => {
     switch (type) {
@@ -29,19 +35,22 @@ export default function NotificationList() {
     }
   };
 
+  const isUnread = (n) => n.unread === true || n.isRead === false;
+
   const allCount = notifications.length;
-  const unreadCount = notifications.filter(n => n.unread).length;
-  const readCount = notifications.filter(n => !n.unread).length;
+  const unreadCount = notifications.filter(isUnread).length;
+  const readCount = notifications.filter(n => !isUnread(n)).length;
 
   const filteredNotifications = notifications.filter(n => {
-    if (activeTab === "Unread") return n.unread;
-    if (activeTab === "Read") return !n.unread;
+    if (activeTab === "Unread") return isUnread(n);
+    if (activeTab === "Read") return !isUnread(n);
     return true;
   });
 
   const grouped = filteredNotifications.reduce((acc, curr) => {
-    if (!acc[curr.group]) acc[curr.group] = [];
-    acc[curr.group].push(curr);
+    const groupKey = curr.group || "RECENT";
+    if (!acc[groupKey]) acc[groupKey] = [];
+    acc[groupKey].push(curr);
     return acc;
   }, {});
 
@@ -59,7 +68,7 @@ export default function NotificationList() {
             <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 flex items-center justify-between shadow-sm">
               <div className="min-w-0 pr-2">
                 <p className="text-[9px] sm:text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1 truncate">Total Notifications</p>
-                <h4 className="text-xl sm:text-2xl font-black text-slate-800">{notifications.length}</h4>
+                <h4 className="text-xl sm:text-2xl font-black text-slate-800">{allCount}</h4>
               </div>
               <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-slate-50 flex items-center justify-center text-slate-500">
                 <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -83,23 +92,23 @@ export default function NotificationList() {
 
             <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 flex items-center justify-between shadow-sm">
               <div className="min-w-0 pr-2">
-                <p className="text-[9px] sm:text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1 truncate">Alerts</p>
-                <h4 className="text-xl sm:text-2xl font-black text-slate-800">
-                  {notifications.filter(n => n.type === 'alert' || n.type === 'danger' || n.type === 'warning').length}
-                </h4>
+                <p className="text-[9px] sm:text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1 truncate">Read</p>
+                <h4 className="text-xl sm:text-2xl font-black text-emerald-600">{readCount}</h4>
               </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-amber-50 flex items-center justify-center text-amber-500">
-                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 flex items-center justify-between shadow-sm">
               <div className="min-w-0 pr-2">
-                <p className="text-[9px] sm:text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1 truncate">System Events</p>
-                <h4 className="text-xl sm:text-2xl font-black text-slate-800">{notifications.filter(n => n.type === 'system').length}</h4>
+                <p className="text-[9px] sm:text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1 truncate">Alerts & System</p>
+                <h4 className="text-xl sm:text-2xl font-black text-slate-800">
+                  {notifications.filter(n => n.type === 'alert' || n.type === 'danger' || n.type === 'warning' || n.type === 'system').length}
+                </h4>
               </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-amber-50 flex items-center justify-center text-amber-500">
+                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
           </div>
@@ -112,19 +121,19 @@ export default function NotificationList() {
               <div className="inline-flex overflow-x-auto no-scrollbar max-w-full items-center p-1 bg-white border border-slate-200 rounded-full shadow-sm">
                 <button 
                   onClick={() => setActiveTab("All")}
-                  className={`px-5 py-2 text-[13px] font-bold rounded-full transition-colors ${activeTab === "All" ? "bg-[#0f172a] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+                  className={`px-5 py-2 text-[13px] font-bold rounded-full transition-colors cursor-pointer ${activeTab === "All" ? "bg-[#0f172a] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
                 >
                   All ({allCount})
                 </button>
                 <button 
                   onClick={() => setActiveTab("Unread")}
-                  className={`px-5 py-2 text-[13px] font-bold rounded-full transition-colors ${activeTab === "Unread" ? "bg-[#0f172a] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+                  className={`px-5 py-2 text-[13px] font-bold rounded-full transition-colors cursor-pointer ${activeTab === "Unread" ? "bg-[#0f172a] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
                 >
                   Unread ({unreadCount})
                 </button>
                 <button 
                   onClick={() => setActiveTab("Read")}
-                  className={`px-5 py-2 text-[13px] font-bold rounded-full transition-colors ${activeTab === "Read" ? "bg-[#0f172a] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+                  className={`px-5 py-2 text-[13px] font-bold rounded-full transition-colors cursor-pointer ${activeTab === "Read" ? "bg-[#0f172a] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
                 >
                   Read ({readCount})
                 </button>
@@ -132,7 +141,12 @@ export default function NotificationList() {
 
               <button 
                 onClick={markAllAsRead}
-                className="flex items-center justify-center w-auto self-end sm:self-auto gap-2 px-4 py-2 text-[13px] font-bold text-[#b45309] hover:bg-orange-50 rounded-lg transition-colors whitespace-nowrap"
+                disabled={unreadCount === 0}
+                className={`flex items-center justify-center w-auto self-end sm:self-auto gap-2 px-4 py-2 text-[13px] font-bold rounded-lg transition-colors whitespace-nowrap ${
+                  unreadCount === 0
+                    ? "text-slate-400 cursor-not-allowed bg-slate-50"
+                    : "text-[#b45309] hover:bg-orange-50 cursor-pointer"
+                }`}
               >
                 <Check className="w-4 h-4" />
                 Mark all as read

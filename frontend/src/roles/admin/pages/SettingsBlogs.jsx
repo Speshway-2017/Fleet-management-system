@@ -5,12 +5,14 @@ import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import toast from "react-hot-toast";
 import { adminApi } from "@/api/adminApi";
 import { Plus, Edit2, Trash2, X } from "lucide-react";
+import { blogSchema, validateField, validateForm } from "@/validations";
 
 export default function SettingsBlogs() {
   const [blogs, setBlogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingBlog, setEditingBlog] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -22,6 +24,7 @@ export default function SettingsBlogs() {
     readTime: "5 min read",
     date: ""
   });
+  const [errors, setErrors] = useState({});
 
   const loadBlogs = async () => {
     try {
@@ -50,20 +53,22 @@ export default function SettingsBlogs() {
       readTime: "5 min read",
       date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
     });
+    setErrors({});
     setShowModal(true);
   };
 
   const handleOpenEdit = (blog) => {
     setEditingBlog(blog);
     setFormData({
-      title: blog.title,
-      category: blog.category,
-      summary: blog.summary,
-      content: Array.isArray(blog.content) ? blog.content.join("\n\n") : blog.content,
-      image: blog.image,
-      readTime: blog.readTime,
+      title: blog.title || "",
+      category: blog.category || "Operations",
+      summary: blog.summary || "",
+      content: Array.isArray(blog.content) ? blog.content.join("\n\n") : (blog.content || ""),
+      image: blog.image || "",
+      readTime: blog.readTime || "5 min read",
       date: blog.date || new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
     });
+    setErrors({});
     setShowModal(true);
   };
 
@@ -78,16 +83,67 @@ export default function SettingsBlogs() {
     }
   };
 
+  const handleFieldChange = (field, value) => {
+    let cleanValue = value;
+    let customError = "";
+
+    if (field === "title") {
+      cleanValue = value.replace(/[^a-zA-Z\s]/g, "").slice(0, 100);
+      if (value !== cleanValue && value.length > 0) {
+        customError = "Title must contain alphabets only (numbers & symbols are not allowed).";
+      }
+    } else if (field === "readTime") {
+      cleanValue = value.slice(0, 20);
+    } else if (field === "image") {
+      cleanValue = value.slice(0, 300);
+    } else if (field === "summary") {
+      cleanValue = value.slice(0, 250);
+    } else if (field === "content") {
+      cleanValue = value.slice(0, 5000);
+    }
+
+    const updated = { ...formData, [field]: cleanValue };
+    setFormData(updated);
+
+    if (customError) {
+      setErrors(prev => ({ ...prev, [field]: customError }));
+    } else {
+      const fieldError = validateField(blogSchema, field, cleanValue, updated);
+      setErrors(prev => ({ ...prev, [field]: fieldError }));
+    }
+  };
+
+  const handleTitleKeyDown = (e) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!/^[a-zA-Z\s]$/.test(e.key)) {
+      e.preventDefault();
+      setErrors(prev => ({ ...prev, title: "Title must contain alphabets only (numbers & symbols are not allowed)." }));
+    } else {
+      if (errors.title?.includes("must contain alphabets only")) {
+        setErrors(prev => ({ ...prev, title: "" }));
+      }
+    }
+  };
+
+  const handleBlur = (field) => {
+    const fieldError = validateField(blogSchema, field, formData[field], formData);
+    setErrors(prev => ({ ...prev, [field]: fieldError }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title || !formData.category || !formData.summary || !formData.content || !formData.image) {
-      toast.error("Please fill in all required fields.");
+    
+    const { isValid, errors: validationErrors } = validateForm(blogSchema, formData);
+    if (!isValid) {
+      setErrors(validationErrors);
+      const firstError = Object.values(validationErrors)[0];
+      toast.error(firstError || "Please fix all validation errors before publishing.");
       return;
     }
 
-    // Split content by double newlines into paragraphs
+    // Split content by double or single newlines into paragraphs
     const paragraphs = formData.content
-      .split("\n")
+      .split(/\n+/)
       .map(p => p.trim())
       .filter(Boolean);
 
@@ -96,6 +152,7 @@ export default function SettingsBlogs() {
       content: paragraphs
     };
 
+    setIsSubmitting(true);
     try {
       if (editingBlog) {
         await adminApi.updateBlog(editingBlog._id, payload);
@@ -107,7 +164,10 @@ export default function SettingsBlogs() {
       setShowModal(false);
       loadBlogs();
     } catch (error) {
-      toast.error("Failed to save blog");
+      const msg = error.response?.data?.message || "Failed to save blog";
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -162,35 +222,66 @@ export default function SettingsBlogs() {
                 <div className="animate-spin w-8 h-8 border-4 border-[#a14000] border-t-transparent rounded-full"></div>
               </div>
             )}
-            
-            <h3 className="text-[15px] font-extrabold text-slate-800 mb-6">Manage Public Blog Articles</h3>
 
-            {blogs.length === 0 ? (
-              <div className="text-center py-12 text-slate-400 font-semibold">
-                No blog posts found. Click "Add New Blog" to write one.
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-[15px] font-extrabold text-slate-800">Published Blog Articles</h3>
+                <p className="text-xs text-slate-500">Manage all articles visible on the public fleet blog page.</p>
+              </div>
+              <span className="text-xs font-bold px-3 py-1 bg-slate-100 text-slate-600 rounded-full">
+                {blogs.length} {blogs.length === 1 ? 'Article' : 'Articles'}
+              </span>
+            </div>
+
+            {blogs.length === 0 && !isLoading ? (
+              <div className="text-center py-12 border-2 border-dashed border-slate-100 rounded-2xl">
+                <p className="text-sm font-bold text-slate-400">No blog articles published yet.</p>
+                <button
+                  onClick={handleOpenAdd}
+                  className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-[#a14000] hover:underline"
+                >
+                  <Plus className="w-4 h-4" /> Write your first article
+                </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
                 {blogs.map((blog) => (
-                  <div key={blog._id} className="border border-slate-100 rounded-2xl overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow">
-                    <div className="relative h-40 bg-slate-100">
-                      <img src={blog.image} alt={blog.title} className="w-full h-full object-cover" />
-                      <span className="absolute top-3 left-3 bg-[#a14000] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  <div
+                    key={blog._id}
+                    className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-full hover:shadow-md transition-shadow"
+                  >
+                    <div className="h-44 w-full bg-slate-100 relative overflow-hidden shrink-0">
+                      <img
+                        src={blog.image}
+                        alt={blog.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <span className="absolute top-3 left-3 px-2.5 py-1 bg-white/90 backdrop-blur-sm text-[10px] font-extrabold uppercase tracking-wider text-slate-800 rounded-lg shadow-sm">
                         {blog.category}
                       </span>
                     </div>
 
-                    <div className="p-5 flex-1 flex flex-col justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
-                          <span>{blog.date}</span>
-                          <span>{blog.readTime}</span>
-                        </div>
-                        <h4 className="font-extrabold text-sm text-slate-800 line-clamp-1">{blog.title}</h4>
-                        <p className="text-xs font-semibold text-slate-500 line-clamp-2">{blog.summary}</p>
+                    <div className="p-5 flex flex-col flex-1">
+                      <div className="flex items-center justify-between text-[11px] font-medium text-slate-400 mb-2">
+                        <span>{blog.date}</span>
+                        <span>{blog.readTime}</span>
                       </div>
 
-                      <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-slate-100">
+                      <h4
+                        className="text-sm font-bold text-slate-900 mb-2 line-clamp-2"
+                        title={blog.title}
+                      >
+                        {blog.title}
+                      </h4>
+
+                      <p
+                        className="text-xs text-slate-500 line-clamp-3 mb-4 flex-1"
+                        title={blog.summary}
+                      >
+                        {blog.summary}
+                      </p>
+
+                      <div className="flex justify-end gap-2 pt-4 mt-auto border-t border-slate-100 shrink-0">
                         <button
                           onClick={() => handleOpenEdit(blog)}
                           className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 hover:text-[#a14000] hover:bg-slate-50 rounded-lg text-xs font-bold transition-all cursor-pointer"
@@ -230,15 +321,23 @@ export default function SettingsBlogs() {
 
             <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Title *</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Title *</label>
+                  <span className="text-[10px] text-slate-400">{formData.title.length}/100</span>
+                </div>
                 <input
                   type="text"
-                  required
+                  maxLength={100}
                   value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
-                  placeholder="e.g. How Fleet Command Optimizes Routes"
+                  onKeyDown={handleTitleKeyDown}
+                  onChange={(e) => handleFieldChange("title", e.target.value)}
+                  onBlur={() => handleBlur("title")}
+                  className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none transition-all ${
+                    errors.title ? "border-red-500 focus:ring-2 focus:ring-red-500/20" : "border-slate-200 focus:border-slate-300"
+                  }`}
+                  placeholder="e.g. How Fleet Command Optimizes Routes (3-100 chars)"
                 />
+                {errors.title && <p className="text-[11px] text-red-500 font-medium">{errors.title}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -246,8 +345,11 @@ export default function SettingsBlogs() {
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Category *</label>
                   <select
                     value={formData.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
+                    onChange={(e) => handleFieldChange("category", e.target.value)}
+                    onBlur={() => handleBlur("category")}
+                    className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none transition-all cursor-pointer ${
+                      errors.category ? "border-red-500 focus:ring-2 focus:ring-red-500/20" : "border-slate-200 focus:border-slate-300"
+                    }`}
                   >
                     <option value="Operations">Operations</option>
                     <option value="Security">Security</option>
@@ -255,55 +357,84 @@ export default function SettingsBlogs() {
                     <option value="Compliance">Compliance</option>
                     <option value="Business">Business</option>
                   </select>
+                  {errors.category && <p className="text-[11px] text-red-500 font-medium">{errors.category}</p>}
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Read Time (Est) *</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Read Time (Est) *</label>
+                    <span className="text-[10px] text-slate-400">{formData.readTime.length}/20</span>
+                  </div>
                   <input
                     type="text"
-                    required
+                    maxLength={20}
                     value={formData.readTime}
-                    onChange={(e) => setFormData(prev => ({ ...prev, readTime: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
+                    onChange={(e) => handleFieldChange("readTime", e.target.value)}
+                    onBlur={() => handleBlur("readTime")}
+                    className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none transition-all ${
+                      errors.readTime ? "border-red-500 focus:ring-2 focus:ring-red-500/20" : "border-slate-200 focus:border-slate-300"
+                    }`}
                     placeholder="e.g. 5 min read"
                   />
+                  {errors.readTime && <p className="text-[11px] text-red-500 font-medium">{errors.readTime}</p>}
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Banner Image URL *</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Banner Image URL *</label>
+                  <span className="text-[10px] text-slate-400">{formData.image.length}/300</span>
+                </div>
                 <input
                   type="text"
-                  required
+                  maxLength={300}
                   value={formData.image}
-                  onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
+                  onChange={(e) => handleFieldChange("image", e.target.value)}
+                  onBlur={() => handleBlur("image")}
+                  className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none transition-all ${
+                    errors.image ? "border-red-500 focus:ring-2 focus:ring-red-500/20" : "border-slate-200 focus:border-slate-300"
+                  }`}
                   placeholder="https://images.unsplash.com/..."
                 />
+                {errors.image && <p className="text-[11px] text-red-500 font-medium">{errors.image}</p>}
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Short Summary *</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Short Summary *</label>
+                  <span className="text-[10px] text-slate-400">{formData.summary.length}/250</span>
+                </div>
                 <input
                   type="text"
-                  required
+                  maxLength={250}
                   value={formData.summary}
-                  onChange={(e) => setFormData(prev => ({ ...prev, summary: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
-                  placeholder="A quick 1-2 sentence preview of the article."
+                  onChange={(e) => handleFieldChange("summary", e.target.value)}
+                  onBlur={() => handleBlur("summary")}
+                  className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none transition-all ${
+                    errors.summary ? "border-red-500 focus:ring-2 focus:ring-red-500/20" : "border-slate-200 focus:border-slate-300"
+                  }`}
+                  placeholder="A quick 1-2 sentence preview of the article (10-250 chars)."
                 />
+                {errors.summary && <p className="text-[11px] text-red-500 font-medium">{errors.summary}</p>}
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Article Content * (Separate paragraphs with newlines)</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Article Content * (Separate paragraphs with newlines)</label>
+                  <span className="text-[10px] text-slate-400">{formData.content.length}/5000</span>
+                </div>
                 <textarea
                   rows="6"
-                  required
+                  maxLength={5000}
                   value={formData.content}
-                  onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
-                  placeholder="Write the article text here. Hit Enter to separate into distinct paragraphs."
+                  onChange={(e) => handleFieldChange("content", e.target.value)}
+                  onBlur={() => handleBlur("content")}
+                  className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none transition-all ${
+                    errors.content ? "border-red-500 focus:ring-2 focus:ring-red-500/20" : "border-slate-200 focus:border-slate-300"
+                  }`}
+                  placeholder="Write the article text here. Hit Enter to separate into distinct paragraphs (20-5000 chars)."
                 />
+                {errors.content && <p className="text-[11px] text-red-500 font-medium">{errors.content}</p>}
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex justify-end gap-3 shrink-0">
@@ -316,9 +447,10 @@ export default function SettingsBlogs() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#a14000] hover:bg-[#853500] text-white text-xs font-bold rounded-lg transition-colors shadow-sm cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-5 py-2.5 bg-[#a14000] hover:bg-[#853500] text-white text-xs font-bold rounded-lg transition-colors shadow-sm cursor-pointer disabled:opacity-50"
                 >
-                  {editingBlog ? "Save Changes" : "Publish Article"}
+                  {isSubmitting ? "Publishing..." : editingBlog ? "Save Changes" : "Publish Article"}
                 </button>
               </div>
             </form>
