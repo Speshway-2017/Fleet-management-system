@@ -764,6 +764,7 @@ export default function VehicleManagement() {
                   </span>
                   <input
                     type="text"
+                    maxLength={20}
                     placeholder="Search vehicles by name, model, plate, or driver..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}

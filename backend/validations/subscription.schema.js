@@ -9,10 +9,20 @@ import {
 
 export const createSubscriptionPlanSchema = z.object({
   name: planNameSchema,
-  price: numericAmountSchema('Price'),
-  duration: z.string({ required_error: 'Duration is required.' }).trim().min(1, 'Duration is required.'),
+  price: numericAmountSchema('Monthly Price'),
+  duration: integerCountSchema('Duration (Days)'),
   description: planDescriptionSchema,
-  features: z.array(z.string()).optional(),
+  status: z.enum(['Active', 'Inactive']).optional(),
+  displayOrder: integerCountSchema('Display Order').optional(),
+  features: z
+    .array(
+      z.string({ invalid_type_error: 'Feature must be text.' })
+        .trim()
+        .min(2, 'Each feature must be at least 2 characters.')
+        .max(100, 'Each feature must not exceed 100 characters.')
+    )
+    .max(20, 'Maximum 20 features allowed.')
+    .optional(),
   maxVehicles: integerCountSchema('Number of Vehicles'),
   maxDrivers: integerCountSchema('Number of Drivers'),
   maxTrips: integerCountSchema('Number of Trips').optional(),
@@ -21,15 +31,25 @@ export const createSubscriptionPlanSchema = z.object({
 });
 
 export const updateSubscriptionPlanSchema = z.object({
-  name: z.string().trim().max(50, 'Plan name must not exceed 50 characters.')
-    .refine((val) => !val || !/\d/.test(val), { message: 'Plan name must not contain numbers.' })
+  name: z.string().trim().min(2, 'Plan name must be at least 2 characters.').max(50, 'Plan name must not exceed 50 characters.')
+    .refine((val) => !val || /^[a-zA-Z\s]+$/.test(val), { message: 'Plan name must contain alphabets only.' })
     .optional(),
-  price: numericAmountSchema('Price').optional(),
-  duration: z.string().trim().optional(),
-  description: z.string().trim().max(100, 'Description must not exceed 100 characters.')
+  price: numericAmountSchema('Monthly Price').optional(),
+  duration: integerCountSchema('Duration (Days)').optional(),
+  description: z.string().trim().min(5, 'Description must be at least 5 characters.').max(100, 'Description must not exceed 100 characters.')
     .refine((val) => !val || !/\d/.test(val), { message: 'Description must not contain numbers.' })
     .optional(),
-  features: z.array(z.string()).optional(),
+  status: z.enum(['Active', 'Inactive']).optional(),
+  displayOrder: integerCountSchema('Display Order').optional(),
+  features: z
+    .array(
+      z.string({ invalid_type_error: 'Feature must be text.' })
+        .trim()
+        .min(2, 'Each feature must be at least 2 characters.')
+        .max(100, 'Each feature must not exceed 100 characters.')
+    )
+    .max(20, 'Maximum 20 features allowed.')
+    .optional(),
   maxVehicles: integerCountSchema('Number of Vehicles').optional(),
   maxDrivers: integerCountSchema('Number of Drivers').optional(),
   maxTrips: integerCountSchema('Number of Trips').optional(),

@@ -16,28 +16,33 @@ export const managerItemSchema = z.object({
   name: managerNameSchema,
   email: emailSchema,
   password: passwordSchema,
-  confirmPassword: z.string({ required_error: 'Confirm password is required.' }).min(1, 'Confirm password is required.'),
+  confirmPassword: z
+    .string({ required_error: 'Confirm password is required.' })
+    .trim()
+    .min(1, 'Confirm password is required.')
+    .min(6, 'Confirm password must be at least 6 characters long.')
+    .max(50, 'Confirm password must not exceed 50 characters.'),
   phone: phoneSchema,
   showPassword: z.boolean().optional(),
   showConfirmPassword: z.boolean().optional()
-}).refine((data) => !data.confirmPassword || data.password === data.confirmPassword, {
+}).refine((data) => !data.confirmPassword || !data.password || data.password === data.confirmPassword, {
   message: 'Passwords do not match.',
   path: ['confirmPassword']
 });
 
 export const createOrganizationSchema = z.object({
   name: orgNameSchema,
-  email: emailSchema,
   industry: industrySchema,
+  email: emailSchema,
   phone: phoneSchema,
-  address: streetAddressSchema.optional(),
-  city: citySchema.optional(),
-  state: stateSchema.optional(),
-  country: countrySchema.optional(),
-  plan: z.string().optional(),
-  status: z.string().optional(),
-  managers: z.array(managerItemSchema).optional()
-});
+  address: streetAddressSchema,
+  city: citySchema,
+  state: stateSchema,
+  country: countrySchema,
+  plan: z.string().optional().nullable().or(z.literal('')),
+  status: z.string().optional().nullable().or(z.literal('')),
+  managers: z.array(managerItemSchema).min(1, 'At least one fleet manager is required.')
+}).passthrough();
 
 export const updateOrganizationSchema = z.object({
   name: orgNameSchema,

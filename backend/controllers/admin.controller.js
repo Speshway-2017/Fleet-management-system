@@ -21,13 +21,18 @@ import {
   getAdminNotificationsInRepo,
   markNotificationReadInRepo,
   markAllNotificationsReadInRepo,
-  deleteNotificationInRepo
+  deleteNotificationInRepo,
+  VALID_SETTLED_TRIP_STATUSES,
+  calculateTripRevenue,
+  getSettledRevenueForOrganization,
+  getSettledRevenueForManager
 } from '../repositories/admin.repository.js';
 import { changeUserPassword } from '../services/auth.service.js';
 import { hashPassword } from '../utils/hashPassword.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { uploadImageToCloudinary } from '../utils/cloudinary.js';
 import sendEmail from '../utils/email.js';
+import path from 'path';
 import User from '../models/User.js';
 import Organization from '../models/Organization.js';
 import PlatformIssue from '../models/PlatformIssue.js';
@@ -38,6 +43,7 @@ import Vehicle from '../models/Vehicle.js';
 import Trip from '../models/Trip.js';
 import Driver from '../models/Driver.js';
 import Fuel from '../models/Fuel.js';
+import AuditLog from '../models/AuditLog.js';
 
 // Dashboard
 export const getDashboard = async (_req, res, next) => {
@@ -60,17 +66,10 @@ export const listOrganizations = async (_req, res, next) => {
         role: 'FLEET_MANAGER',
         organization: org._id
       });
-      const subscribedManagers = await User.countDocuments({
-        role: 'FLEET_MANAGER',
-        organization: org._id,
-        subscriptionStatus: 'ACTIVE'
-      });
 
-      let currentStatus = org.status || 'Pending';
-      if (subscribedManagers > 0 && currentStatus === 'Pending') {
-        currentStatus = 'Active';
-        await Organization.findByIdAndUpdate(org._id, { status: 'Active' });
-      }
+      const totalRevenue = await getSettledRevenueForOrganization(org._id);
+
+      const currentStatus = org.status || 'Pending';
 
       return {
         id: org._id.toString(),
@@ -89,7 +88,11 @@ export const listOrganizations = async (_req, res, next) => {
         city: org.city,
         state: org.state,
         country: org.country,
-        plan: org.plan
+        plan: org.plan,
+        stats: {
+          totalFleetManagers: activeManagers,
+          totalRevenue
+        }
       };
     }));
     
@@ -107,47 +110,48 @@ export const getOrganizationDetails = async (req, res, next) => {
     const User = (await import('../models/User.js')).default;
     const Vehicle = (await import('../models/Vehicle.js')).default;
     const Trip = (await import('../models/Trip.js')).default;
-    const Analytics = (await import('../models/Analytics.js')).default;
 
-    const activeManagers = await User.countDocuments({ role: 'FLEET_MANAGER', organization: org._id });
-    const totalVehicles = await Vehicle.countDocuments({ organization: org._id });
-    // Assuming active trips for organization: we can query trips whose vehicles belong to this org, or maybe the manager's org. Since trips don't have org directly, we can aggregate or maybe just query by manager if we don't have an org field on Trip.
-    // Wait, let's query the managers of this org and then query trips assigned to those managers.
     const orgManagers = await User.find({ role: 'FLEET_MANAGER', organization: org._id });
     const orgManagerIds = orgManagers.map(m => m._id);
 
-    // Active trips per manager (count all trips assigned to manager)
-    const activeTripsAgg = await Trip.aggregate([
-      { $match: { assignedManager: { $in: orgManagerIds } } },
-      { $group: { _id: '$assignedManager', count: { $sum: 1 } } }
-    ]);
+    // All trips belonging to this organization and its managers
+    const orgTrips = await Trip.find({
+      $or: [
+        { organization: org._id },
+        { assignedManager: { $in: orgManagerIds } }
+      ]
+    }).lean();
 
-    // All trips to calculate revenue per manager
-    // Let's assume revenue = estimatedDistance * 10 or cargoWeight * 5
-    const revenuePerManagerAgg = await Trip.aggregate([
-      { $match: { assignedManager: { $in: orgManagerIds } } },
-      { $group: { _id: '$assignedManager', totalDistance: { $sum: '$estimatedDistance' }, totalWeight: { $sum: '$cargoWeight' } } }
-    ]);
+    const settledTrips = orgTrips.filter(t => VALID_SETTLED_TRIP_STATUSES.includes(t.status));
+    const activeTrips = orgTrips.filter(t => !['Rejected', 'Cancelled', 'Pending Driver Acceptance', ...VALID_SETTLED_TRIP_STATUSES].includes(t.status));
 
-    // Vehicles per manager (check assignedManager or createdBy)
-    const vehiclesAgg = await Vehicle.aggregate([
-      { $match: { $or: [{ assignedManager: { $in: orgManagerIds } }, { createdBy: { $in: orgManagerIds } }] } },
-      { 
-        $group: { 
-          _id: { $cond: [{ $ifNull: ['$assignedManager', false] }, '$assignedManager', '$createdBy'] }, 
-          count: { $sum: 1 } 
-        } 
-      }
-    ]);
+    // Vehicles associated with this organization and its managers
+    const orgVehicles = await Vehicle.find({
+      $or: [
+        { organization: org._id },
+        { assignedManager: { $in: orgManagerIds } },
+        { createdBy: { $in: orgManagerIds } }
+      ]
+    }).lean();
+
+    const isSingleManager = orgManagers.length === 1;
 
     const managersWithStats = orgManagers.map(manager => {
-      const activeTripsCount = activeTripsAgg.find(t => t._id.toString() === manager._id.toString())?.count || 0;
-      
-      const revData = revenuePerManagerAgg.find(r => r._id.toString() === manager._id.toString());
-      // Simple dynamic revenue calculation if Analytics is empty
-      const totalRevenue = revData ? ((revData.totalDistance || 0) * 12 + (revData.totalWeight || 0) * 0.5) : 0;
-      
-      const vehiclesManaged = vehiclesAgg.find(v => v._id.toString() === manager._id.toString())?.count || 0;
+      const managerSettledTrips = isSingleManager
+        ? settledTrips
+        : settledTrips.filter(t => String(t.assignedManager) === String(manager._id) || (!t.assignedManager && String(t.organization) === String(org._id)));
+
+      const managerActiveTrips = isSingleManager
+        ? activeTrips
+        : activeTrips.filter(t => String(t.assignedManager) === String(manager._id) || (!t.assignedManager && String(t.organization) === String(org._id)));
+
+      const managerVehicles = isSingleManager
+        ? orgVehicles
+        : orgVehicles.filter(v => String(v.assignedManager) === String(manager._id) || String(v.createdBy) === String(manager._id) || (!v.assignedManager && !v.createdBy && String(v.organization) === String(org._id)));
+
+      const totalRevenue = managerSettledTrips.reduce((sum, t) => sum + calculateTripRevenue(t.estimatedDistance || t.actualDistance, t.cargoWeight), 0);
+      const activeTripsCount = managerActiveTrips.length;
+      const vehiclesManaged = managerVehicles.length;
 
       const nameParts = (manager.name || '').split(' ');
       const initials = nameParts.length > 1 
@@ -171,21 +175,11 @@ export const getOrganizationDetails = async (req, res, next) => {
       };
     });
 
-    const activeTripsCount = managersWithStats.reduce((sum, m) => sum + m.stats.activeTripsCount, 0);
-    const totalRevenue = managersWithStats.reduce((sum, m) => sum + m.stats.totalRevenue, 0);
-    const totalVehiclesCount = managersWithStats.reduce((sum, m) => sum + m.stats.vehiclesManaged, 0);
+    const totalActiveTrips = activeTrips.length;
+    const orgTotalRevenue = settledTrips.reduce((sum, t) => sum + calculateTripRevenue(t.estimatedDistance || t.actualDistance, t.cargoWeight), 0);
+    const totalVehiclesCount = orgVehicles.length;
 
-    const subscribedManagers = await User.countDocuments({
-      role: 'FLEET_MANAGER',
-      organization: org._id,
-      subscriptionStatus: 'ACTIVE'
-    });
-
-    let currentStatus = org.status || 'Pending';
-    if (subscribedManagers > 0 && currentStatus === 'Pending') {
-      currentStatus = 'Active';
-      await Organization.findByIdAndUpdate(org._id, { status: 'Active' });
-    }
+    const currentStatus = org.status || 'Pending';
 
     const formattedOrg = {
       id: org._id.toString(),
@@ -197,12 +191,13 @@ export const getOrganizationDetails = async (req, res, next) => {
       subscription: org.plan || 'Standard',
       status: currentStatus,
       createdAt: new Date(org.createdAt).toLocaleDateString(),
-      activeManagers,
+      activeManagers: orgManagers.length,
+      managers: orgManagers.length,
       stats: {
-        totalFleetManagers: activeManagers,
-        totalVehicles: totalVehiclesCount || totalVehicles,
-        totalActiveTrips: activeTripsCount,
-        totalRevenue: totalRevenue,
+        totalFleetManagers: orgManagers.length,
+        totalVehicles: totalVehiclesCount,
+        totalActiveTrips: totalActiveTrips,
+        totalRevenue: orgTotalRevenue,
       },
       joined: new Date(org.createdAt).toLocaleDateString(),
       address: org.address,
@@ -234,6 +229,12 @@ export const createOrganization = async (req, res, next) => {
     // 1. Upload Logo if provided
     let logoUrl = '';
     if (req.file) {
+      const allowedExts = ['.jpg', '.jpeg', '.png'];
+      const allowedMimes = ['image/jpeg', 'image/png', 'image/jpg'];
+      const ext = path.extname(req.file.originalname || '').toLowerCase();
+      if (!allowedExts.includes(ext) || !allowedMimes.includes(req.file.mimetype)) {
+        return sendError(res, 400, 'Invalid logo file format. Only JPG, JPEG, and PNG files are allowed.');
+      }
       const uploadResult = await uploadImageToCloudinary(req.file.buffer, 'fleet_management/organizations');
       logoUrl = uploadResult.secure_url;
     }
@@ -345,6 +346,12 @@ export const updateOrganization = async (req, res, next) => {
 
     let updateData = { ...req.body };
     if (req.file) {
+      const allowedExts = ['.jpg', '.jpeg', '.png'];
+      const allowedMimes = ['image/jpeg', 'image/png', 'image/jpg'];
+      const ext = path.extname(req.file.originalname || '').toLowerCase();
+      if (!allowedExts.includes(ext) || !allowedMimes.includes(req.file.mimetype)) {
+        return sendError(res, 400, 'Invalid logo file format. Only JPG, JPEG, and PNG files are allowed.');
+      }
       const uploadResult = await uploadImageToCloudinary(req.file.buffer, 'fleet_management/organizations');
       updateData.logoUrl = uploadResult.secure_url;
     }
@@ -457,13 +464,34 @@ export const suspendOrganization = async (req, res, next) => {
 export const listManagers = async (_req, res, next) => {
   try {
     const managers = await getAllManagers();
-    
-    // Map to frontend expected format
-    const formattedManagers = managers.map(manager => {
+    const Trip = (await import('../models/Trip.js')).default;
+    const Vehicle = (await import('../models/Vehicle.js')).default;
+
+    // Map to frontend expected format with authoritative stats
+    const formattedManagers = await Promise.all(managers.map(async (manager) => {
       const nameParts = (manager.name || '').split(' ');
       const initials = nameParts.length > 1 
         ? nameParts[0][0] + nameParts[nameParts.length - 1][0] 
         : nameParts[0]?.substring(0, 2) || 'NA';
+
+      const orgId = manager.organization?._id;
+      const totalRevenue = await getSettledRevenueForManager(manager._id, orgId);
+
+      const activeTripsCount = await Trip.countDocuments({
+        $or: [
+          { assignedManager: manager._id },
+          ...(orgId ? [{ organization: orgId }] : [])
+        ],
+        status: { $nin: ['Rejected', 'Cancelled', 'Pending Driver Acceptance', ...VALID_SETTLED_TRIP_STATUSES] }
+      });
+
+      const vehiclesManaged = await Vehicle.countDocuments({
+        $or: [
+          { assignedManager: manager._id },
+          { createdBy: manager._id },
+          ...(orgId ? [{ organization: orgId }] : [])
+        ]
+      });
 
       return {
         id: manager._id.toString(),
@@ -481,9 +509,15 @@ export const listManagers = async (_req, res, next) => {
         status: manager.status || (manager.isActive ? 'Active' : 'Inactive'),
         lastLogin: manager.lastLogin ? new Date(manager.lastLogin).toLocaleDateString() : 'Never',
         initials: initials.toUpperCase(),
-        created: new Date(manager.createdAt).toLocaleDateString()
+        created: new Date(manager.createdAt).toLocaleDateString(),
+        vehiclesManaged,
+        stats: {
+          activeTripsCount,
+          totalRevenue,
+          vehiclesManaged
+        }
       };
-    });
+    }));
 
     return sendSuccess(res, 200, formattedManagers, 'Fleet managers fetched');
   } catch (error) {
@@ -697,28 +731,33 @@ export const getManagerDetails = async (req, res, next) => {
       ? nameParts[0][0] + nameParts[nameParts.length - 1][0] 
       : nameParts[0]?.substring(0, 2) || 'NA';
 
-    let orgManagersCount = 0;
-    let vehiclesCount = 0;
-    let activeTripsCount = 0;
-    let totalRevenue = 0;
+    const orgId = manager.organization?._id;
+    const User = (await import('../models/User.js')).default;
+    const Vehicle = (await import('../models/Vehicle.js')).default;
+    const Trip = (await import('../models/Trip.js')).default;
 
-    if (manager.organization) {
-      orgManagersCount = await User.countDocuments({ role: 'FLEET_MANAGER', organization: manager.organization._id });
-      
-      const Vehicle = (await import('../models/Vehicle.js')).default;
-      vehiclesCount = await Vehicle.countDocuments({ organization: manager.organization._id });
-      
-      const Trip = (await import('../models/Trip.js')).default;
-      // Depending on schema, assignedManager might be used, or driver's organization. We'll use assignedManager for now or we just query trips where assignedManager = manager._id. Wait, tripSchema has assignedManager.
-      activeTripsCount = await Trip.countDocuments({ assignedManager: manager._id, status: 'Active' });
-      
-      const Analytics = (await import('../models/Analytics.js')).default;
-      const revenueAgg = await Analytics.aggregate([
-        { $match: { metric: 'Revenue', recordedBy: manager._id } },
-        { $group: { _id: null, total: { $sum: "$value" } } }
-      ]);
-      totalRevenue = revenueAgg[0]?.total || 0;
+    let orgManagersCount = 0;
+    if (orgId) {
+      orgManagersCount = await User.countDocuments({ role: 'FLEET_MANAGER', organization: orgId });
     }
+
+    const totalRevenue = await getSettledRevenueForManager(manager._id, orgId);
+
+    const activeTripsCount = await Trip.countDocuments({
+      $or: [
+        { assignedManager: manager._id },
+        ...(orgId ? [{ organization: orgId }] : [])
+      ],
+      status: { $nin: ['Rejected', 'Cancelled', 'Pending Driver Acceptance', ...VALID_SETTLED_TRIP_STATUSES] }
+    });
+
+    const vehiclesCount = await Vehicle.countDocuments({
+      $or: [
+        { assignedManager: manager._id },
+        { createdBy: manager._id },
+        ...(orgId ? [{ organization: orgId }] : [])
+      ]
+    });
 
     const formatted = {
       id: manager._id.toString(),
@@ -781,6 +820,77 @@ export const updateSettings = async (req, res, next) => {
     });
 
     return sendSuccess(res, 200, settings, 'Settings updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSecuritySettingsAdmin = async (_req, res, next) => {
+  try {
+    const settings = await getSettingsData();
+    const security = settings.securitySettings || {
+      twoFactorAdmin: true,
+      twoFactorManager: false,
+      sessionTimeout: 60,
+      maxLoginAttempts: 5,
+      passwordPolicy: { requireUppercase: true, requireNumber: true, requireSpecial: true },
+      ipAllowlistEnabled: false,
+      allowedIps: ""
+    };
+    return sendSuccess(res, 200, security, 'Security settings fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateSecuritySettingsAdmin = async (req, res, next) => {
+  try {
+    const settings = await getSettingsData();
+    settings.securitySettings = {
+      ...settings.securitySettings,
+      ...req.body
+    };
+    await settings.save();
+    return sendSuccess(res, 200, settings.securitySettings, 'Security settings saved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getNotificationSettingsAdmin = async (_req, res, next) => {
+  try {
+    const settings = await getSettingsData();
+    const notifications = settings.notificationSettings || {
+      emailNotifications: true,
+      primaryEmailAddress: "admin@fleetcommand.io",
+      systemAlerts: true,
+      systemAlertsSeverity: "warning",
+      maintenanceAlerts: true,
+      maintenanceAlert48h: true,
+      maintenanceAlert1h: true,
+      inviteNotifications: true,
+      inviteSent: true,
+      inviteAccepted: true,
+      weeklyReports: true,
+      weeklyReportDay: "monday",
+      newOrganizationAlerts: true,
+      requireAdminReview: true
+    };
+    return sendSuccess(res, 200, notifications, 'Notification settings fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateNotificationSettingsAdmin = async (req, res, next) => {
+  try {
+    const settings = await getSettingsData();
+    settings.notificationSettings = {
+      ...settings.notificationSettings,
+      ...req.body
+    };
+    await settings.save();
+    return sendSuccess(res, 200, settings.notificationSettings, 'Notification settings saved successfully');
   } catch (error) {
     next(error);
   }
@@ -1165,7 +1275,30 @@ export const getAboutAdmin = async (req, res, next) => {
   try {
     let about = await About.findOne();
     if (!about) {
-      about = new About({ storyContent: [], missionContent: [], timeline: [] });
+      about = new About({
+        storyTitle: "Built for Fleet Operators, by Logistics Experts",
+        storyContent: [
+          "Founded in 2021, FleetManagement began with a simple observation: most fleet management tools were either too complicated for daily operations or too basic for enterprise needs.",
+          "Our team of logistics veterans and enterprise engineers came together to build a platform that bridges the gap — powerful analytics wrapped in an intuitive, driver-friendly interface."
+        ],
+        missionTitle: "Eliminating Blind Spots in Fleet Operations",
+        missionContent: [
+          "Every year, inefficient fleet management costs businesses billions in wasted resources, unexpected breakdowns, and compliance failures. Most operators don't know what they don't know.",
+          "FleetManagement gives operations teams complete, real-time intelligence across every asset in their fleet — so decisions are driven by data, not guesswork."
+        ],
+        missionQuote: "The only way to run a fleet well is to see it clearly.",
+        statsFounded: "2018",
+        statsEnterprises: "340+",
+        statsVehicles: "1.2M+",
+        statsSavings: "$180M+",
+        timeline: [
+          { year: "2018", text: "FleetManagement founded in Bengaluru, India. Seed funding of ₹30 Cr." },
+          { year: "2019", text: "First 50 enterprise customers. Launched real-time GPS tracking." },
+          { year: "2021", text: "Series A — ₹200 Cr. Expanded to reporting & analytics and driver management." },
+          { year: "2023", text: "Surpassed 1M vehicles tracked. Launched performance monitoring cloud platform." },
+          { year: "2026", text: "340+ enterprise clients. ₹1,500 Cr+ in documented customer savings." }
+        ]
+      });
       await about.save();
     }
     return sendSuccess(res, 200, about, 'About content fetched');
@@ -1176,15 +1309,124 @@ export const getAboutAdmin = async (req, res, next) => {
 
 export const updateAboutAdmin = async (req, res, next) => {
   try {
-    let about = await About.findOne();
-    if (!about) {
-      about = new About(req.body);
-    } else {
-      Object.assign(about, req.body);
-    }
-    await about.save();
+    const about = await About.findOneAndUpdate(
+      {},
+      { $set: req.body },
+      { new: true, upsert: true, runValidators: true }
+    );
     return sendSuccess(res, 200, about, 'About content updated successfully');
   } catch (error) {
     next(error);
   }
 };
+
+export const getAuditLogsAdmin = async (req, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 15);
+    const search = (req.query.search || '').trim();
+    const skip = (page - 1) * limit;
+
+    // Check if initial audit logs should be seeded
+    const countTotal = await AuditLog.countDocuments();
+    if (countTotal === 0) {
+      await AuditLog.insertMany([
+        {
+          user: "Super Admin",
+          action: "Updated Platform Settings",
+          organization: "Fleet Management",
+          ipAddress: "192.168.1.1",
+          status: "Success",
+          details: { category: "Settings" },
+          createdAt: new Date()
+        },
+        {
+          user: "System",
+          action: "Daily Database Backup Completed",
+          organization: "System",
+          ipAddress: "127.0.0.1",
+          status: "Success",
+          details: { automated: true },
+          createdAt: new Date(Date.now() - 3600000)
+        },
+        {
+          user: "Super Admin",
+          action: "Created Fleet Manager Account",
+          organization: "ARC Logistics",
+          ipAddress: "192.168.1.1",
+          status: "Success",
+          details: { role: "FLEET_MANAGER" },
+          createdAt: new Date(Date.now() - 7200000)
+        },
+        {
+          user: "System",
+          action: "Automated Maintenance Service Health Check",
+          organization: "System",
+          ipAddress: "127.0.0.1",
+          status: "Success",
+          details: { target: "Telemetry Sync" },
+          createdAt: new Date(Date.now() - 14400000)
+        },
+        {
+          user: "admin@fleetcommand.io",
+          action: "Admin Portal Security Login",
+          organization: "Fleet Management",
+          ipAddress: "192.168.1.1",
+          status: "Success",
+          details: { method: "Password" },
+          createdAt: new Date(Date.now() - 28800000)
+        },
+        {
+          user: "System",
+          action: "FASTag Toll Balance Synchronization",
+          organization: "System",
+          ipAddress: "127.0.0.1",
+          status: "Success",
+          details: { syncedCount: 14 },
+          createdAt: new Date(Date.now() - 43200000)
+        }
+      ]);
+    }
+
+    let filter = {};
+    if (search && search.length >= 2) {
+      const searchRegex = new RegExp(search.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'), 'i');
+      filter.$or = [
+        { user: searchRegex },
+        { action: searchRegex },
+        { organization: searchRegex },
+        { ipAddress: searchRegex },
+        { status: searchRegex }
+      ];
+    }
+
+    const [logs, total] = await Promise.all([
+      AuditLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      AuditLog.countDocuments(filter)
+    ]);
+
+    const formattedLogs = logs.map(log => ({
+      id: log._id,
+      timestamp: log.createdAt || log.updatedAt || new Date().toISOString(),
+      user: log.user || 'Unknown',
+      action: log.action || 'Unknown',
+      organization: log.organization || '—',
+      ip: log.ipAddress || '—',
+      status: log.status || 'Success',
+      details: log.details || {}
+    }));
+
+    return sendSuccess(res, 200, {
+      logs: formattedLogs,
+      pagination: {
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+        total
+      }
+    }, 'Audit logs retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+

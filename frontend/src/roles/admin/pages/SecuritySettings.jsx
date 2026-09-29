@@ -5,7 +5,7 @@ import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import toast from "react-hot-toast";
 import { adminApi } from "@/api/adminApi";
-import { ipAllowlistSchema, isValidIpv4 } from "@/validations";
+import { securitySettingsSchema, isValidIpv4, validateField, validateForm } from "@/validations";
 
 export default function SecuritySettings() {
   const navigate = useNavigate();
@@ -20,6 +20,7 @@ export default function SecuritySettings() {
   const [sessionTimeoutEnabled, setSessionTimeoutEnabled] = useState(true);
   const [sessionTimeout, setSessionTimeout] = useState(60);
   const [maxLoginAttempts, setMaxLoginAttempts] = useState(5);
+  const [attemptsError, setAttemptsError] = useState("");
   const [requireUppercase, setRequireUppercase] = useState(true);
   const [requireNumber, setRequireNumber] = useState(true);
   const [requireSpecial, setRequireSpecial] = useState(true);
@@ -27,10 +28,62 @@ export default function SecuritySettings() {
   const [allowedIps, setAllowedIps] = useState("");
   const [ipError, setIpError] = useState("");
 
+  const handleAttemptsKeyDown = (e) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+      setAttemptsError("Allowed attempts must contain numbers only (letters are not allowed).");
+    } else {
+      if (attemptsError?.includes("must contain numbers only")) {
+        setAttemptsError("");
+      }
+    }
+  };
+
+  const handleAttemptsChange = (value) => {
+    const clean = value.replace(/\D/g, "").slice(0, 2);
+    setMaxLoginAttempts(clean);
+    
+    if (value !== clean && value.length > 0) {
+      setAttemptsError("Allowed attempts must contain numbers only (letters are not allowed).");
+      return;
+    }
+
+    if (!clean) {
+      setAttemptsError("Allowed attempts is required.");
+      return;
+    }
+
+    const num = Number(clean);
+    if (num < 1 || num > 10) {
+      setAttemptsError("Allowed attempts must be between 1 and 10.");
+      return;
+    }
+
+    setAttemptsError("");
+  };
+
+  const handleAttemptsBlur = () => {
+    if (!maxLoginAttempts || String(maxLoginAttempts).trim() === "") {
+      setAttemptsError("Allowed attempts is required.");
+      return;
+    }
+    const num = Number(maxLoginAttempts);
+    if (num < 1 || num > 10) {
+      setAttemptsError("Allowed attempts must be between 1 and 10.");
+      return;
+    }
+    setAttemptsError("");
+  };
+
   const validateIps = (value) => {
     if (!value || !value.trim()) {
       setIpError("");
       return true;
+    }
+    if (value.length > 500) {
+      setIpError("Allowed IP addresses must not exceed 500 characters.");
+      return false;
     }
     const ips = value.split(/[\n,\s]+/).map((s) => s.trim()).filter(Boolean);
     if (ips.length === 0) {
@@ -39,7 +92,7 @@ export default function SecuritySettings() {
     }
     const allValid = ips.every((ip) => isValidIpv4(ip));
     if (!allValid) {
-      setIpError("Invalid Parameter");
+      setIpError("Invalid IP address format. Please enter valid IPv4 addresses (e.g. 192.168.1.1).");
       return false;
     }
     setIpError("");
@@ -48,13 +101,14 @@ export default function SecuritySettings() {
 
   const fetchSecuritySettings = async () => {
     try {
+      setIsLoading(true);
       const response = await adminApi.getSecuritySettings();
       const settings = response.data?.data || response.data;
       if (settings) {
         setTwoFactorAdmin(settings.twoFactorAdmin ?? true);
         setTwoFactorManager(settings.twoFactorManager ?? false);
         setSessionTimeout(settings.sessionTimeout || 60);
-        setMaxLoginAttempts(settings.maxLoginAttempts || 5);
+        setMaxLoginAttempts(settings.maxLoginAttempts ?? 5);
         
         if (settings.passwordPolicy) {
           setRequireUppercase(settings.passwordPolicy.requireUppercase ?? true);
@@ -85,31 +139,59 @@ export default function SecuritySettings() {
   const handleSave = async () => {
     const isIpValid = validateIps(allowedIps);
     if (!isIpValid) {
-      toast.error("Invalid Parameter");
+      toast.error(ipError || "Invalid IP address format.");
+      return;
+    }
+
+    if (!maxLoginAttempts || String(maxLoginAttempts).trim() === "") {
+      setAttemptsError("Allowed attempts is required.");
+      toast.error("Allowed attempts is required.");
+      return;
+    }
+
+    const numAttempts = Number(maxLoginAttempts);
+    if (isNaN(numAttempts) || numAttempts < 1 || numAttempts > 10) {
+      setAttemptsError("Allowed attempts must be between 1 and 10.");
+      toast.error("Allowed attempts must be between 1 and 10.");
+      return;
+    }
+
+    const payload = {
+      twoFactorAdmin,
+      twoFactorManager,
+      sessionTimeout: Number(sessionTimeout),
+      maxLoginAttempts: numAttempts,
+      passwordPolicy: {
+        requireUppercase,
+        requireNumber,
+        requireSpecial
+      },
+      ipAllowlistEnabled,
+      allowedIps: allowedIps.trim()
+    };
+
+    const { isValid, errors: validationErrors } = validateForm(securitySettingsSchema, payload);
+    if (!isValid) {
+      if (validationErrors.maxLoginAttempts) {
+        setAttemptsError(validationErrors.maxLoginAttempts);
+      }
+      if (validationErrors.allowedIps) {
+        setIpError(validationErrors.allowedIps);
+      }
+      const firstErr = Object.values(validationErrors)[0];
+      toast.error(firstErr || "Please fix validation errors before saving.");
       return;
     }
 
     setIsSaving(true);
     try {
-      const payload = {
-        twoFactorAdmin,
-        twoFactorManager,
-        sessionTimeout: Number(sessionTimeout),
-        maxLoginAttempts: Number(maxLoginAttempts),
-        passwordPolicy: {
-          requireUppercase,
-          requireNumber,
-          requireSpecial
-        },
-        ipAllowlistEnabled,
-        allowedIps
-      };
-      
       await adminApi.updateSecuritySettings(payload);
       toast.success("Security settings saved successfully!");
+      setAttemptsError("");
+      setIpError("");
       await fetchSecuritySettings();
     } catch (error) {
-      toast.error(error.message || "Failed to save security settings");
+      toast.error(error.response?.data?.message || error.message || "Failed to save security settings");
     } finally {
       setIsSaving(false);
     }
@@ -270,11 +352,20 @@ export default function SecuritySettings() {
                     <input 
                       type="number" 
                       value={maxLoginAttempts} 
-                      onChange={(e) => setMaxLoginAttempts(e.target.value)}
+                      onKeyDown={handleAttemptsKeyDown}
+                      onChange={(e) => handleAttemptsChange(e.target.value)}
+                      onBlur={handleAttemptsBlur}
                       min={1} 
                       max={10} 
-                      className="w-full max-w-xs px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309] transition-all" 
+                      className={`w-full max-w-xs px-3 py-2 bg-white border ${
+                        attemptsError
+                          ? 'border-red-500 ring-2 ring-red-500/20 focus:border-red-500 focus:ring-red-500/20'
+                          : 'border-slate-200 focus:ring-2 focus:ring-[#b45309]/20 focus:border-[#b45309]'
+                      } rounded-lg text-[13px] text-slate-700 focus:outline-none transition-all`} 
                     />
+                    {attemptsError && (
+                      <p className="text-xs text-red-500 font-medium mt-1">{attemptsError}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -335,11 +426,15 @@ export default function SecuritySettings() {
                 </div>
                 <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${activeCard === 'ip' ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'}`}>
                   <div className="pb-5 pt-2 pl-4 border-l-2 border-[#b45309] ml-2">
-                    <label className="block text-[12px] font-bold text-slate-600 mb-1">Allowed IP Addresses</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[12px] font-bold text-slate-600">Allowed IP Addresses</label>
+                      <span className="text-[11px] text-slate-400 font-medium">{allowedIps.length}/500</span>
+                    </div>
                     <textarea 
-                      value={allowedIps}
+                      maxLength={500}
+                      value={allowedIps} 
                       onChange={(e) => {
-                        const val = e.target.value;
+                        const val = e.target.value.slice(0, 500);
                         setAllowedIps(val);
                         validateIps(val);
                       }}

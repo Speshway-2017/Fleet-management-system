@@ -8,6 +8,7 @@ import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import AdminEmptyState from "@/components/common/AdminEmptyState";
 import { Plus, Eye, EyeOff, Pencil, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { formatCurrency } from "@/utils/currencyFormatter";
 
 // ── Shared tab strip ──────────────────────────────────────────────────────
 function OrgTabs({ activeId, active }) {
@@ -87,18 +88,55 @@ export default function OrganizationDetails() {
     }
   };
 
+  const handleManagerNameKeyDown = (e) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    if (!/^[a-zA-Z\s]$/.test(e.key)) {
+      e.preventDefault();
+      setManagerErrors(prev => ({
+        ...prev,
+        name: "Manager name must contain alphabets only (numbers & symbols are not allowed)"
+      }));
+    }
+  };
+
+  const handleManagerPhoneKeyDown = (e) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+      setManagerErrors(prev => ({
+        ...prev,
+        phone: "Phone number must contain numbers only (letters are not allowed)"
+      }));
+    }
+  };
+
   const handleManagerSubmit = async (e) => {
     e.preventDefault();
     const errors = {};
-    if (!managerForm.name) errors.name = "Required";
-    if (!managerForm.email) errors.email = "Required";
+    if (!managerForm.name) errors.name = "Full name is required";
+    else if (managerForm.name.trim().length < 2) errors.name = "Name must be at least 2 characters";
+    else if (managerForm.name.length > 20) errors.name = "Name must not exceed 20 characters";
+    else if (/[^a-zA-Z\s]/.test(managerForm.name)) errors.name = "Manager name must contain alphabets only (numbers & symbols are not allowed)";
+
+    if (!managerForm.email) errors.email = "Email address is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(managerForm.email)) errors.email = "Invalid email address format";
+
+    if (managerForm.phone) {
+      if (/[^0-9]/.test(managerForm.phone)) errors.phone = "Phone number must contain numbers only (letters are not allowed)";
+      else if (managerForm.phone.length !== 10) errors.phone = "Phone number must be exactly 10 digits";
+    }
+
     if (!isEditManagerOpen) {
-      if (!managerForm.password) errors.password = "Required";
-      else if (managerForm.password.length < 6) errors.password = "Min 6 characters";
-      if (managerForm.password !== managerForm.confirmPassword) errors.confirmPassword = "Passwords mismatch";
+      if (!managerForm.password) errors.password = "Password is required";
+      else if (managerForm.password.length < 6) errors.password = "Password must be at least 6 characters";
+      if (managerForm.password !== managerForm.confirmPassword) errors.confirmPassword = "Passwords do not match";
     } else {
-      if (managerForm.password && managerForm.password.length < 6) errors.password = "Min 6 characters";
-      if (managerForm.password !== managerForm.confirmPassword) errors.confirmPassword = "Passwords mismatch";
+      if (managerForm.password && managerForm.password.length < 6) errors.password = "Password must be at least 6 characters";
+      if (managerForm.password && managerForm.password !== managerForm.confirmPassword) errors.confirmPassword = "Passwords do not match";
     }
     
     setManagerErrors(errors);
@@ -292,26 +330,37 @@ export default function OrganizationDetails() {
           {/* Statistics */}
           <div className="mb-6">
             <h3 className="font-bold text-slate-800 text-sm mb-4">Statistics</h3>
-            <div className="bg-white rounded-xl p-6 md:p-8 border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-y-6 md:gap-0 md:divide-x divide-slate-100">
+            <div className="bg-white rounded-xl p-4 sm:p-6 md:p-8 border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-y-6 md:gap-0 md:divide-x divide-slate-100 items-stretch">
               
-              <div className="flex flex-col items-center justify-center p-2 md:p-4 w-full text-center">
-                <span className="text-2xl md:text-3xl font-black text-slate-800 mb-1">{org.stats?.totalFleetManagers ?? org.managers ?? 0}</span>
-                <span className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fleet Managers</span>
+              <div className="flex flex-col items-center justify-center p-2 md:p-4 w-full text-center min-w-0">
+                <span className="text-2xl sm:text-2xl md:text-3xl font-black text-slate-800 mb-1 truncate max-w-full" title={String(org.stats?.totalFleetManagers ?? org.managers ?? 0)}>
+                  {org.stats?.totalFleetManagers ?? org.managers ?? 0}
+                </span>
+                <span className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate max-w-full">Fleet Managers</span>
               </div>
               
-              <div className="flex flex-col items-center justify-center p-2 md:p-4 w-full text-center">
-                <span className="text-2xl md:text-3xl font-black text-slate-800 mb-1">{org.stats?.totalVehicles ?? 0}</span>
-                <span className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Registered Vehicles</span>
+              <div className="flex flex-col items-center justify-center p-2 md:p-4 w-full text-center min-w-0">
+                <span className="text-2xl sm:text-2xl md:text-3xl font-black text-slate-800 mb-1 truncate max-w-full" title={String(org.stats?.totalVehicles ?? 0)}>
+                  {org.stats?.totalVehicles ?? 0}
+                </span>
+                <span className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate max-w-full">Registered Vehicles</span>
               </div>
               
-              <div className="flex flex-col items-center justify-center p-2 md:p-4 w-full text-center">
-                <span className="text-2xl md:text-3xl font-black text-slate-800 mb-1">{org.stats?.totalActiveTrips ?? 0}</span>
-                <span className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Trips</span>
+              <div className="flex flex-col items-center justify-center p-2 md:p-4 w-full text-center min-w-0">
+                <span className="text-2xl sm:text-2xl md:text-3xl font-black text-slate-800 mb-1 truncate max-w-full" title={String(org.stats?.totalActiveTrips ?? 0)}>
+                  {org.stats?.totalActiveTrips ?? 0}
+                </span>
+                <span className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate max-w-full">Active Trips</span>
               </div>
               
-              <div className="flex flex-col items-center justify-center p-2 md:p-4 w-full text-center">
-                <span className="text-2xl md:text-3xl font-black text-slate-800 mb-1">₹{(org.stats?.totalRevenue ?? 0).toLocaleString('en-IN')}</span>
-                <span className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Revenue</span>
+              <div className="flex flex-col items-center justify-center p-2 md:p-4 w-full text-center min-w-0 px-2">
+                <span
+                  className="text-xl sm:text-2xl md:text-2xl lg:text-3xl font-black text-slate-800 mb-1 truncate max-w-full leading-tight"
+                  title={formatCurrency(org.stats?.totalRevenue)}
+                >
+                  {formatCurrency(org.stats?.totalRevenue)}
+                </span>
+                <span className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate max-w-full">Total Revenue</span>
               </div>
 
             </div>
@@ -365,7 +414,9 @@ export default function OrganizationDetails() {
                           {m.stats?.activeTripsCount ?? 0}
                         </td>
                         <td className="py-4 px-6 text-sm text-slate-800 font-semibold whitespace-nowrap text-center">
-                          ₹{(m.stats?.totalRevenue ?? 0).toLocaleString('en-IN')}
+                          <span className="max-w-[140px] truncate inline-block align-middle" title={formatCurrency(m.stats?.totalRevenue)}>
+                            {formatCurrency(m.stats?.totalRevenue)}
+                          </span>
                         </td>
                         <td className="py-4 px-6 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-3 flex-nowrap w-max mx-auto">
@@ -420,7 +471,9 @@ export default function OrganizationDetails() {
                     </div>
                     <div className="flex flex-col col-span-2 mt-1">
                       <span className="text-[10px] uppercase font-bold text-slate-400">Revenue Generated</span>
-                      <span className="text-sm font-medium text-slate-700">₹{(m.stats?.totalRevenue ?? 0).toLocaleString('en-IN')}</span>
+                      <span className="text-sm font-medium text-slate-700 truncate" title={formatCurrency(m.stats?.totalRevenue)}>
+                        {formatCurrency(m.stats?.totalRevenue)}
+                      </span>
                     </div>
                   </div>
 
@@ -451,17 +504,61 @@ export default function OrganizationDetails() {
                   <div className="space-y-4">
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">Full Name</label>
-                      <input type="text" value={managerForm.name} onChange={e => {setManagerForm(p => ({...p, name: e.target.value})); setManagerErrors(p => ({...p, name: ""}))}} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" placeholder="Manager Name" />
+                      <input 
+                        type="text" 
+                        maxLength={20}
+                        value={managerForm.name} 
+                        onKeyDown={handleManagerNameKeyDown}
+                        onChange={e => {
+                          const raw = e.target.value;
+                          let val = raw;
+                          let customErr = "";
+                          if (/[^a-zA-Z\s]/.test(raw)) {
+                            customErr = "Manager name must contain alphabets only (numbers & symbols are not allowed)";
+                            val = raw.replace(/[^a-zA-Z\s]/g, '');
+                          }
+                          setManagerForm(p => ({...p, name: val})); 
+                          setManagerErrors(p => ({...p, name: customErr}));
+                        }} 
+                        className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${managerErrors.name ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                        placeholder="Manager Name (alphabets only)" 
+                      />
                       {managerErrors.name && <p className="text-xs text-red-500 mt-1">{managerErrors.name}</p>}
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">Email Address</label>
-                      <input type="email" value={managerForm.email} onChange={e => {setManagerForm(p => ({...p, email: e.target.value})); setManagerErrors(p => ({...p, email: ""}))}} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" placeholder="Email Address" />
+                      <input 
+                        type="email" 
+                        maxLength={30}
+                        value={managerForm.email} 
+                        onChange={e => {setManagerForm(p => ({...p, email: e.target.value})); setManagerErrors(p => ({...p, email: ""}))}} 
+                        className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${managerErrors.email ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                        placeholder="Email Address" 
+                      />
                       {managerErrors.email && <p className="text-xs text-red-500 mt-1">{managerErrors.email}</p>}
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">Phone Number</label>
-                      <input type="tel" value={managerForm.phone} onChange={e => setManagerForm(p => ({...p, phone: e.target.value}))} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50" placeholder="Phone Number" />
+                      <input 
+                        type="tel" 
+                        maxLength={10}
+                        value={managerForm.phone} 
+                        onKeyDown={handleManagerPhoneKeyDown}
+                        onChange={e => {
+                          const raw = e.target.value;
+                          let val = raw;
+                          let customErr = "";
+                          if (/[^0-9]/.test(raw)) {
+                            customErr = "Phone number must contain numbers only (letters are not allowed)";
+                            val = raw.replace(/[^0-9]/g, '');
+                          }
+                          setManagerForm(p => ({...p, phone: val}));
+                          setManagerErrors(p => ({...p, phone: customErr}));
+                        }} 
+                        className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${managerErrors.phone ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                        placeholder="Phone Number (10 digits)" 
+                      />
+                      {managerErrors.phone && <p className="text-xs text-red-500 mt-1">{managerErrors.phone}</p>}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>

@@ -250,6 +250,7 @@ export default function DriversListPage() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#94A3B8]" />
             <input
               type="text"
+              maxLength={20}
               placeholder="Search by name, employee ID, phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}

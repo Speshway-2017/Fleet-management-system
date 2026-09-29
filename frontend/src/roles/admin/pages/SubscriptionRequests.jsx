@@ -141,12 +141,93 @@ export default function SubscriptionRequests() {
     }
   };
 
+  const handleNameKeyDown = (e) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!/^[a-zA-Z\s]$/.test(e.key)) {
+      e.preventDefault();
+      setFormErrors((prev) => ({
+        ...prev,
+        name: "Plan name must contain alphabets only (numbers & symbols are not allowed)."
+      }));
+    } else {
+      if (formErrors.name?.includes("must contain alphabets only")) {
+        setFormErrors((prev) => ({ ...prev, name: "" }));
+      }
+    }
+  };
+
+  const handleDescriptionKeyDown = (e) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (/\d/.test(e.key)) {
+      e.preventDefault();
+      setFormErrors((prev) => ({
+        ...prev,
+        description: "Description must contain text only (numbers are not allowed)."
+      }));
+    } else {
+      if (formErrors.description?.includes("numbers are not allowed")) {
+        setFormErrors((prev) => ({ ...prev, description: "" }));
+      }
+    }
+  };
+
+  const handleNumberKeyDown = (field, label, e) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+      setFormErrors((prev) => ({
+        ...prev,
+        [field]: `${label} must contain numbers only.`
+      }));
+    } else {
+      if (formErrors[field]?.includes("numbers only")) {
+        setFormErrors((prev) => ({ ...prev, [field]: "" }));
+      }
+    }
+  };
+
   const handleFieldChange = (field, value) => {
-    const updated = { ...formData, [field]: value };
+    let cleanValue = value;
+    let customError = "";
+
+    if (field === "name") {
+      cleanValue = value.replace(/[^a-zA-Z\s]/g, "").slice(0, 50);
+      if (value !== cleanValue && value.length > 0) {
+        customError = "Plan name must contain alphabets only (numbers & symbols are not allowed).";
+      }
+    } else if (field === "description") {
+      cleanValue = value.replace(/\d/g, "").slice(0, 100);
+      if (value !== cleanValue && value.length > 0) {
+        customError = "Description must contain text only (numbers are not allowed).";
+      }
+    } else if (field === "featuresText") {
+      cleanValue = value.slice(0, 1000);
+    } else if (["price", "duration", "displayOrder", "maxVehicles", "maxDrivers", "maxTrips"].includes(field)) {
+      if (typeof value === "string") {
+        cleanValue = value.replace(/\D/g, "");
+      }
+    }
+
+    const updated = { ...formData, [field]: cleanValue };
     setFormData(updated);
 
-    const errorMsg = validateField(subscriptionPlanSchema, field, value, updated);
-    setFormErrors(prev => ({ ...prev, [field]: errorMsg }));
+    if (customError) {
+      setFormErrors((prev) => ({ ...prev, [field]: customError }));
+    } else {
+      const errorMsg = validateField(subscriptionPlanSchema, field, cleanValue, {
+        ...updated,
+        features: updated.featuresText ? updated.featuresText.split("\n").map((f) => f.trim()).filter(Boolean) : []
+      });
+      setFormErrors((prev) => ({ ...prev, [field]: errorMsg }));
+    }
+  };
+
+  const handleBlur = (field) => {
+    const errorMsg = validateField(subscriptionPlanSchema, field, formData[field], {
+      ...formData,
+      features: formData.featuresText ? formData.featuresText.split("\n").map((f) => f.trim()).filter(Boolean) : []
+    });
+    setFormErrors((prev) => ({ ...prev, [field]: errorMsg }));
   };
 
   const validationCheck = validateForm(subscriptionPlanSchema, {
@@ -371,9 +452,17 @@ export default function SubscriptionRequests() {
                                   </button>
                                 </div>
                               ) : (
-                                <span className="text-[10px] text-slate-400 font-bold italic flex items-center gap-1 justify-end">
-                                  <ShieldCheck className="w-3.5 h-3.5 text-slate-300" />
-                                  Processed
+                                <span className={`text-[11px] font-bold flex items-center gap-1 justify-end ${
+                                  req.status === 'Approved' ? 'text-green-600' : req.status === 'Rejected' ? 'text-red-500' : 'text-slate-500'
+                                }`}>
+                                  {req.status === 'Approved' ? (
+                                    <Check className="w-3.5 h-3.5 text-green-500" />
+                                  ) : req.status === 'Rejected' ? (
+                                    <X className="w-3.5 h-3.5 text-red-500" />
+                                  ) : (
+                                    <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
+                                  )}
+                                  {req.status || "Processed"}
                                 </span>
                               )}
                             </td>
@@ -501,18 +590,19 @@ export default function SubscriptionRequests() {
             <form onSubmit={handleSubmitPlan} className="p-6 overflow-y-auto space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Plan Name *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Plan Name * <span className="text-slate-400 font-normal lowercase ml-1">({formData.name.length}/50)</span>
+                    </label>
+                  </div>
                   <input
                     type="text"
                     required
                     maxLength={50}
                     value={formData.name}
-                    onKeyDown={(e) => {
-                      if (/\d/.test(e.key)) {
-                        e.preventDefault();
-                      }
-                    }}
+                    onKeyDown={handleNameKeyDown}
                     onChange={(e) => handleFieldChange("name", e.target.value)}
+                    onBlur={() => handleBlur("name")}
                     className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
                       formErrors.name 
                         ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' 
@@ -521,23 +611,24 @@ export default function SubscriptionRequests() {
                     placeholder="e.g. Enterprise Plan"
                   />
                   {formErrors.name && (
-                    <p className="text-xs text-red-500 mt-1">{formErrors.name}</p>
+                    <p className="text-[10px] text-red-500 mt-1 leading-tight">{formErrors.name}</p>
                   )}
                 </div>
 
                 <div className="col-span-2">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Description *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Description * <span className="text-slate-400 font-normal lowercase ml-1">({formData.description.length}/100)</span>
+                    </label>
+                  </div>
                   <input
                     type="text"
                     required
                     maxLength={100}
                     value={formData.description}
-                    onKeyDown={(e) => {
-                      if (/\d/.test(e.key)) {
-                        e.preventDefault();
-                      }
-                    }}
+                    onKeyDown={handleDescriptionKeyDown}
                     onChange={(e) => handleFieldChange("description", e.target.value)}
+                    onBlur={() => handleBlur("description")}
                     className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
                       formErrors.description 
                         ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' 
@@ -546,7 +637,7 @@ export default function SubscriptionRequests() {
                     placeholder="e.g. Best choice for medium sized companies"
                   />
                   {formErrors.description && (
-                    <p className="text-xs text-red-500 mt-1">{formErrors.description}</p>
+                    <p className="text-[10px] text-red-500 mt-1 leading-tight">{formErrors.description}</p>
                   )}
                 </div>
 
@@ -557,9 +648,18 @@ export default function SubscriptionRequests() {
                     required
                     min="0"
                     value={formData.price}
-                    onChange={(e) => handleFieldChange("price", Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
+                    onKeyDown={(e) => handleNumberKeyDown("price", "Monthly price", e)}
+                    onChange={(e) => handleFieldChange("price", e.target.value)}
+                    onBlur={() => handleBlur("price")}
+                    className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
+                      formErrors.price 
+                        ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' 
+                        : 'border-slate-200 focus:border-slate-300'
+                    }`}
                   />
+                  {formErrors.price && (
+                    <p className="text-[10px] text-red-500 mt-1 leading-tight">{formErrors.price}</p>
+                  )}
                 </div>
 
                 <div>
@@ -569,9 +669,18 @@ export default function SubscriptionRequests() {
                     required
                     min="1"
                     value={formData.duration}
-                    onChange={(e) => handleFieldChange("duration", Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
+                    onKeyDown={(e) => handleNumberKeyDown("duration", "Duration", e)}
+                    onChange={(e) => handleFieldChange("duration", e.target.value)}
+                    onBlur={() => handleBlur("duration")}
+                    className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
+                      formErrors.duration 
+                        ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' 
+                        : 'border-slate-200 focus:border-slate-300'
+                    }`}
                   />
+                  {formErrors.duration && (
+                    <p className="text-[10px] text-red-500 mt-1 leading-tight">{formErrors.duration}</p>
+                  )}
                 </div>
 
                 <div>
@@ -580,9 +689,18 @@ export default function SubscriptionRequests() {
                     type="number"
                     min="1"
                     value={formData.displayOrder}
-                    onChange={(e) => handleFieldChange("displayOrder", Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
+                    onKeyDown={(e) => handleNumberKeyDown("displayOrder", "Display order", e)}
+                    onChange={(e) => handleFieldChange("displayOrder", e.target.value)}
+                    onBlur={() => handleBlur("displayOrder")}
+                    className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
+                      formErrors.displayOrder 
+                        ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' 
+                        : 'border-slate-200 focus:border-slate-300'
+                    }`}
                   />
+                  {formErrors.displayOrder && (
+                    <p className="text-[10px] text-red-500 mt-1 leading-tight">{formErrors.displayOrder}</p>
+                  )}
                 </div>
 
                 <div>
@@ -590,6 +708,7 @@ export default function SubscriptionRequests() {
                   <select
                     value={formData.status}
                     onChange={(e) => handleFieldChange("status", e.target.value)}
+                    onBlur={() => handleBlur("status")}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
                   >
                     <option value="Active">Active</option>
@@ -607,12 +726,9 @@ export default function SubscriptionRequests() {
                       min="0"
                       required
                       value={formData.maxVehicles}
-                      onKeyDown={(e) => {
-                        if (['.', 'e', 'E', '+', '-', ','].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                      }}
+                      onKeyDown={(e) => handleNumberKeyDown("maxVehicles", "No of vehicles", e)}
                       onChange={(e) => handleFieldChange("maxVehicles", e.target.value)}
+                      onBlur={() => handleBlur("maxVehicles")}
                       className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
                         formErrors.maxVehicles 
                           ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' 
@@ -631,12 +747,9 @@ export default function SubscriptionRequests() {
                       min="0"
                       required
                       value={formData.maxDrivers}
-                      onKeyDown={(e) => {
-                        if (['.', 'e', 'E', '+', '-', ','].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                      }}
+                      onKeyDown={(e) => handleNumberKeyDown("maxDrivers", "No of drivers", e)}
                       onChange={(e) => handleFieldChange("maxDrivers", e.target.value)}
+                      onBlur={() => handleBlur("maxDrivers")}
                       className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
                         formErrors.maxDrivers 
                           ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' 
@@ -655,12 +768,9 @@ export default function SubscriptionRequests() {
                       min="0"
                       required
                       value={formData.maxTrips}
-                      onKeyDown={(e) => {
-                        if (['.', 'e', 'E', '+', '-', ','].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                      }}
+                      onKeyDown={(e) => handleNumberKeyDown("maxTrips", "No of trips", e)}
                       onChange={(e) => handleFieldChange("maxTrips", e.target.value)}
+                      onBlur={() => handleBlur("maxTrips")}
                       className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
                         formErrors.maxTrips 
                           ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' 
@@ -674,14 +784,27 @@ export default function SubscriptionRequests() {
                 </div>
 
                 <div className="col-span-2">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Features (One per line)</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Features (One per line) <span className="text-slate-400 font-normal lowercase ml-1">({formData.featuresText.length}/1000)</span>
+                    </label>
+                  </div>
                   <textarea
                     rows="4"
+                    maxLength={1000}
                     value={formData.featuresText}
-                    onChange={(e) => setFormData(prev => ({ ...prev, featuresText: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-slate-300"
+                    onChange={(e) => handleFieldChange("featuresText", e.target.value)}
+                    onBlur={() => handleBlur("featuresText")}
+                    className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
+                      formErrors.featuresText || formErrors.features
+                        ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' 
+                        : 'border-slate-200 focus:border-slate-300'
+                    }`}
                     placeholder="Real-time GPS Tracking&#10;Up to 10 Vehicles&#10;Basic Analytics"
                   />
+                  {(formErrors.featuresText || formErrors.features) && (
+                    <p className="text-[10px] text-red-500 mt-1 leading-tight">{formErrors.featuresText || formErrors.features}</p>
+                  )}
                 </div>
               </div>
 

@@ -241,6 +241,7 @@ export default function AssignVehiclePage() {
             </span>
             <input
               type="text"
+              maxLength={20}
               placeholder="Search vehicles by model, plate number, or manufacturer..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}

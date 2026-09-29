@@ -5,9 +5,10 @@ export const contactRequestSchema = z.object({
   fullName: z
     .string({ required_error: 'Full name is required' })
     .trim()
+    .min(1, 'Full name is required')
     .min(2, 'Full name must be between 2 and 100 characters long')
     .max(100, 'Full name must be between 2 and 100 characters long')
-    .refine((val) => !/\d/.test(val), { message: 'Full name must not contain numbers' }),
+    .refine((val) => !/\d/.test(val), { message: 'Numbers are not allowed in full name' }),
   email: emailSchema,
   phone: z
     .string()
@@ -18,11 +19,15 @@ export const contactRequestSchema = z.object({
     })
     .optional()
     .nullable(),
-  subject: z.string({ required_error: 'Subject is required' }).min(1, 'Subject is required'),
+  subject: z
+    .string({ required_error: 'Subject is required' })
+    .trim()
+    .min(1, 'Subject is required'),
   message: z
     .string({ required_error: 'Message is required' })
     .trim()
-    .min(10, 'Message must be between 10 and 1000 characters long')
-    .max(1000, 'Message must be between 10 and 1000 characters long'),
+    .min(1, 'Message is required')
+    .min(10, 'Message must be between 10 and 1,000 characters long')
+    .max(1000, 'Message must be between 10 and 1,000 characters long'),
   recaptchaToken: z.string().optional().nullable()
 });

@@ -56,17 +56,171 @@ export default function Contact() {
     return val.errors;
   };
 
+  const handleFullNameChange = (e) => {
+    const rawVal = e.target.value;
+    const hasNumbers = /\d/.test(rawVal);
+    const cleanedVal = rawVal.replace(/\d/g, "").slice(0, 100);
+
+    setForm((prev) => ({ ...prev, fullName: cleanedVal }));
+    setTouched((prev) => ({ ...prev, fullName: true }));
+
+    if (hasNumbers) {
+      setFormErrors((prevErr) => ({
+        ...prevErr,
+        fullName: "Numbers are not allowed in full name",
+      }));
+    } else if (cleanedVal.length > 0 && cleanedVal.trim().length < 2) {
+      setFormErrors((prevErr) => ({
+        ...prevErr,
+        fullName: "Full name must be between 2 and 100 characters long",
+      }));
+    } else if (cleanedVal.trim().length === 0) {
+      setFormErrors((prevErr) => ({
+        ...prevErr,
+        fullName: "Full name is required",
+      }));
+    } else {
+      setFormErrors((prevErr) => ({
+        ...prevErr,
+        fullName: "",
+      }));
+    }
+  };
+
+  const handlePhoneChange = (e) => {
+    const rawVal = e.target.value;
+    const hasNonDigits = /\D/.test(rawVal);
+    const cleanedVal = rawVal.replace(/\D/g, "").slice(0, 10);
+
+    setForm((prev) => ({ ...prev, phone: cleanedVal }));
+    setTouched((prev) => ({ ...prev, phone: true }));
+
+    if (hasNonDigits) {
+      setFormErrors((prevErr) => ({
+        ...prevErr,
+        phone: "Phone number must contain only numbers",
+      }));
+    } else if (cleanedVal.length > 0 && cleanedVal.length < 10) {
+      setFormErrors((prevErr) => ({
+        ...prevErr,
+        phone: "Phone number must be 10 digits",
+      }));
+    } else {
+      setFormErrors((prevErr) => ({
+        ...prevErr,
+        phone: "",
+      }));
+    }
+  };
+
   const handleChange = (field, value) => {
     setForm((prev) => {
       const updated = { ...prev, [field]: value };
-      const fieldError = zodValidateField(contactRequestSchema, field, value, updated);
+      let fieldError = "";
+
+      if (field === "email") {
+        if (!value.trim()) {
+          fieldError = "Email address is required";
+        } else {
+          fieldError = zodValidateField(contactRequestSchema, "email", value, updated);
+        }
+      } else if (field === "subject") {
+        if (!value.trim()) {
+          fieldError = "Subject is required";
+        } else {
+          fieldError = zodValidateField(contactRequestSchema, "subject", value, updated);
+        }
+      } else if (field === "message") {
+        if (!value.trim()) {
+          fieldError = "Message is required";
+        } else if (value.trim().length < 10) {
+          fieldError = "Message must be between 10 and 1,000 characters long";
+        } else if (value.length > 1000) {
+          fieldError = "Message must not exceed 1,000 characters";
+        } else {
+          fieldError = zodValidateField(contactRequestSchema, "message", value, updated);
+        }
+      } else {
+        fieldError = zodValidateField(contactRequestSchema, field, value, updated);
+      }
+
       setFormErrors((prevErr) => ({ ...prevErr, [field]: fieldError }));
       return updated;
     });
+    setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
   const handleBlur = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
+    const val = form[field] || "";
+
+    if (field === "fullName") {
+      if (!val.trim()) {
+        setFormErrors((prevErr) => ({ ...prevErr, fullName: "Full name is required" }));
+        return;
+      }
+      if (val.trim().length < 2 || val.length > 100) {
+        setFormErrors((prevErr) => ({ ...prevErr, fullName: "Full name must be between 2 and 100 characters long" }));
+        return;
+      }
+      if (/\d/.test(val)) {
+        setFormErrors((prevErr) => ({ ...prevErr, fullName: "Numbers are not allowed in full name" }));
+        return;
+      }
+      setFormErrors((prevErr) => ({ ...prevErr, fullName: "" }));
+      return;
+    }
+
+    if (field === "email") {
+      if (!val.trim()) {
+        setFormErrors((prevErr) => ({ ...prevErr, email: "Email address is required" }));
+        return;
+      }
+      const fieldError = zodValidateField(contactRequestSchema, "email", val, form);
+      setFormErrors((prevErr) => ({ ...prevErr, email: fieldError }));
+      return;
+    }
+
+    if (field === "subject") {
+      if (!val.trim()) {
+        setFormErrors((prevErr) => ({ ...prevErr, subject: "Subject is required" }));
+        return;
+      }
+      const fieldError = zodValidateField(contactRequestSchema, "subject", val, form);
+      setFormErrors((prevErr) => ({ ...prevErr, subject: fieldError }));
+      return;
+    }
+
+    if (field === "message") {
+      if (!val.trim()) {
+        setFormErrors((prevErr) => ({ ...prevErr, message: "Message is required" }));
+        return;
+      }
+      if (val.trim().length < 10 || val.length > 1000) {
+        setFormErrors((prevErr) => ({ ...prevErr, message: "Message must be between 10 and 1,000 characters long" }));
+        return;
+      }
+      setFormErrors((prevErr) => ({ ...prevErr, message: "" }));
+      return;
+    }
+
+    if (field === "phone") {
+      if (!val) {
+        setFormErrors((prevErr) => ({ ...prevErr, phone: "" }));
+        return;
+      }
+      if (/\D/.test(val)) {
+        setFormErrors((prevErr) => ({ ...prevErr, phone: "Phone number must contain only numbers" }));
+        return;
+      }
+      if (val.length < 10) {
+        setFormErrors((prevErr) => ({ ...prevErr, phone: "Phone number must be 10 digits" }));
+        return;
+      }
+      setFormErrors((prevErr) => ({ ...prevErr, phone: "" }));
+      return;
+    }
+
     const fieldError = zodValidateField(contactRequestSchema, field, form[field], form);
     setFormErrors((prevErr) => ({ ...prevErr, [field]: fieldError }));
   };
@@ -120,6 +274,22 @@ export default function Contact() {
     });
 
     const errors = validateAll(form);
+
+    if (!form.fullName || !form.fullName.trim()) {
+      errors.fullName = "Full name is required";
+    }
+    if (!form.email || !form.email.trim()) {
+      errors.email = "Email address is required";
+    }
+    if (!form.subject || !form.subject.trim()) {
+      errors.subject = "Subject is required";
+    }
+    if (!form.message || !form.message.trim()) {
+      errors.message = "Message is required";
+    } else if (form.message.trim().length < 10 || form.message.length > 1000) {
+      errors.message = "Message must be between 10 and 1,000 characters long";
+    }
+
     setFormErrors(errors);
 
     if (Object.keys(errors).length > 0) {
@@ -138,6 +308,7 @@ export default function Contact() {
       await contactApi.sendContactRequest({
         ...form,
         captchaToken,
+        recaptchaToken: captchaToken,
       });
       toast.success("Message sent successfully!");
       setForm({
@@ -328,10 +499,11 @@ export default function Contact() {
                 </label>
                 <input
                   type="text"
+                  maxLength={100}
                   placeholder="Enter your full name"
                   value={form.fullName}
                   onBlur={() => handleBlur("fullName")}
-                  onChange={(e) => handleChange("fullName", e.target.value)}
+                  onChange={handleFullNameChange}
                   className={`w-full rounded-xl border px-4 py-3 text-xs focus:outline-none placeholder:text-gray-400 font-medium bg-white text-[#1E293B] transition-colors ${
                     formErrors.fullName && (touched.fullName || form.fullName)
                       ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/15"
@@ -398,10 +570,7 @@ export default function Contact() {
                   placeholder="Enter your phone number"
                   value={form.phone}
                   onBlur={() => handleBlur("phone")}
-                  onChange={(e) => {
-                    const onlyNums = e.target.value.replace(/\D/g, "").slice(0, 10);
-                    handleChange("phone", onlyNums);
-                  }}
+                  onChange={handlePhoneChange}
                   className={`w-full rounded-xl border px-4 py-3 text-xs focus:outline-none placeholder:text-gray-400 font-medium bg-white text-[#1E293B] transition-colors ${
                     formErrors.phone && (touched.phone || form.phone)
                       ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/15"
@@ -440,12 +609,24 @@ export default function Contact() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block font-display">
-                Message <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block font-display">
+                  Message <span className="text-red-500">*</span>
+                </label>
+                <span className={`text-[10px] font-medium font-poppins ${
+                  form.message.length > 0 && form.message.trim().length < 10
+                    ? "text-amber-600 font-semibold"
+                    : form.message.length === 1000
+                    ? "text-red-500 font-bold"
+                    : "text-gray-400"
+                }`}>
+                  {form.message.length}/1000
+                </span>
+              </div>
               <textarea
                 rows="5"
-                placeholder="Tell us how we can help you..."
+                maxLength={1000}
+                placeholder="Tell us how we can help you (min 10 characters)..."
                 value={form.message}
                 onBlur={() => handleBlur("message")}
                 onChange={(e) => handleChange("message", e.target.value)}
@@ -464,7 +645,7 @@ export default function Contact() {
             <div className="max-w-[300px] overflow-hidden rounded-lg">
               <ReCAPTCHA
                 ref={recaptchaRef}
-                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6Lfok1ItAAAAAPyhDyz3CubpPiq9RrOlZwCE98x9"}
                 onChange={handleCaptchaChange}
                 onExpired={handleCaptchaExpired}
               />

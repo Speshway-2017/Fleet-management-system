@@ -58,14 +58,14 @@ export default function ParallaxDepthSection({
   return (
     <div ref={containerRef} className={`relative py-6 sm:py-8 ${className}`}>
       {/* Middle Layer (Main Title) */}
-      <div className="parallax-mid relative z-10 text-center space-y-3">
-        <h3 className="font-display text-3xl sm:text-4xl md:text-5xl font-black text-[#0B1B3D] tracking-tight">
+      <div className="parallax-mid relative z-10 text-center space-y-3 px-2">
+        <h3 className="font-display text-2xl sm:text-3xl md:text-5xl font-black text-[#0B1B3D] tracking-tight break-words break-all sm:break-words leading-tight max-w-4xl mx-auto">
           {title}
         </h3>
         
         {/* Front Layer (Subtitle / Description) */}
         {subtitle && (
-          <p className="parallax-front text-sm sm:text-base md:text-lg text-[#A14000] font-bold tracking-wide max-w-2xl mx-auto">
+          <p className="parallax-front text-xs sm:text-sm md:text-base text-[#A14000] font-bold tracking-wide max-w-2xl mx-auto break-words leading-relaxed">
             {subtitle}
           </p>
         )}

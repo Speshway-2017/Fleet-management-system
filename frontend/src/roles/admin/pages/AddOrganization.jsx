@@ -23,23 +23,105 @@ export default function AddOrganization() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logoPreview, setLogoPreview] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
+  const [logoError, setLogoError] = useState("");
 
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setLogoFile(file);
-      const url = URL.createObjectURL(file);
-      setLogoPreview(url);
+    if (!file) return;
+
+    const fileName = file.name || "";
+    const fileExt = fileName.split('.').pop()?.toLowerCase();
+    const validExts = ['jpg', 'jpeg', 'png'];
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+
+    if (!validExts.includes(fileExt) && !validTypes.includes(file.type)) {
+      setLogoError("Invalid file type. Only JPG, JPEG, and PNG files are allowed.");
+      toast.error("Invalid file type. Only JPG, JPEG, and PNG files are allowed.");
+      setLogoFile(null);
+      setLogoPreview(null);
+      e.target.value = "";
+      return;
+    }
+
+    setLogoError("");
+    setLogoFile(file);
+    const url = URL.createObjectURL(file);
+    setLogoPreview(url);
+  };
+
+  const handleTextKeyDown = (e, fieldName, fieldLabel) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    if (!/^[a-zA-Z\s]$/.test(e.key)) {
+      e.preventDefault();
+      setErrors(prev => ({ ...prev, [fieldName]: `${fieldLabel} must contain alphabets only (numbers & symbols are not allowed).` }));
+    }
+  };
+
+  const handlePhoneKeyDown = (e) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+      setErrors(prev => ({ ...prev, phone: "Phone number must contain numbers only (letters are not allowed)." }));
+    }
+  };
+
+  const handleManagerTextKeyDown = (e, index, field, fieldLabel) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    if (!/^[a-zA-Z\s]$/.test(e.key)) {
+      e.preventDefault();
+      const newManagerErrors = [...managerErrors];
+      if (!newManagerErrors[index]) newManagerErrors[index] = {};
+      newManagerErrors[index][field] = `${fieldLabel} must contain alphabets only (numbers & symbols are not allowed).`;
+      setManagerErrors(newManagerErrors);
+    }
+  };
+
+  const handleManagerPhoneKeyDown = (e, index) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+      const newManagerErrors = [...managerErrors];
+      if (!newManagerErrors[index]) newManagerErrors[index] = {};
+      newManagerErrors[index].phone = "Phone number must contain numbers only (letters are not allowed).";
+      setManagerErrors(newManagerErrors);
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const updatedForm = { ...form, [name]: value };
+    let finalValue = value;
+    let customError = "";
+
+    if (['name', 'industry', 'city', 'state', 'country'].includes(name)) {
+      if (/[^a-zA-Z\s]/.test(value)) {
+        customError = "Numbers and symbols are not allowed in this field.";
+        finalValue = value.replace(/[^a-zA-Z\s]/g, "");
+      }
+    } else if (name === 'phone') {
+      if (/\D/.test(value)) {
+        customError = "Phone number must contain numbers only.";
+        finalValue = value.replace(/\D/g, "").slice(0, 10);
+      }
+    }
+
+    const updatedForm = { ...form, [name]: finalValue };
     setForm(updatedForm);
 
-    const errorMsg = validateField(createOrganizationSchema, name, value, updatedForm);
+    const errorMsg = customError || validateField(createOrganizationSchema, name, finalValue, updatedForm);
     setErrors(prev => ({ ...prev, [name]: errorMsg }));
+  };
+
+  const handleBlur = (fieldName) => {
+    const errorMsg = validateField(createOrganizationSchema, fieldName, form[fieldName], form);
+    setErrors(prev => ({ ...prev, [fieldName]: errorMsg }));
   };
 
   const handleManagerChange = (index, field, value) => {
@@ -47,18 +129,52 @@ export default function AddOrganization() {
     const newManagerErrors = [...managerErrors];
     if (!newManagerErrors[index]) newManagerErrors[index] = {};
 
-    newManagers[index][field] = value;
+    let finalValue = value;
+    let customError = "";
 
-    const errorMsg = validateField(managerItemSchema, field, value, newManagers[index]);
-    newManagerErrors[index][field] = errorMsg;
-
-    if (field === 'password' && newManagers[index].confirmPassword) {
-      newManagerErrors[index].confirmPassword = value !== newManagers[index].confirmPassword ? 'Passwords do not match.' : '';
-    } else if (field === 'confirmPassword' && newManagers[index].password) {
-      newManagerErrors[index].confirmPassword = value !== newManagers[index].password ? 'Passwords do not match.' : '';
+    if (field === 'name') {
+      if (/[^a-zA-Z\s]/.test(value)) {
+        customError = "Numbers and symbols are not allowed in full name.";
+        finalValue = value.replace(/[^a-zA-Z\s]/g, "");
+      }
+    } else if (field === 'phone') {
+      if (/\D/.test(value)) {
+        customError = "Phone number must contain numbers only.";
+        finalValue = value.replace(/\D/g, "").slice(0, 10);
+      }
     }
 
+    newManagers[index] = { ...newManagers[index], [field]: finalValue };
+
+    let errorMsg = customError || validateField(managerItemSchema, field, finalValue, newManagers[index]);
+
+    if (field === 'password') {
+      if (newManagers[index].confirmPassword) {
+        newManagerErrors[index].confirmPassword = finalValue !== newManagers[index].confirmPassword ? 'Passwords do not match.' : '';
+      }
+    } else if (field === 'confirmPassword') {
+      if (newManagers[index].password && finalValue && finalValue !== newManagers[index].password) {
+        errorMsg = 'Passwords do not match.';
+      }
+    }
+
+    newManagerErrors[index][field] = errorMsg;
+
     setManagers(newManagers);
+    setManagerErrors(newManagerErrors);
+  };
+
+  const handleManagerBlur = (index, field) => {
+    const newManagerErrors = [...managerErrors];
+    if (!newManagerErrors[index]) newManagerErrors[index] = {};
+
+    let errorMsg = validateField(managerItemSchema, field, managers[index][field], managers[index]);
+    if (field === 'confirmPassword' && managers[index].password && managers[index].confirmPassword) {
+      if (managers[index].password !== managers[index].confirmPassword) {
+        errorMsg = 'Passwords do not match.';
+      }
+    }
+    newManagerErrors[index][field] = errorMsg;
     setManagerErrors(newManagerErrors);
   };
 
@@ -76,19 +192,42 @@ export default function AddOrganization() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const orgValidation = validateForm(createOrganizationSchema, form);
-    const newErrors = { ...orgValidation.errors };
+    // 1. Validate Organization fields
+    const newErrors = {};
+    ['name', 'industry', 'email', 'phone', 'address', 'city', 'state', 'country'].forEach((f) => {
+      const err = validateField(createOrganizationSchema, f, form[f], form);
+      if (err) newErrors[f] = err;
+    });
 
+    // 2. Validate Manager fields
     let hasManagerErrors = false;
-    const newManagerErrors = managers.map((manager) => {
-      const mVal = validateForm(managerItemSchema, manager);
-      if (!mVal.isValid) hasManagerErrors = true;
-      return mVal.errors;
+    let firstManagerError = "";
+    const newManagerErrors = managers.map((manager, index) => {
+      const mErrors = {};
+      ['name', 'email', 'phone', 'password', 'confirmPassword'].forEach((f) => {
+        let err = validateField(managerItemSchema, f, manager[f], manager);
+        if (f === 'confirmPassword' && manager.password && manager.confirmPassword && manager.password !== manager.confirmPassword) {
+          err = 'Passwords do not match.';
+        }
+        if (err) {
+          mErrors[f] = err;
+          hasManagerErrors = true;
+          if (!firstManagerError) firstManagerError = `Manager #${index + 1}: ${err}`;
+        }
+      });
+      return mErrors;
     });
 
     setErrors(newErrors);
     setManagerErrors(newManagerErrors);
-    if (!orgValidation.isValid || hasManagerErrors) return;
+
+    const hasOrgErrors = Object.keys(newErrors).length > 0;
+
+    if (hasOrgErrors || hasManagerErrors) {
+      const firstOrgError = Object.values(newErrors)[0];
+      toast.error(firstOrgError || firstManagerError || "Please fix all errors before submitting.");
+      return;
+    }
 
     setIsSubmitting(true);
     
@@ -184,6 +323,31 @@ export default function AddOrganization() {
               <h3 className="font-bold text-slate-800 text-sm mb-4">Organization Information</h3>
               <div className="bg-white rounded-xl p-8 border border-slate-200 shadow-sm">
                 
+                {/* Logo Upload */}
+                <div className="flex flex-col gap-2 mb-6">
+                  <label className="text-xs font-bold text-slate-700 block">Organization Logo</label>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs font-bold text-slate-400">LOGO</span>
+                      )}
+                    </div>
+                    <label className="cursor-pointer px-4 py-2 border border-slate-200 bg-white text-slate-700 text-sm font-semibold rounded-lg shadow-sm hover:bg-slate-50 flex items-center gap-2">
+                      <Upload className="w-4 h-4" />
+                      Upload Logo
+                      <input 
+                        type="file" 
+                        accept=".jpg,.jpeg,.png,image/jpeg,image/png" 
+                        className="hidden" 
+                        onChange={handleLogoChange} 
+                      />
+                    </label>
+                  </div>
+                  {logoError && <p className="text-xs text-red-500 font-medium mt-1">{logoError}</p>}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                   {/* Org Name */}
                   <div className="space-y-1.5">
@@ -195,13 +359,10 @@ export default function AddOrganization() {
                       name="name"
                       maxLength={20}
                       autoComplete="off"
-                      placeholder="Organization Name (letters only)"
+                      placeholder="Organization Name"
                       value={form.name}
-                      onKeyDown={(e) => {
-                        if (!/^[a-zA-Z\s]$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                          e.preventDefault();
-                        }
-                      }}
+                      onKeyDown={(e) => handleTextKeyDown(e, 'name', 'Organization name')}
+                      onBlur={() => handleBlur('name')}
                       onChange={handleChange}
                       className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.name ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                     />
@@ -217,13 +378,10 @@ export default function AddOrganization() {
                       name="industry"
                       maxLength={20}
                       autoComplete="off"
-                      placeholder="Industry (letters only)"
+                      placeholder="Industry"
                       value={form.industry}
-                      onKeyDown={(e) => {
-                        if (!/^[a-zA-Z\s]$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                          e.preventDefault();
-                        }
-                      }}
+                      onKeyDown={(e) => handleTextKeyDown(e, 'industry', 'Industry')}
+                      onBlur={() => handleBlur('industry')}
                       onChange={handleChange}
                       className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.industry ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                     />
@@ -241,6 +399,7 @@ export default function AddOrganization() {
                       autoComplete="off"
                       placeholder="Email Address"
                       value={form.email}
+                      onBlur={() => handleBlur('email')}
                       onChange={handleChange}
                       className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.email ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                     />
@@ -253,17 +412,13 @@ export default function AddOrganization() {
                     </label>
                     <input
                       type="tel"
-                      inputMode="numeric"
-                      maxLength={10}
                       name="phone"
+                      maxLength={10}
                       autoComplete="off"
                       placeholder="Phone Number (10 digits)"
                       value={form.phone}
-                      onKeyDown={(e) => {
-                        if (!/^\d$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                          e.preventDefault();
-                        }
-                      }}
+                      onKeyDown={handlePhoneKeyDown}
+                      onBlur={() => handleBlur('phone')}
                       onChange={handleChange}
                       className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.phone ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                     />
@@ -271,14 +426,17 @@ export default function AddOrganization() {
                   </div>
                   {/* Address */}
                   <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs font-bold text-slate-700 block">Street Address</label>
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Street Address <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       name="address"
-                      maxLength={100}
+                      maxLength={30}
                       autoComplete="off"
-                      placeholder="Street Address"
+                      placeholder="Street Address (5-30 chars)"
                       value={form.address}
+                      onBlur={() => handleBlur('address')}
                       onChange={handleChange}
                       className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.address ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                     />
@@ -286,7 +444,9 @@ export default function AddOrganization() {
                   </div>
                   {/* City */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 block">City</label>
+                    <label className="text-xs font-bold text-slate-700 block">
+                      City <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       name="city"
@@ -294,11 +454,8 @@ export default function AddOrganization() {
                       autoComplete="off"
                       placeholder="City"
                       value={form.city}
-                      onKeyDown={(e) => {
-                        if (!/^[a-zA-Z\s]$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                          e.preventDefault();
-                        }
-                      }}
+                      onKeyDown={(e) => handleTextKeyDown(e, 'city', 'City')}
+                      onBlur={() => handleBlur('city')}
                       onChange={handleChange}
                       className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.city ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                     />
@@ -306,7 +463,9 @@ export default function AddOrganization() {
                   </div>
                   {/* State */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 block">State</label>
+                    <label className="text-xs font-bold text-slate-700 block">
+                      State <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       name="state"
@@ -314,11 +473,8 @@ export default function AddOrganization() {
                       autoComplete="off"
                       placeholder="State"
                       value={form.state}
-                      onKeyDown={(e) => {
-                        if (!/^[a-zA-Z\s]$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                          e.preventDefault();
-                        }
-                      }}
+                      onKeyDown={(e) => handleTextKeyDown(e, 'state', 'State')}
+                      onBlur={() => handleBlur('state')}
                       onChange={handleChange}
                       className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.state ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                     />
@@ -326,7 +482,9 @@ export default function AddOrganization() {
                   </div>
                   {/* Country */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 block">Country</label>
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Country <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       name="country"
@@ -334,11 +492,8 @@ export default function AddOrganization() {
                       autoComplete="off"
                       placeholder="Country"
                       value={form.country}
-                      onKeyDown={(e) => {
-                        if (!/^[a-zA-Z\s]$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                          e.preventDefault();
-                        }
-                      }}
+                      onKeyDown={(e) => handleTextKeyDown(e, 'country', 'Country')}
+                      onBlur={() => handleBlur('country')}
                       onChange={handleChange}
                       className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${errors.country ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                     />
@@ -381,11 +536,8 @@ export default function AddOrganization() {
                             maxLength={20}
                             autoComplete="off"
                             value={manager.name}
-                            onKeyDown={(e) => {
-                              if (!/^[a-zA-Z\s]$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                                e.preventDefault();
-                              }
-                            }}
+                            onKeyDown={(e) => handleManagerTextKeyDown(e, index, 'name', 'Full name')}
+                            onBlur={() => handleManagerBlur(index, 'name')}
                             onChange={(e) => handleManagerChange(index, 'name', e.target.value)}
                             placeholder="Full Name"
                             className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${mErr.name ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
@@ -402,6 +554,7 @@ export default function AddOrganization() {
                             maxLength={30}
                             autoComplete="off"
                             value={manager.email}
+                            onBlur={() => handleManagerBlur(index, 'email')}
                             onChange={(e) => handleManagerChange(index, 'email', e.target.value)}
                             placeholder="Email Address"
                             className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${mErr.email ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
@@ -415,15 +568,11 @@ export default function AddOrganization() {
                           </label>
                           <input
                             type="tel"
-                            inputMode="numeric"
                             maxLength={10}
                             autoComplete="off"
                             value={manager.phone}
-                            onKeyDown={(e) => {
-                              if (!/^\d$/.test(e.key) && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                                e.preventDefault();
-                              }
-                            }}
+                            onKeyDown={(e) => handleManagerPhoneKeyDown(e, index)}
+                            onBlur={() => handleManagerBlur(index, 'phone')}
                             onChange={(e) => handleManagerChange(index, 'phone', e.target.value)}
                             placeholder="Phone Number (10 digits)"
                             className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${mErr.phone ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
@@ -443,10 +592,12 @@ export default function AddOrganization() {
                           <div className="relative">
                             <input
                               type={manager.showPassword ? "text" : "password"}
+                              maxLength={50}
                               autoComplete="new-password"
                               value={manager.password}
+                              onBlur={() => handleManagerBlur(index, 'password')}
                               onChange={(e) => handleManagerChange(index, 'password', e.target.value)}
-                              placeholder="Create Password"
+                              placeholder="Create Password (min 6 chars)"
                               className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 pr-10 ${mErr.password ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                             />
                             <button
@@ -467,8 +618,10 @@ export default function AddOrganization() {
                           <div className="relative">
                             <input
                               type={manager.showConfirmPassword ? "text" : "password"}
+                              maxLength={50}
                               autoComplete="new-password"
                               value={manager.confirmPassword}
+                              onBlur={() => handleManagerBlur(index, 'confirmPassword')}
                               onChange={(e) => handleManagerChange(index, 'confirmPassword', e.target.value)}
                               placeholder="Confirm Password"
                               className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 pr-10 ${mErr.confirmPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}

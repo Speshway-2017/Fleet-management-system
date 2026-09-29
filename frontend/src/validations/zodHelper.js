@@ -32,9 +32,10 @@ export const validateForm = (schema, formData) => {
  */
 export const validateField = (schema, fieldName, value, fullFormContext = {}) => {
   try {
-    // If the schema is a ZodObject with shape
-    if (schema && schema.shape && schema.shape[fieldName]) {
-      const fieldSchema = schema.shape[fieldName];
+    // If the schema is a ZodObject or ZodEffects with inner schema shape
+    const shape = schema?.shape || schema?._def?.schema?.shape;
+    if (shape && shape[fieldName]) {
+      const fieldSchema = shape[fieldName];
       const result = fieldSchema.safeParse(value);
       if (!result.success) {
         return result.error.issues[0]?.message || 'Invalid value';

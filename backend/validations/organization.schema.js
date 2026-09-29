@@ -23,17 +23,17 @@ export const managerItemSchema = z.object({
 
 export const createOrganizationSchema = z.object({
   name: orgNameSchema,
-  email: emailSchema,
   industry: industrySchema,
+  email: emailSchema,
   phone: phoneSchema,
-  address: streetAddressSchema.optional(),
-  city: citySchema.optional(),
-  state: stateSchema.optional(),
-  country: countrySchema.optional(),
+  address: streetAddressSchema,
+  city: citySchema,
+  state: stateSchema,
+  country: countrySchema,
   plan: z.enum(['Enterprise', 'Professional', 'Standard', '']).optional().nullable(),
   status: z.enum(['Active', 'Pending', 'Suspended', '']).optional().nullable(),
   managers: z.array(managerItemSchema).optional()
-});
+}).passthrough();
 
 export const updateOrganizationSchema = z.object({
   name: z.string().trim().max(20, 'Organization name must not exceed 20 characters.')

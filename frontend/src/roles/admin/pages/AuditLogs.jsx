@@ -25,37 +25,78 @@ export default function AuditLogs() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchError, setSearchError] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  const handleSearchKeyDown = (e) => {
+    // Ignore control, navigation, function, and modifier keys (Shift, CapsLock, Enter, Escape, Arrow keys, Backspace, etc.)
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    // Only allow single character letters, spaces, and hyphens
+    if (!/^[a-zA-Z\s\-]$/.test(e.key)) {
+      e.preventDefault();
+      setSearchError("Numbers and symbols are not allowed in search (letters only)");
+    } else {
+      if (searchError === "Numbers and symbols are not allowed in search (letters only)") {
+        setSearchError("");
+      }
+    }
+  };
+
+  const handleSearchChange = (e) => {
+    const raw = e.target.value;
+    let val = raw;
+    let hasInvalid = false;
+    if (/[^a-zA-Z\s\-]/.test(raw)) {
+      hasInvalid = true;
+      val = raw.replace(/[^a-zA-Z\s\-]/g, '');
+    }
+
+    if (hasInvalid) {
+      setSearchError("Numbers and symbols are not allowed in search (letters only)");
+    } else if (val.length > 20) {
+      setSearchError("Search must not exceed 20 characters");
+    } else if (val.length === 1) {
+      setSearchError("Search must be at least 2 characters");
+    } else {
+      setSearchError("");
+    }
+    setSearchTerm(val);
+  };
+
+  const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, limit: 15, totalPages: 1, total: 0 });
 
-  const fetchLogs = async (page, search) => {
+  const fetchLogs = useCallback(async (targetPage, search) => {
     setLoading(true);
     try {
-      const response = await adminApi.getAuditLogs({ page, limit: pagination.limit, search });
-      const { logs, pagination: pagData } = response.data.data;
-      setLogs(logs);
-      setPagination(pagData);
+      const params = { page: targetPage, limit: 15 };
+      const trimmed = (search || "").trim();
+      if (trimmed.length >= 2) {
+        params.search = trimmed;
+      }
+      const response = await adminApi.getAuditLogs(params);
+      const resData = response.data?.data || {};
+      setLogs(resData.logs || []);
+      setPagination(resData.pagination || { page: targetPage, limit: 15, totalPages: 1, total: (resData.logs || []).length });
     } catch (error) {
       toast.error("Failed to load audit logs");
       console.error(error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    // When search changes, reset to page 1
+    setPage(1);
     fetchLogs(1, debouncedSearchTerm);
-  }, [debouncedSearchTerm]);
-
-  useEffect(() => {
-    // Normal fetch when page changes (search is already debounced, we skip if searchTerm changed recently)
-    fetchLogs(pagination.page, searchTerm);
-  }, [pagination.page]);
+  }, [debouncedSearchTerm, fetchLogs]);
 
   const handlePageChange = (newPage) => {
-    if (newPage > 0 && newPage <= pagination.totalPages) {
-      setPagination(prev => ({ ...prev, page: newPage }));
+    if (newPage > 0 && newPage <= pagination.totalPages && newPage !== page) {
+      setPage(newPage);
+      fetchLogs(newPage, debouncedSearchTerm);
     }
   };
 
@@ -118,19 +159,24 @@ export default function AuditLogs() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[500px]">
             {/* Header / Controls */}
             <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="relative w-full sm:w-80">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search logs by user, action..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all"
-                />
+              <div className="w-full sm:w-80">
+                <div className="relative flex items-center">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    maxLength={20}
+                    placeholder="Search logs by user, action..."
+                    value={searchTerm}
+                    onKeyDown={handleSearchKeyDown}
+                    onChange={handleSearchChange}
+                    className={`w-full pl-9 pr-4 py-2 bg-slate-50 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all leading-normal ${searchError ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
+                  />
+                </div>
+                {searchError && <p className="text-xs text-red-500 mt-1 font-medium">{searchError}</p>}
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button 
-                  onClick={() => fetchLogs(pagination.page, searchTerm)} 
+                  onClick={() => fetchLogs(page, debouncedSearchTerm)} 
                   className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors"
                   title="Refresh"
                 >
