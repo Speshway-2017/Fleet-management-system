@@ -31,6 +31,7 @@ const Security = lazy(() => import("@/roles/admin/pages/Security"));
 const Features = lazy(() => import("@/roles/admin/pages/Features"));
 const Blogs = lazy(() => import("@/roles/admin/pages/Blogs"));
 const Pricing = lazy(() => import("@/roles/admin/pages/Pricing"));
+const AccountDeletion = lazy(() => import("@/roles/admin/pages/AccountDeletion"));
 
 const ForgotPasswordPage = lazy(() => import("@/roles/admin/pages/ForgotPasswordPage"));
 const OtpVerificationPage = lazy(() => import("@/roles/admin/pages/OtpVerificationPage"));
@@ -138,6 +139,7 @@ export default function App() {
                     <Route path="/security" element={<PublicRoute><Security /></PublicRoute>} />
                     <Route path="/pricing" element={<PublicRoute><Pricing /></PublicRoute>} />
                     <Route path="/blogs" element={<PublicRoute><Blogs /></PublicRoute>} />
+                    <Route path="/account-deletion" element={<AccountDeletion />} />
                   </Route>
 
                   {/* Auth Routes */}

@@ -1,9 +1,11 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../services/api_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/legal_modal.dart';
 import '../main_navigation_screen.dart';
 import 'forgot_password_screen.dart';
 import '../../main.dart';
@@ -81,9 +83,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  late final TapGestureRecognizer _termsRecognizer;
+  late final TapGestureRecognizer _privacyRecognizer;
+
   @override
   void initState() {
     super.initState();
+    _termsRecognizer = TapGestureRecognizer()..onTap = () => LegalModal.showTerms(context);
+    _privacyRecognizer = TapGestureRecognizer()..onTap = () => LegalModal.showPrivacy(context);
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 750),
@@ -105,6 +112,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   @override
   void dispose() {
+    _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
     _animController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -745,26 +754,39 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                               const SizedBox(height: 12),
 
-                              // Disclaimer Statement: By clicking on Login, you are accepting Terms & Conditions
+                              // Disclaimer Statement: By clicking on Login, you are accepting Terms & Conditions and Privacy Policy
                               Center(
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14.0),
                                   child: Text.rich(
                                     TextSpan(
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 11.5,
                                         color: const Color(0xFF64748B),
-                                        height: 1.4,
+                                        height: 1.45,
                                       ),
-                                      children: const [
-                                        TextSpan(text: 'By clicking on Login, you are accepting '),
+                                      children: [
+                                        const TextSpan(text: 'By clicking on Login, you are accepting '),
                                         TextSpan(
                                           text: 'Terms & Conditions',
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: Color(0xFFF97316),
                                             decoration: TextDecoration.underline,
+                                            decorationColor: Color(0xFFF97316),
                                           ),
+                                          recognizer: _termsRecognizer,
+                                        ),
+                                        const TextSpan(text: ' and '),
+                                        TextSpan(
+                                          text: 'Privacy Policy',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFFF97316),
+                                            decoration: TextDecoration.underline,
+                                            decorationColor: Color(0xFFF97316),
+                                          ),
+                                          recognizer: _privacyRecognizer,
                                         ),
                                       ],
                                     ),

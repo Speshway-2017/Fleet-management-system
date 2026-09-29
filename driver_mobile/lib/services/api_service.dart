@@ -389,6 +389,66 @@ class ApiService {
     }
   }
 
+  static Future<dynamic> delete(String endpoint) async {
+    if (mockResponses.containsKey(endpoint)) {
+      return mockResponses[endpoint];
+    }
+    var baseUrl = await getBaseUrl();
+    final headers = await _getHeaders();
+    try {
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 5));
+      return _processResponse(response);
+    } catch (e) {
+      final isNetworkError = e is TimeoutException ||
+          e.toString().contains('SocketException') ||
+          e.toString().contains('Connection refused') ||
+          e.toString().contains('Failed host lookup');
+
+      if (isNetworkError) {
+        debugPrint('[ApiService DELETE Error] Connection failed: $e. Probing fallbacks...');
+        final discoveredUrl = await autoDiscoverWorkingBaseUrl();
+        if (discoveredUrl != null && discoveredUrl != baseUrl) {
+          final retryUrl = '$discoveredUrl$endpoint';
+          debugPrint('[ApiService DELETE] Retrying with auto-discovered URL: $retryUrl');
+          final response = await http
+              .delete(
+                Uri.parse(retryUrl),
+                headers: headers,
+              )
+              .timeout(const Duration(seconds: 5));
+          return _processResponse(response);
+        }
+      }
+
+      if (e is TimeoutException) {
+        throw Exception(
+          'Server connection timed out ($baseUrl). Please check ⚙ Server Settings.',
+        );
+      }
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('Connection refused') ||
+          e.toString().contains('Failed host lookup')) {
+        throw Exception(
+          'Cannot connect to server at $baseUrl. Please check ⚙ Server Settings.',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  static Future<dynamic> deleteDriverAccount() async {
+    try {
+      return await delete('/driver/account');
+    } catch (_) {
+      return await post('/driver/delete-account', {});
+    }
+  }
+
   // Trip Flow API Helpers
   static Future<dynamic> respondToTripAssignment(
     String tripId,

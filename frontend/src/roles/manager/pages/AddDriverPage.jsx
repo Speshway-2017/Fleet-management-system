@@ -112,7 +112,17 @@ export default function AddDriverPage() {
       try {
         const res = await driverApi.getById(id);
         const d = res.data?.data;
-        if (!d) throw new Error("Not found");
+        const isInactive = 
+          ["INACTIVE", "IN-ACTIVE", "DELETED"].includes(String(d.driverStatus || "").toUpperCase().replace(/\s+/g, '')) ||
+          ["INACTIVE", "IN-ACTIVE", "DELETED"].includes(String(d.accountStatus || "").toUpperCase().replace(/\s+/g, '')) ||
+          ["INACTIVE", "IN-ACTIVE", "DELETED"].includes(String(d.status || "").toUpperCase().replace(/\s+/g, ''));
+
+        if (isInactive) {
+          toast.error("Cannot edit an in-active driver profile.");
+          navigate(`/manager/driver-profile/${id}`);
+          return;
+        }
+
         const mapStatusToNew = (status) => {
           if (!status) return "✅ Fit";
           if (status.includes("Fit") && !status.includes("Unfit")) return "✅ Fit";

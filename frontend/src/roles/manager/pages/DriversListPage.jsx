@@ -119,6 +119,9 @@ export default function DriversListPage() {
       case "ON_TRIP":   return "On Trip 🚛";
       case "ON_LEAVE":  return "On Leave 🌴";
       case "SUSPENDED": return "Suspended ⚠️";
+      case "INACTIVE":
+      case "Inactive":
+      case "DELETED":   return "In-Active ⚪";
       case "OFFLINE":   return "Offline 🔴";
       case "OFF_DUTY":  return "Offline 🔴";
       default:          return status ? `${status}` : "Offline 🔴";
@@ -131,6 +134,9 @@ export default function DriversListPage() {
       case "ON_TRIP":   return "bg-amber-50 text-[#A14000] border border-amber-200 font-bold";
       case "ON_LEAVE":  return "bg-blue-50 text-blue-700 border border-blue-200 font-bold";
       case "SUSPENDED": return "bg-red-50 text-red-600 border border-red-200 font-bold";
+      case "INACTIVE":
+      case "Inactive":
+      case "DELETED":   return "bg-slate-100 text-slate-600 border border-slate-200 font-bold";
       case "OFFLINE":   return "bg-red-50 text-red-600 border border-red-200 font-bold";
       case "OFF_DUTY":  return "bg-red-50 text-red-600 border border-red-200 font-bold";
       default:          return "bg-red-50 text-red-600 border border-red-200 font-bold";
@@ -265,6 +271,7 @@ export default function DriversListPage() {
               <option value="ON_TRIP">On Trip</option>
               <option value="ON_LEAVE">On Leave</option>
               <option value="SUSPENDED">Suspended</option>
+              <option value="INACTIVE">In-Active</option>
             </select>
             <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
@@ -424,13 +431,15 @@ export default function DriversListPage() {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button 
-                          onClick={() => navigate(`/manager/edit-driver/${d._id}`)} 
-                          className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
+                        {!["INACTIVE", "IN-ACTIVE", "DELETED"].includes(String(d.driverStatus || "").toUpperCase().replace(/\s+/g, '')) && !["INACTIVE", "IN-ACTIVE", "DELETED"].includes(String(d.accountStatus || "").toUpperCase().replace(/\s+/g, '')) && (
+                          <button 
+                            onClick={() => navigate(`/manager/edit-driver/${d._id}`)} 
+                            className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+                            title="Edit"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        )}
                         <button 
                           onClick={() => { setSelectedDriver(d); setDeleteModalOpen(true); }} 
                           className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl active:scale-95 transition-all cursor-pointer"

@@ -178,11 +178,14 @@ export const getManagerNotifications = async (managerId) => {
       { recipient: managerId },
       {
         recipientRole: 'FLEET_MANAGER',
-        recipient: { $in: [null, undefined] },
         $or: [
+          { recipient: { $in: [null, undefined] } },
           { organization: organizationId },
           { organization: { $in: [null, undefined] } }
         ]
+      },
+      {
+        type: { $in: ['driver_account_deleted', 'driver_deleted', 'account_deleted'] }
       }
     ]
   }).sort({ createdAt: -1 });

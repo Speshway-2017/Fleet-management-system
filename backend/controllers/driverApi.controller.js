@@ -77,6 +77,17 @@ export const loginDriver = async (req, res, next) => {
       return sendError(res, 401, 'Incorrect password');
     }
 
+    if (
+      driver.accountStatus === 'Inactive' ||
+      driver.accountStatus === 'Deleted' ||
+      driver.driverStatus === 'INACTIVE' ||
+      driver.driverStatus === 'DELETED' ||
+      driver.status === 'Inactive' ||
+      driver.status === 'Deleted'
+    ) {
+      return sendError(res, 403, 'Your driver account has been deactivated or deleted. Please contact your Fleet Manager.');
+    }
+
     const managerId = driver.assignedManager?._id || driver.assignedManager || null;
     const organizationId = driver.assignedManager?.organization || null;
 
@@ -3322,6 +3333,143 @@ export const getDriverInvoiceByTripId = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Permanently Delete Driver Account
+ * DELETE /api/driver/account or POST /api/driver/delete-account
+ */
+export const deleteDriverAccount = async (req, res, next) => {
+  try {
+    const driverId = req.user._id;
+    const driver = await Driver.findById(driverId);
+
+    if (!driver) {
+      return sendError(res, 404, 'Driver account not found');
+    }
+
+    const driverName = driver.fullName || 'Driver';
+    const employeeId = driver.employeeId || '';
+    const email = driver.email || '';
+    const managerId = driver.assignedManager?._id || driver.assignedManager || null;
+
+    // 1. Mark driver status as In-Active permanently
+    driver.accountStatus = 'Inactive';
+    driver.status = 'Inactive';
+    driver.driverStatus = 'INACTIVE';
+    driver.isOnline = false;
+    driver.isDuty = false;
+    driver.assignedVehicle = 'Unassigned';
+    driver.isAssigned = false;
+    driver.activeTripId = null;
+    driver.currentTripId = null;
+    driver.fcmToken = '';
+
+    await driver.save();
+
+    // 2. Unassign any vehicles currently assigned to this driver
+    try {
+      await Vehicle.updateMany(
+        { assignedDriver: driver._id },
+        {
+          $set: {
+            assignedDriver: null,
+            isAssigned: false,
+            currentStatus: 'Available'
+          }
+        }
+      );
+    } catch (vErr) {
+      console.error('Error unassigning vehicles for deleted driver:', vErr);
+    }
+
+    // 3. Cancel any active or pending trips assigned to this driver
+    try {
+      await Trip.updateMany(
+        {
+          driver: driver._id,
+          status: { $in: ['Scheduled', 'Assigned', 'Draft', 'Pending', 'In Progress', 'In-Transit', 'Pending Driver Acceptance'] }
+        },
+        {
+          $set: {
+            status: 'Cancelled',
+            cancellationReason: 'Driver permanently deleted their account'
+          }
+        }
+      );
+    } catch (tErr) {
+      console.error('Error cancelling trips for deleted driver:', tErr);
+    }
+
+    // 4. Send high-priority notification to Fleet Manager
+    const io = req.app.get('io') || req.io;
+    try {
+      const notifDoc = new Notification({
+        recipient: managerId || null,
+        recipientRole: 'FLEET_MANAGER',
+        type: 'driver_account_deleted',
+        title: 'Driver Account Deleted',
+        description: `Driver ${driverName} (${employeeId || email}) has permanently deleted their account. Status is updated to In-Active.`,
+        message: `Driver ${driverName} (${employeeId || email}) has permanently deleted their account. Status is updated to In-Active.`,
+        priority: 'high',
+        iconName: 'mdi:account-remove',
+        bgClass: 'bg-red-100 text-red-700',
+        driver: {
+          _id: driver._id,
+          fullName: driverName,
+          email,
+          phoneNumber: driver.phoneNumber,
+          employeeId
+        },
+        metadata: {
+          driverId: driver._id,
+          driverName,
+          employeeId,
+          email,
+          action: 'ACCOUNT_DELETION',
+          status: 'INACTIVE',
+          timestamp: new Date().toISOString()
+        }
+      });
+      await notifDoc.save();
+
+      if (io) {
+        io.emit('notification:new', notifDoc.toObject());
+        io.emit('new_notification', notifDoc.toObject());
+        if (managerId) {
+          io.to(`manager:${managerId}`).emit('notification:new', notifDoc.toObject());
+          io.to(`manager:${managerId}`).emit('new_notification', notifDoc.toObject());
+        }
+      }
+    } catch (nErr) {
+      console.error('Error creating manager notification for driver account deletion:', nErr);
+    }
+
+    // 5. Emit real-time socket events for manager driver roster updates
+    if (io) {
+      io.emit('driver:status-updated', {
+        driverId: driver._id,
+        driverStatus: 'INACTIVE',
+        accountStatus: 'Inactive',
+        status: 'Inactive',
+        fullName: driverName
+      });
+      io.emit('driver:deleted', {
+        driverId: driver._id,
+        fullName: driverName
+      });
+    }
+
+    return sendSuccess(res, 200, {
+      driverId: driver._id,
+      status: 'Inactive',
+      driverStatus: 'INACTIVE',
+      accountStatus: 'Inactive'
+    }, 'Driver account has been deleted permanently and status updated to In-Active');
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 
 
