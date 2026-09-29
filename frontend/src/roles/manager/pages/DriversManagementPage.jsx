@@ -92,12 +92,27 @@ export default function DriversManagementPage() {
     }
   };
 
-  const getStatusLabel = (s) => ({ AVAILABLE: "Available", ON_TRIP: "On Trip", ASSIGNED: "Assigned", SUSPENDED: "Suspended" }[s] || s);
+  const getStatusLabel = (s) => ({
+    AVAILABLE: "Available",
+    ON_TRIP: "On Trip",
+    ASSIGNED: "Assigned",
+    SUSPENDED: "Suspended",
+    INACTIVE: "In-Active",
+    Inactive: "In-Active",
+    DELETED: "In-Active",
+    OFFLINE: "Offline",
+    OFF_DUTY: "Offline"
+  }[s] || s);
   const getStatusBadge = (s) => ({
     AVAILABLE: "bg-emerald-50 text-[#22C55E] border-emerald-200 font-bold",
     ON_TRIP:   "bg-amber-50 text-[#A14000] border-amber-200 font-bold",
     ASSIGNED:  "bg-blue-50 text-[#3B82F6] border-blue-200 font-bold",
     SUSPENDED: "bg-red-50 text-[#EF4444] border-red-200 font-bold",
+    INACTIVE:  "bg-slate-100 text-slate-600 border-slate-200 font-bold",
+    Inactive:  "bg-slate-100 text-slate-600 border-slate-200 font-bold",
+    DELETED:   "bg-slate-100 text-slate-600 border-slate-200 font-bold",
+    OFFLINE:   "bg-red-50 text-[#EF4444] border-red-200 font-bold",
+    OFF_DUTY:  "bg-red-50 text-[#EF4444] border-red-200 font-bold",
   }[s] || "bg-gray-100 text-gray-600 border-gray-200");
   const getInitials = (name = "") => name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
@@ -192,6 +207,7 @@ export default function DriversManagementPage() {
               <option value="AVAILABLE" className="dark:bg-[#0F172A] dark:text-white">Available</option>
               <option value="ON_TRIP" className="dark:bg-[#0F172A] dark:text-white">On Trip</option>
               <option value="SUSPENDED" className="dark:bg-[#0F172A] dark:text-white">Suspended</option>
+              <option value="INACTIVE" className="dark:bg-[#0F172A] dark:text-white">In-Active</option>
             </select>
             <ChevronDown className="w-4 h-4 text-[#64748B] dark:text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>

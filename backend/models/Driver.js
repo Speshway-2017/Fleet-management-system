@@ -10,7 +10,7 @@ const driverSchema = new mongoose.Schema(
     mobile: { type: String, trim: true, default: '' },
     password: { type: String, default: '' },
     mustChangePassword: { type: Boolean, default: true },
-    accountStatus: { type: String, enum: ['Active', 'Inactive', 'Suspended'], default: 'Active' },
+    accountStatus: { type: String, enum: ['Active', 'Inactive', 'Suspended', 'Deleted'], default: 'Active' },
     status: { type: String, default: 'Active' },
     licenseNumber: { type: String, required: true, unique: true, trim: true },
     licenseType: { type: String, enum: ['HMV', 'LMV', 'MCWG'], default: 'HMV' },
@@ -19,7 +19,7 @@ const driverSchema = new mongoose.Schema(
     isDuty: { type: Boolean, default: false },
     driverStatus: {
       type: String,
-      enum: ['AVAILABLE', 'ON_TRIP', 'ASSIGNED', 'SUSPENDED', 'OFFLINE', 'OFF_DUTY'],
+      enum: ['AVAILABLE', 'ON_TRIP', 'ASSIGNED', 'SUSPENDED', 'OFFLINE', 'OFF_DUTY', 'INACTIVE', 'DELETED'],
       default: 'OFFLINE',
     },
     isOnline: { type: Boolean, default: false },

@@ -15,6 +15,7 @@ const getImageUrl = (url) => {
 export default function UserProfileCard({
   user,
   roleLabel = "Fleet Manager",
+  profileLabel = "Profile",
   profilePath = "/manager/profile",
   settingsPath = "/manager/settings",
   supportPath = "/manager/notifications",
@@ -143,17 +144,17 @@ export default function UserProfileCard({
             <span className="text-xs text-[#6B7280] font-medium">{displayRole}</span>
           </div>
 
-          {/* 1. My Profile */}
+          {/* 1. Profile */}
           <button
             type="button"
             onClick={() => {
               setIsOpen(false);
               if (profilePath) navigate(profilePath);
             }}
-            className="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-slate-700 font-medium flex items-center gap-3 transition-colors"
+            className="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-slate-700 font-medium flex items-center gap-3 transition-colors cursor-pointer"
           >
             <User className="w-4 h-4 text-gray-500" />
-            <span>My Profile</span>
+            <span>{profileLabel}</span>
           </button>
 
           {/* 2. Settings (Optional) */}

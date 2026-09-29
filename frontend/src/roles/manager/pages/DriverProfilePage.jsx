@@ -220,7 +220,22 @@ export default function DriverProfilePage() {
       .slice(0, 2);
   };
 
-  const getStatusLabel = (s) => ({ AVAILABLE: "Available", ON_TRIP: "On Trip", SUSPENDED: "Suspended" }[s] || s);
+  const getStatusLabel = (s) => ({
+    AVAILABLE: "Available",
+    ON_TRIP: "On Trip",
+    ASSIGNED: "Assigned",
+    SUSPENDED: "Suspended",
+    INACTIVE: "In-Active",
+    Inactive: "In-Active",
+    DELETED: "In-Active",
+    OFFLINE: "Offline",
+    OFF_DUTY: "Offline"
+  }[s] || s);
+
+  const isInactive = 
+    ["INACTIVE", "IN-ACTIVE", "DELETED"].includes(String(driver.driverStatus || "").toUpperCase().replace(/\s+/g, '')) ||
+    ["INACTIVE", "IN-ACTIVE", "DELETED"].includes(String(driver.accountStatus || "").toUpperCase().replace(/\s+/g, '')) ||
+    ["INACTIVE", "IN-ACTIVE", "DELETED"].includes(String(driver.status || "").toUpperCase().replace(/\s+/g, ''));
 
   return (
     <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
@@ -243,6 +258,7 @@ export default function DriverProfilePage() {
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                   driver.driverStatus === "AVAILABLE" ? "bg-emerald-50 text-[#22C55E]" :
                   driver.driverStatus === "ON_TRIP" ? "bg-amber-50 text-[#A14000]" :
+                  (driver.driverStatus === "INACTIVE" || driver.driverStatus === "Inactive" || driver.driverStatus === "DELETED") ? "bg-slate-100 text-slate-600 border border-slate-200" :
                   "bg-red-50 text-[#EF4444]"
                 }`}>
                   {getStatusLabel(driver.driverStatus)}
@@ -253,15 +269,17 @@ export default function DriverProfilePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate(`/manager/edit-driver/${driver._id}`)}
-            className="px-4.5 py-2.5 border border-[#E7EAF0] bg-white hover:bg-gray-50 rounded-xl text-xs font-bold text-[#64748B] flex items-center gap-2 transition-all cursor-pointer"
-          >
-            <Edit className="w-4 h-4" />
-            <span>Edit Profile</span>
-          </button>
-        </div>
+        {!isInactive && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate(`/manager/edit-driver/${driver._id}`)}
+              className="px-4.5 py-2.5 border border-[#E7EAF0] bg-white hover:bg-gray-50 rounded-xl text-xs font-bold text-[#64748B] flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Edit className="w-4 h-4" />
+              <span>Edit Profile</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* --- DRIVER QUICK STATS OVERVIEW --- */}

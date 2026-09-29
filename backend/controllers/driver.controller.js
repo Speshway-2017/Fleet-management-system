@@ -77,8 +77,14 @@ export const getDriverStats = async (req, res, next) => {
  */
 export const listDrivers = async (req, res, next) => {
   try {
-    // Always scope to the logged-in manager and exclude soft-deleted drivers only
-    const filter = { assignedManager: req.user._id, isDeleted: { $ne: true } };
+    const filter = {
+      $or: [
+        { assignedManager: req.user._id },
+        { assignedManager: { $in: [null, undefined] } },
+        ...(req.user?.organization ? [{ organization: req.user.organization }] : [])
+      ],
+      isDeleted: { $ne: true }
+    };
 
     // 1. Search by Name, Employee ID, Phone, Email, or DL number
     if (req.query.search) {
@@ -179,7 +185,14 @@ export const listDrivers = async (req, res, next) => {
     }
 
     // Compute overall statistics using countDocuments()
-    const baseStatsFilter = { assignedManager: req.user._id, isDeleted: { $ne: true } };
+    const baseStatsFilter = {
+      $or: [
+        { assignedManager: req.user._id },
+        { assignedManager: { $in: [null, undefined] } },
+        ...(req.user?.organization ? [{ organization: req.user.organization }] : [])
+      ],
+      isDeleted: { $ne: true }
+    };
     const totalDriversInDB = await Driver.countDocuments(baseStatsFilter);
     const activeDriversCount = await Driver.countDocuments({
       ...baseStatsFilter,

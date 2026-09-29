@@ -8,6 +8,8 @@ import '../../providers/auth_provider.dart';
 import '../auth/login_screen.dart';
 import 'edit_profile_screen.dart';
 import 'help_support_screen.dart';
+import '../../widgets/legal_modal.dart';
+import '../../services/api_service.dart';
 import '../../main.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -97,6 +99,173 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: Colors.white,
                 ),
               ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _handleDeleteAccount(BuildContext context) async {
+    final outerContext = context;
+    final auth = Provider.of<AuthProvider>(outerContext, listen: false);
+    try {
+      await ApiService.deleteDriverAccount();
+    } catch (e) {
+      debugPrint('Driver deletion API error: $e');
+    }
+    await auth.logout();
+
+    if (outerContext.mounted) {
+      Navigator.of(outerContext, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+
+      ScaffoldMessenger.of(outerContext).showSnackBar(
+        const SnackBar(
+          content: Text('Account permanently deleted and set to In-Active. You have been logged out.'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.delete_forever_rounded,
+                  color: AppColors.error,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Delete Account',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                    fontSize: 17,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Are you sure you want to request deletion of your driver account? This action will permanently deactivate your driver profile, vehicle assignments, and active GPS telemetry.',
+                style: GoogleFonts.nunito(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () {
+                  Navigator.pop(dialogContext);
+                  LegalModal.showAccountDeletion(
+                    context,
+                    onConfirmDelete: () => _handleDeleteAccount(context),
+                  );
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.article_outlined,
+                        size: 16,
+                        color: AppColors.secondary,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'View Full Account Deletion Policy',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.secondary,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 16.0),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      side: const BorderSide(color: AppColors.divider, width: 1.2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(dialogContext);
+                      await _handleDeleteAccount(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    ),
+                    child: Text(
+                      'Confirm Deletion',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         );
@@ -561,6 +730,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     );
                                   },
                                 ),
+                                const Divider(color: AppColors.divider, height: 1),
+                                _buildCardActionTile(
+                                  context,
+                                  icon: Icons.delete_outline_rounded,
+                                  title: 'Delete Account',
+                                  isDestructive: true,
+                                  onTap: () => _showDeleteAccountDialog(context),
+                                ),
                                 const SizedBox(height: 12),
                                 Padding(
                                   padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
@@ -716,42 +893,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildLeadingIcon(IconData icon) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: AppColors.secondary.withAlpha(20), // Peach/Light orange background
-        borderRadius: BorderRadius.circular(10.0),
-      ),
-      child: Icon(
-        icon,
-        color: AppColors.secondary,
-        size: 20,
-      ),
-    );
-  }
-
   Widget _buildCardActionTile(
     BuildContext context, {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    bool isDestructive = false,
   }) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-      leading: _buildLeadingIcon(icon),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: isDestructive
+              ? AppColors.error.withValues(alpha: 0.1)
+              : AppColors.secondary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10.0),
+        ),
+        child: Icon(
+          icon,
+          color: isDestructive ? AppColors.error : AppColors.secondary,
+          size: 20,
+        ),
+      ),
       title: Text(
         title,
         style: GoogleFonts.poppins(
           fontSize: 15,
           fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
+          color: isDestructive ? AppColors.error : AppColors.textPrimary,
         ),
       ),
-      trailing: const Icon(
+      trailing: Icon(
         Icons.chevron_right_rounded,
-        color: AppColors.textDisabled,
+        color: isDestructive ? AppColors.error.withValues(alpha: 0.7) : AppColors.textDisabled,
         size: 20,
       ),
       onTap: onTap,

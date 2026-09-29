@@ -34,6 +34,7 @@ import {
   getDriverTickets,
   getDriverTicketById,
   updateDriverTicketStatus,
+  deleteDriverAccount,
 } from '../controllers/driverApi.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import memoryUpload from '../middleware/memoryUpload.middleware.js';
@@ -49,6 +50,9 @@ router.use(protect);
 
 router.get('/profile', getDriverProfile);
 router.put('/profile', updateDriverProfile);
+router.delete('/profile', deleteDriverAccount);
+router.delete('/account', deleteDriverAccount);
+router.post('/delete-account', deleteDriverAccount);
 router.get('/vehicle', getAssignedVehicle);
 router.get('/maintenance', getDriverMaintenance);
 router.get('/trips/current', getCurrentTrip);

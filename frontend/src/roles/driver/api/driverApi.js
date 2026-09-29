@@ -20,6 +20,10 @@ export const driverApi = {
     const response = await axiosClient.put("/driver/profile", data);
     return response.data;
   },
+  deleteAccount: async () => {
+    const response = await axiosClient.delete("/driver/account");
+    return response.data;
+  },
 
   // Dashboard
   getDashboard: async () => {

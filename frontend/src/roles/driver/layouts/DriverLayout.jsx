@@ -16,6 +16,7 @@ import {
   Bell,
   Headphones,
   Settings,
+  User,
   LogOut,
   Power,
   Menu,
@@ -329,11 +330,13 @@ export default function DriverLayout() {
               />
             </div>
 
-            {/* Driver Profile Dropdown without settings, support, or status toggle */}
+            {/* Driver Profile Dropdown */}
             <UserProfileCard
               user={driverProfile || user || { fullName: driverName }}
               roleLabel="Driver"
+              profileLabel="Profile"
               profilePath="/driver/settings"
+              settingsPath={null}
               showSettings={false}
               showSupport={false}
               showStatusToggle={false}
