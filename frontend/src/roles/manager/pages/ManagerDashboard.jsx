@@ -181,43 +181,199 @@ export default function ManagerDashboard() {
 
 
 
-  // Calculate weekly dispatch activity from real trips
-  const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const weeklyAnalyticsData = daysOfWeek.map((dayName, idx) => {
-    const dayTrips = trips.filter(t => {
-      const d = new Date(t.createdAt || t.departureTime || Date.now());
-      const dayIndex = (d.getDay() + 6) % 7; // Convert Sunday=0 to Monday=0
-      return dayIndex === idx;
-    });
-    const completedCount = dayTrips.filter(t => ["COMPLETED", "DELIVERED", "Completed", "Delivered"].includes(t.status)).length;
-    const activeCount = dayTrips.length;
-    return {
-      day: dayName,
-      dispatches: activeCount,
-      completed: completedCount,
-    };
-  });
-
-  // Real Database Calculations for Delivery Analytics based on User Payment Rules
-  let totalRevenue = 0;
-  let totalCod = 0;
-
-  trips.forEach(t => {
-    const amt = Number(t.codAmount || t.fare || t.totalAmount || t.amount || (t.cargoWeight ? t.cargoWeight * 15 : 500));
-    const pMethod = (t.paymentMethod || t.paymentType || "Prepaid").toUpperCase();
-    const isCompleted = ["COMPLETED", "DELIVERED", "Completed", "Delivered"].includes(t.status);
-
-    if (pMethod.includes("COD") || pMethod.includes("CASH")) {
-      if (isCompleted) {
-        totalRevenue += amt;
-        totalCod += amt;
-      }
-    } else {
-      totalRevenue += amt;
+  const formatRevenueDisplay = (amount) => {
+    if (!amount || isNaN(amount) || amount <= 0) return "₹0";
+    const num = Number(amount);
+    if (num >= 10000000) {
+      return `₹${(num / 10000000).toFixed(2)} Cr`;
     }
-  });
+    if (num >= 100000) {
+      return `₹${(num / 100000).toFixed(2)} L`;
+    }
+    if (num >= 1000) {
+      return `₹${(num / 1000).toFixed(1)}k`;
+    }
+    return `₹${Math.round(num).toLocaleString('en-IN')}`;
+  };
 
-  const activeRidersCount = drivers.filter(d => d.isDuty || d.isOnline || d.driverStatus === "AVAILABLE" || d.driverStatus === "ON_TRIP").length;
+  // Dynamic Month & Timeframe Filter for Delivery Analytics
+  const { lineChartData, totalRevenue, totalCod, activeRidersCount } = useMemo(() => {
+    const now = new Date();
+    
+    // Filter trips by selected timeframe / month
+    const filtered = trips.filter(t => {
+      const dateVal = t.createdAt || t.departureTime || t.dispatchDate || t.updatedAt;
+      if (!dateVal) return true;
+      const tripDate = new Date(dateVal);
+      if (isNaN(tripDate.getTime())) return true;
+
+      if (timeframe === "This Week") {
+        const startOfWeek = new Date(now);
+        const day = startOfWeek.getDay();
+        const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+        startOfWeek.setDate(diff);
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+
+        return tripDate >= startOfWeek && tripDate <= endOfWeek;
+      }
+
+      if (timeframe === "This Month") {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        return tripDate >= startOfMonth && tripDate <= endOfMonth;
+      }
+
+      if (timeframe === "Last Month") {
+        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        return tripDate >= startOfLastMonth && tripDate <= endOfLastMonth;
+      }
+
+      if (timeframe === "Last 3 Months") {
+        const startOf3Months = new Date(now.getFullYear(), now.getMonth() - 2, 1, 0, 0, 0, 0);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        return tripDate >= startOf3Months && tripDate <= endOfMonth;
+      }
+
+      return true; // All Time
+    });
+
+    // Compute Line Chart Series
+    let chartPoints = [];
+    if (timeframe === "This Week") {
+      const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      chartPoints = daysOfWeek.map((dayName, idx) => {
+        const dayTrips = filtered.filter(t => {
+          const d = new Date(t.createdAt || t.departureTime || t.dispatchDate || Date.now());
+          const dayIndex = (d.getDay() + 6) % 7;
+          return dayIndex === idx;
+        });
+        const completedCount = dayTrips.filter(t => ["COMPLETED", "DELIVERED", "Completed", "Delivered"].includes(t.status)).length;
+        return {
+          day: dayName,
+          dispatches: dayTrips.length,
+          completed: completedCount,
+        };
+      });
+    } else if (timeframe === "This Month" || timeframe === "Last Month") {
+      const monthWeeks = [
+        { label: "W1 (1-7)", start: 1, end: 7 },
+        { label: "W2 (8-14)", start: 8, end: 14 },
+        { label: "W3 (15-21)", start: 15, end: 21 },
+        { label: "W4 (22-28)", start: 22, end: 28 },
+        { label: "W5 (29+)", start: 29, end: 31 },
+      ];
+      chartPoints = monthWeeks.map(w => {
+        const weekTrips = filtered.filter(t => {
+          const d = new Date(t.createdAt || t.departureTime || t.dispatchDate || Date.now());
+          const dateNum = d.getDate();
+          return dateNum >= w.start && dateNum <= w.end;
+        });
+        const completedCount = weekTrips.filter(t => ["COMPLETED", "DELIVERED", "Completed", "Delivered"].includes(t.status)).length;
+        return {
+          day: w.label,
+          dispatches: weekTrips.length,
+          completed: completedCount,
+        };
+      });
+    } else if (timeframe === "Last 3 Months") {
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const monthsList = [2, 1, 0].map(offset => {
+        const d = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+        return {
+          monthIdx: d.getMonth(),
+          year: d.getFullYear(),
+          label: `${monthNames[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`
+        };
+      });
+
+      chartPoints = monthsList.map(m => {
+        const mTrips = filtered.filter(t => {
+          const d = new Date(t.createdAt || t.departureTime || t.dispatchDate || Date.now());
+          return d.getMonth() === m.monthIdx && d.getFullYear() === m.year;
+        });
+        const completedCount = mTrips.filter(t => ["COMPLETED", "DELIVERED", "Completed", "Delivered"].includes(t.status)).length;
+        return {
+          day: m.label,
+          dispatches: mTrips.length,
+          completed: completedCount,
+        };
+      });
+    } else {
+      const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      chartPoints = daysOfWeek.map((dayName, idx) => {
+        const dayTrips = filtered.filter(t => {
+          const d = new Date(t.createdAt || t.departureTime || t.dispatchDate || Date.now());
+          return ((d.getDay() + 6) % 7) === idx;
+        });
+        const completedCount = dayTrips.filter(t => ["COMPLETED", "DELIVERED", "Completed", "Delivered"].includes(t.status)).length;
+        return {
+          day: dayName,
+          dispatches: dayTrips.length,
+          completed: completedCount,
+        };
+      });
+    }
+
+    // Real Database Calculations for Revenue & COD in the filtered period
+    let rev = 0;
+    let cod = 0;
+    const periodTripPool = filtered.length > 0 ? filtered : trips;
+
+    periodTripPool.forEach(t => {
+      const amt = Number(t.codAmount || t.fare || t.totalAmount || t.amount || (t.cargoWeight ? t.cargoWeight * 15 : 500));
+      const pMethod = (t.paymentMethod || t.paymentType || "Prepaid").toUpperCase();
+      const isCompleted = ["COMPLETED", "DELIVERED", "Completed", "Delivered"].includes(t.status);
+
+      if (pMethod.includes("COD") || pMethod.includes("CASH")) {
+        if (isCompleted) {
+          rev += amt;
+          cod += amt;
+        }
+      } else {
+        rev += amt;
+      }
+    });
+
+    // Active riders operating in period / overall available
+    const assignedDriverIds = new Set();
+    filtered.forEach(t => {
+      if (t.driver) {
+        const dId = typeof t.driver === 'object' ? (t.driver._id || t.driver.id) : t.driver;
+        if (dId) assignedDriverIds.add(String(dId));
+      }
+    });
+    const ridersCount = assignedDriverIds.size > 0 
+      ? assignedDriverIds.size 
+      : drivers.filter(d => d.isDuty || d.isOnline || d.driverStatus === "AVAILABLE" || d.driverStatus === "ON_TRIP").length;
+
+    return {
+      filteredTrips: filtered,
+      lineChartData: chartPoints,
+      totalRevenue: rev,
+      totalCod: cod,
+      activeRidersCount: ridersCount,
+    };
+  }, [trips, timeframe, drivers]);
+
+  // Active Maintenance Alerts calculation (reflects current backend state & complaints)
+  const activeComplaintsCount = useMemo(() => {
+    return complaints.filter(c => !['Resolved', 'Closed', 'RESOLVED', 'CLOSED'].includes(c.status)).length;
+  }, [complaints]);
+
+  const underRepairCount = useMemo(() => {
+    return vehicles.filter(v => ['Maintenance', 'MAINTENANCE', 'Under Maintenance', 'Repair'].includes(v.status) || v.currentStatus === 'Maintenance').length;
+  }, [vehicles]);
+
+  const currentMaintenanceAlerts = useMemo(() => {
+    if (dbStats?.maintenanceAlerts !== undefined) return dbStats.maintenanceAlerts;
+    if (dbStats?.underRepair !== undefined && dbStats.underRepair > 0) return dbStats.underRepair;
+    return activeComplaintsCount > 0 ? (activeComplaintsCount + underRepairCount) : underRepairCount;
+  }, [dbStats, activeComplaintsCount, underRepairCount]);
 
   // Calculate Success Rate from real MongoDB trips
   const completedTripsCount = trips.filter(t => ["COMPLETED", "DELIVERED", "Completed", "Delivered"].includes(t.status)).length;
@@ -343,13 +499,13 @@ export default function ManagerDashboard() {
         />
         <KPICard
           title="Maintenance Alerts"
-          value={loading ? null : (dbStats?.underRepair ?? complaints.length)}
+          value={loading ? null : currentMaintenanceAlerts}
           loading={loading}
-          subtitle="VS last week"
+          subtitle="Active & Pending Issues"
           icon="material-symbols:build-outline"
-          trendText={(dbStats?.underRepair ?? complaints.length) > 0 ? "Action Required" : "0 Alerts"}
-          isTrendUp={(dbStats?.underRepair ?? complaints.length) === 0}
-          statusType={(dbStats?.underRepair ?? complaints.length) > 0 ? "negative" : "positive"}
+          trendText={currentMaintenanceAlerts > 0 ? `${currentMaintenanceAlerts} Action Required` : "0 Alerts"}
+          isTrendUp={currentMaintenanceAlerts === 0}
+          statusType={currentMaintenanceAlerts > 0 ? "negative" : "positive"}
           onClick={() => navigate("/manager/maintenance")}
         />
       </div>
@@ -421,41 +577,52 @@ export default function ManagerDashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 mb-4 gap-2">
               <div>
                 <h3 className="font-poppins font-bold text-sm text-slate-900">Delivery Analytics</h3>
-                <p className="text-[10px] text-slate-400 font-medium font-poppins">Completed vs active trip dispatches across the week.</p>
+                <p className="text-[10px] text-slate-400 font-medium font-poppins">
+                  {timeframe === "This Week" ? "Completed vs active trip dispatches across the week." : `Completed vs active trip dispatches for ${timeframe.toLowerCase()}.`}
+                </p>
               </div>
               <select
                 value={timeframe}
                 onChange={(e) => setTimeframe(e.target.value)}
-                className="px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 font-poppins focus:outline-none cursor-pointer transition-colors hover:bg-slate-100"
+                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 font-poppins focus:outline-none cursor-pointer transition-colors hover:bg-slate-100 shadow-2xs"
               >
-                <option value="This Week">This Week</option>
                 <option value="This Month">This Month</option>
+                <option value="Last Month">Last Month</option>
+                <option value="This Week">This Week</option>
+                <option value="Last 3 Months">Last 3 Months</option>
+                <option value="All Time">All Time</option>
               </select>
             </div>
 
             {/* 3 Analytics Stat Pill Boxes */}
             <div className="grid grid-cols-3 gap-3 mb-2">
-              <div className="p-3 bg-slate-50 border border-slate-200/70 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-2xs">
-                <span className="text-lg sm:text-xl font-black text-slate-900 font-poppins block">
-                  {totalRevenue > 0 ? `₹${(totalRevenue >= 1000 ? (totalRevenue / 1000).toFixed(1) + 'K' : totalRevenue)}` : '₹0'}
+              <div className="p-3 bg-slate-50 border border-slate-200/70 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-2xs min-w-0 flex flex-col justify-between h-full min-h-[72px]">
+                <span
+                  className="text-base sm:text-lg lg:text-xl font-black text-slate-900 font-poppins block truncate leading-tight tracking-tight"
+                  title={`₹${Math.round(totalRevenue).toLocaleString('en-IN')}`}
+                >
+                  {formatRevenueDisplay(totalRevenue)}
                 </span>
-                <span className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider font-poppins mt-0.5 block">
+                <span className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider font-poppins mt-1 block truncate">
                   Revenue
                 </span>
               </div>
-              <div className="p-3 bg-slate-50 border border-slate-200/70 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-2xs">
-                <span className="text-lg sm:text-xl font-black text-slate-900 font-poppins block">
-                  {totalCod > 0 ? `₹${(totalCod >= 1000 ? (totalCod / 1000).toFixed(1) + 'K' : totalCod)}` : '₹0'}
+              <div className="p-3 bg-slate-50 border border-slate-200/70 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-2xs min-w-0 flex flex-col justify-between h-full min-h-[72px]">
+                <span
+                  className="text-base sm:text-lg lg:text-xl font-black text-slate-900 font-poppins block truncate leading-tight tracking-tight"
+                  title={`₹${Math.round(totalCod).toLocaleString('en-IN')}`}
+                >
+                  {formatRevenueDisplay(totalCod)}
                 </span>
-                <span className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider font-poppins mt-0.5 block">
+                <span className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider font-poppins mt-1 block truncate">
                   COD Collected
                 </span>
               </div>
-              <div className="p-3 bg-slate-50 border border-slate-200/70 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-2xs">
-                <span className="text-lg sm:text-xl font-black text-slate-900 font-poppins block">
+              <div className="p-3 bg-slate-50 border border-slate-200/70 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-2xs min-w-0 flex flex-col justify-between h-full min-h-[72px]">
+                <span className="text-base sm:text-lg lg:text-xl font-black text-slate-900 font-poppins block truncate leading-tight tracking-tight">
                   {activeRidersCount}
                 </span>
-                <span className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider font-poppins mt-0.5 block">
+                <span className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider font-poppins mt-1 block truncate">
                   Active Riders
                 </span>
               </div>
@@ -464,7 +631,7 @@ export default function ManagerDashboard() {
             {/* Line Chart Container */}
             <div className="flex-1 min-h-[220px] w-full mt-2">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={weeklyAnalyticsData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                <LineChart data={lineChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
                   <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontFamily: 'Manrope', fill: '#94A3B8' }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontFamily: 'Manrope', fill: '#94A3B8' }} />

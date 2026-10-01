@@ -19,12 +19,14 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import { formatEmployeeId } from "@/utils/employeeIdFormatter";
 import { getSocket } from "@/api/socket";
 import { driverApi } from "@/api/driverApi";
+import { validateSearchQuery } from "@/validations/common.schema.js";
 
 export default function DriversListPage() {
   const navigate = useNavigate();
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [licenseFilter, setLicenseFilter] = useState("All Types");
   const [vehicleFilter, setVehicleFilter] = useState("All Vehicles");
@@ -77,8 +79,16 @@ export default function DriversListPage() {
     setCurrentPage(1);
   }, [search, statusFilter, licenseFilter, vehicleFilter, licenseStatusFilter]);
 
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearch(val);
+    const err = validateSearchQuery(val, 50);
+    setSearchError(err);
+  };
+
   const handleResetFilters = () => {
     setSearch("");
+    setSearchError("");
     setStatusFilter("All Statuses");
     setLicenseFilter("All Types");
     setVehicleFilter("All Vehicles");
@@ -164,8 +174,10 @@ export default function DriversListPage() {
 
   const filteredDrivers = drivers
     .filter((d) => {
-      const query = search.toLowerCase();
+      if (searchError) return false;
+      const query = search.toLowerCase().trim();
       const matchesSearch =
+        !query ||
         (d.fullName || "").toLowerCase().includes(query) ||
         (d.phoneNumber || "").includes(query) ||
         (d.email || "").toLowerCase().includes(query) ||
@@ -250,12 +262,13 @@ export default function DriversListPage() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#94A3B8]" />
             <input
               type="text"
-              maxLength={20}
+              maxLength={50}
               placeholder="Search by name, employee ID, phone..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
+              onChange={handleSearchChange}
+              className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm focus:outline-none transition-all bg-white text-[#1E293B] ${searchError ? 'border-red-500 focus:ring-1 focus:ring-red-500' : 'border-[#E7EAF0] focus:border-[#A14000]'}`}
             />
+            {searchError && <p className="text-xs text-red-500 mt-1 font-medium">{searchError}</p>}
           </div>
         </div>
 

@@ -19,12 +19,46 @@ export default function ChangePasswordPage() {
     confirm: false,
   });
 
+  const validatePasswordField = (name, value, currentForm) => {
+    let errorMsg = "";
+    const strVal = String(value || "").trim();
+
+    if (name === "currentPassword") {
+      if (!strVal) {
+        errorMsg = "Current password is required.";
+      }
+    } else if (name === "newPassword") {
+      if (!strVal) {
+        errorMsg = "New password is required.";
+      } else if (strVal.length < 8) {
+        errorMsg = "Password must be at least 8 characters.";
+      } else if (strVal.length > 20) {
+        errorMsg = "Password must not exceed 20 characters.";
+      } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(strVal)) {
+        errorMsg = "Password must contain uppercase, lowercase and number.";
+      }
+    } else if (name === "confirmPassword") {
+      if (!strVal) {
+        errorMsg = "Confirm password is required.";
+      } else if (strVal !== (currentForm.newPassword || "")) {
+        errorMsg = "Passwords do not match.";
+      }
+    }
+    return errorMsg;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
+    const nextForm = { ...formData, [name]: value };
+    setFormData(nextForm);
+    const err = validatePasswordField(name, value, nextForm);
+    setErrors((prev) => ({ ...prev, [name]: err }));
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const err = validatePasswordField(name, value, formData);
+    setErrors((prev) => ({ ...prev, [name]: err }));
   };
 
   const handleSubmit = (e) => {
@@ -62,17 +96,21 @@ export default function ChangePasswordPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2 font-poppins">
               Current Password
             </label>
             <div className="relative">
               <input
                 type={showPasswords.current ? "text" : "password"}
                 name="currentPassword"
+                maxLength={20}
                 value={formData.currentPassword}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none transition-all ${
+                  errors.currentPassword ? "border-red-500 focus:ring-1 focus:ring-red-500" : "border-gray-300 focus:ring-2 focus:ring-amber-500"
+                }`}
                 placeholder="Enter current password"
               />
               <button
@@ -88,20 +126,27 @@ export default function ChangePasswordPage() {
                 />
               </button>
             </div>
+            {errors.currentPassword && (
+              <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{errors.currentPassword}</p>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2 font-poppins">
               New Password
             </label>
             <div className="relative">
               <input
                 type={showPasswords.new ? "text" : "password"}
                 name="newPassword"
+                maxLength={20}
                 value={formData.newPassword}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none transition-all ${
+                  errors.newPassword ? "border-red-500 focus:ring-1 focus:ring-red-500" : "border-gray-300 focus:ring-2 focus:ring-amber-500"
+                }`}
                 placeholder="Enter new password"
               />
               <button
@@ -117,23 +162,31 @@ export default function ChangePasswordPage() {
                 />
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-2">
-              Must be at least 8 characters long with a mix of letters and numbers
-            </p>
+            {errors.newPassword ? (
+              <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{errors.newPassword}</p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-2 font-poppins">
+                Must be at least 8 characters long with a mix of letters and numbers (max 20)
+              </p>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2 font-poppins">
               Confirm New Password
             </label>
             <div className="relative">
               <input
                 type={showPasswords.confirm ? "text" : "password"}
                 name="confirmPassword"
+                maxLength={20}
                 value={formData.confirmPassword}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none transition-all ${
+                  errors.confirmPassword ? "border-red-500 focus:ring-1 focus:ring-red-500" : "border-gray-300 focus:ring-2 focus:ring-amber-500"
+                }`}
                 placeholder="Re-enter new password"
               />
               <button
@@ -149,6 +202,9 @@ export default function ChangePasswordPage() {
                 />
               </button>
             </div>
+            {errors.confirmPassword && (
+              <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{errors.confirmPassword}</p>
+            )}
           </div>
 
           <div className="flex items-center gap-4 pt-4">

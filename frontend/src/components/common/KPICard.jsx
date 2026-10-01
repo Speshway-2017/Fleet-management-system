@@ -55,30 +55,32 @@ export default function KPICard({
     <div
       data-dash-kpi
       onClick={onClick}
-      className={`group bg-white dark:bg-[#1E293B] p-4 rounded-2xl border border-slate-200/80 dark:border-[#242E42] shadow-[0_2px_10px_rgba(0,0,0,0.02)] flex flex-col justify-between h-full min-h-[128px] transition-all duration-250 ease-out hover:-translate-y-1 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 ${
+      className={`group bg-white dark:bg-[#1E293B] p-4 rounded-2xl border border-slate-200/80 dark:border-[#242E42] shadow-[0_2px_10px_rgba(0,0,0,0.02)] flex flex-col justify-between h-full min-h-[128px] overflow-hidden transition-all duration-250 ease-out hover:-translate-y-1 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 ${
         onClick ? "cursor-pointer" : ""
       } ${className}`}
     >
       {/* Top Row: Icon + Title */}
-      <div className="flex items-center gap-2 mb-2 select-none min-w-0">
+      <div className="flex items-center gap-2 mb-2 select-none min-w-0 overflow-hidden">
         {renderIcon()}
-        <span className="text-[14px] sm:text-[15px] font-semibold text-slate-700 dark:text-slate-200 font-poppins truncate" title={title}>
+        <span className="text-[13px] sm:text-[14px] md:text-[15px] font-semibold text-slate-700 dark:text-slate-200 font-poppins truncate min-w-0" title={title}>
           {title}
         </span>
       </div>
 
       {/* Middle Row: Large Prominent KPI Value + Positive/Negative Trend Badge */}
-      <div className="flex items-baseline justify-between gap-2 my-1 min-w-0">
+      <div className="flex flex-wrap sm:flex-nowrap items-baseline justify-between gap-x-2 gap-y-1 my-1 min-w-0 overflow-hidden">
         {isLoading ? (
           <span className="inline-block w-16 h-8 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse my-0.5" />
         ) : (
           <span
-            className={`font-extrabold font-poppins tracking-tight leading-none truncate min-w-0 flex-1 ${
+            className={`font-extrabold font-poppins tracking-tight leading-none truncate min-w-0 max-w-full ${
               strValue.length > 12
-                ? "text-[18px] sm:text-[20px] lg:text-[22px]"
+                ? "text-[16px] sm:text-[18px] lg:text-[20px]"
                 : strValue.length > 8
-                ? "text-[22px] sm:text-[24px] lg:text-[26px]"
-                : "text-[26px] sm:text-[30px] lg:text-[32px]"
+                ? "text-[19px] sm:text-[21px] lg:text-[23px]"
+                : strValue.length > 5
+                ? "text-[22px] sm:text-[25px] lg:text-[28px]"
+                : "text-[25px] sm:text-[28px] lg:text-[30px]"
             } ${isZero ? "text-slate-400" : "text-[#0D1B2A] dark:text-white"}`}
             title={strValue}
           >
@@ -88,14 +90,14 @@ export default function KPICard({
 
         {trendText && !isLoading ? (
           <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold font-poppins inline-flex items-center gap-0.5 shrink-0 transition-transform duration-200 group-hover:scale-105 ${getBadgeStyle()}`}>
-            {isTrendUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+            {isTrendUp ? <ArrowUpRight className="w-3 h-3 shrink-0" /> : <ArrowDownRight className="w-3 h-3 shrink-0" />}
             {trendText}
           </span>
         ) : null}
       </div>
 
       {/* Bottom Row: Subtitle label */}
-      <div className="text-xs text-slate-400 font-poppins mt-1 truncate" title={subtitle}>
+      <div className="text-xs text-slate-400 font-poppins mt-1 truncate min-w-0" title={subtitle}>
         {subtitle}
       </div>
     </div>

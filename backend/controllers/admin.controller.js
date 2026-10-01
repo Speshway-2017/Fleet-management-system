@@ -1053,16 +1053,17 @@ export const getAnalytics = async (req, res, next) => {
 
     // Group organizations by plan for subscription distribution
     const plansAgg = await Organization.aggregate([
+      { $match: { plan: { $exists: true, $ne: '' } } },
       { $group: { _id: '$plan', count: { $sum: 1 } } }
     ]);
     const plansMap = { Enterprise: 0, Professional: 0, Standard: 0 };
     plansAgg.forEach(p => {
-      const planName = p._id ? String(p._id).trim() : '';
-      if (planName.toLowerCase().includes('enterprise')) {
+      const planName = p._id ? String(p._id).trim().toLowerCase() : '';
+      if (planName.includes('enterprise')) {
         plansMap.Enterprise += p.count;
-      } else if (planName.toLowerCase().includes('pro')) {
+      } else if (planName.includes('pro')) {
         plansMap.Professional += p.count;
-      } else {
+      } else if (planName.includes('standard') || planName.includes('basic')) {
         plansMap.Standard += p.count;
       }
     });
@@ -1070,7 +1071,7 @@ export const getAnalytics = async (req, res, next) => {
     const subscriptionData = [
       { name: 'Enterprise', value: plansMap.Enterprise, color: '#0f172a' },
       { name: 'Professional', value: plansMap.Professional, color: '#b45309' },
-      { name: 'Standard', value: plansMap.Standard, color: '#cbd5e1' },
+      { name: 'Standard', value: plansMap.Standard, color: '#2563eb' },
     ];
 
     // System activity from AuditLog

@@ -79,13 +79,13 @@ export const managerNameSchema = z
   .max(20, 'Full name must not exceed 20 characters.')
   .refine((val) => /^[a-zA-Z\s]+$/.test(val), { message: 'Full name must contain alphabets only.' });
 
-// Street Address: min 5, max 30 chars, required
+// Street Address: min 5, max 100 chars, required
 export const streetAddressSchema = z
   .string({ required_error: 'Street address is required.' })
   .trim()
   .min(1, 'Street address is required.')
   .min(5, 'Street address must be at least 5 characters.')
-  .max(30, 'Street address must not exceed 30 characters.');
+  .max(100, 'Street address must not exceed 100 characters.');
 
 // City: min 2, max 20 chars, alphabets and spaces only, required
 export const citySchema = z
@@ -118,7 +118,7 @@ export const countrySchema = z
 export const optionalStreetAddressSchema = z
   .string()
   .trim()
-  .max(30, 'Street address must not exceed 30 characters.')
+  .max(100, 'Street address must not exceed 100 characters.')
   .optional()
   .nullable();
 
@@ -198,13 +198,13 @@ export const numericAmountSchema = (fieldName = 'Amount', max = 10000000) =>
       return true;
     }, { message: `${fieldName} cannot have more than 2 decimal places.` }));
 
-// Password: min 6, max 50 chars
+// Password: min 6, max 20 chars
 export const passwordSchema = z
   .string({ required_error: 'Password is required.' })
   .trim()
   .min(1, 'Password is required.')
   .min(6, 'Password must be at least 6 characters long.')
-  .max(50, 'Password must not exceed 50 characters.');
+  .max(20, 'Password must not exceed 20 characters.');
 
 // IPv4 Helper and Schemas
 export const isValidIpv4 = (value) => {
@@ -275,4 +275,150 @@ export const optionalUrlSchema = (fieldName = 'URL') =>
     }, { message: `Please enter a valid URL (e.g. https://example.com).` })
     .optional()
     .nullable();
+
+// Global Search Query Validation
+export const searchQuerySchema = z
+  .string()
+  .trim()
+  .max(50, 'Search term must not exceed 50 characters.')
+  .refine((val) => !val || !/(.)\1{4,}/i.test(val), {
+    message: 'Repeated characters are not allowed in search.'
+  })
+  .refine((val) => !val || /[a-zA-Z0-9]/.test(val), {
+    message: 'Please enter letters or numbers to search.'
+  })
+  .optional();
+
+export const validateSearchQuery = (query, maxLength = 50) => {
+  if (!query || typeof query !== 'string') return '';
+  const trimmed = query.trim();
+  if (!trimmed) return '';
+  if (query.length > maxLength) {
+    return `Search query must not exceed ${maxLength} characters.`;
+  }
+  if (/(.)\1{4,}/i.test(query)) {
+    return 'Repeated characters are not allowed in search.';
+  }
+  if (/^[^a-zA-Z0-9]+$/.test(trimmed)) {
+    return 'Please enter letters or numbers to search.';
+  }
+  return '';
+};
+
+// Sunday Date Helper: returns true if a given date string or Date object represents a Sunday
+export const isSunday = (dateVal) => {
+  if (!dateVal) return false;
+  if (dateVal instanceof Date) {
+    return !isNaN(dateVal.getTime()) && dateVal.getDay() === 0;
+  }
+  if (typeof dateVal === 'string') {
+    const cleanDate = dateVal.split('T')[0];
+    const parts = cleanDate.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, month, day);
+      return !isNaN(d.getTime()) && d.getDay() === 0;
+    }
+  }
+  const d = new Date(dateVal);
+  return !isNaN(d.getTime()) && d.getDay() === 0;
+};
+
+// Universal Text Field Validator (Rejects Numbers in Names, Roles, Cities, Hubs, etc.)
+export const validatePureText = (value, fieldName = 'Field', min = 2, max = 50, required = true) => {
+  const str = String(value ?? '').trim();
+  if (!str) {
+    return required ? `${fieldName} is required.` : '';
+  }
+  if (str.length < min) {
+    return `${fieldName} must be at least ${min} characters.`;
+  }
+  if (str.length > max) {
+    return `${fieldName} must not exceed ${max} characters.`;
+  }
+  if (/\d/.test(str)) {
+    return `${fieldName} must contain letters only (numbers are not allowed).`;
+  }
+  if (!/^[a-zA-Z\s.'-]+$/.test(str)) {
+    return `${fieldName} contains invalid characters.`;
+  }
+  if (/(.)\1{4,}/i.test(str)) {
+    return `${fieldName} contains excessive repeated characters.`;
+  }
+  return '';
+};
+
+// Universal Numeric Range Validator (Enforces Valid Positive Numbers and Limits)
+export const validateNumericRange = (value, fieldName = 'Value', min = 0, max = 10000000, required = true, isInteger = false) => {
+  const str = String(value ?? '').trim();
+  if (!str) {
+    return required ? `${fieldName} is required.` : '';
+  }
+  const num = Number(str);
+  if (isNaN(num)) {
+    return `${fieldName} must be a valid number.`;
+  }
+  if (isInteger && !Number.isInteger(num)) {
+    return `${fieldName} must be a whole number (no decimals).`;
+  }
+  if (num < min) {
+    return `${fieldName} must be at least ${min}.`;
+  }
+  if (num > max) {
+    return `${fieldName} must not exceed ${max.toLocaleString()}.`;
+  }
+  return '';
+};
+
+// Universal Indian Mobile Phone Validator
+export const validateIndianPhone = (value, required = true) => {
+  const str = String(value ?? '').trim();
+  if (!str) {
+    return required ? 'Phone number is required.' : '';
+  }
+  if (!/^\d+$/.test(str)) {
+    return 'Phone number must contain digits only.';
+  }
+  if (str.length !== 10) {
+    return 'Phone number must be exactly 10 digits.';
+  }
+  if (!/^[6-9]/.test(str)) {
+    return 'Phone number must start with 6, 7, 8, or 9.';
+  }
+  return '';
+};
+
+// Universal Email Address Validator
+export const validateEmailAddress = (value, required = true, max = 80) => {
+  const str = String(value ?? '').trim();
+  if (!str) {
+    return required ? 'Email address is required.' : '';
+  }
+  if (str.length > max) {
+    return `Email address must not exceed ${max} characters.`;
+  }
+  if (/\s/.test(str)) {
+    return 'Email address must not contain spaces.';
+  }
+  if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(str)) {
+    return 'Please enter a valid email address.';
+  }
+  return '';
+};
+
+// Universal Indian Pincode Validator
+export const validateIndianPincode = (value, required = true) => {
+  const str = String(value ?? '').trim();
+  if (!str) {
+    return required ? 'Pincode is required.' : '';
+  }
+  if (!/^\d{6}$/.test(str)) {
+    return 'Pincode must be exactly 6 digits.';
+  }
+  return '';
+};
+
+
 

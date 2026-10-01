@@ -69,6 +69,7 @@ import { calculateDistance } from '../utils/distanceCalculator.js';
 import TollTransaction from '../models/TollTransaction.js';
 import { generateTollsForTrip } from '../utils/seedTolls.js';
 import VehicleComplaint from '../models/VehicleComplaint.js';
+import Maintenance from '../models/Maintenance.js';
 import { syncDriverLocationFromLatestTrip, updateDriverAndVehicleOnCompletion } from '../utils/driverLocationHelper.js';
 import { processFastagDeduction } from '../services/fastag.service.js';
 import { parseDateTimeIST } from '../utils/dateHelper.js';
@@ -87,14 +88,38 @@ export const getDashboard = async (req, res, next) => {
     // 2. Trips Today (scheduled, on transit, delayed)
     const tripsToday = await Trip.countDocuments({
       assignedManager: managerId,
-      status: { $in: ['Scheduled', 'On Transit', 'Delayed'] }
+      status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'SCHEDULED', 'IN_TRANSIT', 'DISPATCHED'] }
     });
 
-    // 3. Vehicles under repair
+    // 3. Vehicles under repair and active maintenance alerts / complaints
+    const managerVehicles = await Vehicle.find({ assignedManager: managerId }, '_id vehicleNumber');
+    const vehicleIds = managerVehicles.map(v => v._id);
+    const vehicleNumbers = managerVehicles.map(v => v.vehicleNumber).filter(Boolean);
+
     const underRepair = await Vehicle.countDocuments({
       assignedManager: managerId,
-      currentStatus: 'Maintenance'
+      currentStatus: { $in: ['Maintenance', 'MAINTENANCE', 'Under Maintenance', 'Repair'] }
     });
+
+    const activeTicketsCount = await VehicleComplaint.countDocuments({
+      $or: [
+        { manager: managerId },
+        { assignedManager: managerId },
+        { vehicle: { $in: vehicleIds } },
+        { vehiclePlate: { $in: vehicleNumbers } }
+      ],
+      status: { $nin: ['Resolved', 'Closed', 'RESOLVED', 'CLOSED'] }
+    });
+
+    const activeMaintenanceSchedules = await Maintenance.countDocuments({
+      $or: [
+        { vehicle: { $in: vehicleIds } },
+        { recordedBy: managerId }
+      ],
+      status: { $in: ['Scheduled', 'In Progress', 'SCHEDULED', 'IN_PROGRESS', 'OVERDUE', 'Pending', 'Overdue'] }
+    });
+
+    const maintenanceAlertsCount = activeTicketsCount > 0 ? (activeTicketsCount + underRepair) : (underRepair > 0 ? underRepair : activeMaintenanceSchedules);
 
     // 4. Drivers available
     const driversAvailable = await Driver.countDocuments({
@@ -103,10 +128,6 @@ export const getDashboard = async (req, res, next) => {
     });
 
     // 5. Fuel Expense: sum up amounts from Fuel records
-    // First, find all vehicle IDs assigned to the manager
-    const managerVehicles = await Vehicle.find({ assignedManager: managerId }, '_id');
-    const vehicleIds = managerVehicles.map(v => v._id);
-
     const fuelDocs = await Fuel.find({
       $or: [
         { vehicle: { $in: vehicleIds } },
@@ -172,6 +193,8 @@ export const getDashboard = async (req, res, next) => {
       activeVehicles,
       tripsToday,
       underRepair,
+      activeTickets: activeTicketsCount,
+      maintenanceAlerts: maintenanceAlertsCount,
       driversAvailable,
       fuelExpense,
       totalEarnings

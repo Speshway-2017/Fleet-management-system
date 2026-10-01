@@ -221,19 +221,19 @@ function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
 
             {/* Revenue Trend */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col justify-between hover:-translate-y-1 hover:shadow-md transition-all duration-300">
-              <div className="flex items-start justify-between gap-3 mb-6 min-w-0">
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col justify-between overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all duration-300 min-w-0">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100 min-w-0">
                 <div className="min-w-0">
-                  <h3 className="font-bold text-slate-800 text-sm truncate">Revenue Trend</h3>
+                  <h3 className="font-bold text-slate-800 text-sm truncate font-poppins">Revenue Trend</h3>
                 </div>
-                <div className="text-right shrink-0 min-w-0 max-w-[60%]">
-                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5 truncate">Total Revenue</div>
-                  <div className="text-base sm:text-lg font-black text-slate-800 leading-none truncate" title={formatCurrency(totalCalculatedRevenue)}>
+                <div className="text-right shrink-0 min-w-0">
+                  <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider truncate">Total Revenue</div>
+                  <div className="text-sm sm:text-base font-black text-slate-800 leading-tight truncate" title={formatCurrency(totalCalculatedRevenue)}>
                     {formatCurrency(totalCalculatedRevenue)}
                   </div>
                 </div>
               </div>
-              <div className="h-56">
+              <div className="h-56 min-w-0 w-full overflow-hidden">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={safeChartData} margin={{ top: 10, right: 15, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -262,17 +262,17 @@ function Dashboard() {
             </div>
 
             {/* Org Status */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
-              <div className="flex items-start justify-between gap-3 mb-2 min-w-0">
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all duration-300 min-w-0">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100 min-w-0">
                 <div className="min-w-0">
-                  <h3 className="font-bold text-slate-800 text-sm truncate">Organization Status</h3>
+                  <h3 className="font-bold text-slate-800 text-sm truncate font-poppins">Organization Status</h3>
                 </div>
-                <div className="text-right shrink-0">
-                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5 truncate">Total Orgs</div>
-                  <div className="text-lg font-black text-slate-800 leading-none">{statistics.totalOrganizations || 0}</div>
+                <div className="text-right shrink-0 min-w-0">
+                  <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider truncate">Total Orgs</div>
+                  <div className="text-sm sm:text-base font-black text-slate-800 leading-tight truncate">{statistics.totalOrganizations || 0}</div>
                 </div>
               </div>
-              <div className="flex-1 flex flex-col items-center justify-center relative">
+              <div className="flex-1 flex flex-col items-center justify-center relative min-w-0 w-full">
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -310,14 +310,14 @@ function Dashboard() {
             </div>
 
             {/* Fleet Manager Status */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300">
-              <div className="flex items-start justify-between gap-3 mb-6 min-w-0">
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm lg:col-span-1 flex flex-col overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all duration-300 min-w-0">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100 min-w-0">
                 <div className="min-w-0">
-                  <h3 className="font-bold text-slate-800 text-sm truncate">Fleet Manager Status</h3>
+                  <h3 className="font-bold text-slate-800 text-sm truncate font-poppins">Fleet Manager Status</h3>
                 </div>
-                <div className="text-right shrink-0">
-                  <div className="text-[10px] text-slate-500 uppercase font-bold mb-0.5 truncate">Total Managers</div>
-                  <div className="text-lg font-black text-slate-800 leading-none">{statistics.fleetManagers || 0}</div>
+                <div className="text-right shrink-0 min-w-0">
+                  <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider truncate">Total Managers</div>
+                  <div className="text-sm sm:text-base font-black text-slate-800 leading-tight truncate">{statistics.fleetManagers || 0}</div>
                 </div>
               </div>
               <div className="h-56">

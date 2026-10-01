@@ -16,6 +16,7 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { driverApi } from "@/api/driverApi";
 import { vehicleApi } from "@/api/vehicleApi";
+import { validateSearchQuery } from "@/validations/common.schema.js";
 
 export default function AssignVehiclePage() {
   const { id } = useParams();
@@ -24,9 +25,17 @@ export default function AssignVehiclePage() {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [typeFilter, setTypeFilter] = useState("All Types");
   const [assigningVehicleId, setAssigningVehicleId] = useState(null);
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearch(val);
+    const err = validateSearchQuery(val, 50);
+    setSearchError(err);
+  };
 
   const normaliseVehicle = (v) => {
     let mappedStatus = {
@@ -145,12 +154,14 @@ export default function AssignVehiclePage() {
 
   const handleResetFilters = () => {
     setSearch("");
+    setSearchError("");
     setStatusFilter("All Statuses");
     setTypeFilter("All Types");
   };
 
   // Filter vehicles
   const filteredVehicles = vehicles.filter(v => {
+    if (searchError) return false;
     const query = search.toLowerCase();
     const matchesSearch =
       v.name.toLowerCase().includes(query) ||
@@ -235,18 +246,27 @@ export default function AssignVehiclePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           
           {/* Search Vehicles */}
-          <div className="md:col-span-2 relative">
-            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#94A3B8]">
-              <Search className="w-4.5 h-4.5" />
-            </span>
-            <input
-              type="text"
-              maxLength={20}
-              placeholder="Search vehicles by model, plate number, or manufacturer..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] transition-colors"
-            />
+          <div className="md:col-span-2 flex flex-col">
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#94A3B8]">
+                <Search className="w-4.5 h-4.5" />
+              </span>
+              <input
+                type="text"
+                maxLength={50}
+                placeholder="Search vehicles by model, plate number, or manufacturer..."
+                value={search}
+                onChange={handleSearchChange}
+                className={`w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm text-[#1E293B] focus:outline-none transition-colors ${
+                  searchError
+                    ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                    : "border-[#E7EAF0] focus:border-[#A14000]"
+                }`}
+              />
+            </div>
+            {searchError && (
+              <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{searchError}</p>
+            )}
           </div>
 
           {/* Status Filter */}

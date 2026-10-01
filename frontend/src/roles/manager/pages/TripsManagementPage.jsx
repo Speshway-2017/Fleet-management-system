@@ -39,6 +39,7 @@ import { getNormalizedTripCategory, calculateTripKPIs } from "@/utils/tripStatus
 
 import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 import { tripSchema, validateForm } from "@/validations";
+import { validateSearchQuery, isSunday } from "@/validations/common.schema.js";
 
 
 export default function TripsManagementPage() {
@@ -84,7 +85,15 @@ export default function TripsManagementPage() {
 
   // States
   const [search, setSearch] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [activeTab, setActiveTab] = useState("All Trips"); // All Trips, Active, Scheduled, Completed, Delayed
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearch(val);
+    const err = validateSearchQuery(val, 50);
+    setSearchError(err);
+  };
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -310,6 +319,7 @@ export default function TripsManagementPage() {
 
   const handleResetFilters = () => {
     setSearch("");
+    setSearchError("");
     setActiveTab("All Trips");
     toast.success("Filters reset successfully");
   };
@@ -496,8 +506,62 @@ export default function TripsManagementPage() {
       toast.error("Required fields cannot be empty");
       return;
     }
+    if (formData.startLocation.trim().length < 2 || formData.startLocation.trim().length > 60) {
+      toast.error("Pickup location must be between 2 and 60 characters.");
+      return;
+    }
+    if (formData.endLocation.trim().length < 2 || formData.endLocation.trim().length > 60) {
+      toast.error("Destination location must be between 2 and 60 characters.");
+      return;
+    }
     if (formData.startLocation.trim().toLowerCase() === formData.endLocation.trim().toLowerCase()) {
       toast.error("Pickup and Destination cannot be the same");
+      return;
+    }
+
+    if (formData.cargoType && formData.cargoType.trim()) {
+      const cType = formData.cargoType.trim();
+      if (cType.length < 2 || cType.length > 50) {
+        toast.error("Cargo Type must be between 2 and 50 characters.");
+        return;
+      }
+      if (/\d/.test(cType)) {
+        toast.error("Cargo Type must contain letters only (numbers are not allowed).");
+        return;
+      }
+    }
+
+    if (formData.cargoWeight) {
+      const cWeight = Number(formData.cargoWeight);
+      if (isNaN(cWeight) || cWeight <= 0 || cWeight > 100000) {
+        toast.error("Cargo Weight must be a valid number between 1 and 1,00,000 KG.");
+        return;
+      }
+    }
+
+    if (formData.pickupAddress?.mobile && formData.pickupAddress.mobile.trim()) {
+      const mob = formData.pickupAddress.mobile.trim();
+      if (!/^\d+$/.test(mob) || mob.length !== 10 || !/^[6-9]/.test(mob)) {
+        toast.error("Pickup Mobile must be a 10-digit number starting with 6-9.");
+        return;
+      }
+    }
+
+    if (formData.deliveryAddress?.mobile && formData.deliveryAddress.mobile.trim()) {
+      const mob = formData.deliveryAddress.mobile.trim();
+      if (!/^\d+$/.test(mob) || mob.length !== 10 || !/^[6-9]/.test(mob)) {
+        toast.error("Delivery Mobile must be a 10-digit number starting with 6-9.");
+        return;
+      }
+    }
+
+    if (formData.pickupAddress?.contactPerson && /\d/.test(formData.pickupAddress.contactPerson)) {
+      toast.error("Pickup Contact Person must contain letters only.");
+      return;
+    }
+
+    if (formData.deliveryAddress?.contactPerson && /\d/.test(formData.deliveryAddress.contactPerson)) {
+      toast.error("Delivery Contact Person must contain letters only.");
       return;
     }
 
@@ -589,6 +653,7 @@ export default function TripsManagementPage() {
   // Search Filtering
   const getFilteredTrips = () => {
     const tabFiltered = getTabFilteredTrips();
+    if (searchError) return [];
     return tabFiltered.filter((t) => {
       const q = search.toLowerCase().trim();
       const tripNum = String(t.tripNumber || t._id || t.id || "").toLowerCase();
@@ -759,15 +824,24 @@ export default function TripsManagementPage() {
           <div className="bg-white dark:bg-[#151C28] rounded-2xl border border-slate-100 dark:border-[#242E42] p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs">
             {/* Search Input */}
             <div className="relative flex-1 max-w-md w-full">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                maxLength={20}
-                placeholder="Search trip ID, driver, vehicle, or route..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-200/80 dark:border-slate-700/80 rounded-xl text-xs font-poppins focus:outline-none focus:border-[#A14000] bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white"
-              />
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  maxLength={50}
+                  placeholder="Search trip ID, driver, vehicle, or route..."
+                  value={search}
+                  onChange={handleSearchChange}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-xl text-xs font-poppins focus:outline-none transition-all bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white ${
+                    searchError
+                      ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                      : "border-slate-200/80 dark:border-slate-700/80 focus:border-[#A14000]"
+                  }`}
+                />
+              </div>
+              {searchError && (
+                <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{searchError}</p>
+              )}
             </div>
 
             {/* PillTabs */}
@@ -1159,9 +1233,14 @@ export default function TripsManagementPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Departure Time */}
                 <div>
-                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                    Departure Time *
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                      Departure Time *
+                    </label>
+                    {isSunday(formData.departureTime) && (
+                      <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
+                    )}
+                  </div>
                   <input
                     type="datetime-local"
                     required
@@ -1169,8 +1248,12 @@ export default function TripsManagementPage() {
                     onChange={(e) => handleDepartureTimeChange(e.target.value)}
                     onBlur={handleBlur}
                     min={getCurrentDateTimeString()}
-                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium ${
-                      departureError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
+                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none font-medium transition-colors ${
+                      departureError
+                        ? "border-red-500 focus:border-red-500"
+                        : isSunday(formData.departureTime)
+                        ? "border-red-300 text-red-600 font-bold focus:border-red-500"
+                        : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
                     }`}
                   />
                   {departureError && (
@@ -1180,9 +1263,14 @@ export default function TripsManagementPage() {
 
                 {/* ETA */}
                 <div>
-                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                    Estimated Arrival (ETA) *
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                      Estimated Arrival (ETA) *
+                    </label>
+                    {isSunday(formData.eta) && (
+                      <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
+                    )}
+                  </div>
                   <input
                     type="datetime-local"
                     required
@@ -1190,8 +1278,12 @@ export default function TripsManagementPage() {
                     onChange={(e) => handleEtaChange(e.target.value)}
                     onBlur={handleBlur}
                     min={getMinEtaString(formData.departureTime)}
-                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium ${
-                      etaError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
+                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none font-medium transition-colors ${
+                      etaError
+                        ? "border-red-500 focus:border-red-500"
+                        : isSunday(formData.eta)
+                        ? "border-red-300 text-red-600 font-bold focus:border-red-500"
+                        : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
                     }`}
                   />
                   {etaError && (

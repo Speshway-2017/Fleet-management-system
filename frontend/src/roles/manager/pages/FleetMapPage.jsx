@@ -23,16 +23,25 @@ import { managerApi } from "../api/managerApi";
 import { calculateDrivingRoute, geocodeLocation } from "../services/routingService";
 import { getSocket } from "@/api/socket";
 import { useAuth } from "@/context/AuthContext";
+import { validateSearchQuery } from "@/validations/common.schema.js";
 
 export default function FleetMapPage() {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [isSatellite, setIsSatellite] = useState(false);
   const [isTrafficOn, setIsTrafficOn] = useState(true);
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearch(val);
+    const err = validateSearchQuery(val, 50);
+    setSearchError(err);
+  };
 
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -544,6 +553,7 @@ export default function FleetMapPage() {
   }, [selectedVehicleId, isTrafficOn, vehicles, resolvedCoordsMap, routeDataMap, routeStepMap]);
 
   const filteredVehicles = trackingVehicles.filter(v => {
+    if (searchError) return false;
     const q = search.toLowerCase();
     const matchesSearch = (v.plateNumber || "").toLowerCase().includes(q) ||
                           (v.driver || "").toLowerCase().includes(q) ||
@@ -597,16 +607,25 @@ export default function FleetMapPage() {
 
         {/* Left Column: Vehicle List */}
         <div className="lg:col-span-3 bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-4 flex flex-col space-y-4 max-h-[620px] select-none">
-          <div className="relative">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              maxLength={20}
-              placeholder="Search truck, driver..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] placeholder-gray-400 focus:outline-none focus:border-[#A14000] transition-colors"
-            />
+          <div className="flex flex-col">
+            <div className="relative">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                maxLength={50}
+                placeholder="Search truck, driver..."
+                value={search}
+                onChange={handleSearchChange}
+                className={`w-full pl-9 pr-4 py-2 bg-gray-50 border rounded-xl text-xs font-medium text-[#1E293B] placeholder-gray-400 focus:outline-none transition-all ${
+                  searchError
+                    ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                    : "border-[#E7EAF0] focus:border-[#A14000]"
+                }`}
+              />
+            </div>
+            {searchError && (
+              <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{searchError}</p>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">

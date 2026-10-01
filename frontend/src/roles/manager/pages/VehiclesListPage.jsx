@@ -8,6 +8,7 @@ import { vehicleApi } from "@/api/vehicleApi";
 import L from "leaflet";
 import { managerApi } from "../api/managerApi";
 import TableRowSkeleton from "@/components/common/TableRowSkeleton";
+import { validateSearchQuery } from "@/validations/common.schema.js";
 
 
 // Fix Leaflet marker icons
@@ -48,6 +49,7 @@ export default function VehiclesListPage() {
   const markersRef = useRef([]);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [vehicles, setVehicles] = useState([]);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -85,9 +87,22 @@ export default function VehiclesListPage() {
   const normaliseVehicle = (v) => {
     const insExp = v.insuranceDetails?.expiryDate || v.insuranceExpiry;
     const permExp = v.permitDetails?.expiryDate || v.permitExpiry;
-    let mappedStatus = v.currentStatus || 'Available';
-    if (mappedStatus === 'Under Maintenance') {
-      mappedStatus = 'Maintenance';
+    let rawStatus = v.currentStatus || v.status || 'Available';
+    let mappedStatus = rawStatus;
+    if (rawStatus === 'Under Maintenance' || rawStatus === 'Need Maintenance' || rawStatus === 'In Maintenance') {
+      mappedStatus = 'Under Maintenance';
+    } else if (rawStatus === 'Maintenance') {
+      mappedStatus = 'Under Maintenance';
+    } else if (rawStatus === 'Out of Service' || rawStatus === 'OUT_OF_SERVICE') {
+      mappedStatus = 'Out of Service';
+    } else if (rawStatus === 'On Trip' || rawStatus === 'ON_TRIP') {
+      mappedStatus = 'On Trip';
+    } else if (rawStatus === 'Idle' || rawStatus === 'IDLE') {
+      mappedStatus = 'Idle';
+    } else if (rawStatus === 'Available' || rawStatus === 'AVAILABLE') {
+      mappedStatus = 'Available';
+    } else if (rawStatus === 'Assigned' || rawStatus === 'ASSIGNED') {
+      mappedStatus = 'Assigned';
     }
     return {
       ...v,
@@ -104,6 +119,7 @@ export default function VehiclesListPage() {
       branch:       v.branch || "Pune",
       dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
       status:       mappedStatus,
+      currentStatus: rawStatus,
       chassisNumber: v.chassisNumber || "N/A",
       loadCapacity:  v.loadCapacity ?? 0,
       ownershipType: v.ownershipType || "Owned",
@@ -143,16 +159,29 @@ export default function VehiclesListPage() {
     setCurrentPage(1);
   };
 
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearchTerm(val);
+    const err = validateSearchQuery(val, 50);
+    setSearchError(err);
+    setCurrentPage(1);
+  };
+
   // Calculate filtered vehicles
   const processedVehicles = vehicles
     .filter((v) => {
-      const query = searchTerm.toLowerCase();
+      if (searchError) return false;
+      const query = searchTerm.toLowerCase().trim();
       const matchesSearch =
+        !query ||
         v.name?.toLowerCase().includes(query) ||
         v.plateNumber?.toLowerCase().includes(query) ||
         v.manufacturer?.toLowerCase().includes(query);
       
-      const matchesStatus = statusFilter === "All Statuses" || v.status === statusFilter;
+      const matchesStatus = statusFilter === "All Statuses" ||
+        v.status === statusFilter ||
+        (statusFilter === "Maintenance" && (v.status === "Maintenance" || v.status === "Under Maintenance")) ||
+        (statusFilter === "Under Maintenance" && (v.status === "Maintenance" || v.status === "Under Maintenance"));
       const matchesType = typeFilter === "All Types" || v.type === typeFilter;
       const matchesBranch = branchFilter === "All Branches" || v.branch === branchFilter;
       const matchesFuelType = fuelTypeFilter === "All Fuel Types" || v.fuelType === fuelTypeFilter;
@@ -292,10 +321,13 @@ export default function VehiclesListPage() {
         return "bg-blue-50 text-blue-700 border border-blue-100";
       case "On Trip":
         return "bg-amber-50 text-amber-700 border border-amber-100";
+      case "Idle":
+        return "bg-slate-100 text-[#64748B] border border-slate-200 font-semibold";
       case "Under Maintenance":
+      case "Maintenance":
         return "bg-rose-50 text-rose-700 border border-rose-100";
       case "Out of Service":
-        return "bg-zinc-800 text-zinc-100 border border-zinc-950";
+        return "bg-slate-100 text-slate-800 border border-slate-300 font-semibold";
       default:
         return "bg-gray-50 text-gray-700 border border-gray-100";
     }
@@ -412,7 +444,7 @@ export default function VehiclesListPage() {
             <div className="bg-white rounded-xl border border-[#E7EAF0] p-4">
               <p className="text-xs font-bold text-[#64748B] uppercase tracking-wider">MAINTENANCE</p>
               <p className="text-2xl font-extrabold text-red-600 mt-2">
-                {vehicles.filter((v) => v.status === "Maintenance").length}
+                {vehicles.filter((v) => v.status === "Maintenance" || v.status === "Under Maintenance").length}
               </p>
             </div>
           </div>
@@ -425,12 +457,13 @@ export default function VehiclesListPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
                 <input
                   type="text"
-                  maxLength={20}
-                  placeholder="Search vehicles..."
+                  maxLength={50}
+                  placeholder="Search vehicles by name, plate, or maker..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white"
+                  onChange={handleSearchChange}
+                  className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm focus:outline-none transition-all bg-white text-[#1E293B] ${searchError ? 'border-red-500 focus:ring-1 focus:ring-red-500' : 'border-[#E7EAF0] focus:border-[#A14000]'}`}
                 />
+                {searchError && <p className="text-xs text-red-500 mt-1 font-medium">{searchError}</p>}
               </div>
 
               {/* Status Filter */}
@@ -442,9 +475,11 @@ export default function VehiclesListPage() {
                 >
                   <option>All Statuses</option>
                   <option>Available</option>
+                  <option>Assigned</option>
                   <option>On Trip</option>
                   <option>Idle</option>
-                  <option>Maintenance</option>
+                  <option>Under Maintenance</option>
+                  <option>Out of Service</option>
                 </select>
                 <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-[#64748B]">
                   <ChevronDown className="w-4 h-4" />
