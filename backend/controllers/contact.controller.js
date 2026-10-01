@@ -4,6 +4,7 @@ import sendEmail from '../utils/email.js';
 import sanitizeHtml from 'sanitize-html';
 import xss from 'xss';
 import { createAndEmitNotification } from '../utils/notification.js';
+import { validateMessageContent } from '../validations/index.js';
 
 const sanitize = (text) => {
   if (!text) return '';
@@ -50,8 +51,9 @@ export const createContactRequest = async (req, res, next) => {
       return sendError(res, 400, 'Please select a subject.');
     }
 
-    if (!cleanMessage || cleanMessage.length < 10) {
-      return sendError(res, 400, 'Message must be at least 10 characters.');
+    const msgErr = validateMessageContent(cleanMessage);
+    if (msgErr) {
+      return sendError(res, 400, msgErr);
     }
 
     // 2. Prevent multiple submissions (duplicate checks in 30s window)

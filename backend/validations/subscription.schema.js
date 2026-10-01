@@ -7,20 +7,24 @@ import {
   mongoIdSchema
 } from './common.schema.js';
 
+export const planFeatureSchema = z
+  .string({ invalid_type_error: 'Feature must be text.' })
+  .trim()
+  .min(2, 'Each feature must be at least 2 characters.')
+  .max(100, 'Each feature must not exceed 100 characters.')
+  .refine((val) => !/(.)\1{3,}/i.test(val), { message: 'Feature contains excessive repeated characters.' })
+  .refine((val) => !/([a-zA-Z]{2,4})\1{2,}/i.test(val.replace(/\s+/g, '')), { message: 'Feature contains repetitive patterns.' })
+  .refine((val) => /[a-zA-Z]/.test(val), { message: 'Each feature must contain meaningful text.' });
+
 export const createSubscriptionPlanSchema = z.object({
   name: planNameSchema,
   price: numericAmountSchema('Monthly Price'),
-  duration: integerCountSchema('Duration (Days)'),
+  duration: integerCountSchema('Duration (Days)').refine((val) => val >= 1, { message: 'Duration must be at least 1 day.' }),
   description: planDescriptionSchema,
   status: z.enum(['Active', 'Inactive']).optional(),
   displayOrder: integerCountSchema('Display Order').optional(),
   features: z
-    .array(
-      z.string({ invalid_type_error: 'Feature must be text.' })
-        .trim()
-        .min(2, 'Each feature must be at least 2 characters.')
-        .max(100, 'Each feature must not exceed 100 characters.')
-    )
+    .array(planFeatureSchema)
     .max(20, 'Maximum 20 features allowed.')
     .optional(),
   maxVehicles: integerCountSchema('Number of Vehicles'),
@@ -31,23 +35,14 @@ export const createSubscriptionPlanSchema = z.object({
 });
 
 export const updateSubscriptionPlanSchema = z.object({
-  name: z.string().trim().min(2, 'Plan name must be at least 2 characters.').max(50, 'Plan name must not exceed 50 characters.')
-    .refine((val) => !val || /^[a-zA-Z\s]+$/.test(val), { message: 'Plan name must contain alphabets only.' })
-    .optional(),
+  name: planNameSchema.optional(),
   price: numericAmountSchema('Monthly Price').optional(),
-  duration: integerCountSchema('Duration (Days)').optional(),
-  description: z.string().trim().min(5, 'Description must be at least 5 characters.').max(100, 'Description must not exceed 100 characters.')
-    .refine((val) => !val || !/\d/.test(val), { message: 'Description must not contain numbers.' })
-    .optional(),
+  duration: integerCountSchema('Duration (Days)').refine((val) => val === undefined || val >= 1, { message: 'Duration must be at least 1 day.' }).optional(),
+  description: planDescriptionSchema.optional(),
   status: z.enum(['Active', 'Inactive']).optional(),
   displayOrder: integerCountSchema('Display Order').optional(),
   features: z
-    .array(
-      z.string({ invalid_type_error: 'Feature must be text.' })
-        .trim()
-        .min(2, 'Each feature must be at least 2 characters.')
-        .max(100, 'Each feature must not exceed 100 characters.')
-    )
+    .array(planFeatureSchema)
     .max(20, 'Maximum 20 features allowed.')
     .optional(),
   maxVehicles: integerCountSchema('Number of Vehicles').optional(),

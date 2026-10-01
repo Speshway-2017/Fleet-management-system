@@ -6,59 +6,24 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import axiosClient from "@/api/axiosClient";
 import { getDaysRemaining } from "@/utils/dateUtils";
 
-const DEFAULT_PLANS = [
-  {
-    _id: "starter",
-    name: "Starter",
-    description: "Ideal for small fleets and growing logistics businesses.",
-    price: 999,
-    duration: 30,
-    maxVehicles: 5,
-    maxDrivers: 5,
-    maxTrips: 100,
-    features: ["Real-time GPS Tracking", "Basic Analytics & Reports", "Email & Chat Support", "Maintenance Alerts"]
-  },
-  {
-    _id: "professional",
-    name: "Professional",
-    description: "Comprehensive solution for medium to large fleet operations.",
-    price: 2499,
-    duration: 30,
-    maxVehicles: 25,
-    maxDrivers: 25,
-    maxTrips: 500,
-    features: ["Everything in Starter", "Advanced Telematics & Geofencing", "Fuel & Expense Tracking", "Priority 24/7 Support", "Automated Compliance Reports"]
-  },
-  {
-    _id: "enterprise",
-    name: "Enterprise",
-    description: "Tailored for heavy enterprise operations with unlimited scale.",
-    price: 4999,
-    duration: 30,
-    maxVehicles: 9999,
-    maxDrivers: 9999,
-    maxTrips: 9999,
-    features: ["Unlimited Vehicles & Drivers", "Custom API & ERP Integrations", "Dedicated Account Manager", "Custom Analytics Dashboards", "24/7 Premium SLA Support"]
-  }
-];
-
 export default function SubscriptionPage() {
   const { user, refreshProfile } = useAuth();
   const location = useLocation();
 
-  const [plans, setPlans] = useState(DEFAULT_PLANS);
+  const [plans, setPlans] = useState([]);
   const [pendingRequest, setPendingRequest] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [requestingPlanId, setRequestingPlanId] = useState(null);
 
   // Sync state
   const loadSubscriptionData = async () => {
     try {
+      setLoading(true);
       const [plansRes, requestRes] = await Promise.all([
         axiosClient.get("/subscriptions/plans"),
         axiosClient.get("/subscriptions/requests/my")
       ]);
-      if (plansRes.data?.data && plansRes.data.data.length > 0) {
+      if (plansRes.data?.data && Array.isArray(plansRes.data.data)) {
         setPlans(plansRes.data.data);
       }
       setPendingRequest(requestRes.data?.data || null);
@@ -213,17 +178,17 @@ export default function SubscriptionPage() {
 
                   <div className="flex-1 flex flex-col min-w-0 space-y-4">
                     <div className="pb-3 border-b border-gray-100 dark:border-[#1E293B]/60">
-                      <h4 className="font-poppins font-bold text-gray-900 dark:text-white text-base break-words break-all sm:break-words line-clamp-2" title={plan.name}>
+                      <h4 className="font-poppins font-bold text-gray-900 dark:text-white text-base break-words break-all sm:break-words leading-tight line-clamp-2 min-h-[44px] flex items-center" title={plan.name}>
                         {plan.name}
                       </h4>
-                      <p className="text-[11px] text-gray-500 dark:text-white mt-1 font-medium leading-relaxed break-words line-clamp-3 min-h-[32px]" title={plan.description}>
+                      <p className="text-xs text-gray-500 dark:text-white mt-1 font-medium leading-relaxed break-words line-clamp-3 min-h-[44px]" title={plan.description}>
                         {plan.description}
                       </p>
                     </div>
 
-                    <div className="py-1 space-y-2">
+                    <div className="py-1 space-y-2 min-h-[70px] flex flex-col justify-center">
                       <div className="flex flex-wrap items-baseline gap-1 min-w-0">
-                        <span className="text-2xl font-black text-gray-900 dark:text-white break-all">
+                        <span className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white break-all">
                           ₹{typeof plan.price === "number" ? plan.price.toLocaleString("en-IN") : plan.price}
                         </span>
                         <span className="text-xs text-gray-400 dark:text-white font-bold shrink-0">/ month</span>
@@ -233,20 +198,29 @@ export default function SubscriptionPage() {
                       </div>
                     </div>
 
+                    <div className="grid grid-cols-3 gap-2 bg-slate-50 dark:bg-slate-900/80 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 text-center">
+                      <div className="min-w-0 space-y-0.5">
+                        <span className="block text-xs font-black text-slate-800 dark:text-white truncate" title={String(plan.maxVehicles || 0)}>
+                          {plan.maxVehicles >= 9999 ? "Unlimited" : (plan.maxVehicles ?? 0)}
+                        </span>
+                        <span className="text-[8px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider block truncate">Vehicles</span>
+                      </div>
+                      <div className="min-w-0 space-y-0.5 border-x border-slate-200 dark:border-slate-800 px-1">
+                        <span className="block text-xs font-black text-slate-800 dark:text-white truncate" title={String(plan.maxDrivers || 0)}>
+                          {plan.maxDrivers >= 9999 ? "Unlimited" : (plan.maxDrivers ?? 0)}
+                        </span>
+                        <span className="text-[8px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider block truncate">Drivers</span>
+                      </div>
+                      <div className="min-w-0 space-y-0.5">
+                        <span className="block text-xs font-black text-slate-800 dark:text-white truncate" title={String(plan.maxTrips || 0)}>
+                          {plan.maxTrips >= 9999 ? "Unlimited" : (plan.maxTrips ?? 0)}
+                        </span>
+                        <span className="text-[8px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider block truncate">Trips</span>
+                      </div>
+                    </div>
+
                     <ul className="space-y-2.5 pt-3.5 border-t border-gray-100 dark:border-[#1E293B] flex-1 min-w-0">
-                      <li className="flex items-center gap-2 text-xs text-gray-700 dark:text-white font-bold min-w-0">
-                        <span className="text-green-500 font-bold shrink-0">✓</span>
-                        <span className="truncate">Max Vehicles: {plan.maxVehicles >= 9999 ? "Unlimited" : plan.maxVehicles}</span>
-                      </li>
-                      <li className="flex items-center gap-2 text-xs text-gray-700 dark:text-white font-bold min-w-0">
-                        <span className="text-green-500 font-bold shrink-0">✓</span>
-                        <span className="truncate">Max Drivers: {plan.maxDrivers >= 9999 ? "Unlimited" : plan.maxDrivers}</span>
-                      </li>
-                      <li className="flex items-center gap-2 text-xs text-gray-700 dark:text-white font-bold min-w-0">
-                        <span className="text-green-500 font-bold shrink-0">✓</span>
-                        <span className="truncate">Max Trips: {plan.maxTrips >= 9999 ? "Unlimited" : plan.maxTrips}</span>
-                      </li>
-                      {(Array.isArray(plan.features) ? plan.features : typeof plan.features === "string" ? plan.features.split("\n").filter(Boolean) : []).slice(0, 3).map((feat, idx) => (
+                      {(Array.isArray(plan.features) ? plan.features : typeof plan.features === "string" ? plan.features.split("\n").map(f => f.trim()).filter(Boolean) : []).map((feat, idx) => (
                         <li key={idx} className="flex items-start gap-2 text-xs text-gray-600 dark:text-white font-medium min-w-0">
                           <svg className="h-3.5 w-3.5 text-green-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
