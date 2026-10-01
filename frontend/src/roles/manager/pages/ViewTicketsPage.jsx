@@ -23,6 +23,7 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
+import { validateSearchQuery } from "@/validations/common.schema.js";
 
 const resolveVehiclePlate = (t) => {
   if (!t) return "VEH-ASSIGNED";
@@ -61,9 +62,17 @@ export default function ViewTicketsPage() {
   const [tickets, setTickets] = useState([]);
   const [loadingTickets, setLoadingTickets] = useState(false);
   const [ticketSearch, setTicketSearch] = useState(highlightedTicketId || "");
+  const [ticketSearchError, setTicketSearchError] = useState("");
   const [ticketStatusFilter, setTicketStatusFilter] = useState("All");
   const [ticketSeverityFilter, setTicketSeverityFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
+
+  const handleTicketSearchChange = (e) => {
+    const val = e.target.value;
+    setTicketSearch(val);
+    const err = validateSearchQuery(val, 50);
+    setTicketSearchError(err);
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -677,6 +686,7 @@ export default function ViewTicketsPage() {
   };
 
   const filteredTickets = tickets.filter(t => {
+    if (ticketSearchError) return false;
     const q = ticketSearch.toLowerCase();
     const dName = t.driver?.fullName || t.driverName || "";
     const matchesSearch =
@@ -779,16 +789,25 @@ export default function ViewTicketsPage() {
         {/* Filters & Search Row */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 select-none">
           {/* Search */}
-          <div className="relative w-full md:max-w-xs">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              maxLength={20}
-              value={ticketSearch}
-              onChange={(e) => setTicketSearch(e.target.value)}
-              placeholder="Search Ticket, Vehicle, Driver..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-[#1E293B] dark:text-white bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-300"
-            />
+          <div className="flex flex-col w-full md:max-w-xs">
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                maxLength={50}
+                value={ticketSearch}
+                onChange={handleTicketSearchChange}
+                placeholder="Search Ticket, Vehicle, Driver..."
+                className={`w-full pl-10 pr-4 py-2 border rounded-xl text-xs font-semibold text-[#1E293B] dark:text-white bg-white dark:bg-slate-900 focus:outline-none transition-all ${
+                  ticketSearchError
+                    ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                    : "border-gray-200 dark:border-slate-800 focus:border-[#A14000]"
+                }`}
+              />
+            </div>
+            {ticketSearchError && (
+              <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{ticketSearchError}</p>
+            )}
           </div>
 
           {/* Filters */}

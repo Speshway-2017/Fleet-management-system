@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Upload, Check, X, FileText } from "lucide-react";
+import { ArrowLeft, Upload, Check, X, FileText, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -8,6 +8,7 @@ import { identifyDocumentType } from "../utils/documentParser";
 import { vehicleApi } from "@/api/vehicleApi";
 import { INDIAN_STATES } from "@/constants/indianStates";
 import { vehicleSchema, validateForm } from "@/validations";
+import { isSunday } from "@/validations/common.schema.js";
 
 export default function AddVehiclePage() {
   const navigate = useNavigate();
@@ -79,12 +80,139 @@ export default function AddVehiclePage() {
     roadTax: ""
   });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  const validateVehicleField = (name, value) => {
+    let errorMsg = "";
+    const strVal = String(value ?? "").trim();
+
+    if (name === "manufacturer") {
+      if (!strVal) {
+        errorMsg = "Manufacturer is required.";
+      } else if (strVal.length < 2) {
+        errorMsg = "Manufacturer must be at least 2 characters.";
+      } else if (strVal.length > 50) {
+        errorMsg = "Manufacturer must not exceed 50 characters.";
+      } else if (/\d/.test(strVal)) {
+        errorMsg = "Manufacturer must contain letters only (numbers are not allowed).";
+      } else if (!/^[a-zA-Z\s.'-]+$/.test(strVal)) {
+        errorMsg = "Manufacturer contains invalid characters.";
+      } else if (/(.)\1{3,}/i.test(strVal)) {
+        errorMsg = "Repeated characters are not allowed.";
+      }
+    } else if (name === "model") {
+      if (!strVal) {
+        errorMsg = "Model is required.";
+      } else if (strVal.length < 1) {
+        errorMsg = "Model is required.";
+      } else if (strVal.length > 50) {
+        errorMsg = "Model must not exceed 50 characters.";
+      } else if (/(.)\1{3,}/i.test(strVal)) {
+        errorMsg = "Repeated characters are not allowed.";
+      }
+    } else if (name === "plateNumber") {
+      if (!strVal) {
+        errorMsg = "Registration Plate is required.";
+      } else if (strVal.length < 4) {
+        errorMsg = "Plate Number must be at least 4 characters.";
+      } else if (strVal.length > 20) {
+        errorMsg = "Plate Number must not exceed 20 characters.";
+      } else if (!/^[a-zA-Z0-9\s-]+$/.test(strVal)) {
+        errorMsg = "Plate Number must contain letters, numbers, hyphens or spaces only.";
+      } else if (/(.)\1{3,}/i.test(strVal) || /([a-zA-Z0-9]{2,4})\1{2,}/i.test(strVal.replace(/[\s-]+/g, ''))) {
+        errorMsg = "Repeated characters are not allowed.";
+      }
+    } else if (name === "chassisNumber") {
+      if (strVal && strVal.length !== 17) {
+        errorMsg = "Chassis Number must be exactly 17 characters.";
+      }
+    } else if (name === "year") {
+      if (strVal) {
+        const currentYear = new Date().getFullYear();
+        const num = Number(strVal);
+        if (isNaN(num) || !Number.isInteger(num)) {
+          errorMsg = "Year must be a valid whole number.";
+        } else if (num < 1990 || num > currentYear + 1) {
+          errorMsg = `Year must be between 1990 and ${currentYear + 1}.`;
+        }
+      }
+    } else if (name === "branch") {
+      if (strVal) {
+        if (strVal.length < 2) {
+          errorMsg = "Branch must be at least 2 characters.";
+        } else if (strVal.length > 50) {
+          errorMsg = "Branch must not exceed 50 characters.";
+        } else if (/\d/.test(strVal)) {
+          errorMsg = "Branch must contain letters only (numbers are not allowed).";
+        } else if (!/^[a-zA-Z\s.'-]+$/.test(strVal)) {
+          errorMsg = "Branch contains invalid characters.";
+        } else if (/(.)\1{3,}/i.test(strVal) || /([a-zA-Z]{2,4})\1{2,}/i.test(strVal.replace(/[\s.'-]+/g, ''))) {
+          errorMsg = "Repeated characters are not allowed.";
+        }
+      }
+    } else if (name === "registrationNumber") {
+      if (strVal) {
+        if (strVal.length < 4) {
+          errorMsg = "Registration Number must be at least 4 characters.";
+        } else if (strVal.length > 20) {
+          errorMsg = "Registration Number must not exceed 20 characters.";
+        } else if (!/^[a-zA-Z0-9\s-]+$/.test(strVal)) {
+          errorMsg = "Registration Number must contain letters, numbers, hyphens or spaces only.";
+        } else if (/(.)\1{3,}/i.test(strVal) || /([a-zA-Z0-9]{2,4})\1{2,}/i.test(strVal.replace(/[\s-]+/g, ''))) {
+          errorMsg = "Repeated characters are not allowed.";
+        }
+      }
+    } else if (name === "engineCC") {
+      if (strVal) {
+        const num = Number(strVal);
+        if (isNaN(num) || num < 50 || num > 25000) {
+          errorMsg = "Engine CC must be a number between 50 and 25000.";
+        }
+      }
+    } else if (name === "fuelCapacity") {
+      if (strVal) {
+        const num = Number(strVal);
+        if (isNaN(num) || num <= 0 || num > 2000) {
+          errorMsg = "Fuel Capacity must be between 1 and 2000 Litres.";
+        }
+      }
+    } else if (name === "loadCapacity") {
+      if (strVal) {
+        const num = Number(strVal);
+        if (isNaN(num) || num <= 0 || num > 100) {
+          errorMsg = "Load Capacity must be between 0.1 and 100 Tons.";
+        }
+      }
+    } else if (name === "fastagBalance") {
+      if (strVal) {
+        const num = Number(strVal);
+        if (isNaN(num) || num < 0 || num > 500000) {
+          errorMsg = "FASTag Balance must be between 0 and ₹5,00,000.";
+        }
+      }
+    }
+    return errorMsg;
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value
+    }));
+    const err = validateVehicleField(name, value);
+    setErrors((prev) => ({
+      ...prev,
+      [name]: err
+    }));
+  };
+
+  const handleInputBlur = (e) => {
+    const { name, value } = e.target;
+    const err = validateVehicleField(name, value);
+    setErrors((prev) => ({
+      ...prev,
+      [name]: err
     }));
   };
 
@@ -205,6 +333,26 @@ export default function AddVehiclePage() {
       return;
     }
 
+    const fieldList = ["manufacturer", "model", "plateNumber", "year", "branch", "chassisNumber", "registrationNumber", "engineCC", "fuelCapacity", "loadCapacity", "fastagBalance"];
+    const newErrors = {};
+    let hasError = false;
+
+    fieldList.forEach((field) => {
+      const err = validateVehicleField(field, formData[field]);
+      if (err) {
+        newErrors[field] = err;
+        hasError = true;
+      }
+    });
+
+    setErrors(newErrors);
+
+    if (hasError) {
+      const firstError = Object.values(newErrors)[0];
+      toast.error(firstError || "Please fix vehicle validation errors.");
+      return;
+    }
+
     const validationResult = validateForm(vehicleSchema, {
       ...formData,
       vehicleNumber: formData.plateNumber,
@@ -214,11 +362,6 @@ export default function AddVehiclePage() {
     if (!validationResult.isValid) {
       const firstError = Object.values(validationResult.errors)[0];
       toast.error(firstError || "Please fix vehicle validation errors.");
-      return;
-    }
-
-    if (!formData.chassisNumber || formData.chassisNumber.length !== 17) {
-      toast.error("Chassis Number must be exactly 17 characters.");
       return;
     }
 
@@ -369,60 +512,109 @@ export default function AddVehiclePage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Manufacturer *</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Manufacturer *
+                    </label>
                     <input
                       type="text"
                       name="manufacturer"
                       placeholder="e.g. Ashok Leyland"
+                      maxLength={50}
                       value={formData.manufacturer}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
                       required
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none transition-colors bg-white ${
+                        errors.manufacturer ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
                     />
+                    {errors.manufacturer && (
+                      <p className="text-xs text-red-500 mt-1 font-semibold flex items-center gap-1 font-poppins">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        {errors.manufacturer}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Model *</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Model *
+                    </label>
                     <input
                       type="text"
                       name="model"
                       placeholder="e.g. 3118"
+                      maxLength={50}
                       value={formData.model}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
                       required
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none transition-colors bg-white ${
+                        errors.model ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
                     />
+                    {errors.model && (
+                      <p className="text-xs text-red-500 mt-1 font-semibold flex items-center gap-1 font-poppins">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        {errors.model}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Year of Manufacture</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Year of Manufacture
+                    </label>
                     <input
                       type="number"
                       name="year"
                       value={formData.year}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
                       min="1990"
-                      max={new Date().getFullYear()}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      max={new Date().getFullYear() + 1}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none transition-colors bg-white ${
+                        errors.year ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
                     />
+                    {errors.year && (
+                      <p className="text-xs text-red-500 mt-1 font-semibold flex items-center gap-1 font-poppins">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        {errors.year}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Registration Plate *</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Registration Plate *
+                    </label>
                     <input
                       type="text"
                       name="plateNumber"
                       placeholder="e.g. MH 12 AB 5678"
+                      maxLength={40}
                       value={formData.plateNumber}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
                       required
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 uppercase bg-white text-[#1E293B]"
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none uppercase transition-colors bg-white ${
+                        errors.plateNumber ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
                     />
+                    {errors.plateNumber && (
+                      <p className="text-xs text-red-500 mt-1 font-semibold flex items-center gap-1 font-poppins">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        {errors.plateNumber}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Vehicle Type</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Vehicle Type
+                    </label>
                     <select
                       name="vehicleType"
                       value={formData.vehicleType}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option value="Truck">Truck</option>
                       <option value="Van">Van</option>
@@ -435,27 +627,50 @@ export default function AddVehiclePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Branch / Location</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Branch / Location
+                    </label>
                     <input
                       type="text"
                       name="branch"
                       placeholder="e.g. Pune"
+                      maxLength={100}
                       value={formData.branch}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      onBlur={handleInputBlur}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none transition-colors bg-white ${
+                        errors.branch ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
                     />
+                    {errors.branch && (
+                      <p className="text-xs text-red-500 mt-1 font-semibold flex items-center gap-1 font-poppins">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        {errors.branch}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Chassis Number</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Chassis Number
+                    </label>
                     <input
                       type="text"
                       name="chassisNumber"
                       placeholder="e.g. 17-digit Chassis No."
                       value={formData.chassisNumber}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
                       maxLength={17}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none transition-colors bg-white ${
+                        errors.chassisNumber ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
                     />
+                    {errors.chassisNumber && (
+                      <p className="text-xs text-red-500 mt-1 font-semibold flex items-center gap-1 font-poppins">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        {errors.chassisNumber}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -470,18 +685,32 @@ export default function AddVehiclePage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Registration No.</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Registration No.
+                    </label>
                     <input
                       type="text"
                       name="registrationNumber"
                       placeholder="e.g. MH-01-AB-2023"
+                      maxLength={40}
                       value={formData.registrationNumber}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 uppercase bg-white text-[#1E293B]"
+                      onBlur={handleInputBlur}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none uppercase transition-colors bg-white ${
+                        errors.registrationNumber ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
                     />
+                    {errors.registrationNumber && (
+                      <p className="text-xs text-red-500 mt-1 font-semibold flex items-center gap-1 font-poppins">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        {errors.registrationNumber}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">State</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      State
+                    </label>
                     <select
                       name="registrationState"
                       value={
@@ -492,7 +721,7 @@ export default function AddVehiclePage() {
                         )?.code || formData.registrationState || ""
                       }
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option value="">Select State</option>
                       {INDIAN_STATES.map((st) => (
@@ -503,12 +732,14 @@ export default function AddVehiclePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Registration Type</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Registration Type
+                    </label>
                     <select
                       name="registrationType"
                       value={formData.registrationType}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option value="New">New</option>
                       <option value="Transfer">Transfer</option>
@@ -528,12 +759,14 @@ export default function AddVehiclePage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Fuel Type</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Fuel Type
+                    </label>
                     <select
                       name="fuelType"
                       value={formData.fuelType}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option value="Diesel">Diesel</option>
                       <option value="Petrol">Petrol</option>
@@ -543,24 +776,28 @@ export default function AddVehiclePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Transmission</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Transmission
+                    </label>
                     <select
                       name="transmissionType"
                       value={formData.transmissionType}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option value="Manual">Manual</option>
                       <option value="Automatic">Automatic</option>
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Seating Capacity</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Seating Capacity
+                    </label>
                     <select
                       name="seatingCapacity"
                       value={formData.seatingCapacity}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
                       <option value="2">2</option>
                       <option value="3">3</option>
@@ -572,29 +809,53 @@ export default function AddVehiclePage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Engine (CC)</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Engine (CC)
+                    </label>
                     <input
                       type="text"
                       name="engineCC"
                       placeholder="e.g. 2500"
                       value={formData.engineCC}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      onBlur={handleInputBlur}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none transition-colors bg-white ${
+                        errors.engineCC ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
                     />
+                    {errors.engineCC && (
+                      <p className="text-xs text-red-500 mt-1 font-semibold flex items-center gap-1 font-poppins">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        {errors.engineCC}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Fuel Capacity (L)</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Fuel Capacity (L)
+                    </label>
                     <input
                       type="number"
                       name="fuelCapacity"
                       placeholder="e.g. 200"
                       value={formData.fuelCapacity}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      onBlur={handleInputBlur}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none transition-colors bg-white ${
+                        errors.fuelCapacity ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
                     />
+                    {errors.fuelCapacity && (
+                      <p className="text-xs text-red-500 mt-1 font-semibold flex items-center gap-1 font-poppins">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        {errors.fuelCapacity}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">Load Cap. (Tons)</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      Load Cap. (Tons)
+                    </label>
                     <input
                       type="number"
                       step="0.1"
@@ -602,29 +863,240 @@ export default function AddVehiclePage() {
                       placeholder="e.g. 15.5"
                       value={formData.loadCapacity}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      onBlur={handleInputBlur}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none transition-colors bg-white ${
+                        errors.loadCapacity ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
                     />
+                    {errors.loadCapacity && (
+                      <p className="text-xs text-red-500 mt-1 font-semibold flex items-center gap-1 font-poppins">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        {errors.loadCapacity}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">FASTag Balance (INR)</label>
+                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
+                      FASTag Balance (INR)
+                    </label>
                     <input
                       type="number"
                       name="fastagBalance"
                       placeholder="e.g. 500"
                       value={formData.fastagBalance}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]/20 bg-white text-[#1E293B]"
+                      onBlur={handleInputBlur}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none transition-colors bg-white ${
+                        errors.fastagBalance ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
+                    />
+                    {errors.fastagBalance && (
+                      <p className="text-xs text-red-500 mt-1 font-semibold flex items-center gap-1 font-poppins">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        {errors.fastagBalance}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 4: Compliance & Service Dates (Sundays in Red) */}
+              <div className="border-t border-[#E7EAF0] pt-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-6 h-6 bg-[#FDF3EC] border border-[#A14000] rounded flex items-center justify-center text-xs font-bold text-[#A14000]">4</div>
+                  <h2 className="text-lg font-bold text-[#1E293B]">Compliance & Service Dates</h2>
+                </div>
+                <p className="text-xs text-[#64748B] mb-4">Set insurance, certificate, and maintenance service dates (Sunday dates are highlighted in red)</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Insurance Expiry */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                        Insurance Expiry
+                      </label>
+                      {isSunday(formData.insuranceExpiry) && (
+                        <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
+                      )}
+                    </div>
+                    <input
+                      type="date"
+                      name="insuranceExpiry"
+                      value={formData.insuranceExpiry}
+                      onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
+                        errors.insuranceExpiry
+                          ? "border-red-500 focus:border-red-500"
+                          : isSunday(formData.insuranceExpiry)
+                          ? "border-red-300 text-red-600 font-bold focus:border-red-500"
+                          : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
+                    />
+                  </div>
+
+                  {/* RC Expiry */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                        RC Expiry
+                      </label>
+                      {isSunday(formData.rcExpiry) && (
+                        <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
+                      )}
+                    </div>
+                    <input
+                      type="date"
+                      name="rcExpiry"
+                      value={formData.rcExpiry}
+                      onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
+                        errors.rcExpiry
+                          ? "border-red-500 focus:border-red-500"
+                          : isSunday(formData.rcExpiry)
+                          ? "border-red-300 text-red-600 font-bold focus:border-red-500"
+                          : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
+                    />
+                  </div>
+
+                  {/* PUC Expiry */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                        PUC Expiry
+                      </label>
+                      {isSunday(formData.pollutionExpiry) && (
+                        <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
+                      )}
+                    </div>
+                    <input
+                      type="date"
+                      name="pollutionExpiry"
+                      value={formData.pollutionExpiry}
+                      onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
+                        errors.pollutionExpiry
+                          ? "border-red-500 focus:border-red-500"
+                          : isSunday(formData.pollutionExpiry)
+                          ? "border-red-300 text-red-600 font-bold focus:border-red-500"
+                          : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
+                    />
+                  </div>
+
+                  {/* Permit Expiry */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                        Permit Expiry
+                      </label>
+                      {isSunday(formData.permitExpiry) && (
+                        <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
+                      )}
+                    </div>
+                    <input
+                      type="date"
+                      name="permitExpiry"
+                      value={formData.permitExpiry}
+                      onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
+                        errors.permitExpiry
+                          ? "border-red-500 focus:border-red-500"
+                          : isSunday(formData.permitExpiry)
+                          ? "border-red-300 text-red-600 font-bold focus:border-red-500"
+                          : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
+                    />
+                  </div>
+
+                  {/* Fitness Expiry */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                        Fitness Expiry
+                      </label>
+                      {isSunday(formData.fitnessExpiry) && (
+                        <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
+                      )}
+                    </div>
+                    <input
+                      type="date"
+                      name="fitnessExpiry"
+                      value={formData.fitnessExpiry}
+                      onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
+                        errors.fitnessExpiry
+                          ? "border-red-500 focus:border-red-500"
+                          : isSunday(formData.fitnessExpiry)
+                          ? "border-red-300 text-red-600 font-bold focus:border-red-500"
+                          : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
+                    />
+                  </div>
+
+                  {/* Last Service Date */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                        Last Service Date
+                      </label>
+                      {isSunday(formData.lastService) && (
+                        <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
+                      )}
+                    </div>
+                    <input
+                      type="date"
+                      name="lastService"
+                      value={formData.lastService}
+                      onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
+                        errors.lastService
+                          ? "border-red-500 focus:border-red-500"
+                          : isSunday(formData.lastService)
+                          ? "border-red-300 text-red-600 font-bold focus:border-red-500"
+                          : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
+                    />
+                  </div>
+
+                  {/* Next Service Due */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                        Next Service Due
+                      </label>
+                      {isSunday(formData.nextService) && (
+                        <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
+                      )}
+                    </div>
+                    <input
+                      type="date"
+                      name="nextService"
+                      value={formData.nextService}
+                      onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
+                        errors.nextService
+                          ? "border-red-500 focus:border-red-500"
+                          : isSunday(formData.nextService)
+                          ? "border-red-300 text-red-600 font-bold focus:border-red-500"
+                          : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                      }`}
                     />
                   </div>
                 </div>
               </div>
 
-
-
-              {/* SECTION 4: Document Upload */}
+              {/* SECTION 5: Document Upload */}
               <div className="border-t border-[#E7EAF0] pt-8">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-6 h-6 bg-[#FDF3EC] border border-[#A14000] rounded flex items-center justify-center text-xs font-bold text-[#A14000]">4</div>
+                  <div className="w-6 h-6 bg-[#FDF3EC] border border-[#A14000] rounded flex items-center justify-center text-xs font-bold text-[#A14000]">5</div>
                   <h2 className="text-lg font-bold text-[#1E293B]">Document Upload</h2>
                 </div>
                 <p className="text-xs text-[#64748B] mb-6">Manage all six required vehicle documents.</p>

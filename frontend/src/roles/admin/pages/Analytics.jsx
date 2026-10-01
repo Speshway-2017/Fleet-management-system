@@ -192,50 +192,82 @@ export default function Analytics() {
             {/* Subscription Distribution */}
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
               <h3 className="text-sm font-extrabold text-slate-800 mb-6 tracking-wide">Subscription Distribution</h3>
-              <div className="h-auto sm:h-64 flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-4 pr-0 sm:pr-8">
-                <div className="w-full sm:w-[45%] h-48 sm:h-full">
+              <div className="h-auto sm:h-64 flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-6 pr-0 sm:pr-4">
+                <div className="w-full sm:w-[45%] h-48 sm:h-full flex items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie
-                        data={charts.subscriptionData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={55}
-                        outerRadius={80}
-                        stroke="none"
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {charts?.subscriptionData?.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      {(() => {
+                        const total = (charts?.subscriptionData || []).reduce((sum, curr) => sum + (curr.value || 0), 0);
+                        if (total === 0) {
+                          return (
+                            <Pie
+                              data={[{ name: 'No Subscriptions', value: 1 }]}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={55}
+                              outerRadius={80}
+                              stroke="none"
+                              dataKey="value"
+                            >
+                              <Cell fill="#e2e8f0" />
+                            </Pie>
+                          );
+                        }
+                        return (
+                          <Pie
+                            data={charts?.subscriptionData || []}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={55}
+                            outerRadius={80}
+                            stroke="none"
+                            paddingAngle={4}
+                            dataKey="value"
+                          >
+                            {charts?.subscriptionData?.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                        );
+                      })()}
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                        formatter={(value, name) => [
+                          name === 'No Subscriptions' ? '0 Organizations' : `${value} Organizations`, 
+                          name
+                        ]}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
                 
                 {/* Custom Legend */}
-                <div className="w-full sm:w-[55%] space-y-5">
+                <div className="w-full sm:w-[55%] space-y-4">
                   {charts?.subscriptionData?.map((item, index) => {
-                    const total = charts.subscriptionData.reduce((sum, curr) => sum + (curr.value || 0), 0);
-                    const percentage = total > 0 ? (item.value / total) * 100 : 0;
+                    const total = (charts?.subscriptionData || []).reduce((sum, curr) => sum + (curr.value || 0), 0);
+                    const percentage = total > 0 ? ((item.value / total) * 100).toFixed(1) : '0.0';
                     return (
                       <div key={index} className="flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between text-xs">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                            <span className="text-[13.5px] font-medium text-slate-600">{item.name}</span>
+                            <span 
+                              className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm border border-black/10" 
+                              style={{ backgroundColor: item.color }} 
+                            />
+                            <span className="text-[13px] font-semibold text-slate-700">{item.name}</span>
                           </div>
-                          <span className="text-[13.5px] font-bold text-slate-800">{item.value}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[13px] font-bold text-slate-900">{item.value}</span>
+                            <span className="text-[11px] font-medium text-slate-400">({percentage}%)</span>
+                          </div>
                         </div>
-                        {/* Progress Bar relative to text (pl-5.5 ≈ 22px offset) */}
-                        <div className="pl-[22px]">
-                          <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        {/* Progress Bar */}
+                        <div className="pl-6">
+                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner">
                             <div 
                               className="h-full rounded-full transition-all duration-500" 
-                              style={{ backgroundColor: item.color, width: `${percentage}%` }}
-                            ></div>
+                              style={{ backgroundColor: item.color, width: `${total > 0 ? (item.value / total) * 100 : 0}%` }}
+                            />
                           </div>
                         </div>
                       </div>

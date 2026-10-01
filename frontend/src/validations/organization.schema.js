@@ -21,7 +21,7 @@ export const managerItemSchema = z.object({
     .trim()
     .min(1, 'Confirm password is required.')
     .min(6, 'Confirm password must be at least 6 characters long.')
-    .max(50, 'Confirm password must not exceed 50 characters.'),
+    .max(20, 'Confirm password must not exceed 20 characters.'),
   phone: phoneSchema,
   showPassword: z.boolean().optional(),
   showConfirmPassword: z.boolean().optional()

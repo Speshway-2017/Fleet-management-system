@@ -12,11 +12,14 @@ import KPICard from "@/components/common/KPICard";
 import { driverApi } from "@/api/driverApi";
 import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 
+import { validateSearchQuery } from "@/validations/common.schema.js";
+
 export default function DriversManagementPage() {
   const navigate = useNavigate();
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [licenseFilter, setLicenseFilter] = useState("All Types");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -116,13 +119,21 @@ export default function DriversManagementPage() {
   }[s] || "bg-gray-100 text-gray-600 border-gray-200");
   const getInitials = (name = "") => name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearch(val);
+    const err = validateSearchQuery(val, 50);
+    setSearchError(err);
+  };
+
   const filteredDrivers = drivers.filter((d) => {
+    if (searchError) return false;
     const matchSearch =
-      !search ||
-      d.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-      d.phone?.includes(search) ||
-      d.email?.toLowerCase().includes(search.toLowerCase()) ||
-      d.licenseNumber?.toLowerCase().includes(search.toLowerCase());
+      !search.trim() ||
+      d.fullName?.toLowerCase().includes(search.toLowerCase().trim()) ||
+      d.phone?.includes(search.trim()) ||
+      d.email?.toLowerCase().includes(search.toLowerCase().trim()) ||
+      d.licenseNumber?.toLowerCase().includes(search.toLowerCase().trim());
     const matchStatus  = statusFilter === "All Statuses" || d.driverStatus === statusFilter;
     const matchLicense = licenseFilter === "All Types" || d.licenseType === licenseFilter;
     return matchSearch && matchStatus && matchLicense;
@@ -196,10 +207,19 @@ export default function DriversManagementPage() {
       {/* Filters */}
       <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-[#E7EAF0] dark:border-[#1E293B] shadow-sm p-6 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="md:col-span-2 relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#94A3B8]" />
-            <input type="text" maxLength={20} placeholder="Search drivers by name, phone, email, or DL number..." value={search} onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white dark:bg-slate-900 border border-[#E7EAF0] dark:border-slate-800 rounded-xl text-sm text-[#1E293B] dark:text-white focus:outline-none focus:border-[#A14000]" />
+          <div className="md:col-span-2">
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#94A3B8]" />
+              <input 
+                type="text" 
+                maxLength={50} 
+                placeholder="Search drivers by name, phone, email, or DL number..." 
+                value={search} 
+                onChange={handleSearchChange}
+                className={`w-full pl-10 pr-4 py-2.5 h-[44px] bg-white dark:bg-slate-900 border rounded-xl text-sm text-[#1E293B] dark:text-white focus:outline-none transition-all ${searchError ? 'border-red-500 focus:ring-1 focus:ring-red-500' : 'border-[#E7EAF0] dark:border-slate-800 focus:border-[#A14000]'}`} 
+              />
+            </div>
+            {searchError && <p className="text-xs text-red-500 mt-1 font-medium">{searchError}</p>}
           </div>
           <div className="relative">
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full px-3.5 py-2 h-[44px] bg-white dark:bg-slate-900 border border-[#E7EAF0] dark:border-slate-800 rounded-xl text-sm text-[#1E293B] dark:text-white focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer">
@@ -223,7 +243,7 @@ export default function DriversManagementPage() {
         </div>
         <div className="flex items-center justify-between border-t border-[#E7EAF0]/60 dark:border-slate-800 pt-4">
           {(search || statusFilter !== "All Statuses" || licenseFilter !== "All Types") && (
-            <button onClick={() => { setSearch(""); setStatusFilter("All Statuses"); setLicenseFilter("All Types"); }} className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer">
+            <button onClick={() => { setSearch(""); setSearchError(""); setStatusFilter("All Statuses"); setLicenseFilter("All Types"); }} className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer">
               <RefreshCw className="w-3 h-3" /><span>Reset</span>
             </button>
           )}

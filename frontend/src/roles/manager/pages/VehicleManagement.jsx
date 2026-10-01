@@ -39,6 +39,7 @@ import { vehicleApi } from "@/api/vehicleApi";
 import { managerApi } from "../api/managerApi";
 import { getSocket } from "@/api/socket";
 import TableRowSkeleton from "@/components/common/TableRowSkeleton";
+import { validateSearchQuery } from "@/validations/common.schema.js";
 
 export default function VehicleManagement() {
   const navigate = useNavigate();
@@ -50,8 +51,20 @@ export default function VehicleManagement() {
   const normaliseVehicle = (v) => {
     let rawStatus = v.currentStatus || v.status || 'Available';
     let mappedStatus = rawStatus;
-    if (rawStatus === 'Under Maintenance' || rawStatus === 'Need Maintenance' || rawStatus === 'Out of Service' || rawStatus === 'In Maintenance') {
-      mappedStatus = 'Maintenance';
+    if (rawStatus === 'Under Maintenance' || rawStatus === 'Need Maintenance' || rawStatus === 'In Maintenance') {
+      mappedStatus = 'Under Maintenance';
+    } else if (rawStatus === 'Maintenance') {
+      mappedStatus = 'Under Maintenance';
+    } else if (rawStatus === 'Out of Service' || rawStatus === 'OUT_OF_SERVICE') {
+      mappedStatus = 'Out of Service';
+    } else if (rawStatus === 'On Trip' || rawStatus === 'ON_TRIP') {
+      mappedStatus = 'On Trip';
+    } else if (rawStatus === 'Idle' || rawStatus === 'IDLE') {
+      mappedStatus = 'Idle';
+    } else if (rawStatus === 'Available' || rawStatus === 'AVAILABLE') {
+      mappedStatus = 'Available';
+    } else if (rawStatus === 'Assigned' || rawStatus === 'ASSIGNED') {
+      mappedStatus = 'Assigned';
     }
 
     let insExp = v.insuranceExpiry || v.insuranceDetails?.expiryDate || v.documents?.insurance?.expiryDate;
@@ -90,6 +103,7 @@ export default function VehicleManagement() {
 
   // Filter States
   const [search, setSearch] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [typeFilter, setTypeFilter] = useState("All Types");
   const [branchFilter, setBranchFilter] = useState("All Branches");
@@ -235,6 +249,7 @@ export default function VehicleManagement() {
 
     socket.on("vehicle:created", handleRefresh);
     socket.on("vehicle:updated", handleRefresh);
+    socket.on("vehicle:status-updated", handleRefresh);
     socket.on("vehicle:deleted", handleRefresh);
     socket.on("driver:assigned", handleRefresh);
     socket.on("driver:unassigned", handleRefresh);
@@ -247,6 +262,7 @@ export default function VehicleManagement() {
       clearInterval(interval);
       socket.off("vehicle:created", handleRefresh);
       socket.off("vehicle:updated", handleRefresh);
+      socket.off("vehicle:status-updated", handleRefresh);
       socket.off("vehicle:deleted", handleRefresh);
       socket.off("driver:assigned", handleRefresh);
       socket.off("driver:unassigned", handleRefresh);
@@ -306,15 +322,28 @@ export default function VehicleManagement() {
     }
   };
 
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearch(val);
+    const err = validateSearchQuery(val, 50);
+    setSearchError(err);
+  };
+
   // Filter & Search computation
   const filteredVehicles = vehicles.filter((v) => {
-    const query = search.toLowerCase();
+    if (searchError) return false;
+    const query = search.toLowerCase().trim();
     const matchesSearch =
+      !query ||
       v.name.toLowerCase().includes(query) ||
       v.manufacturer.toLowerCase().includes(query) ||
-      v.plateNumber.toLowerCase().includes(query);
+      v.plateNumber.toLowerCase().includes(query) ||
+      v.driver?.toLowerCase().includes(query);
 
-    const matchesStatus = statusFilter === "All Statuses" || v.status === statusFilter;
+    const matchesStatus = statusFilter === "All Statuses" ||
+      v.status === statusFilter ||
+      (statusFilter === "Maintenance" && (v.status === "Maintenance" || v.status === "Under Maintenance")) ||
+      (statusFilter === "Under Maintenance" && (v.status === "Maintenance" || v.status === "Under Maintenance"));
     const matchesType = typeFilter === "All Types" || v.type === typeFilter;
     const matchesBranch = branchFilter === "All Branches" || v.branch === branchFilter;
     const matchesFuel = fuelFilter === "All Fuel Types" || v.fuelType === fuelFilter;
@@ -344,6 +373,8 @@ export default function VehicleManagement() {
     let valB = b[sortField];
     if (typeof valA === "string") {
       valA = valA.toLowerCase();
+    }
+    if (valB === "string") {
       valB = valB.toLowerCase();
     }
     if (valA < valB) return sortDirection === "asc" ? -1 : 1;
@@ -351,21 +382,27 @@ export default function VehicleManagement() {
     return 0;
   });
 
+  const isMaintenanceStatus = (statusStr) => {
+    if (!statusStr) return false;
+    const s = String(statusStr).toLowerCase().trim();
+    if (s === "out of service" || s === "out_of_service") return false;
+    return s.includes("maintenance") || s.includes("repair") || s === "need maintenance" || s === "under maintenance";
+  };
+
+  const isIdleStatus = (statusStr) => {
+    if (!statusStr) return false;
+    const s = String(statusStr).toLowerCase().trim();
+    return s === "idle" || s === "out of service" || s === "out_of_service" || s === "inactive";
+  };
+
   // KPIs
   const totalVehicles = vehicles.length;
-  const maintVehicles = vehicles.filter(v => {
-    const s = (v.status || v.currentStatus || "").toLowerCase();
-    return s.includes("maintenance") || s.includes("repair") || s.includes("service") || s === "need maintenance" || s === "under maintenance";
-  }).length;
-  const idleVehicles = vehicles.filter(v => {
-    const s = (v.status || v.currentStatus || "").toLowerCase();
-    return s === "idle" || s === "out of service";
-  }).length;
+  const maintVehicles = vehicles.filter(v => isMaintenanceStatus(v.status || v.currentStatus)).length;
+  const idleVehicles = vehicles.filter(v => isIdleStatus(v.status || v.currentStatus)).length;
   const activeVehicles = vehicles.filter(v => {
-    const s = (v.status || v.currentStatus || "").toLowerCase();
-    const isMaint = s.includes("maintenance") || s.includes("repair") || s.includes("service") || s === "need maintenance" || s === "under maintenance";
-    const isIdle = s === "idle" || s === "out of service";
-    return !isMaint && !isIdle;
+    const s = (v.status || v.currentStatus || "");
+    if (isMaintenanceStatus(s) || isIdleStatus(s)) return false;
+    return true;
   }).length;
 
   const overdueRepairsCount = maintenance.filter(m => {
@@ -417,7 +454,7 @@ export default function VehicleManagement() {
     "Assigned": vehicles.filter(v => (v.status === "Assigned" || v.status === "ASSIGNED" || ((v.status === "Available" || v.status === "AVAILABLE") && hasAssignedDriver(v)))).length,
     "On Trip": vehicles.filter(v => v.status === "On Trip" || v.status === "ON_TRIP").length,
     "Idle": vehicles.filter(v => v.status === "Idle" || v.status === "IDLE").length,
-    "Maintenance": vehicles.filter(v => v.status === "Maintenance" || v.status === "Under Maintenance").length,
+    "Maintenance": vehicles.filter(v => isMaintenanceStatus(v.status || v.currentStatus)).length,
     "Out of Service": vehicles.filter(v => v.status === "Out of Service" || v.status === "OUT_OF_SERVICE").length
   };
   const distributionColors = {
@@ -452,6 +489,7 @@ export default function VehicleManagement() {
   // Reset Filters
   const handleResetFilters = () => {
     setSearch("");
+    setSearchError("");
     setStatusFilter("All Statuses");
     setTypeFilter("All Types");
     setBranchFilter("All Branches");
@@ -579,8 +617,9 @@ export default function VehicleManagement() {
 
     try {
       if (modalType === "edit") {
+        const statusValue = formData.status === "Maintenance" ? "Under Maintenance" : (formData.status || "Available");
         const payload = {
-          vehicleName:        `${formData.manufacturer || formData.brand} ${formData.model}`,
+          vehicleName:        formData.name || `${formData.manufacturer || formData.brand || ''} ${formData.model || ''}`.trim(),
           brand:              formData.manufacturer || formData.brand,
           model:              formData.model,
           vehicleNumber:      formData.plateNumber?.toUpperCase(),
@@ -594,11 +633,15 @@ export default function VehicleManagement() {
           nextService:        formData.nextService || undefined,
           fuelCapacity:       Number(formData.fuelCapacity) || 0,
           fastagBalance:      Number(formData.fastagBalance) || 0,
-          currentStatus:      formData.status || "Available",
+          currentStatus:      statusValue,
         };
         const res = await vehicleApi.update(vehicleId, payload);
         
-        // Fetch fresh vehicles list
+        // Optimistically update local state immediately so cards and table update with 0 delay
+        const updatedVehicle = res.data?.data || res.data || payload;
+        setVehicles(prev => prev.map(v => (v.id === vehicleId || v._id === vehicleId) ? normaliseVehicle({ ...v, ...updatedVehicle, ...payload, currentStatus: statusValue, status: statusValue }) : v));
+
+        // Fetch fresh vehicles list to ensure full synchronization
         const listRes = await vehicleApi.list();
         const rawVeh = listRes.data?.data ?? [];
         setVehicles(rawVeh.map(normaliseVehicle));
@@ -630,14 +673,17 @@ export default function VehicleManagement() {
     switch (status) {
       case "Available":
         return "bg-emerald-50 text-[#22C55E] border border-emerald-100";
+      case "Assigned":
+        return "bg-blue-50 text-[#3B82F6] border border-blue-100";
       case "On Trip":
         return "bg-amber-50 text-[#A14000] border border-amber-100";
       case "Idle":
-        return "bg-slate-50 text-[#64748B] border border-slate-100";
+        return "bg-slate-100 text-[#64748B] border border-slate-200 font-semibold";
       case "Maintenance":
+      case "Under Maintenance":
         return "bg-red-50 text-[#EF4444] border border-red-100";
       case "Out of Service":
-        return "bg-zinc-800 text-zinc-100 border border-zinc-900";
+        return "bg-slate-100 text-slate-800 border border-slate-300 font-semibold";
       default:
         return "bg-gray-100 text-gray-500";
     }
@@ -758,18 +804,21 @@ export default function VehicleManagement() {
               {/* Primary search & quick filters */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Search Vehicles */}
-                <div className="md:col-span-2 relative">
-                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#94A3B8]">
-                    <Search className="w-4.5 h-4.5" />
-                  </span>
-                  <input
-                    type="text"
-                    maxLength={20}
-                    placeholder="Search vehicles by name, model, plate, or driver..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000] transition-colors"
-                  />
+                <div className="md:col-span-2">
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#94A3B8]">
+                      <Search className="w-4.5 h-4.5" />
+                    </span>
+                    <input
+                      type="text"
+                      maxLength={50}
+                      placeholder="Search vehicles by name, model, plate, or driver..."
+                      value={search}
+                      onChange={handleSearchChange}
+                      className={`w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none transition-colors ${searchError ? 'border-red-500 focus:ring-1 focus:ring-red-500' : 'border-[#E7EAF0] focus:border-[#A14000] focus:ring-1 focus:ring-[#A14000]'}`}
+                    />
+                  </div>
+                  {searchError && <p className="text-xs text-red-500 mt-1 font-medium">{searchError}</p>}
                 </div>
 
                 {/* Status Filter */}
@@ -781,9 +830,10 @@ export default function VehicleManagement() {
                   >
                     <option>All Statuses</option>
                     <option>Available</option>
+                    <option>Assigned</option>
                     <option>On Trip</option>
                     <option>Idle</option>
-                    <option>Maintenance</option>
+                    <option>Under Maintenance</option>
                     <option>Out of Service</option>
                   </select>
                   <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
@@ -1451,11 +1501,12 @@ export default function VehicleManagement() {
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                       className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
                     >
-                      <option>Available</option>
-                      <option>On Trip</option>
-                      <option>Idle</option>
-                      <option>Maintenance</option>
-                      <option>Out of Service</option>
+                      <option value="Available">Available</option>
+                      <option value="Assigned">Assigned</option>
+                      <option value="On Trip">On Trip</option>
+                      <option value="Idle">Idle</option>
+                      <option value="Under Maintenance">Under Maintenance</option>
+                      <option value="Out of Service">Out of Service</option>
                     </select>
                   </div>
 

@@ -23,7 +23,8 @@ import {
   Building2,
   Trash2,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  AlertCircle
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -34,6 +35,7 @@ import { managerApi } from "../api/managerApi";
 import { calculateDrivingRoute, calculateEtaFromDuration } from "../services/routingService";
 import { INDIAN_STATES, getCitiesForState, getStateForCity } from "@/constants/indianStates";
 import { cleanCityName } from "@/utils/locationFormatter";
+import { isSunday } from "@/validations/common.schema.js";
 
 const CITIES_SUGGESTIONS = [
   "Ahmedabad",
@@ -209,6 +211,17 @@ export default function CreateTripPage() {
   const [status, setStatus] = useState("Assigned");
   const [description, setDescription] = useState("");
 
+  const [fieldErrors, setFieldErrors] = useState({
+    startLocation: "",
+    endLocation: "",
+    departureTime: "",
+    eta: "",
+    cargoWeight: "",
+    cargoType: "",
+    description: "",
+    tripNotes: "",
+  });
+
   const normalizeCityName = (loc) => {
     if (!loc || typeof loc !== 'string') return '';
     return loc.trim().split(',')[0].trim().toLowerCase();
@@ -230,8 +243,143 @@ export default function CreateTripPage() {
     }
   }, [startLocation, endLocation, isSameLocError]);
 
-  const [departureError, setDepartureError] = useState("");
-  const [etaError, setEtaError] = useState("");
+  const validateTripField = (field, val, overrides = {}) => {
+    let err = "";
+    const str = String(val ?? "").trim();
+    const currentValues = {
+      startLocation,
+      endLocation,
+      departureTime,
+      eta,
+      cargoWeight,
+      cargoType,
+      description,
+      tripNotes,
+      ...overrides
+    };
+
+    if (field === "startLocation") {
+      if (!str) {
+        err = "Start Location is required.";
+      } else if (str.length < 2) {
+        err = "Start Location must be at least 2 characters.";
+      } else if (str.length > 50) {
+        err = "Start Location must not exceed 50 characters.";
+      } else if (/\d/.test(str)) {
+        err = "Start Location must contain letters only (numbers are not allowed).";
+      } else if (!/^[a-zA-Z\s.,'-]+$/.test(str)) {
+        err = "Start Location contains invalid characters.";
+      } else if (/(.)\1{3,}/i.test(str) || /([a-zA-Z]{2,4})\1{2,}/i.test(str)) {
+        err = "Repeated characters are not allowed.";
+      } else if (
+        currentValues.endLocation &&
+        normalizeCityName(str) &&
+        normalizeCityName(currentValues.endLocation) &&
+        normalizeCityName(str) === normalizeCityName(currentValues.endLocation)
+      ) {
+        err = "Start Location and Destination cannot be the same.";
+      }
+    } else if (field === "endLocation") {
+      if (!str) {
+        err = "Destination is required.";
+      } else if (str.length < 2) {
+        err = "Destination must be at least 2 characters.";
+      } else if (str.length > 50) {
+        err = "Destination must not exceed 50 characters.";
+      } else if (/\d/.test(str)) {
+        err = "Destination must contain letters only (numbers are not allowed).";
+      } else if (!/^[a-zA-Z\s.,'-]+$/.test(str)) {
+        err = "Destination contains invalid characters.";
+      } else if (/(.)\1{3,}/i.test(str) || /([a-zA-Z]{2,4})\1{2,}/i.test(str)) {
+        err = "Repeated characters are not allowed.";
+      } else if (
+        currentValues.startLocation &&
+        normalizeCityName(currentValues.startLocation) &&
+        normalizeCityName(str) &&
+        normalizeCityName(currentValues.startLocation) === normalizeCityName(str)
+      ) {
+        err = "Start Location and Destination cannot be the same.";
+      }
+    } else if (field === "departureTime") {
+      if (!val) {
+        err = "Departure Time is required.";
+      } else {
+        const depDate = new Date(val);
+        if (isNaN(depDate.getTime())) {
+          err = "Invalid Departure Time format.";
+        } else if (depDate.getTime() + 60000 < new Date().getTime()) {
+          err = "Departure Time cannot be in the past.";
+        }
+      }
+    } else if (field === "eta") {
+      if (!val) {
+        err = "Estimated Arrival (ETA) is required.";
+      } else {
+        const etaDate = new Date(val);
+        if (isNaN(etaDate.getTime())) {
+          err = "Invalid ETA date format.";
+        } else if (currentValues.departureTime) {
+          const depDate = new Date(currentValues.departureTime);
+          if (!isNaN(depDate.getTime()) && etaDate.getTime() <= depDate.getTime()) {
+            err = "Estimated Arrival (ETA) must be later than the Departure Time.";
+          }
+        }
+      }
+    } else if (field === "cargoWeight") {
+      if (val === "" || val === null || val === undefined || str === "") {
+        err = "Cargo Weight is required.";
+      } else if (isNaN(Number(str)) || /e/i.test(str)) {
+        err = "Cargo Weight must be a valid number.";
+      } else if (Number(str) < 1) {
+        err = "Cargo Weight must be at least 1 KG.";
+      } else if (Number(str) > 100000) {
+        err = "Cargo Weight must not exceed 1,00,000 KG.";
+      } else if (str.includes(".") && str.split(".")[1].length > 2) {
+        err = "Cargo Weight can have at most 2 decimal places.";
+      }
+    } else if (field === "cargoType") {
+      if (str) {
+        if (str.length < 2) {
+          err = "Cargo Type must be at least 2 characters.";
+        } else if (str.length > 50) {
+          err = "Cargo Type must not exceed 50 characters.";
+        } else if (/\d/.test(str)) {
+          err = "Cargo Type must contain letters only (numbers are not allowed).";
+        } else if (!/^[a-zA-Z\s.,&'-]+$/.test(str)) {
+          err = "Cargo Type contains invalid characters.";
+        } else if (/(.)\1{3,}/i.test(str) || /([a-zA-Z]{2,4})\1{2,}/i.test(str)) {
+          err = "Repeated characters are not allowed.";
+        }
+      }
+    } else if (field === "description") {
+      if (str) {
+        if (str.length < 2) {
+          err = "Cargo Description must be at least 2 characters.";
+        } else if (str.length > 200) {
+          err = "Cargo Description must not exceed 200 characters.";
+        } else if (/(.)\1{4,}/i.test(str) || /([a-zA-Z0-9]{2,4})\1{3,}/i.test(str)) {
+          err = "Repeated characters are not allowed.";
+        }
+      }
+    } else if (field === "tripNotes") {
+      if (str) {
+        if (str.length < 2) {
+          err = "Trip Notes must be at least 2 characters.";
+        } else if (str.length > 250) {
+          err = "Trip Notes must not exceed 250 characters.";
+        } else if (/(.)\1{4,}/i.test(str) || /([a-zA-Z0-9]{2,4})\1{3,}/i.test(str)) {
+          err = "Repeated characters are not allowed.";
+        }
+      }
+    }
+
+    return err;
+  };
+
+  const handleFieldBlur = (field, val) => {
+    const err = validateTripField(field, val);
+    setFieldErrors(prev => ({ ...prev, [field]: err }));
+  };
 
   const [startSuggestions, setStartSuggestions] = useState([]);
   const [showStartSuggestions, setShowStartSuggestions] = useState(false);
@@ -266,23 +414,41 @@ export default function CreateTripPage() {
 
   const validateAddressField = (type, field, val) => {
     let err = "";
+    const str = String(val ?? "").trim();
     if (field === 'companyName') {
-      if (!val || !val.trim()) err = "Company Name is required.";
+      if (!str) err = "Company Name is required.";
+      else if (str.length < 2) err = "Company Name must be at least 2 characters.";
+      else if (str.length > 60) err = "Company Name must not exceed 60 characters.";
     } else if (field === 'contactPerson') {
-      if (!val || !val.trim()) err = "Contact Person is required.";
+      if (!str) err = "Contact Person is required.";
+      else if (str.length < 2) err = "Contact Person must be at least 2 characters.";
+      else if (str.length > 50) err = "Contact Person must not exceed 50 characters.";
+      else if (/\d/.test(str)) err = "Contact Person must contain letters only (numbers are not allowed).";
+      else if (!/^[a-zA-Z\s.'-]+$/.test(str)) err = "Contact Person contains invalid characters.";
     } else if (field === 'mobile') {
-      if (!val) err = "Mobile Number is required.";
-      else if (!/^\d{10}$/.test(val)) err = "Mobile number must be exactly 10 digits.";
+      if (!str) err = "Mobile Number is required.";
+      else if (!/^\d+$/.test(str)) err = "Mobile number must contain digits only.";
+      else if (str.length !== 10) err = "Mobile number must be exactly 10 digits.";
+      else if (!/^[6-9]/.test(str)) err = "Mobile number must start with 6, 7, 8, or 9.";
     } else if (field === 'streetAddress') {
-      if (!val || !val.trim()) err = "Street Address is required.";
-      else if (val.trim().length < 10) err = "Street Address must be at least 10 characters.";
+      if (!str) err = "Street Address is required.";
+      else if (str.length < 5) err = "Street Address must be at least 5 characters.";
+      else if (str.length > 100) err = "Street Address must not exceed 100 characters.";
     } else if (field === 'city') {
-      if (!val || !val.trim()) err = "City is required.";
+      if (!str) err = "City is required.";
+      else if (str.length < 2) err = "City must be at least 2 characters.";
+      else if (str.length > 30) err = "City must not exceed 30 characters.";
+      else if (/\d/.test(str)) err = "City must contain letters only (numbers are not allowed).";
+      else if (!/^[a-zA-Z\s.'-]+$/.test(str)) err = "City contains invalid characters.";
     } else if (field === 'state') {
-      if (!val || !val.trim()) err = "State is required.";
+      if (!str) err = "State is required.";
+      else if (str.length < 2) err = "State must be at least 2 characters.";
+      else if (str.length > 30) err = "State must not exceed 30 characters.";
+      else if (/\d/.test(str)) err = "State must contain letters only (numbers are not allowed).";
+      else if (!/^[a-zA-Z\s.'-]+$/.test(str)) err = "State contains invalid characters.";
     } else if (field === 'pincode') {
-      if (!val) err = "Pincode is required.";
-      else if (!/^\d{6}$/.test(val)) err = "Pincode must be exactly 6 digits.";
+      if (!str) err = "Pincode is required.";
+      else if (!/^\d{6}$/.test(str)) err = "Pincode must be exactly 6 digits.";
     }
     return err;
   };
@@ -406,6 +572,13 @@ export default function CreateTripPage() {
 
   const handleStartLocationChange = (val) => {
     setStartLocation(val);
+    const startErr = validateTripField("startLocation", val, { startLocation: val });
+    const endErr = endLocation ? validateTripField("endLocation", endLocation, { startLocation: val }) : fieldErrors.endLocation;
+    setFieldErrors(prev => ({
+      ...prev,
+      startLocation: startErr,
+      endLocation: endErr
+    }));
     if (val.trim().length > 0) {
       const filtered = CITIES_SUGGESTIONS.filter(c =>
         c.toLowerCase().includes(val.toLowerCase())
@@ -420,6 +593,13 @@ export default function CreateTripPage() {
 
   const handleEndLocationChange = (val) => {
     setEndLocation(val);
+    const endErr = validateTripField("endLocation", val, { endLocation: val });
+    const startErr = startLocation ? validateTripField("startLocation", startLocation, { endLocation: val }) : fieldErrors.startLocation;
+    setFieldErrors(prev => ({
+      ...prev,
+      endLocation: endErr,
+      startLocation: startErr
+    }));
     if (val.trim().length > 0) {
       const filtered = CITIES_SUGGESTIONS.filter(c =>
         c.toLowerCase().includes(val.toLowerCase())
@@ -454,33 +634,6 @@ export default function CreateTripPage() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
-  const validateDates = (depVal, etaVal) => {
-    let depErr = "";
-    let etaErr = "";
-
-    const currentDate = new Date();
-
-    if (depVal) {
-      const depDate = new Date(depVal);
-      if (depDate.getTime() + 60000 < currentDate.getTime()) {
-        depErr = "Departure Time cannot be in the past.";
-      }
-    }
-
-    if (depVal && etaVal) {
-      const depDate = new Date(depVal);
-      const etaDate = new Date(etaVal);
-      if (etaDate.getTime() <= depDate.getTime()) {
-        etaErr = "Estimated Arrival (ETA) must be later than the Departure Time.";
-      }
-    }
-
-    setDepartureError(depErr);
-    setEtaError(etaErr);
-
-    return { depErr, etaErr };
-  };
-
   const handleDepartureTimeChange = (val) => {
     setDepartureTime(val);
 
@@ -494,16 +647,46 @@ export default function CreateTripPage() {
       }
     }
 
-    validateDates(val, updatedEta);
+    const depErr = validateTripField("departureTime", val, { departureTime: val, eta: updatedEta });
+    const etaErr = updatedEta ? validateTripField("eta", updatedEta, { departureTime: val, eta: updatedEta }) : "";
+    setFieldErrors(prev => ({
+      ...prev,
+      departureTime: depErr,
+      eta: etaErr
+    }));
   };
 
   const handleEtaChange = (val) => {
     setEta(val);
-    validateDates(departureTime, val);
+    const etaErr = validateTripField("eta", val, { eta: val });
+    setFieldErrors(prev => ({
+      ...prev,
+      eta: etaErr
+    }));
   };
 
-  const handleBlur = () => {
-    validateDates(departureTime, eta);
+  const handleCargoWeightChange = (val) => {
+    setCargoWeight(val);
+    const err = validateTripField("cargoWeight", val);
+    setFieldErrors(prev => ({ ...prev, cargoWeight: err }));
+  };
+
+  const handleCargoTypeChange = (val) => {
+    setCargoType(val);
+    const err = validateTripField("cargoType", val);
+    setFieldErrors(prev => ({ ...prev, cargoType: err }));
+  };
+
+  const handleDescriptionChange = (val) => {
+    setDescription(val);
+    const err = validateTripField("description", val);
+    setFieldErrors(prev => ({ ...prev, description: err }));
+  };
+
+  const handleTripNotesChange = (val) => {
+    setTripNotes(val);
+    const err = validateTripField("tripNotes", val);
+    setFieldErrors(prev => ({ ...prev, tripNotes: err }));
   };
 
   // Generate trip ID on mount
@@ -681,43 +864,22 @@ export default function CreateTripPage() {
   const handleDispatch = async (e) => {
     e.preventDefault();
 
-    const { depErr, etaErr } = validateDates(departureTime, eta);
-    if (depErr || etaErr) {
-      toast.error(depErr || etaErr);
-      return;
-    }
+    // Validate all specification fields
+    const allFieldErrors = {
+      startLocation: validateTripField("startLocation", startLocation),
+      endLocation: validateTripField("endLocation", endLocation),
+      departureTime: validateTripField("departureTime", departureTime),
+      eta: validateTripField("eta", eta),
+      cargoWeight: validateTripField("cargoWeight", cargoWeight),
+      cargoType: validateTripField("cargoType", cargoType),
+      description: validateTripField("description", description),
+      tripNotes: validateTripField("tripNotes", tripNotes),
+    };
+    setFieldErrors(allFieldErrors);
 
-    if (!startLocation.trim()) {
-      toast.error("Pickup Location is required.");
-      return;
-    }
-    if (!endLocation.trim()) {
-      toast.error("Destination is required.");
-      return;
-    }
-    if (isSameLocError || normalizeCityName(startLocation) === normalizeCityName(endLocation)) {
-      toast.error("Trip cannot be created because the pickup and destination locations are the same.", {
-        id: "same-location-warning"
-      });
-      return;
-    }
-    if (!departureTime) {
-      toast.error("Departure Time is required.");
-      return;
-    }
-    if (!eta) {
-      toast.error("Estimated Arrival is required.");
-      return;
-    }
-    if (!cargoWeight || Number(cargoWeight) <= 0) {
-      toast.error("Cargo Weight (KG) is required.");
-      return;
-    }
-
-    const pickupDate = new Date(departureTime);
-    const currentDate = new Date();
-    if (pickupDate.getTime() + 300000 < currentDate.getTime()) {
-      toast.error("Pickup Date and Time cannot be in the past.");
+    const firstSpecErr = Object.values(allFieldErrors).find(Boolean);
+    if (firstSpecErr) {
+      toast.error(firstSpecErr);
       return;
     }
 
@@ -905,27 +1067,34 @@ export default function CreateTripPage() {
           </div>
 
           {/* Row 1: Start Location | Destination (2-Column Grid) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
             {/* Start Location */}
-            <div>
-              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                Start Location <span className="text-red-500">*</span>
-              </label>
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between mb-1.5 h-5">
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                  Start Location <span className="text-red-500">*</span>
+                </label>
+              </div>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
                 <input
                   type="text"
+                  maxLength={100}
                   placeholder="e.g. Pune, MH"
                   value={startLocation}
                   onChange={(e) => handleStartLocationChange(e.target.value)}
                   onFocus={() => {
                     if (startLocation.trim().length > 0) setShowStartSuggestions(true);
                   }}
-                  onBlur={() => setTimeout(() => setShowStartSuggestions(false), 200)}
-                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${isSameLocError
-                    ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
-                    : "border-[#E7EAF0] focus:border-[#A14000]"
-                    }`}
+                  onBlur={() => {
+                    handleFieldBlur('startLocation', startLocation);
+                    setTimeout(() => setShowStartSuggestions(false), 200);
+                  }}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${
+                    fieldErrors.startLocation || isSameLocError
+                      ? "border-red-400 bg-red-50/20 ring-1 ring-red-400/30 text-red-900 focus:border-red-500"
+                      : "border-[#E7EAF0] focus:border-[#A14000]"
+                  }`}
                   required
                 />
                 {showStartSuggestions && startSuggestions.length > 0 && (
@@ -934,7 +1103,7 @@ export default function CreateTripPage() {
                       <div
                         key={city}
                         onMouseDown={() => {
-                          setStartLocation(city);
+                          handleStartLocationChange(city);
                           setShowStartSuggestions(false);
                         }}
                         className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#A14000] text-sm text-gray-700 font-medium cursor-pointer transition-colors font-poppins"
@@ -945,28 +1114,41 @@ export default function CreateTripPage() {
                   </div>
                 )}
               </div>
+              {fieldErrors.startLocation && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1 font-poppins">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{fieldErrors.startLocation}</span>
+                </p>
+              )}
             </div>
 
             {/* Destination */}
-            <div>
-              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                Destination <span className="text-red-500">*</span>
-              </label>
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between mb-1.5 h-5">
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                  Destination <span className="text-red-500">*</span>
+                </label>
+              </div>
               <div className="relative">
                 <Navigation className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
                 <input
                   type="text"
+                  maxLength={100}
                   placeholder="e.g. Hyderabad, TS"
                   value={endLocation}
                   onChange={(e) => handleEndLocationChange(e.target.value)}
                   onFocus={() => {
                     if (endLocation.trim().length > 0) setShowEndSuggestions(true);
                   }}
-                  onBlur={() => setTimeout(() => setShowEndSuggestions(false), 200)}
-                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${isSameLocError
-                    ? "border-red-500 focus:border-red-500 bg-red-50/20 ring-1 ring-red-500/30"
-                    : "border-[#E7EAF0] focus:border-[#A14000]"
-                    }`}
+                  onBlur={() => {
+                    handleFieldBlur('endLocation', endLocation);
+                    setTimeout(() => setShowEndSuggestions(false), 200);
+                  }}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${
+                    fieldErrors.endLocation || isSameLocError
+                      ? "border-red-400 bg-red-50/20 ring-1 ring-red-400/30 text-red-900 focus:border-red-500"
+                      : "border-[#E7EAF0] focus:border-[#A14000]"
+                  }`}
                   required
                 />
                 {showEndSuggestions && endSuggestions.length > 0 && (
@@ -975,7 +1157,7 @@ export default function CreateTripPage() {
                       <div
                         key={city}
                         onMouseDown={() => {
-                          setEndLocation(city);
+                          handleEndLocationChange(city);
                           setShowEndSuggestions(false);
                         }}
                         className="px-4 py-2 hover:bg-orange-50/50 hover:text-[#A14000] text-sm text-gray-700 font-medium cursor-pointer transition-colors font-poppins"
@@ -986,120 +1168,204 @@ export default function CreateTripPage() {
                   </div>
                 )}
               </div>
-              {isSameLocError && (
-                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1 font-poppins animate-in fade-in duration-150">
-                  <span>⚠️</span> Start Location and Destination cannot be the same. Please select a different destination.
+              {fieldErrors.endLocation && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1 font-poppins">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{fieldErrors.endLocation}</span>
                 </p>
               )}
             </div>
           </div>
 
           {/* Row 2: Required Specifications (Departure Time | Estimated Arrival | Cargo Weight) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             {/* Departure Time */}
-            <div>
-              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                Departure Time <span className="text-red-500">*</span>
-              </label>
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between mb-1.5 h-5">
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                  Departure Time <span className="text-red-500">*</span>
+                </label>
+                {isSunday(departureTime) && (
+                  <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
+                )}
+              </div>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
                 <input
                   type="datetime-local"
                   value={departureTime}
                   onChange={(e) => handleDepartureTimeChange(e.target.value)}
-                  onBlur={handleBlur}
+                  onBlur={() => handleFieldBlur('departureTime', departureTime)}
                   min={getCurrentDateTimeString()}
-                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium font-poppins ${departureError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
-                    }`}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none font-medium font-poppins transition-colors ${
+                    fieldErrors.departureTime
+                      ? "border-red-400 bg-red-50/20 ring-1 ring-red-400/30 text-red-900 focus:border-red-500"
+                      : isSunday(departureTime)
+                      ? "border-red-300 text-red-600 font-bold focus:border-red-500"
+                      : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                  }`}
                   required
                 />
               </div>
-              {departureError && (
-                <p className="text-red-500 text-xs mt-1 font-semibold font-poppins">{departureError}</p>
+              {fieldErrors.departureTime && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1 font-poppins">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{fieldErrors.departureTime}</span>
+                </p>
               )}
             </div>
 
             {/* Estimated Arrival (ETA) */}
-            <div>
-              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                Estimated Arrival (ETA) <span className="text-red-500">*</span>
-              </label>
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between mb-1.5 h-5">
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                  Estimated Arrival (ETA) <span className="text-red-500">*</span>
+                </label>
+                {isSunday(eta) && (
+                  <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
+                )}
+              </div>
               <div className="relative">
                 <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
                 <input
                   type="datetime-local"
                   value={eta}
                   onChange={(e) => handleEtaChange(e.target.value)}
-                  onBlur={handleBlur}
+                  onBlur={() => handleFieldBlur('eta', eta)}
                   min={getMinEtaString(departureTime)}
-                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium font-poppins ${etaError ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0]"
-                    }`}
+                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none font-medium font-poppins transition-colors ${
+                    fieldErrors.eta
+                      ? "border-red-400 bg-red-50/20 ring-1 ring-red-400/30 text-red-900 focus:border-red-500"
+                      : isSunday(eta)
+                      ? "border-red-300 text-red-600 font-bold focus:border-red-500"
+                      : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                  }`}
                   required
                 />
               </div>
-              {etaError && (
-                <p className="text-red-500 text-xs mt-1 font-semibold font-poppins">{etaError}</p>
+              {fieldErrors.eta && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1 font-poppins">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{fieldErrors.eta}</span>
+                </p>
               )}
             </div>
 
             {/* Cargo Weight (REQUIRED) */}
-            <div>
-              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                Cargo Weight (KG) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                placeholder="e.g. 5000"
-                value={cargoWeight}
-                onChange={(e) => setCargoWeight(e.target.value)}
-                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium font-poppins"
-                required
-              />
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between mb-1.5 h-5">
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                  Cargo Weight (KG) <span className="text-red-500">*</span>
+                </label>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  placeholder="e.g. 5000"
+                  value={cargoWeight}
+                  onChange={(e) => handleCargoWeightChange(e.target.value)}
+                  onBlur={() => handleFieldBlur('cargoWeight', cargoWeight)}
+                  className={`w-full px-3.5 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${
+                    fieldErrors.cargoWeight
+                      ? "border-red-400 bg-red-50/20 ring-1 ring-red-400/30 text-red-900 focus:border-red-500"
+                      : "border-[#E7EAF0] focus:border-[#A14000]"
+                  }`}
+                  required
+                />
+              </div>
+              {fieldErrors.cargoWeight && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1 font-poppins">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{fieldErrors.cargoWeight}</span>
+                </p>
+              )}
             </div>
           </div>
 
           {/* Row 3: Optional Details (Cargo Type | Cargo Description | Trip Notes) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             {/* Cargo Type */}
-            <div>
-              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                Cargo Type (Optional)
-              </label>
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between mb-1.5 h-5">
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                  Cargo Type (Optional)
+                </label>
+              </div>
               <input
                 type="text"
+                maxLength={100}
                 placeholder="e.g. Perishable Goods, Electronics"
                 value={cargoType}
-                onChange={(e) => setCargoType(e.target.value)}
-                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium font-poppins"
+                onChange={(e) => handleCargoTypeChange(e.target.value)}
+                onBlur={() => handleFieldBlur('cargoType', cargoType)}
+                className={`w-full px-3.5 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${
+                  fieldErrors.cargoType
+                    ? "border-red-400 bg-red-50/20 ring-1 ring-red-400/30 text-red-900 focus:border-red-500"
+                    : "border-[#E7EAF0] focus:border-[#A14000]"
+                }`}
               />
+              {fieldErrors.cargoType && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1 font-poppins">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{fieldErrors.cargoType}</span>
+                </p>
+              )}
             </div>
 
             {/* Cargo Description */}
-            <div>
-              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                Cargo / Description (Optional)
-              </label>
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between mb-1.5 h-5">
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                  Cargo / Description (Optional)
+                </label>
+              </div>
               <input
                 type="text"
+                maxLength={300}
                 placeholder="e.g. Express Deliveries"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium font-poppins"
+                onChange={(e) => handleDescriptionChange(e.target.value)}
+                onBlur={() => handleFieldBlur('description', description)}
+                className={`w-full px-3.5 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${
+                  fieldErrors.description
+                    ? "border-red-400 bg-red-50/20 ring-1 ring-red-400/30 text-red-900 focus:border-red-500"
+                    : "border-[#E7EAF0] focus:border-[#A14000]"
+                }`}
               />
+              {fieldErrors.description && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1 font-poppins">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{fieldErrors.description}</span>
+                </p>
+              )}
             </div>
 
             {/* Trip Notes */}
-            <div>
-              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
-                Trip Notes (Optional)
-              </label>
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between mb-1.5 h-5">
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins">
+                  Trip Notes (Optional)
+                </label>
+              </div>
               <input
                 type="text"
+                maxLength={350}
                 placeholder="e.g. Handle with care, route via tollway"
                 value={tripNotes}
-                onChange={(e) => setTripNotes(e.target.value)}
-                className="w-full px-3.5 py-2.5 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium font-poppins"
+                onChange={(e) => handleTripNotesChange(e.target.value)}
+                onBlur={() => handleFieldBlur('tripNotes', tripNotes)}
+                className={`w-full px-3.5 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none transition-all text-[#1E293B] font-medium font-poppins ${
+                  fieldErrors.tripNotes
+                    ? "border-red-400 bg-red-50/20 ring-1 ring-red-400/30 text-red-900 focus:border-red-500"
+                    : "border-[#E7EAF0] focus:border-[#A14000]"
+                }`}
               />
+              {fieldErrors.tripNotes && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1 font-poppins">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{fieldErrors.tripNotes}</span>
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -1831,8 +2097,8 @@ export default function CreateTripPage() {
           <button
             type="button"
             onClick={handleDispatch}
-            disabled={isSubmitting || !!departureError || !!etaError || !departureTime || !eta || !cargoWeight || isSameLocError}
-            className={`px-8 py-3 rounded-xl text-sm font-bold text-white transition-all shadow-md cursor-pointer flex items-center gap-2 font-poppins ${(isSubmitting || departureError || etaError || !departureTime || !eta || !cargoWeight || isSameLocError)
+            disabled={isSubmitting || Object.values(fieldErrors).some(Boolean) || !departureTime || !eta || !cargoWeight || !startLocation || !endLocation || isSameLocError}
+            className={`px-8 py-3 rounded-xl text-sm font-bold text-white transition-all shadow-md cursor-pointer flex items-center gap-2 font-poppins ${(isSubmitting || Object.values(fieldErrors).some(Boolean) || !departureTime || !eta || !cargoWeight || !startLocation || !endLocation || isSameLocError)
                 ? "bg-gray-300 shadow-none cursor-not-allowed opacity-60"
                 : "bg-[#A14000] hover:bg-[#853400] shadow-[#A14000]/20"
               }`}

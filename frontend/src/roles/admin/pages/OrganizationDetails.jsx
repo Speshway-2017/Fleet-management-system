@@ -88,6 +88,94 @@ export default function OrganizationDetails() {
     }
   };
 
+  const validateManagerField = (fieldName, value, currentForm = managerForm) => {
+    let error = "";
+    const isEdit = isEditManagerOpen;
+
+    switch (fieldName) {
+      case "name": {
+        const trimmed = (value || "").trim();
+        if (!trimmed) {
+          error = "Full name is required.";
+        } else if (trimmed.length < 2) {
+          error = "Full name must be at least 2 characters.";
+        } else if (value.length > 20) {
+          error = "Full name must not exceed 20 characters.";
+        } else if (/[^a-zA-Z\s]/.test(value)) {
+          error = "Manager name must contain alphabets only (numbers & symbols are not allowed)";
+        }
+        break;
+      }
+      case "email": {
+        const val = value || "";
+        const trimmed = val.trim();
+        if (!trimmed) {
+          error = "Email address is required.";
+        } else if (/\s/.test(val)) {
+          error = "Email address must not contain spaces.";
+        } else if (val.length < 5) {
+          error = "Email address must be at least 5 characters.";
+        } else if (val.length > 30) {
+          error = "Email address must not exceed 30 characters.";
+        } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmed)) {
+          error = "Please enter a valid email address.";
+        }
+        break;
+      }
+      case "phone": {
+        const val = value || "";
+        if (val) {
+          if (/[^0-9]/.test(val)) {
+            error = "Phone number must contain numbers only (letters are not allowed).";
+          } else if (val.length !== 10) {
+            error = "Phone number must be exactly 10 digits.";
+          }
+        }
+        break;
+      }
+      case "password": {
+        const val = value || "";
+        if (!isEdit) {
+          if (!val) {
+            error = "Password is required.";
+          } else if (/\s/.test(val)) {
+            error = "Password must not contain spaces.";
+          } else if (val.length < 6) {
+            error = "Password must be at least 6 characters long.";
+          } else if (val.length > 20) {
+            error = "Password must not exceed 20 characters.";
+          }
+        } else {
+          if (val) {
+            if (/\s/.test(val)) {
+              error = "Password must not contain spaces.";
+            } else if (val.length < 6) {
+              error = "Password must be at least 6 characters long.";
+            } else if (val.length > 20) {
+              error = "Password must not exceed 20 characters.";
+            }
+          }
+        }
+        break;
+      }
+      case "confirmPassword": {
+        const val = value || "";
+        const pwd = currentForm.password || "";
+        if (!isEdit || pwd) {
+          if (!val) {
+            error = "Confirm password is required.";
+          } else if (pwd && val !== pwd) {
+            error = "Passwords do not match.";
+          }
+        }
+        break;
+      }
+      default:
+        break;
+    }
+    return error;
+  };
+
   const handleManagerNameKeyDown = (e) => {
     if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
       return;
@@ -114,30 +202,114 @@ export default function OrganizationDetails() {
     }
   };
 
+  const handleManagerNameChange = (e) => {
+    const raw = e.target.value;
+    let val = raw;
+    let customErr = "";
+    if (/[^a-zA-Z\s]/.test(raw)) {
+      customErr = "Manager name must contain alphabets only (numbers & symbols are not allowed)";
+      val = raw.replace(/[^a-zA-Z\s]/g, '');
+    } else if (raw.length > 20) {
+      customErr = "Full name must not exceed 20 characters.";
+      val = raw.slice(0, 20);
+    }
+    const updatedForm = { ...managerForm, name: val };
+    setManagerForm(updatedForm);
+    const errorMsg = customErr || validateManagerField("name", val, updatedForm);
+    setManagerErrors(p => ({ ...p, name: errorMsg }));
+  };
+
+  const handleManagerNameBlur = () => {
+    const errorMsg = validateManagerField("name", managerForm.name, managerForm);
+    setManagerErrors(p => ({ ...p, name: errorMsg }));
+  };
+
+  const handleManagerEmailChange = (e) => {
+    const val = e.target.value;
+    let customErr = "";
+    if (val.length > 30) {
+      customErr = "Email address must not exceed 30 characters.";
+    } else if (/\s/.test(val)) {
+      customErr = "Email address must not contain spaces.";
+    }
+    const updatedForm = { ...managerForm, email: val };
+    setManagerForm(updatedForm);
+    const errorMsg = customErr || validateManagerField("email", val, updatedForm);
+    setManagerErrors(p => ({ ...p, email: errorMsg }));
+  };
+
+  const handleManagerEmailBlur = () => {
+    const errorMsg = validateManagerField("email", managerForm.email, managerForm);
+    setManagerErrors(p => ({ ...p, email: errorMsg }));
+  };
+
+  const handleManagerPhoneChange = (e) => {
+    const raw = e.target.value;
+    let val = raw;
+    let customErr = "";
+    if (/[^0-9]/.test(raw)) {
+      customErr = "Phone number must contain numbers only (letters are not allowed)";
+      val = raw.replace(/[^0-9]/g, '').slice(0, 10);
+    } else if (raw.length > 10) {
+      customErr = "Phone number must be exactly 10 digits.";
+      val = raw.slice(0, 10);
+    }
+    const updatedForm = { ...managerForm, phone: val };
+    setManagerForm(updatedForm);
+    const errorMsg = customErr || validateManagerField("phone", val, updatedForm);
+    setManagerErrors(p => ({ ...p, phone: errorMsg }));
+  };
+
+  const handleManagerPhoneBlur = () => {
+    const errorMsg = validateManagerField("phone", managerForm.phone, managerForm);
+    setManagerErrors(p => ({ ...p, phone: errorMsg }));
+  };
+
+  const handleManagerPasswordChange = (e) => {
+    const val = e.target.value;
+    let customErr = "";
+    if (val.length > 20) {
+      customErr = "Password must not exceed 20 characters.";
+    } else if (/\s/.test(val)) {
+      customErr = "Password must not contain spaces.";
+    }
+    const updatedForm = { ...managerForm, password: val };
+    setManagerForm(updatedForm);
+
+    const errorMsg = customErr || validateManagerField("password", val, updatedForm);
+    let confirmErr = managerErrors.confirmPassword;
+    if (managerForm.confirmPassword) {
+      confirmErr = val !== managerForm.confirmPassword ? "Passwords do not match." : "";
+    }
+    setManagerErrors(p => ({ ...p, password: errorMsg, confirmPassword: confirmErr }));
+  };
+
+  const handleManagerPasswordBlur = () => {
+    const errorMsg = validateManagerField("password", managerForm.password, managerForm);
+    setManagerErrors(p => ({ ...p, password: errorMsg }));
+  };
+
+  const handleManagerConfirmPasswordChange = (e) => {
+    const val = e.target.value;
+    const updatedForm = { ...managerForm, confirmPassword: val };
+    setManagerForm(updatedForm);
+    const errorMsg = validateManagerField("confirmPassword", val, updatedForm);
+    setManagerErrors(p => ({ ...p, confirmPassword: errorMsg }));
+  };
+
+  const handleManagerConfirmPasswordBlur = () => {
+    const errorMsg = validateManagerField("confirmPassword", managerForm.confirmPassword, managerForm);
+    setManagerErrors(p => ({ ...p, confirmPassword: errorMsg }));
+  };
+
   const handleManagerSubmit = async (e) => {
     e.preventDefault();
+    const fieldsToValidate = ["name", "email", "phone", "password", "confirmPassword"];
     const errors = {};
-    if (!managerForm.name) errors.name = "Full name is required";
-    else if (managerForm.name.trim().length < 2) errors.name = "Name must be at least 2 characters";
-    else if (managerForm.name.length > 20) errors.name = "Name must not exceed 20 characters";
-    else if (/[^a-zA-Z\s]/.test(managerForm.name)) errors.name = "Manager name must contain alphabets only (numbers & symbols are not allowed)";
-
-    if (!managerForm.email) errors.email = "Email address is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(managerForm.email)) errors.email = "Invalid email address format";
-
-    if (managerForm.phone) {
-      if (/[^0-9]/.test(managerForm.phone)) errors.phone = "Phone number must contain numbers only (letters are not allowed)";
-      else if (managerForm.phone.length !== 10) errors.phone = "Phone number must be exactly 10 digits";
-    }
-
-    if (!isEditManagerOpen) {
-      if (!managerForm.password) errors.password = "Password is required";
-      else if (managerForm.password.length < 6) errors.password = "Password must be at least 6 characters";
-      if (managerForm.password !== managerForm.confirmPassword) errors.confirmPassword = "Passwords do not match";
-    } else {
-      if (managerForm.password && managerForm.password.length < 6) errors.password = "Password must be at least 6 characters";
-      if (managerForm.password && managerForm.password !== managerForm.confirmPassword) errors.confirmPassword = "Passwords do not match";
-    }
+    fieldsToValidate.forEach((field) => {
+      const err = validateManagerField(field, managerForm[field], managerForm);
+      if (err) errors[field] = err;
+    });
     
     setManagerErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -509,17 +681,8 @@ export default function OrganizationDetails() {
                         maxLength={20}
                         value={managerForm.name} 
                         onKeyDown={handleManagerNameKeyDown}
-                        onChange={e => {
-                          const raw = e.target.value;
-                          let val = raw;
-                          let customErr = "";
-                          if (/[^a-zA-Z\s]/.test(raw)) {
-                            customErr = "Manager name must contain alphabets only (numbers & symbols are not allowed)";
-                            val = raw.replace(/[^a-zA-Z\s]/g, '');
-                          }
-                          setManagerForm(p => ({...p, name: val})); 
-                          setManagerErrors(p => ({...p, name: customErr}));
-                        }} 
+                        onChange={handleManagerNameChange} 
+                        onBlur={handleManagerNameBlur}
                         className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${managerErrors.name ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                         placeholder="Manager Name (alphabets only)" 
                       />
@@ -531,9 +694,10 @@ export default function OrganizationDetails() {
                         type="email" 
                         maxLength={30}
                         value={managerForm.email} 
-                        onChange={e => {setManagerForm(p => ({...p, email: e.target.value})); setManagerErrors(p => ({...p, email: ""}))}} 
+                        onChange={handleManagerEmailChange} 
+                        onBlur={handleManagerEmailBlur}
                         className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${managerErrors.email ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
-                        placeholder="Email Address" 
+                        placeholder="Email Address (max 30 chars)" 
                       />
                       {managerErrors.email && <p className="text-xs text-red-500 mt-1">{managerErrors.email}</p>}
                     </div>
@@ -544,17 +708,8 @@ export default function OrganizationDetails() {
                         maxLength={10}
                         value={managerForm.phone} 
                         onKeyDown={handleManagerPhoneKeyDown}
-                        onChange={e => {
-                          const raw = e.target.value;
-                          let val = raw;
-                          let customErr = "";
-                          if (/[^0-9]/.test(raw)) {
-                            customErr = "Phone number must contain numbers only (letters are not allowed)";
-                            val = raw.replace(/[^0-9]/g, '');
-                          }
-                          setManagerForm(p => ({...p, phone: val}));
-                          setManagerErrors(p => ({...p, phone: customErr}));
-                        }} 
+                        onChange={handleManagerPhoneChange} 
+                        onBlur={handleManagerPhoneBlur}
                         className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 ${managerErrors.phone ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                         placeholder="Phone Number (10 digits)" 
                       />
@@ -564,7 +719,15 @@ export default function OrganizationDetails() {
                       <div>
                         <label className="text-xs font-bold text-slate-700 block mb-1.5">Password {isEditManagerOpen && <span className="font-normal text-slate-400">(leave blank to keep)</span>}</label>
                         <div className="relative">
-                          <input type={showPassword ? "text" : "password"} value={managerForm.password} onChange={e => {setManagerForm(p => ({...p, password: e.target.value})); setManagerErrors(p => ({...p, password: ""}))}} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50 pr-10" placeholder={isEditManagerOpen ? "New Password" : "Create Password"} />
+                          <input 
+                            type={showPassword ? "text" : "password"} 
+                            maxLength={20}
+                            value={managerForm.password} 
+                            onChange={handleManagerPasswordChange} 
+                            onBlur={handleManagerPasswordBlur}
+                            className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 pr-10 ${managerErrors.password ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`} 
+                            placeholder={isEditManagerOpen ? "New Password" : "Create Password (max 20 chars)"} 
+                          />
                           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
@@ -574,7 +737,15 @@ export default function OrganizationDetails() {
                       <div>
                         <label className="text-xs font-bold text-slate-700 block mb-1.5">Confirm Password</label>
                         <div className="relative">
-                          <input type={showConfirmPassword ? "text" : "password"} value={managerForm.confirmPassword} onChange={e => {setManagerForm(p => ({...p, confirmPassword: e.target.value})); setManagerErrors(p => ({...p, confirmPassword: ""}))}} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all bg-slate-50/50 pr-10" placeholder="Confirm Password" />
+                          <input 
+                            type={showConfirmPassword ? "text" : "password"} 
+                            maxLength={20}
+                            value={managerForm.confirmPassword} 
+                            onChange={handleManagerConfirmPasswordChange} 
+                            onBlur={handleManagerConfirmPasswordBlur}
+                            className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 pr-10 ${managerErrors.confirmPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`} 
+                            placeholder="Confirm Password (max 20 chars)" 
+                          />
                           <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
                             {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>

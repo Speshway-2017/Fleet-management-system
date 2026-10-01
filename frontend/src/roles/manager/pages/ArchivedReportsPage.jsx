@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { Search, Filter, Download, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
+import { validateSearchQuery } from "@/validations/common.schema.js";
 
 const ALL_REPORTS = [
   { id: 1, name: "Q3 Fuel Efficiency Audit", type: "Financial", format: "PDF", date: "Oct 24, 2023 · 14:30", size: "2.4 MB", generatedBy: "Auto-Schedule", icon: "mdi:file-chart", iconColor: "text-red-500" },
@@ -31,12 +32,22 @@ const PAGE_SIZE = 8;
 export default function ArchivedReportsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
   const [page, setPage] = useState(1);
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearch(val);
+    const err = validateSearchQuery(val, 50);
+    setSearchError(err);
+    setPage(1);
+  };
 
   const types = ["All", "Operational", "Financial", "Compliance", "Safety"];
 
   const filtered = ALL_REPORTS.filter((r) => {
+    if (searchError) return false;
     const matchesSearch =
       r.name.toLowerCase().includes(search.toLowerCase()) ||
       r.type.toLowerCase().includes(search.toLowerCase());
@@ -73,16 +84,25 @@ export default function ArchivedReportsPage() {
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
         {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
-          <input
-            type="text"
-            maxLength={20}
-            placeholder="Search by report name or type..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-9 pr-4 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium focus:outline-none focus:border-[#A14000] shadow-sm"
-          />
+        <div className="flex flex-col flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+            <input
+              type="text"
+              maxLength={50}
+              placeholder="Search by report name or type..."
+              value={search}
+              onChange={handleSearchChange}
+              className={`w-full pl-9 pr-4 py-2.5 bg-white border rounded-xl text-xs font-medium focus:outline-none transition-all shadow-sm ${
+                searchError
+                  ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  : "border-[#E7EAF0] focus:border-[#A14000]"
+              }`}
+            />
+          </div>
+          {searchError && (
+            <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{searchError}</p>
+          )}
         </div>
 
         {/* Type filter */}

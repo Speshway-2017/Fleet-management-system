@@ -14,6 +14,7 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
+import { validateSearchQuery } from "@/validations/common.schema.js";
 import "../dashboard/manager.css";
 
 
@@ -21,7 +22,15 @@ export default function UpcomingServicesPage() {
   const navigate = useNavigate();
   const [workOrders, setWorkOrders] = useState([]);
   const [search, setSearch] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearch(val);
+    const err = validateSearchQuery(val, 50);
+    setSearchError(err);
+  };
 
   const fetchWorkOrders = async (isInitial = false) => {
     try {
@@ -101,6 +110,7 @@ export default function UpcomingServicesPage() {
   };
 
   const filteredOrders = workOrders.filter(w => {
+    if (searchError) return false;
     const q = search.toLowerCase();
     return (
       w.vehicleId.toLowerCase().includes(q) ||
@@ -233,16 +243,25 @@ export default function UpcomingServicesPage() {
         <div className="flex items-center justify-between">
           <h3 className="font-poppins font-black text-lg text-[#1E293B]">Schedule Garage Queue</h3>
 
-          <div className="relative select-none">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8]" />
-            <input
-              type="text"
-              maxLength={20}
-              placeholder="Search queue..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 pr-4 py-1.5 border border-[#E7EAF0] rounded-xl text-xs focus:outline-none focus:border-[#A14000] font-medium w-[180px] bg-white"
-            />
+          <div className="flex flex-col select-none">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8]" />
+              <input
+                type="text"
+                maxLength={50}
+                placeholder="Search queue..."
+                value={search}
+                onChange={handleSearchChange}
+                className={`pl-8 pr-4 py-1.5 border rounded-xl text-xs focus:outline-none font-medium w-[180px] bg-white transition-all ${
+                  searchError
+                    ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                    : "border-[#E7EAF0] focus:border-[#A14000]"
+                }`}
+              />
+            </div>
+            {searchError && (
+              <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{searchError}</p>
+            )}
           </div>
         </div>
 

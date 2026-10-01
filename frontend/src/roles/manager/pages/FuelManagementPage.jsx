@@ -20,10 +20,19 @@ import { managerApi } from "../api/managerApi";
 
 import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 import { fuelSchema, validateForm } from "@/validations";
+import { validateSearchQuery } from "@/validations/common.schema.js";
 
 
 export default function FuelManagementPage() {
   const [search, setSearch] = useState("");
+  const [searchError, setSearchError] = useState("");
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearch(val);
+    const err = validateSearchQuery(val, 50);
+    setSearchError(err);
+  };
   const [logs, setLogs] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [selectedLog, setSelectedLog] = useState(null);
@@ -165,6 +174,7 @@ export default function FuelManagementPage() {
   }, []);
 
   const filteredLogs = logs.filter(l => {
+    if (searchError) return false;
     const q = search.toLowerCase();
     const vId = l.vehicleId ? l.vehicleId.toLowerCase() : "";
     const driverName = l.driver ? l.driver.toLowerCase() : "";
@@ -421,16 +431,25 @@ Status:          PAID & VERIFIED
 
           <div className="flex items-center gap-3">
             {/* Search field */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input
-                type="text"
-                maxLength={20}
-                placeholder="Search vehicle or driver..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-700 font-medium w-[220px]"
-              />
+            <div className="flex flex-col">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input
+                  type="text"
+                  maxLength={50}
+                  placeholder="Search vehicle or driver..."
+                  value={search}
+                  onChange={handleSearchChange}
+                  className={`pl-9 pr-4 py-2 border rounded-xl text-xs focus:outline-none font-medium w-[220px] transition-all ${
+                    searchError
+                      ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                      : "border-gray-200 focus:border-amber-700"
+                  }`}
+                />
+              </div>
+              {searchError && (
+                <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{searchError}</p>
+              )}
             </div>
           </div>
         </div>

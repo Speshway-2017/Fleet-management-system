@@ -379,12 +379,12 @@ export default function EditOrganization() {
             <input
               type="text"
               name="address"
-              maxLength={30}
+              maxLength={100}
               autoComplete="off"
               value={form.address}
               onBlur={() => handleBlur('address')}
               onChange={handleChange}
-              placeholder="Street address (5-30 chars)"
+              placeholder="Street address (5-100 chars)"
               className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.address ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
             />
             {errors.address && <p className="text-xs text-red-500 mt-1 font-medium">{errors.address}</p>}

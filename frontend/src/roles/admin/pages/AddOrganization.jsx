@@ -432,9 +432,9 @@ export default function AddOrganization() {
                     <input
                       type="text"
                       name="address"
-                      maxLength={30}
+                      maxLength={100}
                       autoComplete="off"
-                      placeholder="Street Address (5-30 chars)"
+                      placeholder="Street Address (5-100 chars)"
                       value={form.address}
                       onBlur={() => handleBlur('address')}
                       onChange={handleChange}
@@ -592,12 +592,12 @@ export default function AddOrganization() {
                           <div className="relative">
                             <input
                               type={manager.showPassword ? "text" : "password"}
-                              maxLength={50}
+                              maxLength={20}
                               autoComplete="new-password"
                               value={manager.password}
                               onBlur={() => handleManagerBlur(index, 'password')}
                               onChange={(e) => handleManagerChange(index, 'password', e.target.value)}
-                              placeholder="Create Password (min 6 chars)"
+                              placeholder="Create Password (6-20 chars)"
                               className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 pr-10 ${mErr.password ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                             />
                             <button
@@ -618,12 +618,12 @@ export default function AddOrganization() {
                           <div className="relative">
                             <input
                               type={manager.showConfirmPassword ? "text" : "password"}
-                              maxLength={50}
+                              maxLength={20}
                               autoComplete="new-password"
                               value={manager.confirmPassword}
                               onBlur={() => handleManagerBlur(index, 'confirmPassword')}
                               onChange={(e) => handleManagerChange(index, 'confirmPassword', e.target.value)}
-                              placeholder="Confirm Password"
+                              placeholder="Confirm Password (max 20 chars)"
                               className={`w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 pr-10 ${mErr.confirmPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]'}`}
                             />
                             <button
