@@ -5,7 +5,7 @@ import { AnimeScrollReveal, AnimeStaggerGroup } from "@/components/common/AnimeS
 import { useAuth } from "@/context/AuthContext";
 import ReCAPTCHA from "react-google-recaptcha";
 import { contactApi } from "@/api/contactApi";
-import { contactRequestSchema, validateForm, validateField as zodValidateField } from "@/validations";
+import { contactRequestSchema, validateForm, validateField as zodValidateField, validateMessageContent } from "@/validations";
 import {
   Phone,
   Mail,
@@ -59,7 +59,7 @@ export default function Contact() {
   const handleFullNameChange = (e) => {
     const rawVal = e.target.value;
     const hasNumbers = /\d/.test(rawVal);
-    const cleanedVal = rawVal.replace(/\d/g, "").slice(0, 100);
+    const cleanedVal = rawVal.replace(/\d/g, "").slice(0, 30);
 
     setForm((prev) => ({ ...prev, fullName: cleanedVal }));
     setTouched((prev) => ({ ...prev, fullName: true }));
@@ -72,7 +72,7 @@ export default function Contact() {
     } else if (cleanedVal.length > 0 && cleanedVal.trim().length < 2) {
       setFormErrors((prevErr) => ({
         ...prevErr,
-        fullName: "Full name must be between 2 and 100 characters long",
+        fullName: "Full name must be between 2 and 30 characters long",
       }));
     } else if (cleanedVal.trim().length === 0) {
       setFormErrors((prevErr) => ({
@@ -83,6 +83,25 @@ export default function Contact() {
       setFormErrors((prevErr) => ({
         ...prevErr,
         fullName: "",
+      }));
+    }
+  };
+
+  const handleCompanyChange = (e) => {
+    const rawVal = e.target.value.slice(0, 30);
+    setForm((prev) => ({ ...prev, company: rawVal }));
+    setTouched((prev) => ({ ...prev, company: true }));
+
+    const trimmed = rawVal.trim();
+    if (trimmed.length > 0 && trimmed.length < 2) {
+      setFormErrors((prevErr) => ({
+        ...prevErr,
+        company: "Company name must be between 2 and 30 characters long",
+      }));
+    } else {
+      setFormErrors((prevErr) => ({
+        ...prevErr,
+        company: "",
       }));
     }
   };
@@ -118,7 +137,14 @@ export default function Contact() {
       const updated = { ...prev, [field]: value };
       let fieldError = "";
 
-      if (field === "email") {
+      if (field === "company") {
+        const trimmed = value.trim();
+        if (trimmed.length > 0 && (trimmed.length < 2 || value.length > 30)) {
+          fieldError = "Company name must be between 2 and 30 characters long";
+        } else {
+          fieldError = "";
+        }
+      } else if (field === "email") {
         if (!value.trim()) {
           fieldError = "Email address is required";
         } else {
@@ -131,15 +157,7 @@ export default function Contact() {
           fieldError = zodValidateField(contactRequestSchema, "subject", value, updated);
         }
       } else if (field === "message") {
-        if (!value.trim()) {
-          fieldError = "Message is required";
-        } else if (value.trim().length < 10) {
-          fieldError = "Message must be between 10 and 1,000 characters long";
-        } else if (value.length > 1000) {
-          fieldError = "Message must not exceed 1,000 characters";
-        } else {
-          fieldError = zodValidateField(contactRequestSchema, "message", value, updated);
-        }
+        fieldError = validateMessageContent(value);
       } else {
         fieldError = zodValidateField(contactRequestSchema, field, value, updated);
       }
@@ -159,8 +177,8 @@ export default function Contact() {
         setFormErrors((prevErr) => ({ ...prevErr, fullName: "Full name is required" }));
         return;
       }
-      if (val.trim().length < 2 || val.length > 100) {
-        setFormErrors((prevErr) => ({ ...prevErr, fullName: "Full name must be between 2 and 100 characters long" }));
+      if (val.trim().length < 2 || val.length > 30) {
+        setFormErrors((prevErr) => ({ ...prevErr, fullName: "Full name must be between 2 and 30 characters long" }));
         return;
       }
       if (/\d/.test(val)) {
@@ -168,6 +186,15 @@ export default function Contact() {
         return;
       }
       setFormErrors((prevErr) => ({ ...prevErr, fullName: "" }));
+      return;
+    }
+
+    if (field === "company") {
+      if (val && val.trim() && (val.trim().length < 2 || val.length > 30)) {
+        setFormErrors((prevErr) => ({ ...prevErr, company: "Company name must be between 2 and 30 characters long" }));
+        return;
+      }
+      setFormErrors((prevErr) => ({ ...prevErr, company: "" }));
       return;
     }
 
@@ -192,15 +219,8 @@ export default function Contact() {
     }
 
     if (field === "message") {
-      if (!val.trim()) {
-        setFormErrors((prevErr) => ({ ...prevErr, message: "Message is required" }));
-        return;
-      }
-      if (val.trim().length < 10 || val.length > 1000) {
-        setFormErrors((prevErr) => ({ ...prevErr, message: "Message must be between 10 and 1,000 characters long" }));
-        return;
-      }
-      setFormErrors((prevErr) => ({ ...prevErr, message: "" }));
+      const err = validateMessageContent(val);
+      setFormErrors((prevErr) => ({ ...prevErr, message: err }));
       return;
     }
 
@@ -277,17 +297,24 @@ export default function Contact() {
 
     if (!form.fullName || !form.fullName.trim()) {
       errors.fullName = "Full name is required";
+    } else if (form.fullName.trim().length < 2 || form.fullName.length > 30) {
+      errors.fullName = "Full name must be between 2 and 30 characters long";
     }
+
+    if (form.company && form.company.trim() && (form.company.trim().length < 2 || form.company.length > 30)) {
+      errors.company = "Company name must be between 2 and 30 characters long";
+    }
+
     if (!form.email || !form.email.trim()) {
       errors.email = "Email address is required";
     }
     if (!form.subject || !form.subject.trim()) {
       errors.subject = "Subject is required";
     }
-    if (!form.message || !form.message.trim()) {
-      errors.message = "Message is required";
-    } else if (form.message.trim().length < 10 || form.message.length > 1000) {
-      errors.message = "Message must be between 10 and 1,000 characters long";
+    
+    const msgError = validateMessageContent(form.message);
+    if (msgError) {
+      errors.message = msgError;
     }
 
     setFormErrors(errors);
@@ -306,7 +333,12 @@ export default function Contact() {
     setSubmitting(true);
     try {
       await contactApi.sendContactRequest({
-        ...form,
+        fullName: form.fullName.trim(),
+        email: form.email.trim(),
+        company: form.company ? form.company.trim() : "",
+        phone: form.phone ? form.phone.trim() : "",
+        subject: form.subject,
+        message: form.message.trim(),
         captchaToken,
         recaptchaToken: captchaToken,
       });
@@ -499,7 +531,7 @@ export default function Contact() {
                 </label>
                 <input
                   type="text"
-                  maxLength={100}
+                  maxLength={30}
                   placeholder="Enter your full name"
                   value={form.fullName}
                   onBlur={() => handleBlur("fullName")}
@@ -544,10 +576,11 @@ export default function Contact() {
                 </label>
                 <input
                   type="text"
+                  maxLength={30}
                   placeholder="Enter your company name"
                   value={form.company}
                   onBlur={() => handleBlur("company")}
-                  onChange={(e) => handleChange("company", e.target.value)}
+                  onChange={handleCompanyChange}
                   className={`w-full rounded-xl border px-4 py-3 text-xs focus:outline-none placeholder:text-gray-400 font-medium bg-white text-[#1E293B] transition-colors ${
                     formErrors.company && (touched.company || form.company)
                       ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/15"
@@ -616,17 +649,17 @@ export default function Contact() {
                 <span className={`text-[10px] font-medium font-poppins ${
                   form.message.length > 0 && form.message.trim().length < 10
                     ? "text-amber-600 font-semibold"
-                    : form.message.length === 1000
+                    : form.message.length === 500
                     ? "text-red-500 font-bold"
                     : "text-gray-400"
                 }`}>
-                  {form.message.length}/1000
+                  {form.message.length}/500
                 </span>
               </div>
               <textarea
                 rows="5"
-                maxLength={1000}
-                placeholder="Tell us how we can help you (min 10 characters)..."
+                maxLength={500}
+                placeholder="Tell us how we can help you (min 10 characters, max 500)..."
                 value={form.message}
                 onBlur={() => handleBlur("message")}
                 onChange={(e) => handleChange("message", e.target.value)}

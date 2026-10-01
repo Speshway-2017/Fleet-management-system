@@ -88,9 +88,9 @@ export default function SettingsBlogs() {
     let customError = "";
 
     if (field === "title") {
-      cleanValue = value.replace(/[^a-zA-Z\s]/g, "").slice(0, 100);
+      cleanValue = value.replace(/[^a-zA-Z\s,.'\-&!?:;]/g, "").slice(0, 100);
       if (value !== cleanValue && value.length > 0) {
-        customError = "Title must contain alphabets only (numbers & symbols are not allowed).";
+        customError = "Title must contain alphabets and punctuation only (numbers are not allowed).";
       }
     } else if (field === "readTime") {
       cleanValue = value.slice(0, 20);
@@ -115,11 +115,11 @@ export default function SettingsBlogs() {
 
   const handleTitleKeyDown = (e) => {
     if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (!/^[a-zA-Z\s]$/.test(e.key)) {
+    if (!/^[a-zA-Z\s,.'\-&!?:;]$/.test(e.key)) {
       e.preventDefault();
-      setErrors(prev => ({ ...prev, title: "Title must contain alphabets only (numbers & symbols are not allowed)." }));
+      setErrors(prev => ({ ...prev, title: "Title must contain alphabets and punctuation only (numbers are not allowed)." }));
     } else {
-      if (errors.title?.includes("must contain alphabets only")) {
+      if (errors.title?.includes("numbers are not allowed")) {
         setErrors(prev => ({ ...prev, title: "" }));
       }
     }
@@ -248,7 +248,7 @@ export default function SettingsBlogs() {
                 {blogs.map((blog) => (
                   <div
                     key={blog._id}
-                    className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-full hover:shadow-md transition-shadow"
+                    className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col justify-between h-full hover:shadow-md transition-shadow"
                   >
                     <div className="h-44 w-full bg-slate-100 relative overflow-hidden shrink-0">
                       <img
@@ -256,30 +256,32 @@ export default function SettingsBlogs() {
                         alt={blog.title}
                         className="w-full h-full object-cover"
                       />
-                      <span className="absolute top-3 left-3 px-2.5 py-1 bg-white/90 backdrop-blur-sm text-[10px] font-extrabold uppercase tracking-wider text-slate-800 rounded-lg shadow-sm">
+                      <span className="absolute top-3 left-3 px-2.5 py-1 bg-white/90 backdrop-blur-sm text-[10px] font-extrabold uppercase tracking-wider text-slate-800 rounded-lg shadow-sm max-w-[80%] truncate" title={blog.category}>
                         {blog.category}
                       </span>
                     </div>
 
-                    <div className="p-5 flex flex-col flex-1">
-                      <div className="flex items-center justify-between text-[11px] font-medium text-slate-400 mb-2">
-                        <span>{blog.date}</span>
-                        <span>{blog.readTime}</span>
+                    <div className="p-5 flex flex-col flex-1 min-w-0 justify-between">
+                      <div className="space-y-2 min-w-0 flex-1 flex flex-col">
+                        <div className="flex items-center justify-between text-[11px] font-medium text-slate-400 pb-2 border-b border-slate-100 min-w-0">
+                          <span className="truncate max-w-[110px]" title={blog.date}>{blog.date}</span>
+                          <span className="truncate max-w-[120px] text-right" title={blog.readTime}>{blog.readTime}</span>
+                        </div>
+
+                        <h4
+                          className="text-sm font-bold text-slate-900 line-clamp-2 min-h-[40px] flex items-center break-words break-all sm:break-words leading-snug"
+                          title={blog.title}
+                        >
+                          {blog.title}
+                        </h4>
+
+                        <p
+                          className="text-xs text-slate-500 line-clamp-3 min-h-[50px] break-words break-all sm:break-words leading-relaxed mb-4 flex-1"
+                          title={blog.summary}
+                        >
+                          {blog.summary}
+                        </p>
                       </div>
-
-                      <h4
-                        className="text-sm font-bold text-slate-900 mb-2 line-clamp-2"
-                        title={blog.title}
-                      >
-                        {blog.title}
-                      </h4>
-
-                      <p
-                        className="text-xs text-slate-500 line-clamp-3 mb-4 flex-1"
-                        title={blog.summary}
-                      >
-                        {blog.summary}
-                      </p>
 
                       <div className="flex justify-end gap-2 pt-4 mt-auto border-t border-slate-100 shrink-0">
                         <button

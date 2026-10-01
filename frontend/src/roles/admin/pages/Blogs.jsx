@@ -43,7 +43,7 @@ export default function Blogs() {
   // Full-Page Article View
   if (selectedArticle) {
     const contentParagraphs = Array.isArray(selectedArticle.content)
-      ? selectedArticle.content
+      ? selectedArticle.content.flatMap(p => typeof p === "string" ? p.split(/\n+/).map(s => s.trim()).filter(Boolean) : [])
       : typeof selectedArticle.content === "string"
         ? selectedArticle.content.split(/\n+/).map(p => p.trim()).filter(Boolean)
         : [selectedArticle.summary || ""];

@@ -6,12 +6,12 @@ export default function BlogCard({ image, category, date, readTime, title, summa
     <GoldFrameCard className="h-full max-w-sm mx-auto w-full">
       <div className="flex flex-col h-full justify-between min-w-0">
         {/* Top Section: Image & Content */}
-        <div className="flex flex-col min-w-0">
+        <div className="flex flex-col min-w-0 flex-1">
           {/* Image Container */}
           <div className="relative overflow-hidden h-44 sm:h-48 w-full rounded-t-2xl shrink-0 bg-slate-100">
             <img
-              src={image}
-              alt={title}
+              src={image || "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80"}
+              alt={title || "Blog Image"}
               loading="lazy"
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
@@ -20,35 +20,35 @@ export default function BlogCard({ image, category, date, readTime, title, summa
                 className="px-2.5 py-0.5 rounded-full bg-white/95 backdrop-blur-sm text-[#A14000] text-[10px] font-bold shadow-xs uppercase tracking-wider block truncate"
                 title={category}
               >
-                {category}
+                {category || "Operations"}
               </span>
             </div>
           </div>
 
           {/* Content Container */}
-          <div className="p-4 sm:p-5 flex flex-col space-y-3 min-w-0">
+          <div className="p-4 sm:p-5 flex flex-col space-y-3 min-w-0 flex-1">
             {/* Meta Info: Date and Read Time */}
-            <div className="flex items-center justify-between gap-2 text-[11px] text-gray-500 font-semibold min-w-0 pb-1 border-b border-gray-100/60">
+            <div className="flex items-center justify-between gap-2 text-[11px] text-gray-500 font-semibold min-w-0 pb-2 border-b border-gray-100/80">
               <div className="flex items-center gap-1.5 shrink-0 min-w-0">
                 <Calendar className="w-3.5 h-3.5 text-[#A14000] shrink-0" />
-                <span className="truncate" title={date}>{date}</span>
+                <span className="truncate max-w-[110px] sm:max-w-[130px]" title={date}>{date || "Recent"}</span>
               </div>
-              <div className="flex items-center gap-1.5 min-w-0 justify-end">
+              <div className="flex items-center gap-1.5 min-w-0 justify-end flex-1">
                 <Clock className="w-3.5 h-3.5 text-[#A14000] shrink-0" />
-                <span className="truncate max-w-[120px] sm:max-w-[140px]" title={readTime}>{readTime}</span>
+                <span className="truncate text-right block max-w-full" title={readTime}>{readTime || "5 min read"}</span>
               </div>
             </div>
 
             {/* Title & Summary */}
-            <div className="space-y-1.5 min-w-0">
+            <div className="space-y-2 min-w-0 flex-1 flex flex-col">
               <h4 
-                className="font-display font-black text-sm sm:text-base text-[#0B1B3D] leading-snug group-hover:text-[#A14000] transition-colors line-clamp-2 min-h-[40px] sm:min-h-[44px] break-words break-all sm:break-words"
+                className="font-display font-black text-sm sm:text-base text-[#0B1B3D] leading-snug group-hover:text-[#A14000] transition-colors line-clamp-2 min-h-[44px] sm:min-h-[48px] flex items-center break-words break-all sm:break-words"
                 title={title}
               >
                 {title}
               </h4>
               <p 
-                className="text-xs text-body font-normal leading-relaxed line-clamp-3 min-h-[54px] break-words break-all sm:break-words"
+                className="text-xs text-body font-normal leading-relaxed line-clamp-3 min-h-[54px] sm:min-h-[58px] break-words break-all sm:break-words flex-1"
                 title={summary}
               >
                 {summary}
@@ -71,4 +71,3 @@ export default function BlogCard({ image, category, date, readTime, title, summa
     </GoldFrameCard>
   );
 }
-

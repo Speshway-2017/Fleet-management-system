@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import Organization from '../models/Organization.js';
 import { createNotificationInRepo } from '../repositories/admin.repository.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { createSubscriptionPlanSchema, updateSubscriptionPlanSchema } from '../validations/subscription.schema.js';
 
 // GET /api/subscriptions/public/plans (Public)
 export const getPublicPlans = async (req, res, next) => {
@@ -29,75 +30,24 @@ export const getPlans = async (req, res, next) => {
 // POST /api/subscriptions/plans (Admin only)
 export const createPlan = async (req, res, next) => {
   try {
-    const { name, description, price, duration, status, displayOrder, features, maxVehicles, maxDrivers, maxTrips } = req.body;
-    if (!name || !name.toString().trim() || !description || !description.toString().trim() || price === undefined || !duration) {
-      return sendError(res, 400, 'Name, description, price, and duration are required');
+    const parsed = createSubscriptionPlanSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const firstError = parsed.error.errors[0]?.message || 'Invalid subscription plan data.';
+      return sendError(res, 400, firstError);
     }
-
-    const trimmedName = name.toString().trim();
-    if (!/^[a-zA-Z\s]+$/.test(trimmedName)) {
-      return sendError(res, 400, 'Plan name must contain alphabets only (numbers & symbols are not allowed).');
-    }
-    if (trimmedName.length < 2 || trimmedName.length > 50) {
-      return sendError(res, 400, 'Plan name must be between 2 and 50 characters.');
-    }
-
-    const trimmedDescription = description.toString().trim();
-    if (/\d/.test(trimmedDescription)) {
-      return sendError(res, 400, 'Description must contain text only (numbers are not allowed).');
-    }
-    if (trimmedDescription.length < 5 || trimmedDescription.length > 100) {
-      return sendError(res, 400, 'Description must be between 5 and 100 characters.');
-    }
-
-    let sanitizedFeatures = [];
-    if (Array.isArray(features)) {
-      for (const feat of features) {
-        const fStr = typeof feat === 'string' ? feat.trim() : '';
-        if (fStr) {
-          if (fStr.length < 2 || fStr.length > 100) {
-            return sendError(res, 400, 'Each feature must be between 2 and 100 characters.');
-          }
-          sanitizedFeatures.push(fStr);
-        }
-      }
-      if (sanitizedFeatures.length > 20) {
-        return sendError(res, 400, 'Maximum 20 features allowed.');
-      }
-    }
-
-    if (maxVehicles !== undefined && maxVehicles !== null && maxVehicles !== '') {
-      const v = Number(maxVehicles);
-      if (isNaN(v) || !Number.isInteger(v) || v < 0) {
-        return sendError(res, 400, 'Number of vehicles must be a whole number.');
-      }
-    }
-
-    if (maxDrivers !== undefined && maxDrivers !== null && maxDrivers !== '') {
-      const d = Number(maxDrivers);
-      if (isNaN(d) || !Number.isInteger(d) || d < 0) {
-        return sendError(res, 400, 'Number of drivers must be a whole number.');
-      }
-    }
-
-    if (maxTrips !== undefined && maxTrips !== null && maxTrips !== '') {
-      const t = Number(maxTrips);
-      if (isNaN(t) || !Number.isInteger(t) || t < 0) {
-        return sendError(res, 400, 'Number of trips must be a whole number.');
-      }
-    }
+    const validatedData = parsed.data;
 
     const plan = new SubscriptionPlan({
-      name: trimmedName,
-      description: trimmedDescription,
-      price: Number(price),
-      duration: Number(duration),
-      status: status || 'Active',
-      displayOrder: displayOrder !== undefined ? Number(displayOrder) : 0,
-      features: sanitizedFeatures,
-      maxVehicles: maxVehicles !== undefined ? Number(maxVehicles) : 0,
-      maxDrivers: maxDrivers !== undefined ? Number(maxDrivers) : 0,
-      maxTrips: maxTrips !== undefined ? Number(maxTrips) : 0
+      name: validatedData.name,
+      description: validatedData.description,
+      price: validatedData.price,
+      duration: validatedData.duration,
+      status: validatedData.status || 'Active',
+      displayOrder: validatedData.displayOrder !== undefined ? validatedData.displayOrder : 0,
+      features: validatedData.features || [],
+      maxVehicles: validatedData.maxVehicles !== undefined ? validatedData.maxVehicles : 0,
+      maxDrivers: validatedData.maxDrivers !== undefined ? validatedData.maxDrivers : 0,
+      maxTrips: validatedData.maxTrips !== undefined ? validatedData.maxTrips : 0
     });
     await plan.save();
 
@@ -118,76 +68,14 @@ export const createPlan = async (req, res, next) => {
 export const updatePlan = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (req.body.name !== undefined) {
-      const trimmedName = req.body.name ? req.body.name.toString().trim() : '';
-      if (!trimmedName) {
-        return sendError(res, 400, 'Plan name is required');
-      }
-      if (!/^[a-zA-Z\s]+$/.test(trimmedName)) {
-        return sendError(res, 400, 'Plan name must contain alphabets only (numbers & symbols are not allowed).');
-      }
-      if (trimmedName.length < 2 || trimmedName.length > 50) {
-        return sendError(res, 400, 'Plan name must be between 2 and 50 characters.');
-      }
-      req.body.name = trimmedName;
+    const parsed = updateSubscriptionPlanSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const firstError = parsed.error.errors[0]?.message || 'Invalid subscription plan data.';
+      return sendError(res, 400, firstError);
     }
+    const validatedData = parsed.data;
 
-    if (req.body.description !== undefined) {
-      const trimmedDesc = req.body.description ? req.body.description.toString().trim() : '';
-      if (!trimmedDesc) {
-        return sendError(res, 400, 'Description is required');
-      }
-      if (/\d/.test(trimmedDesc)) {
-        return sendError(res, 400, 'Description must contain text only (numbers are not allowed).');
-      }
-      if (trimmedDesc.length < 5 || trimmedDesc.length > 100) {
-        return sendError(res, 400, 'Description must be between 5 and 100 characters.');
-      }
-      req.body.description = trimmedDesc;
-    }
-
-    if (req.body.features !== undefined && Array.isArray(req.body.features)) {
-      const sanitizedFeatures = [];
-      for (const feat of req.body.features) {
-        const fStr = typeof feat === 'string' ? feat.trim() : '';
-        if (fStr) {
-          if (fStr.length < 2 || fStr.length > 100) {
-            return sendError(res, 400, 'Each feature must be between 2 and 100 characters.');
-          }
-          sanitizedFeatures.push(fStr);
-        }
-      }
-      if (sanitizedFeatures.length > 20) {
-        return sendError(res, 400, 'Maximum 20 features allowed.');
-      }
-      req.body.features = sanitizedFeatures;
-    }
-
-    if (req.body.maxVehicles !== undefined && req.body.maxVehicles !== null && req.body.maxVehicles !== '') {
-      const v = Number(req.body.maxVehicles);
-      if (isNaN(v) || !Number.isInteger(v) || v < 0) {
-        return sendError(res, 400, 'Number of vehicles must be a whole number.');
-      }
-      req.body.maxVehicles = v;
-    }
-
-    if (req.body.maxDrivers !== undefined && req.body.maxDrivers !== null && req.body.maxDrivers !== '') {
-      const d = Number(req.body.maxDrivers);
-      if (isNaN(d) || !Number.isInteger(d) || d < 0) {
-        return sendError(res, 400, 'Number of drivers must be a whole number.');
-      }
-      req.body.maxDrivers = d;
-    }
-
-    if (req.body.maxTrips !== undefined && req.body.maxTrips !== null && req.body.maxTrips !== '') {
-      const t = Number(req.body.maxTrips);
-      if (isNaN(t) || !Number.isInteger(t) || t < 0) {
-        return sendError(res, 400, 'Number of trips must be a whole number.');
-      }
-      req.body.maxTrips = t;
-    }
-
-    const plan = await SubscriptionPlan.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+    const plan = await SubscriptionPlan.findByIdAndUpdate(id, validatedData, { new: true, runValidators: true });
     if (!plan) return sendError(res, 404, 'Subscription plan not found');
     return sendSuccess(res, 200, plan, 'Subscription plan updated successfully');
   } catch (error) {

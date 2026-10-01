@@ -146,21 +146,29 @@ export const optionalCountrySchema = z
   .optional()
   .nullable();
 
-// Plan Name: min 2 chars, max 50 chars, alphabets only
+// Plan Name: min 2 chars, max 50 chars, alphabets only, no excessive repetitions
 export const planNameSchema = z
   .string({ required_error: 'Plan name is required.' })
   .trim()
+  .min(1, 'Plan name is required.')
   .min(2, 'Plan name must be at least 2 characters.')
   .max(50, 'Plan name must not exceed 50 characters.')
-  .refine((val) => /^[a-zA-Z\s]+$/.test(val), { message: 'Plan name must contain alphabets only (numbers & symbols are not allowed).' });
+  .refine((val) => /^[a-zA-Z\s]+$/.test(val), { message: 'Plan name must contain alphabets only (numbers & symbols are not allowed).' })
+  .refine((val) => !/(.)\1{3,}/i.test(val), { message: 'Plan name contains excessive repeated characters.' })
+  .refine((val) => !/([a-zA-Z]{2,4})\1{2,}/i.test(val.replace(/\s+/g, '')), { message: 'Plan name contains repetitive patterns.' })
+  .refine((val) => new Set(val.replace(/[^a-zA-Z]/g, '').toLowerCase()).size >= 2, { message: 'Plan name must contain meaningful text.' });
 
-// Plan Description: min 5 chars, max 100 chars, text-only (no digits)
+// Plan Description: min 5 chars, max 100 chars, text-only (no digits), no excessive repetitions
 export const planDescriptionSchema = z
   .string({ required_error: 'Description is required.' })
   .trim()
+  .min(1, 'Description is required.')
   .min(5, 'Description must be at least 5 characters.')
   .max(100, 'Description must not exceed 100 characters.')
-  .refine((val) => !/\d/.test(val), { message: 'Description must contain text only (numbers are not allowed).' });
+  .refine((val) => !/\d/.test(val), { message: 'Description must contain text only (numbers are not allowed).' })
+  .refine((val) => !/(.)\1{3,}/i.test(val), { message: 'Description contains excessive repeated characters.' })
+  .refine((val) => !/([a-zA-Z]{2,4})\1{2,}/i.test(val.replace(/\s+/g, '')), { message: 'Description contains repetitive patterns.' })
+  .refine((val) => new Set(val.replace(/[^a-zA-Z]/g, '').toLowerCase()).size >= 3, { message: 'Description must contain meaningful text.' });
 
 // Whole Integer Count (e.g. maxDrivers, maxVehicles, maxTrips)
 export const integerCountSchema = (fieldName = 'Value') =>
@@ -173,13 +181,22 @@ export const integerCountSchema = (fieldName = 'Value') =>
     .min(0, `${fieldName} cannot be negative.`));
 
 // Positive / Decimal Number (e.g. Fuel Quantity, Price, Cost, Distance)
-export const numericAmountSchema = (fieldName = 'Amount') =>
+export const numericAmountSchema = (fieldName = 'Amount', max = 10000000) =>
   z.preprocess((val) => {
     if (val === '' || val === null || val === undefined) return undefined;
     const num = Number(val);
     return isNaN(num) ? val : num;
   }, z.number({ invalid_type_error: `${fieldName} must be a valid number.` })
-    .min(0, `${fieldName} cannot be negative.`));
+    .min(0, `${fieldName} cannot be negative.`)
+    .max(max, `${fieldName} cannot exceed ${max.toLocaleString()}.`)
+    .refine((val) => {
+      const strVal = String(val);
+      if (strVal.includes('.')) {
+        const decimals = strVal.split('.')[1];
+        return !decimals || decimals.length <= 2;
+      }
+      return true;
+    }, { message: `${fieldName} cannot have more than 2 decimal places.` }));
 
 // Password: min 6, max 50 chars
 export const passwordSchema = z

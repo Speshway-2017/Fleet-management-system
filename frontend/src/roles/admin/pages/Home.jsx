@@ -19,23 +19,31 @@ export default function Home() {
   const { isAuthenticated, user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [publicReviews, setPublicReviews] = useState([]);
+  const [publicBlogs, setPublicBlogs] = useState([]);
   const heroRef = useRef(null);
   const bgRef = useRef(null);
 
   useEffect(() => {
-    const fetchPublicReviews = async () => {
+    const fetchPublicData = async () => {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
       try {
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-        const res = await axios.get(`${apiBaseUrl}/public/reviews`);
-        const data = res.data?.data || res.data || [];
-        if (Array.isArray(data) && data.length > 0) {
-          setPublicReviews(data);
+        const [reviewsRes, blogsRes] = await Promise.allSettled([
+          axios.get(`${apiBaseUrl}/public/reviews`),
+          axios.get(`${apiBaseUrl}/public/blogs`)
+        ]);
+        if (reviewsRes.status === "fulfilled") {
+          const data = reviewsRes.value.data?.data || reviewsRes.value.data || [];
+          if (Array.isArray(data) && data.length > 0) setPublicReviews(data);
+        }
+        if (blogsRes.status === "fulfilled") {
+          const data = blogsRes.value.data?.data || blogsRes.value.data || [];
+          if (Array.isArray(data) && data.length > 0) setPublicBlogs(data);
         }
       } catch (err) {
-        console.error("Failed to fetch public reviews:", err);
+        console.error("Failed to fetch public home data:", err);
       }
     };
-    fetchPublicReviews();
+    fetchPublicData();
   }, []);
 
   useEffect(() => {
@@ -736,34 +744,44 @@ export default function Home() {
           </AnimeScrollReveal>
 
           {/* Blog Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <BlogCard
-              image="https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80"
-              category="Operations"
-              date="July 14, 2026"
-              readTime="5 min read"
-              title="How Digital Fleet Platforms Improve Business Efficiency"
-              summary="Discover how centralized fleet management platforms simplify daily operations, improve collaboration, enhance visibility, and support better decision-making for growing transportation businesses."
-              onReadMore={() => navigate("/blogs", { state: { openBlogTitle: "How Digital Fleet Platforms Improve Business Efficiency" } })}
-            />
-            <BlogCard
-              image="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80"
-              category="Security"
-              date="July 12, 2026"
-              readTime="4 min read"
-              title="Building Secure Fleet Operations for Modern Businesses"
-              summary="Learn how secure authentication, role-based access, data protection, and cloud infrastructure help organizations safeguard operational information."
-              onReadMore={() => navigate("/blogs", { state: { openBlogTitle: "Building Secure Fleet Operations for Modern Businesses" } })}
-            />
-            <BlogCard
-              image="https://images.unsplash.com/photo-1508962914676-134849a727f0?auto=format&fit=crop&w=800&q=80"
-              category="Technology"
-              date="June 20, 2026"
-              readTime="5 min read"
-              title="Building Reliable Fleet Operations"
-              summary="Leverage highly available cloud platforms and real-time connectivity to ensure enterprise reliability and consistent service delivery."
-              onReadMore={() => navigate("/blogs", { state: { openBlogTitle: "Building Reliable Fleet Operations" } })}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 items-stretch">
+            {(publicBlogs.length > 0 ? publicBlogs.slice(0, 3) : [
+              {
+                image: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80",
+                category: "Operations",
+                date: "July 14, 2026",
+                readTime: "5 min read",
+                title: "How Digital Fleet Platforms Improve Business Efficiency",
+                summary: "Discover how centralized fleet management platforms simplify daily operations, improve collaboration, enhance visibility, and support better decision-making for growing transportation businesses."
+              },
+              {
+                image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80",
+                category: "Security",
+                date: "July 12, 2026",
+                readTime: "4 min read",
+                title: "Building Secure Fleet Operations for Modern Businesses",
+                summary: "Learn how secure authentication, role-based access, data protection, and cloud infrastructure help organizations safeguard operational information."
+              },
+              {
+                image: "https://images.unsplash.com/photo-1508962914676-134849a727f0?auto=format&fit=crop&w=800&q=80",
+                category: "Technology",
+                date: "June 20, 2026",
+                readTime: "5 min read",
+                title: "Building Reliable Fleet Operations",
+                summary: "Leverage highly available cloud platforms and real-time connectivity to ensure enterprise reliability and consistent service delivery."
+              }
+            ]).map((article, idx) => (
+              <BlogCard
+                key={article._id || idx}
+                image={article.image}
+                category={article.category}
+                date={article.date}
+                readTime={article.readTime}
+                title={article.title}
+                summary={article.summary}
+                onReadMore={() => navigate("/blogs", { state: { openBlogTitle: article.title } })}
+              />
+            ))}
           </div>
 
           {/* Section Action Buttons */}

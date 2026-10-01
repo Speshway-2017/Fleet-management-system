@@ -4,7 +4,7 @@ import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import toast from "react-hot-toast";
 import { adminApi } from "@/api/adminApi";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Plus, Trash2, Save, Edit2, Check, X } from "lucide-react";
 import { aboutSchema, timelineItemSchema, validateField, validateForm } from "@/validations";
 
 export default function SettingsAbout() {
@@ -27,6 +27,9 @@ export default function SettingsAbout() {
   const [timeline, setTimeline] = useState([]);
   const [newTimelineItem, setNewTimelineItem] = useState({ year: "", text: "" });
   const [timelineErrors, setTimelineErrors] = useState({});
+  const [editingTimelineIndex, setEditingTimelineIndex] = useState(null);
+  const [editTimelineItem, setEditTimelineItem] = useState({ year: "", text: "" });
+  const [editTimelineErrors, setEditTimelineErrors] = useState({});
   const [errors, setErrors] = useState({});
 
   const loadAboutData = async () => {
@@ -74,9 +77,9 @@ export default function SettingsAbout() {
     let customError = "";
 
     if (field === "storyTitle" || field === "missionTitle") {
-      cleanValue = value.replace(/[^a-zA-Z\s]/g, "").slice(0, 100);
+      cleanValue = value.replace(/[^a-zA-Z\s,.'\-&!?:;]/g, "").slice(0, 100);
       if (value !== cleanValue && value.length > 0) {
-        customError = `${field === "storyTitle" ? "Story title" : "Mission title"} must contain alphabets only (numbers & symbols are not allowed).`;
+        customError = `${field === "storyTitle" ? "Story title" : "Mission title"} must contain alphabets and punctuation only (numbers are not allowed).`;
       }
     } else if (field === "storyContentText" || field === "missionContentText") {
       cleanValue = value.slice(0, 3000);
@@ -109,13 +112,13 @@ export default function SettingsAbout() {
 
   const handleTextKeyDown = (e) => {
     if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (!/^[a-zA-Z\s]$/.test(e.key)) {
+    if (!/^[a-zA-Z\s,.'\-&!?:;]$/.test(e.key)) {
       e.preventDefault();
       const fieldName = e.target.name;
       const label = fieldName === "storyTitle" ? "Story title" : "Mission title";
-      setErrors(prev => ({ ...prev, [fieldName]: `${label} must contain alphabets only (numbers & symbols are not allowed).` }));
+      setErrors(prev => ({ ...prev, [fieldName]: `${label} must contain alphabets and punctuation only (numbers are not allowed).` }));
     } else {
-      if (errors[e.target.name]?.includes("must contain alphabets only")) {
+      if (errors[e.target.name]?.includes("numbers are not allowed")) {
         setErrors(prev => ({ ...prev, [e.target.name]: "" }));
       }
     }
@@ -135,14 +138,21 @@ export default function SettingsAbout() {
 
   const handleTimelineYearKeyDown = (e) => {
     if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (!/^\d$/.test(e.key)) {
+    if (!/^[0-9\s\-/Q]$/i.test(e.key)) {
       e.preventDefault();
-      setTimelineErrors(prev => ({ ...prev, year: "Year must contain numbers only (letters are not allowed)." }));
+      setTimelineErrors(prev => ({ ...prev, year: "Please enter a valid milestone year (e.g. 2026)." }));
     } else {
-      if (timelineErrors.year?.includes("must contain numbers only")) {
+      if (timelineErrors.year?.includes("valid milestone year")) {
         setTimelineErrors(prev => ({ ...prev, year: "" }));
       }
     }
+  };
+
+  const handleNewTimelineFieldChange = (field, value) => {
+    const updated = { ...newTimelineItem, [field]: value };
+    setNewTimelineItem(updated);
+    const fieldError = validateField(timelineItemSchema, field, value, updated);
+    setTimelineErrors(prev => ({ ...prev, [field]: fieldError }));
   };
 
   const handleAddTimelineItem = () => {
@@ -158,17 +168,78 @@ export default function SettingsAbout() {
     setTimelineErrors({});
   };
 
+  const handleStartEditTimeline = (index) => {
+    setEditingTimelineIndex(index);
+    setEditTimelineItem({ ...timeline[index] });
+    setEditTimelineErrors({});
+  };
+
+  const handleCancelEditTimeline = () => {
+    setEditingTimelineIndex(null);
+    setEditTimelineItem({ year: "", text: "" });
+    setEditTimelineErrors({});
+  };
+
+  const handleEditTimelineFieldChange = (field, value) => {
+    const updated = { ...editTimelineItem, [field]: value };
+    setEditTimelineItem(updated);
+    const fieldError = validateField(timelineItemSchema, field, value, updated);
+    setEditTimelineErrors(prev => ({ ...prev, [field]: fieldError }));
+  };
+
+  const handleSaveEditTimeline = (index) => {
+    const { isValid, errors: validationErrors } = validateForm(timelineItemSchema, editTimelineItem);
+    if (!isValid) {
+      setEditTimelineErrors(validationErrors);
+      const firstErr = Object.values(validationErrors)[0];
+      toast.error(firstErr || "Please resolve milestone errors before saving.");
+      return;
+    }
+    setTimeline(prev => {
+      const copy = [...prev];
+      copy[index] = { year: editTimelineItem.year.trim(), text: editTimelineItem.text.trim() };
+      return copy;
+    });
+    setEditingTimelineIndex(null);
+    setEditTimelineItem({ year: "", text: "" });
+    setEditTimelineErrors({});
+    toast.success("Milestone updated!");
+  };
+
   const handleDeleteTimelineItem = (index) => {
+    if (editingTimelineIndex === index) {
+      handleCancelEditTimeline();
+    }
     setTimeline(prev => prev.filter((_, idx) => idx !== index));
   };
 
   const handleSave = async () => {
+    // 1. Validate About Main Form
     const { isValid, errors: validationErrors } = validateForm(aboutSchema, aboutData);
     if (!isValid) {
       setErrors(validationErrors);
       const firstErr = Object.values(validationErrors)[0];
       toast.error(firstErr || "Please resolve all errors before saving.");
       return;
+    }
+
+    // 2. Validate Timeline Items
+    for (let i = 0; i < timeline.length; i++) {
+      const itemValidation = validateForm(timelineItemSchema, timeline[i]);
+      if (!itemValidation.isValid) {
+        toast.error(`Milestone #${i + 1} is invalid: ${Object.values(itemValidation.errors)[0]}`);
+        return;
+      }
+    }
+
+    // 3. Check if an item is currently being edited with errors
+    if (editingTimelineIndex !== null) {
+      const editValidation = validateForm(timelineItemSchema, editTimelineItem);
+      if (!editValidation.isValid) {
+        setEditTimelineErrors(editValidation.errors);
+        toast.error("Please finish or cancel editing milestone before saving.");
+        return;
+      }
     }
 
     setIsSaving(true);
@@ -436,16 +507,84 @@ export default function SettingsAbout() {
               
               <div className="space-y-3">
                 {timeline.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 min-w-0">
-                    <span className="font-extrabold text-xs text-[#a14000] w-14 shrink-0 truncate" title={item.year}>{item.year}</span>
-                    <p className="text-xs font-semibold text-slate-600 flex-1 break-words break-all sm:break-words">{item.text}</p>
-                    <button
-                      onClick={() => handleDeleteTimelineItem(idx)}
-                      className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
-                      title="Delete Milestone"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  <div key={idx} className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 min-w-0 transition-all">
+                    {editingTimelineIndex === idx ? (
+                      /* Edit Milestone Mode */
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-[#a14000] uppercase tracking-wider">Editing Milestone #{idx + 1}</span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleSaveEditTimeline(idx)}
+                              type="button"
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                              title="Save Changes"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={handleCancelEditTimeline}
+                              type="button"
+                              className="p-1.5 text-slate-400 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <div className="w-full sm:w-32">
+                            <input
+                              type="text"
+                              maxLength={10}
+                              placeholder="Year (e.g. 2026)"
+                              value={editTimelineItem.year}
+                              onChange={(e) => handleEditTimelineFieldChange("year", e.target.value.slice(0, 10))}
+                              className={`w-full bg-white border rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none ${
+                                editTimelineErrors.year ? "border-red-500 focus:ring-2 focus:ring-red-500/20" : "border-slate-200"
+                              }`}
+                            />
+                            {editTimelineErrors.year && <p className="text-[10px] text-red-500 font-medium mt-1">{editTimelineErrors.year}</p>}
+                          </div>
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              maxLength={200}
+                              placeholder="Milestone description (5-200 chars)..."
+                              value={editTimelineItem.text}
+                              onChange={(e) => handleEditTimelineFieldChange("text", e.target.value.slice(0, 200))}
+                              className={`w-full bg-white border rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none ${
+                                editTimelineErrors.text ? "border-red-500 focus:ring-2 focus:ring-red-500/20" : "border-slate-200"
+                              }`}
+                            />
+                            {editTimelineErrors.text && <p className="text-[10px] text-red-500 font-medium mt-1">{editTimelineErrors.text}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Display Mode */
+                      <div className="flex items-center gap-3">
+                        <span className="font-extrabold text-xs text-[#a14000] w-14 shrink-0 truncate" title={item.year}>{item.year}</span>
+                        <p className="text-xs font-semibold text-slate-600 flex-1 break-words break-all sm:break-words">{item.text}</p>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => handleStartEditTimeline(idx)}
+                            className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
+                            title="Edit Milestone"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTimelineItem(idx)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            title="Delete Milestone"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
 
@@ -460,15 +599,7 @@ export default function SettingsAbout() {
                         placeholder="e.g. 2026"
                         value={newTimelineItem.year}
                         onKeyDown={handleTimelineYearKeyDown}
-                        onChange={(e) => {
-                          const clean = e.target.value.replace(/\D/g, "").slice(0, 10);
-                          setNewTimelineItem(prev => ({ ...prev, year: clean }));
-                          if (e.target.value !== clean && e.target.value.length > 0) {
-                            setTimelineErrors(prev => ({ ...prev, year: "Year must contain numbers only (letters are not allowed)." }));
-                          } else {
-                            setTimelineErrors(prev => ({ ...prev, year: "" }));
-                          }
-                        }}
+                        onChange={(e) => handleNewTimelineFieldChange("year", e.target.value.slice(0, 10))}
                         className={`w-full bg-white border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none ${
                           timelineErrors.year ? "border-red-500 focus:ring-2 focus:ring-red-500/20" : "border-slate-200"
                         }`}
@@ -481,10 +612,7 @@ export default function SettingsAbout() {
                         maxLength={200}
                         placeholder="Describe the milestone (5-200 chars)..."
                         value={newTimelineItem.text}
-                        onChange={(e) => {
-                          setNewTimelineItem(prev => ({ ...prev, text: e.target.value.slice(0, 200) }));
-                          setTimelineErrors(prev => ({ ...prev, text: "" }));
-                        }}
+                        onChange={(e) => handleNewTimelineFieldChange("text", e.target.value.slice(0, 200))}
                         className={`w-full bg-white border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none ${
                           timelineErrors.text ? "border-red-500 focus:ring-2 focus:ring-red-500/20" : "border-slate-200"
                         }`}

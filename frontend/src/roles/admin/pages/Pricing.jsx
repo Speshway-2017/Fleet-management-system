@@ -1,63 +1,28 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { AnimeScrollReveal, AnimeStaggerGroup } from "@/components/common/AnimeScrollReveal";
+import { AnimeScrollReveal } from "@/components/common/AnimeScrollReveal";
 import { useAuth } from "@/context/AuthContext";
-import TruckLoader from "@/components/common/TruckLoader";
 import axiosClient from "@/api/axiosClient";
 import ScrollHighlight from "@/components/originkit/ui/scroll-text-highlight";
-
-const DEFAULT_PLANS = [
-  {
-    _id: "starter",
-    name: "Starter",
-    description: "Ideal for small fleets and growing logistics businesses.",
-    price: 999,
-    duration: 30,
-    maxVehicles: 5,
-    maxDrivers: 5,
-    maxTrips: 100,
-    features: ["Real-time GPS Tracking", "Basic Analytics & Reports", "Email & Chat Support", "Maintenance Alerts"]
-  },
-  {
-    _id: "professional",
-    name: "Professional",
-    description: "Comprehensive solution for medium to large fleet operations.",
-    price: 2499,
-    duration: 30,
-    maxVehicles: 25,
-    maxDrivers: 25,
-    maxTrips: 500,
-    features: ["Everything in Starter", "Advanced Telematics & Geofencing", "Fuel & Expense Tracking", "Priority 24/7 Support", "Automated Compliance Reports"]
-  },
-  {
-    _id: "enterprise",
-    name: "Enterprise",
-    description: "Tailored for heavy enterprise operations with unlimited scale.",
-    price: 4999,
-    duration: 30,
-    maxVehicles: 9999,
-    maxDrivers: 9999,
-    maxTrips: 9999,
-    features: ["Unlimited Vehicles & Drivers", "Custom API & ERP Integrations", "Dedicated Account Manager", "Custom Analytics Dashboards", "24/7 Premium SLA Support"]
-  }
-];
 
 export default function Pricing() {
   const navigate = useNavigate();
   const { isAuthenticated, role } = useAuth();
-  const [plans, setPlans] = useState(DEFAULT_PLANS);
-  const [loading, setLoading] = useState(false);
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPlans = async () => {
       try {
+        setLoading(true);
         const { data: body } = await axiosClient.get("/subscriptions/public/plans");
-        if (body.data && body.data.length > 0) {
+        if (body.data && Array.isArray(body.data)) {
           setPlans(body.data);
         }
       } catch (err) {
         console.error("Failed to fetch public pricing plans:", err);
+        toast.error("Failed to load live subscription plans.");
       } finally {
         setLoading(false);
       }
@@ -111,13 +76,13 @@ export default function Pricing() {
               <span className="text-xs font-semibold text-body">Loading Subscription Plans...</span>
             </div>
           ) : plans.length === 0 ? (
-            <div className="text-center py-16">
+            <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 p-8">
               <p className="text-body font-semibold">No active subscription plans available at the moment.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-              {plans.map((plan) => {
-                const isPopular = plan.name === "Professional";
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+              {plans.map((plan, index) => {
+                const isPopular = plan.isPopular || plan.name?.toLowerCase().includes("professional") || index === 1;
                 const featuresList = Array.isArray(plan.features)
                   ? plan.features
                   : typeof plan.features === "string"
@@ -126,7 +91,7 @@ export default function Pricing() {
 
                 return (
                   <div
-                    key={plan._id}
+                    key={plan._id || index}
                     className={`bg-white rounded-2xl p-6 sm:p-7 border transition-all duration-300 relative flex flex-col justify-between h-full anime-card-lift ${isPopular
                         ? "border-[#a14000]/60 shadow-lg shadow-[#a14000]/5 md:scale-[1.02] z-10"
                         : "border-border-custom hover:border-slate-300"
@@ -141,7 +106,7 @@ export default function Pricing() {
                     <div className="flex-1 flex flex-col min-w-0">
                       {/* Plan Header */}
                       <div className="space-y-1.5 pb-4 border-b border-border-custom/60">
-                        <h3 className="text-lg sm:text-xl font-black font-display text-heading break-words break-all sm:break-words leading-snug line-clamp-2" title={plan.name}>
+                        <h3 className="text-lg sm:text-xl font-black font-display text-heading break-words break-all sm:break-words leading-tight line-clamp-2 min-h-[48px] flex items-center" title={plan.name}>
                           {plan.name}
                         </h3>
                         <p className="text-xs text-body font-normal leading-relaxed break-words line-clamp-3 min-h-[48px]" title={plan.description}>
@@ -150,7 +115,7 @@ export default function Pricing() {
                       </div>
 
                       {/* Pricing & Duration */}
-                      <div className="py-4 space-y-2.5">
+                      <div className="py-4 space-y-2 min-h-[72px] flex flex-col justify-center">
                         <div className="flex flex-wrap items-baseline gap-1.5 min-w-0">
                           <span className="text-2xl sm:text-3xl lg:text-4xl font-black font-display text-heading break-all">
                             ₹{typeof plan.price === "number" ? plan.price.toLocaleString("en-IN") : plan.price}
@@ -167,19 +132,19 @@ export default function Pricing() {
                       <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 mb-4">
                         <div className="text-center space-y-0.5 min-w-0">
                           <span className="block text-xs font-black text-slate-800 truncate" title={String(plan.maxVehicles >= 9999 ? "Unlimited" : plan.maxVehicles)}>
-                            {plan.maxVehicles >= 9999 ? "Unlimited" : plan.maxVehicles}
+                            {plan.maxVehicles >= 9999 ? "Unlimited" : (plan.maxVehicles ?? 0)}
                           </span>
                           <span className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wide block truncate">Vehicles</span>
                         </div>
                         <div className="text-center space-y-0.5 border-x border-slate-200 px-1 min-w-0">
                           <span className="block text-xs font-black text-slate-800 truncate" title={String(plan.maxDrivers >= 9999 ? "Unlimited" : plan.maxDrivers)}>
-                            {plan.maxDrivers >= 9999 ? "Unlimited" : plan.maxDrivers}
+                            {plan.maxDrivers >= 9999 ? "Unlimited" : (plan.maxDrivers ?? 0)}
                           </span>
                           <span className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wide block truncate">Drivers</span>
                         </div>
                         <div className="text-center space-y-0.5 min-w-0">
                           <span className="block text-xs font-black text-slate-800 truncate" title={String(plan.maxTrips >= 9999 ? "Unlimited" : plan.maxTrips)}>
-                            {plan.maxTrips >= 9999 ? "Unlimited" : plan.maxTrips}
+                            {plan.maxTrips >= 9999 ? "Unlimited" : (plan.maxTrips ?? 0)}
                           </span>
                           <span className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wide block truncate">Trips</span>
                         </div>
@@ -231,4 +196,3 @@ export default function Pricing() {
     </div>
   );
 }
-

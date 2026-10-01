@@ -171,6 +171,27 @@ export default function SubscriptionRequests() {
     }
   };
 
+  const handlePriceKeyDown = (e) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!/^[\d.]$/.test(e.key)) {
+      e.preventDefault();
+      setFormErrors((prev) => ({
+        ...prev,
+        price: "Monthly price must contain numbers and valid decimals only."
+      }));
+    } else if (e.key === "." && formData.price?.toString().includes(".")) {
+      e.preventDefault();
+      setFormErrors((prev) => ({
+        ...prev,
+        price: "Monthly price cannot have multiple decimal points."
+      }));
+    } else {
+      if (formErrors.price?.includes("numbers and valid decimals only") || formErrors.price?.includes("multiple decimal points")) {
+        setFormErrors((prev) => ({ ...prev, price: "" }));
+      }
+    }
+  };
+
   const handleNumberKeyDown = (field, label, e) => {
     if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) return;
     if (!/^\d$/.test(e.key)) {
@@ -200,9 +221,17 @@ export default function SubscriptionRequests() {
       if (value !== cleanValue && value.length > 0) {
         customError = "Description must contain text only (numbers are not allowed).";
       }
+    } else if (field === "price") {
+      if (typeof value === "string") {
+        cleanValue = value.replace(/[^0-9.]/g, "");
+        const parts = cleanValue.split(".");
+        if (parts.length > 2) {
+          cleanValue = parts[0] + "." + parts.slice(1).join("");
+        }
+      }
     } else if (field === "featuresText") {
       cleanValue = value.slice(0, 1000);
-    } else if (["price", "duration", "displayOrder", "maxVehicles", "maxDrivers", "maxTrips"].includes(field)) {
+    } else if (["duration", "displayOrder", "maxVehicles", "maxDrivers", "maxTrips"].includes(field)) {
       if (typeof value === "string") {
         cleanValue = value.replace(/\D/g, "");
       }
@@ -488,79 +517,111 @@ export default function SubscriptionRequests() {
                   <p className="text-slate-500 font-medium">No plans found. Click create to add your first plan!</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {plans.map((plan) => (
-                    <div key={plan._id} className="bg-white dark:bg-[#0F172A] rounded-xl border border-slate-200 dark:border-[#1E293B] shadow-sm p-6 flex flex-col justify-between min-h-[380px] h-auto hover:shadow-md transition-all gap-4">
-                      <div className="space-y-4">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="text-base font-extrabold text-[#0f172a] dark:text-white">{plan.name}</h3>
-                            <span className={`inline-block px-2 py-0.5 mt-1.5 rounded-full text-[9px] font-bold border uppercase ${
-                              plan.status === 'Active' 
-                                ? 'bg-green-50 dark:bg-emerald-950/60 text-green-700 dark:text-emerald-300 border-green-200 dark:border-emerald-800/50' 
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                            }`}>
-                              {plan.status}
-                            </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+                  {plans.map((plan) => {
+                    const featuresList = Array.isArray(plan.features)
+                      ? plan.features
+                      : typeof plan.features === "string"
+                        ? plan.features.split("\n").map(f => f.trim()).filter(Boolean)
+                        : [];
+
+                    return (
+                      <div
+                        key={plan._id}
+                        className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200 dark:border-[#1E293B] shadow-sm hover:shadow-md transition-all p-6 flex flex-col justify-between h-full space-y-5"
+                      >
+                        <div className="space-y-4 flex-1 flex flex-col min-w-0">
+                          {/* Plan Header: Name, Status & Action buttons */}
+                          <div className="flex items-start justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800 min-h-[52px]">
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-base font-black text-[#0f172a] dark:text-white break-words break-all sm:break-words leading-tight line-clamp-2" title={plan.name}>
+                                {plan.name}
+                              </h3>
+                              <span className={`inline-flex items-center px-2 py-0.5 mt-1.5 rounded-full text-[9px] font-bold border uppercase tracking-wider ${
+                                plan.status === 'Active' 
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50' 
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                              }`}>
+                                {plan.status}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                              <button
+                                onClick={() => handleOpenEdit(plan)}
+                                className="p-1.5 text-slate-400 hover:text-[#a14000] dark:text-slate-400 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                                title="Edit Plan"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeletePlan(plan._id)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 dark:text-slate-400 dark:hover:text-rose-400 hover:bg-red-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
+                                title="Delete Plan"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => handleOpenEdit(plan)}
-                              className="p-2 text-slate-500 hover:text-[#a14000] dark:text-slate-400 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-                              title="Edit"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeletePlan(plan._id)}
-                              className="p-2 text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-rose-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+
+                          {/* Price & Duration */}
+                          <div className="space-y-2 min-h-[68px] flex flex-col justify-center">
+                            <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
+                              <span className="text-2xl sm:text-3xl font-black font-display text-[#0f172a] dark:text-white break-all">
+                                ₹{typeof plan.price === 'number' ? plan.price.toLocaleString('en-IN') : plan.price}
+                              </span>
+                              <span className="text-xs text-slate-400 dark:text-slate-400 font-bold shrink-0">/ month</span>
+                            </div>
+
+                            <div className="inline-flex items-center gap-1.5 text-[10px] text-[#b45309] dark:text-amber-300 font-bold bg-[#FFF3E8] dark:bg-[#A14000]/30 border border-[#b45309]/15 dark:border-[#A14000]/40 px-2.5 py-1 rounded-md max-w-full truncate">
+                              <span>Duration: {plan.duration} Days</span>
+                              <span className="text-slate-300 dark:text-slate-600">•</span>
+                              <span>Order #{plan.displayOrder || 1}</span>
+                            </div>
+                          </div>
+
+                          {/* Description */}
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed line-clamp-3 min-h-[44px] break-words" title={plan.description}>
+                            {plan.description}
+                          </p>
+
+                          {/* Limits Statistics */}
+                          <div className="grid grid-cols-3 gap-2 bg-slate-50 dark:bg-slate-900/80 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 text-center">
+                            <div className="min-w-0 space-y-0.5">
+                              <span className="block text-sm font-black text-slate-800 dark:text-white truncate" title={String(plan.maxVehicles || 0)}>
+                                {plan.maxVehicles >= 9999 ? "Unlimited" : (plan.maxVehicles ?? 0)}
+                              </span>
+                              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider block truncate">Vehicles</span>
+                            </div>
+                            <div className="min-w-0 space-y-0.5 border-x border-slate-200 dark:border-slate-800 px-1">
+                              <span className="block text-sm font-black text-slate-800 dark:text-white truncate" title={String(plan.maxDrivers || 0)}>
+                                {plan.maxDrivers >= 9999 ? "Unlimited" : (plan.maxDrivers ?? 0)}
+                              </span>
+                              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider block truncate">Drivers</span>
+                            </div>
+                            <div className="min-w-0 space-y-0.5">
+                              <span className="block text-sm font-black text-slate-800 dark:text-white truncate" title={String(plan.maxTrips || 0)}>
+                                {plan.maxTrips >= 9999 ? "Unlimited" : (plan.maxTrips ?? 0)}
+                              </span>
+                              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider block truncate">Trips</span>
+                            </div>
+                          </div>
+
+                          {/* Features List */}
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex-1 flex flex-col min-w-0">
+                            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider mb-2">Features</p>
+                            <ul className="space-y-1.5 flex-1 min-w-0">
+                              {featuresList.map((f, i) => (
+                                <li key={i} className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300 font-medium min-w-0">
+                                  <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                  <span className="break-words break-all sm:break-words flex-1 min-w-0 leading-relaxed" title={f}>{f}</span>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         </div>
-
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-black text-[#0f172a] dark:text-white">₹{plan.price}</span>
-                          <span className="text-xs text-slate-400 dark:text-slate-300 font-bold">/ month</span>
-                        </div>
-
-                        <p className="text-[11px] font-medium text-slate-500 dark:text-slate-300 min-h-[40px] leading-relaxed">
-                          {plan.description}
-                        </p>
-
-                        <div className="text-[10px] text-[#b45309] dark:text-amber-300 font-bold bg-[#FFF3E8] dark:bg-[#A14000]/30 border border-transparent dark:border-[#A14000]/40 px-2.5 py-1 rounded inline-block">
-                          Duration: {plan.duration} Days (Order: {plan.displayOrder || 1})
-                        </div>
-
-                        {/* Displays limits dynamically */}
-                        <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-100 dark:border-slate-800">
-                          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-1.5 rounded">
-                            <span className="block text-slate-800 dark:text-white font-extrabold">{plan.maxVehicles || 0}</span>
-                            <span className="text-[7.5px] text-slate-400 dark:text-slate-300 font-bold uppercase tracking-wider">Vehicles</span>
-                          </div>
-                          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-1.5 rounded">
-                            <span className="block text-slate-800 dark:text-white font-extrabold">{plan.maxDrivers || 0}</span>
-                            <span className="text-[7.5px] text-slate-400 dark:text-slate-300 font-bold uppercase tracking-wider">Drivers</span>
-                          </div>
-                          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-1.5 rounded">
-                            <span className="block text-slate-800 dark:text-white font-extrabold">{plan.maxTrips || 0}</span>
-                            <span className="text-[7.5px] text-slate-400 dark:text-slate-300 font-bold uppercase tracking-wider">Trips</span>
-                          </div>
-                        </div>
-
-                        <ul className="space-y-1.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-                          {plan.features.slice(0, 3).map((f, i) => (
-                            <li key={i} className="flex items-center gap-2 text-[10px] text-slate-600 dark:text-slate-300 font-medium">
-                              <Check className="w-3 h-3 text-green-500 shrink-0" />
-                              <span className="truncate">{f}</span>
-                            </li>
-                          ))}
-                        </ul>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </>
@@ -645,10 +706,12 @@ export default function SubscriptionRequests() {
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Monthly Price (₹) *</label>
                   <input
                     type="number"
+                    step="0.01"
                     required
                     min="0"
+                    max="10000000"
                     value={formData.price}
-                    onKeyDown={(e) => handleNumberKeyDown("price", "Monthly price", e)}
+                    onKeyDown={handlePriceKeyDown}
                     onChange={(e) => handleFieldChange("price", e.target.value)}
                     onBlur={() => handleBlur("price")}
                     className={`w-full bg-slate-50 border rounded-xl px-4 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors ${
