@@ -81,10 +81,8 @@ export default function ManageSchedulesPage() {
 
   const handleFormChange = (fieldName, value) => {
     setForm(prev => ({ ...prev, [fieldName]: value }));
-    if (formErrors[fieldName]) {
-      const err = validateScheduleField(fieldName, value);
-      setFormErrors(prev => ({ ...prev, [fieldName]: err }));
-    }
+    const err = validateScheduleField(fieldName, value);
+    setFormErrors(prev => ({ ...prev, [fieldName]: err }));
   };
 
   const handleFormBlur = (fieldName, value) => {

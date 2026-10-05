@@ -110,39 +110,41 @@ export default function TripCard({ trip, onRespond, onStatusUpdate }) {
     <div className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between font-nunito">
       <div>
         {/* Header */}
-        <div className="flex items-center justify-between gap-2 pb-4 border-b border-slate-100">
-          <div>
+        <div className="flex items-start justify-between gap-2 pb-4 border-b border-slate-100">
+          <div className="min-w-0 flex-1">
             <span className="text-xs font-mono font-bold text-[#A14000]">{tripNumber}</span>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <Truck className="w-3.5 h-3.5 text-slate-400" />
-              <p className="text-xs text-slate-600 font-semibold">{vehicleReg}</p>
-              <span className="text-[10px] text-slate-400">({vehicleModel})</span>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap min-w-0">
+              <Truck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <p className="text-xs text-slate-600 font-semibold truncate max-w-[140px] sm:max-w-[180px]" title={vehicleReg}>{vehicleReg}</p>
+              <span className="text-[10px] text-slate-400 truncate max-w-[120px]" title={vehicleModel}>({vehicleModel})</span>
             </div>
           </div>
-          {getStatusBadge(rawStatus)}
+          <div className="shrink-0">
+            {getStatusBadge(rawStatus)}
+          </div>
         </div>
 
         {/* Route Details */}
-        <div className="py-4 space-y-3">
-          <div className="flex items-start gap-3">
+        <div className="py-4 space-y-3 min-w-0">
+          <div className="flex items-start gap-3 min-w-0">
             <div className="w-7 h-7 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 mt-0.5">
               <MapPin className="w-3.5 h-3.5 text-[#A14000]" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] text-slate-400 uppercase font-bold font-poppins">Origin</p>
-              <p className="text-sm font-semibold text-slate-900 font-poppins line-clamp-1">{originName}</p>
+              <p className="text-sm font-semibold text-slate-900 font-poppins line-clamp-1 break-words" title={originName}>{originName}</p>
             </div>
           </div>
 
           <div className="pl-3.5 border-l-2 border-dashed border-slate-200 my-1 ml-3.5 h-4" />
 
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3 min-w-0">
             <div className="w-7 h-7 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0 mt-0.5">
               <Navigation className="w-3.5 h-3.5 text-blue-600" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] text-slate-400 uppercase font-bold font-poppins">Destination</p>
-              <p className="text-sm font-semibold text-slate-900 font-poppins line-clamp-1">{destinationName}</p>
+              <p className="text-sm font-semibold text-slate-900 font-poppins line-clamp-1 break-words" title={destinationName}>{destinationName}</p>
             </div>
           </div>
         </div>

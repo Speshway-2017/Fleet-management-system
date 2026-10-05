@@ -19,6 +19,93 @@ export default function DriverProfilePage() {
   const [email, setEmail] = useState(user?.email || "");
   const [licenseNumber, setLicenseNumber] = useState(user?.licenseNumber || "");
 
+  // Validation States
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
+  const validateField = (field, value) => {
+    switch (field) {
+      case "name": {
+        const val = (value || "").trim();
+        if (!val) return "Full name is required.";
+        if (val.length < 2) return "Full name must be at least 2 characters.";
+        if (val.length > 50) return "Full name must not exceed 50 characters.";
+        if (/\d/.test(val)) return "Full name must contain letters only (numbers are not allowed).";
+        if (!/^[a-zA-Z\s.'-]+$/.test(val)) return "Full name contains invalid characters.";
+        if (/(.)\1{3,}/i.test(val)) return "Repeated characters are not allowed.";
+        return "";
+      }
+      case "phoneNumber": {
+        const val = (value || "").trim();
+        if (!val) return "Phone number is required.";
+        const clean = val.replace(/^(\+91|91|0)/, "").replace(/\D/g, "");
+        if (clean.length !== 10) return "Phone number must contain exactly 10 digits.";
+        if (!/^[6-9]/.test(clean)) return "Phone number must start with 6, 7, 8, or 9.";
+        if (/^(\d)\1{9}$/.test(clean)) return "Please enter a valid active phone number.";
+        return "";
+      }
+      case "email": {
+        const val = (value || "").trim();
+        if (!val) return "";
+        if (/\s/.test(val)) return "Email address must not contain spaces.";
+        if (val.length > 80) return "Email must not exceed 80 characters.";
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(val)) return "Please enter a valid email address.";
+        return "";
+      }
+      case "licenseNumber": {
+        const val = (value || "").trim();
+        if (!val) return "License number is required.";
+        if (val.length < 5) return "License number must be at least 5 characters.";
+        if (val.length > 20) return "License number must not exceed 20 characters.";
+        if (!/^[A-Z0-9\s\-/]+$/i.test(val)) return "License number contains invalid characters.";
+        if (!/[a-zA-Z]/.test(val) || !/[0-9]/.test(val)) return "License number must contain alphanumeric characters.";
+        if (/(.)\1{4,}/i.test(val)) return "Repeated characters are not allowed.";
+        return "";
+      }
+      default:
+        return "";
+    }
+  };
+
+  const handleFieldChange = (field, value) => {
+    if (field === "name") setName(value);
+    if (field === "phoneNumber") setPhoneNumber(value);
+    if (field === "email") setEmail(value);
+    if (field === "licenseNumber") setLicenseNumber(value);
+
+    setTouched(prev => ({ ...prev, [field]: true }));
+    const err = validateField(field, value);
+    setErrors(prev => ({ ...prev, [field]: err }));
+  };
+
+  const handleFieldBlur = (field, value) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    const err = validateField(field, value);
+    setErrors(prev => ({ ...prev, [field]: err }));
+  };
+
+  const validateAll = () => {
+    const fields = { name, phoneNumber, email, licenseNumber };
+    const errs = {};
+    let isValid = true;
+    Object.keys(fields).forEach(key => {
+      const err = validateField(key, fields[key]);
+      if (err) {
+        errs[key] = err;
+        isValid = false;
+      }
+    });
+    setErrors(errs);
+    setTouched({
+      name: true,
+      phoneNumber: true,
+      email: true,
+      licenseNumber: true
+    });
+    return isValid;
+  };
+
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -42,28 +129,20 @@ export default function DriverProfilePage() {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    const result = validateForm(driverSchema, {
-      fullName: name,
-      email,
-      phoneNumber,
-      licenseNumber
-    });
-
-    if (!result.isValid) {
-      const firstError = Object.values(result.errors)[0];
-      toast.error(firstError || "Please fix validation errors");
+    if (!validateAll()) {
+      toast.error("Please fix all errors before saving profile details.");
       return;
     }
 
     setSaving(true);
     try {
       const res = await driverApi.updateProfile({
-        fullName: name,
-        name,
-        phone: phoneNumber,
-        phoneNumber,
-        email,
-        licenseNumber
+        fullName: name.trim(),
+        name: name.trim(),
+        phone: phoneNumber.trim(),
+        phoneNumber: phoneNumber.trim(),
+        email: email.trim(),
+        licenseNumber: licenseNumber.trim()
       });
 
       if (res?.success) {
@@ -106,7 +185,7 @@ export default function DriverProfilePage() {
       </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <form onSubmit={handleSaveProfile} className="space-y-6">
+        <form onSubmit={handleSaveProfile} className="space-y-6" noValidate>
           <div className="flex items-center gap-4 pb-6 border-b border-slate-100">
             <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-[#A14000] flex items-center justify-center font-bold font-poppins text-xl">
               {name ? name.charAt(0).toUpperCase() : "D"}
@@ -119,23 +198,43 @@ export default function DriverProfilePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-xs font-bold font-poppins uppercase text-slate-700">Full Name</label>
+              <label className="block text-xs font-bold font-poppins uppercase text-slate-700">Full Name *</label>
               <input
                 type="text"
+                required
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="mt-2 block w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
+                onChange={(e) => handleFieldChange("name", e.target.value)}
+                onBlur={(e) => handleFieldBlur("name", e.target.value)}
+                placeholder="Enter full name"
+                className={`mt-2 block w-full px-4 py-3 bg-white border rounded-xl text-slate-900 text-xs focus:outline-none transition-colors ${
+                  touched.name && errors.name
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    : "border-slate-300 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                }`}
               />
+              {touched.name && errors.name && (
+                <p className="text-red-500 text-[11px] font-semibold mt-1">{errors.name}</p>
+              )}
             </div>
 
             <div>
-              <label className="block text-xs font-bold font-poppins uppercase text-slate-700">Phone Number</label>
+              <label className="block text-xs font-bold font-poppins uppercase text-slate-700">Phone Number *</label>
               <input
                 type="text"
+                required
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                className="mt-2 block w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
+                onChange={(e) => handleFieldChange("phoneNumber", e.target.value)}
+                onBlur={(e) => handleFieldBlur("phoneNumber", e.target.value)}
+                placeholder="Enter 10-digit phone number"
+                className={`mt-2 block w-full px-4 py-3 bg-white border rounded-xl text-slate-900 text-xs focus:outline-none transition-colors ${
+                  touched.phoneNumber && errors.phoneNumber
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    : "border-slate-300 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                }`}
               />
+              {touched.phoneNumber && errors.phoneNumber && (
+                <p className="text-red-500 text-[11px] font-semibold mt-1">{errors.phoneNumber}</p>
+              )}
             </div>
 
             <div>
@@ -143,19 +242,38 @@ export default function DriverProfilePage() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-2 block w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
+                onChange={(e) => handleFieldChange("email", e.target.value)}
+                onBlur={(e) => handleFieldBlur("email", e.target.value)}
+                placeholder="driver@fleet.com"
+                className={`mt-2 block w-full px-4 py-3 bg-white border rounded-xl text-slate-900 text-xs focus:outline-none transition-colors ${
+                  touched.email && errors.email
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    : "border-slate-300 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                }`}
               />
+              {touched.email && errors.email && (
+                <p className="text-red-500 text-[11px] font-semibold mt-1">{errors.email}</p>
+              )}
             </div>
 
             <div>
-              <label className="block text-xs font-bold font-poppins uppercase text-slate-700">Driving License Number</label>
+              <label className="block text-xs font-bold font-poppins uppercase text-slate-700">Driving License Number *</label>
               <input
                 type="text"
+                required
                 value={licenseNumber}
-                onChange={(e) => setLicenseNumber(e.target.value)}
-                className="mt-2 block w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
+                onChange={(e) => handleFieldChange("licenseNumber", e.target.value)}
+                onBlur={(e) => handleFieldBlur("licenseNumber", e.target.value)}
+                placeholder="DL-XXXX-XXXXXX"
+                className={`mt-2 block w-full px-4 py-3 bg-white border rounded-xl text-slate-900 text-xs focus:outline-none transition-colors ${
+                  touched.licenseNumber && errors.licenseNumber
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    : "border-slate-300 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                }`}
               />
+              {touched.licenseNumber && errors.licenseNumber && (
+                <p className="text-red-500 text-[11px] font-semibold mt-1">{errors.licenseNumber}</p>
+              )}
             </div>
           </div>
 
@@ -163,7 +281,7 @@ export default function DriverProfilePage() {
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-3 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs flex items-center gap-2 transition shadow-sm disabled:opacity-50"
+              className="px-6 py-3 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs flex items-center gap-2 transition shadow-sm disabled:opacity-50 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>{saving ? "Saving Changes..." : "Save Profile Details"}</span>

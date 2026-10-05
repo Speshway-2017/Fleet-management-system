@@ -12,19 +12,51 @@ export default function ForgotPasswordPage() {
   const [contact, setContact] = useState("");
   const [error, setError] = useState("");
 
+  const validateContact = (value) => {
+    const trimmed = String(value ?? "").trim();
+    if (!trimmed) {
+      return "Email address is required.";
+    }
+    if (/\s/.test(value)) {
+      return "Email address must not contain spaces.";
+    }
+    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmed)) {
+      return "Please enter a valid email address.";
+    }
+    if (trimmed.length < 5) {
+      return "Email address must be at least 5 characters.";
+    }
+    if (trimmed.length > 30) {
+      return "Email address must not exceed 30 characters.";
+    }
+    return "";
+  };
+
+  const handleContactChange = (e) => {
+    const val = e.target.value;
+    setContact(val);
+    const err = validateContact(val);
+    setError(err);
+  };
+
+  const handleContactBlur = (e) => {
+    const err = validateContact(e.target.value);
+    setError(err);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const result = validateForm(forgotPasswordSchema, { email: contact });
-    if (!result.isValid) {
-      setError(result.errors.email || "Please enter a valid email address.");
+    const err = validateContact(contact);
+    if (err) {
+      setError(err);
       return;
     }
     setError("");
     setLoading(true);
     try {
-      await authApi.forgotPassword(contact);
+      await authApi.forgotPassword(contact.trim());
       toast.success("OTP generated! Check the backend console.");
-      navigate("/otp-verification", { state: { email: contact } });
+      navigate("/otp-verification", { state: { email: contact.trim() } });
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || "Failed to process request. Please try again.");
     } finally {
@@ -82,7 +114,8 @@ export default function ForgotPasswordPage() {
               type="text"
               placeholder="name@organization.com"
               value={contact}
-              onChange={(e) => { setContact(e.target.value); setError(""); }}
+              onChange={handleContactChange}
+              onBlur={handleContactBlur}
               className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${error ? 'border-red-500 focus:ring-red-500/20' : 'border-[#A14000] focus:ring-[#A14000]/20'}`}
             />
           </div>

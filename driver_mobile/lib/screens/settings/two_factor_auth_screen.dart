@@ -460,6 +460,13 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                   TextFormField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) return 'Phone number is required for SMS 2FA';
+                      final clean = val.replaceAll(RegExp(r'\D'), '');
+                      if (clean.length != 10) return 'Phone number must be exactly 10 digits';
+                      return null;
+                    },
                     style: GoogleFonts.nunito(
                       fontSize: 15,
                       color: AppColors.textPrimary,
@@ -481,6 +488,14 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.0),
                         borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                        borderSide: const BorderSide(color: AppColors.error, width: 1.0),
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                        borderSide: const BorderSide(color: AppColors.error, width: 1.5),
                       ),
                     ),
                   ),

@@ -28,6 +28,50 @@ export default function ResetPasswordPage() {
   const reqNumber = /\d/.test(form.password);
   const reqSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(form.password);
 
+  const validateResetField = (field, value, nextForm = form) => {
+    let err = "";
+    const strVal = String(value ?? "");
+    if (field === "password") {
+      if (!strVal) {
+        err = "Password is required.";
+      } else if (strVal.length < 8) {
+        err = "Password must be at least 8 characters.";
+      } else if (strVal.length > 50) {
+        err = "Password must not exceed 50 characters.";
+      } else if (/\s/.test(strVal)) {
+        err = "Password must not contain spaces.";
+      } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(strVal)) {
+        err = "Password must contain uppercase, lowercase, and number.";
+      }
+    } else if (field === "confirmPassword") {
+      if (!strVal) {
+        err = "Confirm password is required.";
+      } else if (strVal !== String(nextForm.password ?? "")) {
+        err = "Passwords do not match.";
+      }
+    }
+    return err;
+  };
+
+  const handleChange = (field, value) => {
+    const nextForm = { ...form, [field]: value };
+    setForm(nextForm);
+
+    const err = validateResetField(field, value, nextForm);
+    setErrors(prev => {
+      const updated = { ...prev, [field]: err };
+      if (field === "password" && nextForm.confirmPassword) {
+        updated.confirmPassword = validateResetField("confirmPassword", nextForm.confirmPassword, nextForm);
+      }
+      return updated;
+    });
+  };
+
+  const handleBlur = (field) => {
+    const err = validateResetField(field, form[field], form);
+    setErrors(prev => ({ ...prev, [field]: err }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const result = validateForm(resetPasswordSchema, form);
@@ -111,7 +155,8 @@ export default function ResetPasswordPage() {
               type={showPassword ? "text" : "password"}
               placeholder="Enter new password"
               value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value, errors: {...errors, password: ''} })}
+              onChange={(e) => handleChange("password", e.target.value)}
+              onBlur={() => handleBlur("password")}
               className={`w-full pl-10 pr-10 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${errors.password ? 'border-red-500 focus:ring-red-500/20' : 'border-[#A14000] focus:ring-[#A14000]/20'}`}
             />
             <button
@@ -149,7 +194,8 @@ export default function ResetPasswordPage() {
               type={showConfirmPassword ? "text" : "password"}
               placeholder="Re-enter new password"
               value={form.confirmPassword}
-              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value, errors: {...errors, confirmPassword: ''} })}
+              onChange={(e) => handleChange("confirmPassword", e.target.value)}
+              onBlur={() => handleBlur("confirmPassword")}
               className={`w-full pl-10 pr-10 py-2.5 rounded-xl border text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500/20' : 'border-[#A14000] focus:ring-[#A14000]/20'}`}
             />
             <button

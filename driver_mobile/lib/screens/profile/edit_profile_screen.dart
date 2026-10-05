@@ -500,6 +500,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     if (value.trim().length < 3) {
                       return 'Full Name must be at least 3 characters';
                     }
+                    if (value.trim().length > 60) {
+                      return 'Full Name must be at most 60 characters';
+                    }
+                    if (!RegExp(r"^[a-zA-Z\s.'-]+$").hasMatch(value.trim())) {
+                      return 'Full Name can only contain letters and spaces';
+                    }
                     return null;
                   },
                 ),
@@ -530,7 +536,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     if (value == null || value.trim().isEmpty) {
                       return 'Email is required';
                     }
-                    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
                     if (!emailRegex.hasMatch(value.trim())) {
                       return 'Enter a valid email address';
                     }
@@ -547,6 +553,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     if (value == null || value.trim().isEmpty) {
                       return 'Phone Number is required';
                     }
+                    final clean = value.replaceAll(RegExp(r'\D'), '');
+                    if (clean.length != 10) {
+                      return 'Phone Number must be exactly 10 digits';
+                    }
                     return null;
                   },
                 ),
@@ -558,6 +568,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Address is required';
+                    }
+                    if (value.trim().length < 5) {
+                      return 'Address must be at least 5 characters';
                     }
                     return null;
                   },
@@ -573,6 +586,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'License Number is required';
+                    }
+                    if (value.trim().length < 5 || value.trim().length > 20) {
+                      return 'License Number must be 5-20 alphanumeric characters';
+                    }
+                    if (!RegExp(r'^[a-zA-Z0-9\s-]+$').hasMatch(value.trim())) {
+                      return 'License Number contains invalid characters';
                     }
                     return null;
                   },
@@ -710,6 +729,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           onTap: onTap,
           keyboardType: keyboardType,
           validator: validator,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           style: GoogleFonts.poppins(
             fontSize: 14.5,
             fontWeight: FontWeight.w500,

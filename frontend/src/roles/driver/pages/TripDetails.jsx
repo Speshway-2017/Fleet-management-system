@@ -90,6 +90,82 @@ export default function DriverTripDetailsPage() {
     purchaseLocation: ""
   });
   const [receiptFile, setReceiptFile] = useState(null);
+  const [fuelErrors, setFuelErrors] = useState({});
+  const [fuelTouched, setFuelTouched] = useState({});
+
+  const validateFuelField = (field, value) => {
+    switch (field) {
+      case "stationName": {
+        const val = (value || "").trim();
+        if (!val) return "Station Name is required.";
+        if (val.length < 2) return "Station Name must be at least 2 characters.";
+        if (val.length > 50) return "Station Name cannot exceed 50 characters.";
+        if (/\d/.test(val)) return "Station Name must contain valid text only (no numbers).";
+        if (!/^[a-zA-Z\s.'-]+$/.test(val)) return "Station Name contains invalid characters. Only letters and spaces are allowed.";
+        if (/(.)\1{2,}/i.test(val)) return "Station Name cannot contain repeated characters.";
+        const words = val.split(/\s+/).filter(Boolean);
+        for (const w of words) {
+          if (w.length >= 4 && !/[aeiouy]/i.test(w)) {
+            return "Station Name contains meaningless text.";
+          }
+        }
+        if (/^(asdf|qwer|zxcv|test|dummy|abc|xyz)/i.test(val.replace(/[\s.'-]+/g, ""))) {
+          return "Station Name cannot be meaningless text.";
+        }
+        return "";
+      }
+      case "quantity": {
+        const val = value !== undefined && value !== null ? String(value).trim() : "";
+        if (!val) return "Liters (Quantity) is required.";
+        if (!/^\d+(\.\d{1,2})?$/.test(val)) return "Please enter a valid positive numeric/decimal quantity (e.g. 45 or 45.5).";
+        const num = Number(val);
+        if (isNaN(num) || num <= 0) return "Quantity must be a positive number greater than 0.";
+        if (num < 0.1) return "Quantity must be at least 0.1 liters.";
+        if (num > 2000) return "Quantity cannot exceed 2,000 liters.";
+        return "";
+      }
+      case "totalCost": {
+        const val = value !== undefined && value !== null ? String(value).trim() : "";
+        if (!val) return "Total Amount is required.";
+        if (!/^\d+(\.\d{1,2})?$/.test(val)) return "Please enter a valid positive numeric/decimal amount in ₹ (e.g. 4500 or 4500.50).";
+        const num = Number(val);
+        if (isNaN(num) || num <= 0) return "Total amount must be a positive value greater than 0.";
+        if (num < 1) return "Total amount must be at least ₹1.";
+        if (num > 300000) return "Total amount cannot exceed ₹3,00,000.";
+        return "";
+      }
+      case "odometerReading": {
+        const val = value !== undefined && value !== null ? String(value).trim() : "";
+        if (!val) return "";
+        if (!/^\d+(\.\d{1,2})?$/.test(val)) return "Odometer reading must be a valid positive number.";
+        const num = Number(val);
+        if (isNaN(num) || num < 0) return "Odometer reading must be a positive number.";
+        if (num > 2000000) return "Odometer reading cannot exceed 20,00,000 km.";
+        return "";
+      }
+      default:
+        return "";
+    }
+  };
+
+  const handleFuelFieldChange = (field, value) => {
+    setFuelForm(prev => ({ ...prev, [field]: value }));
+    setFuelTouched(prev => ({ ...prev, [field]: true }));
+    const err = validateFuelField(field, value);
+    setFuelErrors(prev => ({ ...prev, [field]: err }));
+  };
+
+  const handleFuelFieldBlur = (field, value) => {
+    setFuelTouched(prev => ({ ...prev, [field]: true }));
+    const err = validateFuelField(field, value);
+    setFuelErrors(prev => ({ ...prev, [field]: err }));
+  };
+
+  const handleOpenAddFuelModal = () => {
+    setFuelErrors({});
+    setFuelTouched({});
+    setShowAddFuelModal(true);
+  };
 
   const handleOpenInvoice = async () => {
     if (!tripId) return;
@@ -176,8 +252,26 @@ export default function DriverTripDetailsPage() {
 
   const handleAddFuelSubmit = async (e) => {
     e.preventDefault();
-    if (!fuelForm.stationName || !fuelForm.quantity || !fuelForm.totalCost) {
-      toast.error("Please fill in required fields (Station Name, Liters, Amount)");
+    const stationErr = validateFuelField("stationName", fuelForm.stationName);
+    const qtyErr = validateFuelField("quantity", fuelForm.quantity);
+    const costErr = validateFuelField("totalCost", fuelForm.totalCost);
+    const odoErr = validateFuelField("odometerReading", fuelForm.odometerReading);
+
+    setFuelTouched({
+      stationName: true,
+      quantity: true,
+      totalCost: true,
+      odometerReading: true
+    });
+    setFuelErrors({
+      stationName: stationErr,
+      quantity: qtyErr,
+      totalCost: costErr,
+      odometerReading: odoErr
+    });
+
+    if (stationErr || qtyErr || costErr || odoErr) {
+      toast.error("Please fix validation errors before saving.");
       return;
     }
 
@@ -219,6 +313,8 @@ export default function DriverTripDetailsPage() {
           purchaseLocation: ""
         });
         setReceiptFile(null);
+        setFuelErrors({});
+        setFuelTouched({});
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to submit fuel entry");
@@ -884,28 +980,28 @@ export default function DriverTripDetailsPage() {
 
             {/* Address Details (Horizontal Row) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
-              <div className="space-y-1 p-3 bg-slate-50 rounded-xl border border-slate-200/80 font-nunito">
+              <div className="space-y-1 p-3 bg-slate-50 rounded-xl border border-slate-200/80 font-nunito min-w-0">
                 <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins block mb-1">Pickup / From Address</span>
-                {pickupAddr.companyName && <p className="font-bold text-[#A14000]">{pickupAddr.companyName}</p>}
-                {pickupAddr.streetAddress && <p className="text-slate-600 font-semibold">{pickupAddr.streetAddress}</p>}
-                <p className="text-slate-500 font-bold">{pickupAddr.city}, {pickupAddr.state}{(!pickupAddr.streetAddress && pickupAddr.pincode) ? ` - ${pickupAddr.pincode}` : ''}</p>
+                {pickupAddr.companyName && <p className="font-bold text-[#A14000] break-words">{pickupAddr.companyName}</p>}
+                {pickupAddr.streetAddress && <p className="text-slate-600 font-semibold break-words">{pickupAddr.streetAddress}</p>}
+                <p className="text-slate-500 font-bold break-words">{pickupAddr.city}, {pickupAddr.state}{(!pickupAddr.streetAddress && pickupAddr.pincode) ? ` - ${pickupAddr.pincode}` : ''}</p>
                 {pickupAddr.streetAddress && pickupAddr.pincode && <p className="text-xs text-slate-500 font-semibold">Pincode: {pickupAddr.pincode}</p>}
-                <p className="text-[10px] text-slate-400 mt-1 border-t border-slate-100 pt-1 font-sans">Contact: {pickupAddr.contactPerson} ({pickupAddr.mobile})</p>
+                <p className="text-[10px] text-slate-400 mt-1 border-t border-slate-100 pt-1 font-sans break-words">Contact: {pickupAddr.contactPerson} ({pickupAddr.mobile})</p>
               </div>
-              <div className="space-y-1 p-3 bg-slate-50 rounded-xl border border-slate-200/80 font-nunito">
+              <div className="space-y-1 p-3 bg-slate-50 rounded-xl border border-slate-200/80 font-nunito min-w-0">
                 <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins block mb-1">Destination / To Address</span>
-                {deliveryAddr.companyName && <p className="font-bold text-[#A14000]">{deliveryAddr.companyName}</p>}
-                {deliveryAddr.streetAddress && <p className="text-slate-600 font-semibold">{deliveryAddr.streetAddress}</p>}
-                <p className="text-slate-500 font-bold">{deliveryAddr.city}, {deliveryAddr.state}{(!deliveryAddr.streetAddress && deliveryAddr.pincode) ? ` - ${deliveryAddr.pincode}` : ''}</p>
+                {deliveryAddr.companyName && <p className="font-bold text-[#A14000] break-words">{deliveryAddr.companyName}</p>}
+                {deliveryAddr.streetAddress && <p className="text-slate-600 font-semibold break-words">{deliveryAddr.streetAddress}</p>}
+                <p className="text-slate-500 font-bold break-words">{deliveryAddr.city}, {deliveryAddr.state}{(!deliveryAddr.streetAddress && deliveryAddr.pincode) ? ` - ${deliveryAddr.pincode}` : ''}</p>
                 {deliveryAddr.streetAddress && deliveryAddr.pincode && <p className="text-xs text-slate-500 font-semibold">Pincode: {deliveryAddr.pincode}</p>}
-                <p className="text-[10px] text-slate-400 mt-1 border-t border-slate-100 pt-1 font-sans">Contact: {deliveryAddr.contactPerson} ({deliveryAddr.mobile})</p>
+                <p className="text-[10px] text-slate-400 mt-1 border-t border-slate-100 pt-1 font-sans break-words">Contact: {deliveryAddr.contactPerson} ({deliveryAddr.mobile})</p>
               </div>
             </div>
 
             {(trip.tripNotes || trip.description) && (
               <div className="pt-3 border-t border-slate-100">
                 <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins block mb-1">Trip Notes</span>
-                <p className="text-slate-700 italic bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 leading-relaxed font-nunito">{trip.tripNotes || trip.description}</p>
+                <p className="text-slate-700 italic bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 leading-relaxed font-nunito break-words">{trip.tripNotes || trip.description}</p>
               </div>
             )}
           </div>
@@ -957,17 +1053,17 @@ export default function DriverTripDetailsPage() {
               <User className="w-4 h-4 text-[#A14000]" /> Assigned Driver Details
             </h3>
             <div className="space-y-3 text-xs">
-              <div className="flex justify-between items-center py-1">
-                <span className="text-slate-500 font-semibold">Driver Name:</span>
-                <span className="font-bold text-slate-800">{trip.driverName || trip.driver?.fullName || 'N/A'}</span>
+              <div className="flex justify-between items-center py-1 gap-2">
+                <span className="text-slate-500 font-semibold shrink-0">Driver Name:</span>
+                <span className="font-bold text-slate-800 break-words text-right">{trip.driverName || trip.driver?.fullName || 'N/A'}</span>
               </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-slate-500 font-semibold">Employee ID:</span>
-                <span className="font-bold text-slate-800 font-mono">{trip.driver?.employeeId || 'N/A'}</span>
+              <div className="flex justify-between items-center py-1 gap-2">
+                <span className="text-slate-500 font-semibold shrink-0">Employee ID:</span>
+                <span className="font-bold text-slate-800 font-mono break-words text-right">{trip.driver?.employeeId || 'N/A'}</span>
               </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-slate-500 font-semibold">Mobile Number:</span>
-                <span className="font-bold text-slate-800">{trip.driverPhone || trip.driver?.phoneNumber || 'N/A'}</span>
+              <div className="flex justify-between items-center py-1 gap-2">
+                <span className="text-slate-500 font-semibold shrink-0">Mobile Number:</span>
+                <span className="font-bold text-slate-800 break-words text-right">{trip.driverPhone || trip.driver?.phoneNumber || 'N/A'}</span>
               </div>
             </div>
           </div>
@@ -978,17 +1074,17 @@ export default function DriverTripDetailsPage() {
               <Truck className="w-4 h-4 text-[#A14000]" /> Assigned Vehicle Details
             </h3>
             <div className="space-y-3 text-xs">
-              <div className="flex justify-between items-center py-1">
-                <span className="text-slate-500 font-semibold">Plate / Registration:</span>
-                <span className="font-extrabold font-mono text-slate-900">{vehiclePlate}</span>
+              <div className="flex justify-between items-center py-1 gap-2">
+                <span className="text-slate-500 font-semibold shrink-0">Plate / Registration:</span>
+                <span className="font-extrabold font-mono text-slate-900 break-words text-right">{vehiclePlate}</span>
               </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-slate-500 font-semibold">Vehicle Model:</span>
-                <span className="font-bold text-slate-800">{vehicleModel}</span>
+              <div className="flex justify-between items-center py-1 gap-2">
+                <span className="text-slate-500 font-semibold shrink-0">Vehicle Model:</span>
+                <span className="font-bold text-slate-800 break-words text-right">{vehicleModel}</span>
               </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-slate-500 font-semibold">Vehicle Status:</span>
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-poppins">
+              <div className="flex justify-between items-center py-1 gap-2">
+                <span className="text-slate-500 font-semibold shrink-0">Vehicle Status:</span>
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-poppins shrink-0">
                   {vehicleStatus}
                 </span>
               </div>
@@ -1004,7 +1100,7 @@ export default function DriverTripDetailsPage() {
               const isActiveTrip = statusLower !== "completed" && statusLower !== "cancelled" && statusLower !== "rejected";
               return isActiveTrip && (
                 <button
-                  onClick={() => setShowAddFuelModal(true)}
+                  onClick={handleOpenAddFuelModal}
                   className="mt-2 w-full py-2 bg-[#059669] hover:bg-[#047857] text-white border border-transparent font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
                 >
                   <Fuel className="w-3.5 h-3.5" /> Add Fuel Log
@@ -1162,76 +1258,132 @@ export default function DriverTripDetailsPage() {
 
             <form onSubmit={handleAddFuelSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Fuel Station</label>
+                <label className="block text-xs font-bold font-poppins text-slate-700 uppercase mb-1">
+                  Fuel Station Name <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Shell Petrol Pump, Bengaluru"
                   value={fuelForm.stationName}
-                  onChange={(e) => setFuelForm({ ...fuelForm, stationName: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#A14000] focus:bg-white transition-all"
+                  onChange={(e) => handleFuelFieldChange("stationName", e.target.value)}
+                  onBlur={(e) => handleFuelFieldBlur("stationName", e.target.value)}
+                  className={`w-full px-4 py-2.5 bg-white border rounded-xl text-xs text-slate-900 focus:outline-none transition-all ${
+                    fuelTouched.stationName && fuelErrors.stationName
+                      ? "border-rose-500 bg-rose-50/20 focus:ring-1 focus:ring-rose-500"
+                      : "border-slate-300 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                  }`}
                 />
+                {fuelTouched.stationName && fuelErrors.stationName && (
+                  <p className="text-[11px] text-rose-500 font-bold mt-1 font-poppins flex items-center gap-1">
+                    • {fuelErrors.stationName}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Liters</label>
+                  <label className="block text-xs font-bold font-poppins text-slate-700 uppercase mb-1">
+                    Liters (Quantity) <span className="text-rose-500">*</span>
+                  </label>
                   <input
                     type="number"
                     required
-                    min="1"
+                    min="0.1"
+                    max="2000"
                     step="0.01"
                     placeholder="e.g. 50"
                     value={fuelForm.quantity}
-                    onChange={(e) => setFuelForm({ ...fuelForm, quantity: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#A14000] focus:bg-white transition-all"
+                    onChange={(e) => handleFuelFieldChange("quantity", e.target.value)}
+                    onBlur={(e) => handleFuelFieldBlur("quantity", e.target.value)}
+                    className={`w-full px-4 py-2.5 bg-white border rounded-xl text-xs text-slate-900 focus:outline-none transition-all ${
+                      fuelTouched.quantity && fuelErrors.quantity
+                        ? "border-rose-500 bg-rose-50/20 focus:ring-1 focus:ring-rose-500"
+                        : "border-slate-300 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                    }`}
                   />
+                  {fuelTouched.quantity && fuelErrors.quantity && (
+                    <p className="text-[11px] text-rose-500 font-bold mt-1 font-poppins flex items-center gap-1">
+                      • {fuelErrors.quantity}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Amount (INR)</label>
+                  <label className="block text-xs font-bold font-poppins text-slate-700 uppercase mb-1">
+                    Total Amount (₹) <span className="text-rose-500">*</span>
+                  </label>
                   <input
                     type="number"
                     required
                     min="1"
+                    max="300000"
                     step="0.01"
                     placeholder="e.g. 5000"
                     value={fuelForm.totalCost}
-                    onChange={(e) => setFuelForm({ ...fuelForm, totalCost: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#A14000] focus:bg-white transition-all"
+                    onChange={(e) => handleFuelFieldChange("totalCost", e.target.value)}
+                    onBlur={(e) => handleFuelFieldBlur("totalCost", e.target.value)}
+                    className={`w-full px-4 py-2.5 bg-white border rounded-xl text-xs text-slate-900 focus:outline-none transition-all ${
+                      fuelTouched.totalCost && fuelErrors.totalCost
+                        ? "border-rose-500 bg-rose-50/20 focus:ring-1 focus:ring-rose-500"
+                        : "border-slate-300 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                    }`}
                   />
+                  {fuelTouched.totalCost && fuelErrors.totalCost && (
+                    <p className="text-[11px] text-rose-500 font-bold mt-1 font-poppins flex items-center gap-1">
+                      • {fuelErrors.totalCost}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Odometer (Optional)</label>
+                  <label className="block text-xs font-bold font-poppins text-slate-700 uppercase mb-1">
+                    Odometer (Optional)
+                  </label>
                   <input
                     type="number"
+                    min="0"
+                    max="2000000"
                     placeholder="e.g. 12450"
                     value={fuelForm.odometerReading}
-                    onChange={(e) => setFuelForm({ ...fuelForm, odometerReading: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#A14000] focus:bg-white transition-all"
+                    onChange={(e) => handleFuelFieldChange("odometerReading", e.target.value)}
+                    onBlur={(e) => handleFuelFieldBlur("odometerReading", e.target.value)}
+                    className={`w-full px-4 py-2.5 bg-white border rounded-xl text-xs text-slate-900 focus:outline-none transition-all ${
+                      fuelTouched.odometerReading && fuelErrors.odometerReading
+                        ? "border-rose-500 bg-rose-50/20 focus:ring-1 focus:ring-rose-500"
+                        : "border-slate-300 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                    }`}
                   />
+                  {fuelTouched.odometerReading && fuelErrors.odometerReading && (
+                    <p className="text-[11px] text-rose-500 font-bold mt-1 font-poppins flex items-center gap-1">
+                      • {fuelErrors.odometerReading}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Purchase City (Optional)</label>
+                  <label className="block text-xs font-bold font-poppins text-slate-700 uppercase mb-1">
+                    Purchase City (Optional)
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g. Pune"
                     value={fuelForm.purchaseLocation}
                     onChange={(e) => setFuelForm({ ...fuelForm, purchaseLocation: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#A14000] focus:bg-white transition-all"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Receipt Slip (Optional)</label>
+                <label className="block text-xs font-bold font-poppins text-slate-700 uppercase mb-1">
+                  Receipt Slip / Bill File (Optional)
+                </label>
                 <input
                   type="file"
                   accept="image/*,application/pdf"
                   onChange={(e) => setReceiptFile(e.target.files[0])}
-                  className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                  className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-[#A14000] hover:file:bg-amber-100 cursor-pointer"
                 />
               </div>
 

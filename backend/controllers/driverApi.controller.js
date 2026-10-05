@@ -1947,6 +1947,36 @@ export const getAssignedVehicle = async (req, res, next) => {
     vehObj.assignedDriverEmpId = driver.employeeId;
     vehObj.assignedDriverLicense = driver.licenseNumber;
 
+    // Sync manufactureYear and year
+    vehObj.manufactureYear = vehObj.manufactureYear || vehObj.year || vehObj.modelYear || null;
+    vehObj.year = vehObj.manufactureYear;
+
+    // Ensure odometer reading is populated with real fallbacks from fuel records / trips
+    if (!vehObj.odometerReading && !vehObj.odometer) {
+      try {
+        const latestFuel = await Fuel.findOne({
+          $or: [{ vehicle: vehicle._id }, { vehicleNumber: vehicle.vehicleNumber }]
+        }).sort({ date: -1, createdAt: -1 });
+        if (latestFuel && (latestFuel.odometerReading || latestFuel.odometer)) {
+          vehObj.odometerReading = latestFuel.odometerReading || latestFuel.odometer;
+          vehObj.odometer = vehObj.odometerReading;
+        } else {
+          const latestTrip = await Trip.findOne({
+            vehicle: vehicle._id,
+            $or: [{ endOdometer: { $gt: 0 } }, { startOdometer: { $gt: 0 } }]
+          }).sort({ departureTime: -1, createdAt: -1 });
+          if (latestTrip) {
+            vehObj.odometerReading = latestTrip.endOdometer || latestTrip.startOdometer || 0;
+            vehObj.odometer = vehObj.odometerReading;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    vehObj.odometer = vehObj.odometer || vehObj.odometerReading || 0;
+    vehObj.odometerReading = vehObj.odometerReading || vehObj.odometer || 0;
+
     // Build compliance documents list
     const complianceDocuments = [];
     if (vehicle.documents) {
@@ -2138,6 +2168,19 @@ export const getDriverMaintenance = async (req, res, next) => {
       }
     });
 
+    // Also check vehicle's next service due date
+    const nextServiceDate = vehicle.nextServiceDue || vehicle.nextService;
+    if (nextServiceDate) {
+      const serviceDue = new Date(nextServiceDate);
+      if (!isNaN(serviceDue.getTime())) {
+        if (serviceDue < now && overdueCount === 0) {
+          overdueCount++;
+        } else if (serviceDue >= now && upcomingCount === 0) {
+          upcomingCount++;
+        }
+      }
+    }
+
     const lastCompleted = completedMaintenances.length > 0 ? completedMaintenances[0] : null;
 
     return sendSuccess(res, 200, {
@@ -2146,6 +2189,9 @@ export const getDriverMaintenance = async (req, res, next) => {
         _id: vehicle._id,
         vehicleNumber: vehicle.vehicleNumber,
         vehicleName: vehicle.vehicleName || `${vehicle.brand || ''} ${vehicle.model || ''}`.trim() || 'Vehicle',
+        manufactureYear: vehicle.manufactureYear || vehicle.year || vehicle.modelYear || null,
+        odometer: vehicle.odometer || vehicle.odometerReading || 0,
+        odometerReading: vehicle.odometerReading || vehicle.odometer || 0,
         lastServiceDate: vehicle.lastServiceDate || vehicle.lastService,
         nextServiceDue: vehicle.nextServiceDue || vehicle.nextService,
         branchDepot: vehicle.branchDepot || vehicle.currentLocation || 'Fleet Service Hub'

@@ -25,19 +25,46 @@ export default function UploadDocumentModal({
 
   if (!isOpen) return null;
 
+  const validateDocumentField = (name, value, currentData = formData) => {
+    const val = String(value ?? "").trim();
+    if (name === "category") {
+      if (!val) return "Document category is required";
+    } else if (name === "documentName") {
+      if (!val) return "Document name is required";
+      if (val.length < 2) return "Document name must be at least 2 characters";
+      if (val.length > 50) return "Document name must not exceed 50 characters";
+    } else if (name === "documentNumber") {
+      if (val && val.length > 30) return "Document number must not exceed 30 characters";
+    } else if (name === "issueDate") {
+      if (!val) return "Issue date is required";
+    } else if (name === "expiryDate") {
+      if (val && currentData.issueDate) {
+        if (new Date(val) < new Date(currentData.issueDate)) {
+          return "Expiry date cannot be before issue date";
+        }
+      }
+    }
+    return "";
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    const nextData = { ...formData, [name]: value };
+    setFormData(nextData);
+    const err = validateDocumentField(name, value, nextData);
+    setErrors(prev => ({
       ...prev,
-      [name]: value
+      [name]: err
     }));
-    // Clear error for this field
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ""
-      }));
-    }
+  };
+
+  const handleInputBlur = (e) => {
+    const { name, value } = e.target;
+    const err = validateDocumentField(name, value, formData);
+    setErrors(prev => ({
+      ...prev,
+      [name]: err
+    }));
   };
 
   const handleFileChange = (e) => {
@@ -156,6 +183,7 @@ export default function UploadDocumentModal({
               name="category"
               value={formData.category}
               onChange={handleInputChange}
+              onBlur={handleInputBlur}
               disabled={isReplacing}
               className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B] disabled:bg-gray-100"
             >
@@ -182,6 +210,7 @@ export default function UploadDocumentModal({
               name="documentName"
               value={formData.documentName}
               onChange={handleInputChange}
+              onBlur={handleInputBlur}
               placeholder="e.g., Car Insurance Policy 2024"
               className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
             />
@@ -203,6 +232,7 @@ export default function UploadDocumentModal({
               name="documentNumber"
               value={formData.documentNumber}
               onChange={handleInputChange}
+              onBlur={handleInputBlur}
               placeholder="e.g., POL-2024-001234"
               className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
             />

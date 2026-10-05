@@ -462,6 +462,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
   Widget _buildManualUploadForm() {
     return Form(
       key: _formKey,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       child: CustomCard(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -637,6 +638,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
           controller: controller,
           keyboardType: keyboardType,
           validator: validator,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.primaryText),
           decoration: InputDecoration(
             hintText: hint,
@@ -647,6 +649,8 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
             fillColor: Colors.white,
             enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: AppColors.divider)),
             focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: AppColors.secondary)),
+            errorBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppColors.error)),
+            focusedErrorBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppColors.error, width: 1.5)),
           ),
         ),
       ],

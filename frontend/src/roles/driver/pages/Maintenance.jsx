@@ -26,6 +26,48 @@ export default function DriverMaintenancePage() {
   const [activeTrip, setActiveTrip] = useState(null);
   const [description, setDescription] = useState("");
   const [photoFile, setPhotoFile] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
+  const validateField = (field, value, type = issueType) => {
+    if (field === "description") {
+      const val = (value || "").trim();
+      if (!val) return "Description is required.";
+      if (val.length < 5) return "Description must be at least 5 characters.";
+      if (val.length > 500) return "Description cannot exceed 500 characters.";
+      if (/^\d+$/.test(val)) return "Description must contain valid text (cannot be only numbers).";
+      if (/(.)\1{4,}/i.test(val)) return "Description cannot contain repeated characters.";
+      if (/^(asdf|qwer|zxcv|test|dummy|abc|xyz)/i.test(val.replace(/[\s.'-]+/g, ""))) {
+        return "Description cannot be meaningless text.";
+      }
+      return "";
+    }
+    if (field === "customIssue") {
+      if (type !== "Other / Custom Issue") return "";
+      const val = (value || "").trim();
+      if (!val) return "Please specify the custom issue.";
+      if (val.length < 3) return "Custom issue must be at least 3 characters.";
+      if (val.length > 60) return "Custom issue cannot exceed 60 characters.";
+      if (/^\d+$/.test(val)) return "Custom issue must contain valid text (cannot be only numbers).";
+      if (/(.)\1{3,}/i.test(val)) return "Custom issue cannot contain repeated characters.";
+      return "";
+    }
+    return "";
+  };
+
+  const handleFieldChange = (field, value) => {
+    if (field === "description") setDescription(value);
+    if (field === "customIssue") setCustomIssue(value);
+    setTouched(prev => ({ ...prev, [field]: true }));
+    const err = validateField(field, value);
+    setErrors(prev => ({ ...prev, [field]: err }));
+  };
+
+  const handleFieldBlur = (field, value) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    const err = validateField(field, value);
+    setErrors(prev => ({ ...prev, [field]: err }));
+  };
 
   useEffect(() => {
     fetchTickets();
@@ -117,6 +159,8 @@ export default function DriverMaintenancePage() {
       toast.error("Maintenance reporting is locked. Requires an assigned vehicle or an active trip.");
       return;
     }
+    setErrors({});
+    setTouched({});
     setShowModal(true);
   };
 
@@ -127,8 +171,14 @@ export default function DriverMaintenancePage() {
       return;
     }
 
-    if (!description) {
-      toast.error("Please provide a description of the issue");
+    const descErr = validateField("description", description);
+    const customErr = validateField("customIssue", customIssue);
+
+    setTouched({ description: true, customIssue: true });
+    setErrors({ description: descErr, customIssue: customErr });
+
+    if (descErr || customErr) {
+      toast.error("Please fix validation errors before submitting.");
       return;
     }
 
@@ -152,6 +202,8 @@ export default function DriverMaintenancePage() {
         setPriority("MEDIUM");
         setDescription("");
         setPhotoFile(null);
+        setErrors({});
+        setTouched({});
         fetchTickets();
       }
     } catch (err) {
@@ -160,8 +212,6 @@ export default function DriverMaintenancePage() {
       setSubmitting(false);
     }
   };
-
-
 
   return (
     <div className="space-y-8 font-nunito pb-12">
@@ -256,7 +306,16 @@ export default function DriverMaintenancePage() {
                 <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">Category / Issue Type</label>
                 <select
                   value={issueType}
-                  onChange={(e) => setIssueType(e.target.value)}
+                  onChange={(e) => {
+                    const newType = e.target.value;
+                    setIssueType(newType);
+                    if (newType === "Other / Custom Issue") {
+                      const err = validateField("customIssue", customIssue, newType);
+                      setErrors(prev => ({ ...prev, customIssue: err }));
+                    } else {
+                      setErrors(prev => ({ ...prev, customIssue: "" }));
+                    }
+                  }}
                   className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
                 >
                   <option value="Tyre / Brake Issue">Tyre / Brake Issue (Puncture, Air Pressure, Brakes)</option>
@@ -270,15 +329,27 @@ export default function DriverMaintenancePage() {
 
               {issueType === "Other / Custom Issue" && (
                 <div>
-                  <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">Specify Custom Issue</label>
+                  <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">
+                    Specify Custom Issue <span className="text-rose-500">*</span>
+                  </label>
                   <input
                     type="text"
                     required
                     value={customIssue}
-                    onChange={(e) => setCustomIssue(e.target.value)}
+                    onChange={(e) => handleFieldChange("customIssue", e.target.value)}
+                    onBlur={(e) => handleFieldBlur("customIssue", e.target.value)}
                     placeholder="e.g., Steering vibration, Windshield crack..."
-                    className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
+                    className={`mt-1 block w-full px-3.5 py-2.5 bg-white border rounded-xl text-slate-900 text-xs focus:outline-none transition-all ${
+                      touched.customIssue && errors.customIssue
+                        ? "border-rose-500 bg-rose-50/20 focus:ring-1 focus:ring-rose-500"
+                        : "border-slate-300 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                    }`}
                   />
+                  {touched.customIssue && errors.customIssue && (
+                    <p className="text-[11px] text-rose-500 font-bold mt-1 font-poppins flex items-center gap-1">
+                      • {errors.customIssue}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -296,15 +367,33 @@ export default function DriverMaintenancePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">Detailed Description</label>
+                <div className="flex justify-between items-center">
+                  <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">
+                    Detailed Description <span className="text-rose-500">*</span>
+                  </label>
+                  <span className={`text-[10px] font-semibold ${description.length > 500 ? "text-rose-500 font-bold" : "text-slate-400"}`}>
+                    {description.length} / 500
+                  </span>
+                </div>
                 <textarea
                   rows={3}
                   required
+                  maxLength={500}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => handleFieldChange("description", e.target.value)}
+                  onBlur={(e) => handleFieldBlur("description", e.target.value)}
                   placeholder="Describe the noise, warning light, or failure..."
-                  className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
+                  className={`mt-1 block w-full px-3.5 py-2.5 bg-white border rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:outline-none transition-all ${
+                    touched.description && errors.description
+                      ? "border-rose-500 bg-rose-50/20 focus:ring-1 focus:ring-rose-500"
+                      : "border-slate-300 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                  }`}
                 />
+                {touched.description && errors.description && (
+                  <p className="text-[11px] text-rose-500 font-bold mt-1 font-poppins flex items-center gap-1">
+                    • {errors.description}
+                  </p>
+                )}
               </div>
 
               <div>

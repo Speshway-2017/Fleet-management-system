@@ -252,30 +252,34 @@ export default function IssueCard({ ticket, onStatusUpdated, highlighted = false
     >
       <div>
         {/* Top Header Row */}
-        <div className="flex items-start justify-between pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between pb-3 border-b border-slate-100 gap-2">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0">
               <Wrench className="w-5 h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-slate-900 text-sm font-poppins">{ticket.issueType || ticket.title || "Vehicle Issue"}</h3>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <h3 className="font-semibold text-slate-900 text-sm font-poppins break-words min-w-0 truncate" title={ticket.issueType || ticket.title || "Vehicle Issue"}>
+                  {ticket.issueType || ticket.title || "Vehicle Issue"}
+                </h3>
                 {getPriorityBadge(priorityStr)}
               </div>
-              <p className="text-xs text-slate-400 mt-0.5 font-mono">#{ticket.ticketId || ticket.ticketNumber || (ticket._id ? ticket._id.slice(-6) : "TKT")}</p>
+              <p className="text-xs text-slate-400 mt-0.5 font-mono truncate">#{ticket.ticketId || ticket.ticketNumber || (ticket._id ? ticket._id.slice(-6) : "TKT")}</p>
             </div>
           </div>
-          {getStatusBadge(currentStatus)}
+          <div className="shrink-0">
+            {getStatusBadge(currentStatus)}
+          </div>
         </div>
 
         {/* Vehicle & Trip Info */}
-        <div className="flex items-center justify-between text-xs text-slate-500 mt-3 px-1">
-          <span>Vehicle: <strong className="text-slate-800 uppercase font-mono">{ticket.vehiclePlate || "VEH-ASSIGNED"}</strong></span>
-          <span>Date: <strong className="text-slate-700">{ticket.reportedAt || ticket.createdAt ? new Date(ticket.reportedAt || ticket.createdAt).toLocaleDateString() : "Recently"}</strong></span>
+        <div className="flex items-center justify-between text-xs text-slate-500 mt-3 px-1 gap-2 flex-wrap">
+          <span className="min-w-0 truncate">Vehicle: <strong className="text-slate-800 uppercase font-mono">{ticket.vehiclePlate || "VEH-ASSIGNED"}</strong></span>
+          <span className="shrink-0">Date: <strong className="text-slate-700">{ticket.reportedAt || ticket.createdAt ? new Date(ticket.reportedAt || ticket.createdAt).toLocaleDateString() : "Recently"}</strong></span>
         </div>
 
         {/* Issue Description */}
-        <p className="text-xs text-slate-700 my-3 line-clamp-3 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100 font-medium">
+        <p className="text-xs text-slate-700 my-3 line-clamp-3 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100 font-medium break-words">
           {ticket.description || "No detailed description provided."}
         </p>
 
@@ -283,39 +287,39 @@ export default function IssueCard({ ticket, onStatusUpdated, highlighted = false
         {isResolvedOrCompleted ? (
           <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Ticket Resolved & Service Bill Attached! Vehicle Active. 🚚</span>
+            <span className="break-words">Ticket Resolved & Service Bill Attached! Vehicle Active. 🚚</span>
           </div>
         ) : currentStatus === "Cancelled (Accident)" ? (
           <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-800 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-            <span>Trip Cancelled due to Severe Accident 🚨 Contact dispatcher.</span>
+            <span className="break-words">Trip Cancelled due to Severe Accident 🚨 Contact dispatcher.</span>
           </div>
         ) : isNeedMaintenance ? (
           <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl text-xs font-semibold text-orange-900 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-[#A14000] shrink-0" />
-            <span>Vehicle repair incomplete / needs maintenance! Manager notified. Upload bill to resolve.</span>
+            <span className="break-words">Vehicle repair incomplete / needs maintenance! Manager notified. Upload bill to resolve.</span>
           </div>
         ) : null}
 
         {/* Mechanic Card snippet */}
         {hasMechanic && (
-          <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1.5 text-xs my-3">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-blue-900 flex items-center gap-1 font-poppins">
-                <User className="w-3.5 h-3.5 text-blue-600" /> Mechanic: {mechanic.name || "Assigned"}
+          <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1.5 text-xs my-3 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-bold text-blue-900 flex items-center gap-1 font-poppins min-w-0 truncate" title={mechanic.name || "Assigned"}>
+                <User className="w-3.5 h-3.5 text-blue-600 shrink-0" /> Mechanic: <span className="truncate">{mechanic.name || "Assigned"}</span>
               </span>
               {mechanic.phone && !isResolvedOrCompleted && (
                 <a
                   href={`tel:${mechanic.phone}`}
-                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 transition"
+                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 transition shrink-0"
                 >
                   <Phone className="w-3 h-3" /> Call
                 </a>
               )}
             </div>
             {mechanic.location && (
-              <p className="text-slate-600 text-[11px] flex items-center gap-1">
-                <MapPin className="w-3 h-3 text-blue-500 shrink-0" /> {mechanic.location}
+              <p className="text-slate-600 text-[11px] flex items-center gap-1 break-words min-w-0">
+                <MapPin className="w-3 h-3 text-blue-500 shrink-0" /> <span className="break-words">{mechanic.location}</span>
               </p>
             )}
           </div>

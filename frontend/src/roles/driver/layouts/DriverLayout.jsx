@@ -302,8 +302,8 @@ export default function DriverLayout() {
       <div className="flex-1 flex flex-col min-w-0 h-screen max-h-screen overflow-hidden bg-[#F5F7FA] dark:bg-[#0B0F17]">
         {/* Fixed Top Header Bar */}
         <header className="hidden md:flex h-16 bg-white dark:bg-[#151C28] border-b border-slate-200 dark:border-[#242E42] px-8 items-center justify-between shrink-0 z-30 shadow-sm">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-bold font-poppins text-slate-900 dark:text-white">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <h1 className="text-lg font-bold font-poppins text-slate-900 dark:text-white truncate" title={`Welcome back, ${driverName}`}>
               Welcome back, <span className="text-[#A14000]">{driverName}</span> 👋
             </h1>
           </div>

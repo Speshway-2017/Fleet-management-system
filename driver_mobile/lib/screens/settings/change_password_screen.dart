@@ -175,6 +175,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           padding: EdgeInsets.symmetric(horizontal: paddingValue, vertical: 24.0),
           child: Form(
             key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -194,6 +195,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 TextFormField(
                   controller: _currentPasswordController,
                   obscureText: !_isCurrentPasswordVisible,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   style: GoogleFonts.nunito(
                     fontSize: 15,
                     color: AppColors.textPrimary,
@@ -201,7 +203,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your current password';
+                      return 'Current password is required';
+                    }
+                    if (value.length > 20) {
+                      return 'Current password must not exceed 20 characters';
                     }
                     return null;
                   },
@@ -223,6 +228,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 TextFormField(
                   controller: _newPasswordController,
                   obscureText: !_isNewPasswordVisible,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   style: GoogleFonts.nunito(
                     fontSize: 15,
                     color: AppColors.textPrimary,
@@ -230,7 +236,22 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your new password';
+                      return 'New password is required';
+                    }
+                    if (value.length < 8) {
+                      return 'Password must be at least 8 characters';
+                    }
+                    if (value.length > 20) {
+                      return 'Password must not exceed 20 characters';
+                    }
+                    if (value.contains(' ')) {
+                      return 'Password must not contain spaces';
+                    }
+                    if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)').hasMatch(value)) {
+                      return 'Password must contain uppercase, lowercase and number';
+                    }
+                    if (value == _currentPasswordController.text) {
+                      return 'New password must be different from current password';
                     }
                     return null;
                   },
@@ -252,6 +273,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 TextFormField(
                   controller: _confirmNewPasswordController,
                   obscureText: !_isConfirmNewPasswordVisible,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   style: GoogleFonts.nunito(
                     fontSize: 15,
                     color: AppColors.textPrimary,
@@ -259,10 +281,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Please confirm your new password';
+                      return 'Confirm password is required';
                     }
                     if (value != _newPasswordController.text) {
-                      return 'Passwords do not match';
+                      return 'New password and confirm password do not match';
                     }
                     return null;
                   },
