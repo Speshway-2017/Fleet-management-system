@@ -13,6 +13,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { managerApi } from "../api/managerApi";
 import { getSocket } from "@/api/socket";
+import { validateSearchQuery } from "@/validations/common.schema.js";
 
 const CITY_COORDINATES = {
   mumbai: [19.0760, 72.8777],
@@ -201,6 +202,7 @@ export default function VehicleDetailsPage() {
   const [maintenances, setMaintenances] = useState([]);
   const [maintenanceLoading, setMaintenanceLoading] = useState(false);
   const [maintenanceSearch, setMaintenanceSearch] = useState("");
+  const [maintenanceSearchError, setMaintenanceSearchError] = useState("");
   const [maintenancePage, setMaintenancePage] = useState(1);
   const [selectedMaintenance, setSelectedMaintenance] = useState(null);
 
@@ -866,18 +868,30 @@ export default function VehicleDetailsPage() {
             
             {/* Search filter */}
             <div className="relative max-w-xs w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
-              <input
-                type="text"
-                maxLength={20}
-                placeholder="Search by service type..."
-                value={maintenanceSearch}
-                onChange={(e) => {
-                  setMaintenanceSearch(e.target.value);
-                  setMaintenancePage(1);
-                }}
-                className="w-full pl-9 pr-4 py-1.5 border border-[#E7EAF0] rounded-lg text-xs focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
-              />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+                <input
+                  type="text"
+                  maxLength={50}
+                  placeholder="Search by service type..."
+                  value={maintenanceSearch}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setMaintenanceSearch(val);
+                    const err = validateSearchQuery(val, 50);
+                    setMaintenanceSearchError(err);
+                    setMaintenancePage(1);
+                  }}
+                  className={`w-full pl-9 pr-4 py-1.5 border rounded-lg text-xs focus:outline-none bg-white text-[#1E293B] transition-colors ${
+                    maintenanceSearchError
+                      ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                      : "border-[#E7EAF0] focus:border-[#A14000]"
+                  }`}
+                />
+              </div>
+              {maintenanceSearchError && (
+                <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{maintenanceSearchError}</p>
+              )}
             </div>
           </div>
 
@@ -888,7 +902,10 @@ export default function VehicleDetailsPage() {
             </div>
           ) : (() => {
             const filteredMaintenances = maintenances
-              .filter(m => m.serviceType.toLowerCase().includes(maintenanceSearch.toLowerCase()))
+              .filter(m => {
+                if (maintenanceSearchError) return false;
+                return m.serviceType.toLowerCase().includes(maintenanceSearch.toLowerCase());
+              })
               .sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate));
             
             const serviceItemsPerPage = 5;

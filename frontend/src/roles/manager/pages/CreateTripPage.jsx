@@ -35,7 +35,8 @@ import { managerApi } from "../api/managerApi";
 import { calculateDrivingRoute, calculateEtaFromDuration } from "../services/routingService";
 import { INDIAN_STATES, getCitiesForState, getStateForCity } from "@/constants/indianStates";
 import { cleanCityName } from "@/utils/locationFormatter";
-import { isSunday } from "@/validations/common.schema.js";
+import { isSunday, validateSearchQuery } from "@/validations/common.schema.js";
+import CustomDatePicker from "@/components/common/CustomDatePicker";
 
 const CITIES_SUGGESTIONS = [
   "Ahmedabad",
@@ -76,6 +77,8 @@ function SearchableSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const [searchError, setSearchError] = useState("");
+
   const sortedOptions = [...options].sort((a, b) => {
     const aName = String(typeof a === "object" ? a.name : a);
     const bName = String(typeof b === "object" ? b.name : b);
@@ -83,6 +86,7 @@ function SearchableSelect({
   });
 
   const filteredOptions = sortedOptions.filter((opt) => {
+    if (searchError) return false;
     const optName = typeof opt === "object" ? opt.name : opt;
     return String(optName).toLowerCase().includes(searchTerm.toLowerCase());
   });
@@ -92,6 +96,7 @@ function SearchableSelect({
     onChange(valStr);
     setIsOpen(false);
     setSearchTerm("");
+    setSearchError("");
   };
 
   return (
@@ -124,12 +129,25 @@ function SearchableSelect({
               <input
                 type="text"
                 autoFocus
+                maxLength={50}
                 placeholder={`Search ${label.toLowerCase()}...`}
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-[#E7EAF0] rounded-lg text-xs focus:outline-none focus:border-[#A14000] text-[#1E293B] font-poppins"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSearchTerm(val);
+                  const err = validateSearchQuery(val, 50);
+                  setSearchError(err);
+                }}
+                className={`w-full pl-8 pr-3 py-1.5 bg-gray-50 border rounded-lg text-xs focus:outline-none text-[#1E293B] font-poppins transition-colors ${
+                  searchError
+                    ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                    : "border-[#E7EAF0] focus:border-[#A14000]"
+                }`}
               />
             </div>
+            {searchError && (
+              <p className="text-[11px] text-red-500 mt-1 font-medium font-poppins">{searchError}</p>
+            )}
           </div>
 
           <div className="max-h-48 overflow-y-auto custom-scrollbar py-1">
@@ -419,6 +437,8 @@ export default function CreateTripPage() {
       if (!str) err = "Company Name is required.";
       else if (str.length < 2) err = "Company Name must be at least 2 characters.";
       else if (str.length > 60) err = "Company Name must not exceed 60 characters.";
+      else if (/\d/.test(str)) err = "Company Name must contain letters only (numbers are not allowed).";
+      else if (!/^[a-zA-Z\s.'&,\-]+$/.test(str)) err = "Company Name contains invalid characters.";
     } else if (field === 'contactPerson') {
       if (!str) err = "Contact Person is required.";
       else if (str.length < 2) err = "Contact Person must be at least 2 characters.";
@@ -434,6 +454,13 @@ export default function CreateTripPage() {
       if (!str) err = "Street Address is required.";
       else if (str.length < 5) err = "Street Address must be at least 5 characters.";
       else if (str.length > 100) err = "Street Address must not exceed 100 characters.";
+    } else if (field === 'area') {
+      if (str) {
+        if (str.length < 2) err = "Area / Locality must be at least 2 characters.";
+        else if (str.length > 50) err = "Area / Locality must not exceed 50 characters.";
+        else if (!/^[a-zA-Z0-9\s,.'&/\-]+$/.test(str)) err = "Area / Locality contains invalid characters.";
+        else if (/(.)\1{3,}/i.test(str)) err = "Repeated characters are not allowed.";
+      }
     } else if (field === 'city') {
       if (!str) err = "City is required.";
       else if (str.length < 2) err = "City must be at least 2 characters.";
@@ -894,6 +921,7 @@ export default function CreateTripPage() {
       contactPerson: validateAddressField('pickup', 'contactPerson', pickupAddress.contactPerson),
       mobile: validateAddressField('pickup', 'mobile', pickupAddress.mobile),
       streetAddress: validateAddressField('pickup', 'streetAddress', pickupAddress.streetAddress),
+      area: validateAddressField('pickup', 'area', pickupAddress.area),
       city: validateAddressField('pickup', 'city', pickupAddress.city),
       state: validateAddressField('pickup', 'state', pickupAddress.state),
       pincode: validateAddressField('pickup', 'pincode', pickupAddress.pincode),
@@ -906,6 +934,7 @@ export default function CreateTripPage() {
       contactPerson: validateAddressField('delivery', 'contactPerson', deliveryAddress.contactPerson),
       mobile: validateAddressField('delivery', 'mobile', deliveryAddress.mobile),
       streetAddress: validateAddressField('delivery', 'streetAddress', deliveryAddress.streetAddress),
+      area: validateAddressField('delivery', 'area', deliveryAddress.area),
       city: validateAddressField('delivery', 'city', deliveryAddress.city),
       state: validateAddressField('delivery', 'state', deliveryAddress.state),
       pincode: validateAddressField('delivery', 'pincode', deliveryAddress.pincode),
@@ -1189,24 +1218,16 @@ export default function CreateTripPage() {
                   <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
                 )}
               </div>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                <input
-                  type="datetime-local"
-                  value={departureTime}
-                  onChange={(e) => handleDepartureTimeChange(e.target.value)}
-                  onBlur={() => handleFieldBlur('departureTime', departureTime)}
-                  min={getCurrentDateTimeString()}
-                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none font-medium font-poppins transition-colors ${
-                    fieldErrors.departureTime
-                      ? "border-red-400 bg-red-50/20 ring-1 ring-red-400/30 text-red-900 focus:border-red-500"
-                      : isSunday(departureTime)
-                      ? "border-red-300 text-red-600 font-bold focus:border-red-500"
-                      : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                  }`}
-                  required
-                />
-              </div>
+              <CustomDatePicker
+                type="datetime-local"
+                value={departureTime}
+                onChange={(e) => handleDepartureTimeChange(e.target.value)}
+                onBlur={() => handleFieldBlur('departureTime', departureTime)}
+                min={getCurrentDateTimeString()}
+                error={Boolean(fieldErrors.departureTime)}
+                placeholder="Select Departure Date & Time"
+                required
+              />
               {fieldErrors.departureTime && (
                 <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1 font-poppins">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -1225,24 +1246,16 @@ export default function CreateTripPage() {
                   <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
                 )}
               </div>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                <input
-                  type="datetime-local"
-                  value={eta}
-                  onChange={(e) => handleEtaChange(e.target.value)}
-                  onBlur={() => handleFieldBlur('eta', eta)}
-                  min={getMinEtaString(departureTime)}
-                  className={`w-full pl-9 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm focus:outline-none font-medium font-poppins transition-colors ${
-                    fieldErrors.eta
-                      ? "border-red-400 bg-red-50/20 ring-1 ring-red-400/30 text-red-900 focus:border-red-500"
-                      : isSunday(eta)
-                      ? "border-red-300 text-red-600 font-bold focus:border-red-500"
-                      : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                  }`}
-                  required
-                />
-              </div>
+              <CustomDatePicker
+                type="datetime-local"
+                value={eta}
+                onChange={(e) => handleEtaChange(e.target.value)}
+                onBlur={() => handleFieldBlur('eta', eta)}
+                min={getMinEtaString(departureTime)}
+                error={Boolean(fieldErrors.eta)}
+                placeholder="Select ETA Date & Time"
+                required
+              />
               {fieldErrors.eta && (
                 <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1 font-poppins">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -1795,11 +1808,19 @@ export default function CreateTripPage() {
                   </label>
                   <input
                     type="text"
+                    maxLength={50}
                     placeholder="Enter Area or Locality"
                     value={pickupAddress.area}
                     onChange={(e) => handleAddressChange('pickup', 'area', e.target.value)}
-                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins"
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins ${
+                      pickupErrors.area ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                    }`}
                   />
+                  {pickupErrors.area && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {pickupErrors.area}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1966,11 +1987,19 @@ export default function CreateTripPage() {
                   </label>
                   <input
                     type="text"
+                    maxLength={50}
                     placeholder="Enter Area or Locality"
                     value={deliveryAddress.area}
                     onChange={(e) => handleAddressChange('delivery', 'area', e.target.value)}
-                    className="w-full px-3.5 py-2.5 h-[42px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-medium text-[#1E293B] focus:outline-none focus:border-[#A14000] focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins"
+                    className={`w-full px-3.5 py-2.5 h-[42px] bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 transition-all font-poppins ${
+                      deliveryErrors.area ? "border-red-300 focus:border-red-500 text-[#1E293B]" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                    }`}
                   />
+                  {deliveryErrors.area && (
+                    <p className="text-red-500 text-[11px] font-medium mt-1 flex items-center gap-1 font-poppins">
+                      <span>•</span> {deliveryErrors.area}
+                    </p>
+                  )}
                 </div>
 
                 <div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, Upload, AlertCircle } from "lucide-react";
 import { DOCUMENT_CATEGORIES } from "./DocumentFilters";
+import CustomDatePicker from "@/components/common/CustomDatePicker";
 
 export default function UploadDocumentModal({
   isOpen,
@@ -213,12 +214,12 @@ export default function UploadDocumentModal({
               <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">
                 Issue Date *
               </label>
-              <input
-                type="date"
+              <CustomDatePicker
                 name="issueDate"
                 value={formData.issueDate}
                 onChange={handleInputChange}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
+                error={Boolean(errors.issueDate)}
+                placeholder="Select Issue Date"
               />
               {errors.issueDate && (
                 <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
@@ -232,12 +233,12 @@ export default function UploadDocumentModal({
               <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2">
                 Expiry Date
               </label>
-              <input
-                type="date"
+              <CustomDatePicker
                 name="expiryDate"
                 value={formData.expiryDate}
                 onChange={handleInputChange}
-                className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
+                error={Boolean(errors.expiryDate)}
+                placeholder="Select Expiry Date"
               />
               {errors.expiryDate && (
                 <div className="flex items-center gap-1 mt-1 text-xs text-red-600">

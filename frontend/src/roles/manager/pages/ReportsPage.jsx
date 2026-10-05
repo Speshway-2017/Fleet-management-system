@@ -6,6 +6,7 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import { formatEmployeeId } from "@/utils/employeeIdFormatter";
 import { useAuth } from "@/context/AuthContext";
 import { managerApi } from "../api/managerApi";
+import CustomDatePicker from "@/components/common/CustomDatePicker";
 
 export default function ReportsPage() {
   const { user } = useAuth();
@@ -814,20 +815,18 @@ export default function ReportsPage() {
               <div className="grid grid-cols-2 gap-4 max-w-md pt-2 animate-fade-in">
                 <div className="flex flex-col">
                   <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5">Start Date</label>
-                  <input
-                    type="date"
+                  <CustomDatePicker
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:border-[#A14000]"
+                    placeholder="Select Start Date"
                   />
                 </div>
                 <div className="flex flex-col">
                   <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5">End Date</label>
-                  <input
-                    type="date"
+                  <CustomDatePicker
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:border-[#A14000]"
+                    placeholder="Select End Date"
                   />
                 </div>
               </div>

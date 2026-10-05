@@ -40,6 +40,7 @@ import { managerApi } from "../api/managerApi";
 import { getSocket } from "@/api/socket";
 import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 import { validateSearchQuery } from "@/validations/common.schema.js";
+import CustomDatePicker from "@/components/common/CustomDatePicker";
 
 export default function VehicleManagement() {
   const navigate = useNavigate();
@@ -976,14 +977,12 @@ export default function VehicleManagement() {
                   {/* Date Added */}
                   <div>
                     <label className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider block mb-1">Date Added</label>
-                    <div className="relative">
-                      <input
-                        type="date"
-                        value={dateAddedFilter}
-                        onChange={(e) => setDateAddedFilter(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-white border border-[#E7EAF0] rounded-xl text-xs text-[#1E293B] focus:outline-none"
-                      />
-                    </div>
+                    <CustomDatePicker
+                      value={dateAddedFilter}
+                      onChange={(e) => setDateAddedFilter(e.target.value)}
+                      placeholder="Filter by Date"
+                      className="h-[36px] text-xs py-1.5"
+                    />
                   </div>
                 </div>
               )}
@@ -1585,33 +1584,30 @@ export default function VehicleManagement() {
                   {/* Insurance Expiry */}
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Insurance Expiry Date</label>
-                    <input
-                      type="date"
+                    <CustomDatePicker
                       value={formData.insuranceExpiry}
                       onChange={(e) => setFormData({ ...formData, insuranceExpiry: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
+                      placeholder="Select Insurance Expiry Date"
                     />
                   </div>
 
                   {/* Last Service */}
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Last Service Date</label>
-                    <input
-                      type="date"
+                    <CustomDatePicker
                       value={formData.lastService}
                       onChange={(e) => setFormData({ ...formData, lastService: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
+                      placeholder="Select Last Service Date"
                     />
                   </div>
 
                   {/* Next Service Due */}
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Next Service Due</label>
-                    <input
-                      type="date"
+                    <CustomDatePicker
                       value={formData.nextService}
                       onChange={(e) => setFormData({ ...formData, nextService: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
+                      placeholder="Select Next Service Due Date"
                     />
                   </div>
                 </div>

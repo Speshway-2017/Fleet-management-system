@@ -20,12 +20,21 @@ import { formatDisplayLocation } from "@/utils/locationFormatter";
 import { driverApi } from "@/api/driverApi";
 import { driverSchema, validateForm } from "@/validations";
 import { isSunday } from "@/validations/common.schema.js";
+import CustomDatePicker from "@/components/common/CustomDatePicker";
 
 // Format bytes to readable string
 const formatBytes = (bytes) => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+};
+
+const getFileIcon = (filename = "") => {
+  const ext = String(filename).split('.').pop()?.toLowerCase();
+  if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext)) {
+    return <Image className="w-5 h-5 text-blue-500" />;
+  }
+  return <FileText className="w-5 h-5 text-[#A14000]" />;
 };
 
 const ALLOWED_TYPES = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
@@ -542,19 +551,14 @@ export default function AddDriverPage() {
                   <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
                 )}
               </div>
-              <input
-                type="date"
+              <CustomDatePicker
+                name="dob"
                 required
                 value={formData.dob}
                 onChange={(e) => handleFieldChange("dob", e.target.value)}
                 onBlur={(e) => handleFieldBlur("dob", e.target.value)}
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
-                  errors.dob
-                    ? "border-[#EF4444] focus:border-[#EF4444]"
-                    : isSunday(formData.dob)
-                    ? "border-red-300 text-red-600 font-bold focus:border-red-500"
-                    : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                }`}
+                error={Boolean(errors.dob)}
+                placeholder="Select Date of Birth"
               />
               {errors.dob && (
                 <p className="text-xs text-[#EF4444] mt-1 font-semibold flex items-center gap-1 font-poppins">
@@ -703,19 +707,14 @@ export default function AddDriverPage() {
                   <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
                 )}
               </div>
-              <input
-                type="date"
+              <CustomDatePicker
+                name="licenseExpiry"
                 required
                 value={formData.licenseExpiry}
                 onChange={(e) => handleFieldChange("licenseExpiry", e.target.value)}
                 onBlur={(e) => handleFieldBlur("licenseExpiry", e.target.value)}
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
-                  errors.licenseExpiry
-                    ? "border-[#EF4444] focus:border-[#EF4444]"
-                    : isSunday(formData.licenseExpiry)
-                    ? "border-red-300 text-red-600 font-bold focus:border-red-500"
-                    : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                }`}
+                error={Boolean(errors.licenseExpiry)}
+                placeholder="Select License Expiry Date"
               />
               {errors.licenseExpiry && (
                 <p className="text-xs text-[#EF4444] mt-1 font-semibold flex items-center gap-1 font-poppins">
@@ -906,18 +905,13 @@ export default function AddDriverPage() {
                   <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
                 )}
               </div>
-              <input
-                type="date"
+              <CustomDatePicker
+                name="joiningDate"
                 value={formData.joiningDate}
                 onChange={(e) => handleFieldChange("joiningDate", e.target.value)}
                 onBlur={(e) => handleFieldBlur("joiningDate", e.target.value)}
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
-                  errors.joiningDate
-                    ? "border-[#EF4444] focus:border-[#EF4444]"
-                    : isSunday(formData.joiningDate)
-                    ? "border-red-300 text-red-600 font-bold focus:border-red-500"
-                    : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                }`}
+                error={Boolean(errors.joiningDate)}
+                placeholder="Select Joining Date"
               />
               {errors.joiningDate && (
                 <p className="text-xs text-[#EF4444] mt-1 font-semibold flex items-center gap-1 font-poppins">

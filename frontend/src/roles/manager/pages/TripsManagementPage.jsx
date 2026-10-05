@@ -40,6 +40,7 @@ import { getNormalizedTripCategory, calculateTripKPIs } from "@/utils/tripStatus
 import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 import { tripSchema, validateForm } from "@/validations";
 import { validateSearchQuery, isSunday } from "@/validations/common.schema.js";
+import CustomDatePicker from "@/components/common/CustomDatePicker";
 
 
 export default function TripsManagementPage() {
@@ -555,6 +556,16 @@ export default function TripsManagementPage() {
       }
     }
 
+    if (formData.pickupAddress?.companyName && /\d/.test(formData.pickupAddress.companyName)) {
+      toast.error("Pickup Company Name must contain letters only (numbers are not allowed).");
+      return;
+    }
+
+    if (formData.deliveryAddress?.companyName && /\d/.test(formData.deliveryAddress.companyName)) {
+      toast.error("Delivery Company Name must contain letters only (numbers are not allowed).");
+      return;
+    }
+
     if (formData.pickupAddress?.contactPerson && /\d/.test(formData.pickupAddress.contactPerson)) {
       toast.error("Pickup Contact Person must contain letters only.");
       return;
@@ -562,6 +573,16 @@ export default function TripsManagementPage() {
 
     if (formData.deliveryAddress?.contactPerson && /\d/.test(formData.deliveryAddress.contactPerson)) {
       toast.error("Delivery Contact Person must contain letters only.");
+      return;
+    }
+
+    if (formData.pickupAddress?.area && formData.pickupAddress.area.trim().length > 50) {
+      toast.error("Pickup Area / Locality must not exceed 50 characters.");
+      return;
+    }
+
+    if (formData.deliveryAddress?.area && formData.deliveryAddress.area.trim().length > 50) {
+      toast.error("Delivery Area / Locality must not exceed 50 characters.");
       return;
     }
 
@@ -1241,20 +1262,15 @@ export default function TripsManagementPage() {
                       <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
                     )}
                   </div>
-                  <input
+                  <CustomDatePicker
                     type="datetime-local"
                     required
                     value={formData.departureTime}
                     onChange={(e) => handleDepartureTimeChange(e.target.value)}
                     onBlur={handleBlur}
                     min={getCurrentDateTimeString()}
-                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none font-medium transition-colors ${
-                      departureError
-                        ? "border-red-500 focus:border-red-500"
-                        : isSunday(formData.departureTime)
-                        ? "border-red-300 text-red-600 font-bold focus:border-red-500"
-                        : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                    }`}
+                    error={Boolean(departureError)}
+                    placeholder="Select Departure Date & Time"
                   />
                   {departureError && (
                     <p className="text-red-500 text-xs mt-1 font-semibold">{departureError}</p>
@@ -1271,20 +1287,15 @@ export default function TripsManagementPage() {
                       <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
                     )}
                   </div>
-                  <input
+                  <CustomDatePicker
                     type="datetime-local"
                     required
                     value={formData.eta}
                     onChange={(e) => handleEtaChange(e.target.value)}
                     onBlur={handleBlur}
                     min={getMinEtaString(formData.departureTime)}
-                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none font-medium transition-colors ${
-                      etaError
-                        ? "border-red-500 focus:border-red-500"
-                        : isSunday(formData.eta)
-                        ? "border-red-300 text-red-600 font-bold focus:border-red-500"
-                        : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                    }`}
+                    error={Boolean(etaError)}
+                    placeholder="Select ETA Date & Time"
                   />
                   {etaError && (
                     <p className="text-red-500 text-xs mt-1 font-semibold">{etaError}</p>
@@ -1409,6 +1420,7 @@ export default function TripsManagementPage() {
                     <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Area / Locality</label>
                     <input
                       type="text"
+                      maxLength={50}
                       value={formData.pickupAddress?.area || ""}
                       onChange={(e) => setFormData({
                         ...formData,
@@ -1520,6 +1532,7 @@ export default function TripsManagementPage() {
                     <label className="block text-[10px] font-bold text-[#64748B] uppercase mb-1">Area / Locality</label>
                     <input
                       type="text"
+                      maxLength={50}
                       value={formData.deliveryAddress?.area || ""}
                       onChange={(e) => setFormData({
                         ...formData,

@@ -296,7 +296,10 @@ export const validateSearchQuery = (query, maxLength = 50) => {
   if (query.length > maxLength) {
     return `Search query must not exceed ${maxLength} characters.`;
   }
-  if (/(.)\1{4,}/i.test(query)) {
+  if (!/^[a-zA-Z0-9\s,.'/\-#@]+$/.test(query)) {
+    return 'Search query contains invalid characters.';
+  }
+  if (/(.)\1{3,}/i.test(query)) {
     return 'Repeated characters are not allowed in search.';
   }
   if (/^[^a-zA-Z0-9]+$/.test(trimmed)) {
