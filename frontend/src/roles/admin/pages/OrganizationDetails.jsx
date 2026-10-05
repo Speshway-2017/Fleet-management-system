@@ -127,6 +127,8 @@ export default function OrganizationDetails() {
         if (val) {
           if (/[^0-9]/.test(val)) {
             error = "Phone number must contain numbers only (letters are not allowed).";
+          } else if (!/^[1-9]/.test(val)) {
+            error = "Phone number must start with 1-9 (cannot start with 0).";
           } else if (val.length !== 10) {
             error = "Phone number must be exactly 10 digits.";
           }

@@ -26,8 +26,9 @@ export const updateTicketSchema = z.object({
   mechanicPhone: z
     .string()
     .trim()
-    .refine((val) => !val || /^\d{10}$/.test(val), { message: 'Phone number must be exactly 10 digits.' })
-    .refine((val) => !val || /^[6-9]/.test(val), { message: 'Phone number must start with 6, 7, 8, or 9.' })
+    .refine((val) => !val || /^\d+$/.test(val), { message: 'Phone number must contain numbers only.' })
+    .refine((val) => !val || /^[1-9]/.test(val), { message: 'Phone number must start with 1-9 (cannot start with 0).' })
+    .refine((val) => !val || val.length === 10, { message: 'Phone number must be exactly 10 digits.' })
     .optional(),
   mechanicLocation: z
     .string()

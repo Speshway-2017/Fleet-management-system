@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { emailSchema } from './common.schema.js';
+import { emailSchema, optionalPhoneSchema } from './common.schema.js';
 
 export const validateMessageContent = (val) => {
   if (!val || typeof val !== 'string') return 'Message is required';
@@ -46,15 +46,7 @@ export const contactRequestSchema = z.object({
     .max(30, 'Full name must be between 2 and 30 characters long')
     .refine((val) => !/\d/.test(val), { message: 'Numbers are not allowed in full name' }),
   email: emailSchema,
-  phone: z
-    .string()
-    .trim()
-    .refine((val) => !val || /^\d+$/.test(val), { message: 'Phone number must contain only numbers' })
-    .refine((val) => !val || (val.length >= 10 && val.length <= 15), {
-      message: 'Phone number must be between 10 and 15 digits long'
-    })
-    .optional()
-    .nullable(),
+  phone: optionalPhoneSchema,
   company: z
     .string()
     .trim()

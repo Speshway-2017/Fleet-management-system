@@ -27,18 +27,20 @@ export const optionalEmailSchema = z
   .optional()
   .nullable();
 
-// Phone Number: exact 10 numeric digits, no alphabets/symbols
+// Phone Number: exact 10 numeric digits, starting with 1-9, no letters/symbols/leading 0
 export const phoneSchema = z
   .string({ required_error: 'Phone number is required.' })
   .trim()
   .min(1, 'Phone number is required.')
   .refine((val) => /^\d+$/.test(val), { message: 'Phone number must contain numbers only.' })
+  .refine((val) => /^[1-9]/.test(val), { message: 'Phone number must start with 1-9 (cannot start with 0).' })
   .refine((val) => val.length === 10, { message: 'Phone number must be exactly 10 digits.' });
 
 export const optionalPhoneSchema = z
   .string()
   .trim()
   .refine((val) => !val || /^\d+$/.test(val), { message: 'Phone number must contain numbers only.' })
+  .refine((val) => !val || /^[1-9]/.test(val), { message: 'Phone number must start with 1-9 (cannot start with 0).' })
   .refine((val) => !val || val.length === 10, { message: 'Phone number must be exactly 10 digits.' })
   .optional()
   .nullable();
@@ -385,20 +387,20 @@ export const validateNumericRange = (value, fieldName = 'Value', min = 0, max = 
   return '';
 };
 
-// Universal Indian Mobile Phone Validator
+// Universal Mobile Phone Validator (10 digits starting with 1-9)
 export const validateIndianPhone = (value, required = true) => {
   const str = String(value ?? '').trim();
   if (!str) {
     return required ? 'Phone number is required.' : '';
   }
   if (!/^\d+$/.test(str)) {
-    return 'Phone number must contain digits only.';
+    return 'Phone number must contain numbers only (letters and symbols are not allowed).';
+  }
+  if (!/^[1-9]/.test(str)) {
+    return 'Phone number must start with 1-9 (cannot start with 0).';
   }
   if (str.length !== 10) {
     return 'Phone number must be exactly 10 digits.';
-  }
-  if (!/^[6-9]/.test(str)) {
-    return 'Phone number must start with 6, 7, 8, or 9.';
   }
   return '';
 };

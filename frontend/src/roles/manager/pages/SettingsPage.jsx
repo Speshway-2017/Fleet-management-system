@@ -89,7 +89,7 @@ export default function SettingsPage() {
         if (!value) return "Manager phone number is required.";
         const clean = value.replace(/^(\+91|91|0)/, "").replace(/\D/g, "");
         if (clean.length !== 10) return "Phone number must contain exactly 10 digits.";
-        if (!/^[6-9]/.test(clean)) return "Phone number must start with 6, 7, 8, or 9.";
+        if (!/^[1-9]/.test(clean)) return "Phone number must start with 1-9 (cannot start with 0).";
         if (/^(\d)\1{9}$/.test(clean)) return "Please enter a valid active phone number.";
         return "";
       }
@@ -97,7 +97,7 @@ export default function SettingsPage() {
         if (!value) return "WhatsApp support number is required.";
         const clean = value.replace(/^(\+91|91|0)/, "").replace(/\D/g, "");
         if (clean.length !== 10) return "WhatsApp number must contain exactly 10 digits.";
-        if (!/^[6-9]/.test(clean)) return "WhatsApp number must start with 6, 7, 8, or 9.";
+        if (!/^[1-9]/.test(clean)) return "WhatsApp number must start with 1-9 (cannot start with 0).";
         if (/^(\d)\1{9}$/.test(clean)) return "Please enter a valid active WhatsApp number.";
         return "";
       }
@@ -122,7 +122,7 @@ export default function SettingsPage() {
         if (!value) return "Emergency dispatch phone number is required.";
         const clean = value.replace(/^(\+91|91|0)/, "").replace(/\D/g, "");
         if (clean.length !== 10) return "Emergency phone number must contain exactly 10 digits.";
-        if (!/^[6-9]/.test(clean)) return "Emergency phone number must start with 6, 7, 8, or 9.";
+        if (!/^[1-9]/.test(clean)) return "Emergency phone number must start with 1-9 (cannot start with 0).";
         if (/^(\d)\1{9}$/.test(clean)) return "Please enter a valid active phone number.";
         return "";
       }

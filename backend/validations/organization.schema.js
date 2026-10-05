@@ -48,11 +48,7 @@ export const updateOrganizationSchema = z.object({
   industry: z.string().trim().max(20, 'Industry must not exceed 20 characters.')
     .refine((val) => !val || /^[a-zA-Z\s]+$/.test(val), { message: 'Industry must contain alphabets only.' })
     .optional(),
-  phone: z.string().trim()
-    .refine((val) => !val || /^\d+$/.test(val), { message: 'Phone number must contain numbers only.' })
-    .refine((val) => !val || val.length === 10, { message: 'Phone number must be exactly 10 digits.' })
-    .optional()
-    .nullable(),
+  phone: phoneSchema.optional().nullable(),
   address: streetAddressSchema,
   city: citySchema,
   state: stateSchema,
