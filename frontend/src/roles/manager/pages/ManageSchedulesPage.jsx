@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Clock, Trash2, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
 import { managerApi } from "../api/managerApi";
+import { validateScheduleField, validateAllScheduleFields } from "@/validations/report.schema.js";
 
 const INITIAL_SCHEDULES = [
   { id: 1, name: "Weekly Driver Log Sheets", type: "Operational", frequency: "Weekly", day: "Monday", time: "09:00", format: "CSV", recipients: "ops-team@fleet.com", status: "Active" },
@@ -34,6 +35,7 @@ export default function ManageSchedulesPage() {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null); // null = new, id = edit
+  const [formErrors, setFormErrors] = useState({});
   const [form, setForm] = useState(BLANK);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
@@ -65,47 +67,61 @@ export default function ManageSchedulesPage() {
 
   const openNew = () => {
     setEditing(null);
+    setFormErrors({});
     setForm(BLANK);
     setShowModal(true);
   };
 
   const openEdit = (s) => {
     setEditing(s.id);
+    setFormErrors({});
     setForm({ ...s });
     setShowModal(true);
   };
 
+  const handleFormChange = (fieldName, value) => {
+    setForm(prev => ({ ...prev, [fieldName]: value }));
+    if (formErrors[fieldName]) {
+      const err = validateScheduleField(fieldName, value);
+      setFormErrors(prev => ({ ...prev, [fieldName]: err }));
+    }
+  };
+
+  const handleFormBlur = (fieldName, value) => {
+    const err = validateScheduleField(fieldName, value);
+    setFormErrors(prev => ({ ...prev, [fieldName]: err }));
+  };
+
   const handleSave = async () => {
-    if (!form.name.trim()) { toast.error("Schedule name is required"); return; }
-    if (!form.recipients.trim()) { toast.error("Recipients field is required"); return; }
+    const validationErrors = validateAllScheduleFields(form);
+    if (Object.keys(validationErrors).length > 0) {
+      setFormErrors(validationErrors);
+      const firstError = Object.values(validationErrors)[0];
+      toast.error(firstError || "Please fix validation errors before saving.");
+      return;
+    }
 
     try {
+      const payload = {
+        name: form.name.trim(),
+        type: form.type,
+        frequency: form.frequency,
+        day: form.day,
+        time: form.time,
+        format: form.format,
+        recipients: form.recipients.trim(),
+        status: form.status
+      };
+
       if (editing) {
-        await managerApi.updateReport(editing, {
-          name: form.name,
-          type: form.type,
-          frequency: form.frequency,
-          day: form.day,
-          time: form.time,
-          format: form.format,
-          recipients: form.recipients,
-          status: form.status
-        });
+        await managerApi.updateReport(editing, payload);
         toast.success("Schedule updated!");
       } else {
-        await managerApi.createReport({
-          name: form.name,
-          type: form.type,
-          frequency: form.frequency,
-          day: form.day,
-          time: form.time,
-          format: form.format,
-          recipients: form.recipients,
-          status: form.status
-        });
+        await managerApi.createReport(payload);
         toast.success("Schedule created!");
       }
       setShowModal(false);
+      setFormErrors({});
       fetchSchedules();
     } catch (error) {
       toast.error("Failed to save schedule");
@@ -293,14 +309,23 @@ export default function ManageSchedulesPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1.5">Schedule Name</label>
+                <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1.5">
+                  Schedule Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
+                  maxLength={60}
                   value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  onChange={(e) => handleFormChange('name', e.target.value)}
+                  onBlur={(e) => handleFormBlur('name', e.target.value)}
                   placeholder="e.g. Weekly Driver Log Sheets"
-                  className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] font-nunito"
+                  className={`w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none font-nunito transition-all ${
+                    formErrors.name ? 'border-red-500 bg-red-50/10 focus:ring-1 focus:ring-red-500' : 'border-[#E7EAF0] focus:border-[#A14000]'
+                  }`}
                 />
+                {formErrors.name && (
+                  <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {formErrors.name}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -360,14 +385,23 @@ export default function ManageSchedulesPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1.5">Recipients (email)</label>
+                <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1.5">
+                  Recipients (email) <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
+                  maxLength={255}
                   value={form.recipients}
-                  onChange={(e) => setForm({ ...form, recipients: e.target.value })}
-                  placeholder="e.g. team@company.com"
-                  className="w-full px-3 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] font-nunito"
+                  onChange={(e) => handleFormChange('recipients', e.target.value)}
+                  onBlur={(e) => handleFormBlur('recipients', e.target.value)}
+                  placeholder="e.g. team@company.com, ops@company.com"
+                  className={`w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none font-nunito transition-all ${
+                    formErrors.recipients ? 'border-red-500 bg-red-50/10 focus:ring-1 focus:ring-red-500' : 'border-[#E7EAF0] focus:border-[#A14000]'
+                  }`}
                 />
+                {formErrors.recipients && (
+                  <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {formErrors.recipients}</p>
+                )}
               </div>
             </div>
 

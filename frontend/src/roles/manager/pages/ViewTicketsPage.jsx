@@ -81,6 +81,7 @@ export default function ViewTicketsPage() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [updatingTicketId, setUpdatingTicketId] = useState(null);
   const [modalMode, setModalMode] = useState("view"); // "view" | "edit"
+  const [ticketFormErrors, setTicketFormErrors] = useState({});
   const [editingTicketData, setEditingTicketData] = useState({
     status: "Open",
     estimatedCost: 0,
@@ -89,18 +90,27 @@ export default function ViewTicketsPage() {
     mechanicName: "",
     mechanicPhone: "",
     mechanicLocation: "",
+    serviceBillNo: "",
+    serviceBillDate: new Date().toISOString().split('T')[0],
+    revisedDeliveryDateTime: "",
+    customerInformedOffline: false,
     categoryData: {
       assignedTechnicalTeam: "",
       delayReason: "",
       newEta: "",
       customerInformed: false,
       towVehicleRequired: false,
-      resolutionComment: ""
+      resolutionComment: "",
+      serviceBillNo: "",
+      serviceBillDate: "",
+      customerInformedOffline: false,
+      revisedDeliveryDateTime: ""
     }
   });
 
   const handleCloseModal = () => {
     setSelectedTicket(null);
+    setTicketFormErrors({});
     if (searchParams.get("ticketId") || searchParams.get("id")) {
       setSearchParams({}, { replace: true });
     }
@@ -137,6 +147,299 @@ export default function ViewTicketsPage() {
     return 'mechanic';
   };
 
+  // Field validation engine
+  const validateTicketField = (fieldName, value, currentData = editingTicketData, catKey = 'mechanic') => {
+    let error = "";
+    const val = typeof value === 'string' ? value.trim() : (value ?? '');
+
+    switch (fieldName) {
+      case 'status':
+        if (!val) {
+          error = "Ticket status is required.";
+        }
+        break;
+
+      case 'mechanicName':
+        if (currentData.status === 'Mechanic Assigned' && (!val || val.length === 0)) {
+          error = "Mechanic name is required when status is Mechanic Assigned.";
+        } else if (val && val.length > 0) {
+          if (val.length < 2) {
+            error = "Mechanic name must be at least 2 characters.";
+          } else if (val.length > 50) {
+            error = "Mechanic name cannot exceed 50 characters.";
+          } else if (/\d/.test(val)) {
+            error = "Mechanic name cannot contain numbers.";
+          } else if (!/^[a-zA-Z\s.'-]+$/.test(val)) {
+            error = "Mechanic name can only contain letters, spaces, and hyphens.";
+          } else if (/(.)\1{3,}/i.test(val)) {
+            error = "Mechanic name contains invalid repeated characters.";
+          }
+        }
+        break;
+
+      case 'mechanicPhone':
+        if (currentData.status === 'Mechanic Assigned' && (!val || String(val).length === 0)) {
+          error = "Mechanic phone number is required when status is Mechanic Assigned.";
+        } else if (val && String(val).length > 0) {
+          const sVal = String(val);
+          if (!/^\d+$/.test(sVal)) {
+            error = "Phone number must contain digits only.";
+          } else if (sVal.length !== 10) {
+            error = "Phone number must be exactly 10 digits.";
+          } else if (!/^[6-9]/.test(sVal)) {
+            error = "Phone number must start with 6, 7, 8, or 9.";
+          } else if (/^(\d)\1{9}$/.test(sVal)) {
+            error = "Please enter a valid active phone number.";
+          }
+        }
+        break;
+
+      case 'mechanicLocation':
+        if (val && val.length > 0) {
+          if (val.length < 2) {
+            error = "Location must be at least 2 characters.";
+          } else if (val.length > 100) {
+            error = "Garage / Workshop location cannot exceed 100 characters.";
+          } else if (!/[a-zA-Z]/.test(val)) {
+            error = "Location must contain letters or a recognizable place name.";
+          } else if (!/^[a-zA-Z0-9\s,.'/\-#&]+$/.test(val)) {
+            error = "Location contains invalid special characters.";
+          } else if (/(.)\1{3,}/i.test(val)) {
+            error = "Location contains invalid repeated characters.";
+          }
+        }
+        break;
+
+      case 'assignedTechnicalTeam':
+        if (val && val.length > 0) {
+          if (val.length < 2) {
+            error = "Team / Specialist name must be at least 2 characters.";
+          } else if (val.length > 60) {
+            error = "Team / Specialist name cannot exceed 60 characters.";
+          } else if (!/[a-zA-Z]/.test(val)) {
+            error = "Team / Specialist name must contain letters.";
+          } else if (!/^[a-zA-Z0-9\s,.'/\-#&]+$/.test(val)) {
+            error = "Team / Specialist name contains invalid characters.";
+          } else if (/(.)\1{3,}/i.test(val)) {
+            error = "Team / Specialist name contains invalid repeated characters.";
+          }
+        }
+        break;
+
+      case 'delayReason':
+        if (catKey === 'delay' && (!val || val.length === 0)) {
+          error = "Delay reason is required.";
+        } else if (val && val.length > 0) {
+          if (val.length < 3) {
+            error = "Delay reason must be at least 3 characters.";
+          } else if (val.length > 80) {
+            error = "Delay reason cannot exceed 80 characters.";
+          } else if (!/[a-zA-Z]/.test(val)) {
+            error = "Delay reason must contain valid text description.";
+          } else if (!/^[a-zA-Z0-9\s,.'/\-#&]+$/.test(val)) {
+            error = "Delay reason contains invalid characters.";
+          } else if (/(.)\1{3,}/i.test(val)) {
+            error = "Delay reason contains invalid repeated characters.";
+          }
+        }
+        break;
+
+      case 'newEta':
+        if (val && val.length > 0) {
+          if (val.length < 2) {
+            error = "Revised ETA must be at least 2 characters.";
+          } else if (val.length > 60) {
+            error = "Revised ETA cannot exceed 60 characters.";
+          } else if (/(.)\1{3,}/i.test(val)) {
+            error = "Revised ETA contains invalid repeated characters.";
+          }
+        }
+        break;
+
+      case 'estimatedCost':
+        if (value !== '' && value !== undefined && value !== null) {
+          const num = Number(value);
+          if (isNaN(num)) {
+            error = "Estimated cost must be a valid number.";
+          } else if (num < 0) {
+            error = "Estimated cost cannot be negative.";
+          } else if (num > 1000000) {
+            error = "Estimated cost cannot exceed ₹10,00,000.";
+          }
+        }
+        break;
+
+      case 'actualCost':
+        if (value !== '' && value !== undefined && value !== null) {
+          const num = Number(value);
+          if (isNaN(num)) {
+            error = "Actual cost must be a valid number.";
+          } else if (num < 0) {
+            error = "Actual cost cannot be negative.";
+          } else if (num > 1000000) {
+            error = "Actual cost cannot exceed ₹10,00,000.";
+          }
+        }
+        break;
+
+      case 'serviceBillNo':
+        if (val && val.length > 0) {
+          if (val.length < 2) {
+            error = "Bill / Invoice number must be at least 2 characters.";
+          } else if (val.length > 30) {
+            error = "Service bill / invoice number cannot exceed 30 characters.";
+          } else if (!/^[a-zA-Z0-9\s\-_/]+$/.test(val)) {
+            error = "Bill / Invoice number contains invalid characters.";
+          } else if (/(.)\1{3,}/i.test(val)) {
+            error = "Bill / Invoice number contains invalid repeated characters.";
+          }
+        }
+        break;
+
+      case 'notes':
+      case 'resolutionComment':
+        if (val && val.length > 0) {
+          if (val.length > 500) {
+            error = fieldName === 'resolutionComment' ? "Resolution notes cannot exceed 500 characters." : "Breakdown & repair notes cannot exceed 500 characters.";
+          } else if (/(.)\1{4,}/i.test(val)) {
+            error = "Notes contain invalid repeated characters.";
+          }
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    return error;
+  };
+
+  const handleTicketFieldChange = (fieldName, value) => {
+    setEditingTicketData(prev => {
+      const updated = { ...prev };
+      if (['delayReason', 'assignedTechnicalTeam', 'newEta', 'customerInformed', 'towVehicleRequired', 'resolutionComment'].includes(fieldName)) {
+        updated.categoryData = {
+          ...updated.categoryData,
+          [fieldName]: value
+        };
+        if (fieldName === 'resolutionComment') {
+          updated.notes = value;
+        }
+        if (fieldName === 'newEta') {
+          updated.revisedDeliveryDateTime = value;
+        }
+      } else if (fieldName === 'notes') {
+        updated.notes = value;
+        if (updated.categoryData) {
+          updated.categoryData.resolutionComment = value;
+        }
+      } else if (fieldName === 'revisedDeliveryDateTime') {
+        updated.revisedDeliveryDateTime = value;
+        if (updated.categoryData) {
+          updated.categoryData.revisedDeliveryDateTime = value;
+          updated.categoryData.newEta = value;
+        }
+      } else if (fieldName === 'customerInformedOffline') {
+        updated.customerInformedOffline = value;
+        if (updated.categoryData) {
+          updated.categoryData.customerInformedOffline = value;
+          updated.categoryData.customerInformed = value;
+        }
+      } else if (fieldName === 'serviceBillNo') {
+        updated.serviceBillNo = value;
+        if (updated.categoryData) {
+          updated.categoryData.serviceBillNo = value;
+        }
+      } else if (fieldName === 'serviceBillDate') {
+        updated.serviceBillDate = value;
+        if (updated.categoryData) {
+          updated.categoryData.serviceBillDate = value;
+        }
+      } else {
+        updated[fieldName] = value;
+      }
+
+      if (['mechanicName', 'mechanicPhone', 'mechanicLocation'].includes(fieldName)) {
+        if (value && updated.status === 'Open') {
+          updated.status = 'Mechanic Assigned';
+        }
+      }
+      return updated;
+    });
+
+    const catKey = selectedTicket ? getCategoryKey(selectedTicket.issueType) : 'mechanic';
+    const err = validateTicketField(fieldName, value, { ...editingTicketData, [fieldName]: value }, catKey);
+    setTicketFormErrors(prev => ({
+      ...prev,
+      [fieldName]: err
+    }));
+  };
+
+  const handleTicketFieldBlur = (fieldName, value) => {
+    const catKey = selectedTicket ? getCategoryKey(selectedTicket.issueType) : 'mechanic';
+    const err = validateTicketField(fieldName, value, editingTicketData, catKey);
+    setTicketFormErrors(prev => ({
+      ...prev,
+      [fieldName]: err
+    }));
+  };
+
+  const validateAllTicketFields = (data, ticket) => {
+    const errors = {};
+    const catKey = ticket ? getCategoryKey(ticket.issueType) : 'mechanic';
+
+    // 1. Status
+    const statusErr = validateTicketField('status', data.status, data, catKey);
+    if (statusErr) errors.status = statusErr;
+
+    // 2. Category specific
+    if (catKey === 'fuel') {
+      const notesErr = validateTicketField('resolutionComment', data.categoryData?.resolutionComment || data.notes, data, catKey);
+      if (notesErr) errors.resolutionComment = notesErr;
+    } else if (catKey === 'technical') {
+      const teamErr = validateTicketField('assignedTechnicalTeam', data.categoryData?.assignedTechnicalTeam, data, catKey);
+      if (teamErr) errors.assignedTechnicalTeam = teamErr;
+      const notesErr = validateTicketField('resolutionComment', data.categoryData?.resolutionComment || data.notes, data, catKey);
+      if (notesErr) errors.resolutionComment = notesErr;
+    } else if (catKey === 'delay') {
+      const delayErr = validateTicketField('delayReason', data.categoryData?.delayReason, data, catKey);
+      if (delayErr) errors.delayReason = delayErr;
+      const etaErr = validateTicketField('newEta', data.categoryData?.newEta, data, catKey);
+      if (etaErr) errors.newEta = etaErr;
+      const notesErr = validateTicketField('notes', data.notes, data, catKey);
+      if (notesErr) errors.notes = notesErr;
+    } else if (catKey === 'accident') {
+      const mechNameErr = validateTicketField('mechanicName', data.mechanicName, data, catKey);
+      if (mechNameErr) errors.mechanicName = mechNameErr;
+      const mechPhoneErr = validateTicketField('mechanicPhone', data.mechanicPhone, data, catKey);
+      if (mechPhoneErr) errors.mechanicPhone = mechPhoneErr;
+      const locErr = validateTicketField('mechanicLocation', data.mechanicLocation, data, catKey);
+      if (locErr) errors.mechanicLocation = locErr;
+      const estCostErr = validateTicketField('estimatedCost', data.estimatedCost, data, catKey);
+      if (estCostErr) errors.estimatedCost = estCostErr;
+      const notesErr = validateTicketField('notes', data.notes, data, catKey);
+      if (notesErr) errors.notes = notesErr;
+    } else {
+      // mechanic / default
+      const mechNameErr = validateTicketField('mechanicName', data.mechanicName, data, catKey);
+      if (mechNameErr) errors.mechanicName = mechNameErr;
+      const mechPhoneErr = validateTicketField('mechanicPhone', data.mechanicPhone, data, catKey);
+      if (mechPhoneErr) errors.mechanicPhone = mechPhoneErr;
+      const locErr = validateTicketField('mechanicLocation', data.mechanicLocation, data, catKey);
+      if (locErr) errors.mechanicLocation = locErr;
+      const estCostErr = validateTicketField('estimatedCost', data.estimatedCost, data, catKey);
+      if (estCostErr) errors.estimatedCost = estCostErr;
+      const actualCostErr = validateTicketField('actualCost', data.actualCost, data, catKey);
+      if (actualCostErr) errors.actualCost = actualCostErr;
+      const billNoErr = validateTicketField('serviceBillNo', data.serviceBillNo, data, catKey);
+      if (billNoErr) errors.serviceBillNo = billNoErr;
+      const notesErr = validateTicketField('notes', data.notes, data, catKey);
+      if (notesErr) errors.notes = notesErr;
+    }
+
+    return errors;
+  };
+
   const renderDynamicCategoryForm = (ticket, data, setData) => {
     if (!ticket) return null;
     const catKey = getCategoryKey(ticket.issueType);
@@ -144,21 +447,23 @@ export default function ViewTicketsPage() {
     switch (catKey) {
       case 'fuel':
         return (
-          <div className="space-y-3 p-3.5 bg-amber-50/60 border border-amber-200/70 rounded-xl font-nunito">
+          <div className="space-y-3.5 p-4 bg-amber-50/60 border border-amber-200/70 rounded-2xl font-nunito">
             <div className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-amber-600" />
+              <DollarSign className="w-4 h-4 text-amber-600 shrink-0" />
               <span className="text-xs font-bold text-amber-900 font-poppins">Fuel / Payment Issue Resolution</span>
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
                 Quick Resolution Decision
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setData(prev => ({ ...prev, status: 'Resolved' }))}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${data.status === 'Resolved'
+                  onClick={() => {
+                    handleTicketFieldChange('status', 'Resolved');
+                  }}
+                  className={`h-10 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${data.status === 'Resolved'
                     ? 'bg-emerald-600 text-white shadow-sm'
                     : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
                     }`}
@@ -167,8 +472,10 @@ export default function ViewTicketsPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setData(prev => ({ ...prev, status: 'Rejected' }))}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${data.status === 'Rejected'
+                  onClick={() => {
+                    handleTicketFieldChange('status', 'Rejected');
+                  }}
+                  className={`h-10 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${data.status === 'Rejected'
                     ? 'bg-red-600 text-white shadow-sm'
                     : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
                     }`}
@@ -179,249 +486,301 @@ export default function ViewTicketsPage() {
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
                 Resolution Comment / Verification Details
               </label>
               <textarea
                 rows="3"
                 placeholder="e.g. Payment verified with fuel station vendor. Amount ₹2,500 credited successfully."
-                value={data.categoryData?.resolutionComment || data.notes}
-                onChange={(e) => setData(prev => ({
-                  ...prev,
-                  categoryData: { ...prev.categoryData, resolutionComment: e.target.value },
-                  notes: e.target.value
-                }))}
-                className="w-full p-2.5 bg-white border border-amber-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                value={data.categoryData?.resolutionComment || data.notes || ''}
+                onChange={(e) => handleTicketFieldChange('resolutionComment', e.target.value)}
+                onBlur={(e) => handleTicketFieldBlur('resolutionComment', e.target.value)}
+                className={`w-full px-3 py-2.5 bg-white border rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none transition-all resize-none ${
+                  ticketFormErrors.resolutionComment ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-amber-200 focus:border-amber-500'
+                }`}
               />
+              {ticketFormErrors.resolutionComment && (
+                <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.resolutionComment}</p>
+              )}
             </div>
           </div>
         );
 
       case 'technical':
         return (
-          <div className="space-y-3 p-3.5 bg-indigo-50/60 border border-indigo-200/70 rounded-xl font-nunito">
+          <div className="space-y-3.5 p-4 bg-indigo-50/60 border border-indigo-200/70 rounded-2xl font-nunito">
             <div className="flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-indigo-600" />
+              <Cpu className="w-4 h-4 text-indigo-600 shrink-0" />
               <span className="text-xs font-bold text-indigo-900 font-poppins">GPS / Technical Support Assignment</span>
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
                 Assigned Technical Team / IT Specialist
               </label>
               <input
                 type="text"
                 placeholder="e.g. IT Telematics Team / Rajesh Support"
                 value={data.categoryData?.assignedTechnicalTeam || ''}
-                onChange={(e) => setData(prev => ({
-                  ...prev,
-                  categoryData: { ...prev.categoryData, assignedTechnicalTeam: e.target.value }
-                }))}
-                className="w-full p-2 bg-white border border-indigo-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                onChange={(e) => handleTicketFieldChange('assignedTechnicalTeam', e.target.value)}
+                onBlur={(e) => handleTicketFieldBlur('assignedTechnicalTeam', e.target.value)}
+                className={`w-full h-10 px-3 py-2 bg-white border rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none transition-all ${
+                  ticketFormErrors.assignedTechnicalTeam ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-indigo-200 focus:border-indigo-500'
+                }`}
               />
+              {ticketFormErrors.assignedTechnicalTeam && (
+                <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.assignedTechnicalTeam}</p>
+              )}
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
                 Technical Resolution & Diagnosis Notes
               </label>
               <textarea
                 rows="3"
                 placeholder="e.g. GPS telemetry device reset remotely. App sync session restored."
-                value={data.categoryData?.resolutionComment || data.notes}
-                onChange={(e) => setData(prev => ({
-                  ...prev,
-                  categoryData: { ...prev.categoryData, resolutionComment: e.target.value },
-                  notes: e.target.value
-                }))}
-                className="w-full p-2.5 bg-white border border-indigo-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                value={data.categoryData?.resolutionComment || data.notes || ''}
+                onChange={(e) => handleTicketFieldChange('resolutionComment', e.target.value)}
+                onBlur={(e) => handleTicketFieldBlur('resolutionComment', e.target.value)}
+                className={`w-full px-3 py-2.5 bg-white border rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none transition-all resize-none ${
+                  ticketFormErrors.resolutionComment ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-indigo-200 focus:border-indigo-500'
+                }`}
               />
+              {ticketFormErrors.resolutionComment && (
+                <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.resolutionComment}</p>
+              )}
             </div>
           </div>
         );
 
       case 'delay':
         return (
-          <div className="space-y-3 p-3.5 bg-purple-50/60 border border-purple-200/70 rounded-xl font-nunito">
+          <div className="space-y-3.5 p-4 bg-purple-50/60 border border-purple-200/70 rounded-2xl font-nunito">
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-purple-600" />
+              <Clock className="w-4 h-4 text-purple-600 shrink-0" />
               <span className="text-xs font-bold text-purple-900 font-poppins">Delivery Delay & Route Management</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
-                  Delay Reason
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
+                  Delay Reason <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Traffic Congestion"
+                  placeholder="e.g. Heavy Traffic Toll Jam NH-65"
                   value={data.categoryData?.delayReason || ''}
-                  onChange={(e) => setData(prev => ({
-                    ...prev,
-                    categoryData: { ...prev.categoryData, delayReason: e.target.value }
-                  }))}
-                  className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                  onChange={(e) => handleTicketFieldChange('delayReason', e.target.value)}
+                  onBlur={(e) => handleTicketFieldBlur('delayReason', e.target.value)}
+                  className={`w-full h-10 px-3 py-2 bg-white border rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none transition-all ${
+                    ticketFormErrors.delayReason ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-purple-200 focus:border-purple-500'
+                  }`}
                 />
+                {ticketFormErrors.delayReason && (
+                  <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.delayReason}</p>
+                )}
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
                   New Revised ETA
                 </label>
                 <input
                   type="text"
                   placeholder="e.g. Today, 06:30 PM"
                   value={data.categoryData?.newEta || ''}
-                  onChange={(e) => setData(prev => ({
-                    ...prev,
-                    categoryData: { ...prev.categoryData, newEta: e.target.value }
-                  }))}
-                  className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                  onChange={(e) => handleTicketFieldChange('newEta', e.target.value)}
+                  onBlur={(e) => handleTicketFieldBlur('newEta', e.target.value)}
+                  className={`w-full h-10 px-3 py-2 bg-white border rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none transition-all ${
+                    ticketFormErrors.newEta ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-purple-200 focus:border-purple-500'
+                  }`}
                 />
+                {ticketFormErrors.newEta && (
+                  <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.newEta}</p>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex items-center gap-2 pt-0.5">
               <input
                 type="checkbox"
                 id="customerInformed"
                 checked={!!data.categoryData?.customerInformed}
-                onChange={(e) => setData(prev => ({
-                  ...prev,
-                  categoryData: { ...prev.categoryData, customerInformed: e.target.checked }
-                }))}
-                className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                onChange={(e) => handleTicketFieldChange('customerInformed', e.target.checked)}
+                className="w-4 h-4 text-purple-600 rounded cursor-pointer accent-purple-600"
               />
-              <label htmlFor="customerInformed" className="text-xs font-bold text-slate-700 cursor-pointer">
+              <label htmlFor="customerInformed" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
                 Customer Informed of Revised ETA
               </label>
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
                 Comments / Route Log
               </label>
               <textarea
                 rows="2"
                 placeholder="e.g. Customer notified by dispatcher of 2-hour toll congestion."
-                value={data.notes}
-                onChange={(e) => setData(prev => ({ ...prev, notes: e.target.value }))}
-                className="w-full p-2.5 bg-white border border-purple-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                value={data.notes || ''}
+                onChange={(e) => handleTicketFieldChange('notes', e.target.value)}
+                onBlur={(e) => handleTicketFieldBlur('notes', e.target.value)}
+                className={`w-full px-3 py-2.5 bg-white border rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none transition-all resize-none ${
+                  ticketFormErrors.notes ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-purple-200 focus:border-purple-500'
+                }`}
               />
+              {ticketFormErrors.notes && (
+                <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.notes}</p>
+              )}
             </div>
           </div>
         );
 
       case 'accident':
         return (
-          <div className="space-y-3 p-3.5 bg-red-50/60 border border-red-200/70 rounded-xl font-nunito">
+          <div className="space-y-3.5 p-4 bg-red-50/60 border border-red-200/70 rounded-2xl font-nunito">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-600" />
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
                 <span className="text-xs font-bold text-red-900 font-poppins">Emergency Accident & Towing Assistance</span>
               </div>
               <button
                 type="button"
-                onClick={() => setData(prev => ({ ...prev, status: 'Cancelled (Accident)' }))}
-                className="py-1 px-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold transition shadow-sm cursor-pointer"
+                onClick={() => handleTicketFieldChange('status', 'Cancelled (Accident)')}
+                className="h-7 px-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold transition shadow-sm cursor-pointer flex items-center justify-center"
               >
                 🚨 Severe Accident - Cancel Trip
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                placeholder="Mechanic / Rescue Contact Name"
-                value={data.mechanicName}
-                onChange={(e) => setData(prev => ({
-                  ...prev,
-                  mechanicName: e.target.value,
-                  status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
-                }))}
-                className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
-              />
-              <input
-                type="text"
-                placeholder="Phone Number"
-                value={data.mechanicPhone}
-                onChange={(e) => setData(prev => ({
-                  ...prev,
-                  mechanicPhone: e.target.value,
-                  status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
-                }))}
-                className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
+                  Mechanic / Rescue Contact Name {data.status === 'Mechanic Assigned' && <span className="text-red-500">*</span>}
+                </label>
+                <input
+                  type="text"
+                  placeholder="Mechanic / Rescue Contact Name"
+                  value={data.mechanicName || ''}
+                  onChange={(e) => handleTicketFieldChange('mechanicName', e.target.value)}
+                  onBlur={(e) => handleTicketFieldBlur('mechanicName', e.target.value)}
+                  className={`w-full h-10 px-3 py-2 bg-white border rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none transition-all ${
+                    ticketFormErrors.mechanicName ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-red-200 focus:border-red-500'
+                  }`}
+                />
+                {ticketFormErrors.mechanicName && (
+                  <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.mechanicName}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
+                  Phone Number {data.status === 'Mechanic Assigned' && <span className="text-red-500">*</span>}
+                </label>
+                <input
+                  type="tel"
+                  placeholder="10-digit mobile number"
+                  value={data.mechanicPhone || ''}
+                  onChange={(e) => {
+                    const onlyNums = e.target.value.replace(/\D/g, '');
+                    handleTicketFieldChange('mechanicPhone', onlyNums);
+                  }}
+                  onBlur={(e) => handleTicketFieldBlur('mechanicPhone', e.target.value)}
+                  className={`w-full h-10 px-3 py-2 bg-white border rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none transition-all ${
+                    ticketFormErrors.mechanicPhone ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-red-200 focus:border-red-500'
+                  }`}
+                />
+                {ticketFormErrors.mechanicPhone && (
+                  <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.mechanicPhone}</p>
+                )}
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
                   Tow Vehicle Required?
                 </label>
                 <select
                   value={data.categoryData?.towVehicleRequired ? 'Yes' : 'No'}
-                  onChange={(e) => setData(prev => ({
-                    ...prev,
-                    categoryData: { ...prev.categoryData, towVehicleRequired: e.target.value === 'Yes' }
-                  }))}
-                  className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
+                  onChange={(e) => handleTicketFieldChange('towVehicleRequired', e.target.value === 'Yes')}
+                  className="w-full h-10 px-3 py-2 bg-white border border-red-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-red-500 cursor-pointer"
                 >
                   <option value="No">No Towing Required</option>
                   <option value="Yes">Yes - Dispatch Tow Truck</option>
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
                   Workshop / Accident Yard Location
                 </label>
                 <input
                   type="text"
                   placeholder="e.g. Highway Police Station / City Bay Yard"
-                  value={data.mechanicLocation}
-                  onChange={(e) => setData(prev => ({ ...prev, mechanicLocation: e.target.value }))}
-                  className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                  value={data.mechanicLocation || ''}
+                  onChange={(e) => handleTicketFieldChange('mechanicLocation', e.target.value)}
+                  onBlur={(e) => handleTicketFieldBlur('mechanicLocation', e.target.value)}
+                  className={`w-full h-10 px-3 py-2 bg-white border rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none transition-all ${
+                    ticketFormErrors.mechanicLocation ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-red-200 focus:border-red-500'
+                  }`}
                 />
+                {ticketFormErrors.mechanicLocation && (
+                  <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.mechanicLocation}</p>
+                )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
                   New Estimated Delivery Date & Time
                 </label>
                 <CustomDatePicker
                   type="datetime-local"
                   value={data.revisedDeliveryDateTime || data.categoryData?.revisedDeliveryDateTime || ''}
-                  onChange={(e) => setData(prev => ({
-                    ...prev,
-                    revisedDeliveryDateTime: e.target.value,
-                    categoryData: { ...prev.categoryData, revisedDeliveryDateTime: e.target.value, newEta: e.target.value }
-                  }))}
+                  onChange={(e) => handleTicketFieldChange('revisedDeliveryDateTime', e.target.value)}
                   placeholder="Select Date & Time"
+                  className="!h-10 !text-xs !py-2 !rounded-xl"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Est. Damage Cost (₹)</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
+                  Est. Damage Cost (₹)
+                </label>
                 <input
                   type="number"
-                  value={data.estimatedCost}
-                  onChange={(e) => setData(prev => ({ ...prev, estimatedCost: e.target.value }))}
+                  min="0"
+                  max="1000000"
+                  step="1"
                   placeholder="0"
-                  className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
+                  value={data.estimatedCost}
+                  onChange={(e) => handleTicketFieldChange('estimatedCost', e.target.value)}
+                  onBlur={(e) => handleTicketFieldBlur('estimatedCost', e.target.value)}
+                  className={`w-full h-10 px-3 py-2 bg-white border rounded-xl text-xs font-bold text-slate-800 focus:outline-none transition-all ${
+                    ticketFormErrors.estimatedCost ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-red-200 focus:border-red-500'
+                  }`}
                 />
+                {ticketFormErrors.estimatedCost && (
+                  <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.estimatedCost}</p>
+                )}
               </div>
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Accident Incident Notes</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
+                Accident Incident Notes
+              </label>
               <textarea
                 rows="2"
                 placeholder="Accident details, vehicle damage report, insurance claim notes..."
-                value={data.notes}
-                onChange={(e) => setData(prev => ({ ...prev, notes: e.target.value }))}
-                className="w-full p-2.5 bg-white border border-red-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                value={data.notes || ''}
+                onChange={(e) => handleTicketFieldChange('notes', e.target.value)}
+                onBlur={(e) => handleTicketFieldBlur('notes', e.target.value)}
+                className={`w-full px-3 py-2.5 bg-white border rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none transition-all resize-none ${
+                  ticketFormErrors.notes ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-red-200 focus:border-red-500'
+                }`}
               />
+              {ticketFormErrors.notes && (
+                <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.notes}</p>
+              )}
             </div>
           </div>
         );
@@ -429,148 +788,203 @@ export default function ViewTicketsPage() {
       case 'mechanic':
       default:
         return (
-          <div className="space-y-3.5 p-3.5 bg-blue-50/50 border border-blue-100 rounded-xl font-nunito">
+          <div className="space-y-4 p-4 bg-blue-50/50 border border-blue-200/70 rounded-2xl font-nunito">
             <div className="flex items-center gap-2">
-              <Wrench className="w-4 h-4 text-blue-600" />
+              <Wrench className="w-4 h-4 text-blue-600 shrink-0" />
               <span className="text-xs font-bold text-blue-900 font-poppins">Vehicle Maintenance & Mechanic Assignment</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Mechanic Name</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
+                  Mechanic Name {data.status === 'Mechanic Assigned' && <span className="text-red-500">*</span>}
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. Satya Mechanics"
-                  value={data.mechanicName}
-                  onChange={(e) => setData(prev => ({
-                    ...prev,
-                    mechanicName: e.target.value,
-                    status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
-                  }))}
-                  className="w-full p-2 bg-white border border-blue-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                  value={data.mechanicName || ''}
+                  onChange={(e) => handleTicketFieldChange('mechanicName', e.target.value)}
+                  onBlur={(e) => handleTicketFieldBlur('mechanicName', e.target.value)}
+                  className={`w-full h-10 px-3 py-2 bg-white border rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none transition-all ${
+                    ticketFormErrors.mechanicName ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-blue-200 focus:border-blue-500'
+                  }`}
                 />
+                {ticketFormErrors.mechanicName && (
+                  <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.mechanicName}</p>
+                )}
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Mechanic Phone</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
+                  Mechanic Phone {data.status === 'Mechanic Assigned' && <span className="text-red-500">*</span>}
+                </label>
                 <input
-                  type="text"
+                  type="tel"
                   placeholder="e.g. 9876543210"
-                  value={data.mechanicPhone}
-                  onChange={(e) => setData(prev => ({
-                    ...prev,
-                    mechanicPhone: e.target.value,
-                    status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
-                  }))}
-                  className="w-full p-2 bg-white border border-blue-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                  value={data.mechanicPhone || ''}
+                  onChange={(e) => {
+                    const onlyNums = e.target.value.replace(/\D/g, '');
+                    handleTicketFieldChange('mechanicPhone', onlyNums);
+                  }}
+                  onBlur={(e) => handleTicketFieldBlur('mechanicPhone', e.target.value)}
+                  className={`w-full h-10 px-3 py-2 bg-white border rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none transition-all ${
+                    ticketFormErrors.mechanicPhone ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-blue-200 focus:border-blue-500'
+                  }`}
                 />
+                {ticketFormErrors.mechanicPhone && (
+                  <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.mechanicPhone}</p>
+                )}
               </div>
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">Garage / Workshop Location</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
+                Garage / Workshop Location
+              </label>
               <input
                 type="text"
                 placeholder="e.g. Sri Durga Auto Service Bay, Bay 4"
-                value={data.mechanicLocation}
-                onChange={(e) => setData(prev => ({
-                  ...prev,
-                  mechanicLocation: e.target.value,
-                  status: prev.status === 'Open' ? 'Mechanic Assigned' : prev.status
-                }))}
-                className="w-full p-2 bg-white border border-blue-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none"
+                value={data.mechanicLocation || ''}
+                onChange={(e) => handleTicketFieldChange('mechanicLocation', e.target.value)}
+                onBlur={(e) => handleTicketFieldBlur('mechanicLocation', e.target.value)}
+                className={`w-full h-10 px-3 py-2 bg-white border rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none transition-all ${
+                  ticketFormErrors.mechanicLocation ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-blue-200 focus:border-blue-500'
+                }`}
               />
+              {ticketFormErrors.mechanicLocation && (
+                <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.mechanicLocation}</p>
+              )}
             </div>
 
-            <div className="p-3 bg-purple-50/80 border border-purple-200/80 rounded-xl space-y-2 font-nunito">
+            <div className="p-3.5 bg-purple-50/80 border border-purple-200/80 rounded-xl space-y-3 font-nunito">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-purple-600" />
+                <Clock className="w-4 h-4 text-purple-600 shrink-0" />
                 <span className="text-xs font-bold text-purple-900 font-poppins">Trip Reschedule & Customer Notification</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
                     New Estimated Delivery Date & Time
                   </label>
                   <CustomDatePicker
                     type="datetime-local"
                     value={data.revisedDeliveryDateTime || data.categoryData?.revisedDeliveryDateTime || ''}
-                    onChange={(e) => setData(prev => ({
-                      ...prev,
-                      revisedDeliveryDateTime: e.target.value,
-                      categoryData: { ...prev.categoryData, revisedDeliveryDateTime: e.target.value, newEta: e.target.value }
-                    }))}
+                    onChange={(e) => handleTicketFieldChange('revisedDeliveryDateTime', e.target.value)}
                     placeholder="Select Date & Time"
+                    className="!h-10 !text-xs !py-2 !rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Est. Repair Cost (₹)</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
+                    Est. Repair Cost (₹)
+                  </label>
                   <input
                     type="number"
-                    value={data.estimatedCost}
-                    onChange={(e) => setData(prev => ({ ...prev, estimatedCost: e.target.value }))}
+                    min="0"
+                    max="1000000"
+                    step="1"
                     placeholder="0"
-                    className="w-full p-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none"
+                    value={data.estimatedCost}
+                    onChange={(e) => handleTicketFieldChange('estimatedCost', e.target.value)}
+                    onBlur={(e) => handleTicketFieldBlur('estimatedCost', e.target.value)}
+                    className={`w-full h-10 px-3 py-2 bg-white border rounded-xl text-xs font-bold text-slate-800 focus:outline-none transition-all ${
+                      ticketFormErrors.estimatedCost ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-purple-200 focus:border-purple-500'
+                    }`}
                   />
+                  {ticketFormErrors.estimatedCost && (
+                    <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.estimatedCost}</p>
+                  )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex items-center gap-2 pt-0.5">
                 <input
                   type="checkbox"
                   id="customerInformedOfflineCheck"
                   checked={!!(data.customerInformedOffline || data.categoryData?.customerInformedOffline)}
-                  onChange={(e) => setData(prev => ({
-                    ...prev,
-                    customerInformedOffline: e.target.checked,
-                    categoryData: { ...prev.categoryData, customerInformedOffline: e.target.checked, customerInformed: e.target.checked }
-                  }))}
-                  className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                  onChange={(e) => handleTicketFieldChange('customerInformedOffline', e.target.checked)}
+                  className="w-4 h-4 text-purple-600 rounded cursor-pointer accent-purple-600"
                 />
-                <label htmlFor="customerInformedOfflineCheck" className="text-xs font-bold text-slate-700 cursor-pointer">
+                <label htmlFor="customerInformedOfflineCheck" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
                   Informed Customer Offline (Phone / Call) regarding revised delivery schedule ✓
                 </label>
               </div>
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Breakdown & Repair Notes</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
+                Breakdown & Repair Notes
+              </label>
               <textarea
-                value={data.notes}
-                onChange={(e) => setData(prev => ({ ...prev, notes: e.target.value }))}
+                value={data.notes || ''}
+                onChange={(e) => handleTicketFieldChange('notes', e.target.value)}
+                onBlur={(e) => handleTicketFieldBlur('notes', e.target.value)}
                 placeholder="Mechanic diagnosis notes, engine/tyre repair details, parts replaced..."
                 rows="2"
-                className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-medium text-[#1E293B] placeholder-gray-400 focus:outline-none"
-              ></textarea>
+                className={`w-full px-3 py-2.5 bg-white border rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none transition-all resize-none ${
+                  ticketFormErrors.notes ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-blue-200 focus:border-blue-500'
+                }`}
+              />
+              {ticketFormErrors.notes && (
+                <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.notes}</p>
+              )}
             </div>
 
-            <div className="pt-3 border-t border-blue-200/80 space-y-2 font-nunito">
+            <div className="pt-3.5 border-t border-blue-200/80 space-y-3 font-nunito">
               <div className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-emerald-600" />
+                <DollarSign className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span className="text-xs font-bold text-emerald-900 font-poppins">Service Completion Bill & Invoice Receipt</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-start">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
                     Service Bill / Invoice No.
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. INV-2026-0803-88"
+                    placeholder="e.g. INV-2026-0803"
                     value={data.serviceBillNo || ''}
-                    onChange={(e) => setData(prev => ({ ...prev, serviceBillNo: e.target.value }))}
-                    className="w-full p-2 bg-white border border-emerald-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none font-mono"
+                    onChange={(e) => handleTicketFieldChange('serviceBillNo', e.target.value)}
+                    onBlur={(e) => handleTicketFieldBlur('serviceBillNo', e.target.value)}
+                    className={`w-full h-10 px-3 py-2 bg-white border rounded-xl text-xs font-bold text-slate-800 focus:outline-none font-mono transition-all ${
+                      ticketFormErrors.serviceBillNo ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-emerald-200 focus:border-emerald-500'
+                    }`}
                   />
+                  {ticketFormErrors.serviceBillNo && (
+                    <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.serviceBillNo}</p>
+                  )}
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
                     Bill Receipt Date
                   </label>
                   <CustomDatePicker
                     value={data.serviceBillDate || new Date().toISOString().split('T')[0]}
-                    onChange={(e) => setData(prev => ({ ...prev, serviceBillDate: e.target.value }))}
+                    onChange={(e) => handleTicketFieldChange('serviceBillDate', e.target.value)}
                     placeholder="Select Bill Date"
+                    className="!h-10 !text-xs !py-2 !rounded-xl"
                   />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
+                    Actual Repair Cost (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1000000"
+                    step="1"
+                    placeholder="0"
+                    value={data.actualCost}
+                    onChange={(e) => handleTicketFieldChange('actualCost', e.target.value)}
+                    onBlur={(e) => handleTicketFieldBlur('actualCost', e.target.value)}
+                    className={`w-full h-10 px-3 py-2 bg-white border rounded-xl text-xs font-bold text-emerald-800 focus:outline-none transition-all ${
+                      ticketFormErrors.actualCost ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-emerald-200 focus:border-emerald-500'
+                    }`}
+                  />
+                  {ticketFormErrors.actualCost && (
+                    <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.actualCost}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -623,6 +1037,14 @@ export default function ViewTicketsPage() {
     e.preventDefault();
     if (!selectedTicket) return;
 
+    const validationErrors = validateAllTicketFields(editingTicketData, selectedTicket);
+    if (Object.keys(validationErrors).length > 0) {
+      setTicketFormErrors(validationErrors);
+      const firstErrorMessage = Object.values(validationErrors)[0];
+      toast.error(firstErrorMessage || "Please fix validation errors before updating ticket.");
+      return;
+    }
+
     try {
       setUpdatingTicketId(selectedTicket._id);
 
@@ -634,7 +1056,15 @@ export default function ViewTicketsPage() {
         mechanicName: editingTicketData.mechanicName,
         mechanicPhone: editingTicketData.mechanicPhone,
         mechanicLocation: editingTicketData.mechanicLocation,
-        categoryData: editingTicketData.categoryData
+        serviceBillNo: editingTicketData.serviceBillNo,
+        serviceBillDate: editingTicketData.serviceBillDate,
+        categoryData: {
+          ...editingTicketData.categoryData,
+          serviceBillNo: editingTicketData.serviceBillNo,
+          serviceBillDate: editingTicketData.serviceBillDate,
+          customerInformedOffline: editingTicketData.customerInformedOffline,
+          revisedDeliveryDateTime: editingTicketData.revisedDeliveryDateTime
+        }
       };
 
       if (String(selectedTicket._id).startsWith("mock-")) {
@@ -936,21 +1366,30 @@ export default function ViewTicketsPage() {
                               type="button"
                               onClick={() => {
                                 setSelectedTicket(t);
+                                setTicketFormErrors({});
                                 setEditingTicketData({
                                   status: t.status || "Open",
-                                  estimatedCost: t.estimatedCost || 0,
-                                  actualCost: t.actualCost || 0,
+                                  estimatedCost: t.estimatedCost !== undefined ? t.estimatedCost : 0,
+                                  actualCost: t.actualCost !== undefined ? t.actualCost : 0,
                                   notes: t.notes || "",
                                   mechanicName: t.assignedMechanic?.name || "",
                                   mechanicPhone: t.assignedMechanic?.phone || "",
                                   mechanicLocation: t.assignedMechanic?.location || "",
+                                  serviceBillNo: t.serviceBillNo || t.categoryData?.serviceBillNo || "",
+                                  serviceBillDate: t.serviceBillDate || t.categoryData?.serviceBillDate || (t.completionDate ? new Date(t.completionDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+                                  revisedDeliveryDateTime: t.revisedDeliveryDateTime || t.categoryData?.revisedDeliveryDateTime || "",
+                                  customerInformedOffline: t.customerInformedOffline || t.categoryData?.customerInformedOffline || false,
                                   categoryData: {
                                     assignedTechnicalTeam: t.categoryData?.assignedTechnicalTeam || "",
                                     delayReason: t.categoryData?.delayReason || "",
                                     newEta: t.categoryData?.newEta || "",
                                     customerInformed: t.categoryData?.customerInformed || false,
                                     towVehicleRequired: t.categoryData?.towVehicleRequired || false,
-                                    resolutionComment: t.categoryData?.resolutionComment || ""
+                                    resolutionComment: t.categoryData?.resolutionComment || "",
+                                    serviceBillNo: t.serviceBillNo || t.categoryData?.serviceBillNo || "",
+                                    serviceBillDate: t.serviceBillDate || t.categoryData?.serviceBillDate || "",
+                                    customerInformedOffline: t.customerInformedOffline || t.categoryData?.customerInformedOffline || false,
+                                    revisedDeliveryDateTime: t.revisedDeliveryDateTime || t.categoryData?.revisedDeliveryDateTime || ""
                                   }
                                 });
                                 setModalMode("edit");
@@ -1197,11 +1636,16 @@ export default function ViewTicketsPage() {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-poppins block mb-1">Ticket Status</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1.5">
+                    Ticket Status <span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={editingTicketData.status}
-                    onChange={(e) => setEditingTicketData(prev => ({ ...prev, status: e.target.value }))}
-                    className="w-full p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none"
+                    onChange={(e) => handleTicketFieldChange('status', e.target.value)}
+                    onBlur={(e) => handleTicketFieldBlur('status', e.target.value)}
+                    className={`w-full h-10 px-3 py-2 bg-white border rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none transition-all cursor-pointer ${
+                      ticketFormErrors.status ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500' : 'border-slate-200 focus:border-indigo-500'
+                    }`}
                   >
                     <option value="Open">Open</option>
                     <option value="Mechanic Assigned">Mechanic Assigned</option>
@@ -1215,6 +1659,9 @@ export default function ViewTicketsPage() {
                     <option value="Rejected">Rejected</option>
                     <option value="Cancelled (Accident)">Cancel Trip (Severe Accident 🚨)</option>
                   </select>
+                  {ticketFormErrors.status && (
+                    <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {ticketFormErrors.status}</p>
+                  )}
                 </div>
 
                 {/* DYNAMIC CATEGORY-BASED FORM SECTION */}

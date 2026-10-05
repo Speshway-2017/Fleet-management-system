@@ -7,6 +7,7 @@ import { formatEmployeeId } from "@/utils/employeeIdFormatter";
 import { useAuth } from "@/context/AuthContext";
 import { managerApi } from "../api/managerApi";
 import CustomDatePicker from "@/components/common/CustomDatePicker";
+import { validateScheduleField, validateAllScheduleFields } from "@/validations/report.schema.js";
 
 export default function ReportsPage() {
   const { user } = useAuth();
@@ -32,6 +33,7 @@ export default function ReportsPage() {
   const [selectedBranch, setSelectedBranch] = useState("All");
 
   // Create Schedule Form State
+  const [scheduleErrors, setScheduleErrors] = useState({});
   const [newSchedule, setNewSchedule] = useState({
     name: "",
     type: "Operational",
@@ -577,17 +579,33 @@ export default function ReportsPage() {
   const handleScheduleInputChange = (e) => {
     const { name, value } = e.target;
     setNewSchedule(prev => ({ ...prev, [name]: value }));
+    if (scheduleErrors[name]) {
+      const err = validateScheduleField(name, value);
+      setScheduleErrors(prev => ({ ...prev, [name]: err }));
+    }
+  };
+
+  const handleScheduleInputBlur = (e) => {
+    const { name, value } = e.target;
+    const err = validateScheduleField(name, value);
+    setScheduleErrors(prev => ({ ...prev, [name]: err }));
   };
 
   const handleCreateSchedule = async (e) => {
     e.preventDefault();
-    if (!newSchedule.name.trim() || !newSchedule.recipients.trim()) {
-      toast.error("Please fill in all required fields (Name and Recipients).");
+    const validationErrors = validateAllScheduleFields(newSchedule);
+    if (Object.keys(validationErrors).length > 0) {
+      setScheduleErrors(validationErrors);
+      const firstError = Object.values(validationErrors)[0];
+      toast.error(firstError || "Please resolve validation errors before submitting.");
       return;
     }
+
     try {
       await managerApi.createReport({
         ...newSchedule,
+        name: newSchedule.name.trim(),
+        recipients: newSchedule.recipients.trim(),
         status: "Active"
       });
       toast.success("Report schedule created successfully!");
@@ -600,6 +618,7 @@ export default function ReportsPage() {
         format: "PDF",
         recipients: ""
       });
+      setScheduleErrors({});
       loadData();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to create schedule.");
@@ -1315,16 +1334,24 @@ export default function ReportsPage() {
               
               <form onSubmit={handleCreateSchedule} className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Schedule Name</label>
+                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">
+                    Schedule Name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     name="name"
+                    maxLength={60}
                     value={newSchedule.name}
                     onChange={handleScheduleInputChange}
+                    onBlur={handleScheduleInputBlur}
                     placeholder="e.g. Weekly Fuel Summary"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
-                    required
+                    className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none bg-white text-[#1E293B] transition-all ${
+                      scheduleErrors.name ? 'border-red-500 bg-red-50/10 focus:ring-1 focus:ring-red-500' : 'border-gray-200 focus:border-[#A14000]'
+                    }`}
                   />
+                  {scheduleErrors.name && (
+                    <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {scheduleErrors.name}</p>
+                  )}
                 </div>
 
                 <div>
@@ -1402,16 +1429,24 @@ export default function ReportsPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Recipient Email(s)</label>
+                  <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">
+                    Recipient Email(s) <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     name="recipients"
+                    maxLength={255}
                     value={newSchedule.recipients}
                     onChange={handleScheduleInputChange}
+                    onBlur={handleScheduleInputBlur}
                     placeholder="manager@fleet.com, admin@fleet.com"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
-                    required
+                    className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none bg-white text-[#1E293B] transition-all ${
+                      scheduleErrors.recipients ? 'border-red-500 bg-red-50/10 focus:ring-1 focus:ring-red-500' : 'border-gray-200 focus:border-[#A14000]'
+                    }`}
                   />
+                  {scheduleErrors.recipients && (
+                    <p className="text-[10px] text-red-500 font-bold font-poppins mt-1 flex items-center gap-1">• {scheduleErrors.recipients}</p>
+                  )}
                 </div>
 
                 <button
