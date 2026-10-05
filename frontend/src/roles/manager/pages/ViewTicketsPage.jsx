@@ -24,6 +24,7 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
 import { validateSearchQuery } from "@/validations/common.schema.js";
+import CustomDatePicker from "@/components/common/CustomDatePicker";
 
 const resolveVehiclePlate = (t) => {
   if (!t) return "VEH-ASSIGNED";
@@ -389,7 +390,7 @@ export default function ViewTicketsPage() {
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
                   New Estimated Delivery Date & Time
                 </label>
-                <input
+                <CustomDatePicker
                   type="datetime-local"
                   value={data.revisedDeliveryDateTime || data.categoryData?.revisedDeliveryDateTime || ''}
                   onChange={(e) => setData(prev => ({
@@ -397,7 +398,7 @@ export default function ViewTicketsPage() {
                     revisedDeliveryDateTime: e.target.value,
                     categoryData: { ...prev.categoryData, revisedDeliveryDateTime: e.target.value, newEta: e.target.value }
                   }))}
-                  className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none"
+                  placeholder="Select Date & Time"
                 />
               </div>
               <div>
@@ -490,7 +491,7 @@ export default function ViewTicketsPage() {
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
                     New Estimated Delivery Date & Time
                   </label>
-                  <input
+                  <CustomDatePicker
                     type="datetime-local"
                     value={data.revisedDeliveryDateTime || data.categoryData?.revisedDeliveryDateTime || ''}
                     onChange={(e) => setData(prev => ({
@@ -498,7 +499,7 @@ export default function ViewTicketsPage() {
                       revisedDeliveryDateTime: e.target.value,
                       categoryData: { ...prev.categoryData, revisedDeliveryDateTime: e.target.value, newEta: e.target.value }
                     }))}
-                    className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none"
+                    placeholder="Select Date & Time"
                   />
                 </div>
                 <div>
@@ -565,11 +566,10 @@ export default function ViewTicketsPage() {
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-poppins block mb-1">
                     Bill Receipt Date
                   </label>
-                  <input
-                    type="date"
+                  <CustomDatePicker
                     value={data.serviceBillDate || new Date().toISOString().split('T')[0]}
                     onChange={(e) => setData(prev => ({ ...prev, serviceBillDate: e.target.value }))}
-                    className="w-full p-2 bg-white border border-emerald-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none"
+                    placeholder="Select Bill Date"
                   />
                 </div>
               </div>

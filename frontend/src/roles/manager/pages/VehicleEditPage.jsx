@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { vehicleApi } from "@/api/vehicleApi";
 import { INDIAN_STATES } from "@/constants/indianStates";
 import { isSunday } from "@/validations/common.schema.js";
+import CustomDatePicker from "@/components/common/CustomDatePicker";
 
 export default function VehicleEditPage() {
   const navigate = useNavigate();
@@ -239,37 +240,57 @@ export default function VehicleEditPage() {
       }
     } else if (name === "manufacturer") {
       if (strVal) {
-        if (strVal.length < 2) {
-          errorMsg = "Manufacturer must be at least 2 characters.";
-        } else if (strVal.length > 50) {
-          errorMsg = "Manufacturer must not exceed 50 characters.";
-        } else if (/\d/.test(strVal)) {
+        if (/\d/.test(strVal)) {
           errorMsg = "Manufacturer must contain letters only (numbers are not allowed).";
         } else if (!/^[a-zA-Z\s.'-]+$/.test(strVal)) {
           errorMsg = "Manufacturer contains invalid characters.";
         } else if (/(.)\1{3,}/i.test(strVal)) {
           errorMsg = "Repeated characters are not allowed.";
+        } else if (strVal.length < 2) {
+          errorMsg = "Manufacturer must be at least 2 characters.";
+        } else if (strVal.length > 50) {
+          errorMsg = "Manufacturer must not exceed 50 characters.";
         }
       }
     } else if (name === "model") {
-      if (strVal && strVal.length > 50) {
-        errorMsg = "Model must not exceed 50 characters.";
+      if (strVal) {
+        if (!/^[a-zA-Z0-9\s.'-]+$/.test(strVal)) {
+          errorMsg = "Model contains invalid characters.";
+        } else if (!/[a-zA-Z0-9]/.test(strVal)) {
+          errorMsg = "Model must contain alphanumeric characters.";
+        } else if (/(.)\1{3,}/i.test(strVal) || /([a-zA-Z0-9]{2,4})\1{2,}/i.test(strVal.replace(/[\s.'-]+/g, ''))) {
+          errorMsg = "Repeated characters are not allowed.";
+        } else if (strVal.length < 2) {
+          errorMsg = "Model must be at least 2 characters.";
+        } else if (strVal.length > 50) {
+          errorMsg = "Model must not exceed 50 characters.";
+        }
       }
     } else if (name === "plateNumber") {
       if (!strVal) {
         errorMsg = "Registration Plate is required.";
-      } else if (strVal.length < 4) {
-        errorMsg = "Plate Number must be at least 4 characters.";
-      } else if (strVal.length > 20) {
-        errorMsg = "Plate Number must not exceed 20 characters.";
       } else if (!/^[a-zA-Z0-9\s-]+$/.test(strVal)) {
-        errorMsg = "Plate Number must contain letters, numbers, hyphens or spaces only.";
+        errorMsg = "Registration Plate contains invalid characters.";
       } else if (/(.)\1{3,}/i.test(strVal) || /([a-zA-Z0-9]{2,4})\1{2,}/i.test(strVal.replace(/[\s-]+/g, ''))) {
         errorMsg = "Repeated characters are not allowed.";
+      } else if (strVal.length < 4) {
+        errorMsg = "Registration Plate must be at least 4 characters.";
+      } else if (strVal.length > 20) {
+        errorMsg = "Registration Plate must not exceed 20 characters.";
+      } else if (!/[a-zA-Z]/.test(strVal)) {
+        errorMsg = "Registration Plate must contain letters (e.g. state code).";
+      } else if (!/\d/.test(strVal)) {
+        errorMsg = "Registration Plate must contain numbers.";
       }
     } else if (name === "chassisNumber") {
-      if (strVal && strVal.length !== 17) {
-        errorMsg = "Chassis Number must be exactly 17 characters.";
+      if (strVal) {
+        if (!/^\d+$/.test(strVal)) {
+          errorMsg = "Chassis Number must contain numbers only (letters are not allowed).";
+        } else if (/(.)\1{4,}/i.test(strVal)) {
+          errorMsg = "Repeated characters are not allowed.";
+        } else if (strVal.length !== 17) {
+          errorMsg = "Chassis Number must be exactly 17 digits.";
+        }
       }
     } else if (name === "year") {
       if (strVal) {
@@ -283,28 +304,32 @@ export default function VehicleEditPage() {
       }
     } else if (name === "branch") {
       if (strVal) {
-        if (strVal.length < 2) {
-          errorMsg = "Branch must be at least 2 characters.";
-        } else if (strVal.length > 50) {
-          errorMsg = "Branch must not exceed 50 characters.";
-        } else if (/\d/.test(strVal)) {
+        if (/\d/.test(strVal)) {
           errorMsg = "Branch must contain letters only (numbers are not allowed).";
         } else if (!/^[a-zA-Z\s.'-]+$/.test(strVal)) {
           errorMsg = "Branch contains invalid characters.";
         } else if (/(.)\1{3,}/i.test(strVal) || /([a-zA-Z]{2,4})\1{2,}/i.test(strVal.replace(/[\s.'-]+/g, ''))) {
           errorMsg = "Repeated characters are not allowed.";
+        } else if (strVal.length < 2) {
+          errorMsg = "Branch must be at least 2 characters.";
+        } else if (strVal.length > 50) {
+          errorMsg = "Branch must not exceed 50 characters.";
         }
       }
     } else if (name === "registrationNumber") {
       if (strVal) {
-        if (strVal.length < 4) {
+        if (!/^[a-zA-Z0-9\s-]+$/.test(strVal)) {
+          errorMsg = "Registration Number contains invalid characters.";
+        } else if (/(.)\1{3,}/i.test(strVal) || /([a-zA-Z0-9]{2,4})\1{2,}/i.test(strVal.replace(/[\s-]+/g, ''))) {
+          errorMsg = "Repeated characters are not allowed.";
+        } else if (strVal.length < 4) {
           errorMsg = "Registration Number must be at least 4 characters.";
         } else if (strVal.length > 20) {
           errorMsg = "Registration Number must not exceed 20 characters.";
-        } else if (!/^[a-zA-Z0-9\s-]+$/.test(strVal)) {
-          errorMsg = "Registration Number must contain letters, numbers, hyphens or spaces only.";
-        } else if (/(.)\1{3,}/i.test(strVal) || /([a-zA-Z0-9]{2,4})\1{2,}/i.test(strVal.replace(/[\s-]+/g, ''))) {
-          errorMsg = "Repeated characters are not allowed.";
+        } else if (!/[a-zA-Z]/.test(strVal)) {
+          errorMsg = "Registration Number must contain letters (e.g. state code).";
+        } else if (!/\d/.test(strVal)) {
+          errorMsg = "Registration Number must contain numbers.";
         }
       }
     } else if (name === "engineCC") {
@@ -1095,19 +1120,13 @@ export default function VehicleEditPage() {
                   <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
                 )}
               </div>
-              <input
-                type="date"
+              <CustomDatePicker
                 name="insuranceExpiry"
                 value={formData.insuranceExpiry || ""}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
-                  errors.insuranceExpiry
-                    ? "border-red-500 focus:border-red-500"
-                    : isSunday(formData.insuranceExpiry)
-                    ? "border-red-300 text-red-600 font-bold focus:border-red-500"
-                    : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                }`}
+                error={Boolean(errors.insuranceExpiry)}
+                placeholder="Select Insurance Expiry"
               />
             </div>
 
@@ -1121,19 +1140,13 @@ export default function VehicleEditPage() {
                   <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
                 )}
               </div>
-              <input
-                type="date"
+              <CustomDatePicker
                 name="rcExpiry"
                 value={formData.rcExpiry || ""}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
-                  errors.rcExpiry
-                    ? "border-red-500 focus:border-red-500"
-                    : isSunday(formData.rcExpiry)
-                    ? "border-red-300 text-red-600 font-bold focus:border-red-500"
-                    : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                }`}
+                error={Boolean(errors.rcExpiry)}
+                placeholder="Select RC Expiry"
               />
             </div>
 
@@ -1147,19 +1160,13 @@ export default function VehicleEditPage() {
                   <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
                 )}
               </div>
-              <input
-                type="date"
+              <CustomDatePicker
                 name="pollutionExpiry"
                 value={formData.pollutionExpiry || ""}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
-                  errors.pollutionExpiry
-                    ? "border-red-500 focus:border-red-500"
-                    : isSunday(formData.pollutionExpiry)
-                    ? "border-red-300 text-red-600 font-bold focus:border-red-500"
-                    : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                }`}
+                error={Boolean(errors.pollutionExpiry)}
+                placeholder="Select PUC Expiry"
               />
             </div>
 
@@ -1173,19 +1180,13 @@ export default function VehicleEditPage() {
                   <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
                 )}
               </div>
-              <input
-                type="date"
+              <CustomDatePicker
                 name="permitExpiry"
                 value={formData.permitExpiry || ""}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
-                  errors.permitExpiry
-                    ? "border-red-500 focus:border-red-500"
-                    : isSunday(formData.permitExpiry)
-                    ? "border-red-300 text-red-600 font-bold focus:border-red-500"
-                    : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                }`}
+                error={Boolean(errors.permitExpiry)}
+                placeholder="Select Permit Expiry"
               />
             </div>
 
@@ -1199,19 +1200,13 @@ export default function VehicleEditPage() {
                   <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
                 )}
               </div>
-              <input
-                type="date"
+              <CustomDatePicker
                 name="fitnessExpiry"
                 value={formData.fitnessExpiry || ""}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
-                  errors.fitnessExpiry
-                    ? "border-red-500 focus:border-red-500"
-                    : isSunday(formData.fitnessExpiry)
-                    ? "border-red-300 text-red-600 font-bold focus:border-red-500"
-                    : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                }`}
+                error={Boolean(errors.fitnessExpiry)}
+                placeholder="Select Fitness Expiry"
               />
             </div>
 
@@ -1225,19 +1220,13 @@ export default function VehicleEditPage() {
                   <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
                 )}
               </div>
-              <input
-                type="date"
+              <CustomDatePicker
                 name="lastService"
                 value={formData.lastService || ""}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
-                  errors.lastService
-                    ? "border-red-500 focus:border-red-500"
-                    : isSunday(formData.lastService)
-                    ? "border-red-300 text-red-600 font-bold focus:border-red-500"
-                    : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                }`}
+                error={Boolean(errors.lastService)}
+                placeholder="Select Last Service Date"
               />
             </div>
 
@@ -1251,19 +1240,13 @@ export default function VehicleEditPage() {
                   <span className="text-[11px] font-bold text-red-500 font-poppins">● Sunday</span>
                 )}
               </div>
-              <input
-                type="date"
+              <CustomDatePicker
                 name="nextService"
                 value={formData.nextService || ""}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white transition-colors ${
-                  errors.nextService
-                    ? "border-red-500 focus:border-red-500"
-                    : isSunday(formData.nextService)
-                    ? "border-red-300 text-red-600 font-bold focus:border-red-500"
-                    : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                }`}
+                error={Boolean(errors.nextService)}
+                placeholder="Select Next Service Due Date"
               />
             </div>
           </div>

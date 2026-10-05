@@ -47,10 +47,17 @@ export const profileUpdateSchema = z.object({
 });
 
 export const managerProfileSchema = z.object({
-  name: personNameSchema,
+  name: z
+    .string({ required_error: 'Full name is required.' })
+    .trim()
+    .min(1, 'Full name is required.')
+    .min(2, 'Full name must be at least 2 characters.')
+    .max(50, 'Full name must not exceed 50 characters.')
+    .refine((val) => /^[a-zA-Z\s.'-]+$/.test(val), { message: 'Full name contains invalid characters.' })
+    .refine((val) => !/\d/.test(val), { message: 'Full name must contain letters only (numbers are not allowed).' }),
   email: emailSchema,
   phone: optionalPhoneSchema,
-  jobTitle: z.string().trim().max(50).optional(),
-  primaryHub: z.string().trim().max(50).optional()
+  jobTitle: z.string().trim().max(50).optional().nullable(),
+  primaryHub: z.string().trim().max(100).optional().nullable()
 });
 

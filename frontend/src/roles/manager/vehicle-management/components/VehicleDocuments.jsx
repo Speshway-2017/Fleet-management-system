@@ -14,6 +14,7 @@ import DocumentPreviewModal from "../../../../components/common/DocumentPreviewM
 import DeleteDocumentModal from "./DeleteDocumentModal";
 import DocumentFilters from "./DocumentFilters";
 import EmptyDocumentsState from "./EmptyDocumentsState";
+import { validateSearchQuery } from "@/validations/common.schema.js";
 
 export default function VehicleDocuments({ vehicleId }) {
   const [documents, setDocuments] = useState([]);
@@ -30,9 +31,16 @@ export default function VehicleDocuments({ vehicleId }) {
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [sortBy, setSortBy] = useState("uploadDate");
+
+  const handleSearchChange = (val) => {
+    setSearchTerm(val);
+    const err = validateSearchQuery(val, 50);
+    setSearchError(err);
+  };
 
   // Load documents on mount
   useEffect(() => {
@@ -55,6 +63,7 @@ export default function VehicleDocuments({ vehicleId }) {
   // Filter and sort documents
   const filteredDocuments = documents
     .filter(doc => {
+      if (searchError) return false;
       const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = !selectedCategory || doc.category === selectedCategory;
       const docStatus = doc.status || getDocumentStatus(doc.expiryDate);
@@ -195,7 +204,8 @@ export default function VehicleDocuments({ vehicleId }) {
           {/* Filters */}
           <DocumentFilters
             searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
+            onSearchChange={handleSearchChange}
+            searchError={searchError}
             selectedCategory={selectedCategory}
             onCategoryChange={setSelectedCategory}
             selectedStatus={selectedStatus}

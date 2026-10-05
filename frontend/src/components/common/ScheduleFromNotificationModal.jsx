@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
+import CustomDatePicker from "@/components/common/CustomDatePicker";
 
 export default function ScheduleFromNotificationModal({ prefilled, onClose, onScheduled }) {
   const [selectedDate, setSelectedDate] = useState("");
@@ -76,11 +77,10 @@ export default function ScheduleFromNotificationModal({ prefilled, onClose, onSc
           {/* Date */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-gray-700 block">Select Date *</label>
-            <input
-              type="date"
+            <CustomDatePicker
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-amber-700 transition-colors"
+              placeholder="Select Scheduled Date"
               required
             />
           </div>

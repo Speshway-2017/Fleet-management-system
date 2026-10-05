@@ -24,6 +24,7 @@ const SORT_OPTIONS = [
 export default function DocumentFilters({
   searchTerm,
   onSearchChange,
+  searchError,
   selectedCategory,
   onCategoryChange,
   selectedStatus,
@@ -35,15 +36,25 @@ export default function DocumentFilters({
     <div className="bg-white rounded-xl border border-[#E7EAF0] p-4 mb-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
-          <input
-            type="text"
-            placeholder="Search documents..."
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] bg-white text-[#1E293B]"
-          />
+        <div className="flex flex-col">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+            <input
+              type="text"
+              maxLength={50}
+              placeholder="Search documents..."
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm focus:outline-none bg-white text-[#1E293B] transition-colors ${
+                searchError
+                  ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  : "border-[#E7EAF0] focus:border-[#A14000]"
+              }`}
+            />
+          </div>
+          {searchError && (
+            <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{searchError}</p>
+          )}
         </div>
 
         {/* Category Filter */}

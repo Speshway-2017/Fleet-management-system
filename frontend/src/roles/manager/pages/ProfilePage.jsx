@@ -96,22 +96,22 @@ export default function ProfilePage() {
           />
         ) : (
           <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-[#A14000] to-amber-500 flex items-center justify-center text-white text-3xl font-black shadow-sm shrink-0 select-none">
-            {nameVal.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2)}
+            {nameVal ? nameVal.trim().split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase().substring(0, 2) : "FM"}
           </div>
         )}
 
         {/* Text Area */}
-        <div className="flex-1 text-center md:text-left space-y-3 z-10">
+        <div className="flex-1 min-w-0 text-center md:text-left space-y-3 z-10 w-full overflow-hidden">
           <div className="space-y-1">
             <div className="flex flex-col sm:flex-row items-center gap-2 justify-center md:justify-start">
-              <h2 className="font-poppins font-black text-2xl text-gray-900 leading-none">
+              <h2 className="font-poppins font-bold text-2xl text-gray-900 leading-tight break-words max-w-full">
                 {nameVal}
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide bg-orange-50 text-[#A14000] border border-orange-100 uppercase select-none">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide bg-orange-50 text-[#A14000] border border-orange-100 uppercase select-none shrink-0">
                 Active
               </span>
             </div>
-            <p className="text-sm font-semibold text-gray-500 font-poppins">
+            <p className="text-sm font-semibold text-gray-500 font-poppins break-words max-w-full">
               {titleVal}
             </p>
           </div>
