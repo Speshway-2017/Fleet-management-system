@@ -20,7 +20,7 @@ export default function UserProfileCard({
   settingsPath = "/manager/settings",
   supportPath = "/manager/notifications",
   showSettings = true,
-  showSupport = true,
+  showSupport = false,
   showStatusToggle = true,
   onLogout,
 }) {
