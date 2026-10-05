@@ -299,8 +299,10 @@ export default function ViewTicketsPage() {
       case 'notes':
       case 'resolutionComment':
         if (val && val.length > 0) {
-          if (val.length > 500) {
-            error = fieldName === 'resolutionComment' ? "Resolution notes cannot exceed 500 characters." : "Breakdown & repair notes cannot exceed 500 characters.";
+          if (val.length < 2) {
+            error = fieldName === 'resolutionComment' ? "Resolution notes must be at least 2 characters." : "Repair notes must be at least 2 characters.";
+          } else if (val.length > 100) {
+            error = fieldName === 'resolutionComment' ? "Resolution notes cannot exceed 100 characters." : "Repair notes cannot exceed 100 characters.";
           } else if (/(.)\1{4,}/i.test(val)) {
             error = "Notes contain invalid repeated characters.";
           }
