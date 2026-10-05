@@ -364,6 +364,7 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
           roleLabel="Fleet Manager"
           profilePath="/manager/profile"
           settingsPath="/manager/settings"
+          showSupport={false}
           onLogout={handleLogout}
         />
 

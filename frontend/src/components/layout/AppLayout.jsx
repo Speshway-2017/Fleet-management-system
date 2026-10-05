@@ -817,6 +817,7 @@ export default function AppLayout() {
                 profilePath={role === "admin" ? "/admin/settings/profile" : "/manager/profile"}
                 settingsPath={role === "admin" ? "/admin/settings" : "/manager/settings"}
                 supportPath={role === "admin" ? "/admin/notifications" : "/manager/notifications"}
+                showSupport={false}
                 onLogout={handleLogoutRequest}
               />
             </div>
