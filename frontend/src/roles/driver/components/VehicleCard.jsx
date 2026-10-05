@@ -24,8 +24,8 @@ export default function VehicleCard({ vehicle }) {
             <Truck className="w-6 h-6 sm:w-7 sm:h-7" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <h2 className="text-lg sm:text-xl font-bold font-poppins text-slate-900 whitespace-nowrap truncate" title={vehicle.registrationNumber || vehicle.vehicleNumber || "Unassigned"}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg sm:text-xl font-bold font-poppins text-slate-900 truncate min-w-0 max-w-full" title={vehicle.registrationNumber || vehicle.vehicleNumber || "Unassigned"}>
                 {vehicle.registrationNumber || vehicle.vehicleNumber || "Unassigned"}
               </h2>
               <span className="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-poppins uppercase whitespace-nowrap shrink-0">

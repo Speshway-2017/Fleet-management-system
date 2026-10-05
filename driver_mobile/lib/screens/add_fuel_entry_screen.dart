@@ -14,6 +14,8 @@ class AddFuelEntryScreen extends StatefulWidget {
 }
 
 class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
+  final _formKey = GlobalKey<FormState>();
+
   // Read-only / dynamic vehicle values
   String _assignedVehicle = 'Fetching vehicle...';
   String? _currentTripId;
@@ -408,20 +410,12 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
       _showWarning('Please select a Fuel Station.');
       return;
     }
-    if (_locationController.text.trim().isEmpty) {
-      _showWarning('Please enter Fuel Purchase Location (City).');
+    if (_formKey.currentState != null && !_formKey.currentState!.validate()) {
+      _showWarning('Please correct the errors in the form.');
       return;
     }
     if (_selectedFuelType == null) {
       _showWarning('Please select a Fuel Type.');
-      return;
-    }
-    if (_quantityController.text.trim().isEmpty) {
-      _showWarning('Please enter Quantity in Liters.');
-      return;
-    }
-    if (_costController.text.trim().isEmpty) {
-      _showWarning('Please enter Fuel Cost.');
       return;
     }
 
@@ -656,183 +650,219 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. ASSIGNED VEHICLE (READ-ONLY FIELD AT THE TOP)
-              _buildFieldLabel('Assigned Vehicle'),
-              const SizedBox(height: 6.0),
-              _buildReadOnlyFieldContainer(
-                value: _assignedVehicle,
-                icon: Icons.directions_bus_outlined,
-              ),
-
-              const SizedBox(height: 14.0),
-
-              // 2. CURRENT TRIP ID (READ-ONLY FIELD DIRECTLY BELOW)
-              _buildFieldLabel('Current Trip ID'),
-              const SizedBox(height: 6.0),
-              _buildReadOnlyFieldContainer(
-                value: _currentTripId ?? 'N/A',
-                icon: Icons.alt_route_rounded,
-              ),
-
-              const SizedBox(height: 20.0),
-
-              // 3. FUEL ENTRY FORM
-              Text(
-                'Fuel Entry Details',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: textPrimary,
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. ASSIGNED VEHICLE (READ-ONLY FIELD AT THE TOP)
+                _buildFieldLabel('Assigned Vehicle'),
+                const SizedBox(height: 6.0),
+                _buildReadOnlyFieldContainer(
+                  value: _assignedVehicle,
+                  icon: Icons.directions_bus_outlined,
                 ),
-              ),
-              const SizedBox(height: 14.0),
 
-              // Field: Fuel Station * (Dropdown Selector)
-              _buildRequiredLabel('Fuel Station'),
-              const SizedBox(height: 6.0),
-              _buildStyledDropdown(
-                value: _selectedStation,
-                hintText: 'Select Fuel Station',
-                items: _fuelStations,
-                prefixIcon: Icons.local_gas_station_outlined,
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedStation = val);
-                },
-              ),
+                const SizedBox(height: 14.0),
 
-              const SizedBox(height: 16.0),
+                // 2. CURRENT TRIP ID (READ-ONLY FIELD DIRECTLY BELOW)
+                _buildFieldLabel('Current Trip ID'),
+                const SizedBox(height: 6.0),
+                _buildReadOnlyFieldContainer(
+                  value: _currentTripId ?? 'N/A',
+                  icon: Icons.alt_route_rounded,
+                ),
 
-              // Field: Fuel Purchase Location (City) *
-              _buildRequiredLabel('Fuel Purchase Location (City)'),
-              const SizedBox(height: 6.0),
-              _buildStyledTextField(
-                controller: _locationController,
-                hintText: 'e.g. Vijayawada',
-                prefixIcon: Icons.location_on_rounded,
-              ),
+                const SizedBox(height: 20.0),
 
-              const SizedBox(height: 16.0),
-
-              // Field: Fuel Type * Dropdown & Quantity (Liters) * Row
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildRequiredLabel('Fuel Type'),
-                        const SizedBox(height: 6.0),
-                        _buildStyledDropdown(
-                          value: _selectedFuelType,
-                          hintText: 'Select Fuel Type',
-                          items: _fuelTypes,
-                          onChanged: (val) {
-                            if (val != null) setState(() => _selectedFuelType = val);
-                          },
-                        ),
-                      ],
-                    ),
+                // 3. FUEL ENTRY FORM
+                Text(
+                  'Fuel Entry Details',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: textPrimary,
                   ),
-                  const SizedBox(width: 12.0),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildRequiredLabel('Quantity (Liters)'),
-                        const SizedBox(height: 6.0),
-                        _buildStyledTextField(
-                          controller: _quantityController,
-                          hintText: 'e.g. 45.0',
-                          keyboardType: TextInputType.number,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 14.0),
 
-              const SizedBox(height: 16.0),
+                // Field: Fuel Station * (Dropdown Selector)
+                _buildRequiredLabel('Fuel Station'),
+                const SizedBox(height: 6.0),
+                _buildStyledDropdown(
+                  value: _selectedStation,
+                  hintText: 'Select Fuel Station',
+                  items: _fuelStations,
+                  prefixIcon: Icons.local_gas_station_outlined,
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedStation = val);
+                  },
+                ),
 
-              // Field: Fuel Cost (₹) * & Odometer Reading (KM) * Row
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildRequiredLabel('Fuel Cost (₹)'),
-                        const SizedBox(height: 6.0),
-                        _buildStyledTextField(
-                          controller: _costController,
-                          hintText: 'e.g. 4250.00',
-                          keyboardType: TextInputType.number,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12.0),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildRequiredLabel('Odometer Reading (KM)'),
-                        const SizedBox(height: 6.0),
-                        _buildStyledTextField(
-                          controller: _odometerController,
-                          hintText: 'e.g. 142850',
-                          keyboardType: TextInputType.number,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                const SizedBox(height: 16.0),
 
-              const SizedBox(height: 16.0),
+                // Field: Fuel Purchase Location (City) *
+                _buildRequiredLabel('Fuel Purchase Location (City)'),
+                const SizedBox(height: 6.0),
+                _buildStyledTextField(
+                  controller: _locationController,
+                  hintText: 'e.g. Vijayawada',
+                  prefixIcon: Icons.location_on_rounded,
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) return 'Fuel purchase location is required';
+                    if (val.trim().length < 2) return 'Location must be at least 2 characters';
+                    return null;
+                  },
+                ),
 
-              // Field: Date & Time * & Payment Mode * Row
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildRequiredLabel('Date & Time'),
-                        const SizedBox(height: 6.0),
-                        _buildStyledTextField(
-                          controller: _dateTimeController,
-                          hintText: 'e.g. Oct 24, 2023 • 10:30 AM',
-                          prefixIcon: Icons.calendar_today_outlined,
-                        ),
-                      ],
+                const SizedBox(height: 16.0),
+
+                // Field: Fuel Type * Dropdown & Quantity (Liters) * Row
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildRequiredLabel('Fuel Type'),
+                          const SizedBox(height: 6.0),
+                          _buildStyledDropdown(
+                            value: _selectedFuelType,
+                            hintText: 'Select Fuel Type',
+                            items: _fuelTypes,
+                            onChanged: (val) {
+                              if (val != null) setState(() => _selectedFuelType = val);
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12.0),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildRequiredLabel('Payment Mode'),
-                        const SizedBox(height: 6.0),
-                        _buildStyledDropdown(
-                          value: _selectedPaymentMode,
-                          hintText: 'Select Payment Mode',
-                          items: _paymentModes,
-                          onChanged: (val) {
-                            if (val != null) setState(() => _selectedPaymentMode = val);
-                          },
-                        ),
-                      ],
+                    const SizedBox(width: 12.0),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildRequiredLabel('Quantity (Liters)'),
+                          const SizedBox(height: 6.0),
+                          _buildStyledTextField(
+                            controller: _quantityController,
+                            hintText: 'e.g. 45.0',
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) return 'Quantity is required';
+                              final n = double.tryParse(val.trim());
+                              if (n == null || n <= 0) return 'Must be valid > 0';
+                              if (n > 2000) return 'Max 2000 L';
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+
+                const SizedBox(height: 16.0),
+
+                // Field: Fuel Cost (₹) * & Odometer Reading (KM) * Row
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildRequiredLabel('Fuel Cost (₹)'),
+                          const SizedBox(height: 6.0),
+                          _buildStyledTextField(
+                            controller: _costController,
+                            hintText: 'e.g. 4250.00',
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) return 'Fuel cost is required';
+                              final n = double.tryParse(val.trim());
+                              if (n == null || n <= 0) return 'Must be valid > 0';
+                              if (n > 500000) return 'Max ₹500,000';
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12.0),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildRequiredLabel('Odometer Reading (KM)'),
+                          const SizedBox(height: 6.0),
+                          _buildStyledTextField(
+                            controller: _odometerController,
+                            hintText: 'e.g. 142850',
+                            keyboardType: TextInputType.number,
+                            validator: (val) {
+                              if (val != null && val.trim().isNotEmpty) {
+                                final n = double.tryParse(val.trim());
+                                if (n == null || n < 0) return 'Enter valid KM';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16.0),
+
+                // Field: Date & Time * & Payment Mode * Row
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildRequiredLabel('Date & Time'),
+                          const SizedBox(height: 6.0),
+                          _buildStyledTextField(
+                            controller: _dateTimeController,
+                            hintText: 'e.g. Oct 24, 2023 • 10:30 AM',
+                            prefixIcon: Icons.calendar_today_outlined,
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) return 'Date & Time is required';
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12.0),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildRequiredLabel('Payment Mode'),
+                          const SizedBox(height: 6.0),
+                          _buildStyledDropdown(
+                            value: _selectedPaymentMode,
+                            hintText: 'Select Payment Mode',
+                            items: _paymentModes,
+                            onChanged: (val) {
+                              if (val != null) setState(() => _selectedPaymentMode = val);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
 
               const SizedBox(height: 16.0),
 
@@ -1224,8 +1254,9 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // Read-Only Field Builder (Assigned Vehicle & Current Trip ID)
   Widget _buildReadOnlyFieldContainer({
@@ -1287,57 +1318,70 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
     );
   }
 
-  // Refined Input TextField (16px large text font, subtle 8px border)
+  // Refined Input TextField with real-time inline error support
   Widget _buildStyledTextField({
     required TextEditingController controller,
     required String hintText,
     IconData? prefixIcon,
     TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
   }) {
     const borderGray = Color(0xFFE2E8F0);
     const textPrimary = Color(0xFF1F2937);
     const textSecondary = Color(0xFF6B7280);
 
-    return SizedBox(
-      height: 50,
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        style: GoogleFonts.poppins(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: textPrimary,
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      validator: validator,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      style: GoogleFonts.poppins(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: textPrimary,
+      ),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        isDense: true,
+        hintText: hintText,
+        hintStyle: GoogleFonts.poppins(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: const Color(0xFF9CA3AF),
         ),
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: Colors.white,
-          isDense: true,
-          hintText: hintText,
-          hintStyle: GoogleFonts.poppins(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: const Color(0xFF9CA3AF),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 14.0),
-          prefixIcon: prefixIcon != null
-              ? Icon(
-                  prefixIcon,
-                  color: textSecondary,
-                  size: 20,
-                )
-              : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            borderSide: const BorderSide(color: borderGray, width: 1.0),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            borderSide: const BorderSide(color: borderGray, width: 1.0),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            borderSide: const BorderSide(color: Color(0xFFFF7A1A), width: 1.5),
-          ),
+        errorStyle: GoogleFonts.nunito(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFFEF4444),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 14.0),
+        prefixIcon: prefixIcon != null
+            ? Icon(
+                prefixIcon,
+                color: textSecondary,
+                size: 20,
+              )
+            : null,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.0),
+          borderSide: const BorderSide(color: borderGray, width: 1.0),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.0),
+          borderSide: const BorderSide(color: borderGray, width: 1.0),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.0),
+          borderSide: const BorderSide(color: Color(0xFFFF7A1A), width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.0),
+          borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.0),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.0),
+          borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
         ),
       ),
     );

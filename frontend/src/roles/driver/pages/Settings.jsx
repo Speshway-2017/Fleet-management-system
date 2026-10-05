@@ -31,6 +31,184 @@ export default function DriverSettingsPage() {
   const [licenseNumber, setLicenseNumber] = useState(user?.licenseNumber || "");
   const [profileImage, setProfileImage] = useState("");
 
+  // Validation States
+  const [profileErrors, setProfileErrors] = useState({});
+  const [profileTouched, setProfileTouched] = useState({});
+  const [passwordErrors, setPasswordErrors] = useState({});
+  const [passwordTouched, setPasswordTouched] = useState({});
+
+  const validateProfileField = (field, value) => {
+    switch (field) {
+      case "name": {
+        const val = (value || "").trim();
+        if (!val) return "Full name is required.";
+        if (val.length < 2) return "Full name must be at least 2 characters.";
+        if (val.length > 50) return "Full name must not exceed 50 characters.";
+        if (/\d/.test(val)) return "Full name must contain letters only (numbers are not allowed).";
+        if (!/^[a-zA-Z\s.'-]+$/.test(val)) return "Full name contains invalid characters.";
+        if (/(.)\1{3,}/i.test(val)) return "Repeated characters are not allowed.";
+        return "";
+      }
+      case "phoneNumber": {
+        const val = (value || "").trim();
+        if (!val) return "Phone number is required.";
+        const clean = val.replace(/^(\+91|91|0)/, "").replace(/\D/g, "");
+        if (clean.length !== 10) return "Phone number must contain exactly 10 digits.";
+        if (!/^[6-9]/.test(clean)) return "Phone number must start with 6, 7, 8, or 9.";
+        if (/^(\d)\1{9}$/.test(clean)) return "Please enter a valid active phone number.";
+        return "";
+      }
+      case "email": {
+        const val = (value || "").trim();
+        if (!val) return "";
+        if (/\s/.test(val)) return "Email address must not contain spaces.";
+        if (val.length > 80) return "Email must not exceed 80 characters.";
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(val)) return "Please enter a valid email address.";
+        return "";
+      }
+      case "licenseNumber": {
+        const val = (value || "").trim();
+        if (!val) return "License number is required.";
+        if (val.length < 5) return "License number must be at least 5 characters.";
+        if (val.length > 20) return "License number must not exceed 20 characters.";
+        if (!/^[A-Z0-9\s\-/]+$/i.test(val)) return "License number contains invalid characters.";
+        if (!/[a-zA-Z]/.test(val) || !/[0-9]/.test(val)) return "License number must contain alphanumeric characters.";
+        if (/(.)\1{4,}/i.test(val)) return "Repeated characters are not allowed.";
+        return "";
+      }
+      default:
+        return "";
+    }
+  };
+
+  const validatePasswordField = (field, value, allValues = {}) => {
+    switch (field) {
+      case "currentPassword": {
+        const val = value || "";
+        if (!val) return "Current password is required.";
+        if (val.length > 20) return "Current password must not exceed 20 characters.";
+        return "";
+      }
+      case "newPassword": {
+        const val = value || "";
+        if (!val) return "New password is required.";
+        if (val.length < 8) return "Password must be at least 8 characters.";
+        if (val.length > 20) return "Password must not exceed 20 characters.";
+        if (/\s/.test(val)) return "Password must not contain spaces.";
+        if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(val)) {
+          return "Password must contain uppercase, lowercase and number.";
+        }
+        if (/(.)\1{3,}/i.test(val)) return "Repeated characters are not allowed.";
+        const cur = allValues.currentPassword !== undefined ? allValues.currentPassword : currentPassword;
+        if (cur && val === cur) {
+          return "New password must be different from current password.";
+        }
+        return "";
+      }
+      case "confirmPassword": {
+        const val = value || "";
+        if (!val) return "Confirm password is required.";
+        if (val.length > 20) return "Confirm password must not exceed 20 characters.";
+        const newPass = allValues.newPassword !== undefined ? allValues.newPassword : newPassword;
+        if (val !== newPass) {
+          return "New password and confirm password do not match.";
+        }
+        return "";
+      }
+      default:
+        return "";
+    }
+  };
+
+  const handleProfileChange = (field, value) => {
+    if (field === "name") setName(value);
+    if (field === "phoneNumber") setPhoneNumber(value);
+    if (field === "email") setEmail(value);
+    if (field === "licenseNumber") setLicenseNumber(value);
+
+    setProfileTouched(prev => ({ ...prev, [field]: true }));
+    const err = validateProfileField(field, value);
+    setProfileErrors(prev => ({ ...prev, [field]: err }));
+  };
+
+  const handleProfileBlur = (field, value) => {
+    setProfileTouched(prev => ({ ...prev, [field]: true }));
+    const err = validateProfileField(field, value);
+    setProfileErrors(prev => ({ ...prev, [field]: err }));
+  };
+
+  const validateAllProfile = () => {
+    const fields = { name, phoneNumber, email, licenseNumber };
+    const errs = {};
+    let isValid = true;
+    Object.keys(fields).forEach(key => {
+      const err = validateProfileField(key, fields[key]);
+      if (err) {
+        errs[key] = err;
+        isValid = false;
+      }
+    });
+    setProfileErrors(errs);
+    setProfileTouched({
+      name: true,
+      phoneNumber: true,
+      email: true,
+      licenseNumber: true
+    });
+    return isValid;
+  };
+
+  const handlePasswordChange = (field, value) => {
+    if (field === "currentPassword") setCurrentPassword(value);
+    if (field === "newPassword") {
+      setNewPassword(value);
+      if (confirmPassword) {
+        const confErr = validatePasswordField("confirmPassword", confirmPassword, { newPassword: value });
+        setPasswordErrors(prev => ({ ...prev, confirmPassword: confErr }));
+      }
+    }
+    if (field === "confirmPassword") setConfirmPassword(value);
+
+    setPasswordTouched(prev => ({ ...prev, [field]: true }));
+    const err = validatePasswordField(field, value, {
+      currentPassword: field === "currentPassword" ? value : currentPassword,
+      newPassword: field === "newPassword" ? value : newPassword,
+      confirmPassword: field === "confirmPassword" ? value : confirmPassword
+    });
+    setPasswordErrors(prev => ({ ...prev, [field]: err }));
+  };
+
+  const handlePasswordBlur = (field, value) => {
+    setPasswordTouched(prev => ({ ...prev, [field]: true }));
+    const err = validatePasswordField(field, value, {
+      currentPassword,
+      newPassword,
+      confirmPassword
+    });
+    setPasswordErrors(prev => ({ ...prev, [field]: err }));
+  };
+
+  const validateAllPassword = () => {
+    const fields = { currentPassword, newPassword, confirmPassword };
+    const errs = {};
+    let isValid = true;
+    Object.keys(fields).forEach(key => {
+      const err = validatePasswordField(key, fields[key], fields);
+      if (err) {
+        errs[key] = err;
+        isValid = false;
+      }
+    });
+    setPasswordErrors(errs);
+    setPasswordTouched({
+      currentPassword: true,
+      newPassword: true,
+      confirmPassword: true
+    });
+    return isValid;
+  };
+
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -79,19 +257,19 @@ export default function DriverSettingsPage() {
 
   const handleSaveProfileDetails = async (e) => {
     e.preventDefault();
-    if (!name || !phoneNumber) {
-      toast.error("Name and Phone number are required");
+    if (!validateAllProfile()) {
+      toast.error("Please fix all profile validation errors before saving.");
       return;
     }
     setSavingProfile(true);
     try {
       const res = await driverApi.updateProfile({
-        fullName: name,
-        name,
-        phone: phoneNumber,
-        phoneNumber,
-        email,
-        licenseNumber,
+        fullName: name.trim(),
+        name: name.trim(),
+        phone: phoneNumber.trim(),
+        phoneNumber: phoneNumber.trim(),
+        email: email.trim(),
+        licenseNumber: licenseNumber.trim(),
         profileImage
       });
       if (res?.success) {
@@ -108,12 +286,8 @@ export default function DriverSettingsPage() {
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    if (!currentPassword || !newPassword) {
-      toast.error("Please enter current and new password");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error("New password and confirm password do not match");
+    if (!validateAllPassword()) {
+      toast.error("Please fix all password errors before updating.");
       return;
     }
 
@@ -129,6 +303,8 @@ export default function DriverSettingsPage() {
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
+        setPasswordErrors({});
+        setPasswordTouched({});
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to change password");
@@ -172,14 +348,14 @@ export default function DriverSettingsPage() {
           <User className="w-5 h-5 text-[#A14000]" /> Profile Information
         </h2>
 
-        <form onSubmit={handleSaveProfileDetails} className="space-y-6 max-w-2xl">
+        <form onSubmit={handleSaveProfileDetails} className="space-y-6 max-w-2xl" noValidate>
           {/* Profile Picture Upload Avatar Box */}
           <div className="flex items-center gap-4 p-4 bg-slate-50/80 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800">
             <div className="relative w-16 h-16 rounded-full overflow-hidden bg-[#FFDBCC]/60 dark:bg-[#A14000]/30 border-2 border-[#A14000]/50 flex items-center justify-center text-[#A14000] dark:text-white font-bold font-poppins text-xl shrink-0 shadow-sm">
               {profileImage ? (
                 <img src={profileImage} alt={name} className="w-full h-full object-cover" />
               ) : (
-                name.charAt(0).toUpperCase()
+                (name || "D").charAt(0).toUpperCase()
               )}
             </div>
             <div>
@@ -194,27 +370,43 @@ export default function DriverSettingsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Driver Full Name</label>
+              <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Driver Full Name *</label>
               <input
                 type="text"
                 required
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => handleProfileChange("name", e.target.value)}
+                onBlur={(e) => handleProfileBlur("name", e.target.value)}
                 placeholder="Enter driver name"
-                className="mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-semibold focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
+                className={`mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-white text-xs font-semibold focus:outline-none transition-colors ${
+                  profileTouched.name && profileErrors.name
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    : "border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                }`}
               />
+              {profileTouched.name && profileErrors.name && (
+                <p className="text-red-500 text-[11px] font-semibold mt-1">{profileErrors.name}</p>
+              )}
             </div>
 
             <div>
-              <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Phone Number</label>
+              <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Phone Number *</label>
               <input
                 type="text"
                 required
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="Enter phone number"
-                className="mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-semibold focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
+                onChange={(e) => handleProfileChange("phoneNumber", e.target.value)}
+                onBlur={(e) => handleProfileBlur("phoneNumber", e.target.value)}
+                placeholder="Enter 10-digit phone number"
+                className={`mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-white text-xs font-semibold focus:outline-none transition-colors ${
+                  profileTouched.phoneNumber && profileErrors.phoneNumber
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    : "border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                }`}
               />
+              {profileTouched.phoneNumber && profileErrors.phoneNumber && (
+                <p className="text-red-500 text-[11px] font-semibold mt-1">{profileErrors.phoneNumber}</p>
+              )}
             </div>
 
             <div>
@@ -222,21 +414,38 @@ export default function DriverSettingsPage() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => handleProfileChange("email", e.target.value)}
+                onBlur={(e) => handleProfileBlur("email", e.target.value)}
                 placeholder="driver@fleet.com"
-                className="mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
+                className={`mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none transition-colors ${
+                  profileTouched.email && profileErrors.email
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    : "border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                }`}
               />
+              {profileTouched.email && profileErrors.email && (
+                <p className="text-red-500 text-[11px] font-semibold mt-1">{profileErrors.email}</p>
+              )}
             </div>
 
             <div>
-              <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">License Number</label>
+              <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">License Number *</label>
               <input
                 type="text"
+                required
                 value={licenseNumber}
-                onChange={(e) => setLicenseNumber(e.target.value)}
+                onChange={(e) => handleProfileChange("licenseNumber", e.target.value)}
+                onBlur={(e) => handleProfileBlur("licenseNumber", e.target.value)}
                 placeholder="DL-XXXX-XXXXXX"
-                className="mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none"
+                className={`mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none transition-colors ${
+                  profileTouched.licenseNumber && profileErrors.licenseNumber
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    : "border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                }`}
               />
+              {profileTouched.licenseNumber && profileErrors.licenseNumber && (
+                <p className="text-red-500 text-[11px] font-semibold mt-1">{profileErrors.licenseNumber}</p>
+              )}
             </div>
           </div>
 
@@ -257,68 +466,92 @@ export default function DriverSettingsPage() {
           <KeyRound className="w-5 h-5 text-[#A14000]" /> Change Security Password
         </h2>
 
-        <form onSubmit={handleChangePassword} className="space-y-4 max-w-lg">
+        <form onSubmit={handleChangePassword} className="space-y-4 max-w-lg" noValidate>
           <div>
-            <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Current Password</label>
+            <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Current Password *</label>
             <div className="relative mt-1">
               <input
                 type={showCurrentPassword ? "text" : "password"}
                 required
                 value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="block w-full px-3.5 py-2.5 pr-10 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none font-medium"
+                onChange={(e) => handlePasswordChange("currentPassword", e.target.value)}
+                onBlur={(e) => handlePasswordBlur("currentPassword", e.target.value)}
+                className={`block w-full px-3.5 py-2.5 pr-10 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-white text-xs font-medium focus:outline-none transition-colors ${
+                  passwordTouched.currentPassword && passwordErrors.currentPassword
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    : "border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                }`}
               />
               <button
                 type="button"
                 onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none p-1 transition"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none p-1 transition cursor-pointer"
                 title={showCurrentPassword ? "Hide password" : "Show password"}
               >
                 {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {passwordTouched.currentPassword && passwordErrors.currentPassword && (
+              <p className="text-red-500 text-[11px] font-semibold mt-1">{passwordErrors.currentPassword}</p>
+            )}
           </div>
 
           <div>
-            <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">New Password</label>
+            <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">New Password *</label>
             <div className="relative mt-1">
               <input
                 type={showNewPassword ? "text" : "password"}
                 required
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="block w-full px-3.5 py-2.5 pr-10 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none font-medium"
+                onChange={(e) => handlePasswordChange("newPassword", e.target.value)}
+                onBlur={(e) => handlePasswordBlur("newPassword", e.target.value)}
+                className={`block w-full px-3.5 py-2.5 pr-10 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-white text-xs font-medium focus:outline-none transition-colors ${
+                  passwordTouched.newPassword && passwordErrors.newPassword
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    : "border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                }`}
               />
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none p-1 transition"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none p-1 transition cursor-pointer"
                 title={showNewPassword ? "Hide password" : "Show password"}
               >
                 {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {passwordTouched.newPassword && passwordErrors.newPassword && (
+              <p className="text-red-500 text-[11px] font-semibold mt-1">{passwordErrors.newPassword}</p>
+            )}
           </div>
 
           <div>
-            <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Confirm New Password</label>
+            <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Confirm New Password *</label>
             <div className="relative mt-1">
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 required
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="block w-full px-3.5 py-2.5 pr-10 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] focus:outline-none font-medium"
+                onChange={(e) => handlePasswordChange("confirmPassword", e.target.value)}
+                onBlur={(e) => handlePasswordBlur("confirmPassword", e.target.value)}
+                className={`block w-full px-3.5 py-2.5 pr-10 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-white text-xs font-medium focus:outline-none transition-colors ${
+                  passwordTouched.confirmPassword && passwordErrors.confirmPassword
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    : "border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                }`}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none p-1 transition"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none p-1 transition cursor-pointer"
                 title={showConfirmPassword ? "Hide password" : "Show password"}
               >
                 {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {passwordTouched.confirmPassword && passwordErrors.confirmPassword && (
+              <p className="text-red-500 text-[11px] font-semibold mt-1">{passwordErrors.confirmPassword}</p>
+            )}
           </div>
 
           <button

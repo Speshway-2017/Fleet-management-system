@@ -579,10 +579,8 @@ export default function ReportsPage() {
   const handleScheduleInputChange = (e) => {
     const { name, value } = e.target;
     setNewSchedule(prev => ({ ...prev, [name]: value }));
-    if (scheduleErrors[name]) {
-      const err = validateScheduleField(name, value);
-      setScheduleErrors(prev => ({ ...prev, [name]: err }));
-    }
+    const err = validateScheduleField(name, value);
+    setScheduleErrors(prev => ({ ...prev, [name]: err }));
   };
 
   const handleScheduleInputBlur = (e) => {

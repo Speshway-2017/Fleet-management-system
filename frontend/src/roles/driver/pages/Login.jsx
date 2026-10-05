@@ -7,21 +7,69 @@ import { driverLoginSchema, validateForm } from "@/validations";
 export default function DriverLogin() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [identifierError, setIdentifierError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const validateField = (field, value) => {
+    const trimmed = String(value ?? "").trim();
+    if (field === "identifier") {
+      if (!trimmed) {
+        return "Please enter email, phone number, or employee ID.";
+      }
+      if (trimmed.length < 3) {
+        return "Identifier must be at least 3 characters.";
+      }
+      if (trimmed.length > 80) {
+        return "Identifier must not exceed 80 characters.";
+      }
+    } else if (field === "password") {
+      if (!value) {
+        return "Password is required.";
+      }
+    }
+    return "";
+  };
+
+  const handleIdentifierChange = (e) => {
+    const val = e.target.value;
+    setIdentifier(val);
+    const err = validateField("identifier", val);
+    setIdentifierError(err);
+  };
+
+  const handleIdentifierBlur = (e) => {
+    const err = validateField("identifier", e.target.value);
+    setIdentifierError(err);
+  };
+
+  const handlePasswordChange = (e) => {
+    const val = e.target.value;
+    setPassword(val);
+    const err = validateField("password", val);
+    setPasswordError(err);
+  };
+
+  const handlePasswordBlur = (e) => {
+    const err = validateField("password", e.target.value);
+    setPasswordError(err);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const result = validateForm(driverLoginSchema, { identifier, password });
-    if (!result.isValid) {
-      const firstError = Object.values(result.errors)[0];
-      toast.error(firstError || "Please enter email/phone/employee ID and password");
+    const idErr = validateField("identifier", identifier);
+    const passErr = validateField("password", password);
+    setIdentifierError(idErr);
+    setPasswordError(passErr);
+
+    if (idErr || passErr) {
+      toast.error(idErr || passErr || "Please enter valid credentials");
       return;
     }
 
-
     setLoading(true);
     try {
-      const res = await driverApi.login({ identifier, password });
+      const res = await driverApi.login({ identifier: identifier.trim(), password });
       if (res?.success && res.data) {
         const { token, driver } = res.data;
         const normalizedUser = {
@@ -64,7 +112,7 @@ export default function DriverLogin() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="bg-white border border-slate-200 py-8 px-6 shadow-sm rounded-2xl sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-6" onSubmit={handleSubmit} noValidate>
             <div>
               <label className="block text-xs font-bold font-poppins uppercase text-slate-700 tracking-wider">
                 Email / Phone Number / Employee ID
@@ -75,13 +123,20 @@ export default function DriverLogin() {
                 </div>
                 <input
                   type="text"
-                  required
                   value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
+                  onChange={handleIdentifierChange}
+                  onBlur={handleIdentifierBlur}
                   placeholder="e.g. driver@fleet.com or EMP-102"
-                  className="block w-full pl-11 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] text-sm transition"
+                  className={`block w-full pl-11 pr-4 py-3 bg-white border rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none text-sm transition ${
+                    identifierError
+                      ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                      : "border-slate-300 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                  }`}
                 />
               </div>
+              {identifierError && (
+                <p className="text-red-500 text-xs font-medium mt-1 font-poppins">{identifierError}</p>
+              )}
             </div>
 
             <div>
@@ -94,13 +149,20 @@ export default function DriverLogin() {
                 </div>
                 <input
                   type="password"
-                  required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={handlePasswordChange}
+                  onBlur={handlePasswordBlur}
                   placeholder="••••••••"
-                  className="block w-full pl-11 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] text-sm transition"
+                  className={`block w-full pl-11 pr-4 py-3 bg-white border rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none text-sm transition ${
+                    passwordError
+                      ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                      : "border-slate-300 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
+                  }`}
                 />
               </div>
+              {passwordError && (
+                <p className="text-red-500 text-xs font-medium mt-1 font-poppins">{passwordError}</p>
+              )}
             </div>
 
             <div>

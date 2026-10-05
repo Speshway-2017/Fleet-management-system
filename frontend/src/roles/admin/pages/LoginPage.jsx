@@ -51,12 +51,51 @@ export default function LoginPage() {
   }, []);
 
   const handleInputChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    const nextForm = { ...form, [field]: value };
+    setForm(nextForm);
 
     if (field === "email") {
-      setEmailError("");
+      const trimmed = value.trim();
+      if (!trimmed) {
+        setEmailError("Email address is required.");
+      } else if (/\s/.test(value)) {
+        setEmailError("Email address must not contain spaces.");
+      } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmed)) {
+        setEmailError("Please enter a valid email address.");
+      } else if (trimmed.length < 5) {
+        setEmailError("Email address must be at least 5 characters.");
+      } else if (trimmed.length > 30) {
+        setEmailError("Email address must not exceed 30 characters.");
+      } else {
+        setEmailError("");
+      }
     } else if (field === "password") {
-      setPasswordError("");
+      if (!value) {
+        setPasswordError("Password is required.");
+      } else {
+        setPasswordError("");
+      }
+    }
+  };
+
+  const handleBlur = (field) => {
+    if (field === "email") {
+      const val = (form.email || "").trim();
+      if (!val) {
+        setEmailError("Email address is required.");
+      } else if (/\s/.test(form.email)) {
+        setEmailError("Email address must not contain spaces.");
+      } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(val)) {
+        setEmailError("Please enter a valid email address.");
+      } else {
+        setEmailError("");
+      }
+    } else if (field === "password") {
+      if (!form.password) {
+        setPasswordError("Password is required.");
+      } else {
+        setPasswordError("");
+      }
     }
   };
 
@@ -182,6 +221,7 @@ export default function LoginPage() {
                 placeholder="name@organization.com"
                 value={form.email}
                 onChange={(e) => handleInputChange("email", e.target.value)}
+                onBlur={() => handleBlur("email")}
                 className={`w-full pl-11 py-3 rounded-xl border text-xs text-[#1E293B] placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${emailError
                   ? 'focus:ring-red-500/20 pr-10'
                   : 'pr-4 focus:ring-[#A14000]/15 focus:border-[#A14000]'
@@ -220,6 +260,7 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 value={form.password}
                 onChange={(e) => handleInputChange("password", e.target.value)}
+                onBlur={() => handleBlur("password")}
                 className={`w-full pl-11 py-3 rounded-xl border text-xs text-[#1E293B] placeholder-gray-400 bg-white focus:outline-none focus:ring-2 transition-all ${passwordError
                   ? 'pr-16 focus:ring-red-500/20'
                   : 'pr-11 focus:ring-[#A14000]/15 focus:border-[#A14000]'

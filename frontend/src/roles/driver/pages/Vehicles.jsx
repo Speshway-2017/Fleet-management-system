@@ -497,7 +497,7 @@ export default function DriverVehiclesPage() {
                       </div>
                       <div>
                         <span className="text-slate-500 dark:text-slate-400 block">Odometer Reading:</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">{vehicle.odometer ? `${vehicle.odometer} km` : '0 km'}</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">{(vehicle.odometer || vehicle.odometerReading) ? `${vehicle.odometer || vehicle.odometerReading} km` : '0 km'}</span>
                       </div>
                       <div>
                         <span className="text-slate-500 dark:text-slate-400 block">Fuel Type:</span>
@@ -510,21 +510,21 @@ export default function DriverVehiclesPage() {
                   <div className="space-y-3 p-4 bg-slate-50 dark:bg-[#1E293B] rounded-2xl border border-slate-100 dark:border-slate-700">
                     <h4 className="text-xs font-bold font-poppins uppercase tracking-wider text-slate-400">Assigned Driver</h4>
                     <div className="space-y-2 text-xs">
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-slate-500 dark:text-slate-400 block">Driver Name:</span>
-                        <strong className="font-poppins text-slate-900 dark:text-white">{vehicle.assignedDriverName || 'Driver'}</strong>
+                        <strong className="font-poppins text-slate-900 dark:text-white break-words block">{vehicle.assignedDriverName || 'Driver'}</strong>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-slate-500 dark:text-slate-400 block">Employee ID:</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">{vehicle.assignedDriverEmpId || 'N/A'}</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 break-words block">{vehicle.assignedDriverEmpId || 'N/A'}</span>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-slate-500 dark:text-slate-400 block">Contact Phone:</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">{vehicle.assignedDriverPhone || 'N/A'}</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 break-words block">{vehicle.assignedDriverPhone || 'N/A'}</span>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-slate-500 dark:text-slate-400 block">License Number:</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">{vehicle.assignedDriverLicense || 'N/A'}</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 break-words block">{vehicle.assignedDriverLicense || 'N/A'}</span>
                       </div>
                     </div>
                   </div>
@@ -599,7 +599,7 @@ export default function DriverVehiclesPage() {
                       <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Distance</span>
                       <Gauge className="w-5 h-5 text-slate-400" />
                     </div>
-                    <h4 className="text-xl font-bold font-poppins">{vehicle.odometer ? `${vehicle.odometer} km` : '42,500 km'}</h4>
+                    <h4 className="text-xl font-bold font-poppins">{(vehicle.odometer || vehicle.odometerReading) ? `${vehicle.odometer || vehicle.odometerReading} km` : '0 km'}</h4>
                     <p className="text-xs text-slate-500 dark:text-slate-400">Verified via GPS Odometer</p>
                   </div>
                 </div>

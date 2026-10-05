@@ -9,6 +9,10 @@ const vehicleSchema = new mongoose.Schema(
     brand:              { type: String, trim: true },
     model:              { type: String, trim: true },
     manufactureYear:    { type: Number },
+    year:               { type: Number },
+    modelYear:          { type: Number },
+    odometer:           { type: Number, default: 0 },
+    odometerReading:    { type: Number, default: 0 },
     assignedDriver:     { type: mongoose.Schema.Types.ObjectId, ref: 'Driver' },
     currentStatus: {
       type: String,

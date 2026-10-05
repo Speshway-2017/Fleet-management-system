@@ -35,6 +35,7 @@ class CustomTextField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       enabled: enabled,
       onChanged: onChanged,
       maxLines: maxLines,
