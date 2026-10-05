@@ -448,8 +448,8 @@ export default function CreateTripPage() {
     } else if (field === 'mobile') {
       if (!str) err = "Mobile Number is required.";
       else if (!/^\d+$/.test(str)) err = "Mobile number must contain digits only.";
+      else if (!/^[1-9]/.test(str)) err = "Mobile number must start with 1-9 (cannot start with 0).";
       else if (str.length !== 10) err = "Mobile number must be exactly 10 digits.";
-      else if (!/^[6-9]/.test(str)) err = "Mobile number must start with 6, 7, 8, or 9.";
     } else if (field === 'streetAddress') {
       if (!str) err = "Street Address is required.";
       else if (str.length < 5) err = "Street Address must be at least 5 characters.";
@@ -777,7 +777,7 @@ export default function CreateTripPage() {
         });
 
         const driversData = rawDrivers.map(d => {
-          const isAvailable = d.driverStatus === 'AVAILABLE' || d.status === 'Available';
+          const isAvailable = d.driverStatus === 'AVAILABLE' || d.driverStatus === 'Available' || d.status === 'Available' || d.status === 'Active';
           let veh = d.assignedVehicle || d.vehiclePlate || d.vehicleRegistration || d.vehicle || "";
           if (veh === "Unassigned") veh = "";
 
@@ -790,7 +790,7 @@ export default function CreateTripPage() {
             isNearby: d.isNearby || isDrvFallback,
             distanceKm: d.distanceKm,
             estimatedTravelTime: d.estimatedTravelTime,
-            currentLocation: formatDisplayLocation(d.currentLocation || d.driverLocation, d.branch),
+            currentLocation: formatDisplayLocation(d.currentLocation || d.driverLocation || d.city, d.branch),
             assignedVehicle: veh
           };
         });
@@ -1073,16 +1073,6 @@ export default function CreateTripPage() {
           <p className="text-xs text-[#64748B] mt-2 font-medium font-poppins">
             Configure vehicle, route details, and driver assignment.
           </p>
-        </div>
-
-        <div className="flex items-center gap-3 select-none w-full md:w-auto">
-          <button
-            type="button"
-            onClick={() => navigate("/manager/trips")}
-            className="px-4 py-2 bg-white border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#64748B] hover:text-[#1E293B] hover:bg-gray-50 transition-all cursor-pointer text-center flex items-center gap-1.5 shadow-2xs font-poppins"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to Trips
-          </button>
         </div>
       </div>
 
@@ -1553,18 +1543,18 @@ export default function CreateTripPage() {
       <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available drivers...</p>
     </div>
   ) : (filterAvailableDrivers
-    ? drivers.filter(d => d.status === "Available" && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
+    ? drivers.filter(d => (d.status === "Available" || d.driverStatus === "AVAILABLE" || d.driverStatus === "Available") && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
     : drivers
   ).length === 0 ? (
     <p className="text-xs text-gray-400 py-8 text-center font-semibold font-poppins">No drivers available in the selected location.</p>
   ) : (
     (filterAvailableDrivers
-      ? drivers.filter(d => (d.driverStatus === "AVAILABLE" || d.status === "Available") && d.isDuty !== false && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
+      ? drivers.filter(d => (d.driverStatus === "AVAILABLE" || d.driverStatus === "Available" || d.status === "Available" || d.status === "Active") && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
       : drivers
     ).map(d => {
       const isExpired = d.licenseExpiry && new Date(d.licenseExpiry) < new Date();
-      const isOffline = d.driverStatus === "OFFLINE" || d.driverStatus === "OFF_DUTY" || d.isDuty === false || d.status === "Offline";
-      const isAvailable = (d.driverStatus === "AVAILABLE" || d.status === "Available") && !isOffline;
+      const isOffline = d.driverStatus === "OFFLINE" || d.driverStatus === "OFF_DUTY" || d.driverStatus === "SUSPENDED" || d.driverStatus === "INACTIVE" || d.status === "Offline" || d.status === "Inactive";
+      const isAvailable = (d.driverStatus === "AVAILABLE" || d.driverStatus === "Available" || d.status === "Available" || d.status === "Active") && !isOffline;
 
       return (
         <div

@@ -302,31 +302,31 @@ export const createVehicle = async (req, res, next) => {
       branchDepot,
     } = req.body;
 
-    if (!vehicleNumber) {
-      return sendError(res, 400, 'Vehicle number is required');
+    const resolvedRegNumber = (registrationNumber || vehicleNumber || req.body.plateNumber || '').trim();
+    if (!resolvedRegNumber) {
+      return sendError(res, 400, 'Registration Number is required');
     }
+    if (!/^[A-Z]{2}\s\d{2}\s[A-Z]{2}\s\d{4}$/.test(resolvedRegNumber)) {
+      return sendError(res, 400, 'Registration Number must follow format: TS 76 HG 7576');
+    }
+    const finalRegNumber = resolvedRegNumber.toUpperCase();
 
     const trimmedChassis = (chassisNumber || '').trim();
-    if (trimmedChassis.length !== 17) {
+    if (trimmedChassis && trimmedChassis.length !== 17) {
       return sendError(res, 400, 'Please enter exactly 17 characters.');
     }
 
     const conflictOr = [
-      { vehicleNumber: vehicleNumber.toUpperCase() }
+      { vehicleNumber: finalRegNumber },
+      { registrationNumber: finalRegNumber }
     ];
-    if (registrationNumber) {
-      conflictOr.push({ registrationNumber: registrationNumber.toUpperCase() });
-    }
     if (trimmedChassis) {
       conflictOr.push({ chassisNumber: trimmedChassis });
     }
 
     const existingVehicle = await Vehicle.findOne({ $or: conflictOr });
     if (existingVehicle) {
-      if (existingVehicle.vehicleNumber === vehicleNumber.toUpperCase()) {
-        return sendError(res, 409, 'A vehicle with this registration plate already exists');
-      }
-      if (registrationNumber && existingVehicle.registrationNumber === registrationNumber.toUpperCase()) {
+      if (existingVehicle.vehicleNumber === finalRegNumber || existingVehicle.registrationNumber === finalRegNumber) {
         return sendError(res, 409, 'A vehicle with this registration number already exists');
       }
       if (trimmedChassis && existingVehicle.chassisNumber === trimmedChassis) {
@@ -349,7 +349,7 @@ export const createVehicle = async (req, res, next) => {
       originalName: ''
     };
 
-    const targetVehicleName = vehicleName || (resolvedBrand ? `${resolvedBrand} ${model || ''}`.trim() : (model || vehicleNumber));
+    const targetVehicleName = vehicleName || (resolvedBrand ? `${resolvedBrand} ${model || ''}`.trim() : (model || finalRegNumber));
 
     const imagePayload = req.body.vehicleImage || req.body.image;
     if (imagePayload) {
@@ -377,8 +377,8 @@ export const createVehicle = async (req, res, next) => {
 
     const vehicle = await createVehicleInRepo({
       vehicleName: targetVehicleName,
-      vehicleNumber,
-      registrationNumber: registrationNumber || vehicleNumber,
+      vehicleNumber: finalRegNumber,
+      registrationNumber: finalRegNumber,
       vehicleType: vehicleType || 'Truck',
       brand: resolvedBrand,
       manufacturer: resolvedBrand,
@@ -456,12 +456,23 @@ export const updateVehicle = async (req, res, next) => {
   try {
     const vehicleId = req.params.id;
     const updateData = { ...req.body };
-    if (updateData.chassisNumber !== undefined) {
+    if (updateData.chassisNumber !== undefined && updateData.chassisNumber !== '') {
       const trimmedChassis = String(updateData.chassisNumber || '').trim();
-      if (trimmedChassis.length !== 17) {
+      if (trimmedChassis && trimmedChassis.length !== 17) {
         return sendError(res, 400, 'Please enter exactly 17 characters.');
       }
       updateData.chassisNumber = trimmedChassis;
+    }
+
+    if (updateData.registrationNumber !== undefined && updateData.registrationNumber !== '') {
+      const trimmedReg = String(updateData.registrationNumber || '').trim();
+      if (trimmedReg && !/^[A-Z]{2}\s\d{2}\s[A-Z]{2}\s\d{4}$/.test(trimmedReg)) {
+        return sendError(res, 400, 'Registration Number must follow format: TS 76 HG 7576');
+      }
+      if (trimmedReg) {
+        updateData.registrationNumber = trimmedReg.toUpperCase();
+        updateData.vehicleNumber = trimmedReg.toUpperCase();
+      }
     }
 
     console.log(`\n=================================`);

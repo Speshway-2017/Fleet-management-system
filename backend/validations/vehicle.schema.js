@@ -2,18 +2,8 @@ import { z } from 'zod';
 import { optionalMongoIdSchema, numericAmountSchema } from './common.schema.js';
 
 export const createVehicleSchema = z.object({
-  vehicleNumber: z.string().trim().min(2, 'Vehicle number is required.').optional(),
-  plateNumber: z
-    .string({ required_error: 'Registration Plate is required.' })
-    .trim()
-    .min(1, 'Registration Plate is required.')
-    .min(4, 'Registration Plate must be at least 4 characters.')
-    .max(20, 'Registration Plate must not exceed 20 characters.')
-    .refine(val => /^[a-zA-Z0-9\s-]+$/.test(val), { message: 'Registration Plate contains invalid characters.' })
-    .refine(val => /[a-zA-Z]/.test(val), { message: 'Registration Plate must contain letters (e.g. state code).' })
-    .refine(val => /\d/.test(val), { message: 'Registration Plate must contain numbers.' })
-    .refine(val => !/(.)\1{3,}/i.test(val) && !/([a-zA-Z0-9]{2,4})\1{2,}/i.test(val.replace(/[\s-]+/g, '')), { message: 'Repeated characters are not allowed.' })
-    .optional(),
+  vehicleNumber: z.string().trim().optional(),
+  plateNumber: z.string().trim().optional(),
   vehicleName: z.string().trim().optional(),
   manufacturer: z.string().trim().optional(),
   brand: z.string().trim().optional(),
@@ -27,22 +17,18 @@ export const createVehicleSchema = z.object({
     .refine(val => /[a-zA-Z0-9]/.test(val), { message: 'Model must contain alphanumeric characters.' })
     .refine(val => !/(.)\1{3,}/i.test(val) && !/([a-zA-Z0-9]{2,4})\1{2,}/i.test(val.replace(/[\s.'-]+/g, '')), { message: 'Repeated characters are not allowed.' }),
   registrationNumber: z
-    .string()
+    .string({ required_error: 'Registration Number is required.' })
     .trim()
-    .max(20, 'Registration Number must not exceed 20 characters.')
-    .refine(val => !val || val.length >= 4, { message: 'Registration Number must be at least 4 characters.' })
-    .refine(val => !val || /^[a-zA-Z0-9\s-]+$/.test(val), { message: 'Registration Number contains invalid characters.' })
-    .refine(val => !val || /[a-zA-Z]/.test(val), { message: 'Registration Number must contain letters (e.g. state code).' })
-    .refine(val => !val || /\d/.test(val), { message: 'Registration Number must contain numbers.' })
-    .refine(val => !val || (!/(.)\1{3,}/i.test(val) && !/([a-zA-Z0-9]{2,4})\1{2,}/i.test(val.replace(/[\s-]+/g, ''))), { message: 'Repeated characters are not allowed.' })
-    .optional()
-    .nullable(),
+    .min(1, 'Registration Number is required.')
+    .refine(val => /^[A-Z]{2}\s\d{2}\s[A-Z]{2}\s\d{4}$/.test(val), {
+      message: 'Registration Number must follow format: TS 76 HG 7576'
+    }),
   vehicleType: z.string().trim().optional(),
   type: z.string().trim().optional(),
   fuelType: z.string({ required_error: 'Fuel type is required.' }).trim().min(1, 'Fuel type is required.'),
   chassisNumber: z.string().trim()
-    .refine(val => !val || /^\d+$/.test(val), { message: 'Chassis Number must contain numbers only.' })
-    .refine(val => !val || val.length === 17, { message: 'Chassis Number must be exactly 17 digits.' })
+    .refine(val => !val || /^[a-zA-Z0-9]+$/.test(val), { message: 'Chassis Number must contain letters and numbers only.' })
+    .refine(val => !val || val.length === 17, { message: 'Chassis Number must be exactly 17 characters.' })
     .optional()
     .or(z.literal('')),
   capacity: numericAmountSchema('Capacity').optional(),
@@ -56,8 +42,15 @@ export const createVehicleSchema = z.object({
 });
 
 export const updateVehicleSchema = z.object({
-  vehicleNumber: z.string().trim().min(2).optional(),
-  plateNumber: z.string().trim().min(2).optional(),
+  vehicleNumber: z.string().trim().optional(),
+  plateNumber: z.string().trim().optional(),
+  registrationNumber: z
+    .string()
+    .trim()
+    .refine(val => !val || /^[A-Z]{2}\s\d{2}\s[A-Z]{2}\s\d{4}$/.test(val), {
+      message: 'Registration Number must follow format: TS 76 HG 7576'
+    })
+    .optional(),
   vehicleName: z.string().trim().optional(),
   manufacturer: z.string().trim().optional(),
   brand: z.string().trim().optional(),
@@ -66,8 +59,8 @@ export const updateVehicleSchema = z.object({
   type: z.string().trim().optional(),
   fuelType: z.string().trim().optional(),
   chassisNumber: z.string().trim()
-    .refine(val => !val || /^\d+$/.test(val), { message: 'Chassis Number must contain numbers only.' })
-    .refine(val => !val || val.length === 17, { message: 'Chassis Number must be exactly 17 digits.' })
+    .refine(val => !val || /^[a-zA-Z0-9]+$/.test(val), { message: 'Chassis Number must contain letters and numbers only.' })
+    .refine(val => !val || val.length === 17, { message: 'Chassis Number must be exactly 17 characters.' })
     .optional()
     .or(z.literal('')),
   capacity: numericAmountSchema('Capacity').optional(),

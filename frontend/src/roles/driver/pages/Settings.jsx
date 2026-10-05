@@ -54,7 +54,7 @@ export default function DriverSettingsPage() {
         if (!val) return "Phone number is required.";
         const clean = val.replace(/^(\+91|91|0)/, "").replace(/\D/g, "");
         if (clean.length !== 10) return "Phone number must contain exactly 10 digits.";
-        if (!/^[6-9]/.test(clean)) return "Phone number must start with 6, 7, 8, or 9.";
+        if (!/^[1-9]/.test(clean)) return "Phone number must start with 1-9 (cannot start with 0).";
         if (/^(\d)\1{9}$/.test(clean)) return "Please enter a valid active phone number.";
         return "";
       }

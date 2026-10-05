@@ -119,6 +119,11 @@ export default function Contact() {
         ...prevErr,
         phone: "Phone number must contain only numbers",
       }));
+    } else if (cleanedVal.length > 0 && !/^[1-9]/.test(cleanedVal)) {
+      setFormErrors((prevErr) => ({
+        ...prevErr,
+        phone: "Phone number must start with 1-9 (cannot start with 0).",
+      }));
     } else if (cleanedVal.length > 0 && cleanedVal.length < 10) {
       setFormErrors((prevErr) => ({
         ...prevErr,
@@ -231,6 +236,10 @@ export default function Contact() {
       }
       if (/\D/.test(val)) {
         setFormErrors((prevErr) => ({ ...prevErr, phone: "Phone number must contain only numbers" }));
+        return;
+      }
+      if (!/^[1-9]/.test(val)) {
+        setFormErrors((prevErr) => ({ ...prevErr, phone: "Phone number must start with 1-9 (cannot start with 0)." }));
         return;
       }
       if (val.length < 10) {

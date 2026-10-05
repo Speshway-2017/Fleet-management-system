@@ -41,9 +41,9 @@ const organizationSchema = new mongoose.Schema(
       trim: true,
       validate: {
         validator: function (v) {
-          return /^\d{10}$/.test(v);
+          return /^[1-9]\d{9}$/.test(v);
         },
-        message: 'Phone number must be a valid 10-digit number.'
+        message: 'Phone number must be a 10-digit number starting with 1-9.'
       }
     },
     address: {

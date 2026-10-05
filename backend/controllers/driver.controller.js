@@ -254,13 +254,30 @@ export const getAvailableDrivers = async (req, res, next) => {
     const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
 
     const allAvailable = await Driver.find({
-      assignedManager: req.user._id,
       _id: { $nin: allocatedDriverIds },
-      driverStatus: 'AVAILABLE',
-      $or: [
-        { licenseExpiry: { $exists: false } },
-        { licenseExpiry: null },
-        { licenseExpiry: { $gte: new Date() } }
+      isDeleted: { $ne: true },
+      accountStatus: { $nin: ['Deleted', 'Inactive', 'Suspended'] },
+      $and: [
+        {
+          $or: [
+            { assignedManager: req.user._id },
+            { assignedManager: { $exists: false } },
+            { assignedManager: null }
+          ]
+        },
+        {
+          $or: [
+            { driverStatus: { $in: ['AVAILABLE', 'Available', 'ACTIVE', 'Active'] } },
+            { status: { $in: ['Available', 'AVAILABLE', 'Active', 'ACTIVE'] } }
+          ]
+        },
+        {
+          $or: [
+            { licenseExpiry: { $exists: false } },
+            { licenseExpiry: null },
+            { licenseExpiry: { $gte: new Date() } }
+          ]
+        }
       ]
     });
 
@@ -268,7 +285,7 @@ export const getAvailableDrivers = async (req, res, next) => {
       await syncDriverLocationFromLatestTrip(d);
       const rawLoc = d.currentLocation || d.driverLocation;
       if (isCoordinateString(rawLoc)) {
-        const resolvedName = await resolveLocationName(rawLoc, d.branch);
+        const resolvedName = await resolveLocationName(rawLoc, d.branch || d.city);
         d.currentLocation = resolvedName;
         d.driverLocation = resolvedName;
         Driver.findByIdAndUpdate(d._id, { currentLocation: resolvedName, driverLocation: resolvedName }).catch(() => { });
@@ -313,8 +330,32 @@ export const getAvailableDrivers = async (req, res, next) => {
     const getDriverEffectiveLocation = (d) => {
       if (d.currentLocation && d.currentLocation.trim()) return d.currentLocation.trim();
       if (d.driverLocation && d.driverLocation.trim()) return d.driverLocation.trim();
+      if (d.city && d.city.trim()) return d.city.trim();
       if (d.branch && d.branch.trim()) return d.branch.trim();
+      if (d.address && d.address.trim()) return d.address.trim();
       return '';
+    };
+
+    const isDriverMatch = (d, targetLocation) => {
+      if (!targetLocation) return false;
+      const cleanTarget = targetLocation.trim().toLowerCase();
+      const targetFirstWord = cleanTarget.split(/[\s,]+/)[0];
+
+      const candidates = [
+        d.currentLocation,
+        d.driverLocation,
+        d.city,
+        d.branch,
+        d.address
+      ].filter(Boolean);
+
+      for (const cand of candidates) {
+        if (isSameLocation(targetLocation, cand)) return true;
+        const normCand = cand.toString().toLowerCase().trim();
+        const candFirstWord = normCand.split(/[\s,]+/)[0];
+        if (normCand.includes(targetFirstWord) || cleanTarget.includes(candFirstWord)) return true;
+      }
+      return false;
     };
 
     const localDrivers = [];
@@ -322,17 +363,17 @@ export const getAvailableDrivers = async (req, res, next) => {
 
     for (const d of allAvailable) {
       const rawEffective = getDriverEffectiveLocation(d);
-      const dLoc = await resolveLocationName(rawEffective || 'Visakhapatnam', d.branch);
+      const dLoc = await resolveLocationName(rawEffective || d.branch || d.city || 'Hyderabad', d.branch || d.city);
       const dObj = d.toObject ? d.toObject() : { ...d };
-      if (isSameLocation(targetLoc, dLoc)) {
+      if (isDriverMatch(d, targetLoc) || isSameLocation(targetLoc, dLoc)) {
         localDrivers.push({
           ...dObj,
           isNearby: false,
           isAtPickupLocation: true,
           distanceKm: 0,
           estimatedTravelTime: '0 mins',
-          currentBranch: d.branch || d.currentLocation || dLoc,
-          currentLocation: dLoc
+          currentBranch: d.branch || d.city || d.currentLocation || dLoc,
+          currentLocation: dLoc || d.city || d.branch || targetLoc
         });
       } else {
         nearbyRawDrivers.push({ driver: d, dLoc });
@@ -351,7 +392,7 @@ export const getAvailableDrivers = async (req, res, next) => {
           isAtPickupLocation: false,
           distanceKm: dist,
           estimatedTravelTime: routeData.estimatedTravelTime,
-          currentBranch: d.branch || d.currentLocation || dLoc,
+          currentBranch: d.branch || d.city || d.currentLocation || dLoc,
           currentLocation: dLoc
         };
       })

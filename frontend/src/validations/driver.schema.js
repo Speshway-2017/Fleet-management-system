@@ -4,7 +4,7 @@ import { emailSchema, phoneSchema, optionalPhoneSchema, personNameSchema } from 
 export const driverSchema = z.object({
   fullName: personNameSchema,
   email: emailSchema,
-  phoneNumber: phoneSchema.optional().or(z.string().trim().length(10, 'Phone number must be exactly 10 digits.')),
+  phoneNumber: phoneSchema.optional(),
   phone: optionalPhoneSchema,
   licenseNumber: z.string({ required_error: 'License number is required' }).trim().min(3, 'License number is required'),
   licenseType: z.string().trim().optional(),

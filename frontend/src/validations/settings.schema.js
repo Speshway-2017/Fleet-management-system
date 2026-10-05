@@ -423,8 +423,8 @@ export const driverSupportSettingsSchema = z.object({
     }, { message: 'Phone number must contain exactly 10 digits.' })
     .refine((val) => {
       const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
-      return /^[6-9]/.test(clean);
-    }, { message: 'Phone number must start with 6, 7, 8, or 9.' })
+      return /^[1-9]/.test(clean);
+    }, { message: 'Phone number must start with 1-9 (cannot start with 0).' })
     .refine((val) => {
       const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
       return !/^(\d)\1{9}$/.test(clean);
@@ -439,8 +439,8 @@ export const driverSupportSettingsSchema = z.object({
     }, { message: 'WhatsApp number must contain exactly 10 digits.' })
     .refine((val) => {
       const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
-      return /^[6-9]/.test(clean);
-    }, { message: 'WhatsApp number must start with 6, 7, 8, or 9.' })
+      return /^[1-9]/.test(clean);
+    }, { message: 'WhatsApp number must start with 1-9 (cannot start with 0).' })
     .refine((val) => {
       const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
       return !/^(\d)\1{9}$/.test(clean);
@@ -473,8 +473,8 @@ export const driverSupportSettingsSchema = z.object({
     }, { message: 'Emergency phone number must contain exactly 10 digits.' })
     .refine((val) => {
       const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
-      return /^[6-9]/.test(clean);
-    }, { message: 'Emergency phone number must start with 6, 7, 8, or 9.' })
+      return /^[1-9]/.test(clean);
+    }, { message: 'Emergency phone number must start with 1-9 (cannot start with 0).' })
     .refine((val) => {
       const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
       return !/^(\d)\1{9}$/.test(clean);

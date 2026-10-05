@@ -76,8 +76,8 @@ export default function EditProfilePage() {
       if (strVal) {
         if (!/^\d+$/.test(strVal)) {
           errorMsg = "Phone number must contain digits only.";
-        } else if (!/^[6-9]/.test(strVal)) {
-          errorMsg = "Phone number must start with 6, 7, 8, or 9.";
+        } else if (!/^[1-9]/.test(strVal)) {
+          errorMsg = "Phone number must start with 1-9 (cannot start with 0).";
         } else if (/(.)\1{5,}/.test(strVal)) {
           errorMsg = "Repeated digits are not allowed.";
         } else if (strVal.length !== 10) {

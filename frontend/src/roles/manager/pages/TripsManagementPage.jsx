@@ -542,16 +542,16 @@ export default function TripsManagementPage() {
 
     if (formData.pickupAddress?.mobile && formData.pickupAddress.mobile.trim()) {
       const mob = formData.pickupAddress.mobile.trim();
-      if (!/^\d+$/.test(mob) || mob.length !== 10 || !/^[6-9]/.test(mob)) {
-        toast.error("Pickup Mobile must be a 10-digit number starting with 6-9.");
+      if (!/^\d+$/.test(mob) || !/^[1-9]/.test(mob) || mob.length !== 10) {
+        toast.error("Pickup Mobile must be a 10-digit number starting with 1-9.");
         return;
       }
     }
 
     if (formData.deliveryAddress?.mobile && formData.deliveryAddress.mobile.trim()) {
       const mob = formData.deliveryAddress.mobile.trim();
-      if (!/^\d+$/.test(mob) || mob.length !== 10 || !/^[6-9]/.test(mob)) {
-        toast.error("Delivery Mobile must be a 10-digit number starting with 6-9.");
+      if (!/^\d+$/.test(mob) || !/^[1-9]/.test(mob) || mob.length !== 10) {
+        toast.error("Delivery Mobile must be a 10-digit number starting with 1-9.");
         return;
       }
     }

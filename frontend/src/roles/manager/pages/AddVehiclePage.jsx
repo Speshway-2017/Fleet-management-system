@@ -115,30 +115,20 @@ export default function AddVehiclePage() {
       } else if (strVal.length > 50) {
         errorMsg = "Model must not exceed 50 characters.";
       }
-    } else if (name === "plateNumber") {
+    } else if (name === "registrationNumber" || name === "plateNumber") {
       if (!strVal) {
-        errorMsg = "Registration Plate is required.";
-      } else if (!/^[a-zA-Z0-9\s-]+$/.test(strVal)) {
-        errorMsg = "Registration Plate contains invalid characters.";
-      } else if (/(.)\1{3,}/i.test(strVal) || /([a-zA-Z0-9]{2,4})\1{2,}/i.test(strVal.replace(/[\s-]+/g, ''))) {
-        errorMsg = "Repeated characters are not allowed.";
-      } else if (strVal.length < 4) {
-        errorMsg = "Registration Plate must be at least 4 characters.";
-      } else if (strVal.length > 20) {
-        errorMsg = "Registration Plate must not exceed 20 characters.";
-      } else if (!/[a-zA-Z]/.test(strVal)) {
-        errorMsg = "Registration Plate must contain letters (e.g. state code).";
-      } else if (!/\d/.test(strVal)) {
-        errorMsg = "Registration Plate must contain numbers.";
+        errorMsg = "Registration Number is required.";
+      } else if (!/^[A-Z]{2}\s\d{2}\s[A-Z]{2}\s\d{4}$/.test(strVal)) {
+        errorMsg = "Registration Number must follow format: TS 76 HG 7576";
       }
     } else if (name === "chassisNumber") {
       if (strVal) {
-        if (!/^\d+$/.test(strVal)) {
-          errorMsg = "Chassis Number must contain numbers only (letters are not allowed).";
+        if (!/^[a-zA-Z0-9]+$/.test(strVal)) {
+          errorMsg = "Chassis Number must contain alphanumeric characters only (letters and numbers).";
         } else if (/(.)\1{4,}/i.test(strVal)) {
           errorMsg = "Repeated characters are not allowed.";
         } else if (strVal.length !== 17) {
-          errorMsg = "Chassis Number must be exactly 17 digits.";
+          errorMsg = "Chassis Number must be exactly 17 characters.";
         }
       }
     } else if (name === "year") {
@@ -214,15 +204,20 @@ export default function AddVehiclePage() {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+    if (name === "registrationNumber") {
+      value = value.toUpperCase();
+    }
     setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
+      ...(name === "registrationNumber" ? { plateNumber: value } : {})
     }));
     const err = validateVehicleField(name, value);
     setErrors((prev) => ({
       ...prev,
-      [name]: err
+      [name]: err,
+      ...(name === "registrationNumber" ? { plateNumber: err } : {})
     }));
   };
 
@@ -231,7 +226,8 @@ export default function AddVehiclePage() {
     const err = validateVehicleField(name, value);
     setErrors((prev) => ({
       ...prev,
-      [name]: err
+      [name]: err,
+      ...(name === "registrationNumber" ? { plateNumber: err } : {})
     }));
   };
 
@@ -352,7 +348,7 @@ export default function AddVehiclePage() {
       return;
     }
 
-    const fieldList = ["manufacturer", "model", "plateNumber", "year", "branch", "chassisNumber", "registrationNumber", "engineCC", "fuelCapacity", "loadCapacity", "fastagBalance"];
+    const fieldList = ["manufacturer", "model", "registrationNumber", "year", "branch", "chassisNumber", "engineCC", "fuelCapacity", "loadCapacity", "fastagBalance"];
     const newErrors = {};
     let hasError = false;
 
@@ -374,7 +370,8 @@ export default function AddVehiclePage() {
 
     const validationResult = validateForm(vehicleSchema, {
       ...formData,
-      vehicleNumber: formData.plateNumber,
+      vehicleNumber: formData.registrationNumber,
+      plateNumber: formData.registrationNumber,
       brand: formData.manufacturer
     });
 
@@ -389,8 +386,8 @@ export default function AddVehiclePage() {
       // Map frontend field names to backend field names matching the new MongoDB Vehicle schema
       const payload = {
         vehicleName:        `${formData.manufacturer} ${formData.model}`,
-        vehicleNumber:      formData.plateNumber.toUpperCase(),
-        registrationNumber: formData.registrationNumber,
+        vehicleNumber:      formData.registrationNumber.toUpperCase(),
+        registrationNumber: formData.registrationNumber.toUpperCase(),
         vehicleType:        formData.vehicleType || "Truck",
         brand:              formData.manufacturer,
         model:              formData.model,
@@ -603,25 +600,25 @@ export default function AddVehiclePage() {
                   </div>
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
-                      Registration Plate *
+                      Registration Number *
                     </label>
                     <input
                       type="text"
-                      name="plateNumber"
-                      placeholder="e.g. MH 12 AB 5678"
-                      maxLength={40}
-                      value={formData.plateNumber}
+                      name="registrationNumber"
+                      placeholder="e.g. TS 76 HG 7576"
+                      maxLength={13}
+                      value={formData.registrationNumber}
                       onChange={handleInputChange}
                       onBlur={handleInputBlur}
                       required
                       className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none uppercase transition-colors bg-white ${
-                        errors.plateNumber ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
+                        errors.registrationNumber ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
                       }`}
                     />
-                    {errors.plateNumber && (
+                    {errors.registrationNumber && (
                       <p className="text-xs text-red-500 mt-1 font-semibold flex items-center gap-1 font-poppins">
                         <AlertCircle className="w-3.5 h-3.5" />
-                        {errors.plateNumber}
+                        {errors.registrationNumber}
                       </p>
                     )}
                   </div>
@@ -702,30 +699,7 @@ export default function AddVehiclePage() {
                 </div>
                 <p className="text-xs text-[#64748B] mb-4">Provide registration certificate information</p>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
-                      Registration No.
-                    </label>
-                    <input
-                      type="text"
-                      name="registrationNumber"
-                      placeholder="e.g. MH-01-AB-2023"
-                      maxLength={40}
-                      value={formData.registrationNumber}
-                      onChange={handleInputChange}
-                      onBlur={handleInputBlur}
-                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none uppercase transition-colors bg-white ${
-                        errors.registrationNumber ? "border-red-500 focus:border-red-500" : "border-[#E7EAF0] focus:border-[#A14000] text-[#1E293B]"
-                      }`}
-                    />
-                    {errors.registrationNumber && (
-                      <p className="text-xs text-red-500 mt-1 font-semibold flex items-center gap-1 font-poppins">
-                        <AlertCircle className="w-3.5 h-3.5" />
-                        {errors.registrationNumber}
-                      </p>
-                    )}
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-2 font-poppins">
                       State

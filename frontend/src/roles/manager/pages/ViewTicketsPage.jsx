@@ -184,10 +184,10 @@ export default function ViewTicketsPage() {
           const sVal = String(val);
           if (!/^\d+$/.test(sVal)) {
             error = "Phone number must contain digits only.";
+          } else if (!/^[1-9]/.test(sVal)) {
+            error = "Phone number must start with 1-9 (cannot start with 0).";
           } else if (sVal.length !== 10) {
             error = "Phone number must be exactly 10 digits.";
-          } else if (!/^[6-9]/.test(sVal)) {
-            error = "Phone number must start with 6, 7, 8, or 9.";
           } else if (/^(\d)\1{9}$/.test(sVal)) {
             error = "Please enter a valid active phone number.";
           }

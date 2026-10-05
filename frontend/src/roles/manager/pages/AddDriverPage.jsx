@@ -71,10 +71,10 @@ export default function AddDriverPage() {
         errorMsg = "Mobile number is required.";
       } else if (!/^\d+$/.test(strVal)) {
         errorMsg = "Mobile number must contain digits only.";
+      } else if (!/^[1-9]/.test(strVal)) {
+        errorMsg = "Mobile number must start with 1-9 (cannot start with 0).";
       } else if (strVal.length !== 10) {
         errorMsg = "Mobile number must contain exactly 10 digits.";
-      } else if (!/^[6-9]/.test(strVal)) {
-        errorMsg = "Mobile number must start with 6, 7, 8, or 9.";
       }
     } else if (name === "email") {
       if (!strVal) {
