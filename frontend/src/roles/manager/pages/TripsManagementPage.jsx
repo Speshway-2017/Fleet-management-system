@@ -870,9 +870,9 @@ export default function TripsManagementPage() {
               tabs={[
                 { id: "All Trips", label: "All Trips", count: trips.length },
                 { id: "Active", label: "In Transit", count: activeTripsCount },
-                { id: "Scheduled", label: "Scheduled" },
+                { id: "Scheduled", label: "Scheduled", count: scheduledTripsCount },
                 { id: "Completed", label: "Completed", count: completedTripsCount },
-                { id: "Delayed", label: "Delayed" }
+                { id: "Delayed", label: "Delayed", count: delayedTripsCount }
               ]}
               activeTab={activeTab}
               onChange={(id) => setActiveTab(id)}

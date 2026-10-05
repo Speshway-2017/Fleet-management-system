@@ -7,14 +7,23 @@ import managerApi from "@/roles/manager/api/managerApi";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const [twoStep, setTwoStep] = useState(true);
-  const [language, setLanguage] = useState("English (United States)");
-  const [timezone, setTimezone] = useState("(GMT-05:00) Eastern Time");
-  const [units, setUnits] = useState("metric");
-  const [notifications, setNotifications] = useState({
-    critical: { push: true, email: true, sms: true },
-    maintenance: { push: true, email: false, sms: false },
-    operational: { push: false, email: true, sms: false },
+  const [twoStep, setTwoStep] = useState(() => {
+    const saved = localStorage.getItem("manager_two_step");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  const [language, setLanguage] = useState(() => localStorage.getItem("manager_language") || "English (United States)");
+  const [timezone, setTimezone] = useState(() => localStorage.getItem("manager_timezone") || "(GMT-05:00) Eastern Time");
+  const [units, setUnits] = useState(() => localStorage.getItem("manager_units") || "metric");
+  const [notifications, setNotifications] = useState(() => {
+    const saved = localStorage.getItem("manager_notifications");
+    if (saved) {
+      try { return JSON.parse(saved); } catch { /* ignore */ }
+    }
+    return {
+      critical: { push: true, email: true, sms: true },
+      maintenance: { push: true, email: false, sms: false },
+      operational: { push: false, email: true, sms: false },
+    };
   });
 
   const [supportSettings, setSupportSettings] = useState({
@@ -27,6 +36,9 @@ export default function SettingsPage() {
     dispatchEmail: ""
   });
   const [savingSupport, setSavingSupport] = useState(false);
+
+  const [supportErrors, setSupportErrors] = useState({});
+  const [supportTouched, setSupportTouched] = useState({});
 
   useEffect(() => {
     fetchSupportSettings();
@@ -60,8 +72,119 @@ export default function SettingsPage() {
     }
   };
 
+  const validateSupportField = (name, val) => {
+    const value = (val !== null && val !== undefined ? val : "").toString().trim();
+
+    switch (name) {
+      case "officeName": {
+        if (!value) return "Office / Hub Title is required.";
+        if (value.length < 2) return "Office / Hub Title must be at least 2 characters.";
+        if (value.length > 50) return "Office / Hub Title must not exceed 50 characters.";
+        if (!/[a-zA-Z]/.test(value)) return "Office / Hub Title must contain letters.";
+        if (!/^[a-zA-Z0-9\s,.'\-&/]+$/.test(value)) return "Office / Hub Title contains invalid characters.";
+        if (/(.)\1{3,}/i.test(value)) return "Repeated characters are not allowed.";
+        return "";
+      }
+      case "phone": {
+        if (!value) return "Manager phone number is required.";
+        const clean = value.replace(/^(\+91|91|0)/, "").replace(/\D/g, "");
+        if (clean.length !== 10) return "Phone number must contain exactly 10 digits.";
+        if (!/^[6-9]/.test(clean)) return "Phone number must start with 6, 7, 8, or 9.";
+        if (/^(\d)\1{9}$/.test(clean)) return "Please enter a valid active phone number.";
+        return "";
+      }
+      case "whatsappNumber": {
+        if (!value) return "WhatsApp support number is required.";
+        const clean = value.replace(/^(\+91|91|0)/, "").replace(/\D/g, "");
+        if (clean.length !== 10) return "WhatsApp number must contain exactly 10 digits.";
+        if (!/^[6-9]/.test(clean)) return "WhatsApp number must start with 6, 7, 8, or 9.";
+        if (/^(\d)\1{9}$/.test(clean)) return "Please enter a valid active WhatsApp number.";
+        return "";
+      }
+      case "email": {
+        if (!value) return "Manager office email is required.";
+        if (/\s/.test(value)) return "Email address must not contain spaces.";
+        if (value.length > 80) return "Email must not exceed 80 characters.";
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(value)) return "Please enter a valid email address.";
+        return "";
+      }
+      case "dispatchName": {
+        if (!value) return "Dispatch Desk Title is required.";
+        if (value.length < 2) return "Dispatch Desk Title must be at least 2 characters.";
+        if (value.length > 50) return "Dispatch Desk Title must not exceed 50 characters.";
+        if (!/[a-zA-Z]/.test(value)) return "Dispatch Desk Title must contain letters.";
+        if (!/^[a-zA-Z0-9\s,.'\-&/]+$/.test(value)) return "Dispatch Desk Title contains invalid characters.";
+        if (/(.)\1{3,}/i.test(value)) return "Repeated characters are not allowed.";
+        return "";
+      }
+      case "dispatchPhone": {
+        if (!value) return "Emergency dispatch phone number is required.";
+        const clean = value.replace(/^(\+91|91|0)/, "").replace(/\D/g, "");
+        if (clean.length !== 10) return "Emergency phone number must contain exactly 10 digits.";
+        if (!/^[6-9]/.test(clean)) return "Emergency phone number must start with 6, 7, 8, or 9.";
+        if (/^(\d)\1{9}$/.test(clean)) return "Please enter a valid active phone number.";
+        return "";
+      }
+      case "dispatchEmail": {
+        if (!value) return "Dispatch desk email is required.";
+        if (/\s/.test(value)) return "Email address must not contain spaces.";
+        if (value.length > 80) return "Email must not exceed 80 characters.";
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(value)) return "Please enter a valid email address.";
+        return "";
+      }
+      default:
+        return "";
+    }
+  };
+
+  const handleSupportFieldChange = (field, value) => {
+    setSupportSettings(prev => ({ ...prev, [field]: value }));
+    const err = validateSupportField(field, value);
+    setSupportErrors(prev => ({ ...prev, [field]: err }));
+  };
+
+  const handleSupportFieldBlur = (field) => {
+    setSupportTouched(prev => ({ ...prev, [field]: true }));
+    const err = validateSupportField(field, supportSettings[field]);
+    setSupportErrors(prev => ({ ...prev, [field]: err }));
+  };
+
+  const validateAllSupportSettings = () => {
+    const fields = ["officeName", "phone", "whatsappNumber", "email", "dispatchName", "dispatchPhone", "dispatchEmail"];
+    const errors = {};
+    let isValid = true;
+
+    fields.forEach(field => {
+      const err = validateSupportField(field, supportSettings[field]);
+      if (err) {
+        errors[field] = err;
+        isValid = false;
+      }
+    });
+
+    setSupportErrors(errors);
+    setSupportTouched({
+      officeName: true,
+      phone: true,
+      whatsappNumber: true,
+      email: true,
+      dispatchName: true,
+      dispatchPhone: true,
+      dispatchEmail: true
+    });
+
+    return isValid;
+  };
+
   const handleSaveSupportSettings = async (e) => {
     if (e) e.preventDefault();
+    if (!validateAllSupportSettings()) {
+      toast.error("Please fix all validation errors before saving support contacts.");
+      return;
+    }
+
     setSavingSupport(true);
     try {
       const res = await managerApi.updateSupportSettings(supportSettings);
@@ -75,18 +198,90 @@ export default function SettingsPage() {
     }
   };
 
-  const handleNotificationChange = (type, channel) => {
-    setNotifications((prev) => ({
-      ...prev,
-      [type]: {
-        ...prev[type],
-        [channel]: !prev[type][channel],
-      },
-    }));
+  const handleToggleTwoStep = () => {
+    const next = !twoStep;
+    setTwoStep(next);
+    localStorage.setItem("manager_two_step", JSON.stringify(next));
+    toast.success(next ? "2-Step verification enabled" : "2-Step verification disabled");
   };
 
-  const handleSave = () => {
-    toast.success("All settings saved!");
+  const handleLanguageChange = (val) => {
+    setLanguage(val);
+    localStorage.setItem("manager_language", val);
+  };
+
+  const handleTimezoneChange = (val) => {
+    setTimezone(val);
+    localStorage.setItem("manager_timezone", val);
+  };
+
+  const handleUnitsChange = (val) => {
+    setUnits(val);
+    localStorage.setItem("manager_units", val);
+  };
+
+  const handleNotificationChange = (type, channel) => {
+    setNotifications((prev) => {
+      const updated = {
+        ...prev,
+        [type]: {
+          ...prev[type],
+          [channel]: !prev[type][channel],
+        },
+      };
+      localStorage.setItem("manager_notifications", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleSave = async () => {
+    localStorage.setItem("manager_two_step", JSON.stringify(twoStep));
+    localStorage.setItem("manager_language", language);
+    localStorage.setItem("manager_timezone", timezone);
+    localStorage.setItem("manager_units", units);
+    localStorage.setItem("manager_notifications", JSON.stringify(notifications));
+
+    const isSupportValid = validateAllSupportSettings();
+    if (!isSupportValid) {
+      toast.error("Please fix all validation errors before saving.");
+      return;
+    }
+
+    setSavingSupport(true);
+    try {
+      const res = await managerApi.updateSupportSettings(supportSettings);
+      if (res?.success && res.data) {
+        setSupportSettings({
+          officeName: res.data.officeName || "",
+          phone: res.data.phone || "",
+          email: res.data.email || "",
+          whatsappNumber: res.data.whatsappNumber || "",
+          dispatchName: res.data.dispatchName || "",
+          dispatchPhone: res.data.dispatchPhone || "",
+          dispatchEmail: res.data.dispatchEmail || ""
+        });
+      }
+      toast.success("All settings saved successfully!");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to save support settings");
+    } finally {
+      setSavingSupport(false);
+    }
+  };
+
+  const handleCancel = () => {
+    const savedTwoStep = localStorage.getItem("manager_two_step");
+    setTwoStep(savedTwoStep !== null ? JSON.parse(savedTwoStep) : true);
+    setLanguage(localStorage.getItem("manager_language") || "English (United States)");
+    setTimezone(localStorage.getItem("manager_timezone") || "(GMT-05:00) Eastern Time");
+    setUnits(localStorage.getItem("manager_units") || "metric");
+    const savedNotifs = localStorage.getItem("manager_notifications");
+    if (savedNotifs) {
+      try { setNotifications(JSON.parse(savedNotifs)); } catch { /* ignore */ }
+    }
+    fetchSupportSettings();
+    setSupportErrors({});
+    toast.success("Settings reset to saved values");
   };
 
   return (
@@ -98,14 +293,18 @@ export default function SettingsPage() {
           <p className="text-[18px] text-[#64748B] mt-[12px]">Manage your professional profile and operational preferences.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="px-6 py-2 border border-gray-400 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors">
+          <button
+            onClick={handleCancel}
+            className="px-6 py-2 border border-gray-400 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+          >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-6 py-2 bg-amber-700 text-white rounded-xl font-medium hover:bg-amber-800 transition-colors shadow-lg"
+            disabled={savingSupport}
+            className="px-6 py-2 bg-amber-700 text-white rounded-xl font-medium hover:bg-amber-800 transition-colors shadow-lg cursor-pointer disabled:opacity-50"
           >
-            Save Changes
+            {savingSupport ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </div>
@@ -122,7 +321,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between mb-2">
               <p className="text-gray-800 font-medium">2-Step Verification</p>
               <button
-                onClick={() => setTwoStep(!twoStep)}
+                onClick={handleToggleTwoStep}
                 className={`w-12 h-6 rounded-full transition-colors relative flex items-center px-0.5 ${
                   twoStep ? "bg-amber-700" : "bg-gray-300"
                 }`}
@@ -162,7 +361,7 @@ export default function SettingsPage() {
               <label className="block text-gray-800 font-medium mb-2">System Language</label>
               <select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value)}
+                onChange={(e) => handleLanguageChange(e.target.value)}
                 className="w-full px-4 py-2 bg-amber-50 border border-gray-300 rounded-xl text-gray-700 font-medium focus:outline-none appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:12px_12px] bg-[right_12px_center]"
               >
                 <option>English (United States)</option>
@@ -175,7 +374,7 @@ export default function SettingsPage() {
               <label className="block text-gray-800 font-medium mb-2">Timezone</label>
               <select
                 value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
+                onChange={(e) => handleTimezoneChange(e.target.value)}
                 className="w-full px-4 py-2 bg-amber-50 border border-gray-300 rounded-xl text-gray-700 font-medium focus:outline-none appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:12px_12px] bg-[right_12px_center]"
               >
                 <option>(GMT-05:00) Eastern Time</option>
@@ -188,7 +387,7 @@ export default function SettingsPage() {
               <label className="block text-gray-800 font-medium mb-2">Measurement Units</label>
               <div className="flex bg-amber-50 border border-gray-300 rounded-xl p-1">
                 <button
-                  onClick={() => setUnits("metric")}
+                  onClick={() => handleUnitsChange("metric")}
                   className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                     units === "metric" ? "bg-white text-amber-700 shadow" : "text-gray-500"
                   }`}
@@ -196,7 +395,7 @@ export default function SettingsPage() {
                   Metric (km, kg)
                 </button>
                 <button
-                  onClick={() => setUnits("imperial")}
+                  onClick={() => handleUnitsChange("imperial")}
                   className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                     units === "imperial" ? "bg-white text-amber-700 shadow" : "text-gray-500"
                   }`}
@@ -369,9 +568,20 @@ export default function SettingsPage() {
                 type="text"
                 placeholder="e.g. Fleet Manager Office"
                 value={supportSettings.officeName}
-                onChange={(e) => setSupportSettings(prev => ({ ...prev, officeName: e.target.value }))}
-                className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-amber-700"
+                onChange={(e) => handleSupportFieldChange("officeName", e.target.value)}
+                onBlur={() => handleSupportFieldBlur("officeName")}
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs text-gray-800 focus:outline-none transition-colors ${
+                  supportErrors.officeName
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500"
+                    : "border-gray-300 focus:border-amber-700"
+                }`}
               />
+              {supportErrors.officeName && (
+                <p className="text-red-500 text-xs font-semibold mt-1 font-poppins flex items-center gap-1">
+                  <Icon icon="mdi:alert-circle" className="w-3.5 h-3.5 inline shrink-0" />
+                  {supportErrors.officeName}
+                </p>
+              )}
             </div>
 
             <div>
@@ -380,9 +590,20 @@ export default function SettingsPage() {
                 type="text"
                 placeholder="e.g. +919876543210"
                 value={supportSettings.phone}
-                onChange={(e) => setSupportSettings(prev => ({ ...prev, phone: e.target.value }))}
-                className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-amber-700"
+                onChange={(e) => handleSupportFieldChange("phone", e.target.value)}
+                onBlur={() => handleSupportFieldBlur("phone")}
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs text-gray-800 focus:outline-none transition-colors ${
+                  supportErrors.phone
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500"
+                    : "border-gray-300 focus:border-amber-700"
+                }`}
               />
+              {supportErrors.phone && (
+                <p className="text-red-500 text-xs font-semibold mt-1 font-poppins flex items-center gap-1">
+                  <Icon icon="mdi:alert-circle" className="w-3.5 h-3.5 inline shrink-0" />
+                  {supportErrors.phone}
+                </p>
+              )}
             </div>
 
             <div>
@@ -391,9 +612,20 @@ export default function SettingsPage() {
                 type="text"
                 placeholder="e.g. +919876543210"
                 value={supportSettings.whatsappNumber}
-                onChange={(e) => setSupportSettings(prev => ({ ...prev, whatsappNumber: e.target.value }))}
-                className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-amber-700"
+                onChange={(e) => handleSupportFieldChange("whatsappNumber", e.target.value)}
+                onBlur={() => handleSupportFieldBlur("whatsappNumber")}
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs text-gray-800 focus:outline-none transition-colors ${
+                  supportErrors.whatsappNumber
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500"
+                    : "border-gray-300 focus:border-amber-700"
+                }`}
               />
+              {supportErrors.whatsappNumber && (
+                <p className="text-red-500 text-xs font-semibold mt-1 font-poppins flex items-center gap-1">
+                  <Icon icon="mdi:alert-circle" className="w-3.5 h-3.5 inline shrink-0" />
+                  {supportErrors.whatsappNumber}
+                </p>
+              )}
             </div>
 
             <div>
@@ -402,9 +634,20 @@ export default function SettingsPage() {
                 type="email"
                 placeholder="e.g. manager@fleet.com"
                 value={supportSettings.email}
-                onChange={(e) => setSupportSettings(prev => ({ ...prev, email: e.target.value }))}
-                className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-amber-700"
+                onChange={(e) => handleSupportFieldChange("email", e.target.value)}
+                onBlur={() => handleSupportFieldBlur("email")}
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs text-gray-800 focus:outline-none transition-colors ${
+                  supportErrors.email
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500"
+                    : "border-gray-300 focus:border-amber-700"
+                }`}
               />
+              {supportErrors.email && (
+                <p className="text-red-500 text-xs font-semibold mt-1 font-poppins flex items-center gap-1">
+                  <Icon icon="mdi:alert-circle" className="w-3.5 h-3.5 inline shrink-0" />
+                  {supportErrors.email}
+                </p>
+              )}
             </div>
           </div>
 
@@ -421,9 +664,20 @@ export default function SettingsPage() {
                 type="text"
                 placeholder="e.g. Central Dispatch Desk"
                 value={supportSettings.dispatchName}
-                onChange={(e) => setSupportSettings(prev => ({ ...prev, dispatchName: e.target.value }))}
-                className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-blue-700"
+                onChange={(e) => handleSupportFieldChange("dispatchName", e.target.value)}
+                onBlur={() => handleSupportFieldBlur("dispatchName")}
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs text-gray-800 focus:outline-none transition-colors ${
+                  supportErrors.dispatchName
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500"
+                    : "border-gray-300 focus:border-blue-700"
+                }`}
               />
+              {supportErrors.dispatchName && (
+                <p className="text-red-500 text-xs font-semibold mt-1 font-poppins flex items-center gap-1">
+                  <Icon icon="mdi:alert-circle" className="w-3.5 h-3.5 inline shrink-0" />
+                  {supportErrors.dispatchName}
+                </p>
+              )}
             </div>
 
             <div>
@@ -432,9 +686,20 @@ export default function SettingsPage() {
                 type="text"
                 placeholder="e.g. +919876543211"
                 value={supportSettings.dispatchPhone}
-                onChange={(e) => setSupportSettings(prev => ({ ...prev, dispatchPhone: e.target.value }))}
-                className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-blue-700"
+                onChange={(e) => handleSupportFieldChange("dispatchPhone", e.target.value)}
+                onBlur={() => handleSupportFieldBlur("dispatchPhone")}
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs text-gray-800 focus:outline-none transition-colors ${
+                  supportErrors.dispatchPhone
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500"
+                    : "border-gray-300 focus:border-blue-700"
+                }`}
               />
+              {supportErrors.dispatchPhone && (
+                <p className="text-red-500 text-xs font-semibold mt-1 font-poppins flex items-center gap-1">
+                  <Icon icon="mdi:alert-circle" className="w-3.5 h-3.5 inline shrink-0" />
+                  {supportErrors.dispatchPhone}
+                </p>
+              )}
             </div>
 
             <div>
@@ -443,9 +708,20 @@ export default function SettingsPage() {
                 type="email"
                 placeholder="e.g. dispatch@fleet.com"
                 value={supportSettings.dispatchEmail}
-                onChange={(e) => setSupportSettings(prev => ({ ...prev, dispatchEmail: e.target.value }))}
-                className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-blue-700"
+                onChange={(e) => handleSupportFieldChange("dispatchEmail", e.target.value)}
+                onBlur={() => handleSupportFieldBlur("dispatchEmail")}
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs text-gray-800 focus:outline-none transition-colors ${
+                  supportErrors.dispatchEmail
+                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500"
+                    : "border-gray-300 focus:border-blue-700"
+                }`}
               />
+              {supportErrors.dispatchEmail && (
+                <p className="text-red-500 text-xs font-semibold mt-1 font-poppins flex items-center gap-1">
+                  <Icon icon="mdi:alert-circle" className="w-3.5 h-3.5 inline shrink-0" />
+                  {supportErrors.dispatchEmail}
+                </p>
+              )}
             </div>
           </div>
         </form>

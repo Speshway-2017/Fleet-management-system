@@ -87,7 +87,15 @@ export const updateProfile = async (req, res, next) => {
 
 export const changePassword = async (req, res, next) => {
   try {
-    const { oldPassword, newPassword } = req.body;
+    const oldPassword = req.body.oldPassword || req.body.currentPassword;
+    const { newPassword } = req.body;
+
+    if (!oldPassword) {
+      return sendError(res, 400, 'Current password is required');
+    }
+    if (!newPassword) {
+      return sendError(res, 400, 'New password is required');
+    }
 
     if (req.user && req.user.role === 'DRIVER') {
       const Driver = (await import('../models/Driver.js')).default;
@@ -113,7 +121,7 @@ export const changePassword = async (req, res, next) => {
       }
 
       if (!isMatch) {
-        return sendError(res, 400, 'Old password is incorrect');
+        return sendError(res, 400, 'Current password is incorrect');
       }
 
       driver.password = await hashPassword(newPassword);
@@ -128,7 +136,7 @@ export const changePassword = async (req, res, next) => {
       return sendSuccess(res, 200, {}, 'Password changed successfully');
     }
 
-    await changeUserPassword(req.user.email, oldPassword, newPassword);
+    await changeUserPassword(req.user._id || req.user.email, oldPassword, newPassword);
     await logAction({
       user: req.user.email,
       action: 'Password Changed',
@@ -137,7 +145,7 @@ export const changePassword = async (req, res, next) => {
     });
     return sendSuccess(res, 200, {}, 'Password changed successfully');
   } catch (error) {
-    if (error.message === 'Old password is incorrect' || error.message === 'User not found') {
+    if (error.message === 'Old password is incorrect' || error.message === 'Current password is incorrect' || error.message === 'User not found') {
       return sendError(res, 400, error.message);
     }
     next(error);

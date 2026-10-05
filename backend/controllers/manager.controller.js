@@ -2678,8 +2678,10 @@ export const markAllNotificationsRead = async (req, res, next) => {
     await markAllManagerNotificationsRead(req.user._id);
 
     // Emit notification:update event
-    if (req.io) {
-      req.io.to(`manager:${req.user._id}`).emit('notification:update', { allRead: true });
+    const io = req.app?.get('socketio') || (req.app?.locals ? req.app.locals.io : null) || req.io;
+    if (io) {
+      io.to(`manager:${req.user._id}`).emit('notification:update', { allRead: true });
+      io.emit('notification:update', { allRead: true, managerId: req.user._id });
     }
 
     return sendSuccess(res, 200, null, 'All notifications marked as read');
@@ -4082,11 +4084,11 @@ export const getSupportSettings = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
     return sendSuccess(res, 200, {
-      officeName: user?.primaryHub || (user?.name ? `${user.name} Office` : 'Fleet Manager Office'),
+      officeName: user?.officeName || user?.primaryHub || (user?.name ? `${user.name} Office` : 'Fleet Manager Office'),
       phone: user?.phone || '+919876543210',
       email: user?.email || 'manager@fleet.com',
       whatsappNumber: user?.whatsappNumber || user?.phone || '+919876543210',
-      dispatchName: user?.jobTitle ? `${user.jobTitle} Dispatch` : 'Central Dispatch Desk',
+      dispatchName: user?.dispatchName || user?.jobTitle || 'Central Dispatch Desk',
       dispatchPhone: user?.dispatchPhone || user?.phone || '+919876543211',
       dispatchEmail: user?.dispatchEmail || user?.email || 'dispatch@fleet.com'
     }, 'Support settings retrieved');
@@ -4105,21 +4107,27 @@ export const updateSupportSettings = async (req, res, next) => {
     const user = await User.findById(req.user._id);
     if (!user) return sendError(res, 404, 'User not found');
 
-    if (officeName) user.primaryHub = officeName;
-    if (phone) user.phone = phone;
-    if (email) user.email = email;
+    if (officeName !== undefined) {
+      user.officeName = officeName;
+      user.primaryHub = officeName;
+    }
+    if (phone !== undefined) user.phone = phone;
+    if (email !== undefined) user.email = email;
     if (whatsappNumber !== undefined) user.whatsappNumber = whatsappNumber;
-    if (dispatchName) user.jobTitle = dispatchName;
+    if (dispatchName !== undefined) {
+      user.dispatchName = dispatchName;
+      user.jobTitle = dispatchName;
+    }
     if (dispatchPhone !== undefined) user.dispatchPhone = dispatchPhone;
     if (dispatchEmail !== undefined) user.dispatchEmail = dispatchEmail;
 
     await user.save();
     return sendSuccess(res, 200, {
-      officeName: user.primaryHub,
+      officeName: user.officeName || user.primaryHub,
       phone: user.phone,
       email: user.email,
       whatsappNumber: user.whatsappNumber,
-      dispatchName: user.jobTitle,
+      dispatchName: user.dispatchName || user.jobTitle,
       dispatchPhone: user.dispatchPhone,
       dispatchEmail: user.dispatchEmail
     }, 'Driver Support Helpline details saved successfully!');

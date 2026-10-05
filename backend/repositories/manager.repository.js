@@ -170,51 +170,44 @@ export const deleteReport = async (id) => {
 };
 
 // Notifications
-export const getManagerNotifications = async (managerId) => {
-  const user = await User.findById(managerId);
-  const organizationId = user ? user.organization : null;
-  return Notification.find({
+const buildManagerNotificationFilter = (managerId, organizationId) => {
+  return {
     $or: [
       { recipient: managerId },
       {
-        recipientRole: 'FLEET_MANAGER',
+        recipientRole: { $in: ['FLEET_MANAGER', 'MANAGER'] },
         $or: [
           { recipient: { $in: [null, undefined] } },
-          { organization: organizationId },
+          ...(organizationId ? [{ organization: organizationId }] : []),
           { organization: { $in: [null, undefined] } }
         ]
       },
       {
-        type: { $in: ['driver_account_deleted', 'driver_deleted', 'account_deleted'] }
+        type: { $in: ['driver_account_deleted', 'driver_deleted', 'account_deleted', 'warning', 'alert', 'info', 'success', 'system', 'trip', 'maintenance', 'fuel', 'ticket'] }
       }
     ]
-  }).sort({ createdAt: -1 });
+  };
+};
+
+export const getManagerNotifications = async (managerId) => {
+  const user = await User.findById(managerId);
+  const organizationId = user ? user.organization : null;
+  const filter = buildManagerNotificationFilter(managerId, organizationId);
+  return Notification.find(filter).sort({ createdAt: -1 });
 };
 
 export const markManagerNotificationRead = async (id) => {
-  return Notification.findByIdAndUpdate(id, { isRead: true }, { new: true });
+  return Notification.findByIdAndUpdate(id, { isRead: true, readAt: new Date() }, { new: true });
 };
 
 export const markAllManagerNotificationsRead = async (managerId) => {
   const user = await User.findById(managerId);
   const organizationId = user ? user.organization : null;
-  return Notification.updateMany(
-    {
-      $or: [
-        { recipient: managerId },
-        {
-          recipientRole: 'FLEET_MANAGER',
-          recipient: { $in: [null, undefined] },
-          $or: [
-            { organization: organizationId },
-            { organization: { $in: [null, undefined] } }
-          ]
-        }
-      ],
-      isRead: false
-    },
-    { isRead: true }
-  );
+  const filter = {
+    ...buildManagerNotificationFilter(managerId, organizationId),
+    isRead: { $ne: true }
+  };
+  return Notification.updateMany(filter, { $set: { isRead: true, readAt: new Date() } });
 };
 
 export const deleteManagerNotification = async (id) => {

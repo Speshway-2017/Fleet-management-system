@@ -40,12 +40,21 @@ export const getUserProfile = async (userId) => {
   return user;
 };
 
-export const changeUserPassword = async (email, oldPassword, newPassword) => {
-  const user = await findUserByEmail(email);
+export const changeUserPassword = async (userIdOrEmail, oldPassword, newPassword) => {
+  let user;
+  if (typeof userIdOrEmail === 'string' && userIdOrEmail.includes('@')) {
+    user = await findUserByEmail(userIdOrEmail);
+  } else if (userIdOrEmail) {
+    const User = (await import('../models/User.js')).default;
+    user = await User.findById(userIdOrEmail);
+    if (!user) {
+      user = await findUserByEmail(userIdOrEmail);
+    }
+  }
   if (!user) throw new Error('User not found');
 
   const isPasswordValid = await comparePassword(oldPassword, user.password);
-  if (!isPasswordValid) throw new Error('Old password is incorrect');
+  if (!isPasswordValid) throw new Error('Current password is incorrect');
 
   const hashedNewPassword = await hashPassword(newPassword);
   user.password = hashedNewPassword;
