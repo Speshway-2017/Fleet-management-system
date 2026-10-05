@@ -10,3 +10,4 @@ export * from './fuel.schema.js';
 export * from './maintenance.schema.js';
 export * from './contact.schema.js';
 export * from './settings.schema.js';
+export * from './report.schema.js';

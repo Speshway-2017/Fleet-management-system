@@ -11,3 +11,4 @@ export * from './document.schema.js';
 export * from './contact.schema.js';
 export * from './eway.schema.js';
 export * from './settings.schema.js';
+export * from './report.schema.js';
