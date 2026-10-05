@@ -19,7 +19,28 @@ export default function IssueCard({ ticket, onStatusUpdated, highlighted = false
   const [billFile, setBillFile] = useState(null);
   const [actualCost, setActualCost] = useState(ticket.actualCost || "");
   const [resolveNotes, setResolveNotes] = useState("");
+  const [resolveErrors, setResolveErrors] = useState({});
   const [resolving, setResolving] = useState(false);
+
+  const validateResolveField = (field, val) => {
+    if (field === "actualCost") {
+      if (val !== "" && val !== null && val !== undefined) {
+        const num = Number(val);
+        if (isNaN(num)) return "Please enter a valid numeric amount.";
+        if (num < 0) return "Actual repair cost cannot be negative.";
+        if (num > 10000000) return "Actual repair cost cannot exceed ₹1,00,00,000.";
+        if (val.toString().length > 8) return "Actual repair cost must not exceed 8 digits.";
+      }
+      return "";
+    }
+    if (field === "resolveNotes") {
+      const str = (val || "").toString().trim();
+      if (str.length > 500) return "Resolution notes must not exceed 500 characters.";
+      if (str.length > 0 && str.length < 5) return "Resolution notes must be at least 5 characters.";
+      return "";
+    }
+    return "";
+  };
 
   // Modal State for Viewing Uploaded Bills & Photos
   const [showMediaModal, setShowMediaModal] = useState(false);
@@ -171,6 +192,14 @@ export default function IssueCard({ ticket, onStatusUpdated, highlighted = false
     e.preventDefault();
     if (!billFile) {
       toast.error("Please upload the Service Bill / Invoice receipt file");
+      return;
+    }
+
+    const costErr = validateResolveField("actualCost", actualCost);
+    const notesErr = validateResolveField("resolveNotes", resolveNotes);
+    if (costErr || notesErr) {
+      setResolveErrors({ actualCost: costErr, resolveNotes: notesErr });
+      toast.error("Please fix the validation errors before submitting.");
       return;
     }
 
@@ -566,25 +595,67 @@ export default function IssueCard({ ticket, onStatusUpdated, highlighted = false
                   <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">₹</span>
                   <input
                     type="number"
+                    min="0"
+                    max="10000000"
                     value={actualCost}
-                    onChange={(e) => setActualCost(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.length <= 8) {
+                        setActualCost(val);
+                        setResolveErrors((prev) => ({ ...prev, actualCost: validateResolveField("actualCost", val) }));
+                      }
+                    }}
+                    onBlur={(e) => {
+                      setResolveErrors((prev) => ({ ...prev, actualCost: validateResolveField("actualCost", e.target.value) }));
+                    }}
                     placeholder="e.g. 1500"
-                    className="block w-full pl-7 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-none font-bold"
+                    className={`block w-full pl-7 pr-3 py-2.5 bg-white border rounded-xl text-slate-900 text-xs focus:outline-none font-bold transition-all ${
+                      resolveErrors.actualCost
+                        ? "border-rose-500 bg-rose-50/20 focus:ring-1 focus:ring-rose-500"
+                        : "border-slate-300 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                    }`}
                   />
                 </div>
+                {resolveErrors.actualCost && (
+                  <p className="text-[11px] text-rose-500 font-bold mt-1 font-poppins flex items-center gap-1">
+                    • {resolveErrors.actualCost}
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">
-                  Resolution Notes / Repairs Done
-                </label>
+                <div className="flex justify-between items-center">
+                  <label className="block text-xs font-bold font-poppins text-slate-700 uppercase">
+                    Resolution Notes / Repairs Done
+                  </label>
+                  <span className={`text-[10px] font-semibold ${resolveNotes.length > 500 ? "text-rose-500 font-bold" : "text-slate-400"}`}>
+                    {resolveNotes.length} / 500
+                  </span>
+                </div>
                 <textarea
                   rows={3}
+                  maxLength={500}
                   value={resolveNotes}
-                  onChange={(e) => setResolveNotes(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setResolveNotes(val);
+                    setResolveErrors((prev) => ({ ...prev, resolveNotes: validateResolveField("resolveNotes", val) }));
+                  }}
+                  onBlur={(e) => {
+                    setResolveErrors((prev) => ({ ...prev, resolveNotes: validateResolveField("resolveNotes", e.target.value) }));
+                  }}
                   placeholder="e.g. Brake pads replaced at Sai Garage. Vehicle tested and road ready."
-                  className="mt-1 block w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-none"
+                  className={`mt-1 block w-full px-3.5 py-2.5 bg-white border rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:outline-none transition-all ${
+                    resolveErrors.resolveNotes
+                      ? "border-rose-500 bg-rose-50/20 focus:ring-1 focus:ring-rose-500"
+                      : "border-slate-300 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                  }`}
                 />
+                {resolveErrors.resolveNotes && (
+                  <p className="text-[11px] text-rose-500 font-bold mt-1 font-poppins flex items-center gap-1">
+                    • {resolveErrors.resolveNotes}
+                  </p>
+                )}
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">

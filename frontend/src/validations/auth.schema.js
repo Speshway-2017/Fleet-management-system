@@ -28,14 +28,37 @@ export const resetPasswordSchema = z.object({
   path: ['confirmPassword']
 });
 
-export const changePasswordSchema = z.object({
-  currentPassword: z.string({ required_error: 'Current password is required' }).min(1, 'Current password is required'),
-  newPassword: passwordSchema,
-  confirmPassword: z.string({ required_error: 'Confirm password is required' }).min(1, 'Confirm password is required')
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: 'Passwords do not match',
-  path: ['confirmPassword']
-});
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string({ required_error: 'Current password is required.' })
+      .trim()
+      .min(1, 'Current password is required.')
+      .max(20, 'Current password must not exceed 20 characters.'),
+    newPassword: z
+      .string({ required_error: 'New password is required.' })
+      .trim()
+      .min(1, 'New password is required.')
+      .min(8, 'Password must be at least 8 characters.')
+      .max(20, 'Password must not exceed 20 characters.')
+      .refine((val) => !/\s/.test(val), { message: 'Password must not contain spaces.' })
+      .refine((val) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(val), {
+        message: 'Password must contain uppercase, lowercase and number.'
+      }),
+    confirmPassword: z
+      .string({ required_error: 'Confirm password is required.' })
+      .trim()
+      .min(1, 'Confirm password is required.')
+      .max(20, 'Confirm password must not exceed 20 characters.')
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Passwords do not match.',
+    path: ['confirmPassword']
+  })
+  .refine((data) => !data.currentPassword || data.currentPassword !== data.newPassword, {
+    message: 'New password must be different from current password.',
+    path: ['newPassword']
+  });
 
 export const profileUpdateSchema = z.object({
   firstName: z

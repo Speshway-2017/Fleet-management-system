@@ -403,3 +403,91 @@ export const notificationSettingsSchema = z.object({
   requireAdminReview: z.boolean().optional()
 }).passthrough();
 
+export const driverSupportSettingsSchema = z.object({
+  officeName: z
+    .string({ required_error: 'Office / Hub Title is required.' })
+    .trim()
+    .min(1, 'Office / Hub Title is required.')
+    .min(2, 'Office / Hub Title must be at least 2 characters.')
+    .max(50, 'Office / Hub Title must not exceed 50 characters.')
+    .refine((val) => /[a-zA-Z]/.test(val), { message: 'Office / Hub Title must contain letters.' })
+    .refine((val) => /^[a-zA-Z0-9\s,.'\-&/]+$/.test(val), { message: 'Office / Hub Title contains invalid characters.' })
+    .refine((val) => !/(.)\1{3,}/i.test(val), { message: 'Repeated characters are not allowed.' }),
+  phone: z
+    .string({ required_error: 'Manager phone number is required.' })
+    .trim()
+    .min(1, 'Manager phone number is required.')
+    .refine((val) => {
+      const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
+      return clean.length === 10;
+    }, { message: 'Phone number must contain exactly 10 digits.' })
+    .refine((val) => {
+      const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
+      return /^[6-9]/.test(clean);
+    }, { message: 'Phone number must start with 6, 7, 8, or 9.' })
+    .refine((val) => {
+      const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
+      return !/^(\d)\1{9}$/.test(clean);
+    }, { message: 'Please enter a valid active phone number.' }),
+  whatsappNumber: z
+    .string({ required_error: 'WhatsApp support number is required.' })
+    .trim()
+    .min(1, 'WhatsApp support number is required.')
+    .refine((val) => {
+      const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
+      return clean.length === 10;
+    }, { message: 'WhatsApp number must contain exactly 10 digits.' })
+    .refine((val) => {
+      const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
+      return /^[6-9]/.test(clean);
+    }, { message: 'WhatsApp number must start with 6, 7, 8, or 9.' })
+    .refine((val) => {
+      const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
+      return !/^(\d)\1{9}$/.test(clean);
+    }, { message: 'Please enter a valid active WhatsApp number.' }),
+  email: z
+    .string({ required_error: 'Manager office email is required.' })
+    .trim()
+    .min(1, 'Manager office email is required.')
+    .max(80, 'Email must not exceed 80 characters.')
+    .refine((val) => !/\s/.test(val), { message: 'Email address must not contain spaces.' })
+    .refine((val) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(val), {
+      message: 'Please enter a valid email address.'
+    }),
+  dispatchName: z
+    .string({ required_error: 'Dispatch Desk Title is required.' })
+    .trim()
+    .min(1, 'Dispatch Desk Title is required.')
+    .min(2, 'Dispatch Desk Title must be at least 2 characters.')
+    .max(50, 'Dispatch Desk Title must not exceed 50 characters.')
+    .refine((val) => /[a-zA-Z]/.test(val), { message: 'Dispatch Desk Title must contain letters.' })
+    .refine((val) => /^[a-zA-Z0-9\s,.'\-&/]+$/.test(val), { message: 'Dispatch Desk Title contains invalid characters.' })
+    .refine((val) => !/(.)\1{3,}/i.test(val), { message: 'Repeated characters are not allowed.' }),
+  dispatchPhone: z
+    .string({ required_error: 'Emergency dispatch phone number is required.' })
+    .trim()
+    .min(1, 'Emergency dispatch phone number is required.')
+    .refine((val) => {
+      const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
+      return clean.length === 10;
+    }, { message: 'Emergency phone number must contain exactly 10 digits.' })
+    .refine((val) => {
+      const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
+      return /^[6-9]/.test(clean);
+    }, { message: 'Emergency phone number must start with 6, 7, 8, or 9.' })
+    .refine((val) => {
+      const clean = val.replace(/^(\+91|91|0)/, '').replace(/\D/g, '');
+      return !/^(\d)\1{9}$/.test(clean);
+    }, { message: 'Please enter a valid active phone number.' }),
+  dispatchEmail: z
+    .string({ required_error: 'Dispatch desk email is required.' })
+    .trim()
+    .min(1, 'Dispatch desk email is required.')
+    .max(80, 'Email must not exceed 80 characters.')
+    .refine((val) => !/\s/.test(val), { message: 'Email address must not contain spaces.' })
+    .refine((val) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(val), {
+      message: 'Please enter a valid email address.'
+    }),
+}).passthrough();
+
+

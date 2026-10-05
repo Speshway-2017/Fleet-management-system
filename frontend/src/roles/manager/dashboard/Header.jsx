@@ -71,10 +71,29 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
         setUnreadCount(prev => prev + 1);
       };
 
+      const handleNotificationUpdate = (data) => {
+        if (data?.allRead) {
+          setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+          setUnreadCount(0);
+        }
+      };
+
+      const handleNotificationRead = (data) => {
+        const id = data?._id || data?.id;
+        if (id) {
+          setNotifications(prev => prev.map(n => (n._id === id || n.id === id) ? { ...n, isRead: true } : n));
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+      };
+
       socket.on("notification:new", handleNewNotification);
+      socket.on("notification:update", handleNotificationUpdate);
+      socket.on("notification:read", handleNotificationRead);
 
       return () => {
         socket.off("notification:new", handleNewNotification);
+        socket.off("notification:update", handleNotificationUpdate);
+        socket.off("notification:read", handleNotificationRead);
       };
     }
   }, [user?._id]);
@@ -261,7 +280,6 @@ export default function Header({ onMenuToggle, showMenuButton = true }) {
             onClick={() => {
               setNotifDropdownOpen(!notifDropdownOpen);
               setUserMenuOpen(false);
-              navigate("/manager/notifications");
             }}
             className="relative p-2.5 text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none transition-colors duration-150 cursor-pointer"
             title="Notifications"

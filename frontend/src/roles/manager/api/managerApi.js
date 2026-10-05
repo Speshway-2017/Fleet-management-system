@@ -284,6 +284,10 @@ export const managerApi = {
     return await axiosClient.put("/auth/profile", profileData);
   },
 
+  changePassword: async (passwordData) => {
+    return await axiosClient.patch("/auth/change-password", passwordData);
+  },
+
   // Proof of Delivery
   getPODByTripId: async (tripId) => {
     return await axiosClient.get(`/manager/pod/trip/${tripId}`);

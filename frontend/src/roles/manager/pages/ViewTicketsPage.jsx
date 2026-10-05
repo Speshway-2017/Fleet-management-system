@@ -1447,7 +1447,7 @@ export default function ViewTicketsPage() {
       {/* --- EDIT TICKET SUB-MODAL --- */}
       {selectedTicket && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-[60] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col my-auto">
+          <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-2xl w-full max-w-lg sm:max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col my-auto">
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-150 flex items-center justify-between bg-slate-50 shrink-0">
               <div>
@@ -1468,21 +1468,21 @@ export default function ViewTicketsPage() {
             {modalMode === "view" ? (
               <div className="p-6 space-y-4 flex-1 overflow-y-auto">
                 <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs space-y-2.5 font-nunito">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-semibold">Vehicle Plate:</span>
-                    <span className="font-bold text-slate-700 uppercase">{resolveVehiclePlate(selectedTicket)}</span>
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-slate-500 font-semibold shrink-0">Vehicle Plate:</span>
+                    <span className="font-bold text-slate-700 uppercase break-all text-right max-w-[65%]">{resolveVehiclePlate(selectedTicket)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-semibold">Driver Name:</span>
-                    <span className="font-bold text-slate-700">{selectedTicket.driver?.fullName || selectedTicket.driverName}</span>
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-slate-500 font-semibold shrink-0">Driver Name:</span>
+                    <span className="font-bold text-slate-700 break-words text-right max-w-[65%]">{selectedTicket.driver?.fullName || selectedTicket.driverName}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-semibold">Issue Category:</span>
-                    <span className="font-bold text-slate-700">{selectedTicket.issueType}</span>
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-slate-500 font-semibold shrink-0">Issue Category:</span>
+                    <span className="font-bold text-slate-700 break-words text-right max-w-[65%]">{selectedTicket.issueType}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-semibold">Severity Level:</span>
-                    <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[9px] font-bold uppercase ${selectedTicket.severity === 'Critical'
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-slate-500 font-semibold shrink-0">Severity Level:</span>
+                    <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[9px] font-bold uppercase shrink-0 ${selectedTicket.severity === 'Critical'
                       ? 'bg-red-50 text-red-600 border border-red-100'
                       : selectedTicket.severity === 'High'
                         ? 'bg-orange-50 text-[#A14000] border border-orange-100'
@@ -1493,26 +1493,26 @@ export default function ViewTicketsPage() {
                       {selectedTicket.severity}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center py-1 bg-slate-100/70 px-3 rounded-lg border border-slate-200/50">
-                    <span className="text-slate-500 font-bold flex items-center gap-1.5 font-poppins">
+                  <div className="flex justify-between items-start gap-3 py-1.5 bg-slate-100/70 px-3 rounded-lg border border-slate-200/50">
+                    <span className="text-slate-500 font-bold flex items-center gap-1.5 font-poppins shrink-0">
                       <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" /> Driver Reported Location:
                     </span>
-                    <span className="font-bold text-slate-800 font-mono text-[11px]">
+                    <span className="font-bold text-slate-800 font-mono text-[11px] break-words break-all text-right max-w-[60%]">
                       {selectedTicket.location || selectedTicket.currentLocation || selectedTicket.landmark || "Vijayawada Highway NH-65, Gate 4 (GPS)"}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-semibold">Reported Date & Time:</span>
-                    <span className="font-bold text-slate-700">
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-slate-500 font-semibold shrink-0">Reported Date & Time:</span>
+                    <span className="font-bold text-slate-700 text-right shrink-0">
                       {formatDateSafe(selectedTicket.reportedAt || selectedTicket.createdAt, {
                         dateStyle: 'medium',
                         timeStyle: 'short'
                       })}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-semibold">Current Status:</span>
-                    <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-extrabold uppercase ${selectedTicket.status === 'Resolved' || selectedTicket.status === 'Completed' || selectedTicket.status === 'Repair Completed'
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-slate-500 font-semibold shrink-0">Current Status:</span>
+                    <span className={`inline-block px-2 py-0.5 rounded-[6px] text-[8px] font-extrabold uppercase shrink-0 ${selectedTicket.status === 'Resolved' || selectedTicket.status === 'Completed' || selectedTicket.status === 'Repair Completed'
                       ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                       : selectedTicket.status === 'Need Maintenance'
                         ? 'bg-rose-50 text-rose-600 border border-rose-100 font-black'
@@ -1527,22 +1527,22 @@ export default function ViewTicketsPage() {
                       {selectedTicket.status}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-semibold">Estimated Repair Cost:</span>
-                    <span className="font-bold text-[#1E293B]">
-                      {selectedTicket.estimatedCost > 0 ? `₹${selectedTicket.estimatedCost.toLocaleString('en-IN')}` : "-"}
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-slate-500 font-semibold shrink-0">Estimated Repair Cost:</span>
+                    <span className="font-bold text-[#1E293B] font-poppins break-words text-right max-w-[65%] truncate" title={selectedTicket.estimatedCost > 0 ? `₹${Number(selectedTicket.estimatedCost).toLocaleString('en-IN')}` : "-"}>
+                      {selectedTicket.estimatedCost > 0 ? `₹${Number(selectedTicket.estimatedCost).toLocaleString('en-IN')}` : "-"}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-semibold">Actual Repair Cost:</span>
-                    <span className="font-bold text-indigo-650">
-                      {selectedTicket.actualCost > 0 ? `₹${selectedTicket.actualCost.toLocaleString('en-IN')}` : "-"}
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-slate-500 font-semibold shrink-0">Actual Repair Cost:</span>
+                    <span className="font-bold text-indigo-650 font-poppins break-words text-right max-w-[65%] truncate" title={selectedTicket.actualCost > 0 ? `₹${Number(selectedTicket.actualCost).toLocaleString('en-IN')}` : "-"}>
+                      {selectedTicket.actualCost > 0 ? `₹${Number(selectedTicket.actualCost).toLocaleString('en-IN')}` : "-"}
                     </span>
                   </div>
                   {selectedTicket.completionDate && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 font-semibold">Completion Date:</span>
-                      <span className="font-bold text-slate-700">
+                    <div className="flex justify-between items-start gap-4">
+                      <span className="text-slate-500 font-semibold shrink-0">Completion Date:</span>
+                      <span className="font-bold text-slate-700 text-right shrink-0">
                         {formatDateSafe(selectedTicket.completionDate, { dateStyle: 'medium' })}
                       </span>
                     </div>
@@ -1551,34 +1551,40 @@ export default function ViewTicketsPage() {
                   {/* Service Completion Bill & Invoice Section */}
                   {(selectedTicket.status === 'Completed' || selectedTicket.status === 'Resolved' || selectedTicket.status === 'Repair Completed') && (
                     <div className="p-3 bg-emerald-50/90 border border-emerald-200 rounded-xl space-y-2 font-nunito mt-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-emerald-900 font-poppins flex items-center gap-1.5">
-                          <DollarSign className="w-4 h-4 text-emerald-600" /> Service Bill & Maintenance Receipt
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-emerald-900 font-poppins flex items-center gap-1.5 shrink-0">
+                          <DollarSign className="w-4 h-4 text-emerald-600 shrink-0" /> Service Bill & Maintenance Receipt
                         </span>
-                        <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded uppercase">Verified Receipt</span>
+                        <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded uppercase shrink-0">Verified Receipt</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div className="min-w-0">
                           <span className="text-slate-500 block text-[10px] font-bold uppercase">Invoice / Bill No.</span>
-                          <span className="font-bold text-slate-800 font-mono">{selectedTicket.serviceBillNo || `INV-2026-${(selectedTicket._id || '0000').slice(-4)}`}</span>
+                          <span className="font-bold text-slate-800 font-mono block truncate" title={selectedTicket.serviceBillNo || `INV-2026-${(selectedTicket._id || '0000').slice(-4)}`}>
+                            {selectedTicket.serviceBillNo || `INV-2026-${(selectedTicket._id || '0000').slice(-4)}`}
+                          </span>
                         </div>
-                        <div>
+                        <div className="min-w-0 text-right">
                           <span className="text-slate-500 block text-[10px] font-bold uppercase">Total Bill Amount</span>
-                          <span className="font-bold text-emerald-700 font-poppins text-sm">₹{(selectedTicket.actualCost || selectedTicket.estimatedCost || 2500).toLocaleString('en-IN')}</span>
+                          <span className="font-bold text-emerald-700 font-poppins text-sm block truncate" title={`₹${(Number(selectedTicket.actualCost) || Number(selectedTicket.estimatedCost) || 2500).toLocaleString('en-IN')}`}>
+                            ₹{(Number(selectedTicket.actualCost) || Number(selectedTicket.estimatedCost) || 2500).toLocaleString('en-IN')}
+                          </span>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  <div className="pt-2.5 border-t border-slate-200/50 mt-2">
+                  <div className="pt-2.5 border-t border-slate-200/50 mt-2 min-w-0">
                     <span className="text-slate-500 font-semibold block mb-1">Issue Description:</span>
-                    <p className="text-slate-700 font-medium whitespace-pre-wrap">{selectedTicket.description}</p>
+                    <div className="text-slate-700 font-medium whitespace-pre-wrap break-words break-all max-h-40 overflow-y-auto bg-white/70 p-2.5 rounded-lg border border-slate-200/40 text-xs leading-relaxed">
+                      {selectedTicket.description || "No description provided."}
+                    </div>
                   </div>
-                  <div className="pt-2.5 border-t border-slate-200/50">
+                  <div className="pt-2.5 border-t border-slate-200/50 min-w-0">
                     <span className="text-slate-500 font-semibold block mb-1">Maintenance Notes:</span>
-                    <p className="text-slate-700 font-medium whitespace-pre-wrap italic">
+                    <div className="text-slate-700 font-medium whitespace-pre-wrap break-words break-all italic max-h-40 overflow-y-auto bg-white/70 p-2.5 rounded-lg border border-slate-200/40 text-xs leading-relaxed">
                       {selectedTicket.notes || "No maintenance notes added yet."}
-                    </p>
+                    </div>
                   </div>
                   {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
                     <div className="pt-2.5 border-t border-slate-200/50">
@@ -1620,19 +1626,19 @@ export default function ViewTicketsPage() {
             ) : (
               <form onSubmit={handleUpdateTicket} className="p-6 space-y-4 flex-1 overflow-y-auto">
                 <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs space-y-1.5 font-nunito">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-semibold">Vehicle Plate:</span>
-                    <span className="font-bold text-slate-700 uppercase">{resolveVehiclePlate(selectedTicket)}</span>
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-slate-500 font-semibold shrink-0">Vehicle Plate:</span>
+                    <span className="font-bold text-slate-700 uppercase break-all text-right max-w-[65%]">{resolveVehiclePlate(selectedTicket)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-semibold">Driver Name:</span>
-                    <span className="font-bold text-slate-700">{selectedTicket.driver?.fullName || selectedTicket.driverName}</span>
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-slate-500 font-semibold shrink-0">Driver Name:</span>
+                    <span className="font-bold text-slate-700 break-words text-right max-w-[65%]">{selectedTicket.driver?.fullName || selectedTicket.driverName}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-semibold">Reported Issue:</span>
-                    <span className="font-bold text-slate-700">{selectedTicket.issueType} ({selectedTicket.severity})</span>
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-slate-500 font-semibold shrink-0">Reported Issue:</span>
+                    <span className="font-bold text-slate-700 break-words text-right max-w-[65%]">{selectedTicket.issueType} ({selectedTicket.severity})</span>
                   </div>
-                  <div className="pt-1.5 border-t border-slate-200/50 mt-1.5 text-slate-600 italic">
+                  <div className="pt-1.5 border-t border-slate-200/50 mt-1.5 text-slate-600 italic break-words break-all max-h-32 overflow-y-auto">
                     "{selectedTicket.description}"
                   </div>
                 </div>

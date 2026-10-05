@@ -12,10 +12,26 @@ export const driverLoginSchema = z.object({
 });
 
 
-export const changePasswordSchema = z.object({
-  oldPassword: z.string({ required_error: 'Old password is required' }).min(1, 'Old password is required'),
-  newPassword: passwordSchema
-});
+export const changePasswordSchema = z
+  .object({
+    oldPassword: z.string().optional(),
+    currentPassword: z.string().optional(),
+    newPassword: z
+      .string({ required_error: 'New password is required.' })
+      .trim()
+      .min(1, 'New password is required.')
+      .min(8, 'Password must be at least 8 characters.')
+      .max(20, 'Password must not exceed 20 characters.')
+      .refine((val) => !/\s/.test(val), { message: 'Password must not contain spaces.' })
+      .refine((val) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(val), {
+        message: 'Password must contain uppercase, lowercase and number.'
+      }),
+    confirmPassword: z.string().optional()
+  })
+  .refine((data) => data.oldPassword || data.currentPassword, {
+    message: 'Current password is required.',
+    path: ['currentPassword']
+  });
 
 export const registerAdminSchema = z.object({
   name: personNameSchema,

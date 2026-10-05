@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Check, CheckCircle2, AlertTriangle, AlertCircle, Activity, RefreshCw } from "lucide-react";
+import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import axiosClient from "@/api/axiosClient";
+import { getSocket } from "@/api/socket";
 
 function formatRelativeTime(dateStr) {
   if (!dateStr) return "Just now";
@@ -19,7 +21,7 @@ function formatRelativeTime(dateStr) {
 }
 
 export default function NotificationOverlay({ isOpen, onClose, onUnreadCountChange }) {
-  const { role } = useAuth() || {};
+  const { user, role, isAuthenticated } = useAuth() || {};
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("All");
@@ -49,12 +51,57 @@ export default function NotificationOverlay({ isOpen, onClose, onUnreadCountChan
     }
   }, [getEndpointPrefix]);
 
-  // Fetch when opened or periodically every 10 seconds
+  // Socket listener for real-time sync across sessions and windows
+  useEffect(() => {
+    if (isAuthenticated && user?._id) {
+      const socket = getSocket();
+
+      const handleNewNotif = (notif) => {
+        if (notif) {
+          setNotifications(prev => [notif, ...prev]);
+        }
+      };
+
+      const handleNotifUpdate = (data) => {
+        if (data?.allRead) {
+          setNotifications(prev => prev.map(n => ({ ...n, isRead: true, unread: false, status: "READ" })));
+        }
+      };
+
+      const handleNotifRead = (data) => {
+        const id = data?._id || data?.id;
+        if (id) {
+          setNotifications(prev => prev.map(n => (n._id === id || n.id === id) ? { ...n, isRead: true, unread: false, status: "READ" } : n));
+        }
+      };
+
+      const handleNotifDelete = (data) => {
+        const id = data?.id || data?._id;
+        if (id) {
+          setNotifications(prev => prev.filter(n => n._id !== id && n.id !== id));
+        }
+      };
+
+      socket.on("notification:new", handleNewNotif);
+      socket.on("notification:update", handleNotifUpdate);
+      socket.on("notification:read", handleNotifRead);
+      socket.on("notification:delete", handleNotifDelete);
+
+      return () => {
+        socket.off("notification:new", handleNewNotif);
+        socket.off("notification:update", handleNotifUpdate);
+        socket.off("notification:read", handleNotifRead);
+        socket.off("notification:delete", handleNotifDelete);
+      };
+    }
+  }, [isAuthenticated, user?._id]);
+
+  // Fetch when opened or periodically every 15 seconds
   useEffect(() => {
     fetchNotifications();
     const interval = setInterval(() => {
       fetchNotifications();
-    }, 10000);
+    }, 15000);
     return () => clearInterval(interval);
   }, [fetchNotifications, isOpen]);
 
@@ -83,6 +130,21 @@ export default function NotificationOverlay({ isOpen, onClose, onUnreadCountChan
     }
   }, [unreadCount, onUnreadCountChange]);
 
+  const handleMarkAllRead = async () => {
+    try {
+      const prefix = getEndpointPrefix();
+      await axiosClient.patch(`${prefix}/notifications/read-all`);
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true, unread: false, status: "READ" })));
+      if (typeof onUnreadCountChange === "function") {
+        onUnreadCountChange(0);
+      }
+      toast.success("All notifications marked as read");
+    } catch (err) {
+      console.warn("Failed to mark all notifications read:", err?.message);
+      toast.error("Failed to mark notifications as read");
+    }
+  };
+
   if (!isOpen) return null;
 
   const getIcon = (type) => {
@@ -100,16 +162,6 @@ export default function NotificationOverlay({ isOpen, onClose, onUnreadCountChan
       return { icon: Activity, bg: "bg-blue-50 dark:bg-blue-950/40", text: "text-[#0085FF]" };
     }
     return { icon: Bell, bg: "bg-orange-50 dark:bg-orange-950/40", text: "text-[#A14000]" };
-  };
-
-  const handleMarkAllRead = async () => {
-    try {
-      const prefix = getEndpointPrefix();
-      await axiosClient.patch(`${prefix}/notifications/read-all`);
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true, unread: false })));
-    } catch (err) {
-      console.warn("Failed to mark all notifications read:", err?.message);
-    }
   };
 
   const getNotificationTargetUrl = (notification) => {

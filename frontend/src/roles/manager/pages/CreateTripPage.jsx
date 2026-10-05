@@ -2088,29 +2088,43 @@ export default function CreateTripPage() {
               )}
             </div>
 
-            <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80 space-y-2.5">
-              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Estimated Payment Summary</h3>
-              <div className="flex justify-between text-xs text-slate-600">
-                <span>Base Freight Rate</span>
-                <span className="font-semibold">₹{(Number(cargoWeight || 1) * 450).toLocaleString("en-IN")}</span>
-              </div>
-              <div className="flex justify-between text-xs text-slate-600">
-                <span>Service Fee ({serviceType.split(' ')[0]})</span>
-                <span className="font-semibold">₹{serviceType.includes("Express") ? 1500 : serviceType.includes("Same Day") ? 3000 : 500}</span>
-              </div>
-              <div className="flex justify-between text-xs text-slate-600">
-                <span>Payment Method</span>
-                <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${paymentMethod === 'COD' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                  {paymentMethod}
-                </span>
-              </div>
-              <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm font-black text-[#0D1B2A]">
-                <span>Estimated Total</span>
-                <span className="text-base text-[#A14000]">
-                  ₹{((Number(cargoWeight || 1) * 450) + (serviceType.includes("Express") ? 1500 : serviceType.includes("Same Day") ? 3000 : 500)).toLocaleString("en-IN")}
-                </span>
-              </div>
-            </div>
+            {(() => {
+              const parsedWeight = parseFloat(cargoWeight);
+              const safeCargoWeight = (!isNaN(parsedWeight) && parsedWeight > 0) ? parsedWeight : 0;
+              const serviceFeeVal = serviceType.includes("Express") ? 1500 : serviceType.includes("Same Day") ? 3000 : 500;
+              const baseFreightVal = safeCargoWeight * 450;
+              const estimatedTotalVal = baseFreightVal + serviceFeeVal;
+              const formattedBaseFreight = baseFreightVal > 1e12 ? baseFreightVal.toExponential(2) : baseFreightVal.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+              const formattedTotal = estimatedTotalVal > 1e12 ? estimatedTotalVal.toExponential(2) : estimatedTotalVal.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+
+              return (
+                <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80 space-y-2.5">
+                  <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Estimated Payment Summary</h3>
+                  <div className="flex justify-between items-center gap-3 text-xs text-slate-600">
+                    <span className="shrink-0 font-medium">Base Freight Rate</span>
+                    <span className="font-semibold text-right truncate max-w-[60%] shrink min-w-0" title={`₹${formattedBaseFreight}`}>
+                      ₹{formattedBaseFreight}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center gap-3 text-xs text-slate-600">
+                    <span className="shrink-0 font-medium">Service Fee ({serviceType.split(' ')[0]})</span>
+                    <span className="font-semibold text-right shrink-0">₹{serviceFeeVal.toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="flex justify-between items-center gap-3 text-xs text-slate-600">
+                    <span className="shrink-0 font-medium">Payment Method</span>
+                    <span className={`font-bold px-2 py-0.5 rounded text-[10px] shrink-0 ${paymentMethod === 'COD' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                      {paymentMethod}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-200 flex justify-between items-center gap-3 text-sm font-black text-[#0D1B2A]">
+                    <span className="shrink-0">Estimated Total</span>
+                    <span className="text-base text-[#A14000] text-right font-black truncate max-w-[65%] shrink min-w-0" title={`₹${formattedTotal}`}>
+                      ₹{formattedTotal}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 

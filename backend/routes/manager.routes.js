@@ -86,6 +86,8 @@ import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
 import { checkActiveSubscription } from '../middleware/subscription.middleware.js';
 import { getDriverStats } from '../controllers/driver.controller.js';
+import { validate } from '../middleware/validate.middleware.js';
+import { driverSupportSettingsSchema } from '../validations/settings.schema.js';
 
 const router = express.Router();
 
@@ -195,6 +197,6 @@ router.patch('/vehicle-complaints/:id', ...auth, checkActiveSubscription, update
 
 // Support Helpline Settings for Drivers
 router.get('/support-settings', ...auth, getSupportSettings);
-router.put('/support-settings', ...auth, updateSupportSettings);
+router.put('/support-settings', ...auth, validate(driverSupportSettingsSchema), updateSupportSettings);
 
 export default router;

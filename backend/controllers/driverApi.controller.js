@@ -2591,8 +2591,12 @@ export const updateDriverTicketStatus = async (req, res, next) => {
       }
     }
 
-    if (actualCost) {
-      ticket.actualCost = parseFloat(actualCost) || ticket.actualCost;
+    if (actualCost !== undefined && actualCost !== '') {
+      const parsedCost = parseFloat(actualCost);
+      ticket.actualCost = !isNaN(parsedCost) ? Math.min(Math.max(parsedCost, 0), 10000000) : ticket.actualCost;
+    }
+    if (notes) {
+      ticket.notes = notes.slice(0, 1000);
     }
 
     ticket.status = targetStatus;
