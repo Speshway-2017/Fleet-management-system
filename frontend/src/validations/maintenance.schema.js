@@ -46,7 +46,7 @@ export const updateTicketSchema = z.object({
   notes: z
     .string()
     .trim()
-    .max(500, 'Notes cannot exceed 500 characters.')
+    .max(100, 'Repair notes cannot exceed 100 characters.')
     .refine((val) => !val || !/(.)\1{4,}/i.test(val), { message: 'Notes contain invalid repeated characters.' })
     .optional()
 });
