@@ -605,6 +605,7 @@ export default function TripsManagementPage() {
         endLocation: formData.endLocation,
         departureTime: formData.departureTime,
         eta: formData.eta,
+        status: formData.status,
         description: formData.description,
         cargoType: formData.cargoType,
         cargoWeight: formData.cargoWeight ? Number(formData.cargoWeight) : undefined,
@@ -659,13 +660,13 @@ export default function TripsManagementPage() {
   const getTabFilteredTrips = () => {
     switch (activeTab) {
       case "Active":
-        return trips.filter(t => getNormalizedTripCategory(t.status) === "active");
+        return trips.filter(t => getNormalizedTripCategory(t.status, t) === "active");
       case "Scheduled":
-        return trips.filter(t => getNormalizedTripCategory(t.status) === "scheduled");
+        return trips.filter(t => getNormalizedTripCategory(t.status, t) === "scheduled");
       case "Completed":
-        return trips.filter(t => getNormalizedTripCategory(t.status) === "completed");
+        return trips.filter(t => getNormalizedTripCategory(t.status, t) === "completed");
       case "Delayed":
-        return trips.filter(t => getNormalizedTripCategory(t.status) === "delayed");
+        return trips.filter(t => getNormalizedTripCategory(t.status, t) === "delayed");
       default:
         return trips;
     }
@@ -720,8 +721,8 @@ export default function TripsManagementPage() {
   const endIndex = Math.min(startIndex + rowsPerPage, finalFilteredTrips.length);
   const currentRows = finalFilteredTrips.slice(startIndex, endIndex);
 
-  const getStatusBadge = (status) => {
-    const normalized = getNormalizedTripCategory(status);
+  const getStatusBadge = (status, trip) => {
+    const normalized = getNormalizedTripCategory(status, trip);
     switch (normalized) {
       case "active":
         return "bg-[#FDF3EC] text-[#A14000] border border-[#FDF3EC] font-semibold";
@@ -991,8 +992,8 @@ export default function TripsManagementPage() {
 
                         {/* Status */}
                         <td className="py-4 px-6 whitespace-nowrap">
-                          <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(t.status)}`}>
-                            {t.status === "Completed" ? "Complete" : t.status}
+                          <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(t.status, t)}`}>
+                            {getNormalizedTripCategory(t.status, t) === "delayed" && t.status !== "Delayed" ? `Delayed (${t.status})` : (t.status === "Completed" ? "Complete" : t.status)}
                           </span>
                         </td>
 
@@ -1041,27 +1042,23 @@ export default function TripsManagementPage() {
                             {/* Non-completed trips: Show Edit & Delete for manageable states */}
                             {t.status !== "Completed" && t.status !== "Delivered" && t.status !== "Complete Trip" && (
                               <>
-                                {(t.status === "Scheduled" || t.status === "Assigned" || t.status === "Pending Driver Acceptance") && (
-                                  <>
-                                    <button
-                                      onClick={() => handleOpenEdit(t)}
-                                      title="Edit trip"
-                                      className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 rounded-xl active:scale-95 transition-all cursor-pointer shadow-2xs"
-                                    >
-                                      <Pencil className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setSelectedTrip(t);
-                                        setShowDeleteConfirm(true);
-                                      }}
-                                      title="Delete trip record"
-                                      className="p-2 text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-xl active:scale-95 transition-all cursor-pointer shadow-2xs"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </>
-                                )}
+                                <button
+                                  onClick={() => handleOpenEdit(t)}
+                                  title="Edit trip"
+                                  className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 rounded-xl active:scale-95 transition-all cursor-pointer shadow-2xs"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedTrip(t);
+                                    setShowDeleteConfirm(true);
+                                  }}
+                                  title="Delete trip record"
+                                  className="p-2 text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-xl active:scale-95 transition-all cursor-pointer shadow-2xs"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               </>
                             )}
                           </div>
@@ -1331,7 +1328,7 @@ export default function TripsManagementPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Cargo Description */}
                 <div>
                   <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
@@ -1343,6 +1340,26 @@ export default function TripsManagementPage() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium"
                   />
+                </div>
+
+                {/* Trip Status */}
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2 font-poppins">
+                    Trip Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E7EAF0] rounded-xl text-sm focus:outline-none focus:border-[#A14000] text-[#1E293B] font-medium"
+                  >
+                    <option value="Scheduled">Scheduled</option>
+                    <option value="Assigned">Assigned</option>
+                    <option value="Pending Driver Acceptance">Pending Driver Acceptance</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Delayed">Delayed</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
                 </div>
 
                 {/* Trip Notes */}

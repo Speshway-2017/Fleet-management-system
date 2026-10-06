@@ -796,9 +796,9 @@ export default function TripDetailsPage() {
   }
 
   // Calculate mock metrics for details view
-  const isTransit = trip.status === "On Transit";
-  const isCompleted = trip.status === "Completed";
-  const isDelayed = trip.status === "Delayed";
+  const isTransit = trip.status === "On Transit" || trip.status === "In Progress" || trip.status === "In Transit";
+  const isCompleted = trip.status === "Completed" || trip.status === "Delivered" || trip.status === "Complete Trip";
+  const isDelayed = trip.status === "Delayed" || trip.status === "Overdue" || trip.isDelayed === true || (trip.eta && !isCompleted && trip.status !== "Cancelled" && trip.status !== "Rejected" && new Date() > new Date(trip.eta));
 
   const totalDistance = (drivingInfo?.distanceKm && drivingInfo.distanceKm < 4000)
     ? drivingInfo.distanceKm
@@ -806,7 +806,7 @@ export default function TripDetailsPage() {
       ? trip.estimatedDistance
       : calculateFallbackDistance(trip.startLocation, trip.endLocation));
   
-  const distanceVal = trip.status === "Completed" 
+  const distanceVal = isCompleted 
     ? ((trip.actualDistance && trip.actualDistance > 0 && trip.actualDistance < 4000) ? trip.actualDistance : totalDistance)
     : totalDistance;
 
@@ -856,12 +856,28 @@ export default function TripDetailsPage() {
   const getStatusBadge = (status) => {
     switch (status) {
       case "On Transit":
+      case "In Progress":
+      case "In Transit":
+      case "En Route":
+      case "On Trip":
+      case "Dispatched":
         return "bg-[#FDF3EC] text-[#A14000] border border-[#FDF3EC]";
       case "Scheduled":
+      case "Ready to Dispatch":
         return "bg-indigo-50 text-indigo-700 border border-indigo-100";
+      case "Assigned":
+      case "Accepted":
+      case "Pending Driver Acceptance":
+        return "bg-blue-50 text-blue-700 border border-blue-100";
       case "Completed":
+      case "Complete Trip":
+      case "Delivered":
         return "bg-slate-900 text-white border border-slate-950";
       case "Delayed":
+      case "Overdue":
+        return "bg-rose-50 text-rose-700 border border-rose-200";
+      case "Cancelled":
+      case "Rejected":
         return "bg-red-50 text-red-600 border border-red-100";
       default:
         return "bg-gray-100 text-gray-500";

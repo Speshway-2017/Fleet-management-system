@@ -7,7 +7,7 @@ import { resetPasswordSchema, validateForm } from "@/validations";
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const email = location.state?.email;
+  const contact = location.state?.contact || location.state?.email || location.state?.identifier;
   const otp = location.state?.otp;
 
   const [loading, setLoading] = useState(false);
@@ -17,11 +17,11 @@ export default function ResetPasswordPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
-    if (!email || !otp) {
+    if (!contact || !otp) {
       toast.error("Invalid session. Please restart the password reset process.");
       navigate("/forgot-password");
     }
-  }, [email, otp, navigate]);
+  }, [contact, otp, navigate]);
 
   // Requirements logic
   const reqLength = form.password.length >= 8;
@@ -83,8 +83,8 @@ export default function ResetPasswordPage() {
 
     setLoading(true);
     try {
-      await authApi.resetPassword({ email, otp, newPassword: form.password });
-      toast.success("Password reset successfully!");
+      await authApi.resetPassword({ email: contact, contact, otp, newPassword: form.password });
+      toast.success("Password reset successfully! You can now log in.");
       navigate("/login");
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || "Failed to reset password. Please try again.");

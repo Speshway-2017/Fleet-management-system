@@ -166,51 +166,67 @@ export const registerAdmin = async (req, res, next) => {
 
 export const forgotPassword = async (req, res, next) => {
   try {
-    const { email } = req.body;
-    await processForgotPassword(email);
+    const identifier = req.body.email || req.body.contact || req.body.identifier || req.body.phone;
+    if (!identifier) {
+      return sendError(res, 400, 'Please enter your registered email address or phone number');
+    }
+
+    const result = await processForgotPassword(identifier);
     await logAction({
-      user: email,
+      user: identifier,
       action: 'Forgot Password Requested',
       ipAddress: req.ip || req.headers['x-forwarded-for'],
       status: 'Success'
     });
-    return sendSuccess(res, 200, {}, 'OTP sent to email');
+
+    return sendSuccess(res, 200, { email: result.email, phone: result.phone }, 'Verification OTP has been sent successfully to your registered contact.');
   } catch (error) {
-    if (error.message === 'No user found with this email') {
+    if (error.message.includes('No account found') || error.message.includes('No user found')) {
       return sendError(res, 404, error.message);
     }
-    next(error);
+    if (error.message.includes('Please wait')) {
+      return sendError(res, 429, error.message);
+    }
+    return sendError(res, 400, error.message || 'Failed to send OTP');
   }
 };
 
 export const verifyOtp = async (req, res, next) => {
   try {
-    const { email, otp } = req.body;
-    await verifyUserOtp(email, otp);
-    return sendSuccess(res, 200, {}, 'OTP verified successfully');
-  } catch (error) {
-    if (error.message === 'Invalid or expired OTP') {
-      return sendError(res, 400, error.message);
+    const identifier = req.body.email || req.body.contact || req.body.identifier || req.body.phone;
+    const { otp } = req.body;
+
+    if (!identifier || !otp) {
+      return sendError(res, 400, 'Email/phone and OTP are required');
     }
-    next(error);
+
+    const result = await verifyUserOtp(identifier, otp);
+    return sendSuccess(res, 200, result, 'OTP verified successfully');
+  } catch (error) {
+    return sendError(res, 400, error.message || 'Invalid or expired OTP');
   }
 };
 
 export const resetPassword = async (req, res, next) => {
   try {
-    const { email, otp, newPassword } = req.body;
-    await resetUserPassword(email, otp, newPassword);
+    const identifier = req.body.email || req.body.contact || req.body.identifier || req.body.phone;
+    const { otp, newPassword, password } = req.body;
+    const targetPassword = newPassword || password;
+
+    if (!identifier || !otp || !targetPassword) {
+      return sendError(res, 400, 'Email/phone, OTP, and new password are required');
+    }
+
+    const result = await resetUserPassword(identifier, otp, targetPassword);
     await logAction({
-      user: email,
+      user: identifier,
       action: 'Password Reset',
       ipAddress: req.ip || req.headers['x-forwarded-for'],
       status: 'Success'
     });
-    return sendSuccess(res, 200, {}, 'Password reset successfully');
+
+    return sendSuccess(res, 200, result, 'Password reset successfully. You can now log in with your new password.');
   } catch (error) {
-    if (error.message === 'Invalid or expired OTP') {
-      return sendError(res, 400, error.message);
-    }
-    next(error);
+    return sendError(res, 400, error.message || 'Failed to reset password');
   }
 };

@@ -15,19 +15,17 @@ export default function ForgotPasswordPage() {
   const validateContact = (value) => {
     const trimmed = String(value ?? "").trim();
     if (!trimmed) {
-      return "Email address is required.";
+      return "Registered email address or mobile number is required.";
     }
     if (/\s/.test(value)) {
-      return "Email address must not contain spaces.";
+      return "Input must not contain spaces.";
     }
-    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmed)) {
-      return "Please enter a valid email address.";
-    }
-    if (trimmed.length < 5) {
-      return "Email address must be at least 5 characters.";
-    }
-    if (trimmed.length > 30) {
-      return "Email address must not exceed 30 characters.";
+    const isEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmed);
+    const digitsOnly = trimmed.replace(/\D/g, '');
+    const isPhone = (trimmed.startsWith('+') || /^\d+$/.test(trimmed)) && digitsOnly.length >= 10 && digitsOnly.length <= 15;
+
+    if (!isEmail && !isPhone) {
+      return "Please enter a valid email address or 10-digit mobile number.";
     }
     return "";
   };
@@ -54,9 +52,10 @@ export default function ForgotPasswordPage() {
     setError("");
     setLoading(true);
     try {
-      await authApi.forgotPassword(contact.trim());
-      toast.success("OTP generated! Check the backend console.");
-      navigate("/otp-verification", { state: { email: contact.trim() } });
+      const res = await authApi.forgotPassword(contact.trim());
+      const successMsg = res.data?.message || "Verification OTP has been sent successfully!";
+      toast.success(successMsg);
+      navigate("/otp-verification", { state: { email: contact.trim(), contact: contact.trim() } });
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || "Failed to process request. Please try again.");
     } finally {

@@ -40,18 +40,34 @@ export const registerAdminSchema = z.object({
 });
 
 export const forgotPasswordSchema = z.object({
-  email: emailSchema
+  email: z.string().trim().optional(),
+  contact: z.string().trim().optional(),
+  identifier: z.string().trim().optional(),
+  phone: z.string().trim().optional()
+}).refine(data => data.email || data.contact || data.identifier || data.phone, {
+  message: 'Registered email address or phone number is required'
 });
 
 export const verifyOtpSchema = z.object({
-  email: emailSchema,
+  email: z.string().trim().optional(),
+  contact: z.string().trim().optional(),
+  identifier: z.string().trim().optional(),
+  phone: z.string().trim().optional(),
   otp: z.string({ required_error: 'OTP is required' }).trim().min(1, 'OTP is required')
+}).refine(data => data.email || data.contact || data.identifier || data.phone, {
+  message: 'Registered email address or phone number is required'
 });
 
 export const resetPasswordSchema = z.object({
-  email: emailSchema,
+  email: z.string().trim().optional(),
+  contact: z.string().trim().optional(),
+  identifier: z.string().trim().optional(),
+  phone: z.string().trim().optional(),
   otp: z.string({ required_error: 'OTP is required' }).trim().min(1, 'OTP is required'),
-  newPassword: passwordSchema
+  newPassword: z.string().optional(),
+  password: z.string().optional()
+}).refine(data => (data.email || data.contact || data.identifier || data.phone) && (data.newPassword || data.password), {
+  message: 'Registered email/phone, OTP, and new password are required'
 });
 
 export const profileUpdateSchema = z.object({
