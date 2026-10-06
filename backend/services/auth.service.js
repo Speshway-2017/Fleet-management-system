@@ -4,7 +4,7 @@ import Driver from '../models/Driver.js';
 import { createUser, findUserByEmail, findUserById } from '../repositories/auth.repository.js';
 import { comparePassword, hashPassword } from '../utils/hashPassword.js';
 import { generateToken } from '../utils/jwt.js';
-import { sendPasswordResetOtpEmail, sendPasswordResetSuccessEmail } from '../utils/email.js';
+import { sendPasswordResetOtpEmail, sendPasswordResetSuccessEmail, maskIdentifier } from '../utils/email.js';
 import { sendSms } from '../utils/sms.js';
 
 /**
@@ -159,14 +159,22 @@ export const processForgotPassword = async (identifier) => {
   account.resetPasswordLastSent = new Date();
   await account.save();
 
-  console.log(`\n==================================================`);
-  console.log(`🔑 PASSWORD RESET OTP GENERATED`);
-  console.log(`👤 Name:      ${name}`);
-  console.log(`📧 Email:     ${email}`);
-  console.log(`📱 Phone:     ${phone || 'N/A'}`);
-  console.log(`🔢 OTP Code:  ${otp}`);
-  console.log(`⏱️ Expiry:    10 minutes`);
-  console.log(`==================================================\n`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`\n==================================================`);
+    console.log(`🔑 PASSWORD RESET OTP GENERATED`);
+    console.log(`👤 Name:      ${name}`);
+    console.log(`📧 Email:     ${email}`);
+    console.log(`📱 Phone:     ${phone || 'N/A'}`);
+    console.log(`🔢 OTP Code:  ${otp}`);
+    console.log(`⏱️ Expiry:    10 minutes`);
+    console.log(`==================================================\n`);
+  } else {
+    console.log(`[AUTH] Password reset OTP generated for ${maskIdentifier(email || phone)}`);
+  }
+
+  let emailSent = false;
+  let smsSent = false;
+  let lastError = null;
 
   // 1. Send OTP via Nodemailer Email
   if (email) {
@@ -177,8 +185,10 @@ export const processForgotPassword = async (identifier) => {
         otp,
         expiresInMinutes: 10
       });
+      emailSent = true;
     } catch (mailErr) {
-      console.error('[WARNING] Failed to dispatch password reset email:', mailErr.message);
+      lastError = mailErr;
+      console.error(`❌ [AUTH] Failed to dispatch password reset email to ${maskIdentifier(email)}:`, mailErr.message);
     }
   }
 
@@ -186,13 +196,20 @@ export const processForgotPassword = async (identifier) => {
   const targetPhone = phone || (identifier.match(/\d{7,}/) ? identifier : null);
   if (targetPhone) {
     try {
-      await sendSms({
+      const smsRes = await sendSms({
         phone: targetPhone,
         otp
       });
+      if (smsRes?.success) smsSent = true;
     } catch (smsErr) {
-      console.error('[WARNING] Failed to dispatch password reset SMS:', smsErr.message);
+      if (!lastError) lastError = smsErr;
+      console.error(`❌ [AUTH] Failed to dispatch password reset SMS to ${maskIdentifier(targetPhone)}:`, smsErr.message);
     }
+  }
+
+  // Strict check: If delivery failed across available channels, throw meaningful error
+  if (!emailSent && !smsSent) {
+    throw new Error(lastError?.message || 'Failed to deliver verification OTP. Please check your contact information or contact support.');
   }
 
   return {

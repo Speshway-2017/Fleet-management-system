@@ -1,76 +1,197 @@
 import nodemailer from "nodemailer";
 
 /**
- * Creates and returns a Nodemailer transporter based on environment variables.
+ * Resolves SMTP configuration from environment variables with alias normalization.
  */
-const getTransporter = () => {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const port = Number(process.env.SMTP_PORT) || 587;
-  const service = process.env.SMTP_SERVICE;
+export const getSmtpConfig = () => {
+  const host = process.env.SMTP_HOST || process.env.EMAIL_HOST || process.env.MAIL_HOST;
+  const port = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT || process.env.MAIL_PORT) || 587;
+  const user = process.env.SMTP_USER || process.env.SMTP_USERNAME || process.env.EMAIL_USER || process.env.MAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS || process.env.MAIL_PASS;
+  const service = process.env.SMTP_SERVICE || process.env.EMAIL_SERVICE;
+  const fromEmail = process.env.SMTP_FROM || process.env.FROM_EMAIL || process.env.EMAIL_FROM || process.env.MAIL_FROM || user || 'no-reply@fleetmanagement.com';
+  const fromName = process.env.FROM_NAME || process.env.SMTP_FROM_NAME || 'Fleet Management System';
+  
+  const isSecure = process.env.SMTP_SECURE !== undefined 
+    ? (process.env.SMTP_SECURE === 'true' || process.env.SMTP_SECURE === '1')
+    : (port === 465);
 
-  if (service) {
-    return nodemailer.createTransport({
-      service,
-      auth: { user, pass }
-    });
-  }
+  const isConfigured = Boolean(service ? (user && pass) : (host && user && pass));
 
-  if (host && user && pass) {
-    return nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: { user, pass },
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
-  }
-
-  return null;
+  return {
+    host,
+    port,
+    user,
+    pass,
+    service,
+    fromEmail,
+    fromName,
+    isSecure,
+    isConfigured
+  };
 };
 
 /**
- * Sends a generic email using Nodemailer with fallback logging.
+ * Masks email address or identifier for secure production logging
+ */
+export const maskIdentifier = (str) => {
+  if (!str) return 'N/A';
+  const s = String(str).trim();
+  if (s.includes('@')) {
+    const [local, domain] = s.split('@');
+    const maskedLocal = local.length <= 2 ? `${local[0]}*` : `${local.slice(0, 2)}***${local.slice(-1)}`;
+    return `${maskedLocal}@${domain}`;
+  }
+  if (s.length >= 7) {
+    return `${s.slice(0, 2)}******${s.slice(-2)}`;
+  }
+  return '******';
+};
+
+// Singleton Transporter Instance
+let cachedTransporter = null;
+let lastConfigSignature = '';
+
+/**
+ * Creates or retrieves the cached Nodemailer transporter.
+ */
+export const getTransporter = () => {
+  const config = getSmtpConfig();
+  if (!config.isConfigured) {
+    cachedTransporter = null;
+    return null;
+  }
+
+  const currentSignature = `${config.service || ''}-${config.host || ''}-${config.port}-${config.user}-${config.isSecure}`;
+  if (cachedTransporter && lastConfigSignature === currentSignature) {
+    return cachedTransporter;
+  }
+
+  let transporterOptions;
+  if (config.service) {
+    transporterOptions = {
+      service: config.service,
+      auth: {
+        user: config.user,
+        pass: config.pass
+      }
+    };
+  } else {
+    transporterOptions = {
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
+      host: config.host,
+      port: config.port,
+      secure: config.isSecure,
+      auth: {
+        user: config.user,
+        pass: config.pass
+      },
+      tls: {
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2'
+      },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000
+    };
+  }
+
+  cachedTransporter = nodemailer.createTransport(transporterOptions);
+  lastConfigSignature = currentSignature;
+  return cachedTransporter;
+};
+
+/**
+ * Verifies the production SMTP connection and credentials.
+ */
+export const verifySmtpConnection = async () => {
+  const config = getSmtpConfig();
+  if (!config.isConfigured) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('⚠️  [SMTP Production Warning] SMTP credentials are not configured in environment variables. Outgoing emails will fail.');
+    } else {
+      console.log('ℹ️  [SMTP Info] SMTP is not configured. Development mock email logging enabled.');
+    }
+    return false;
+  }
+
+  try {
+    const transporter = getTransporter();
+    if (!transporter) return false;
+    await transporter.verify();
+    console.log(`✅ [SMTP Connected] Verified connection to ${config.service || config.host}:${config.port} (User: ${maskIdentifier(config.user)}, TLS/SSL: ${config.isSecure ? 'Enabled (SSL)' : 'STARTTLS'})`);
+    return true;
+  } catch (err) {
+    console.error(`❌ [SMTP Connection Error] Failed to connect/authenticate with SMTP server (${config.service || config.host}:${config.port}): [${err.code || 'ERR'}] ${err.message}`);
+    return false;
+  }
+};
+
+/**
+ * Sends a generic email using Nodemailer with strict production error handling.
  */
 export const sendEmail = async (options) => {
+  const config = getSmtpConfig();
   const recipient = options.to || options.email;
-  const fromAddress = process.env.FROM_EMAIL || process.env.SMTP_USER || 'no-reply@fleetmanagement.com';
-  const fromName = process.env.FROM_NAME || 'Fleet Management System';
+  const fromAddress = options.from || `"${config.fromName}" <${config.fromEmail}>`;
   const transporter = getTransporter();
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  if (!recipient) {
+    throw new Error('Recipient email address is required.');
+  }
 
   const mailOptions = {
-    from: `"${fromName}" <${fromAddress}>`,
+    from: fromAddress,
     to: recipient,
     subject: options.subject,
     text: options.text || options.message,
     html: options.html
   };
 
-  try {
-    if (!transporter) {
-      console.log("\n======================================================================");
-      console.log("⚠️  SMTP is not configured in .env. Logging email dispatch to console:");
-      console.log("----------------------------------------------------------------------");
-      console.log(`✉️  FROM   : "${fromName}" <${fromAddress}>`);
-      console.log(`✉️  TO     : ${recipient}`);
-      console.log(`✉️  SUBJECT: ${options.subject}`);
-      if (options.text || options.message) {
-        console.log(`✉️  BODY   :\n${options.text || options.message}`);
-      }
-      console.log("======================================================================\n");
-      return { success: true, simulated: true };
+  // 1. Production Mode - Strict delivery requirement
+  if (!transporter) {
+    if (isProduction) {
+      console.error(`❌ [SMTP Error] Cannot deliver email to ${maskIdentifier(recipient)}: SMTP is not configured in production environment.`);
+      throw new Error('Email delivery failed: SMTP service is not configured on the server.');
     }
 
+    // Development Mode - Simulated local log
+    console.log("\n======================================================================");
+    console.log("ℹ️  [DEV Simulated Mail] SMTP not configured. Logging dispatch details:");
+    console.log("----------------------------------------------------------------------");
+    console.log(`✉️  FROM   : ${fromAddress}`);
+    console.log(`✉️  TO     : ${maskIdentifier(recipient)}`);
+    console.log(`✉️  SUBJECT: ${options.subject}`);
+    if (options.text || options.message) {
+      console.log(`✉️  BODY   :\n${options.text || options.message}`);
+    }
+    console.log("======================================================================\n");
+    return { success: true, simulated: true };
+  }
+
+  // 2. Real SMTP Dispatch via Nodemailer
+  try {
     const info = await transporter.sendMail(mailOptions);
-    console.log(`✅ [Nodemailer] Email sent to ${recipient} (Message ID: ${info.messageId})`);
-    return { success: true, messageId: info.messageId };
+    
+    // Verify server actually accepted the message
+    if (info.rejected && info.rejected.length > 0) {
+      console.error(`❌ [SMTP Error] Recipient rejected by SMTP server: ${maskIdentifier(recipient)} (Response: ${info.response || 'Rejected'})`);
+      throw new Error(`Email was rejected by the mail server for recipient: ${recipient}`);
+    }
+
+    console.log(`✅ [SMTP Sent] Email delivered to ${maskIdentifier(recipient)} | Subject: "${options.subject}" | MessageId: ${info.messageId}`);
+    return {
+      success: true,
+      messageId: info.messageId,
+      response: info.response,
+      accepted: info.accepted
+    };
   } catch (err) {
-    console.error(`❌ [Nodemailer] Error sending email to ${recipient}:`, err.message);
-    // Don't throw fatal crash if email fails, but log error
-    return { success: false, error: err.message };
+    console.error(`❌ [SMTP Delivery Failure] Error delivering email to ${maskIdentifier(recipient)}: [${err.code || 'UNKNOWN'}] ${err.message}`);
+    throw err;
   }
 };
 

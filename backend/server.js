@@ -17,6 +17,7 @@ import { seedTolls } from './utils/seedTolls.js';
 import { syncAllVehicleStatuses } from './utils/syncVehicleStatus.js';
 import { syncDriverLocations } from './utils/syncDriverLocations.js';
 import cloudinary from './config/cloudinary.config.js';
+import { verifySmtpConnection } from './utils/email.js';
 import { parseDateTimeIST } from './utils/dateHelper.js';
 import http from 'http';
 import { Server } from 'socket.io';
@@ -41,6 +42,9 @@ const startServer = async () => {
   } else {
     console.warn('⚠️  Cloudinary config missing — file uploads will fail.');
   }
+
+  // 4. Verify SMTP Connection in production/development
+  await verifySmtpConnection();
 
   // Helper function to print all routes
   const printRoutes = (app) => {
