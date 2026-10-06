@@ -52,7 +52,10 @@ export const getPendingRequestsCount = async () => {
 export const VALID_SETTLED_TRIP_STATUSES = ['Completed', 'Delivered', 'Complete Trip'];
 
 export const calculateTripRevenue = (dist, weight) => {
-  return Math.round((Number(dist) || 0) * 52 + (Number(weight) || 0) * 4.5);
+  const d = Number(dist) || 0;
+  const w = Number(weight) || 0;
+  if (d <= 0 && w <= 0) return 0;
+  return Math.round(d * 52 + w * 4.5);
 };
 
 export const getSettledRevenueForOrganization = async (orgId) => {
@@ -68,7 +71,13 @@ export const getSettledRevenueForOrganization = async (orgId) => {
       status: { $in: VALID_SETTLED_TRIP_STATUSES }
     }).lean();
 
-    return trips.reduce((sum, t) => sum + calculateTripRevenue(t.estimatedDistance || t.actualDistance, t.cargoWeight), 0);
+    if (!trips || trips.length === 0) return 0;
+
+    return trips.reduce((sum, t) => {
+      const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
+      const weight = Number(t.cargoWeight) || 0;
+      return sum + calculateTripRevenue(dist, weight);
+    }, 0);
   } catch (error) {
     console.error('Error in getSettledRevenueForOrganization:', error);
     return 0;
@@ -104,7 +113,13 @@ export const getSettledRevenueForManager = async (managerId, orgId = null) => {
       }).lean();
     }
 
-    return trips.reduce((sum, t) => sum + calculateTripRevenue(t.estimatedDistance || t.actualDistance, t.cargoWeight), 0);
+    if (!trips || trips.length === 0) return 0;
+
+    return trips.reduce((sum, t) => {
+      const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
+      const weight = Number(t.cargoWeight) || 0;
+      return sum + calculateTripRevenue(dist, weight);
+    }, 0);
   } catch (error) {
     console.error('Error in getSettledRevenueForManager:', error);
     return 0;
@@ -113,32 +128,20 @@ export const getSettledRevenueForManager = async (managerId, orgId = null) => {
 
 export const getRevenueAggregate = async () => {
   try {
-    const result = await Trip.aggregate([
-      { $match: { status: { $in: VALID_SETTLED_TRIP_STATUSES } } },
-      {
-        $group: {
-          _id: null,
-          totalDistance: { $sum: { $toDouble: { $ifNull: ['$estimatedDistance', 0] } } },
-          totalWeight: { $sum: { $toDouble: { $ifNull: ['$cargoWeight', 0] } } }
-        }
-      }
-    ]);
-    if (result.length > 0) {
-      const dist = Number(result[0].totalDistance) || 0;
-      const weight = Number(result[0].totalWeight) || 0;
-      return calculateTripRevenue(dist, weight);
-    }
-  } catch (_) {
     const trips = await Trip.find({ status: { $in: VALID_SETTLED_TRIP_STATUSES } }).lean();
+    if (!trips || trips.length === 0) return 0;
+
     let total = 0;
-    trips.forEach(t => {
-      const dist = Number(t.estimatedDistance || t.actualDistance) || 0;
+    for (const t of trips) {
+      const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
       const weight = Number(t.cargoWeight) || 0;
       total += calculateTripRevenue(dist, weight);
-    });
+    }
     return total;
+  } catch (error) {
+    console.error('Error in getRevenueAggregate:', error);
+    return 0;
   }
-  return 0;
 };
 
 export const getTodayRevenueAggregate = async () => {
@@ -146,32 +149,28 @@ export const getTodayRevenueAggregate = async () => {
   startOfDay.setHours(0, 0, 0, 0);
 
   try {
-    const result = await Trip.aggregate([
-      { $match: { createdAt: { $gte: startOfDay }, status: { $in: VALID_SETTLED_TRIP_STATUSES } } },
-      {
-        $group: {
-          _id: null,
-          totalDistance: { $sum: { $toDouble: { $ifNull: ['$estimatedDistance', 0] } } },
-          totalWeight: { $sum: { $toDouble: { $ifNull: ['$cargoWeight', 0] } } }
-        }
-      }
-    ]);
-    if (result.length > 0) {
-      const dist = Number(result[0].totalDistance) || 0;
-      const weight = Number(result[0].totalWeight) || 0;
-      return calculateTripRevenue(dist, weight);
-    }
-  } catch (_) {
-    const trips = await Trip.find({ createdAt: { $gte: startOfDay }, status: { $in: VALID_SETTLED_TRIP_STATUSES } }).lean();
+    const trips = await Trip.find({
+      status: { $in: VALID_SETTLED_TRIP_STATUSES },
+      $or: [
+        { completedAt: { $gte: startOfDay } },
+        { updatedAt: { $gte: startOfDay } },
+        { createdAt: { $gte: startOfDay } }
+      ]
+    }).lean();
+
+    if (!trips || trips.length === 0) return 0;
+
     let total = 0;
-    trips.forEach(t => {
-      const dist = Number(t.estimatedDistance || t.actualDistance) || 0;
+    for (const t of trips) {
+      const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
       const weight = Number(t.cargoWeight) || 0;
       total += calculateTripRevenue(dist, weight);
-    });
+    }
     return total;
+  } catch (error) {
+    console.error('Error in getTodayRevenueAggregate:', error);
+    return 0;
   }
-  return 0;
 };
 
 export const getRecentTrips = async (limit = 5) => {
@@ -190,38 +189,32 @@ export const getAnalyticsSummary = async () => {
 
 export const getRevenueChartData = async () => {
   try {
-    const result = await Trip.aggregate([
-      { $match: { status: { $in: VALID_SETTLED_TRIP_STATUSES } } },
-      {
-        $group: {
-          _id: { $month: '$createdAt' },
-          totalDistance: { $sum: { $toDouble: { $ifNull: ['$estimatedDistance', 0] } } },
-          totalWeight: { $sum: { $toDouble: { $ifNull: ['$cargoWeight', 0] } } }
-        }
-      },
-      { $sort: { _id: 1 } }
-    ]);
-
-    return result.map(item => ({
-      _id: Number(item._id) || 1,
-      total: Math.round((Number(item.totalDistance) || 0) * 52 + (Number(item.totalWeight) || 0) * 4.5)
-    }));
-  } catch (_) {
     const trips = await Trip.find({ status: { $in: VALID_SETTLED_TRIP_STATUSES } }).lean();
     const monthlyMap = {};
-    trips.forEach(t => {
-      if (t.createdAt) {
-        const m = new Date(t.createdAt).getMonth() + 1;
-        const dist = Number(t.estimatedDistance || t.actualDistance) || 0;
-        const weight = Number(t.cargoWeight) || 0;
-        const rev = Math.round(dist * 52 + weight * 4.5);
-        monthlyMap[m] = (monthlyMap[m] || 0) + rev;
-      }
-    });
+    for (let i = 1; i <= 12; i++) {
+      monthlyMap[i] = 0;
+    }
+
+    if (trips && trips.length > 0) {
+      trips.forEach(t => {
+        const tripDate = t.completedAt || t.updatedAt || t.createdAt;
+        if (tripDate) {
+          const m = new Date(tripDate).getMonth() + 1;
+          const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
+          const weight = Number(t.cargoWeight) || 0;
+          const rev = calculateTripRevenue(dist, weight);
+          monthlyMap[m] = (monthlyMap[m] || 0) + rev;
+        }
+      });
+    }
+
     return Object.keys(monthlyMap).map(m => ({
       _id: Number(m),
-      total: monthlyMap[m]
+      total: monthlyMap[m] || 0
     }));
+  } catch (error) {
+    console.error('Error in getRevenueChartData:', error);
+    return [];
   }
 };
 

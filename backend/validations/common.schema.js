@@ -291,6 +291,93 @@ export const optionalUrlSchema = (fieldName = 'URL') =>
     .optional()
     .nullable();
 
+// YouTube URL Validation (Accepts youtube.com/watch?v=..., youtu.be/..., youtube.com/@..., youtube.com/shorts/..., youtube.com/channel/...)
+export const isValidYouTubeUrl = (value) => {
+  if (!value || typeof value !== 'string') return false;
+  const str = value.trim();
+  if (!str) return false;
+  if (str.length > 100) return false;
+  if (/\s/.test(str)) return false;
+
+  let urlObj;
+  try {
+    const toParse = /^https?:\/\//i.test(str) ? str : `https://${str}`;
+    urlObj = new URL(toParse);
+  } catch {
+    return false;
+  }
+
+  const hostname = urlObj.hostname.toLowerCase();
+  const validHostnames = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be', 'music.youtube.com'];
+  if (!validHostnames.includes(hostname)) {
+    return false;
+  }
+
+  if (urlObj.username || urlObj.password) {
+    return false;
+  }
+
+  if (hostname === 'youtu.be') {
+    const videoId = urlObj.pathname.slice(1).split('/')[0];
+    return Boolean(videoId && /^[a-zA-Z0-9_-]{6,15}$/.test(videoId));
+  }
+
+  const pathname = urlObj.pathname;
+
+  if (pathname === '/' || pathname === '') {
+    return true;
+  }
+
+  if (/^\/@[a-zA-Z0-9_.-]{1,50}$/.test(pathname)) {
+    return true;
+  }
+
+  if (pathname === '/watch') {
+    const v = urlObj.searchParams.get('v');
+    return Boolean(v && /^[a-zA-Z0-9_-]{6,15}$/.test(v));
+  }
+
+  if (/^\/shorts\/[a-zA-Z0-9_-]{6,15}$/.test(pathname)) {
+    return true;
+  }
+
+  if (/^\/(channel|c|user)\/[a-zA-Z0-9_.-]{1,50}$/.test(pathname)) {
+    return true;
+  }
+
+  if (pathname === '/playlist' && urlObj.searchParams.get('list')) {
+    const listId = urlObj.searchParams.get('list');
+    return Boolean(listId && /^[a-zA-Z0-9_-]{10,50}$/.test(listId));
+  }
+
+  if (/^\/embed\/[a-zA-Z0-9_-]{6,15}$/.test(pathname)) {
+    return true;
+  }
+
+  return false;
+};
+
+export const optionalYouTubeUrlSchema = (fieldName = 'YouTube URL') =>
+  z.string()
+    .trim()
+    .max(100, `${fieldName} must not exceed 100 characters.`)
+    .refine((val) => {
+      if (!val || !val.trim()) return true;
+      return isValidYouTubeUrl(val);
+    }, { message: `Please enter a valid YouTube URL (e.g. https://youtube.com/watch?v=..., https://youtu.be/..., or https://youtube.com/@...).` })
+    .optional()
+    .nullable()
+    .or(z.literal(''));
+
+export const youtubeUrlSchema = (fieldName = 'YouTube URL') =>
+  z.string({ required_error: `${fieldName} is required.` })
+    .trim()
+    .min(1, `${fieldName} is required.`)
+    .max(100, `${fieldName} must not exceed 100 characters.`)
+    .refine((val) => isValidYouTubeUrl(val), {
+      message: `Please enter a valid YouTube URL (e.g. https://youtube.com/watch?v=..., https://youtu.be/..., or https://youtube.com/@...).`
+    });
+
 // Global Search Query Validation
 export const searchQuerySchema = z
   .string()

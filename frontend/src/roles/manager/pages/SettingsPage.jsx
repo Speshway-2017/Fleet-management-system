@@ -4,14 +4,16 @@ import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import managerApi from "@/roles/manager/api/managerApi";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const { platformSettings } = useSettings();
   const [twoStep, setTwoStep] = useState(() => {
     const saved = localStorage.getItem("manager_two_step");
     return saved !== null ? JSON.parse(saved) : true;
   });
-  const [language, setLanguage] = useState(() => localStorage.getItem("manager_language") || "English (United States)");
+  const systemLanguage = platformSettings?.language || localStorage.getItem("app_language") || "English";
   const [timezone, setTimezone] = useState(() => localStorage.getItem("manager_timezone") || "(GMT-05:00) Eastern Time");
   const [units, setUnits] = useState(() => localStorage.getItem("manager_units") || "metric");
   const [notifications, setNotifications] = useState(() => {
@@ -205,11 +207,6 @@ export default function SettingsPage() {
     toast.success(next ? "2-Step verification enabled" : "2-Step verification disabled");
   };
 
-  const handleLanguageChange = (val) => {
-    setLanguage(val);
-    localStorage.setItem("manager_language", val);
-  };
-
   const handleTimezoneChange = (val) => {
     setTimezone(val);
     localStorage.setItem("manager_timezone", val);
@@ -236,7 +233,6 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     localStorage.setItem("manager_two_step", JSON.stringify(twoStep));
-    localStorage.setItem("manager_language", language);
     localStorage.setItem("manager_timezone", timezone);
     localStorage.setItem("manager_units", units);
     localStorage.setItem("manager_notifications", JSON.stringify(notifications));
@@ -272,7 +268,6 @@ export default function SettingsPage() {
   const handleCancel = () => {
     const savedTwoStep = localStorage.getItem("manager_two_step");
     setTwoStep(savedTwoStep !== null ? JSON.parse(savedTwoStep) : true);
-    setLanguage(localStorage.getItem("manager_language") || "English (United States)");
     setTimezone(localStorage.getItem("manager_timezone") || "(GMT-05:00) Eastern Time");
     setUnits(localStorage.getItem("manager_units") || "metric");
     const savedNotifs = localStorage.getItem("manager_notifications");
@@ -358,16 +353,18 @@ export default function SettingsPage() {
 
           <div className="space-y-5">
             <div>
-              <label className="block text-gray-800 font-medium mb-2">System Language</label>
-              <select
-                value={language}
-                onChange={(e) => handleLanguageChange(e.target.value)}
-                className="w-full px-4 py-2 bg-amber-50 border border-gray-300 rounded-xl text-gray-700 font-medium focus:outline-none appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:12px_12px] bg-[right_12px_center]"
-              >
-                <option>English (United States)</option>
-                <option>Spanish (Spain)</option>
-                <option>French (France)</option>
-              </select>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-gray-800 font-medium">System Language</label>
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">Admin Managed</span>
+              </div>
+              <input
+                type="text"
+                readOnly
+                disabled
+                value={systemLanguage}
+                className="w-full px-4 py-2 bg-slate-100 border border-gray-300 rounded-xl text-slate-600 font-medium cursor-not-allowed"
+              />
+              <p className="text-[11px] text-gray-500 mt-1">Platform language is configured by the Super Administrator in General Settings.</p>
             </div>
 
             <div>

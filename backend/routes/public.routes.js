@@ -23,6 +23,7 @@ router.get('/settings', async (req, res, next) => {
     const defaults = {
       platformName: 'Fleet Management',
       logoUrl: '/logo.png',
+      language: 'English',
       footerDescription: 'A next-generation fleet management platform designed to help businesses streamline operations, improve efficiency, and drive growth.',
       contactPhone: '+91 1800 200 4567',
       contactEmail: 'support@fleetmanagement.io',

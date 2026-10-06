@@ -156,8 +156,25 @@ export default function AddDriverPage() {
         }
       }
     } else if (name === "experience") {
-      if (strVal && strVal.length > 30) {
-        errorMsg = "Experience must not exceed 30 characters.";
+      if (!strVal) {
+        errorMsg = "Years of experience is required.";
+      } else if (!/^\d+$/.test(strVal)) {
+        if (/[a-zA-Z]/.test(strVal)) {
+          errorMsg = "Years of experience must contain numbers only (letters are not allowed).";
+        } else if (/\./.test(strVal)) {
+          errorMsg = "Years of experience must be a whole number (decimals are not allowed).";
+        } else if (/-/.test(strVal)) {
+          errorMsg = "Years of experience cannot be negative.";
+        } else {
+          errorMsg = "Years of experience must contain numbers only (special characters are not allowed).";
+        }
+      } else {
+        const num = Number(strVal);
+        if (num < 0) {
+          errorMsg = "Years of experience cannot be negative.";
+        } else if (num > 50) {
+          errorMsg = "Years of experience cannot exceed 50 years.";
+        }
       }
     }
     return errorMsg;
@@ -186,6 +203,34 @@ export default function AddDriverPage() {
     handleFieldChange("licenseNumber", val);
   };
 
+  const handleExperienceKeyDown = (e) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+      if (/[a-zA-Z]/.test(e.key)) {
+        setErrors((prev) => ({
+          ...prev,
+          experience: "Years of experience must contain numbers only (letters are not allowed)."
+        }));
+      } else if (e.key === ".") {
+        setErrors((prev) => ({
+          ...prev,
+          experience: "Years of experience must be a whole number (decimals are not allowed)."
+        }));
+      } else if (e.key === "-") {
+        setErrors((prev) => ({
+          ...prev,
+          experience: "Years of experience cannot be negative."
+        }));
+      } else {
+        setErrors((prev) => ({
+          ...prev,
+          experience: "Years of experience must contain numbers only (special characters are not allowed)."
+        }));
+      }
+    }
+  };
+
   const [formData, setFormData] = useState({
     fullName: "",
     phoneNumber: "",
@@ -194,7 +239,7 @@ export default function AddDriverPage() {
     licenseType: "HMV",
     licenseExpiry: "",
     driverStatus: "AVAILABLE",
-    experience: "5 Years",
+    experience: "5",
     joiningDate: new Date().toISOString().split("T")[0],
     medicalFitnessStatus: "✅ Fit",
     licenseDocument: "",
@@ -248,7 +293,7 @@ export default function AddDriverPage() {
           licenseType: d.licenseType || "HMV",
           licenseExpiry: d.licenseExpiry ? d.licenseExpiry.split("T")[0] : "",
           driverStatus: d.driverStatus || "AVAILABLE",
-          experience: d.experience || "",
+          experience: d.experience ? String(d.experience).replace(/[^\d]/g, '') : "",
           joiningDate: d.joiningDate ? d.joiningDate.split("T")[0] : "",
           medicalFitnessStatus: mapStatusToNew(d.medicalFitnessStatus),
           licenseDocument: d.licenseDocument || "",
@@ -421,6 +466,7 @@ export default function AddDriverPage() {
     !formData.licenseExpiry ||
     !formData.address ||
     !formData.driverLocation ||
+    !formData.experience ||
     Object.values(errors).some(Boolean);
 
   return (
@@ -873,12 +919,16 @@ export default function AddDriverPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Years Experience */}
             <div>
-              <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">Years of Experience</label>
+              <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block mb-1">
+                Years of Experience *
+              </label>
               <input
                 type="text"
-                maxLength={30}
-                placeholder="e.g. 5 Years"
+                inputMode="numeric"
+                maxLength={2}
+                placeholder="e.g. 5"
                 value={formData.experience}
+                onKeyDown={handleExperienceKeyDown}
                 onChange={(e) => handleFieldChange("experience", e.target.value)}
                 onBlur={(e) => handleFieldBlur("experience", e.target.value)}
                 className={`w-full px-3.5 py-2.5 border rounded-xl text-sm focus:outline-none bg-white text-[#1E293B] ${
@@ -889,8 +939,8 @@ export default function AddDriverPage() {
               />
               {errors.experience && (
                 <p className="text-xs text-[#EF4444] mt-1 font-semibold flex items-center gap-1 font-poppins">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  {errors.experience}
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{errors.experience}</span>
                 </p>
               )}
             </div>

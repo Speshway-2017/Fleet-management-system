@@ -5,6 +5,8 @@ import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import { useAdmin } from "@/roles/admin/context/AdminContext";
 import { useSettings } from "@/context/SettingsContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { applyApplicationLanguage, LANGUAGE_OPTIONS } from "@/utils/languageUtils";
 import { updateGeneralSettingsSchema, validateField, validateForm } from "@/validations";
 import toast from "react-hot-toast";
 import { adminApi } from "@/api/adminApi";
@@ -34,17 +36,7 @@ const TIMEZONE_OPTIONS = [
   { value: "Pacific/Auckland", label: "(GMT+12:00 / +13:00) New Zealand Time - Auckland, Wellington" }
 ];
 
-const LANGUAGE_OPTIONS = [
-  { value: "English", label: "English" },
-  { value: "Spanish", label: "Spanish (Español)" },
-  { value: "French", label: "French (Français)" },
-  { value: "German", label: "German (Deutsch)" },
-  { value: "Hindi", label: "Hindi (हिन्दी)" },
-  { value: "Arabic", label: "Arabic (العربية)" },
-  { value: "Chinese", label: "Chinese (Mandarin)" },
-  { value: "Japanese", label: "Japanese (日本語)" },
-  { value: "Portuguese", label: "Portuguese (Português)" }
-];
+
 
 export default function Settings() {
   const [platformName, setPlatformName] = useState("");
@@ -255,6 +247,7 @@ export default function Settings() {
         setLogoUrl(updatedSettings.logoUrl || logoUrl);
         setLogoFile(null);
       }
+      applyApplicationLanguage(language);
       toast.success("Platform & Footer settings saved successfully!");
       setErrors({});
       await loadSettings();

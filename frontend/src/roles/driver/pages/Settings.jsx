@@ -4,7 +4,26 @@ import driverApi from "../api/driverApi";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { toast } from "react-hot-toast";
-import { Settings, KeyRound, User, Save, Eye, EyeOff, Moon, Sun, Trash2, AlertTriangle, X, ShieldAlert, ArrowRight } from "lucide-react";
+import {
+  Settings,
+  KeyRound,
+  User,
+  Save,
+  Eye,
+  EyeOff,
+  Moon,
+  Sun,
+  Trash2,
+  AlertTriangle,
+  X,
+  ShieldAlert,
+  ArrowRight,
+  Bell,
+  Globe,
+  Sliders,
+  CheckCircle2,
+  Smartphone
+} from "lucide-react";
 
 export default function DriverSettingsPage() {
   const { user, logout } = useAuth();
@@ -23,6 +42,7 @@ export default function DriverSettingsPage() {
 
   const [updating, setUpdating] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [savingPreferences, setSavingPreferences] = useState(false);
 
   // Profile details state
   const [name, setName] = useState(user?.fullName || user?.name || "Driver");
@@ -30,6 +50,21 @@ export default function DriverSettingsPage() {
   const [email, setEmail] = useState(user?.email || "");
   const [licenseNumber, setLicenseNumber] = useState(user?.licenseNumber || "");
   const [profileImage, setProfileImage] = useState("");
+
+  // Notification Preferences & App Settings
+  const [language, setLanguage] = useState("English (US)");
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    pushNotifications: true,
+    smsNotifications: true,
+    emailNotifications: false,
+    tripUpdates: true,
+    routeChanges: true,
+    trafficWarnings: true,
+    fuelWarnings: true,
+    emergencyAlerts: true,
+    sound: true,
+    vibration: true
+  });
 
   // Validation States
   const [profileErrors, setProfileErrors] = useState({});
@@ -235,9 +270,43 @@ export default function DriverSettingsPage() {
         setEmail(d.email || user?.email || "");
         setLicenseNumber(d.licenseNumber || user?.licenseNumber || "");
         if (d.profileImage) setProfileImage(d.profileImage);
+        if (d.language) setLanguage(d.language);
+        if (d.notificationPreferences) {
+          setNotificationPreferences(prev => ({
+            ...prev,
+            ...d.notificationPreferences
+          }));
+        }
       }
     } catch (err) {
       console.error("Error fetching profile details in settings:", err);
+    }
+  };
+
+  const handleTogglePref = (key) => {
+    setNotificationPreferences(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const handleSavePreferences = async (e) => {
+    e?.preventDefault?.();
+    setSavingPreferences(true);
+    try {
+      const res = await driverApi.updateProfile({
+        notificationPreferences,
+        language,
+        isDarkMode: isDark
+      });
+      if (res?.success) {
+        toast.success("Notification preferences and app settings saved!");
+        window.dispatchEvent(new Event("notificationsUpdated"));
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to save preferences");
+    } finally {
+      setSavingPreferences(false);
     }
   };
 
@@ -276,6 +345,7 @@ export default function DriverSettingsPage() {
         toast.success("Profile details & avatar updated successfully!");
         fetchProfile();
         window.dispatchEvent(new Event("profileUpdated"));
+        window.dispatchEvent(new Event("notificationsUpdated"));
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to update profile details");
@@ -305,6 +375,7 @@ export default function DriverSettingsPage() {
         setConfirmPassword("");
         setPasswordErrors({});
         setPasswordTouched({});
+        window.dispatchEvent(new Event("notificationsUpdated"));
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to change password");
@@ -562,6 +633,137 @@ export default function DriverSettingsPage() {
             {updating ? "Updating Password..." : "Update Password"}
           </button>
         </form>
+      </div>
+
+      {/* Notification Preferences */}
+      <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h2 className="text-base font-bold font-poppins text-slate-900 dark:text-white flex items-center gap-2">
+              <Bell className="w-5 h-5 text-[#A14000]" /> Notification & Alert Preferences
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 text-xs mt-0.5">
+              Control your real-time dispatches, system alerts, and notification channels.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[
+            { key: "tripUpdates", label: "Trip Dispatches & Updates", desc: "Receive immediate dispatches and trip assignments" },
+            { key: "routeChanges", label: "Route & Geofence Changes", desc: "Live detours, stop alterations, and navigation updates" },
+            { key: "trafficWarnings", label: "Traffic & Road Conditions", desc: "Real-time congestion and route hazard alerts" },
+            { key: "fuelWarnings", label: "Fuel & Refuel Reminders", desc: "Low fuel warnings and approved pump stations" },
+            { key: "emergencyAlerts", label: "Emergency & SOS Broadcasts", desc: "High priority safety bulletins from fleet manager" },
+            { key: "pushNotifications", label: "In-App / Push Notifications", desc: "Push alerts to your device while active" },
+            { key: "smsNotifications", label: "SMS Text Messages", desc: "Critical dispatch info delivered via SMS" },
+            { key: "sound", label: "Sound Effects & Chimes", desc: "Play audible chime on incoming dispatches" }
+          ].map((item) => (
+            <div
+              key={item.key}
+              onClick={() => handleTogglePref(item.key)}
+              className="flex items-start justify-between p-3.5 bg-slate-50/80 dark:bg-slate-900/60 rounded-xl border border-slate-200/70 dark:border-slate-800 cursor-pointer hover:border-[#A14000]/40 transition"
+            >
+              <div className="space-y-0.5 pr-3">
+                <div className="text-xs font-bold font-poppins text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <span>{item.label}</span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
+                  {item.desc}
+                </p>
+              </div>
+              <div
+                className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 ease-in-out shrink-0 mt-0.5 ${
+                  notificationPreferences[item.key] ? "bg-[#A14000]" : "bg-slate-300 dark:bg-slate-700"
+                }`}
+              >
+                <div
+                  className={`w-4.5 h-4.5 rounded-full bg-white transition-transform duration-200 ease-in-out shadow-xs ${
+                    notificationPreferences[item.key] ? "translate-x-4.5" : "translate-x-0"
+                  }`}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          disabled={savingPreferences}
+          onClick={handleSavePreferences}
+          className="py-2.5 px-5 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm flex items-center gap-2 cursor-pointer"
+        >
+          <Save className="w-4 h-4" />
+          <span>{savingPreferences ? "Saving Preferences..." : "Save Notification Preferences"}</span>
+        </button>
+      </div>
+
+      {/* App & Language Preferences */}
+      <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
+        <h2 className="text-base font-bold font-poppins text-slate-900 dark:text-white flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <Globe className="w-5 h-5 text-[#A14000]" /> App & Regional Preferences
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+          <div>
+            <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">
+              App Language
+            </label>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-medium focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] outline-none"
+            >
+              <option value="English (US)">English (US)</option>
+              <option value="Hindi (हिंदी)">Hindi (हिंदी)</option>
+              <option value="Spanish (Español)">Spanish (Español)</option>
+              <option value="Tamil (தமிழ்)">Tamil (தமிழ்)</option>
+              <option value="Telugu (తెలుగు)">Telugu (తెలుగు)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">
+              Portal Theme
+            </label>
+            <div className="mt-1 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleThemeChange("light")}
+                className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
+                  !isDark
+                    ? "bg-[#FFDBCC]/40 border-[#A14000] text-[#A14000]"
+                    : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                }`}
+              >
+                <Sun className="w-4 h-4" />
+                <span>Light</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleThemeChange("dark")}
+                className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
+                  isDark
+                    ? "bg-[#A14000]/20 border-[#A14000] text-amber-500"
+                    : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                }`}
+              >
+                <Moon className="w-4 h-4" />
+                <span>Dark</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          disabled={savingPreferences}
+          onClick={handleSavePreferences}
+          className="py-2.5 px-5 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm flex items-center gap-2 cursor-pointer"
+        >
+          <Save className="w-4 h-4" />
+          <span>{savingPreferences ? "Saving Settings..." : "Save App Preferences"}</span>
+        </button>
       </div>
 
       {/* Danger Zone: Account Deletion */}

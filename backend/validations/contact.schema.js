@@ -44,18 +44,18 @@ export const contactRequestSchema = z.object({
     .min(1, 'Full name is required')
     .min(2, 'Full name must be between 2 and 30 characters long')
     .max(30, 'Full name must be between 2 and 30 characters long')
-    .refine((val) => !/\d/.test(val), { message: 'Numbers are not allowed in full name' }),
+    .refine((val) => !/\d/.test(val), { message: 'Numbers are not allowed in full name' })
+    .refine((val) => /^[a-zA-Z\s]+$/.test(val), { message: 'Special characters are not allowed in full name' }),
   email: emailSchema,
   phone: optionalPhoneSchema,
   company: z
-    .string()
+    .string({ required_error: 'Company name is required' })
     .trim()
-    .refine((val) => !val || (val.length >= 2 && val.length <= 30), {
-      message: 'Company name must be between 2 and 30 characters long'
-    })
-    .optional()
-    .nullable()
-    .or(z.literal('')),
+    .min(1, 'Company name is required')
+    .min(2, 'Company name must be between 2 and 30 characters long')
+    .max(30, 'Company name must be between 2 and 30 characters long')
+    .refine((val) => !/\d/.test(val), { message: 'Numbers are not allowed in company name' })
+    .refine((val) => /^[a-zA-Z\s]+$/.test(val), { message: 'Special characters are not allowed in company name' }),
   subject: z.enum(['Sales', 'Demo', 'Support', 'Partnership'], {
     errorMap: () => ({ message: 'Subject must be one of: Sales, Demo, Support, Partnership' })
   }),

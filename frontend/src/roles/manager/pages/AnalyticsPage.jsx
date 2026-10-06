@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import KPICard from "@/components/common/KPICard";
 import { managerApi } from "../api/managerApi";
 import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
 
@@ -10,7 +10,6 @@ export default function AnalyticsPage() {
   const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState("Last 7 Days");
   const [branchFilter, setBranchFilter] = useState("All Branches");
-  const [showInsights, setShowInsights] = useState(false);
 
   const [vehicles, setVehicles] = useState([]);
   const [fuelRecords, setFuelRecords] = useState([]);
@@ -43,10 +42,6 @@ export default function AnalyticsPage() {
     loadData();
   }, []);
 
-  const handleExport = () => {
-    toast.success("Analytics report exported successfully!");
-  };
-
   const getBranchStats = (branchName, range) => {
     let startDate = null;
     const now = new Date();
@@ -54,7 +49,7 @@ export default function AnalyticsPage() {
       startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     } else if (range === "30 Days") {
       startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    } else if (range === "Year to Date") {
+    } else if (range === "Year" || range === "Year to Date") {
       startDate = new Date(now.getFullYear(), 0, 1);
     }
 
@@ -153,27 +148,27 @@ export default function AnalyticsPage() {
   const data = getBranchStats(branchFilter, timeRange);
   const uniqueBranches = Array.from(new Set(vehicles.map(v => v.branchDepot || v.branch).filter(Boolean)));
 
-
-
   return (
-    <div className="p-6 lg:p-8">
+    <div className="p-6 lg:p-8 space-y-6">
       <Breadcrumb />
       {/* Header */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8 gap-4">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
           <h1 className="font-poppins font-black text-2xl lg:text-3xl text-[#0D1B2A] dark:text-white tracking-tight">Fleet Analytics & Intelligence</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Performance, fuel consumption, maintenance cost breakdowns, and trip efficiency trends.</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/60 w-full sm:w-auto">
-            {["Last 7 Days", "30 Days", "Year to Date"].map((range) => (
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+          {/* Time Range Filter (Segmented control) */}
+          <div className="inline-flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs shrink-0">
+            {["Last 7 Days", "30 Days", "Year"].map((range) => (
               <button
                 key={range}
+                type="button"
                 onClick={() => setTimeRange(range)}
-                className={`flex-1 sm:flex-none px-3.5 py-1.5 text-xs font-bold font-poppins rounded-lg transition-colors cursor-pointer ${
+                className={`px-3.5 py-1.5 text-xs font-bold font-poppins rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap text-center ${
                   timeRange === range
                     ? "bg-white text-[#0D1B2A] shadow-xs dark:bg-slate-900 dark:text-white"
-                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400"
+                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 hover:bg-white/40 dark:hover:bg-slate-700/40"
                 }`}
               >
                 {range}
@@ -181,101 +176,67 @@ export default function AnalyticsPage() {
             ))}
           </div>
           
-          <div className="relative w-full sm:w-auto">
+          {/* Branch Filter */}
+          <div className="relative shrink-0 min-w-[140px]">
             <select
               value={branchFilter}
               onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full sm:w-auto flex items-center justify-between bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 rounded-xl pl-4 pr-10 py-2 shadow-2xs text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none appearance-none cursor-pointer font-poppins"
+              className="w-full bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 rounded-xl pl-3.5 pr-9 py-1.5 shadow-xs text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#A14000] appearance-none cursor-pointer font-poppins h-[34px]"
             >
               <option value="All Branches">All Branches</option>
               {uniqueBranches.map(b => (
                 <option key={b} value={b}>{b}</option>
               ))}
             </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none">
               <Icon icon="mdi:chevron-down" className="w-4 h-4 text-slate-400" />
             </div>
           </div>
-
-          <button
-            onClick={handleExport}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-[#A14000] hover:bg-[#853500] text-white rounded-xl text-xs font-bold font-poppins transition-colors shadow-xs w-full sm:w-auto cursor-pointer"
-          >
-            <Icon icon="mdi:download" className="w-4 h-4" />
-            Export Report
-          </button>
-
-          <button
-            onClick={() => setShowInsights(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-bold font-poppins transition-colors shadow-xs w-full sm:w-auto cursor-pointer"
-          >
-            <Icon icon="mdi:lightbulb-on-outline" className="w-4 h-4" />
-            AI Insights
-          </button>
         </div>
       </div>
 
-      {/* Analytics Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-gray-500">Fleet Efficiency</p>
-              <h3 className="text-3xl font-bold text-gray-800">{data.efficiency}</h3>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center text-green-600">
-              <Icon icon="mdi:lightning-bolt" className="w-6 h-6" />
-            </div>
-          </div>
-          <p className="text-xs text-green-600 font-medium mt-2 flex items-center gap-1">
-            <Icon icon="mdi:trending-up" /> {data.efficiencyChange}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-gray-500">Fuel Consumption</p>
-              <h3 className="text-3xl font-bold text-gray-800">{data.totalFuel}</h3>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
-              <Icon icon="mdi:gas-station" className="w-6 h-6" />
-            </div>
-          </div>
-          <p className="text-xs text-[#A14000] font-medium mt-2 flex items-center gap-1">
-            <Icon icon="mdi:trending-down" /> {data.fuelChange}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-gray-500">Total Mileage</p>
-              <h3 className="text-3xl font-bold text-gray-800">{data.totalKm}</h3>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600">
-              <Icon icon="mdi:speedometer" className="w-6 h-6" />
-            </div>
-          </div>
-          <p className="text-xs text-green-600 font-medium mt-2 flex items-center gap-1">
-            <Icon icon="mdi:trending-up" /> {data.kmChange}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-gray-500">Maintenance Costs</p>
-              <h3 className="text-3xl font-bold text-gray-800">{data.maintCost}</h3>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600">
-              <Icon icon="mdi:wrench" className="w-6 h-6" />
-            </div>
-          </div>
-          <p className="text-xs text-green-600 font-medium mt-2 flex items-center gap-1">
-            <Icon icon="mdi:trending-down" /> {data.maintChange}
-          </p>
-        </div>
+      {/* Analytics Overview KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+        <KPICard
+          title="Fleet Efficiency"
+          value={loading ? null : data.efficiency}
+          loading={loading}
+          subtitle="vs last period"
+          icon="mdi:lightning-bolt"
+          trendText="+2.4%"
+          isTrendUp={true}
+          statusType="positive"
+        />
+        <KPICard
+          title="Fuel Consumption"
+          value={loading ? null : data.totalFuel}
+          loading={loading}
+          subtitle="vs last period"
+          icon="mdi:gas-station"
+          trendText="+1.8%"
+          isTrendUp={false}
+          statusType="negative"
+        />
+        <KPICard
+          title="Total Mileage"
+          value={loading ? null : data.totalKm}
+          loading={loading}
+          subtitle="vs last period"
+          icon="mdi:speedometer"
+          trendText="+5.1%"
+          isTrendUp={true}
+          statusType="positive"
+        />
+        <KPICard
+          title="Maintenance Costs"
+          value={loading ? null : data.maintCost}
+          loading={loading}
+          subtitle="vs last period"
+          icon="mdi:wrench"
+          trendText="-3.2%"
+          isTrendUp={false}
+          statusType="positive"
+        />
       </div>
 
       {/* Fleet Utilization & Hourly Dispatches Bar Chart */}
@@ -408,116 +369,6 @@ export default function AnalyticsPage() {
 
 
 
-      {/* AI Operational Insights Drawer */}
-      {showInsights && (
-        <div className="fixed inset-0 z-[9999] flex justify-end bg-black/40 backdrop-blur-xs select-none">
-          <div className="flex-1" onClick={() => setShowInsights(false)} />
-          <div className="w-full max-w-[420px] h-full bg-white shadow-2xl flex flex-col animate-slide-in-right relative">
-            {/* Header */}
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-slate-900 text-white shrink-0">
-              <div className="flex items-center gap-2">
-                <Icon icon="mdi:robot-outline" className="w-6 h-6 text-amber-500" />
-                <h3 className="font-poppins font-bold text-sm text-white">AI Operational Insights</h3>
-              </div>
-              <button
-                onClick={() => setShowInsights(false)}
-                className="p-1.5 hover:bg-white/10 rounded-xl text-gray-300 hover:text-white transition-colors cursor-pointer"
-              >
-                <Icon icon="mdi:close" className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Insights Content */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-slate-50 custom-scrollbar">
-              <p className="text-xs text-gray-500 font-semibold leading-relaxed">
-                AI-driven analysis of your fleet statistics shows potential optimizations for today:
-              </p>
-
-              {/* Tip 1 */}
-              {(() => {
-                const ongoingCount = data.branchTrips.filter(t => t.status === "In Progress" || t.status === "Assigned" || t.status === "Ongoing").length;
-                return (
-                  <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-xs space-y-2 hover:border-amber-500/30 transition-colors">
-                    <div className="flex items-center gap-2 text-amber-700">
-                      <Icon icon="mdi:map-marker-path" className="w-5 h-5" />
-                      <h4 className="font-bold text-xs uppercase tracking-wider font-poppins">Route Consolidation</h4>
-                    </div>
-                    <p className="text-xs text-gray-600 font-medium leading-relaxed">
-                      {ongoingCount > 0 ? (
-                        <>Consolidating the <strong className="text-gray-900">{ongoingCount} active/assigned dispatches</strong> in the system can optimize toll expenditures and save fleet running transit hours.</>
-                      ) : (
-                        <>No active dispatches right now. Scheduling routes early for future bookings is recommended to optimize transit corridors and driver rest periods.</>
-                      )}
-                    </p>
-                    <button onClick={() => { navigate("/manager/trips"); setShowInsights(false); }} className="text-[10px] font-bold text-amber-700 hover:underline cursor-pointer">
-                      View Trips Dashboard →
-                    </button>
-                  </div>
-                );
-              })()}
-
-              {/* Tip 2 */}
-              {(() => {
-                const lowestDriver = [...data.branchDrivers].sort((a,b) => (a.performanceScore || 0) - (b.performanceScore || 0))[0];
-                return (
-                  <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-xs space-y-2 hover:border-amber-500/30 transition-colors">
-                    <div className="flex items-center gap-2 text-amber-700">
-                      <Icon icon="mdi:steering" className="w-5 h-5" />
-                      <h4 className="font-bold text-xs uppercase tracking-wider font-poppins">Safety Coaching Alert</h4>
-                    </div>
-                    <p className="text-xs text-gray-600 font-medium leading-relaxed">
-                      {lowestDriver ? (
-                        <>Driver <strong className="text-gray-900">{lowestDriver.fullName}</strong> currently has a performance score of <strong className="text-gray-900">{lowestDriver.performanceScore || 0}/100</strong>. Scheduling a brief safety review is recommended to bring average safety back to targets.</>
-                      ) : (
-                        <>All registered drivers are performing excellently! Fleet-wide compliance and braking indicators are in the target green range (95%+).</>
-                      )}
-                    </p>
-                    <button onClick={() => { navigate("/manager/drivers"); setShowInsights(false); }} className="text-[10px] font-bold text-amber-700 hover:underline cursor-pointer">
-                      View Drivers List →
-                    </button>
-                  </div>
-                );
-              })()}
-
-              {/* Tip 3 */}
-              {(() => {
-                const scheduledService = data.branchMaint.find(m => m.status === "Scheduled");
-                return (
-                  <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-xs space-y-2 hover:border-amber-500/30 transition-colors">
-                    <div className="flex items-center gap-2 text-amber-700">
-                      <Icon icon="mdi:wrench" className="w-5 h-5" />
-                      <h4 className="font-bold text-xs uppercase tracking-wider font-poppins">Scheduled Maintenance</h4>
-                    </div>
-                    <p className="text-xs text-gray-600 font-medium leading-relaxed">
-                      {scheduledService ? (
-                        <>Vehicle <strong className="text-gray-900">{scheduledService.plateNumber}</strong> has an upcoming <strong className="text-gray-900">"{scheduledService.type}"</strong> service scheduled on {scheduledService.serviceDate} at {scheduledService.serviceCenter}. Ensure the keys are logged.</>
-                      ) : (
-                        <>No upcoming maintenance tasks scheduled for this branch. Routine vehicle safety checks and tire pressure updates are recommended daily.</>
-                      )}
-                    </p>
-                    <button onClick={() => { navigate("/manager/maintenance"); setShowInsights(false); }} className="text-[10px] font-bold text-amber-700 hover:underline cursor-pointer">
-                      View Maintenance →
-                    </button>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Footer */}
-            <div className="p-4 border-t border-gray-100 bg-white text-center shrink-0">
-              <button 
-                onClick={() => {
-                  setShowInsights(false);
-                  toast.success("Subscribing to weekly AI operational summaries...");
-                }}
-                className="w-full py-2.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
-              >
-                Receive Weekly AI Summaries
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

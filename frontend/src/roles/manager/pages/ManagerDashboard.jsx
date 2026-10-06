@@ -11,6 +11,7 @@ import StatusBadge from "@/components/common/StatusBadge";
 import { Phone, MapPin, ExternalLink, Activity, AlertTriangle, ShieldCheck, Truck, Users } from "lucide-react";
 import { animateDashboardEntrance } from "@/utils/animeUtils";
 import { getDaysRemaining } from "@/utils/dateUtils";
+import { formatCurrency } from "@/utils/currencyFormatter";
 
 export default function ManagerDashboard() {
   const navigate = useNavigate();
@@ -182,18 +183,7 @@ export default function ManagerDashboard() {
 
 
   const formatRevenueDisplay = (amount) => {
-    if (!amount || isNaN(amount) || amount <= 0) return "₹0";
-    const num = Number(amount);
-    if (num >= 10000000) {
-      return `₹${(num / 10000000).toFixed(2)} Cr`;
-    }
-    if (num >= 100000) {
-      return `₹${(num / 100000).toFixed(2)} L`;
-    }
-    if (num >= 1000) {
-      return `₹${(num / 1000).toFixed(1)}k`;
-    }
-    return `₹${Math.round(num).toLocaleString('en-IN')}`;
+    return formatCurrency(amount);
   };
 
   // Dynamic Month & Timeframe Filter for Delivery Analytics

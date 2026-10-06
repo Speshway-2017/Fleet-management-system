@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AdminProvider } from "@/roles/admin/context/AdminContext";
 import { SettingsProvider } from "@/context/SettingsContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import ProtectedRoute from "@/routes/ProtectedRoute";
@@ -121,7 +122,8 @@ function PublicRoute({ children }) {
 export default function App() {
   return (
     <ThemeProvider>
-      <SettingsProvider>
+      <LanguageProvider>
+        <SettingsProvider>
         <AuthProvider>
           <BrowserRouter>
             <ScrollToTop />
@@ -258,6 +260,7 @@ export default function App() {
           </BrowserRouter>
         </AuthProvider>
       </SettingsProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

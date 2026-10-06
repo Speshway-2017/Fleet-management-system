@@ -3,8 +3,18 @@
  * This serves as the single source of truth for earnings calculations across all modules.
  */
 export const calculateTripFinance = (trip) => {
-  const distance = trip.actualDistance || trip.estimatedDistance || 250;
-  const weight = trip.cargoWeight || 800;
+  const distance = Number(trip?.actualDistance) || Number(trip?.estimatedDistance) || 0;
+  const weight = Number(trip?.cargoWeight) || 0;
+
+  if (distance <= 0 && weight <= 0) {
+    return {
+      revenue: 0,
+      expenses: 0,
+      netEarnings: 0,
+      distance: 0,
+      weight: 0
+    };
+  }
 
   // Revenue = distance * 52 + cargoWeight * 4.5
   const revenue = Math.round(distance * 52 + weight * 4.5);

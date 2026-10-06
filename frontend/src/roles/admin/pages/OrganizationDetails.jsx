@@ -7,8 +7,7 @@ import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import AdminEmptyState from "@/components/common/AdminEmptyState";
 import { Plus, Eye, EyeOff, Pencil, Trash2, X } from "lucide-react";
-import toast from "react-hot-toast";
-import { formatCurrency } from "@/utils/currencyFormatter";
+import { formatCurrency, formatFullCurrency } from "@/utils/currencyFormatter";
 
 // ── Shared tab strip ──────────────────────────────────────────────────────
 function OrgTabs({ activeId, active }) {
@@ -530,7 +529,7 @@ export default function OrganizationDetails() {
               <div className="flex flex-col items-center justify-center p-2 md:p-4 w-full text-center min-w-0 px-2">
                 <span
                   className="text-xl sm:text-2xl md:text-2xl lg:text-3xl font-black text-slate-800 mb-1 truncate max-w-full leading-tight"
-                  title={formatCurrency(org.stats?.totalRevenue)}
+                  title={formatFullCurrency(org.stats?.totalRevenue)}
                 >
                   {formatCurrency(org.stats?.totalRevenue)}
                 </span>
@@ -588,7 +587,7 @@ export default function OrganizationDetails() {
                           {m.stats?.activeTripsCount ?? 0}
                         </td>
                         <td className="py-4 px-6 text-sm text-slate-800 font-semibold whitespace-nowrap text-center">
-                          <span className="max-w-[140px] truncate inline-block align-middle" title={formatCurrency(m.stats?.totalRevenue)}>
+                          <span className="max-w-[140px] truncate inline-block align-middle" title={formatFullCurrency(m.stats?.totalRevenue)}>
                             {formatCurrency(m.stats?.totalRevenue)}
                           </span>
                         </td>
@@ -645,7 +644,7 @@ export default function OrganizationDetails() {
                     </div>
                     <div className="flex flex-col col-span-2 mt-1">
                       <span className="text-[10px] uppercase font-bold text-slate-400">Revenue Generated</span>
-                      <span className="text-sm font-medium text-slate-700 truncate" title={formatCurrency(m.stats?.totalRevenue)}>
+                      <span className="text-sm font-medium text-slate-700 truncate" title={formatFullCurrency(m.stats?.totalRevenue)}>
                         {formatCurrency(m.stats?.totalRevenue)}
                       </span>
                     </div>
