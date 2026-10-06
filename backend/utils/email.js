@@ -6,11 +6,19 @@ import nodemailer from "nodemailer";
 export const getSmtpConfig = () => {
   const host = process.env.SMTP_HOST || process.env.EMAIL_HOST || process.env.MAIL_HOST;
   const port = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT || process.env.MAIL_PORT) || 587;
-  const user = process.env.SMTP_USER || process.env.SMTP_USERNAME || process.env.EMAIL_USER || process.env.MAIL_USER;
-  const pass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS || process.env.MAIL_PASS;
-  const service = process.env.SMTP_SERVICE || process.env.EMAIL_SERVICE;
-  const fromEmail = process.env.SMTP_FROM || process.env.FROM_EMAIL || process.env.EMAIL_FROM || process.env.MAIL_FROM || user || 'no-reply@fleetmanagement.com';
-  const fromName = process.env.FROM_NAME || process.env.SMTP_FROM_NAME || 'Fleet Management System';
+  const user = (process.env.SMTP_USER || process.env.SMTP_USERNAME || process.env.EMAIL_USER || process.env.MAIL_USER || '').trim();
+  const rawPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS || process.env.MAIL_PASS || '';
+  
+  // Clean password (stripping spaces often copied from Google App Passwords)
+  const pass = rawPass.trim().replace(/\s+/g, '');
+
+  let service = process.env.SMTP_SERVICE || process.env.EMAIL_SERVICE;
+  if (!service && (host?.includes('gmail') || user?.toLowerCase().endsWith('@gmail.com'))) {
+    service = 'gmail';
+  }
+
+  const fromEmail = (process.env.SMTP_FROM || process.env.FROM_EMAIL || process.env.EMAIL_FROM || process.env.MAIL_FROM || user || 'no-reply@fleetmanagement.com').trim();
+  const fromName = (process.env.FROM_NAME || process.env.SMTP_FROM_NAME || 'Fleet Management System').trim();
   
   const isSecure = process.env.SMTP_SECURE !== undefined 
     ? (process.env.SMTP_SECURE === 'true' || process.env.SMTP_SECURE === '1')
@@ -68,7 +76,15 @@ export const getTransporter = () => {
   }
 
   let transporterOptions;
-  if (config.service) {
+  if (config.service === 'gmail') {
+    transporterOptions = {
+      service: 'gmail',
+      auth: {
+        user: config.user,
+        pass: config.pass
+      }
+    };
+  } else if (config.service) {
     transporterOptions = {
       service: config.service,
       auth: {
@@ -89,8 +105,7 @@ export const getTransporter = () => {
         pass: config.pass
       },
       tls: {
-        rejectUnauthorized: false,
-        minVersion: 'TLSv1.2'
+        rejectUnauthorized: false
       },
       connectionTimeout: 15000,
       greetingTimeout: 15000,
@@ -121,10 +136,10 @@ export const verifySmtpConnection = async () => {
     const transporter = getTransporter();
     if (!transporter) return false;
     await transporter.verify();
-    console.log(`✅ [SMTP Connected] Verified connection to ${config.service || config.host}:${config.port} (User: ${maskIdentifier(config.user)}, TLS/SSL: ${config.isSecure ? 'Enabled (SSL)' : 'STARTTLS'})`);
+    console.log(`✅ [SMTP Connected] Verified connection to ${config.service ? `service:${config.service}` : `${config.host}:${config.port}`} (User: ${maskIdentifier(config.user)}, From: ${config.fromEmail})`);
     return true;
   } catch (err) {
-    console.error(`❌ [SMTP Connection Error] Failed to connect/authenticate with SMTP server (${config.service || config.host}:${config.port}): [${err.code || 'ERR'}] ${err.message}`);
+    console.error(`❌ [SMTP Connection Error] Failed to connect/authenticate with SMTP server (${config.service || config.host}): [${err.code || 'ERR'}] ${err.message}`);
     return false;
   }
 };
@@ -135,7 +150,8 @@ export const verifySmtpConnection = async () => {
 export const sendEmail = async (options) => {
   const config = getSmtpConfig();
   const recipient = options.to || options.email;
-  const fromAddress = options.from || `"${config.fromName}" <${config.fromEmail}>`;
+  // Use authenticated user or configured fromEmail
+  const fromAddress = options.from || `"${config.fromName}" <${config.user || config.fromEmail}>`;
   const transporter = getTransporter();
   const isProduction = process.env.NODE_ENV === 'production';
 
@@ -151,11 +167,11 @@ export const sendEmail = async (options) => {
     html: options.html
   };
 
-  // 1. Production Mode - Strict delivery requirement
+  // 1. If SMTP is not configured:
   if (!transporter) {
     if (isProduction) {
       console.error(`❌ [SMTP Error] Cannot deliver email to ${maskIdentifier(recipient)}: SMTP is not configured in production environment.`);
-      throw new Error('Email delivery failed: SMTP service is not configured on the server.');
+      throw new Error('Email delivery failed: SMTP service is not configured on the production server. Please check SMTP settings in environment variables.');
     }
 
     // Development Mode - Simulated local log
@@ -176,7 +192,7 @@ export const sendEmail = async (options) => {
   try {
     const info = await transporter.sendMail(mailOptions);
     
-    // Verify server actually accepted the message
+    // Verify server accepted the message
     if (info.rejected && info.rejected.length > 0) {
       console.error(`❌ [SMTP Error] Recipient rejected by SMTP server: ${maskIdentifier(recipient)} (Response: ${info.response || 'Rejected'})`);
       throw new Error(`Email was rejected by the mail server for recipient: ${recipient}`);

@@ -15,9 +15,13 @@ export const findAccountByIdentifier = async (identifier) => {
   const cleanId = String(identifier).trim();
   const lowerId = cleanId.toLowerCase();
   const digitsOnly = cleanId.replace(/\D/g, '');
+  const emailRegex = new RegExp(`^${cleanId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
 
   // 1. Check User model (Super Admin / Fleet Manager)
-  const userConditions = [{ email: lowerId }];
+  const userConditions = [
+    { email: lowerId },
+    { email: emailRegex }
+  ];
   if (digitsOnly.length >= 7) {
     userConditions.push({ phone: cleanId });
     userConditions.push({ phone: digitsOnly });
@@ -37,7 +41,11 @@ export const findAccountByIdentifier = async (identifier) => {
   }
 
   // 2. Check Driver model
-  const driverConditions = [{ email: lowerId }];
+  const driverConditions = [
+    { email: lowerId },
+    { email: emailRegex },
+    { employeeId: cleanId }
+  ];
   if (digitsOnly.length >= 7) {
     driverConditions.push({ phoneNumber: cleanId });
     driverConditions.push({ mobile: cleanId });
@@ -102,6 +110,7 @@ export const changeUserPassword = async (userIdOrEmail, oldPassword, newPassword
   if (typeof userIdOrEmail === 'string' && userIdOrEmail.includes('@')) {
     user = await findUserByEmail(userIdOrEmail);
   } else if (userIdOrEmail) {
+    const User = (await import('../models/User.js')).default;
     user = await User.findById(userIdOrEmail);
     if (!user) {
       user = await findUserByEmail(userIdOrEmail);
@@ -159,18 +168,7 @@ export const processForgotPassword = async (identifier) => {
   account.resetPasswordLastSent = new Date();
   await account.save();
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`\n==================================================`);
-    console.log(`🔑 PASSWORD RESET OTP GENERATED`);
-    console.log(`👤 Name:      ${name}`);
-    console.log(`📧 Email:     ${email}`);
-    console.log(`📱 Phone:     ${phone || 'N/A'}`);
-    console.log(`🔢 OTP Code:  ${otp}`);
-    console.log(`⏱️ Expiry:    10 minutes`);
-    console.log(`==================================================\n`);
-  } else {
-    console.log(`[AUTH] Password reset OTP generated for ${maskIdentifier(email || phone)}`);
-  }
+  console.log(`[AUTH] Password reset OTP generated and dispatched for ${maskIdentifier(email || phone)}`);
 
   let emailSent = false;
   let smsSent = false;

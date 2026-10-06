@@ -534,16 +534,7 @@ export const createDriver = async (req, res, next) => {
       licenseDocument: licenseDocument || '',
       assignedManager: req.user?._id
     });
-    console.log(`✓ Driver Saved Successfully\n`);
-
-    console.log(`==================================================\n`);
-    console.log(`Driver Created Successfully`);
-    console.log(`==================================================\n`);
-    console.log(`Employee ID:\n${generatedEmpId}\n`);
-    console.log(`Temporary Password:\n${temporaryPassword}\n`);
-    console.log(`Status:\nActive\n`);
-    console.log(`Must Change Password:\ntrue\n`);
-    console.log(`==================================================\n`);
+    console.log(`[DRIVER_REGISTRATION] Driver "${driver.fullName}" (${generatedEmpId}) created successfully.`);
 
     // Send driver credentials email via Nodemailer
     if (driver.email) {
