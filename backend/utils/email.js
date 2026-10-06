@@ -4,10 +4,10 @@ import nodemailer from "nodemailer";
  * Resolves SMTP configuration from environment variables with alias normalization.
  */
 export const getSmtpConfig = () => {
-  const host = process.env.SMTP_HOST || process.env.EMAIL_HOST || process.env.MAIL_HOST;
+  const host = process.env.SMTP_HOST || process.env.EMAIL_HOST || process.env.MAIL_HOST || 'smtp.gmail.com';
   const port = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT || process.env.MAIL_PORT) || 587;
-  const user = (process.env.SMTP_USER || process.env.SMTP_USERNAME || process.env.EMAIL_USER || process.env.MAIL_USER || '').trim();
-  const rawPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS || process.env.MAIL_PASS || '';
+  const user = (process.env.SMTP_USER || process.env.SMTP_USERNAME || process.env.EMAIL_USER || process.env.GMAIL_USER || process.env.GMAIL_EMAIL || process.env.NODEMAILER_USER || process.env.MAIL_USER || '').trim();
+  const rawPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS || process.env.GMAIL_PASS || process.env.GMAIL_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.NODEMAILER_PASS || process.env.MAIL_PASS || process.env.MAIL_PASSWORD || '';
   
   // Clean password (stripping spaces often copied from Google App Passwords)
   const pass = rawPass.trim().replace(/\s+/g, '');
