@@ -268,13 +268,7 @@ export const createOrganization = async (req, res, next) => {
             createdManagerIds.push(createdManager._id);
             createdManagersList.push(createdManager);
 
-            console.log(`\n==================================================`);
-            console.log(`👔 NEW FLEET MANAGER CREATED (Organization: ${org.name})`);
-            console.log(`👤 Name:     ${createdManager.name}`);
-            console.log(`📧 Email:    ${createdManager.email}`);
-            console.log(`🔑 Password: ${manager.password}`);
-            console.log(`📱 Phone:    ${createdManager.phone || 'N/A'}`);
-            console.log(`==================================================\n`);
+            console.log(`[ADMIN] Fleet Manager "${createdManager.name}" (${createdManager.email}) created for organization "${org.name}".`);
 
             // Send welcome credentials email via Nodemailer
             try {
@@ -559,14 +553,7 @@ export const createManager = async (req, res, next) => {
       if (orgObj) orgName = orgObj.name;
     }
 
-    console.log(`\n==================================================`);
-    console.log(`👔 NEW FLEET MANAGER CREATED`);
-    console.log(`👤 Name:     ${manager.name}`);
-    console.log(`📧 Email:    ${manager.email}`);
-    console.log(`🔑 Password: ${password}`);
-    console.log(`📱 Phone:    ${manager.phone || 'N/A'}`);
-    console.log(`🏢 Org:      ${orgName}`);
-    console.log(`==================================================\n`);
+    console.log(`[ADMIN] Fleet Manager "${manager.name}" (${manager.email}) created for organization "${orgName}".`);
 
     // Store Admin Notification in MongoDB
     const notification = await createNotificationInRepo({
