@@ -127,6 +127,8 @@ export default function VehiclesListPage() {
       permitDetails: v.permitDetails || {},
       insuranceStatus: getDocumentStatus(insExp),
       permitStatus: getDocumentStatus(permExp),
+      activeTripId: v.activeTripId || v.currentTripId || null,
+      currentTripId: v.currentTripId || v.activeTripId || null,
     };
   };
 

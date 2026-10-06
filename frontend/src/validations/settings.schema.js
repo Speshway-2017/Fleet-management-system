@@ -5,7 +5,8 @@ import {
   optionalPhoneSchema,
   personNameSchema,
   ipAllowlistSchema,
-  optionalUrlSchema
+  optionalUrlSchema,
+  optionalYouTubeUrlSchema
 } from './common.schema.js';
 
 export const updateGeneralSettingsSchema = z.object({
@@ -41,7 +42,7 @@ export const updateGeneralSettingsSchema = z.object({
   facebookUrl: optionalUrlSchema('Facebook URL'),
   linkedinUrl: optionalUrlSchema('LinkedIn URL'),
   twitterUrl: optionalUrlSchema('Twitter URL'),
-  youtubeUrl: optionalUrlSchema('YouTube URL')
+  youtubeUrl: optionalYouTubeUrlSchema('YouTube URL')
 }).passthrough();
 
 export const adminProfileSchema = z.object({

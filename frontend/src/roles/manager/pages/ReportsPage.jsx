@@ -19,6 +19,7 @@ export default function ReportsPage() {
   const [maintenance, setMaintenance] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // View tabs: "live" (Interactive Report Cockpit) or "schedules" (Delivery Schedules CRUD)
   const [activeTab, setActiveTab] = useState("live");
@@ -646,6 +647,33 @@ export default function ReportsPage() {
       loadData();
     } catch (error) {
       toast.error("Failed to delete schedule.");
+    }
+  };
+
+  const handleRefreshSchedules = async () => {
+    try {
+      setIsRefreshing(true);
+      const sRes = await managerApi.getReports();
+      const sResult = sRes.data?.data || sRes.data || [];
+      if (Array.isArray(sResult)) {
+        setSchedules(sResult.map(s => ({
+          id: s._id,
+          name: s.name,
+          type: s.type || "Operational",
+          frequency: s.frequency || "Weekly",
+          day: s.day || "Monday",
+          time: s.time || "09:00",
+          format: s.format || "PDF",
+          recipients: s.recipients || "",
+          active: s.status === "Active"
+        })));
+      }
+      toast.success("Delivery schedules refreshed successfully!");
+    } catch (error) {
+      console.error("Failed to refresh delivery schedules", error);
+      toast.error("Failed to refresh delivery schedules.");
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -1460,13 +1488,20 @@ export default function ReportsPage() {
           {/* Right column - Scheduled Deliveries List */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
-              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="text-base font-bold text-gray-800 font-poppins">Configured Report Delivery Schedules</h3>
+              <div className="p-6 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-bold text-gray-800 font-poppins">Configured Report Delivery Schedules</h3>
+                  <p className="text-xs text-gray-500 font-medium mt-0.5">Automated report dispatches to designated managers & executives</p>
+                </div>
                 <button
-                  onClick={loadData}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-xl text-xs text-gray-700 hover:bg-gray-50 transition-colors"
+                  type="button"
+                  onClick={handleRefreshSchedules}
+                  disabled={isRefreshing}
+                  className="px-3.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold font-poppins transition-all duration-200 shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Refresh Delivery Schedules"
                 >
-                  Refresh
+                  <Icon icon="mdi:refresh" className={`w-4 h-4 text-[#A14000] ${isRefreshing ? "animate-spin" : ""}`} />
+                  <span>Refresh</span>
                 </button>
               </div>
               

@@ -124,7 +124,7 @@ export function AdminProvider({ children }) {
   };
 
   // ── Platform Settings ──────────────────────────────────────────────────────
-  const [platformSettings, setPlatformSettings] = useState({ platformName: "Fleet Management", logoUrl: "/logo.png" });
+  const [platformSettings, setPlatformSettings] = useState({ platformName: "Fleet Management", logoUrl: "/logo.png", language: "English" });
 
   const fetchPlatformSettings = async () => {
     try {
@@ -132,8 +132,14 @@ export function AdminProvider({ children }) {
       const data = response.data?.data || response.data || {};
       setPlatformSettings({ 
         platformName: data.platformName || "Fleet Management", 
-        logoUrl: data.logoUrl || "/logo.png" 
+        logoUrl: data.logoUrl || "/logo.png",
+        language: data.language || "English"
       });
+      if (data.language) {
+        import("@/utils/languageUtils").then(({ applyApplicationLanguage }) => {
+          applyApplicationLanguage(data.language);
+        });
+      }
     } catch (error) {
       console.warn("Failed to fetch platform settings:", error?.response?.status);
     }

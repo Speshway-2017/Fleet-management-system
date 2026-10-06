@@ -59,7 +59,8 @@ export default function Contact() {
   const handleFullNameChange = (e) => {
     const rawVal = e.target.value;
     const hasNumbers = /\d/.test(rawVal);
-    const cleanedVal = rawVal.replace(/\d/g, "").slice(0, 30);
+    const hasSpecialChars = /[^a-zA-Z\s\d]/.test(rawVal);
+    const cleanedVal = rawVal.replace(/[^a-zA-Z\s]/g, "").slice(0, 30);
 
     setForm((prev) => ({ ...prev, fullName: cleanedVal }));
     setTouched((prev) => ({ ...prev, fullName: true }));
@@ -68,6 +69,11 @@ export default function Contact() {
       setFormErrors((prevErr) => ({
         ...prevErr,
         fullName: "Numbers are not allowed in full name",
+      }));
+    } else if (hasSpecialChars) {
+      setFormErrors((prevErr) => ({
+        ...prevErr,
+        fullName: "Special characters are not allowed in full name",
       }));
     } else if (cleanedVal.length > 0 && cleanedVal.trim().length < 2) {
       setFormErrors((prevErr) => ({
@@ -88,15 +94,33 @@ export default function Contact() {
   };
 
   const handleCompanyChange = (e) => {
-    const rawVal = e.target.value.slice(0, 30);
-    setForm((prev) => ({ ...prev, company: rawVal }));
+    const rawVal = e.target.value;
+    const hasNumbers = /\d/.test(rawVal);
+    const hasSpecialChars = /[^a-zA-Z\s\d]/.test(rawVal);
+    const cleanedVal = rawVal.replace(/[^a-zA-Z\s]/g, "").slice(0, 30);
+
+    setForm((prev) => ({ ...prev, company: cleanedVal }));
     setTouched((prev) => ({ ...prev, company: true }));
 
-    const trimmed = rawVal.trim();
-    if (trimmed.length > 0 && trimmed.length < 2) {
+    if (hasNumbers) {
+      setFormErrors((prevErr) => ({
+        ...prevErr,
+        company: "Numbers are not allowed in company name",
+      }));
+    } else if (hasSpecialChars) {
+      setFormErrors((prevErr) => ({
+        ...prevErr,
+        company: "Special characters are not allowed in company name",
+      }));
+    } else if (cleanedVal.length > 0 && cleanedVal.trim().length < 2) {
       setFormErrors((prevErr) => ({
         ...prevErr,
         company: "Company name must be between 2 and 30 characters long",
+      }));
+    } else if (cleanedVal.trim().length === 0) {
+      setFormErrors((prevErr) => ({
+        ...prevErr,
+        company: "Company name is required",
       }));
     } else {
       setFormErrors((prevErr) => ({
@@ -142,9 +166,26 @@ export default function Contact() {
       const updated = { ...prev, [field]: value };
       let fieldError = "";
 
-      if (field === "company") {
-        const trimmed = value.trim();
-        if (trimmed.length > 0 && (trimmed.length < 2 || value.length > 30)) {
+      if (field === "fullName") {
+        if (!value.trim()) {
+          fieldError = "Full name is required";
+        } else if (/\d/.test(value)) {
+          fieldError = "Numbers are not allowed in full name";
+        } else if (/[^a-zA-Z\s]/.test(value)) {
+          fieldError = "Special characters are not allowed in full name";
+        } else if (value.trim().length < 2 || value.length > 30) {
+          fieldError = "Full name must be between 2 and 30 characters long";
+        } else {
+          fieldError = "";
+        }
+      } else if (field === "company") {
+        if (!value.trim()) {
+          fieldError = "Company name is required";
+        } else if (/\d/.test(value)) {
+          fieldError = "Numbers are not allowed in company name";
+        } else if (/[^a-zA-Z\s]/.test(value)) {
+          fieldError = "Special characters are not allowed in company name";
+        } else if (value.trim().length < 2 || value.length > 30) {
           fieldError = "Company name must be between 2 and 30 characters long";
         } else {
           fieldError = "";
@@ -182,12 +223,16 @@ export default function Contact() {
         setFormErrors((prevErr) => ({ ...prevErr, fullName: "Full name is required" }));
         return;
       }
-      if (val.trim().length < 2 || val.length > 30) {
-        setFormErrors((prevErr) => ({ ...prevErr, fullName: "Full name must be between 2 and 30 characters long" }));
-        return;
-      }
       if (/\d/.test(val)) {
         setFormErrors((prevErr) => ({ ...prevErr, fullName: "Numbers are not allowed in full name" }));
+        return;
+      }
+      if (/[^a-zA-Z\s]/.test(val)) {
+        setFormErrors((prevErr) => ({ ...prevErr, fullName: "Special characters are not allowed in full name" }));
+        return;
+      }
+      if (val.trim().length < 2 || val.length > 30) {
+        setFormErrors((prevErr) => ({ ...prevErr, fullName: "Full name must be between 2 and 30 characters long" }));
         return;
       }
       setFormErrors((prevErr) => ({ ...prevErr, fullName: "" }));
@@ -195,7 +240,19 @@ export default function Contact() {
     }
 
     if (field === "company") {
-      if (val && val.trim() && (val.trim().length < 2 || val.length > 30)) {
+      if (!val.trim()) {
+        setFormErrors((prevErr) => ({ ...prevErr, company: "Company name is required" }));
+        return;
+      }
+      if (/\d/.test(val)) {
+        setFormErrors((prevErr) => ({ ...prevErr, company: "Numbers are not allowed in company name" }));
+        return;
+      }
+      if (/[^a-zA-Z\s]/.test(val)) {
+        setFormErrors((prevErr) => ({ ...prevErr, company: "Special characters are not allowed in company name" }));
+        return;
+      }
+      if (val.trim().length < 2 || val.length > 30) {
         setFormErrors((prevErr) => ({ ...prevErr, company: "Company name must be between 2 and 30 characters long" }));
         return;
       }
@@ -306,11 +363,21 @@ export default function Contact() {
 
     if (!form.fullName || !form.fullName.trim()) {
       errors.fullName = "Full name is required";
+    } else if (/\d/.test(form.fullName)) {
+      errors.fullName = "Numbers are not allowed in full name";
+    } else if (/[^a-zA-Z\s]/.test(form.fullName)) {
+      errors.fullName = "Special characters are not allowed in full name";
     } else if (form.fullName.trim().length < 2 || form.fullName.length > 30) {
       errors.fullName = "Full name must be between 2 and 30 characters long";
     }
 
-    if (form.company && form.company.trim() && (form.company.trim().length < 2 || form.company.length > 30)) {
+    if (!form.company || !form.company.trim()) {
+      errors.company = "Company name is required";
+    } else if (/\d/.test(form.company)) {
+      errors.company = "Numbers are not allowed in company name";
+    } else if (/[^a-zA-Z\s]/.test(form.company)) {
+      errors.company = "Special characters are not allowed in company name";
+    } else if (form.company.trim().length < 2 || form.company.length > 30) {
       errors.company = "Company name must be between 2 and 30 characters long";
     }
 
@@ -581,7 +648,7 @@ export default function Contact() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block font-display">
-                  Company Name
+                  Company Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"

@@ -17,8 +17,7 @@ import {
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import KPICard from "@/components/common/KPICard";
-import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
-import { formatCurrency, parseNumericValue } from "@/utils/currencyFormatter";
+import { formatCurrency, formatFullCurrency, parseNumericValue } from "@/utils/currencyFormatter";
 import {
   LineChart,
   Line,
@@ -90,8 +89,10 @@ function Dashboard() {
     revenue: parseNumericValue(item?.revenue),
   }));
 
-  const totalCalculatedRevenue = parseNumericValue(statistics?.revenue) ||
-    safeChartData.reduce((acc, curr) => acc + curr.revenue, 0);
+  const totalCalculatedRevenue =
+    statistics?.revenue !== undefined && statistics?.revenue !== null
+      ? parseNumericValue(statistics.revenue)
+      : safeChartData.reduce((acc, curr) => acc + curr.revenue, 0);
 
   const todayCalculatedRevenue = parseNumericValue(statistics?.todayRevenue);
 
@@ -228,7 +229,7 @@ function Dashboard() {
                 </div>
                 <div className="text-right shrink-0 min-w-0">
                   <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider truncate">Total Revenue</div>
-                  <div className="text-sm sm:text-base font-black text-slate-800 leading-tight truncate" title={formatCurrency(totalCalculatedRevenue)}>
+                  <div className="text-sm sm:text-base font-black text-slate-800 leading-tight truncate" title={formatFullCurrency(totalCalculatedRevenue)}>
                     {formatCurrency(totalCalculatedRevenue)}
                   </div>
                 </div>
@@ -242,13 +243,7 @@ function Dashboard() {
                       axisLine={false}
                       tickLine={false}
                       tick={{ fontSize: 11, fill: '#94a3b8' }}
-                      tickFormatter={(val) => {
-                        const num = parseNumericValue(val);
-                        if (num >= 10000000) return `₹${(num / 10000000).toFixed(1)}Cr`;
-                        if (num >= 100000) return `₹${(num / 100000).toFixed(0)}L`;
-                        if (num >= 1000) return `₹${(num / 1000).toFixed(0)}k`;
-                        return `₹${num}`;
-                      }}
+                      tickFormatter={(val) => formatCurrency(val)}
                       width={50}
                     />
                     <Tooltip

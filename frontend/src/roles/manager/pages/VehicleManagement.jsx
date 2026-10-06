@@ -93,6 +93,8 @@ export default function VehicleManagement() {
       currentStatus: rawStatus,
       insuranceExpiry: insExp,
       assignedDriver: v.assignedDriver || v.driverId || v.driver,
+      activeTripId: v.activeTripId || v.currentTripId || null,
+      currentTripId: v.currentTripId || v.activeTripId || null,
     };
   };
 
@@ -256,7 +258,12 @@ export default function VehicleManagement() {
     socket.on("driver:unassigned", handleRefresh);
     socket.on("driver:deleted", handleRefresh);
     socket.on("driver:status-updated", handleRefresh);
+    socket.on("trip:created", handleRefresh);
+    socket.on("trip:updated", handleRefresh);
     socket.on("trip:status-updated", handleRefresh);
+    socket.on("trip:started", handleRefresh);
+    socket.on("trip:completed", handleRefresh);
+    socket.on("trip:assigned", handleRefresh);
 
     const interval = setInterval(() => fetchVehicles(false), 5000);
     return () => {
@@ -269,7 +276,12 @@ export default function VehicleManagement() {
       socket.off("driver:unassigned", handleRefresh);
       socket.off("driver:deleted", handleRefresh);
       socket.off("driver:status-updated", handleRefresh);
+      socket.off("trip:created", handleRefresh);
+      socket.off("trip:updated", handleRefresh);
       socket.off("trip:status-updated", handleRefresh);
+      socket.off("trip:started", handleRefresh);
+      socket.off("trip:completed", handleRefresh);
+      socket.off("trip:assigned", handleRefresh);
     };
   }, []);
 
@@ -343,6 +355,8 @@ export default function VehicleManagement() {
 
     const matchesStatus = statusFilter === "All Statuses" ||
       v.status === statusFilter ||
+      (statusFilter === "Idle" && isIdleVehicle(v)) ||
+      (statusFilter === "On Trip" && hasActiveTrip(v)) ||
       (statusFilter === "Maintenance" && (v.status === "Maintenance" || v.status === "Under Maintenance")) ||
       (statusFilter === "Under Maintenance" && (v.status === "Maintenance" || v.status === "Under Maintenance"));
     const matchesType = typeFilter === "All Types" || v.type === typeFilter;
@@ -390,21 +404,39 @@ export default function VehicleManagement() {
     return s.includes("maintenance") || s.includes("repair") || s === "need maintenance" || s === "under maintenance";
   };
 
-  const isIdleStatus = (statusStr) => {
+  const isOutOfServiceStatus = (statusStr) => {
     if (!statusStr) return false;
     const s = String(statusStr).toLowerCase().trim();
-    return s === "idle" || s === "out of service" || s === "out_of_service" || s === "inactive";
+    return s === "out of service" || s === "out_of_service" || s === "inactive" || s === "decommissioned" || s === "unavailable";
+  };
+
+  const hasActiveTrip = (v) => {
+    if (!v) return false;
+    const rawStatus = String(v.currentStatus || v.status || "").toLowerCase().trim();
+    if (rawStatus === "on trip" || rawStatus === "on_trip" || rawStatus === "in transit" || rawStatus === "in_transit") {
+      return true;
+    }
+    const tripId = v.activeTripId || v.currentTripId;
+    if (tripId && tripId !== "null" && tripId !== "undefined") {
+      return true;
+    }
+    return false;
+  };
+
+  const isIdleVehicle = (v) => {
+    if (!v) return false;
+    const s = String(v.currentStatus || v.status || "Available");
+    if (isMaintenanceStatus(s)) return false;
+    if (isOutOfServiceStatus(s)) return false;
+    if (hasActiveTrip(v)) return false;
+    return true;
   };
 
   // KPIs
   const totalVehicles = vehicles.length;
   const maintVehicles = vehicles.filter(v => isMaintenanceStatus(v.status || v.currentStatus)).length;
-  const idleVehicles = vehicles.filter(v => isIdleStatus(v.status || v.currentStatus)).length;
-  const activeVehicles = vehicles.filter(v => {
-    const s = (v.status || v.currentStatus || "");
-    if (isMaintenanceStatus(s) || isIdleStatus(s)) return false;
-    return true;
-  }).length;
+  const idleVehicles = vehicles.filter(v => isIdleVehicle(v)).length;
+  const activeVehicles = vehicles.filter(v => hasActiveTrip(v) || (!isMaintenanceStatus(v.status || v.currentStatus) && !isOutOfServiceStatus(v.status || v.currentStatus) && !isIdleVehicle(v))).length;
 
   const overdueRepairsCount = maintenance.filter(m => {
     if (m.status === "Completed") return false;
@@ -755,7 +787,7 @@ export default function VehicleManagement() {
           title="Total Vehicles"
           value={vehiclesLoading ? null : totalVehicles}
           loading={vehiclesLoading}
-          subtitle="VS last month"
+          subtitle="Fleet total"
           icon={<Truck className="w-4 h-4" />}
           variant="blue"
           filledBarsRatio={0.8}
@@ -769,7 +801,7 @@ export default function VehicleManagement() {
           subtitle="On duty"
           icon={<Zap className="w-4 h-4" />}
           variant="green"
-          filledBarsRatio={Math.max(0.2, (activeVehicles / totalVehicles) || 0.85)}
+          filledBarsRatio={totalVehicles > 0 ? Math.max(0.1, activeVehicles / totalVehicles) : 0.5}
           trendText="+12.1%"
           isTrendUp={true}
         />
@@ -777,10 +809,10 @@ export default function VehicleManagement() {
           title="Idle Vehicles"
           value={vehiclesLoading ? null : idleVehicles}
           loading={vehiclesLoading}
-          subtitle="In depot"
+          subtitle="In depot (Available)"
           icon={<Clock className="w-4 h-4" />}
           variant="amber"
-          filledBarsRatio={Math.max(0.1, (idleVehicles / totalVehicles) || 0.3)}
+          filledBarsRatio={totalVehicles > 0 ? Math.max(0.1, idleVehicles / totalVehicles) : 0.3}
           trendText="-2.0%"
           isTrendUp={false}
         />
@@ -791,7 +823,7 @@ export default function VehicleManagement() {
           subtitle="In workshop"
           icon={<Wrench className="w-4 h-4" />}
           variant="rose"
-          filledBarsRatio={Math.max(0.1, (maintVehicles / totalVehicles) || 0.15)}
+          filledBarsRatio={totalVehicles > 0 ? Math.max(0.1, maintVehicles / totalVehicles) : 0.15}
           trendText="-1.5%"
           isTrendUp={false}
         />

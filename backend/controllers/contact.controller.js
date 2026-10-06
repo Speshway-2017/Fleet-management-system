@@ -34,8 +34,18 @@ export const createContactRequest = async (req, res, next) => {
     const cleanMessage = sanitize(message);
 
     // Field validations
-    if (!cleanFullName || cleanFullName.length < 2) {
-      return sendError(res, 400, 'Please enter a valid full name.');
+    if (!cleanFullName || cleanFullName.trim().length < 2) {
+      return sendError(res, 400, 'Full name is required.');
+    }
+    if (!/^[a-zA-Z\s]+$/.test(cleanFullName)) {
+      return sendError(res, 400, 'Full name must contain alphabets only (numbers & special characters are not allowed).');
+    }
+
+    if (!cleanCompany || cleanCompany.trim().length < 2) {
+      return sendError(res, 400, 'Company name is required.');
+    }
+    if (!/^[a-zA-Z\s]+$/.test(cleanCompany)) {
+      return sendError(res, 400, 'Company name must contain alphabets only (numbers & special characters are not allowed).');
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

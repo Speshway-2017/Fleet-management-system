@@ -1,9 +1,4 @@
 /**
- * Reusable utility for formatting currency values in Indian Rupee (INR) format.
- * Prevents re-formatting, string concatenation bugs, array implicit toString, and invalid numbers.
- */
-
-/**
  * Safely parses any value (number, string with currency/commas, array of values, null, undefined)
  * into a valid primitive JavaScript number.
  */
@@ -13,7 +8,7 @@ export const parseNumericValue = (val) => {
   if (typeof val === "number") {
     if (isNaN(val) || !isFinite(val)) return 0;
     // Cap at a reasonable max limit to avoid floating point overflow (e.g. 1,000 Crores)
-    return val > 1e12 ? 1e12 : val;
+    return val > 1e15 ? 1e15 : val;
   }
 
   if (typeof val === "string") {
@@ -21,7 +16,7 @@ export const parseNumericValue = (val) => {
     const cleaned = val.replace(/[^0-9.-]/g, "");
     const parsed = parseFloat(cleaned);
     if (isNaN(parsed) || !isFinite(parsed)) return 0;
-    return parsed > 1e12 ? 1e12 : parsed;
+    return parsed > 1e15 ? 1e15 : parsed;
   }
 
   if (Array.isArray(val)) {
@@ -38,10 +33,56 @@ export const parseNumericValue = (val) => {
 };
 
 /**
- * Formats a given value into standard Indian Currency (INR, e.g. ₹5,000, ₹1,25,000, ₹0).
+ * Formats a given value into compact Indian Currency notation (INR).
+ * Examples:
+ * - 0 -> "₹0"
+ * - 5,000 -> "₹5,000"
+ * - 10,00,000 -> "₹10L"
+ * - 1,00,00,000 -> "₹1Cr"
+ * - 10,00,00,000 -> "₹10Cr"
+ * - 100,00,00,000 -> "₹100Cr"
+ * - 1500,00,00,000 -> "₹1.5K Cr"
  */
-export const formatCurrency = (val) => {
+export const formatCompactCurrency = (val) => {
   const num = parseNumericValue(val);
+  if (!num || num === 0) return "₹0";
+
+  const isNegative = num < 0;
+  const absNum = Math.abs(num);
+  const prefix = isNegative ? "-₹" : "₹";
+
+  // Very large values: >= 1,000 Crores (1e10 = 10,00,00,00,000)
+  if (absNum >= 1e10) {
+    const crores = absNum / 1e7;
+    const thousandsCrores = crores / 1000;
+    const formatted = parseFloat(thousandsCrores.toFixed(2));
+    return `${prefix}${formatted}K Cr`;
+  }
+
+  // Crores: >= 1 Crore (1e7 = 1,00,00,000)
+  if (absNum >= 1e7) {
+    const crores = absNum / 1e7;
+    const formatted = parseFloat(crores.toFixed(2));
+    return `${prefix}${formatted}Cr`;
+  }
+
+  // Lakhs: >= 1 Lakh (1e5 = 1,00,000)
+  if (absNum >= 1e5) {
+    const lakhs = absNum / 1e5;
+    const formatted = parseFloat(lakhs.toFixed(2));
+    return `${prefix}${formatted}L`;
+  }
+
+  // Standard numbers (< 1 Lakh)
+  return `${prefix}${Math.round(absNum).toLocaleString("en-IN")}`;
+};
+
+/**
+ * Formats a value into full uncompact Indian Rupee format (e.g., ₹10,00,000).
+ */
+export const formatFullCurrency = (val) => {
+  const num = parseNumericValue(val);
+  if (!num || num === 0) return "₹0";
 
   try {
     return new Intl.NumberFormat("en-IN", {
@@ -52,4 +93,15 @@ export const formatCurrency = (val) => {
   } catch (_) {
     return `₹${Math.round(num).toLocaleString("en-IN")}`;
   }
+};
+
+/**
+ * Main currency formatter for platform components, dashboard cards, reports, and charts.
+ * By default uses compact Indian currency notation for large values while preserving ₹0.
+ */
+export const formatCurrency = (val, options = {}) => {
+  if (options && options.full) {
+    return formatFullCurrency(val);
+  }
+  return formatCompactCurrency(val);
 };

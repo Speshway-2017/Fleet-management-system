@@ -88,6 +88,7 @@ import { checkActiveSubscription } from '../middleware/subscription.middleware.j
 import { getDriverStats } from '../controllers/driver.controller.js';
 import { validate } from '../middleware/validate.middleware.js';
 import { driverSupportSettingsSchema } from '../validations/settings.schema.js';
+import { createDriverSchema, updateDriverSchema } from '../validations/driver.schema.js';
 
 const router = express.Router();
 
@@ -111,9 +112,9 @@ router.delete('/vehicles/:id', ...auth, checkActiveSubscription, deleteVehicle);
 router.get('/drivers/stats', ...auth, getDriverStats);
 router.get('/drivers/dashboard', ...auth, getDriverStats);
 router.get('/drivers', ...auth, listDrivers);
-router.post('/drivers', ...auth, checkActiveSubscription, createDriver);
+router.post('/drivers', ...auth, checkActiveSubscription, validate(createDriverSchema), createDriver);
 router.get('/drivers/:id', ...auth, getDriverDetails);
-router.put('/drivers/:id', ...auth, checkActiveSubscription, updateDriver);
+router.put('/drivers/:id', ...auth, checkActiveSubscription, validate(updateDriverSchema), updateDriver);
 router.delete('/drivers/:id', ...auth, checkActiveSubscription, deleteDriver);
 
 // Trips

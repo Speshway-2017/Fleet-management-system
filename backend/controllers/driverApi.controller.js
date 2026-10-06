@@ -39,6 +39,35 @@ export async function resolveTripHelper(idOrNumber) {
   });
 }
 
+// Helper to resolve currently logged-in driver from request
+export async function resolveCurrentDriver(req) {
+  if (!req.user) return null;
+  const userId = req.user._id || req.user.id;
+
+  if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+    const byId = await Driver.findById(userId);
+    if (byId) return byId;
+  }
+
+  if (req.user.email) {
+    const byEmail = await Driver.findOne({ email: req.user.email.toLowerCase().trim() });
+    if (byEmail) return byEmail;
+  }
+
+  if (req.user.phoneNumber || req.user.phone || req.user.mobile) {
+    const ph = (req.user.phoneNumber || req.user.phone || req.user.mobile).trim();
+    const byPhone = await Driver.findOne({ $or: [{ phoneNumber: ph }, { mobile: ph }] });
+    if (byPhone) return byPhone;
+  }
+
+  if (req.user.employeeId) {
+    const byEmp = await Driver.findOne({ employeeId: req.user.employeeId.trim() });
+    if (byEmp) return byEmp;
+  }
+
+  return null;
+}
+
 /**
  * Driver Login
  * POST /api/driver/login
@@ -128,9 +157,23 @@ export const logoutDriver = async (req, res) => {
  */
 export const getDriverProfile = async (req, res, next) => {
   try {
-    let driver = await Driver.findById(req.user._id)
-      .populate('assignedManager', 'name email phone profileImage jobTitle organization')
-      .lean();
+    let driverDoc = await resolveCurrentDriver(req);
+    let driver = null;
+    if (driverDoc) {
+      driver = await Driver.findById(driverDoc._id)
+        .populate('assignedManager', 'name email phone profileImage jobTitle organization')
+        .lean();
+    }
+    if (!driver) {
+      driver = await Driver.findById(req.user._id)
+        .populate('assignedManager', 'name email phone profileImage jobTitle organization')
+        .lean();
+    }
+    if (!driver && req.user.email) {
+      driver = await Driver.findOne({ email: req.user.email.toLowerCase().trim() })
+        .populate('assignedManager', 'name email phone profileImage jobTitle organization')
+        .lean();
+    }
 
     if (!driver) {
       return sendError(res, 404, 'Driver profile not found');
@@ -218,15 +261,25 @@ export const getDriverProfile = async (req, res, next) => {
  */
 export const updateDriverProfile = async (req, res, next) => {
   try {
-    const driverId = req.user._id;
+    let driverBefore = await resolveCurrentDriver(req);
+    if (!driverBefore && req.body.email) {
+      driverBefore = await Driver.findOne({ email: req.body.email.toLowerCase().trim() });
+    }
+    if (!driverBefore) {
+      driverBefore = await Driver.findById(req.user._id);
+    }
+    if (!driverBefore) {
+      return sendError(res, 404, 'Driver profile not found');
+    }
+
+    const driverId = driverBefore._id;
 
     console.log('[DEBUG] [Availability Update] Request Body:', req.body);
-
-    const driverBefore = await Driver.findById(driverId).lean();
     console.log('[DEBUG] [Availability Update] Driver Before Update:', {
-      _id: driverBefore?._id,
-      isOnline: driverBefore?.isOnline,
-      driverStatus: driverBefore?.driverStatus
+      _id: driverBefore._id,
+      email: driverBefore.email,
+      isOnline: driverBefore.isOnline,
+      driverStatus: driverBefore.driverStatus
     });
 
     const allowedFields = [
@@ -353,6 +406,58 @@ export const updateDriverProfile = async (req, res, next) => {
       updateData.profileImage = uploadResult.secure_url;
     }
 
+    // Duplicate check and self-update sanitization for email, phone, licenseNumber
+    if (updateData.email) {
+      const cleanEmail = updateData.email.toLowerCase().trim();
+      const currentEmail = (driverBefore.email || '').toLowerCase().trim();
+      if (cleanEmail !== currentEmail) {
+        const dupEmail = await Driver.findOne({
+          _id: { $ne: driverId },
+          email: cleanEmail
+        });
+        if (dupEmail) {
+          return sendError(res, 400, `A driver with email "${cleanEmail}" already exists`);
+        }
+        updateData.email = cleanEmail;
+      } else {
+        delete updateData.email;
+      }
+    }
+
+    if (updateData.phoneNumber) {
+      const cleanPhone = updateData.phoneNumber.trim();
+      const currentPhone = (driverBefore.phoneNumber || driverBefore.mobile || '').trim();
+      if (cleanPhone !== currentPhone) {
+        const dupPhone = await Driver.findOne({
+          _id: { $ne: driverId },
+          $or: [{ phoneNumber: cleanPhone }, { mobile: cleanPhone }]
+        });
+        if (dupPhone) {
+          return sendError(res, 400, `A driver with phone number "${cleanPhone}" already exists`);
+        }
+        updateData.phoneNumber = cleanPhone;
+      } else {
+        delete updateData.phoneNumber;
+      }
+    }
+
+    if (updateData.licenseNumber) {
+      const cleanLicense = updateData.licenseNumber.trim();
+      const currentLicense = (driverBefore.licenseNumber || '').trim();
+      if (cleanLicense !== currentLicense) {
+        const dupLicense = await Driver.findOne({
+          _id: { $ne: driverId },
+          licenseNumber: cleanLicense
+        });
+        if (dupLicense) {
+          return sendError(res, 400, `A driver with license number "${cleanLicense}" already exists`);
+        }
+        updateData.licenseNumber = cleanLicense;
+      } else {
+        delete updateData.licenseNumber;
+      }
+    }
+
     const updatedDriver = await Driver.findByIdAndUpdate(
       driverId,
       { $set: updateData },
@@ -369,6 +474,26 @@ export const updateDriverProfile = async (req, res, next) => {
       driverStatus: updatedDriver.driverStatus
     });
 
+    // Keep associated User document synchronized if present
+    try {
+      const syncUserFields = {};
+      if (updateData.fullName) syncUserFields.name = updateData.fullName;
+      if (req.body.email && req.body.email.toLowerCase().trim() !== (driverBefore.email || '').toLowerCase().trim()) {
+        syncUserFields.email = req.body.email.toLowerCase().trim();
+      }
+      if (updateData.password) syncUserFields.password = updateData.password;
+      if (updateData.profileImage) syncUserFields.profileImage = updateData.profileImage;
+
+      if (Object.keys(syncUserFields).length > 0) {
+        await User.updateMany(
+          { $or: [{ _id: req.user._id }, { email: driverBefore.email.toLowerCase().trim() }] },
+          { $set: syncUserFields }
+        );
+      }
+    } catch (userSyncErr) {
+      console.warn('[DriverApi] Non-critical User doc sync note:', userSyncErr?.message);
+    }
+
     if (updatedDriver.assignedManager) {
       try {
         const { getIO } = await import('../server.js');
@@ -384,6 +509,87 @@ export const updateDriverProfile = async (req, res, next) => {
       } catch (_) {}
     }
 
+    // Generate System Notifications on driver settings update
+    try {
+      const io = req.app?.get('socketio') || req.app?.locals?.io || (await import('../server.js')).getIO?.();
+
+      if (targetNewPassword) {
+        // Password changed notification
+        await createAndEmitNotification({
+          io,
+          recipient: driverId,
+          recipientRole: 'DRIVER',
+          type: 'security',
+          title: 'Password Updated',
+          message: 'Your account security password was successfully changed.',
+          priority: 'high',
+          metadata: {
+            section: 'security',
+            updatedAt: new Date()
+          }
+        });
+      }
+
+      // Check if profile details were changed
+      const profileFields = ['fullName', 'phoneNumber', 'email', 'licenseNumber', 'dob', 'address', 'branch', 'profileImage'];
+      const profileChanged = profileFields.some(f => updateData[f] !== undefined && updateData[f] !== driverBefore?.[f]);
+
+      if (profileChanged) {
+        await createAndEmitNotification({
+          io,
+          recipient: driverId,
+          recipientRole: 'DRIVER',
+          type: 'info',
+          title: 'Profile Updated',
+          message: 'Your driver profile details and information have been successfully updated in system settings.',
+          priority: 'normal',
+          metadata: {
+            section: 'profile',
+            updatedAt: new Date()
+          }
+        });
+
+        if (updatedDriver.assignedManager) {
+          const managerId = updatedDriver.assignedManager._id || updatedDriver.assignedManager;
+          await createAndEmitNotification({
+            io,
+            recipient: managerId,
+            recipientRole: 'FLEET_MANAGER',
+            type: 'info',
+            title: 'Driver Profile Updated',
+            message: `Driver ${updatedDriver.fullName || driverBefore?.fullName || 'Driver'} updated their profile settings.`,
+            priority: 'low',
+            metadata: {
+              driverId: updatedDriver._id,
+              section: 'profile'
+            }
+          });
+        }
+      }
+
+      // Check if notification preferences or app settings were changed
+      const prefFields = ['notificationPreferences', 'language', 'isDarkMode', 'twoFactorEnabled', 'twoFactorMethod', 'twoFactorPhone'];
+      const prefsChanged = prefFields.some(f => updateData[f] !== undefined);
+
+      if (prefsChanged && !profileChanged && !targetNewPassword) {
+        await createAndEmitNotification({
+          io,
+          recipient: driverId,
+          recipientRole: 'DRIVER',
+          type: 'info',
+          title: 'Settings & Preferences Updated',
+          message: 'Your notification preferences and account settings have been saved.',
+          priority: 'low',
+          metadata: {
+            section: 'preferences',
+            updatedAt: new Date()
+          }
+        });
+      }
+    } catch (notifErr) {
+      console.error('[DriverApi] Error creating notification for driver settings update:', notifErr);
+    }
+
     const responsePayload = {
       ...updatedDriver,
       driverId: updatedDriver.employeeId || updatedDriver._id,
@@ -396,6 +602,24 @@ export const updateDriverProfile = async (req, res, next) => {
 
     return sendSuccess(res, 200, responsePayload, 'Driver profile updated successfully');
   } catch (error) {
+    if (
+      error.code === 11000 ||
+      error.name === 'MongoServerError' ||
+      String(error.message || '').includes('E11000') ||
+      String(error.message || '').includes('duplicate key')
+    ) {
+      const field = error.keyValue ? Object.keys(error.keyValue)[0] : 'field';
+      const val = error.keyValue ? error.keyValue[field] : '';
+      const fieldLabel =
+        field === 'licenseNumber'
+          ? 'license number'
+          : field === 'employeeId'
+            ? 'Employee ID'
+            : field === 'phoneNumber' || field === 'mobile' || field === 'phone'
+              ? 'phone number'
+              : 'email';
+      return sendError(res, 400, `A driver with this ${fieldLabel} ${val ? `("${val}") ` : ''}already exists`);
+    }
     next(error);
   }
 };

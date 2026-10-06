@@ -587,8 +587,9 @@ export const createDriver = async (req, res, next) => {
  */
 export const updateDriver = async (req, res, next) => {
   try {
+    const driverId = req.params.id;
     // Ownership check before update
-    const existing = await getDriverById(req.params.id);
+    const existing = await getDriverById(driverId);
     if (!existing) {
       return sendError(res, 404, 'Driver not found');
     }
@@ -596,7 +597,54 @@ export const updateDriver = async (req, res, next) => {
     if (String(managerId) !== String(req.user._id)) {
       return sendError(res, 403, 'Access denied: this driver belongs to another manager');
     }
-    const driver = await updateDriverRecord(req.params.id, req.body);
+
+    const { email, phoneNumber, mobile, phone, licenseNumber, employeeId } = req.body;
+    const finalEmail = (email || '').trim().toLowerCase();
+    const finalPhone = (mobile || phoneNumber || phone || '').trim();
+    const finalLicense = (licenseNumber || '').trim();
+    const finalEmpId = (employeeId || '').trim();
+
+    if (finalEmail && finalEmail !== (existing.email || '').toLowerCase()) {
+      const duplicateEmail = await Driver.findOne({
+        _id: { $ne: driverId },
+        email: finalEmail
+      });
+      if (duplicateEmail) {
+        return sendError(res, 400, `A driver with email "${finalEmail}" already exists`);
+      }
+    }
+
+    if (finalPhone && finalPhone !== (existing.phoneNumber || existing.mobile || '')) {
+      const duplicatePhone = await Driver.findOne({
+        _id: { $ne: driverId },
+        $or: [{ phoneNumber: finalPhone }, { mobile: finalPhone }]
+      });
+      if (duplicatePhone) {
+        return sendError(res, 400, `A driver with phone number "${finalPhone}" already exists`);
+      }
+    }
+
+    if (finalLicense && finalLicense !== (existing.licenseNumber || '')) {
+      const duplicateLicense = await Driver.findOne({
+        _id: { $ne: driverId },
+        licenseNumber: finalLicense
+      });
+      if (duplicateLicense) {
+        return sendError(res, 400, `A driver with license number "${finalLicense}" already exists`);
+      }
+    }
+
+    if (finalEmpId && finalEmpId !== (existing.employeeId || '')) {
+      const duplicateEmpId = await Driver.findOne({
+        _id: { $ne: driverId },
+        employeeId: finalEmpId
+      });
+      if (duplicateEmpId) {
+        return sendError(res, 400, `A driver with Employee ID "${finalEmpId}" already exists`);
+      }
+    }
+
+    const driver = await updateDriverRecord(driverId, req.body);
     if (!driver) {
       return sendError(res, 404, 'Driver not found');
     }
@@ -612,15 +660,18 @@ export const updateDriver = async (req, res, next) => {
 
     return sendSuccess(res, 200, driver, 'Driver updated successfully');
   } catch (error) {
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyValue)[0];
-      const message =
+    if (error.code === 11000 || error.name === 'MongoServerError') {
+      const field = error.keyValue ? Object.keys(error.keyValue)[0] : 'field';
+      const val = error.keyValue ? error.keyValue[field] : '';
+      const fieldLabel =
         field === 'licenseNumber'
-          ? 'A driver with this license number already exists'
+          ? 'license number'
           : field === 'employeeId'
-            ? 'A driver with this Employee ID already exists'
-            : 'A driver with this email already exists';
-      return sendError(res, 409, message);
+            ? 'Employee ID'
+            : field === 'phoneNumber' || field === 'mobile' || field === 'phone'
+              ? 'phone number'
+              : 'email';
+      return sendError(res, 400, `A driver with this ${fieldLabel} ${val ? `("${val}") ` : ''}already exists`);
     }
     next(error);
   }

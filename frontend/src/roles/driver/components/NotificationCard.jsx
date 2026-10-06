@@ -27,6 +27,8 @@ export default function NotificationCard({ notification, onMarkRead }) {
 
     if (extractedTicketId || title.includes("ticket") || title.includes("mechanic") || title.includes("maintenance") || message.includes("tkt-") || message.includes("mechanic") || type.includes("maintenance") || type.includes("issue") || type.includes("complaint") || type.includes("ticket")) {
       navigate(extractedTicketId ? `/driver/maintenance?ticketId=${encodeURIComponent(extractedTicketId)}` : "/driver/maintenance", navState);
+    } else if (title.includes("settings") || title.includes("profile") || title.includes("password") || message.includes("settings") || message.includes("profile") || message.includes("password") || type.includes("settings") || type.includes("security")) {
+      navigate("/driver/settings", navState);
     } else if (tripId) {
       navigate(`/driver/trips/${tripId}`, navState);
     } else if (type.includes("trip") || title.includes("trip") || message.includes("trip") || message.includes("trp-") || title.includes("assigned")) {
@@ -38,7 +40,7 @@ export default function NotificationCard({ notification, onMarkRead }) {
     } else if (type.includes("vehicle") || title.includes("vehicle") || message.includes("vehicle")) {
       navigate("/driver/vehicles", navState);
     } else {
-      navigate("/driver/trips", navState);
+      navigate("/driver/settings", navState);
     }
   };
 
@@ -52,6 +54,10 @@ export default function NotificationCard({ notification, onMarkRead }) {
       case "warning":
       case "alert":
         return <AlertTriangle className="w-4 h-4 text-amber-600" />;
+      case "security":
+      case "system":
+      case "settings":
+        return <Info className="w-4 h-4 text-[#A14000]" />;
       default:
         return <Info className="w-4 h-4 text-blue-600" />;
     }

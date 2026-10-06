@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axiosClient from "@/api/axiosClient";
+import { applyApplicationLanguage } from "@/utils/languageUtils";
 
 const SettingsContext = createContext();
 
@@ -11,6 +12,7 @@ export function SettingsProvider({ children }) {
   const [platformSettings, setPlatformSettings] = useState({
     platformName: "Fleet Management",
     logoUrl: "/logo.png",
+    language: "English",
     footerDescription: "Next-generation intelligent fleet management platform. Streamlining nationwide transport operations, vehicle tracking, driver allocation, and logistics workflows with enterprise-grade reliability.",
     contactPhone: "+91 1800 200 4567",
     contactEmail: "support@fleet.com",
@@ -29,6 +31,7 @@ export function SettingsProvider({ children }) {
       const defaults = {
         platformName: "Fleet Management",
         logoUrl: "/logo.png",
+        language: "English",
         footerDescription: "A next-generation fleet management platform designed to help businesses streamline operations, improve efficiency, and drive growth.",
         contactPhone: "+91 1800 200 4567",
         contactEmail: "support@fleet.com",
@@ -47,6 +50,9 @@ export function SettingsProvider({ children }) {
       });
 
       setPlatformSettings(cleanData);
+      if (cleanData.language) {
+        applyApplicationLanguage(cleanData.language);
+      }
     } catch (error) {
       if (error?.response?.status) {
         console.warn("Failed to fetch public platform settings:", error.response.status);

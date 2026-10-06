@@ -24,6 +24,7 @@ import {
   Tooltip,
   Legend
 } from "recharts";
+import { formatCurrency, formatFullCurrency, parseNumericValue } from "@/utils/currencyFormatter";
 import toast from "react-hot-toast";
 import { validateSearchQuery } from "@/validations/common.schema.js";
 
@@ -176,14 +177,6 @@ export default function EarningsPage() {
     link.click();
     document.body.removeChild(link);
     toast.success("CSV Export downloaded successfully");
-  };
-
-  const formatCurrency = (val) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0
-    }).format(val);
   };
 
   const dynamicStats = useMemo(() => {
@@ -364,7 +357,7 @@ export default function EarningsPage() {
                     <YAxis 
                       tick={{ fill: '#64748B', fontSize: 11, fontFamily: 'Poppins' }}
                       stroke="#E2E8F0"
-                      tickFormatter={(val) => `₹${val / 1000}k`}
+                      tickFormatter={(val) => formatCurrency(val)}
                     />
                     <Tooltip 
                       formatter={(value) => [formatCurrency(value), ""]}
