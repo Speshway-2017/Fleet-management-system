@@ -63,6 +63,7 @@ import WeighbridgeSlip from '../models/WeighbridgeSlip.js';
 import Review from '../models/Review.js';
 import ManagerMilestone from '../models/ManagerMilestone.js';
 import { generateEmployeeId, generateTempPassword } from '../utils/driverAuthHelper.js';
+import { sendDriverWelcomeEmail } from '../utils/email.js';
 import { hashPassword } from '../utils/hashPassword.js';
 import { logActivity } from '../utils/activityLogger.js';
 import { calculateDistance } from '../utils/distanceCalculator.js';
@@ -741,6 +742,21 @@ export const createDriver = async (req, res, next) => {
       user: req.user,
       assignedManager: req.user?._id
     });
+
+    // Send driver credentials email via Nodemailer
+    if (driver.email) {
+      try {
+        await sendDriverWelcomeEmail({
+          fullName: driver.fullName,
+          email: driver.email,
+          password: temporaryPassword,
+          employeeId: generatedEmpId,
+          phoneNumber: driver.phoneNumber
+        });
+      } catch (mailErr) {
+        console.error('[WARNING] Failed to send driver welcome email:', mailErr.message);
+      }
+    }
 
     return res.status(201).json({
       success: true,

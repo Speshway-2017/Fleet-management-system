@@ -1,10 +1,67 @@
 /**
- * Normalizes any raw trip status into a standardized category:
+ * Determines whether a trip is delayed based on status, flags, or past-due ETA
+ */
+export const isTripDelayed = (trip) => {
+  if (!trip) return false;
+  const rawStatus = typeof trip === 'string' ? trip : (trip.status || '');
+  const clean = String(rawStatus).trim().toLowerCase();
+
+  // 1. Explicit status string check
+  if (
+    clean === 'delayed' ||
+    clean === 'delay' ||
+    clean === 'overdue' ||
+    clean === 'late' ||
+    clean === 'behind schedule' ||
+    clean === 'delayed in transit' ||
+    clean === 'delayed delivery'
+  ) {
+    return true;
+  }
+
+  // 2. Explicit boolean flags on the trip object
+  if (typeof trip === 'object' && (trip.isDelayed === true || trip.delayed === true || trip.isOverdue === true)) {
+    return true;
+  }
+
+  // 3. Dynamic overdue calculation based on ETA
+  if (typeof trip === 'object' && trip.eta) {
+    const isFinished = (
+      clean === 'completed' ||
+      clean === 'complete' ||
+      clean === 'finished' ||
+      clean === 'delivered' ||
+      clean === 'complete trip' ||
+      clean === 'cancelled' ||
+      clean === 'canceled' ||
+      clean === 'rejected'
+    );
+    if (!isFinished) {
+      try {
+        const etaDate = new Date(trip.eta);
+        if (!isNaN(etaDate.getTime()) && Date.now() > etaDate.getTime()) {
+          return true;
+        }
+      } catch (_) {}
+    }
+  }
+
+  return false;
+};
+
+/**
+ * Normalizes any raw trip status / trip object into a standardized category:
  * 'active' | 'scheduled' | 'completed' | 'delayed' | 'cancelled' | 'other'
  */
-export const getNormalizedTripCategory = (rawStatus) => {
-  if (!rawStatus) return 'other';
-  const clean = String(rawStatus).trim().toLowerCase();
+export const getNormalizedTripCategory = (rawStatus, trip) => {
+  const tripObj = typeof rawStatus === 'object' && rawStatus !== null ? rawStatus : (trip || {});
+  const statusStr = typeof rawStatus === 'string' ? rawStatus : (tripObj.status || '');
+  const clean = String(statusStr).trim().toLowerCase();
+
+  // Delayed Check
+  if (isTripDelayed(tripObj) || isTripDelayed(statusStr)) {
+    return 'delayed';
+  }
 
   // Active / In Progress / On Transit
   if (
@@ -17,7 +74,11 @@ export const getNormalizedTripCategory = (rawStatus) => {
     clean === 'on_transit' ||
     clean === 'in transit' ||
     clean === 'in_transit' ||
-    clean === 'dispatched'
+    clean === 'dispatched' ||
+    clean === 'en route' ||
+    clean === 'started' ||
+    clean === 'at loading' ||
+    clean === 'loading'
   ) {
     return 'active';
   }
@@ -29,7 +90,10 @@ export const getNormalizedTripCategory = (rawStatus) => {
     clean === 'pending driver acceptance' ||
     clean === 'pending_driver_acceptance' ||
     clean === 'pending' ||
-    clean === 'upcoming'
+    clean === 'upcoming' ||
+    clean === 'ready to dispatch' ||
+    clean === 'accepted' ||
+    clean === 'waiting for manager approval'
   ) {
     return 'scheduled';
   }
@@ -38,17 +102,11 @@ export const getNormalizedTripCategory = (rawStatus) => {
   if (
     clean === 'completed' ||
     clean === 'complete' ||
-    clean === 'finished'
+    clean === 'finished' ||
+    clean === 'delivered' ||
+    clean === 'complete trip'
   ) {
     return 'completed';
-  }
-
-  // Delayed
-  if (
-    clean === 'delayed' ||
-    clean === 'overdue'
-  ) {
-    return 'delayed';
   }
 
   // Cancelled / Rejected
@@ -78,7 +136,7 @@ export const calculateTripKPIs = (trips = []) => {
   let otherCount = 0;
 
   trips.forEach((t) => {
-    const category = getNormalizedTripCategory(t.status);
+    const category = getNormalizedTripCategory(t.status, t);
     switch (category) {
       case 'active':
         activeCount++;

@@ -13,7 +13,7 @@ export const driverLoginSchema = z.object({
 
 
 export const forgotPasswordSchema = z.object({
-  email: emailSchema
+  contact: z.string({ required_error: 'Please enter registered email or phone number.' }).trim().min(1, 'Please enter registered email or phone number.')
 });
 
 export const otpSchema = z.object({

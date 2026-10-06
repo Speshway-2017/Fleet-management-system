@@ -7,18 +7,18 @@ import { otpSchema, validateForm } from "@/validations";
 export default function OtpVerificationPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const email = location.state?.email;
+  const contact = location.state?.contact || location.state?.email || location.state?.identifier;
   
   const [loading, setLoading] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef([]);
 
   useEffect(() => {
-    if (!email) {
-      toast.error("Email not found. Please start the process again.");
+    if (!contact) {
+      toast.error("Contact details not found. Please start the process again.");
       navigate("/forgot-password");
     }
-  }, [email, navigate]);
+  }, [contact, navigate]);
 
   const [timer, setTimer] = useState(29);
   const [resending, setResending] = useState(false);
@@ -32,11 +32,11 @@ export default function OtpVerificationPage() {
   }, [timer]);
 
   const handleResend = async () => {
-    if (timer > 0 || resending) return;
+    if (timer > 0 || resending || !contact) return;
     setResending(true);
     try {
-      await authApi.forgotPassword(email);
-      toast.success("OTP resent successfully! Check the backend console.");
+      const res = await authApi.forgotPassword(contact);
+      toast.success(res.data?.message || "Verification OTP resent successfully!");
       setTimer(29);
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || "Failed to resend OTP.");
@@ -94,10 +94,9 @@ export default function OtpVerificationPage() {
     
     setLoading(true);
     try {
-      await authApi.verifyOtp({ email, otp: otpValue });
+      await authApi.verifyOtp({ email: contact, otp: otpValue });
       toast.success("OTP verified successfully!");
-      // Navigate to reset password page and pass email and OTP
-      navigate("/reset-password", { state: { email, otp: otpValue } });
+      navigate("/reset-password", { state: { email: contact, contact, otp: otpValue } });
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || "Invalid OTP. Please try again.");
     } finally {
@@ -135,7 +134,7 @@ export default function OtpVerificationPage() {
         Verify OTP
       </h2>
       <p className="text-center text-sm text-gray-500 mb-8 max-w-xs mx-auto leading-relaxed">
-        We've sent a 6-digit verification code to your registered mobile number.
+        We've sent a 6-digit verification code to <span className="font-semibold text-gray-700">{contact}</span>.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-8">

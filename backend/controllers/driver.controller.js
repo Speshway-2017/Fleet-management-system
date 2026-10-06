@@ -17,6 +17,7 @@ import Document from '../models/Document.js';
 import mongoose from 'mongoose';
 import { generateEmployeeId, generateTempPassword } from '../utils/driverAuthHelper.js';
 import { hashPassword } from '../utils/hashPassword.js';
+import { sendDriverWelcomeEmail } from '../utils/email.js';
 import { syncDriverLocationFromLatestTrip } from '../utils/driverLocationHelper.js';
 
 /**
@@ -535,7 +536,7 @@ export const createDriver = async (req, res, next) => {
     });
     console.log(`✓ Driver Saved Successfully\n`);
 
-    console.log(`==================================================`);
+    console.log(`==================================================\n`);
     console.log(`Driver Created Successfully`);
     console.log(`==================================================\n`);
     console.log(`Employee ID:\n${generatedEmpId}\n`);
@@ -543,6 +544,21 @@ export const createDriver = async (req, res, next) => {
     console.log(`Status:\nActive\n`);
     console.log(`Must Change Password:\ntrue\n`);
     console.log(`==================================================\n`);
+
+    // Send driver credentials email via Nodemailer
+    if (driver.email) {
+      try {
+        await sendDriverWelcomeEmail({
+          fullName: driver.fullName,
+          email: driver.email,
+          password: temporaryPassword,
+          employeeId: generatedEmpId,
+          phoneNumber: driver.phoneNumber
+        });
+      } catch (mailErr) {
+        console.error('[WARNING] Failed to send driver welcome email:', mailErr.message);
+      }
+    }
 
     return res.status(201).json({
       success: true,
@@ -561,17 +577,6 @@ export const createDriver = async (req, res, next) => {
         mustChangePassword: driver.mustChangePassword
       }
     });
-
-    console.log(`\n==================================================`);
-    console.log(`🔑 NEW DRIVER CREATED`);
-    console.log(`👤 Name:     ${driver.fullName}`);
-    console.log(`📧 Email:    ${driver.email}`);
-    console.log(`🔑 Password: ${rawPassword}`);
-    console.log(`📱 Phone:    ${driver.phoneNumber}`);
-    console.log(`🆔 Emp ID:   ${driver.employeeId || driver._id}`);
-    console.log(`==================================================\n`);
-
-    return sendSuccess(res, 201, driver, 'Driver created successfully');
   } catch (error) {
     console.error(`Driver Creation Failed:`, error);
     if (error.code === 11000) {

@@ -31,7 +31,7 @@ import { changeUserPassword } from '../services/auth.service.js';
 import { hashPassword } from '../utils/hashPassword.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { uploadImageToCloudinary } from '../utils/cloudinary.js';
-import sendEmail from '../utils/email.js';
+import sendEmail, { sendManagerWelcomeEmail } from '../utils/email.js';
 import path from 'path';
 import User from '../models/User.js';
 import Organization from '../models/Organization.js';
@@ -276,12 +276,14 @@ export const createOrganization = async (req, res, next) => {
             console.log(`📱 Phone:    ${createdManager.phone || 'N/A'}`);
             console.log(`==================================================\n`);
 
-            // Try sending an email to the newly created manager
+            // Send welcome credentials email via Nodemailer
             try {
-              await sendEmail({
+              await sendManagerWelcomeEmail({
+                name: createdManager.name,
                 email: createdManager.email,
-                subject: "Fleet Management - Account Created",
-                message: `Hello ${createdManager.name},\n\nYour Fleet Management account has been created successfully.\n\nLogin Credentials:\nEmail: ${createdManager.email}\nPassword: ${manager.password}\n\nPlease login and change your password after your first login.\n\nRegards,\nFleet Management Team`,
+                password: manager.password,
+                organizationName: org.name,
+                phone: createdManager.phone
               });
             } catch (mailError) {
               console.error('[WARNING] Failed to send welcome email:', mailError);
@@ -580,23 +582,14 @@ export const createManager = async (req, res, next) => {
       io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
     }
 
-    // Send account email
+    // Send manager welcome email with credentials via Nodemailer
     try {
-      await sendEmail({
+      await sendManagerWelcomeEmail({
+        name: manager.name,
         email: manager.email,
-        subject: "Fleet Management - Account Created",
-        message: `Hello ${manager.name},
-
-  Your Fleet Management account has been created successfully.
-
-  Login Credentials:
-  Email: ${manager.email}
-  Password: ${password}
-
-  Please login and change your password after your first login.
-
-  Regards,
-  Fleet Management Team`,
+        password: password,
+        organizationName: orgName !== 'N/A' ? orgName : '',
+        phone: manager.phone
       });
     } catch (mailError) {
       console.error('[WARNING] Failed to send welcome email:', mailError);

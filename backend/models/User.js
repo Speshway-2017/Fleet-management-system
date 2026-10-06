@@ -23,6 +23,8 @@ const userSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     resetPasswordOtp: { type: String },
     resetPasswordExpires: { type: Date },
+    resetPasswordAttempts: { type: Number, default: 0 },
+    resetPasswordLastSent: { type: Date },
     subscriptionStatus: { type: String, enum: ['INACTIVE', 'ACTIVE', 'EXPIRED'], default: 'INACTIVE' },
     subscriptionPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null },
     subscriptionExpiry: { type: Date, default: null },

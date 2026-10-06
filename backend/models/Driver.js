@@ -62,6 +62,8 @@ const driverSchema = new mongoose.Schema(
     password: { type: String, select: false },
     resetPasswordOtp: { type: String },
     resetPasswordExpires: { type: Date },
+    resetPasswordAttempts: { type: Number, default: 0 },
+    resetPasswordLastSent: { type: Date },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     branch: { type: String, default: '', trim: true },
     driverLocation: { type: String, default: '', trim: true },
