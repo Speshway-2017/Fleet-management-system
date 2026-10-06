@@ -57,8 +57,75 @@ export const maskIdentifier = (str) => {
 };
 
 // Singleton Transporter Instance
+// Singleton Transporter Instance
 let cachedTransporter = null;
 let lastConfigSignature = '';
+
+/**
+ * Creates primary or fallback transporter options
+ */
+const createTransporterInstance = (config, overridePort = null, overrideSecure = null) => {
+  const port = overridePort !== null ? overridePort : config.port;
+  const isSecure = overrideSecure !== null ? overrideSecure : config.isSecure;
+
+  // Gmail-specific optimized options (supports both service name and direct host with IPv4 fallback)
+  if (config.service === 'gmail' || config.host?.includes('gmail') || config.user?.toLowerCase().endsWith('@gmail.com')) {
+    return nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: port === 465 ? 465 : (port === 587 ? 587 : 465),
+      secure: port === 465,
+      auth: {
+        user: config.user,
+        pass: config.pass
+      },
+      tls: {
+        rejectUnauthorized: false
+      },
+      family: 4, // Force IPv4 to prevent cloud container IPv6 timeout drops
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000
+    });
+  }
+
+  if (config.service) {
+    return nodemailer.createTransport({
+      service: config.service,
+      auth: {
+        user: config.user,
+        pass: config.pass
+      },
+      tls: {
+        rejectUnauthorized: false
+      },
+      family: 4,
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000
+    });
+  }
+
+  // Generic custom SMTP
+  return nodemailer.createTransport({
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100,
+    host: config.host,
+    port: port,
+    secure: isSecure,
+    auth: {
+      user: config.user,
+      pass: config.pass
+    },
+    tls: {
+      rejectUnauthorized: false
+    },
+    family: 4,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000
+  });
+};
 
 /**
  * Creates or retrieves the cached Nodemailer transporter.
@@ -75,60 +142,18 @@ export const getTransporter = () => {
     return cachedTransporter;
   }
 
-  let transporterOptions;
-  if (config.service === 'gmail') {
-    transporterOptions = {
-      service: 'gmail',
-      auth: {
-        user: config.user,
-        pass: config.pass
-      }
-    };
-  } else if (config.service) {
-    transporterOptions = {
-      service: config.service,
-      auth: {
-        user: config.user,
-        pass: config.pass
-      }
-    };
-  } else {
-    transporterOptions = {
-      pool: true,
-      maxConnections: 5,
-      maxMessages: 100,
-      host: config.host,
-      port: config.port,
-      secure: config.isSecure,
-      auth: {
-        user: config.user,
-        pass: config.pass
-      },
-      tls: {
-        rejectUnauthorized: false
-      },
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 20000
-    };
-  }
-
-  cachedTransporter = nodemailer.createTransport(transporterOptions);
+  cachedTransporter = createTransporterInstance(config);
   lastConfigSignature = currentSignature;
   return cachedTransporter;
 };
 
 /**
- * Verifies the production SMTP connection and credentials.
+ * Verifies the production SMTP connection and credentials with dual-port fallback.
  */
 export const verifySmtpConnection = async () => {
   const config = getSmtpConfig();
   if (!config.isConfigured) {
-    if (process.env.NODE_ENV === 'production') {
-      console.warn('⚠️  [SMTP Production Warning] SMTP credentials are not configured in environment variables. Outgoing emails will fail.');
-    } else {
-      console.log('ℹ️  [SMTP Info] SMTP is not configured. Development mock email logging enabled.');
-    }
+    console.warn('⚠️  [SMTP Production Warning] SMTP credentials (SMTP_USER / SMTP_PASS) are missing in environment variables. Outgoing emails will fail.');
     return false;
   }
 
@@ -139,24 +164,40 @@ export const verifySmtpConnection = async () => {
     console.log(`✅ [SMTP Connected] Verified connection to ${config.service ? `service:${config.service}` : `${config.host}:${config.port}`} (User: ${maskIdentifier(config.user)}, From: ${config.fromEmail})`);
     return true;
   } catch (err) {
-    console.error(`❌ [SMTP Connection Error] Failed to connect/authenticate with SMTP server (${config.service || config.host}): [${err.code || 'ERR'}] ${err.message}`);
-    return false;
+    console.warn(`⚠️  [SMTP Retry] Initial verify on primary port failed ([${err.code || 'ERR'}] ${err.message}). Attempting alternate port fallback...`);
+    
+    // Automatic fallback (e.g. 587 -> 465 or 465 -> 587)
+    try {
+      const fallbackPort = config.port === 465 ? 587 : 465;
+      const fallbackSecure = fallbackPort === 465;
+      const fallbackTransporter = createTransporterInstance(config, fallbackPort, fallbackSecure);
+      await fallbackTransporter.verify();
+      cachedTransporter = fallbackTransporter;
+      console.log(`✅ [SMTP Connected via Fallback] Verified connection on port ${fallbackPort} (User: ${maskIdentifier(config.user)})`);
+      return true;
+    } catch (fallbackErr) {
+      console.error(`❌ [SMTP Connection Error] Failed to connect/authenticate with SMTP server: [${err.code || 'ERR'}] ${err.message}`);
+      return false;
+    }
   }
 };
 
 /**
- * Sends a generic email using Nodemailer with strict production error handling.
+ * Sends a generic email using Nodemailer with automatic port failover & strict production error handling.
  */
 export const sendEmail = async (options) => {
   const config = getSmtpConfig();
   const recipient = options.to || options.email;
-  // Use authenticated user or configured fromEmail
   const fromAddress = options.from || `"${config.fromName}" <${config.user || config.fromEmail}>`;
   const transporter = getTransporter();
-  const isProduction = process.env.NODE_ENV === 'production';
 
   if (!recipient) {
     throw new Error('Recipient email address is required.');
+  }
+
+  if (!config.isConfigured || !transporter) {
+    console.error(`❌ [SMTP Error] Cannot deliver email to ${maskIdentifier(recipient)}: SMTP_USER or SMTP_PASS is missing in environment.`);
+    throw new Error('Email delivery failed: SMTP is not configured. Please ensure SMTP_USER and SMTP_PASS are set in your environment variables.');
   }
 
   const mailOptions = {
@@ -167,34 +208,12 @@ export const sendEmail = async (options) => {
     html: options.html
   };
 
-  // 1. If SMTP is not configured:
-  if (!transporter) {
-    if (isProduction) {
-      console.error(`❌ [SMTP Error] Cannot deliver email to ${maskIdentifier(recipient)}: SMTP is not configured in production environment.`);
-      throw new Error('Email delivery failed: SMTP service is not configured on the production server. Please check SMTP settings in environment variables.');
-    }
-
-    // Development Mode - Simulated local log
-    console.log("\n======================================================================");
-    console.log("ℹ️  [DEV Simulated Mail] SMTP not configured. Logging dispatch details:");
-    console.log("----------------------------------------------------------------------");
-    console.log(`✉️  FROM   : ${fromAddress}`);
-    console.log(`✉️  TO     : ${maskIdentifier(recipient)}`);
-    console.log(`✉️  SUBJECT: ${options.subject}`);
-    if (options.text || options.message) {
-      console.log(`✉️  BODY   :\n${options.text || options.message}`);
-    }
-    console.log("======================================================================\n");
-    return { success: true, simulated: true };
-  }
-
-  // 2. Real SMTP Dispatch via Nodemailer
+  // Dispatch Attempt 1 (Primary Transporter)
   try {
     const info = await transporter.sendMail(mailOptions);
     
-    // Verify server accepted the message
     if (info.rejected && info.rejected.length > 0) {
-      console.error(`❌ [SMTP Error] Recipient rejected by SMTP server: ${maskIdentifier(recipient)} (Response: ${info.response || 'Rejected'})`);
+      console.error(`❌ [SMTP Error] Recipient rejected by mail server: ${maskIdentifier(recipient)} (Response: ${info.response || 'Rejected'})`);
       throw new Error(`Email was rejected by the mail server for recipient: ${recipient}`);
     }
 
@@ -206,8 +225,31 @@ export const sendEmail = async (options) => {
       accepted: info.accepted
     };
   } catch (err) {
-    console.error(`❌ [SMTP Delivery Failure] Error delivering email to ${maskIdentifier(recipient)}: [${err.code || 'UNKNOWN'}] ${err.message}`);
-    throw err;
+    console.warn(`⚠️  [SMTP Retry] First dispatch attempt failed ([${err.code || 'ERR'}] ${err.message}). Retrying with alternate port failover...`);
+
+    // Dispatch Attempt 2 (Alternate Port Failover)
+    try {
+      const fallbackPort = config.port === 465 ? 587 : 465;
+      const fallbackSecure = fallbackPort === 465;
+      const fallbackTransporter = createTransporterInstance(config, fallbackPort, fallbackSecure);
+      const info = await fallbackTransporter.sendMail(mailOptions);
+
+      if (info.rejected && info.rejected.length > 0) {
+        throw new Error(`Email was rejected by the mail server for recipient: ${recipient}`);
+      }
+
+      cachedTransporter = fallbackTransporter; // update cache
+      console.log(`✅ [SMTP Sent via Fallback] Delivered to ${maskIdentifier(recipient)} on port ${fallbackPort} | MessageId: ${info.messageId}`);
+      return {
+        success: true,
+        messageId: info.messageId,
+        response: info.response,
+        accepted: info.accepted
+      };
+    } catch (fallbackErr) {
+      console.error(`❌ [SMTP Delivery Failure] All dispatch attempts failed for ${maskIdentifier(recipient)}: [${fallbackErr.code || 'UNKNOWN'}] ${fallbackErr.message}`);
+      throw fallbackErr;
+    }
   }
 };
 

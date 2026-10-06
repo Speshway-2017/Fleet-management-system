@@ -172,7 +172,8 @@ export const processForgotPassword = async (identifier) => {
 
   let emailSent = false;
   let smsSent = false;
-  let lastError = null;
+  let emailError = null;
+  let smsError = null;
 
   // 1. Send OTP via Nodemailer Email
   if (email) {
@@ -185,7 +186,7 @@ export const processForgotPassword = async (identifier) => {
       });
       emailSent = true;
     } catch (mailErr) {
-      lastError = mailErr;
+      emailError = mailErr.message;
       console.error(`❌ [AUTH] Failed to dispatch password reset email to ${maskIdentifier(email)}:`, mailErr.message);
     }
   }
@@ -198,22 +199,38 @@ export const processForgotPassword = async (identifier) => {
         phone: targetPhone,
         otp
       });
-      if (smsRes?.success) smsSent = true;
+      if (smsRes?.success) {
+        smsSent = true;
+      } else if (smsRes?.error) {
+        smsError = smsRes.error;
+      }
     } catch (smsErr) {
-      if (!lastError) lastError = smsErr;
+      smsError = smsErr.message;
       console.error(`❌ [AUTH] Failed to dispatch password reset SMS to ${maskIdentifier(targetPhone)}:`, smsErr.message);
     }
   }
 
-  // Strict check: If delivery failed across available channels, throw meaningful error
+  // Strict verification: Do not claim success if no channel accepted the OTP
   if (!emailSent && !smsSent) {
-    throw new Error(lastError?.message || 'Failed to deliver verification OTP. Please check your contact information or contact support.');
+    const errorDetails = [];
+    if (email) errorDetails.push(`Email: ${emailError || 'Delivery failed'}`);
+    if (targetPhone) errorDetails.push(`SMS: ${smsError || 'Delivery failed'}`);
+    
+    const combinedMessage = errorDetails.length > 0
+      ? `Failed to deliver verification OTP. (${errorDetails.join(' | ')})`
+      : 'Failed to deliver verification OTP. Please check your registered email/phone or contact support.';
+    
+    throw new Error(combinedMessage);
   }
+
+  const deliveredVia = [emailSent ? 'registered email' : null, smsSent ? 'mobile SMS' : null].filter(Boolean).join(' and ');
 
   return {
     email,
     phone: targetPhone || '',
-    message: 'OTP sent successfully to registered contact.'
+    emailSent,
+    smsSent,
+    message: `Verification code has been sent successfully to your ${deliveredVia}.`
   };
 };
 

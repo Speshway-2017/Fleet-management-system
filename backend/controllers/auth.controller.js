@@ -179,7 +179,7 @@ export const forgotPassword = async (req, res, next) => {
       status: 'Success'
     });
 
-    return sendSuccess(res, 200, { email: result.email, phone: result.phone }, 'Verification OTP has been sent successfully to your registered contact.');
+    return sendSuccess(res, 200, { email: result.email, phone: result.phone, emailSent: result.emailSent, smsSent: result.smsSent }, result.message || 'Verification OTP has been sent successfully to your registered contact.');
   } catch (error) {
     if (error.message.includes('No account found') || error.message.includes('No user found')) {
       return sendError(res, 404, error.message);

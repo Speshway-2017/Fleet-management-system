@@ -570,6 +570,7 @@ export const createManager = async (req, res, next) => {
     }
 
     // Send manager welcome email with credentials via Nodemailer
+    let emailStatus = 'Delivered';
     try {
       await sendManagerWelcomeEmail({
         name: manager.name,
@@ -579,8 +580,13 @@ export const createManager = async (req, res, next) => {
         phone: manager.phone
       });
     } catch (mailError) {
-      console.error('[WARNING] Failed to send welcome email:', mailError);
+      emailStatus = 'Failed';
+      console.error('[WARNING] Failed to send welcome email:', mailError.message);
     }
+
+    const responseMsg = emailStatus === 'Delivered'
+      ? 'Fleet manager created and credentials emailed successfully'
+      : 'Fleet manager created successfully (Email delivery failed - please check SMTP configuration)';
 
     return sendSuccess(
       res,
@@ -590,8 +596,9 @@ export const createManager = async (req, res, next) => {
         name: manager.name,
         email: manager.email,
         role: manager.role,
+        emailStatus
       },
-      "Fleet manager created successfully"
+      responseMsg
     );
   } catch (error) {
     if (error.code === 11000) {
