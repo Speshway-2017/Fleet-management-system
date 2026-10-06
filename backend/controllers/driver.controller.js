@@ -537,6 +537,7 @@ export const createDriver = async (req, res, next) => {
     console.log(`[DRIVER_REGISTRATION] Driver "${driver.fullName}" (${generatedEmpId}) created successfully.`);
 
     // Send driver credentials email via Nodemailer
+    let emailStatus = 'Not Configured';
     if (driver.email) {
       try {
         await sendDriverWelcomeEmail({
@@ -546,14 +547,21 @@ export const createDriver = async (req, res, next) => {
           employeeId: generatedEmpId,
           phoneNumber: driver.phoneNumber
         });
+        emailStatus = 'Delivered';
       } catch (mailErr) {
+        emailStatus = 'Failed';
         console.error('[WARNING] Failed to send driver welcome email:', mailErr.message);
       }
     }
 
+    const message = emailStatus === 'Delivered'
+      ? 'Driver created and credentials emailed successfully.'
+      : (emailStatus === 'Failed' ? 'Driver created successfully (Email delivery failed - check SMTP configuration).' : 'Driver created successfully.');
+
     return res.status(201).json({
       success: true,
-      message: 'Driver created successfully.',
+      message,
+      emailStatus,
       employeeId: generatedEmpId,
       temporaryPassword,
       driver: {
