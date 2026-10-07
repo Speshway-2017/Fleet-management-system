@@ -42,9 +42,29 @@ export const updateTripSchema = z.object({
       coordinates: z.array(z.number()).optional()
     })
   ]).optional(),
+  status: z.enum([
+    'Draft',
+    'Pending Driver Acceptance',
+    'Scheduled',
+    'Assigned',
+    'Accepted',
+    'Rejected',
+    'In Progress',
+    'Delayed',
+    'On Transit',
+    'In Transit',
+    'En Route',
+    'Dispatched',
+    'Customer Location Reached',
+    'Waiting for Manager Approval',
+    'Completed',
+    'Cancelled',
+    'On Trip',
+    'Ready to Dispatch',
+    ''
+  ]).optional(),
   cargoType: z.string().trim().optional(),
   cargoWeight: numericAmountSchema('Cargo Weight').optional(),
-  status: z.enum(['Draft', 'Scheduled', 'Assigned', 'In Progress', 'Customer Location Reached', 'Completed', 'Cancelled', '']).optional(),
   notes: z.string().trim().max(1000).optional()
 });
 

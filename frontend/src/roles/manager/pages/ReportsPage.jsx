@@ -446,10 +446,13 @@ export default function ReportsPage() {
     let miscExpenseTotal = 0;
 
     const rows = filteredVehicles.map(v => {
-      // Fuel cost matching vehicle + date range
+      // Fuel cost matching vehicle + date range (only approved/eligible fuel)
       const vFuel = fuelRecords.filter(f => {
         const vId = f.vehicle?._id || f.vehicle;
-        return (String(vId) === String(v._id) || f.vehicleId === v.vehicleNumber) && isWithinDate(f.createdAt);
+        const appStatus = (f.approvalStatus || f.billStatus || '').toUpperCase();
+        const status = (f.status || '').toLowerCase();
+        const isEligible = (appStatus === 'APPROVED' || appStatus === 'VERIFIED' || status === 'resolved') && appStatus !== 'REJECTED' && status !== 'anomaly';
+        return isEligible && (String(vId) === String(v._id) || f.vehicleId === v.vehicleNumber) && isWithinDate(f.createdAt);
       });
       const fuelCost = vFuel.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
 

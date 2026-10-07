@@ -122,8 +122,9 @@ export const getOrganizationDetails = async (req, res, next) => {
       ]
     }).lean();
 
-    const settledTrips = orgTrips.filter(t => VALID_SETTLED_TRIP_STATUSES.includes(t.status));
-    const activeTrips = orgTrips.filter(t => !['Rejected', 'Cancelled', 'Pending Driver Acceptance', ...VALID_SETTLED_TRIP_STATUSES].includes(t.status));
+    const isSettledStatus = (st) => VALID_SETTLED_TRIP_STATUSES.includes(st) || /^(completed|delivered|complete trip)$/i.test(st);
+    const settledTrips = orgTrips.filter(t => isSettledStatus(t.status) || t.tripEnded);
+    const activeTrips = orgTrips.filter(t => !['Rejected', 'Cancelled', 'Pending Driver Acceptance'].includes(t.status) && !isSettledStatus(t.status) && !t.tripEnded);
 
     // Vehicles associated with this organization and its managers
     const orgVehicles = await Vehicle.find({
@@ -149,7 +150,7 @@ export const getOrganizationDetails = async (req, res, next) => {
         ? orgVehicles
         : orgVehicles.filter(v => String(v.assignedManager) === String(manager._id) || String(v.createdBy) === String(manager._id) || (!v.assignedManager && !v.createdBy && String(v.organization) === String(org._id)));
 
-      const totalRevenue = managerSettledTrips.reduce((sum, t) => sum + calculateTripRevenue(t.estimatedDistance || t.actualDistance, t.cargoWeight), 0);
+      const totalRevenue = managerSettledTrips.reduce((sum, t) => sum + calculateTripRevenue(t.actualDistance || t.estimatedDistance, t.cargoWeight, t), 0);
       const activeTripsCount = managerActiveTrips.length;
       const vehiclesManaged = managerVehicles.length;
 
@@ -176,7 +177,7 @@ export const getOrganizationDetails = async (req, res, next) => {
     });
 
     const totalActiveTrips = activeTrips.length;
-    const orgTotalRevenue = settledTrips.reduce((sum, t) => sum + calculateTripRevenue(t.estimatedDistance || t.actualDistance, t.cargoWeight), 0);
+    const orgTotalRevenue = settledTrips.reduce((sum, t) => sum + calculateTripRevenue(t.actualDistance || t.estimatedDistance, t.cargoWeight, t), 0);
     const totalVehiclesCount = orgVehicles.length;
 
     const currentStatus = org.status || 'Pending';
@@ -700,6 +701,8 @@ export const deleteManager = async (req, res, next) => {
     const io = req.app.locals.io || req.io;
     if (io) {
       io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+      io.emit('dashboard:refresh');
+      io.emit('manager:deleted', { id, organizationId: manager.organization?._id || manager.organization });
     }
 
     return sendSuccess(res, 200, null, 'Fleet manager deleted successfully');

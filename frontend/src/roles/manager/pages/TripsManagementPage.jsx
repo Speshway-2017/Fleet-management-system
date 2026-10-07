@@ -35,7 +35,7 @@ import { calculateDrivingRoute, calculateEtaFromDuration } from "../services/rou
 import KPICard from "@/components/common/KPICard";
 import StatusBadge from "@/components/common/StatusBadge";
 import PillTabs from "@/components/common/PillTabs";
-import { getNormalizedTripCategory, calculateTripKPIs } from "@/utils/tripStatusHelper";
+import { getNormalizedTripCategory, calculateTripKPIs, getTripDelayReason } from "@/utils/tripStatusHelper";
 
 import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 import { tripSchema, validateForm } from "@/validations";
@@ -992,7 +992,10 @@ export default function TripsManagementPage() {
 
                         {/* Status */}
                         <td className="py-4 px-6 whitespace-nowrap">
-                          <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(t.status, t)}`}>
+                          <span
+                            title={getTripDelayReason(t) || t.status}
+                            className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-default ${getStatusBadge(t.status, t)}`}
+                          >
                             {getNormalizedTripCategory(t.status, t) === "delayed" && t.status !== "Delayed" ? `Delayed (${t.status})` : (t.status === "Completed" ? "Complete" : t.status)}
                           </span>
                         </td>

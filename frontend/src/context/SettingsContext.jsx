@@ -44,7 +44,7 @@ export function SettingsProvider({ children }) {
 
       const cleanData = { ...defaults, ...data };
       Object.keys(defaults).forEach((key) => {
-        if (!cleanData[key] || (typeof cleanData[key] === "string" && (cleanData[key].includes("jjj") || cleanData[key].includes("ujjj")))) {
+        if (cleanData[key] === undefined || cleanData[key] === null || cleanData[key] === "") {
           cleanData[key] = defaults[key];
         }
       });

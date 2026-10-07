@@ -17,7 +17,7 @@ export const createManager = async (managerData) => {
 };
 
 export const getManagerById = async (id) => {
-  return User.findOne({ _id: id, role: 'FLEET_MANAGER' }).populate('organization', 'name _id').select('-password');
+  return User.findOne({ _id: id, role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } }).populate('organization', 'name _id').select('-password');
 };
 
 export const getDistinctOrganizations = async (filter = {}) => {
@@ -49,13 +49,52 @@ export const getPendingRequestsCount = async () => {
   return Organization.countDocuments({ status: 'Pending' });
 };
 
-export const VALID_SETTLED_TRIP_STATUSES = ['Completed', 'Delivered', 'Complete Trip'];
+import { calculateDistance } from '../utils/distanceCalculator.js';
 
-export const calculateTripRevenue = (dist, weight) => {
-  const d = Number(dist) || 0;
-  const w = Number(weight) || 0;
-  if (d <= 0 && w <= 0) return 0;
-  return Math.round(d * 52 + w * 4.5);
+export const VALID_SETTLED_TRIP_STATUSES = [
+  'Completed',
+  'COMPLETED',
+  'completed',
+  'Delivered',
+  'DELIVERED',
+  'delivered',
+  'Complete Trip',
+  'COMPLETE TRIP',
+  'complete trip'
+];
+
+export const VALID_TRIP_CONDITION = {
+  status: { $nin: ['Cancelled', 'Rejected', 'CANCELLED', 'REJECTED'] }
+};
+
+export const SETTLED_TRIP_CONDITION = {
+  $or: [
+    { status: { $in: VALID_SETTLED_TRIP_STATUSES } },
+    { status: { $regex: /^(completed|delivered|complete trip)$/i } },
+    { tripEnded: true }
+  ]
+};
+
+export const calculateTripRevenue = (dist, weight, trip = {}) => {
+  let d = Number(dist) || 0;
+  let w = Number(weight) || 0;
+
+  if (d <= 0 && trip?.startLocation && trip?.endLocation) {
+    try {
+      d = calculateDistance(trip.startLocation, trip.endLocation) || 0;
+    } catch {
+      d = 0;
+    }
+  }
+
+  const directAmount = Number(trip?.revenue || trip?.fare || trip?.totalAmount || trip?.amount || trip?.codAmount || 0);
+
+  if (d <= 0 && w <= 0) {
+    return directAmount > 0 ? Math.round(directAmount) : 0;
+  }
+
+  const calculated = Math.round(d * 52 + w * 4.5);
+  return calculated > 0 ? calculated : (directAmount > 0 ? Math.round(directAmount) : 0);
 };
 
 export const getSettledRevenueForOrganization = async (orgId) => {
@@ -64,11 +103,15 @@ export const getSettledRevenueForOrganization = async (orgId) => {
     const orgManagerIds = orgManagers.map(m => m._id);
 
     const trips = await Trip.find({
-      $or: [
-        { organization: orgId },
-        { assignedManager: { $in: orgManagerIds } }
-      ],
-      status: { $in: VALID_SETTLED_TRIP_STATUSES }
+      $and: [
+        {
+          $or: [
+            { organization: orgId },
+            { assignedManager: { $in: orgManagerIds } }
+          ]
+        },
+        VALID_TRIP_CONDITION
+      ]
     }).lean();
 
     if (!trips || trips.length === 0) return 0;
@@ -76,7 +119,7 @@ export const getSettledRevenueForOrganization = async (orgId) => {
     return trips.reduce((sum, t) => {
       const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
       const weight = Number(t.cargoWeight) || 0;
-      return sum + calculateTripRevenue(dist, weight);
+      return sum + calculateTripRevenue(dist, weight, t);
     }, 0);
   } catch (error) {
     console.error('Error in getSettledRevenueForOrganization:', error);
@@ -91,25 +134,35 @@ export const getSettledRevenueForManager = async (managerId, orgId = null) => {
       const orgManagers = await User.find({ role: 'FLEET_MANAGER', organization: orgId }).select('_id');
       if (orgManagers.length === 1) {
         trips = await Trip.find({
-          $or: [
-            { organization: orgId },
-            { assignedManager: managerId }
-          ],
-          status: { $in: VALID_SETTLED_TRIP_STATUSES }
+          $and: [
+            {
+              $or: [
+                { organization: orgId },
+                { assignedManager: managerId }
+              ]
+            },
+            VALID_TRIP_CONDITION
+          ]
         }).lean();
       } else {
         trips = await Trip.find({
-          $or: [
-            { assignedManager: managerId },
-            { organization: orgId, assignedManager: { $in: [null, undefined] } }
-          ],
-          status: { $in: VALID_SETTLED_TRIP_STATUSES }
+          $and: [
+            {
+              $or: [
+                { assignedManager: managerId },
+                { organization: orgId, assignedManager: { $in: [null, undefined] } }
+              ]
+            },
+            VALID_TRIP_CONDITION
+          ]
         }).lean();
       }
     } else {
       trips = await Trip.find({
-        assignedManager: managerId,
-        status: { $in: VALID_SETTLED_TRIP_STATUSES }
+        $and: [
+          { assignedManager: managerId },
+          VALID_TRIP_CONDITION
+        ]
       }).lean();
     }
 
@@ -118,7 +171,7 @@ export const getSettledRevenueForManager = async (managerId, orgId = null) => {
     return trips.reduce((sum, t) => {
       const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
       const weight = Number(t.cargoWeight) || 0;
-      return sum + calculateTripRevenue(dist, weight);
+      return sum + calculateTripRevenue(dist, weight, t);
     }, 0);
   } catch (error) {
     console.error('Error in getSettledRevenueForManager:', error);
@@ -128,14 +181,14 @@ export const getSettledRevenueForManager = async (managerId, orgId = null) => {
 
 export const getRevenueAggregate = async () => {
   try {
-    const trips = await Trip.find({ status: { $in: VALID_SETTLED_TRIP_STATUSES } }).lean();
+    const trips = await Trip.find(VALID_TRIP_CONDITION).lean();
     if (!trips || trips.length === 0) return 0;
 
     let total = 0;
     for (const t of trips) {
       const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
       const weight = Number(t.cargoWeight) || 0;
-      total += calculateTripRevenue(dist, weight);
+      total += calculateTripRevenue(dist, weight, t);
     }
     return total;
   } catch (error) {
@@ -150,11 +203,18 @@ export const getTodayRevenueAggregate = async () => {
 
   try {
     const trips = await Trip.find({
-      status: { $in: VALID_SETTLED_TRIP_STATUSES },
-      $or: [
-        { completedAt: { $gte: startOfDay } },
-        { updatedAt: { $gte: startOfDay } },
-        { createdAt: { $gte: startOfDay } }
+      $and: [
+        VALID_TRIP_CONDITION,
+        {
+          $or: [
+            { actualEndTime: { $gte: startOfDay } },
+            { endedAt: { $gte: startOfDay } },
+            { completedAt: { $gte: startOfDay } },
+            { updatedAt: { $gte: startOfDay } },
+            { createdAt: { $gte: startOfDay } },
+            { departureTime: { $gte: startOfDay.toISOString() } }
+          ]
+        }
       ]
     }).lean();
 
@@ -164,7 +224,7 @@ export const getTodayRevenueAggregate = async () => {
     for (const t of trips) {
       const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
       const weight = Number(t.cargoWeight) || 0;
-      total += calculateTripRevenue(dist, weight);
+      total += calculateTripRevenue(dist, weight, t);
     }
     return total;
   } catch (error) {
@@ -189,7 +249,7 @@ export const getAnalyticsSummary = async () => {
 
 export const getRevenueChartData = async () => {
   try {
-    const trips = await Trip.find({ status: { $in: VALID_SETTLED_TRIP_STATUSES } }).lean();
+    const trips = await Trip.find(VALID_TRIP_CONDITION).lean();
     const monthlyMap = {};
     for (let i = 1; i <= 12; i++) {
       monthlyMap[i] = 0;
@@ -197,12 +257,12 @@ export const getRevenueChartData = async () => {
 
     if (trips && trips.length > 0) {
       trips.forEach(t => {
-        const tripDate = t.completedAt || t.updatedAt || t.createdAt;
+        const tripDate = t.actualEndTime || t.endedAt || t.completedAt || t.updatedAt || t.createdAt;
         if (tripDate) {
           const m = new Date(tripDate).getMonth() + 1;
           const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
           const weight = Number(t.cargoWeight) || 0;
-          const rev = calculateTripRevenue(dist, weight);
+          const rev = calculateTripRevenue(dist, weight, t);
           monthlyMap[m] = (monthlyMap[m] || 0) + rev;
         }
       });
@@ -237,7 +297,7 @@ export const updateManagerById = async (id, data) => {
 };
 
 export const deleteManagerById = async (id) => {
-  return User.findOneAndDelete({ _id: id, role: 'FLEET_MANAGER' });
+  return User.findOneAndDelete({ _id: id, role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } });
 };
 
 // Settings functions

@@ -76,6 +76,8 @@ const tripSchema = new mongoose.Schema(
     acceptedAt: { type: Date },
     rejectedAt: { type: Date },
     rejectionReason: { type: String, default: '' },
+    isDelayed: { type: Boolean, default: false },
+    delayReason: { type: String, default: '' },
     estimatedDistance: { type: Number, default: 0 },
     actualDistance: { type: Number, default: 0 },
     customerLocationReached: { type: Boolean, default: false },

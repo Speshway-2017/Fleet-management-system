@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
 import {
   TrendingUp,
@@ -17,10 +17,18 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
+import { getSocket } from "@/api/socket";
 
 import TableRowSkeleton from "@/components/common/TableRowSkeleton";
 import { fuelSchema, validateForm } from "@/validations";
 import { validateSearchQuery } from "@/validations/common.schema.js";
+import {
+  isEligibleApprovedFuel,
+  calculateTotalFuelSpend,
+  formatFuelSpendKPI,
+  formatPaiseToIndianCurrency,
+  parseAmountToPaise
+} from "@/utils/fuelCalculations";
 
 
 export default function FuelManagementPage() {
@@ -46,13 +54,25 @@ export default function FuelManagementPage() {
   const [rejectReason, setRejectReason] = useState("");
 
   const handleApproveBill = async (logId) => {
+    if (!logId) return;
     try {
-      await managerApi.updateFuelRecord(logId, { approvalStatus: "Approved" });
+      // 1. Optimistically update local logs immediately so KPI card updates in real-time
+      setLogs(prev => prev.map(l => 
+        (String(l.id || l._id) === String(logId)) 
+          ? { ...l, approvalStatus: "Approved", billStatus: "Approved", status: l.status === "anomaly" ? l.status : "normal" } 
+          : l
+      ));
+      
+      // 2. Call backend update
+      await managerApi.updateFuelRecord(logId, { approvalStatus: "Approved", billStatus: "Approved" });
       toast.success("Fuel bill approved successfully!");
-      fetchRecords();
+      
+      // 3. Sync latest from backend database
+      await fetchRecords();
     } catch (error) {
       toast.error("Failed to approve fuel bill.");
       console.error(error);
+      fetchRecords();
     }
   };
 
@@ -62,19 +82,29 @@ export default function FuelManagementPage() {
       toast.error("Rejection reason is required.");
       return;
     }
+    const targetId = rejectRecord?.id || rejectRecord?._id;
+    if (!targetId) return;
     try {
-      await managerApi.updateFuelRecord(rejectRecord.id || rejectRecord._id, {
+      // Optimistically update local logs
+      setLogs(prev => prev.map(l => 
+        (String(l.id || l._id) === String(targetId)) 
+          ? { ...l, approvalStatus: "Rejected", billStatus: "Rejected", rejectionReason: rejectReason } 
+          : l
+      ));
+      await managerApi.updateFuelRecord(targetId, {
         approvalStatus: "Rejected",
+        billStatus: "Rejected",
         rejectionReason: rejectReason
       });
       toast.success("Fuel bill rejected successfully!");
       setRejectModalOpen(false);
       setRejectRecord(null);
       setRejectReason("");
-      fetchRecords();
+      await fetchRecords();
     } catch (error) {
       toast.error("Failed to reject fuel bill.");
       console.error(error);
+      fetchRecords();
     }
   };
 
@@ -114,28 +144,45 @@ export default function FuelManagementPage() {
           const tB = new Date(b.createdAt || b.date || b.timestamp || 0).getTime();
           return tB - tA;
         });
-        setLogs(sorted.map(l => ({
-          ...l,
-          id: l._id,
-          vehicleId: l.vehicleId || (l.vehicle && (l.vehicle.vehicleNumber || l.vehicle.registrationNumber || l.vehicle.plateNumber)) || "Unassigned",
-          vehicleName: l.vehicleName || (l.vehicle && l.vehicle.name) || "Fleet Vehicle",
-          driver: l.driver || (l.driverId && typeof l.driverId === 'object' ? l.driverId.fullName : l.driverId) || "Driver",
-          fuelStation: l.fuelStation || l.stationName || l.station || "General Station",
-          location: l.location || l.purchaseLocation || l.city || "Live GPS Location",
-          odometer: l.odometer || l.odometerReading ? `${l.odometer || l.odometerReading} km` : "N/A",
-          qty: `${l.liters || l.quantity || 0} L`,
-          total: `₹${(Number(l.amount || l.totalCost || l.cost || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
-          approvalStatus: l.approvalStatus || l.billStatus || (l.status === 'resolved' ? 'Approved' : 'Pending'),
-          receiptImage: l.receiptImage || l.billUrl || "",
-          billUrl: l.billUrl || l.receiptImage || "",
-          timestamp: new Date(l.createdAt || l.dateTime || l.date || Date.now()).toLocaleDateString("en-IN", {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })
-        })));
+        setLogs(sorted.map(l => {
+          const rawAmt = l.amount !== undefined && l.amount !== null ? l.amount : (l.totalCost ?? l.cost ?? 0);
+          const rawApproval = String(l.approvalStatus || l.billStatus || '').trim().toUpperCase();
+          let approvalStatus = 'Pending';
+          if (rawApproval === 'APPROVED' || rawApproval === 'VERIFIED' || rawApproval === 'APPROVE') {
+            approvalStatus = 'Approved';
+          } else if (rawApproval === 'REJECTED' || rawApproval === 'REJECT') {
+            approvalStatus = 'Rejected';
+          } else if (l.status === 'resolved') {
+            approvalStatus = 'Approved';
+          }
+
+          const paise = parseAmountToPaise(rawAmt);
+          const totalFormatted = formatPaiseToIndianCurrency(paise, true);
+
+          return {
+            ...l,
+            id: l._id,
+            amount: rawAmt,
+            vehicleId: l.vehicleId || (l.vehicle && (l.vehicle.vehicleNumber || l.vehicle.registrationNumber || l.vehicle.plateNumber)) || "Unassigned",
+            vehicleName: l.vehicleName || (l.vehicle && l.vehicle.name) || "Fleet Vehicle",
+            driver: l.driver || (l.driverId && typeof l.driverId === 'object' ? l.driverId.fullName : l.driverId) || "Driver",
+            fuelStation: l.fuelStation || l.stationName || l.station || "General Station",
+            location: l.location || l.purchaseLocation || l.city || "Live GPS Location",
+            odometer: l.odometer || l.odometerReading ? `${l.odometer || l.odometerReading} km` : "N/A",
+            qty: `${l.liters || l.quantity || 0} L`,
+            total: totalFormatted,
+            approvalStatus,
+            receiptImage: l.receiptImage || l.billUrl || "",
+            billUrl: l.billUrl || l.receiptImage || "",
+            timestamp: new Date(l.createdAt || l.dateTime || l.date || Date.now()).toLocaleDateString("en-IN", {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          };
+        }));
       } else {
         setLogs([]);
       }
@@ -166,11 +213,37 @@ export default function FuelManagementPage() {
   useEffect(() => {
     fetchRecords(true);
     fetchVehicles();
+
+    const socket = getSocket();
+    let cleanupSocket = () => {};
+
+    if (socket) {
+      const handleFuelUpdate = () => {
+        fetchRecords(false);
+      };
+      socket.on("fuel:created", handleFuelUpdate);
+      socket.on("fuel:updated", handleFuelUpdate);
+      socket.on("fuel:status-updated", handleFuelUpdate);
+      socket.on("fuel:deleted", handleFuelUpdate);
+      socket.on("dashboard:refresh", handleFuelUpdate);
+
+      cleanupSocket = () => {
+        socket.off("fuel:created", handleFuelUpdate);
+        socket.off("fuel:updated", handleFuelUpdate);
+        socket.off("fuel:status-updated", handleFuelUpdate);
+        socket.off("fuel:deleted", handleFuelUpdate);
+        socket.off("dashboard:refresh", handleFuelUpdate);
+      };
+    }
+
     const interval = setInterval(() => {
       fetchRecords(false);
       fetchVehicles();
-    }, 5000);
-    return () => clearInterval(interval);
+    }, 10000);
+    return () => {
+      clearInterval(interval);
+      cleanupSocket();
+    };
   }, []);
 
   const filteredLogs = logs.filter(l => {
@@ -186,9 +259,9 @@ export default function FuelManagementPage() {
     );
   });
 
-  const totalSpend = logs
-    .filter(l => l.status === "normal" || l.status === "resolved")
-    .reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
+  const totalSpend = useMemo(() => {
+    return calculateTotalFuelSpend(logs);
+  }, [logs]);
 
   const anomaliesCount = logs.filter(l => l.status === "anomaly").length;
 
@@ -308,8 +381,12 @@ export default function FuelManagementPage() {
   };
 
   const handleDeleteFuel = async () => {
+    const targetId = selectedRecord?.id || selectedRecord?._id;
+    if (!targetId) return;
     try {
-      await managerApi.deleteFuelRecord(selectedRecord._id);
+      // Optimistically update local logs immediately so KPI card updates in real-time
+      setLogs(prev => prev.filter(l => String(l.id || l._id) !== String(targetId)));
+      await managerApi.deleteFuelRecord(targetId);
       setShowDeleteConfirm(false);
       setSelectedRecord(null);
       toast.success("Fuel record deleted successfully");
@@ -317,6 +394,7 @@ export default function FuelManagementPage() {
     } catch (error) {
       toast.error("Failed to delete record");
       console.error(error);
+      fetchRecords();
     }
   };
 
@@ -360,90 +438,93 @@ Status:          PAID & VERIFIED
 
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8 bg-[#F5F7FB] dark:bg-[#0D1117] min-h-screen text-[#1E293B] dark:text-white font-nunito">
       <Breadcrumb />
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="border-b border-[#E7EAF0] dark:border-[#1E293B] pb-4 mb-6 select-none">
         <div>
-          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">
+          <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] dark:text-white leading-none">
             Fuel Management
           </h1>
-          <p className="text-[18px] text-[#64748B] mt-[12px]">
+          <p className="text-[16px] text-[#64748B] dark:text-slate-300 mt-2">
             Monitor diesel logs, average fleet efficiency, and resolve fuel siphoning alerts.
           </p>
         </div>
       </div>
 
       {/* --- KPI SECTION --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
         {/* KPI 1: Fuel Spend */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-xs font-bold text-gray-500 tracking-wider uppercase">Total Fuel Spend</span>
+        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-[#E7EAF0] dark:border-[#1E293B] p-6 shadow-sm flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-3 min-w-0">
+            <div className="min-w-0 flex-1">
+              <span className="text-xs font-bold text-gray-500 dark:text-slate-400 tracking-wider uppercase block truncate font-poppins">Total Fuel Spend</span>
               {loading ? (
                 <div className="h-8 w-32 bg-slate-200 dark:bg-slate-700 animate-pulse rounded mt-2" />
               ) : (
-                <h3 className="text-2xl font-extrabold text-gray-800 mt-2">
-                  ₹{totalSpend.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                <h3 
+                  className="text-2xl font-extrabold text-gray-800 dark:text-white mt-2 truncate font-poppins"
+                  title={totalSpend?.formattedTotal || "₹0.00"}
+                >
+                  {totalSpend?.formattedTotal || "₹0.00"}
                 </h3>
               )}
             </div>
-            <div className="bg-amber-50 text-amber-700 p-3 rounded-xl">
+            <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 p-3 rounded-xl shrink-0">
               <CreditCard className="w-6 h-6" />
             </div>
           </div>
-          <div className="mt-4 flex items-center text-xs text-green-600 gap-1 font-semibold">
-            <TrendingUp className="w-3.5 h-3.5" />
-            <span>+22.4% vs last month</span>
+          <div className="mt-4 flex items-center text-xs text-green-600 dark:text-emerald-400 gap-1 font-semibold truncate">
+            <TrendingUp className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">+22.4% vs last month</span>
           </div>
         </div>
 
-        {/* KPI 3: Anomalies */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-xs font-bold text-gray-500 tracking-wider uppercase">Theft & Anomalies</span>
+        {/* KPI 2: Anomalies */}
+        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-[#E7EAF0] dark:border-[#1E293B] p-6 shadow-sm flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-3 min-w-0">
+            <div className="min-w-0 flex-1">
+              <span className="text-xs font-bold text-gray-500 dark:text-slate-400 tracking-wider uppercase block truncate font-poppins">Theft & Anomalies</span>
               {loading ? (
                 <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 animate-pulse rounded mt-2" />
               ) : (
-                <h3 className="text-2xl font-extrabold text-red-600 mt-2">
+                <h3 className="text-2xl font-extrabold text-red-600 dark:text-red-400 mt-2 truncate font-poppins">
                   {anomaliesCount < 10 ? `0${anomaliesCount}` : anomaliesCount}
                 </h3>
               )}
             </div>
-            <div className="bg-red-50 text-red-600 p-3 rounded-xl">
+            <div className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 p-3 rounded-xl shrink-0">
               <AlertTriangle className="w-6 h-6" />
             </div>
           </div>
-          <div className="mt-4 text-xs text-red-500 font-semibold flex items-center gap-1.5">
-            <AlertTriangle className="w-3.5 h-3.5" />
-            <span>{anomaliesCount} High Priority Alerts</span>
+          <div className="mt-4 text-xs text-red-500 dark:text-red-400 font-semibold flex items-center gap-1.5 truncate">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{anomaliesCount} High Priority Alerts</span>
           </div>
         </div>
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col mt-8">
+      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-[#E7EAF0] dark:border-[#1E293B] shadow-sm overflow-hidden flex flex-col">
         {/* Table Header Filter controls */}
-        <div className="px-6 py-5 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white">
-          <h3 className="font-bold text-lg text-gray-800">Recent Fuel Entries</h3>
+        <div className="px-6 py-5 border-b border-[#E7EAF0] dark:border-[#1E293B] flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#0F172A]">
+          <h3 className="font-bold text-lg text-gray-800 dark:text-white font-poppins">Recent Fuel Entries</h3>
 
           <div className="flex items-center gap-3">
             {/* Search field */}
             <div className="flex flex-col">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-slate-400" />
                 <input
                   type="text"
                   maxLength={50}
                   placeholder="Search vehicle or driver..."
                   value={search}
                   onChange={handleSearchChange}
-                  className={`pl-9 pr-4 py-2 border rounded-xl text-xs focus:outline-none font-medium w-[220px] transition-all ${
+                  className={`pl-9 pr-4 py-2 border rounded-xl text-xs focus:outline-none font-medium w-[220px] transition-all bg-white dark:bg-slate-900 text-slate-800 dark:text-white ${
                     searchError
                       ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                      : "border-gray-200 focus:border-amber-700"
+                      : "border-gray-200 dark:border-slate-800 focus:border-amber-700"
                   }`}
                 />
               </div>
@@ -458,24 +539,24 @@ Status:          PAID & VERIFIED
         <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-left border-collapse text-sm font-nunito">
               <thead>
-                <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
-                  <th className="py-4 px-6">Vehicle</th>
-                  <th className="py-4 px-6">Driver</th>
-                  <th className="py-4 px-6">Fuel Station</th>
-                  <th className="py-4 px-6">Amount</th>
-                  <th className="py-4 px-6">Liters</th>
-                  <th className="py-4 px-6">Date</th>
-                  <th className="py-4 px-6">Approval Status</th>
-                  <th className="py-4 px-6 text-center">Receipt</th>
-                  <th className="py-4 px-6 text-center">Action</th>
+                <tr className="bg-[#F5F7FB] dark:bg-slate-900/60 border-b border-[#E7EAF0] dark:border-[#1E293B] text-[#64748B] dark:text-slate-400 font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
+                  <th className="py-4 px-6 min-w-[150px]">Vehicle</th>
+                  <th className="py-4 px-6 min-w-[130px]">Driver</th>
+                  <th className="py-4 px-6 min-w-[180px]">Fuel Station</th>
+                  <th className="py-4 px-6 min-w-[120px]">Amount</th>
+                  <th className="py-4 px-6 min-w-[100px]">Liters</th>
+                  <th className="py-4 px-6 min-w-[130px]">Date</th>
+                  <th className="py-4 px-6 min-w-[130px]">Approval Status</th>
+                  <th className="py-4 px-6 min-w-[90px] text-center">Receipt</th>
+                  <th className="py-4 px-6 min-w-[150px] text-center">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E7EAF0]/60">
+              <tbody className="divide-y divide-[#E7EAF0]/60 dark:divide-slate-800/60">
                 {loading ? (
-                  <TableRowSkeleton columns={7} rows={5} />
+                  <TableRowSkeleton columns={9} rows={5} />
                 ) : filteredLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-gray-400 font-medium font-nunito">
+                    <td colSpan={9} className="py-12 text-center text-gray-400 dark:text-slate-400 font-medium font-nunito">
                       No fuel logs recorded yet.
                     </td>
                   </tr>
@@ -483,48 +564,62 @@ Status:          PAID & VERIFIED
                   filteredLogs.map(l => (
                     <tr
                       key={l.id}
-                      className={`hover:bg-[#F5F7FB]/50 transition-colors ${l.status === "anomaly" ? "bg-red-50/30" : ""
-                        }`}
+                      className={`hover:bg-[#F5F7FB]/50 dark:hover:bg-slate-800/30 transition-colors ${l.status === "anomaly" ? "bg-red-50/30 dark:bg-red-950/20" : ""}`}
                     >
                       {/* Vehicle */}
-                      <td className="py-4 px-6 whitespace-nowrap">
-                        <div className="flex items-center gap-2.5">
-                          <div className={`w-1 h-8 rounded-full ${l.status === "anomaly"
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-2.5 min-w-0 max-w-[180px]">
+                          <div className={`w-1 h-8 rounded-full shrink-0 ${l.status === "anomaly"
                             ? "bg-red-500"
                             : l.status === "resolved"
                               ? "bg-green-500"
                               : "bg-amber-700"
                             }`} />
-                          <div>
-                            <p className="font-bold text-gray-800 text-xs">{l.vehicleId}</p>
-                            <span className="text-[10px] text-gray-500 block mt-0.5">{l.vehicleName}</span>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-gray-800 dark:text-white text-xs truncate" title={l.vehicleId}>{l.vehicleId}</p>
+                            <span className="text-[10px] text-gray-500 dark:text-slate-400 block mt-0.5 truncate" title={l.vehicleName}>{l.vehicleName}</span>
                           </div>
                         </div>
                       </td>
 
                       {/* Driver */}
-                      <td className="py-4 px-6 whitespace-nowrap">
-                        <p className="font-bold text-gray-800 text-xs">{l.driver}</p>
-                        <span className="text-[10px] text-gray-500 block mt-0.5">{l.driverId || "—"}</span>
+                      <td className="py-4 px-6">
+                        <div className="min-w-0 max-w-[150px]">
+                          <p className="font-bold text-gray-800 dark:text-white text-xs truncate" title={l.driver}>{l.driver}</p>
+                          <span className="text-[10px] text-gray-500 dark:text-slate-400 block mt-0.5 truncate" title={l.driverId || "—"}>{l.driverId || "—"}</span>
+                        </div>
                       </td>
 
-                      {/* Station */}
-                      <td className="py-4 px-6 text-xs text-gray-700 whitespace-nowrap">
-                        {l.fuelStation}
+                      {/* Fuel Station */}
+                      <td className="py-4 px-6">
+                        <div className="min-w-0 max-w-[220px]">
+                          <p className="font-bold text-gray-800 dark:text-white text-xs truncate" title={l.fuelStation}>{l.fuelStation}</p>
+                          <span className="text-[10px] text-gray-500 dark:text-slate-400 block mt-0.5 truncate" title={l.location || "Live GPS Location"}>
+                            {l.location || "Live GPS Location"}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Total Spend / Amount */}
-                      <td className="py-4 px-6 text-xs font-black text-gray-900 whitespace-nowrap">
-                        {l.total}
+                      <td className="py-4 px-6">
+                        <div className="min-w-0 max-w-[130px]">
+                          <span className="text-xs font-black text-gray-900 dark:text-white truncate block font-poppins" title={l.total}>
+                            {l.total}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Liters */}
-                      <td className="py-4 px-6 text-xs font-black text-gray-900 whitespace-nowrap">
-                        {l.qty}
+                      <td className="py-4 px-6">
+                        <div className="min-w-0 max-w-[100px]">
+                          <span className="text-xs font-black text-gray-900 dark:text-white truncate block font-poppins" title={l.qty}>
+                            {l.qty}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Date */}
-                      <td className="py-4 px-6 text-xs text-gray-500 whitespace-nowrap">
+                      <td className="py-4 px-6 text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">
                         {l.timestamp}
                       </td>
 
@@ -533,9 +628,9 @@ Status:          PAID & VERIFIED
                         <span 
                           title={l.rejectionReason ? `Reason: ${l.rejectionReason}` : ""}
                           className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border select-none ${
-                            l.approvalStatus === "Approved" ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-                            l.approvalStatus === "Rejected" ? "bg-red-50 text-red-600 border-red-100 cursor-help" :
-                            "bg-amber-50 text-amber-600 border-amber-100"
+                            l.approvalStatus === "Approved" ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800" :
+                            l.approvalStatus === "Rejected" ? "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-100 dark:border-red-800 cursor-help" :
+                            "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800"
                           }`}
                         >
                           {l.approvalStatus || "Pending"}
@@ -546,7 +641,7 @@ Status:          PAID & VERIFIED
                       <td className="py-4 px-6 text-center whitespace-nowrap">
                         <button
                           onClick={() => handleViewBill(l)}
-                          className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                          className="px-3 py-1.5 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
                         >
                           View
                         </button>
@@ -576,7 +671,7 @@ Status:          PAID & VERIFIED
                             </>
                           )}
                           {(l.approvalStatus || "Pending") !== "Pending" && (
-                            <span className="text-xs text-gray-400 font-medium">
+                            <span className="text-xs text-gray-400 dark:text-slate-400 font-medium">
                               {l.approvalStatus}
                             </span>
                           )}
@@ -590,9 +685,9 @@ Status:          PAID & VERIFIED
         </div>
 
         {/* Table Footer info */}
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-white select-none">
-          <span className="text-xs text-gray-500 font-medium">
-            Showing <span className="font-bold text-gray-800">{filteredLogs.length}</span> of {logs.length} entries
+        <div className="px-6 py-4 border-t border-[#E7EAF0] dark:border-[#1E293B] flex items-center justify-between bg-white dark:bg-[#0F172A] select-none">
+          <span className="text-xs text-gray-500 dark:text-slate-400 font-medium">
+            Showing <span className="font-bold text-gray-800 dark:text-white">{filteredLogs.length}</span> of {logs.length} entries
           </span>
         </div>
       </div>
@@ -753,40 +848,40 @@ Status:          PAID & VERIFIED
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="min-w-0">
                       <span className="text-slate-500 font-semibold block text-[10px] uppercase font-poppins">Driver Name</span>
-                      <span className="font-bold text-slate-800">{selectedLog.driver}</span>
+                      <span className="font-bold text-slate-800 break-words" title={selectedLog.driver}>{selectedLog.driver}</span>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <span className="text-slate-500 font-semibold block text-[10px] uppercase font-poppins">Vehicle Plate</span>
-                      <span className="font-bold text-slate-800 font-mono">{selectedLog.vehicleId}</span>
+                      <span className="font-bold text-slate-800 font-mono break-words" title={selectedLog.vehicleId}>{selectedLog.vehicleId}</span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="min-w-0">
                       <span className="text-slate-500 font-semibold block text-[10px] uppercase font-poppins">Station Name</span>
-                      <span className="font-bold text-slate-800">{selectedLog.fuelStation}</span>
+                      <span className="font-bold text-slate-800 break-words" title={selectedLog.fuelStation}>{selectedLog.fuelStation}</span>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <span className="text-slate-500 font-semibold block text-[10px] uppercase font-poppins">GPS Location</span>
-                      <span className="font-bold text-slate-800">{selectedLog.location || "Auto-captured via GPS"}</span>
+                      <span className="font-bold text-slate-800 break-words" title={selectedLog.location || "Auto-captured via GPS"}>{selectedLog.location || "Auto-captured via GPS"}</span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 p-2.5 bg-white rounded-lg border border-slate-200/80 text-xs">
-                    <div>
-                      <span className="text-slate-400 block text-[9px] uppercase font-bold font-poppins">Liters Refueled</span>
-                      <span className="font-extrabold text-slate-900 text-sm font-poppins">{selectedLog.qty}</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2.5 bg-white rounded-lg border border-slate-200/80 text-xs">
+                    <div className="min-w-0">
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold font-poppins truncate">Liters Refueled</span>
+                      <span className="font-extrabold text-slate-900 text-sm font-poppins truncate block" title={selectedLog.qty}>{selectedLog.qty}</span>
                     </div>
-                    <div>
-                      <span className="text-slate-400 block text-[9px] uppercase font-bold font-poppins">Total Amount</span>
-                      <span className="font-extrabold text-[#A14000] text-sm font-poppins">{selectedLog.total}</span>
+                    <div className="min-w-0">
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold font-poppins truncate">Total Amount</span>
+                      <span className="font-extrabold text-[#A14000] text-sm font-poppins truncate block" title={selectedLog.total}>{selectedLog.total}</span>
                     </div>
-                    <div>
-                      <span className="text-slate-400 block text-[9px] uppercase font-bold font-poppins">Odometer</span>
-                      <span className="font-bold text-slate-800 text-xs font-poppins mt-0.5 block">{selectedLog.odometer}</span>
+                    <div className="min-w-0">
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold font-poppins truncate">Odometer</span>
+                      <span className="font-bold text-slate-800 text-xs font-poppins mt-0.5 block truncate" title={selectedLog.odometer}>{selectedLog.odometer}</span>
                     </div>
                   </div>
 

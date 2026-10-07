@@ -30,7 +30,13 @@ export const updateGeneralSettingsSchema = z.object({
     .trim()
     .min(1, 'Footer description is required.')
     .min(10, 'Footer description must be at least 10 characters.')
-    .max(500, 'Footer description must not exceed 500 characters.'),
+    .max(500, 'Footer description must not exceed 500 characters.')
+    .refine((val) => !/^[0-9\s.,!?'"()\-–—]+$/.test(val), { message: 'Footer description cannot contain numbers only.' })
+    .refine((val) => /[a-zA-Z]/.test(val), { message: 'Footer description must contain alphabetic characters.' })
+    .refine((val) => !/(.)\1{3,}/i.test(val), { message: 'Repeated characters are not allowed.' })
+    .refine((val) => !/([a-zA-Z]{2,6})\1{2,}/i.test(val.replace(/[\s.,!?'"()\-–—]+/g, '')), { message: 'Repeated characters are not allowed.' })
+    .refine((val) => new Set(val.replace(/[^a-zA-Z]/g, '').toLowerCase()).size >= 4, { message: 'Please enter meaningful content.' })
+    .refine((val) => val.split(/\s+/).every(word => word.length <= 30), { message: 'Single words cannot exceed 30 characters without spaces.' }),
   contactPhone: phoneSchema,
   contactEmail: emailSchema,
   contactAddress: z

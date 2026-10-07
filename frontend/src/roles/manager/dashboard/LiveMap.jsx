@@ -3,6 +3,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Navigation, Plus, Minus } from "lucide-react";
 import toast from "react-hot-toast";
+import { createMapTileLayer } from "@/utils/mapTileHelper";
 import "./manager.css";
 
 export default function LiveMap({ vehicles = [], center = [77.2090, 28.6139], zoom = 11 }) {
@@ -36,11 +37,8 @@ export default function LiveMap({ vehicles = [], center = [77.2090, 28.6139], zo
         attributionControl: false, // Keep attribution control clean or hidden
       }).setView(leafletCenter, zoom);
 
-      // Add OpenStreetMap tile layer
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-        maxZoom: 19,
-        subdomains: 'abcd'
-      }).addTo(mapRef.current);
+      // Add tile layer (Mapbox or resilient fallback)
+      createMapTileLayer("streets").addTo(mapRef.current);
       
     } catch (e) {
       console.error("Leaflet initialization failed", e);
