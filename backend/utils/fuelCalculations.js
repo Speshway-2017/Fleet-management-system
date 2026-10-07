@@ -1,6 +1,7 @@
 /**
- * Backend Fuel Calculation and Indian Currency Formatting Utilities
- * Provides exact BigInt paise arithmetic, deduplication, and precise Indian currency formatting.
+ * Backend Fuel Calculation & Indian Currency Engine
+ * Computes exact sums using BigInt paise arithmetic, eliminates floating point error,
+ * and produces standard Indian Numbering system currency strings and compact Cr notation.
  */
 
 /**
@@ -31,22 +32,23 @@ export const isEligibleFuelRecord = (record) => {
 };
 
 /**
- * Safely parses any value (number or string) into a clean positive Rupee float.
+ * Parses any amount representation into a clean numeric value (in Rupees).
  * 
- * @param {number|string} val - Amount in Rupees
- * @returns {number} Clean positive float in Rupees
+ * @param {number|string|bigint} val - Amount input
+ * @returns {number} Clean numeric amount
  */
 export const parseNumericAmount = (val) => {
   if (val === null || val === undefined || val === '') return 0;
   if (typeof val === 'number') {
-    if (isNaN(val) || !isFinite(val) || val <= 0) return 0;
-    return val;
+    return isNaN(val) || !isFinite(val) ? 0 : Math.max(0, val);
+  }
+  if (typeof val === 'bigint') {
+    return Number(val);
   }
   if (typeof val === 'string') {
-    const cleaned = val.replace(/[^0-9.]/g, '');
-    const num = parseFloat(cleaned);
-    if (isNaN(num) || !isFinite(num) || num <= 0) return 0;
-    return num;
+    const cleaned = val.replace(/[^0-9.-]/g, '');
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) || !isFinite(parsed) ? 0 : Math.max(0, parsed);
   }
   return 0;
 };
@@ -90,6 +92,30 @@ export const parseAmountToPaise = (val) => {
 };
 
 /**
+ * Formats a BigInt integer into Indian comma grouping.
+ * @param {bigint} intBig - Whole number
+ * @returns {string} Grouped number string
+ */
+export const formatIntegerToIndianGrouping = (intBig) => {
+  let str = intBig.toString();
+  let lastThree = str.length > 3 ? str.slice(-3) : str;
+  let remaining = str.length > 3 ? str.slice(0, -3) : '';
+
+  if (remaining !== '') {
+    const chunks = [];
+    while (remaining.length > 2) {
+      chunks.unshift(remaining.slice(-2));
+      remaining = remaining.slice(0, -2);
+    }
+    if (remaining.length > 0) {
+      chunks.unshift(remaining);
+    }
+    return chunks.join(',') + ',' + lastThree;
+  }
+  return lastThree;
+};
+
+/**
  * Formats BigInt paise into standard Indian Numbering currency (INR).
  * Examples:
  * - 0n -> "₹0.00"
@@ -108,29 +134,41 @@ export const formatPaiseToIndianCurrency = (totalPaise, forceDecimals = true) =>
   const rupeesBig = absPaise / 100n;
   const paiseBig = absPaise % 100n;
   
-  let str = rupeesBig.toString();
-  let lastThree = str.length > 3 ? str.slice(-3) : str;
-  let remaining = str.length > 3 ? str.slice(0, -3) : '';
-  
-  if (remaining !== '') {
-    const chunks = [];
-    while (remaining.length > 2) {
-      chunks.unshift(remaining.slice(-2));
-      remaining = remaining.slice(0, -2);
-    }
-    if (remaining.length > 0) {
-      chunks.unshift(remaining);
-    }
-    str = chunks.join(',') + ',' + lastThree;
-  } else {
-    str = lastThree;
-  }
-  
-  let formatted = (isNegative ? '-₹' : '₹') + str;
+  const groupedRupees = formatIntegerToIndianGrouping(rupeesBig);
+  let formatted = (isNegative ? '-₹' : '₹') + groupedRupees;
   if (forceDecimals || paiseBig > 0n) {
     formatted += '.' + paiseBig.toString().padStart(2, '0');
   }
   return formatted;
+};
+
+/**
+ * Formats BigInt paise into compact Indian currency notation (e.g., Crores "₹57.45 Cr").
+ * - Amounts >= 1 Crore (₹1,00,00,000): formatted in Crores (Cr) with 2 decimal places.
+ * - Amounts < 1 Crore: formatted in standard Indian currency (₹1,60,320.00, ₹2,500.00).
+ * 
+ * @param {bigint} totalPaise - Amount in paise
+ * @returns {string} Compact formatted currency string
+ */
+export const formatPaiseToCompactIndianCurrency = (totalPaise) => {
+  if (!totalPaise || totalPaise === 0n) return '₹0.00';
+
+  const isNegative = totalPaise < 0n;
+  const absPaise = isNegative ? -totalPaise : totalPaise;
+
+  const ONE_CRORE_PAISE = 1000000000n; // 1,00,00,000 Rupees * 100 paise = 10^9 paise
+
+  if (absPaise >= ONE_CRORE_PAISE) {
+    const croresBig = absPaise / ONE_CRORE_PAISE;
+    const remainderPaise = absPaise % ONE_CRORE_PAISE;
+    const decimals = Number((remainderPaise * 100n) / ONE_CRORE_PAISE);
+
+    const groupedCrores = formatIntegerToIndianGrouping(croresBig);
+    const decStr = decimals.toString().padStart(2, '0');
+    return `${isNegative ? '-₹' : '₹'}${groupedCrores}.${decStr} Cr`;
+  }
+
+  return formatPaiseToIndianCurrency(totalPaise, true);
 };
 
 /**
@@ -150,7 +188,7 @@ export const paiseToRupees = (paiseBigInt) => {
  * Ensures deduplication by ID, eligibility filtering, and exact BigInt paise math.
  * 
  * @param {Array<Object>} records - Array of fuel records
- * @returns {{ totalSpend: number, totalPaise: bigint, approvedCount: number, formattedTotal: string, eligibleRecords: Array<Object> }}
+ * @returns {{ totalSpend: number, totalPaise: bigint, approvedCount: number, formattedTotal: string, compactFormattedTotal: string, eligibleRecords: Array<Object> }}
  */
 export const calculateTotalFuelSpend = (records = []) => {
   if (!Array.isArray(records) || records.length === 0) {
@@ -159,6 +197,7 @@ export const calculateTotalFuelSpend = (records = []) => {
       totalPaise: 0n,
       approvedCount: 0,
       formattedTotal: '₹0.00',
+      compactFormattedTotal: '₹0.00',
       eligibleRecords: []
     };
   }
@@ -189,6 +228,7 @@ export const calculateTotalFuelSpend = (records = []) => {
   }
 
   const formattedTotal = formatPaiseToIndianCurrency(totalPaise, true);
+  const compactFormattedTotal = formatPaiseToCompactIndianCurrency(totalPaise);
   const totalSpend = Number(totalPaise) / 100;
 
   return {
@@ -196,20 +236,22 @@ export const calculateTotalFuelSpend = (records = []) => {
     totalPaise,
     approvedCount: eligibleRecords.length,
     formattedTotal,
+    compactFormattedTotal,
     eligibleRecords
   };
 };
 
 /**
- * Formats any rupee amount or paise into exact Indian currency.
+ * Formats any rupee amount or paise into exact or compact Indian currency.
  * 
  * @param {number|string|bigint} amountInRupees - Amount in rupees
+ * @param {boolean} compact - Whether to format in compact Cr format if >= 1 Cr
  * @returns {string} Formatted Indian currency string
  */
-export const formatFuelSpend = (amountInRupees) => {
+export const formatFuelSpend = (amountInRupees, compact = false) => {
   if (amountInRupees === null || amountInRupees === undefined || amountInRupees === '') {
     return '₹0.00';
   }
   const paise = parseAmountToPaise(amountInRupees);
-  return formatPaiseToIndianCurrency(paise, true);
+  return compact ? formatPaiseToCompactIndianCurrency(paise) : formatPaiseToIndianCurrency(paise, true);
 };

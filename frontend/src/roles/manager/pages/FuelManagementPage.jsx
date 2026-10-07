@@ -466,7 +466,7 @@ Status:          PAID & VERIFIED
                   className="text-2xl font-extrabold text-gray-800 dark:text-white mt-2 truncate font-poppins"
                   title={totalSpend?.formattedTotal || "₹0.00"}
                 >
-                  {totalSpend?.formattedTotal || "₹0.00"}
+                  {totalSpend?.compactFormattedTotal || totalSpend?.formattedTotal || "₹0.00"}
                 </h3>
               )}
             </div>
