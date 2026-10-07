@@ -602,10 +602,10 @@ export default function DriverTripDetailsPage() {
   }
 
   const rawPodUrl = (trip.podUrl || trip.proofOfDelivery?.url || trip.proofOfDelivery?.podDocumentUrl || trip.proofOfDelivery?.deliveryPhotoUrl || trip.podDetails?.podDocumentUrl || trip.podDetails?.url || "").trim();
-  const hasRealPod = Boolean(rawPodUrl && !rawPodUrl.includes("unsplash.com") && !rawPodUrl.includes("via.placeholder.com") && (trip.podUploaded || trip.podStatus === "Uploaded" || trip.podStatus === "Approved"));
+  const hasRealPod = Boolean(rawPodUrl && !rawPodUrl.includes("unsplash.com") && !rawPodUrl.includes("via.placeholder.com") && (trip.podUploaded || trip.podStatus === "Uploaded" || trip.podStatus === "Approved" || trip.podStatus === "Rejected" || trip.proofOfDelivery?.status === "Rejected"));
 
   const rawWbUrl = (trip.weighbridgeUrl || trip.weighbridgeSlip?.url || trip.weighbridgeSlip?.documentUrl || trip.weighbridgeDetails?.documentUrl || trip.weighbridgeDetails?.url || "").trim();
-  const hasRealWb = Boolean(rawWbUrl && !rawWbUrl.includes("unsplash.com") && !rawWbUrl.includes("via.placeholder.com") && (trip.weighbridgeUploaded || trip.weighbridgeStatus === "Uploaded" || trip.weighbridgeStatus === "Approved"));
+  const hasRealWb = Boolean(rawWbUrl && !rawWbUrl.includes("unsplash.com") && !rawWbUrl.includes("via.placeholder.com") && (trip.weighbridgeUploaded || trip.weighbridgeStatus === "Uploaded" || trip.weighbridgeStatus === "Approved" || trip.weighbridgeStatus === "Rejected" || trip.weighbridgeSlip?.status === "Rejected"));
 
   const tripNumber = trip.tripNumber || (typeof trip.tripId === 'string' && trip.tripId.startsWith('TRIP') ? trip.tripId : `TRIP-${String(tripId).slice(-6)}`);
   const rawStatus = (trip.status || "DISPATCHED").toUpperCase();
@@ -1115,10 +1115,22 @@ export default function DriverTripDetailsPage() {
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
             <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center justify-between">
               <span>Trip Documents Upload</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded font-poppins font-bold ${isCompleted ? "bg-slate-100 text-slate-700" : customerReached ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>
-                {isCompleted ? "READ ONLY 🔒" : customerReached ? "UNLOCKED 🔓" : "LOCKED 🔒"}
+              <span className={`text-[10px] px-2 py-0.5 rounded font-poppins font-bold ${isCompleted ? "bg-slate-100 text-slate-700" : (trip.status === "Documents Rejected" || trip.podStatus === "Rejected" || trip.weighbridgeStatus === "Rejected") ? "bg-red-100 text-red-700 border border-red-200" : customerReached ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>
+                {isCompleted ? "READ ONLY 🔒" : (trip.status === "Documents Rejected" || trip.podStatus === "Rejected" || trip.weighbridgeStatus === "Rejected") ? "CORRECTION REQUIRED ⚠️" : customerReached ? "UNLOCKED 🔓" : "LOCKED 🔒"}
               </span>
             </h3>
+
+            {((trip.status === "Documents Rejected") || (trip.podStatus === "Rejected") || (trip.weighbridgeStatus === "Rejected") || trip.proofOfDelivery?.status === "Rejected" || trip.weighbridgeSlip?.status === "Rejected") && (
+              <div className="bg-red-50 border border-red-200 p-3.5 rounded-xl text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-red-700">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>Documents Rejected by Manager</span>
+                </div>
+                <p className="text-red-600 pl-5 text-[11px]">
+                  {trip.rejectionReason || trip.proofOfDelivery?.rejectionReason || trip.weighbridgeSlip?.rejectionReason || "Uploaded documents require correction. Please select and upload corrected documents below."}
+                </p>
+              </div>
+            )}
 
             {isCompleted && (
               <p className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
@@ -1134,32 +1146,34 @@ export default function DriverTripDetailsPage() {
                 </label>
                 <div className="flex items-center gap-2">
                   {customerReached && hasRealPod && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          let url = rawPodUrl;
-                          if (!url) {
-                            try {
-                              const res = await driverApi.getTripById(trip._id || tripId);
-                              url = res?.data?.podUrl || res?.data?.proofOfDelivery?.url || res?.data?.podDetails?.podDocumentUrl;
-                            } catch (err) {
-                              console.warn("Failed to fetch POD URL:", err);
-                            }
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        let url = rawPodUrl;
+                        if (!url) {
+                          try {
+                            const res = await driverApi.getTripById(trip._id || tripId);
+                            url = res?.data?.podUrl || res?.data?.proofOfDelivery?.url || res?.data?.podDetails?.podDocumentUrl;
+                          } catch (err) {
+                            console.warn("Failed to fetch POD URL:", err);
                           }
-                          if (url && !url.includes("unsplash.com") && !url.includes("via.placeholder.com")) {
-                            window.open(resolveDocumentUrl(url), "_blank");
-                          } else {
-                            toast.error("No valid POD document uploaded yet.");
-                          }
-                        }}
-                        className="px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-amber-100 text-[#A14000] hover:bg-amber-200 transition font-poppins cursor-pointer"
-                      >
-                        View POD
-                      </button>
-                      <span className="text-[10px] text-emerald-600 font-extrabold font-poppins">Uploaded ✓</span>
-                    </>
+                        }
+                        if (url && !url.includes("unsplash.com") && !url.includes("via.placeholder.com")) {
+                          window.open(resolveDocumentUrl(url), "_blank");
+                        } else {
+                          toast.error("No valid POD document uploaded yet.");
+                        }
+                      }}
+                      className="px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-amber-100 text-[#A14000] hover:bg-amber-200 transition font-poppins cursor-pointer"
+                    >
+                      View POD
+                    </button>
                   )}
+                  {(trip.podStatus === "Rejected" || trip.proofOfDelivery?.status === "Rejected") ? (
+                    <span className="text-[10px] text-red-600 font-extrabold font-poppins bg-red-50 px-2 py-0.5 rounded border border-red-200">Rejected ❌</span>
+                  ) : hasRealPod ? (
+                    <span className="text-[10px] text-emerald-600 font-extrabold font-poppins">Uploaded ✓</span>
+                  ) : null}
                 </div>
               </div>
               <input
@@ -1174,7 +1188,7 @@ export default function DriverTripDetailsPage() {
                 disabled={!customerReached || !podFile || uploadingPod || isCompleted}
                 className="w-full py-2 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm"
               >
-                {uploadingPod ? "Uploading POD..." : "Upload POD Document"}
+                {uploadingPod ? "Uploading POD..." : (trip.podStatus === "Rejected" || trip.proofOfDelivery?.status === "Rejected") ? "Re-upload POD Document" : "Upload POD Document"}
               </button>
             </form>
 
@@ -1188,32 +1202,34 @@ export default function DriverTripDetailsPage() {
                 </label>
                 <div className="flex items-center gap-2">
                   {customerReached && hasRealWb && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          let url = rawWbUrl;
-                          if (!url) {
-                            try {
-                              const res = await driverApi.getTripById(trip._id || tripId);
-                              url = res?.data?.weighbridgeUrl || res?.data?.weighbridgeSlip?.url || res?.data?.weighbridgeDetails?.documentUrl;
-                            } catch (err) {
-                              console.warn("Failed to fetch Weighbridge URL:", err);
-                            }
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        let url = rawWbUrl;
+                        if (!url) {
+                          try {
+                            const res = await driverApi.getTripById(trip._id || tripId);
+                            url = res?.data?.weighbridgeUrl || res?.data?.weighbridgeSlip?.url || res?.data?.weighbridgeDetails?.documentUrl;
+                          } catch (err) {
+                            console.warn("Failed to fetch Weighbridge URL:", err);
                           }
-                          if (url && !url.includes("unsplash.com") && !url.includes("via.placeholder.com")) {
-                            window.open(resolveDocumentUrl(url), "_blank");
-                          } else {
-                            toast.error("No valid Weighbridge slip uploaded yet.");
-                          }
-                        }}
-                        className="px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 transition font-poppins cursor-pointer"
-                      >
-                        View Weighbridge
-                      </button>
-                      <span className="text-[10px] text-emerald-600 font-extrabold font-poppins">Uploaded ✓</span>
-                    </>
+                        }
+                        if (url && !url.includes("unsplash.com") && !url.includes("via.placeholder.com")) {
+                          window.open(resolveDocumentUrl(url), "_blank");
+                        } else {
+                          toast.error("No valid Weighbridge slip uploaded yet.");
+                        }
+                      }}
+                      className="px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 transition font-poppins cursor-pointer"
+                    >
+                      View Weighbridge
+                    </button>
                   )}
+                  {(trip.weighbridgeStatus === "Rejected" || trip.weighbridgeSlip?.status === "Rejected") ? (
+                    <span className="text-[10px] text-red-600 font-extrabold font-poppins bg-red-50 px-2 py-0.5 rounded border border-red-200">Rejected ❌</span>
+                  ) : hasRealWb ? (
+                    <span className="text-[10px] text-emerald-600 font-extrabold font-poppins">Uploaded ✓</span>
+                  ) : null}
                 </div>
               </div>
               <input
@@ -1228,7 +1244,7 @@ export default function DriverTripDetailsPage() {
                 disabled={!customerReached || !weighbridgeFile || uploadingWeighbridge || isCompleted}
                 className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm"
               >
-                {uploadingWeighbridge ? "Uploading Weighbridge..." : "Upload Weighbridge Slip"}
+                {uploadingWeighbridge ? "Uploading Weighbridge..." : (trip.weighbridgeStatus === "Rejected" || trip.weighbridgeSlip?.status === "Rejected") ? "Re-upload Weighbridge Slip" : "Upload Weighbridge Slip"}
               </button>
             </form>
           </div>

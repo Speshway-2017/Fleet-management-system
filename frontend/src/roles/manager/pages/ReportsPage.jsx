@@ -8,6 +8,9 @@ import { useAuth } from "@/context/AuthContext";
 import { managerApi } from "../api/managerApi";
 import CustomDatePicker from "@/components/common/CustomDatePicker";
 import { validateScheduleField, validateAllScheduleFields } from "@/validations/report.schema.js";
+import { isEligibleApprovedFuel } from "@/utils/fuelCalculations";
+
+const normalizePlate = (str) => String(str || '').replace(/[\s\-_]/g, '').toUpperCase();
 
 export default function ReportsPage() {
   const { user } = useAuth();
@@ -285,30 +288,33 @@ export default function ReportsPage() {
   const getFuelConsumptionData = () => {
     const rows = fuelRecords
       .filter(f => {
+        if (!isEligibleApprovedFuel(f)) return false;
         const vId = f.vehicle?._id || f.vehicle;
-        const vehicleDoc = vehicles.find(v => String(v._id) === String(vId) || v.vehicleNumber === f.vehicleId);
+        const fPlate = normalizePlate(f.vehicleId || f.vehiclePlate || f.plateNumber);
+        const vehicleDoc = vehicles.find(v => String(v._id) === String(vId) || (fPlate && normalizePlate(v.vehicleNumber || v.plateNumber) === fPlate));
         const branchMatch = vehicleDoc ? matchBranch(vehicleDoc.branch || vehicleDoc.branchDepot) : true;
         
         // Find driver
         const driverDoc = drivers.find(d => d.employeeId === f.driverId || d.fullName === f.driver);
         const dId = driverDoc ? driverDoc._id : null;
         
-        return isWithinDate(f.createdAt) && matchVehicle(vId) && matchDriver(dId) && branchMatch;
+        return isWithinDate(f.date || f.dateTime || f.createdAt) && matchVehicle(vehicleDoc?._id || vId) && matchDriver(dId) && branchMatch;
       })
       .map(f => {
         const vId = f.vehicle?._id || f.vehicle;
-        const vehicleDoc = vehicles.find(v => String(v._id) === String(vId) || v.vehicleNumber === f.vehicleId);
+        const fPlate = normalizePlate(f.vehicleId || f.vehiclePlate || f.plateNumber);
+        const vehicleDoc = vehicles.find(v => String(v._id) === String(vId) || (fPlate && normalizePlate(v.vehicleNumber || v.plateNumber) === fPlate));
         const driverDoc = drivers.find(d => d.employeeId === f.driverId || d.fullName === f.driver);
 
         return {
           id: f._id,
-          vehicleName: vehicleDoc ? `${vehicleDoc.brand} ${vehicleDoc.model}` : f.vehicleName || "Unknown Vehicle",
+          vehicleName: vehicleDoc ? `${vehicleDoc.brand || vehicleDoc.vehicleName} ${vehicleDoc.model || ''}`.trim() : f.vehicleName || "Unknown Vehicle",
           plateNumber: vehicleDoc ? vehicleDoc.vehicleNumber : f.vehicleId || "N/A",
           driverName: driverDoc ? driverDoc.fullName : f.driver || "N/A",
-          quantity: Number(f.liters) || 0,
+          quantity: Number(f.liters ?? f.quantity ?? f.fuelQuantity ?? 0) || 0,
           cost: Number(f.amount) || 0,
           fuelStation: f.fuelStation || "N/A",
-          date: f.createdAt ? f.createdAt.split("T")[0] : "N/A",
+          date: (f.date || f.dateTime || f.createdAt) ? String(f.date || f.dateTime || f.createdAt).split("T")[0] : "N/A",
           tripId: f.tripId || "N/A"
         };
       });

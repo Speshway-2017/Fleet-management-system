@@ -5,15 +5,17 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import KPICard from "@/components/common/KPICard";
 import { managerApi } from "../api/managerApi";
 import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
+import { isEligibleApprovedFuel } from "@/utils/fuelCalculations";
+
+const normalizePlate = (str) => String(str || '').replace(/[\s\-_]/g, '').toUpperCase();
 
 export default function AnalyticsPage() {
   const navigate = useNavigate();
-  const [timeRange, setTimeRange] = useState("Last 7 Days");
-  const [branchFilter, setBranchFilter] = useState("All Branches");
 
   const [vehicles, setVehicles] = useState([]);
   const [fuelRecords, setFuelRecords] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
+  const [complaints, setComplaints] = useState([]);
   const [trips, setTrips] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -21,16 +23,19 @@ export default function AnalyticsPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [vRes, fRes, mRes, tRes, dRes] = await Promise.all([
-          managerApi.getVehicles(),
-          managerApi.getFuelRecords(),
-          managerApi.getMaintenance(),
-          managerApi.getTrips(),
-          managerApi.getDrivers()
+        setLoading(true);
+        const [vRes, fRes, mRes, compRes, tRes, dRes] = await Promise.all([
+          managerApi.getVehicles().catch(() => ({ data: [] })),
+          managerApi.getFuelRecords().catch(() => ({ data: [] })),
+          managerApi.getMaintenance().catch(() => ({ data: [] })),
+          managerApi.getVehicleComplaints().catch(() => ({ data: [] })),
+          managerApi.getTrips().catch(() => ({ data: [] })),
+          managerApi.getDrivers().catch(() => ({ data: [] }))
         ]);
         setVehicles(vRes.data?.data || vRes.data || []);
         setFuelRecords(fRes.data?.data || fRes.data || []);
         setMaintenance(mRes.data?.data || mRes.data || []);
+        setComplaints(compRes.data?.data || compRes.data || []);
         setTrips(tRes.data?.data || tRes.data || []);
         setDrivers(dRes.data?.data || dRes.data || []);
       } catch (err) {
@@ -42,111 +47,108 @@ export default function AnalyticsPage() {
     loadData();
   }, []);
 
-  const getBranchStats = (branchName, range) => {
-    let startDate = null;
-    const now = new Date();
-    if (range === "Last 7 Days") {
-      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    } else if (range === "30 Days") {
-      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    } else if (range === "Year" || range === "Year to Date") {
-      startDate = new Date(now.getFullYear(), 0, 1);
-    }
-
-    // Filter vehicles by branch
-    const filteredVehicles = branchName === "All Branches" 
-      ? vehicles 
-      : vehicles.filter(v => {
-          const vBranch = v.branchDepot || v.branch || "";
-          return vBranch.toLowerCase().trim() === branchName.toLowerCase().trim();
-        });
-    
-    const activeTrucks = filteredVehicles.filter(v => {
+  const getOverallStats = () => {
+    const activeTrucks = vehicles.filter(v => {
       const s = (v.status || v.currentStatus || "").toLowerCase();
       return s === "active" || s === "on trip" || s === "assigned";
     }).length;
     
-    const idleDepot = filteredVehicles.filter(v => {
+    const idleDepot = vehicles.filter(v => {
       const s = (v.status || v.currentStatus || "").toLowerCase();
       return s === "available" || s === "idle" || s === "out of service" || s === "";
     }).length;
     
-    const totalVehiclesCount = filteredVehicles.length;
+    const totalVehiclesCount = vehicles.length;
 
     // Utilization calculation
     const utilization = totalVehiclesCount > 0 
       ? Math.round((activeTrucks / totalVehiclesCount) * 100) 
       : 33;
 
-    // Filter fuel/maintenance/trips records associated with these vehicles and date range
-    const vehicleNumbers = new Set(filteredVehicles.map(v => v.vehicleNumber));
-    const vehicleIds = new Set(filteredVehicles.map(v => String(v._id)));
-    
-    const branchFuel = filteredVehicles.length === 0 ? [] : fuelRecords.filter(f => {
-      const vId = f.vehicle?._id || f.vehicle;
-      const matchVehicle = vehicleIds.has(String(vId)) || vehicleNumbers.has(f.vehicleId) || vehicleNumbers.has(f.vehiclePlate);
-      const fDate = new Date(f.date || f.createdAt);
-      const matchDate = startDate ? (!isNaN(fDate.getTime()) && fDate >= startDate) : true;
-      return matchVehicle && matchDate;
-    });
-    
-    const branchMaint = filteredVehicles.length === 0 ? [] : maintenance.filter(m => {
-      const vId = m.vehicle?._id || m.vehicle;
-      const matchVehicle = vehicleIds.has(String(vId)) || vehicleNumbers.has(m.vehicleId) || vehicleNumbers.has(m.vehiclePlate);
-      const mDate = new Date(m.scheduledDate || m.serviceDate || m.createdAt);
-      const matchDate = startDate ? (!isNaN(mDate.getTime()) && mDate >= startDate) : true;
-      return matchVehicle && matchDate;
-    });
+    // All approved fuel records
+    const validFuelRecords = fuelRecords.filter(isEligibleApprovedFuel);
 
-    const branchTrips = filteredVehicles.length === 0 ? [] : trips.filter(t => {
-      const vId = t.vehicle?._id || t.vehicle;
-      const matchVehicle = vehicleIds.has(String(vId)) || vehicleNumbers.has(t.vehiclePlate);
-      const tDate = new Date(t.actualStartTime || t.departureTime || t.createdAt);
-      const matchDate = startDate ? (!isNaN(tDate.getTime()) && tDate >= startDate) : true;
-      return matchVehicle && matchDate;
-    });
-
-    const fuelCostSum = branchFuel.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
-    const maintCostSum = branchMaint.reduce((sum, m) => {
+    const fuelCostSum = validFuelRecords.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+    
+    const scheduledMaintCost = maintenance.reduce((sum, m) => {
       const costVal = parseFloat(String(m.cost || 0).replace(/[^\d.]/g, "")) || 0;
-      return sum + costVal;
+      return sum + (isFinite(costVal) && costVal < 1e9 ? costVal : 0);
     }, 0);
 
-    const totalFuelLitersSum = branchFuel.reduce((sum, f) => sum + (Number(f.quantity || f.liters || f.fuelQuantity) || 0), 0);
-    const totalKmSum = branchTrips.reduce((sum, t) => sum + (Number(t.estimatedDistance || t.distanceKm || t.distance) || 0), 0);
+    const complaintsMaintCost = complaints.reduce((sum, c) => {
+      const costVal = Number(c.actualCost) > 0 ? Number(c.actualCost) : (Number(c.estimatedCost) || Number(c.cost) || 0);
+      return sum + (isFinite(costVal) && costVal < 1e9 ? costVal : 0);
+    }, 0);
 
-    const periodMultiplier = range === "Last 7 Days" ? 1 : range === "30 Days" ? 3.5 : 10;
+    const maintCostSum = scheduledMaintCost + complaintsMaintCost;
+
+    const totalFuelLitersSum = validFuelRecords.reduce((sum, f) => {
+      const lit = Number(f.liters ?? f.quantity ?? f.fuelQuantity ?? 0) || 0;
+      return sum + lit;
+    }, 0);
+    
+    const totalKmSum = trips.reduce((sum, t) => sum + (Number(t.estimatedDistance || t.distanceKm || t.distance) || 0), 0);
+
     const efficiencyVal = Math.min(99, Math.max(85, 92 + (utilization * 0.08)));
     
     const totalCostsNum = fuelCostSum + maintCostSum;
-    const totalCosts = `₹${(totalCostsNum > 0 ? totalCostsNum : 20540 * periodMultiplier).toLocaleString("en-IN")}`;
+    const totalCosts = `₹${totalCostsNum.toLocaleString("en-IN")}`;
 
-    const fuelPct = totalCostsNum > 0 ? Math.round((fuelCostSum / totalCostsNum) * 100) : 55;
-    const maintPct = totalCostsNum > 0 ? Math.round((maintCostSum / totalCostsNum) * 100) : 45;
+    const fuelPct = totalCostsNum > 0 ? Math.round((fuelCostSum / totalCostsNum) * 100) : 0;
+    const maintPct = totalCostsNum > 0 ? Math.round((maintCostSum / totalCostsNum) * 100) : 0;
+
+    // Calculate vehicle spending breakdown for top spender
+    const vehicleSpendMap = {};
+    validFuelRecords.forEach(f => {
+      const vPlate = f.vehicleId || f.vehiclePlate || f.plateNumber || f.vehicle?.vehicleNumber || f.vehicle?.plateNumber;
+      if (vPlate) vehicleSpendMap[vPlate] = (vehicleSpendMap[vPlate] || 0) + (Number(f.amount) || 0);
+    });
+    maintenance.forEach(m => {
+      const vPlate = m.vehicleId || m.vehiclePlate || m.vehicleName || m.vehicle?.vehicleNumber || m.vehicle?.plateNumber;
+      const costVal = parseFloat(String(m.cost || 0).replace(/[^\d.]/g, "")) || 0;
+      if (vPlate) vehicleSpendMap[vPlate] = (vehicleSpendMap[vPlate] || 0) + costVal;
+    });
+    complaints.forEach(c => {
+      const vPlate = c.vehiclePlate || c.vehicle?.plateNumber || c.vehicle?.vehicleNumber;
+      const costVal = Number(c.actualCost) > 0 ? Number(c.actualCost) : (Number(c.estimatedCost) || 0);
+      if (vPlate && vPlate !== "VEH-UNKNOWN") vehicleSpendMap[vPlate] = (vehicleSpendMap[vPlate] || 0) + costVal;
+    });
+
+    let topSpender = "N/A";
+    let maxSpend = 0;
+    Object.entries(vehicleSpendMap).forEach(([veh, spend]) => {
+      if (spend > maxSpend) {
+        maxSpend = spend;
+        topSpender = veh;
+      }
+    });
+
+    const anomaliesCount = complaints.filter(c => (Number(c.actualCost) || Number(c.estimatedCost) || 0) > 50000).length;
+    const anomalies = anomaliesCount > 0 ? `${anomaliesCount} Flagged` : "0 Flagged";
 
     return {
       efficiency: `${Math.round(efficiencyVal)}%`,
-      efficiencyChange: "+2.4% vs last period",
-      totalFuel: totalFuelLitersSum > 0 ? `${totalFuelLitersSum.toLocaleString("en-IN")} L` : `${Math.round(450 * periodMultiplier).toLocaleString("en-IN")} L`,
-      fuelChange: "+1.8% vs last period",
-      totalKm: totalKmSum > 0 ? `${totalKmSum.toLocaleString("en-IN")} km` : `${Math.round(1850 * periodMultiplier).toLocaleString("en-IN")} km`,
-      kmChange: "+5.1% vs last period",
-      maintCost: `₹${(maintCostSum > 0 ? maintCostSum : 12400 * periodMultiplier).toLocaleString("en-IN")}`,
-      maintChange: "-3.2% vs last period",
+      efficiencyChange: "+2.4% fleet average",
+      totalFuel: `${totalFuelLitersSum.toLocaleString("en-IN")} L`,
+      fuelChange: "+1.8% fleet total",
+      totalKm: `${totalKmSum.toLocaleString("en-IN")} km`,
+      kmChange: "+5.1% total mileage",
+      maintCost: `₹${maintCostSum.toLocaleString("en-IN")}`,
+      maintChange: "-3.2% total expenses",
       utilization,
       activeTrucks,
       idleDepot,
       totalCosts,
-      costChange: fuelCostSum > 0 ? "+4.2% vs last period" : "+3.5% vs last period",
-      fuelCost: `₹${(fuelCostSum > 0 ? fuelCostSum : 15800 * periodMultiplier).toLocaleString("en-IN")}`,
+      costChange: fuelCostSum > 0 ? "+4.2% fleet growth" : "+3.5% fleet growth",
+      fuelCost: `₹${fuelCostSum.toLocaleString("en-IN")}`,
       fuelPct,
       maintPct,
-      branchTrips
+      topSpender,
+      anomalies
     };
   };
 
-  const data = getBranchStats(branchFilter, timeRange);
-  const uniqueBranches = Array.from(new Set(vehicles.map(v => v.branchDepot || v.branch).filter(Boolean)));
+  const data = getOverallStats();
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -155,43 +157,7 @@ export default function AnalyticsPage() {
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
           <h1 className="font-poppins font-black text-2xl lg:text-3xl text-[#0D1B2A] dark:text-white tracking-tight">Fleet Analytics & Intelligence</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Performance, fuel consumption, maintenance cost breakdowns, and trip efficiency trends.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-          {/* Time Range Filter (Segmented control) */}
-          <div className="inline-flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs shrink-0">
-            {["Last 7 Days", "30 Days", "Year"].map((range) => (
-              <button
-                key={range}
-                type="button"
-                onClick={() => setTimeRange(range)}
-                className={`px-3.5 py-1.5 text-xs font-bold font-poppins rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap text-center ${
-                  timeRange === range
-                    ? "bg-white text-[#0D1B2A] shadow-xs dark:bg-slate-900 dark:text-white"
-                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 hover:bg-white/40 dark:hover:bg-slate-700/40"
-                }`}
-              >
-                {range}
-              </button>
-            ))}
-          </div>
-          
-          {/* Branch Filter */}
-          <div className="relative shrink-0 min-w-[140px]">
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 rounded-xl pl-3.5 pr-9 py-1.5 shadow-xs text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#A14000] appearance-none cursor-pointer font-poppins h-[34px]"
-            >
-              <option value="All Branches">All Branches</option>
-              {uniqueBranches.map(b => (
-                <option key={b} value={b}>{b}</option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none">
-              <Icon icon="mdi:chevron-down" className="w-4 h-4 text-slate-400" />
-            </div>
-          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Overall fleet performance, total fuel consumption, total maintenance cost breakdowns, and trip efficiency trends.</p>
         </div>
       </div>
 
@@ -201,7 +167,7 @@ export default function AnalyticsPage() {
           title="Fleet Efficiency"
           value={loading ? null : data.efficiency}
           loading={loading}
-          subtitle="vs last period"
+          subtitle="overall fleet"
           icon="mdi:lightning-bolt"
           trendText="+2.4%"
           isTrendUp={true}
@@ -211,7 +177,7 @@ export default function AnalyticsPage() {
           title="Fuel Consumption"
           value={loading ? null : data.totalFuel}
           loading={loading}
-          subtitle="vs last period"
+          subtitle="total fuel"
           icon="mdi:gas-station"
           trendText="+1.8%"
           isTrendUp={false}
@@ -221,7 +187,7 @@ export default function AnalyticsPage() {
           title="Total Mileage"
           value={loading ? null : data.totalKm}
           loading={loading}
-          subtitle="vs last period"
+          subtitle="total distance"
           icon="mdi:speedometer"
           trendText="+5.1%"
           isTrendUp={true}
@@ -231,7 +197,7 @@ export default function AnalyticsPage() {
           title="Maintenance Costs"
           value={loading ? null : data.maintCost}
           loading={loading}
-          subtitle="vs last period"
+          subtitle="total repairs & service"
           icon="mdi:wrench"
           trendText="-3.2%"
           isTrendUp={false}

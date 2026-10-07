@@ -61,7 +61,11 @@ const tripSchema = new mongoose.Schema(
         'Complete Trip',
         'Delayed',
         'On Trip',
-        'Ready to Dispatch'
+        'Ready to Dispatch',
+        'Customer Location Reached',
+        'Reached Destination',
+        'Trip Ended',
+        'Documents Rejected'
       ],
       default: 'Pending Driver Acceptance'
     },

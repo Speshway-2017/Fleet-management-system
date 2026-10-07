@@ -1710,7 +1710,7 @@ export const uploadProofOfDelivery = async (req, res, next) => {
       if (['Waiting for Manager Approval', 'Completed'].includes(tripDoc.status)) {
         return sendError(res, 400, 'Document uploads are locked after submitting for manager approval.');
       }
-      const isEnded = tripDoc.tripEnded || tripDoc.customerLocationReached || ['reached destination', 'trip ended', 'ended', 'waiting for manager approval', 'completed'].includes(tripDoc.status?.toLowerCase());
+      const isEnded = tripDoc.tripEnded || tripDoc.customerLocationReached || ['reached destination', 'trip ended', 'ended', 'waiting for manager approval', 'completed', 'documents rejected'].includes(tripDoc.status?.toLowerCase());
       if (!isEnded) {
         return sendError(res, 400, 'Cannot upload documents before ending the trip. Please click End Trip first.');
       }
@@ -1790,6 +1790,10 @@ export const uploadProofOfDelivery = async (req, res, next) => {
     let updatedTrip = null;
     if (tripDoc) {
       tripDoc.podStatus = 'Uploaded';
+      if (tripDoc.status === 'Documents Rejected') {
+        tripDoc.status = 'In Progress';
+      }
+      tripDoc.rejectionReason = '';
       tripDoc.proofOfDelivery = {
         url: finalDocUrl,
         deliveryPhotoUrl: secureUrl,
@@ -1797,7 +1801,8 @@ export const uploadProofOfDelivery = async (req, res, next) => {
         customerName: customerName || 'Customer Receiver',
         receiverName: receiverName || 'Verified Receiver',
         uploadedAt: new Date(),
-        status: 'Uploaded'
+        status: 'Uploaded',
+        rejectionReason: ''
       };
       await tripDoc.save();
       updatedTrip = tripDoc;
@@ -1884,7 +1889,7 @@ export const uploadWeighbridgeSlip = async (req, res, next) => {
       if (['Waiting for Manager Approval', 'Completed'].includes(tripDoc.status)) {
         return sendError(res, 400, 'Document uploads are locked after submitting for manager approval.');
       }
-      const isEnded = tripDoc.tripEnded || tripDoc.customerLocationReached || ['reached destination', 'trip ended', 'ended', 'waiting for manager approval', 'completed'].includes(tripDoc.status?.toLowerCase());
+      const isEnded = tripDoc.tripEnded || tripDoc.customerLocationReached || ['reached destination', 'trip ended', 'ended', 'waiting for manager approval', 'completed', 'documents rejected'].includes(tripDoc.status?.toLowerCase());
       if (!isEnded) {
         return sendError(res, 400, 'Cannot upload documents before ending the trip. Please click End Trip first.');
       }
@@ -1950,6 +1955,10 @@ export const uploadWeighbridgeSlip = async (req, res, next) => {
     let updatedTrip = null;
     if (tripDoc) {
       tripDoc.weighbridgeStatus = 'Uploaded';
+      if (tripDoc.status === 'Documents Rejected') {
+        tripDoc.status = 'In Progress';
+      }
+      tripDoc.rejectionReason = '';
       tripDoc.weighbridgeSlip = {
         url: finalWbUrl,
         documentUrl: finalWbUrl,
@@ -1958,7 +1967,8 @@ export const uploadWeighbridgeSlip = async (req, res, next) => {
         netWeight: calculatedNet,
         location: location || 'Highway Weighbridge Station',
         uploadedAt: new Date(),
-        status: 'Uploaded'
+        status: 'Uploaded',
+        rejectionReason: ''
       };
       await tripDoc.save();
       updatedTrip = tripDoc;
