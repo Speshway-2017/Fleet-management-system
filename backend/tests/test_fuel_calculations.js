@@ -5,6 +5,7 @@ import {
   parseAmountToPaise,
   paiseToRupees,
   formatPaiseToIndianCurrency,
+  formatPaiseToCompactIndianCurrency,
   calculateTotalFuelSpend,
   formatFuelSpend
 } from '../utils/fuelCalculations.js';
@@ -64,7 +65,15 @@ const hugeResult = calculateTotalFuelSpend(hugeRecords);
 assert.strictEqual(hugeResult.formattedTotal, '₹5,74,57,54,78,54,75,75,40,02,522.00', 'Exact BigInt sum is preserved without truncation');
 console.log('✓ Test 5 Passed: Exact BigInt sum correctly calculated and formatted in Indian currency');
 
-// Test 6: Status Transitions Simulation
+// Test 6: Compact Crores (Cr) Notation Tests
+assert.strictEqual(formatPaiseToCompactIndianCurrency(0n), '₹0.00', '0 paise formats as ₹0.00');
+assert.strictEqual(formatPaiseToCompactIndianCurrency(16032000n), '₹1,60,320.00', '₹1,60,320 formats as standard ₹1,60,320.00');
+assert.strictEqual(formatPaiseToCompactIndianCurrency(1000000000n), '₹1.00 Cr', '₹1,00,00,000 formats as ₹1.00 Cr');
+assert.strictEqual(formatPaiseToCompactIndianCurrency(57450000000n), '₹57.45 Cr', '₹57,45,00,000 formats as ₹57.45 Cr');
+assert.strictEqual(formatPaiseToCompactIndianCurrency(574575478547575400252200n), '₹57,45,75,47,85,47,575.40 Cr', 'Huge sum formats as ₹57,45,75,47,85,47,575.40 Cr');
+console.log('✓ Test 6 Passed: Compact Crores (Cr) notation formats correctly');
+
+// Test 7: Status Transitions Simulation
 let recordsState = [
   { _id: 'tx1', amount: 5000, approvalStatus: 'Pending', status: 'normal' }
 ];
@@ -78,6 +87,6 @@ assert.strictEqual(calculateTotalFuelSpend(recordsState).totalSpend, 5000, 'Afte
 recordsState = recordsState.map(r => r._id === 'tx1' ? { ...r, approvalStatus: 'Rejected' } : r);
 assert.strictEqual(calculateTotalFuelSpend(recordsState).totalSpend, 0, 'After reject, spend is 0 again');
 
-console.log('✓ Test 6 Passed: Status transitions recalculate immediately and accurately');
+console.log('✓ Test 7 Passed: Status transitions recalculate immediately and accurately');
 
-console.log('\nAll 6 test suites passed with 100% success!');
+console.log('\nAll 7 test suites passed with 100% success!');
