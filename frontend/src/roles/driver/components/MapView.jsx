@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Clock, Flag } from "lucide-react";
+import { createMapTileLayer } from "@/utils/mapTileHelper";
 
 export default function MapView({
   driverLocation,
@@ -81,10 +82,8 @@ export default function MapView({
         attributionControl: false
       }).setView([20.5937, 78.9629], 6);
 
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-        maxZoom: 19,
-        subdomains: 'abcd'
-      }).addTo(mapInstanceRef.current);
+      // Add tile layer (Mapbox or resilient fallback)
+      createMapTileLayer("streets").addTo(mapInstanceRef.current);
 
       markersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
     }

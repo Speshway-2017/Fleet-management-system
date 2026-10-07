@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
+import { getSocket } from "@/api/socket";
 import KPICard from "@/components/common/KPICard";
 import { formatCurrency, formatFullCurrency, parseNumericValue } from "@/utils/currencyFormatter";
 import {
@@ -75,9 +76,44 @@ function Dashboard() {
 
     fetchDashboardData();
 
-    // Auto-refresh the dashboard every 30 seconds
-    const intervalId = setInterval(fetchDashboardData, 30000);
-    return () => clearInterval(intervalId);
+    // Listen to real-time events via Socket.IO
+    const socket = getSocket();
+    let cleanupSocket = () => {};
+
+    if (socket) {
+      socket.emit("joinRoleRoom", "SUPER_ADMIN");
+
+      const handleLiveEvent = () => {
+        fetchDashboardData();
+      };
+
+      socket.on("dashboard:refresh", handleLiveEvent);
+      socket.on("trip:completed", handleLiveEvent);
+      socket.on("trip:approved", handleLiveEvent);
+      socket.on("trip:status-updated", handleLiveEvent);
+      socket.on("trip:created", handleLiveEvent);
+      socket.on("trip:updated", handleLiveEvent);
+      socket.on("trip:deleted", handleLiveEvent);
+      socket.on("notification:new", handleLiveEvent);
+
+      cleanupSocket = () => {
+        socket.off("dashboard:refresh", handleLiveEvent);
+        socket.off("trip:completed", handleLiveEvent);
+        socket.off("trip:approved", handleLiveEvent);
+        socket.off("trip:status-updated", handleLiveEvent);
+        socket.off("trip:created", handleLiveEvent);
+        socket.off("trip:updated", handleLiveEvent);
+        socket.off("trip:deleted", handleLiveEvent);
+        socket.off("notification:new", handleLiveEvent);
+      };
+    }
+
+    // Auto-refresh the dashboard every 15 seconds
+    const intervalId = setInterval(fetchDashboardData, 15000);
+    return () => {
+      clearInterval(intervalId);
+      cleanupSocket();
+    };
   }, []);
 
   const { statistics, chartData } = data;
@@ -89,10 +125,11 @@ function Dashboard() {
     revenue: parseNumericValue(item?.revenue),
   }));
 
+  const chartRevenueSum = safeChartData.reduce((acc, curr) => acc + (Number(curr.revenue) || 0), 0);
   const totalCalculatedRevenue =
-    statistics?.revenue !== undefined && statistics?.revenue !== null
+    statistics?.revenue !== undefined && statistics?.revenue !== null && parseNumericValue(statistics.revenue) > 0
       ? parseNumericValue(statistics.revenue)
-      : safeChartData.reduce((acc, curr) => acc + curr.revenue, 0);
+      : (chartRevenueSum > 0 ? chartRevenueSum : parseNumericValue(statistics?.revenue || 0));
 
   const todayCalculatedRevenue = parseNumericValue(statistics?.todayRevenue);
 

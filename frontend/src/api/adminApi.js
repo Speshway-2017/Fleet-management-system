@@ -36,10 +36,19 @@ export const adminApi = {
   createFleetManager: async (data) => {
     return axiosClient.post('/admin/fleet-managers', data);
   },
+  createManager: async (data) => {
+    return axiosClient.post('/admin/fleet-managers', data);
+  },
   updateFleetManager: async (id, data) => {
     return axiosClient.put(`/admin/fleet-managers/${id}`, data);
   },
+  updateManager: async (id, data) => {
+    return axiosClient.put(`/admin/fleet-managers/${id}`, data);
+  },
   deleteFleetManager: async (id) => {
+    return axiosClient.delete(`/admin/fleet-managers/${id}`);
+  },
+  deleteManager: async (id) => {
     return axiosClient.delete(`/admin/fleet-managers/${id}`);
   },
 

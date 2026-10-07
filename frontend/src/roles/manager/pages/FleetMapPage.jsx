@@ -24,6 +24,7 @@ import { calculateDrivingRoute, geocodeLocation } from "../services/routingServi
 import { getSocket } from "@/api/socket";
 import { useAuth } from "@/context/AuthContext";
 import { validateSearchQuery } from "@/validations/common.schema.js";
+import { createMapTileLayer, isMapboxTokenConfigured } from "@/utils/mapTileHelper";
 
 export default function FleetMapPage() {
   const { user } = useAuth();
@@ -351,6 +352,7 @@ export default function FleetMapPage() {
 
   // Tile layers
   const defaultTileLayerRef = useRef(null);
+  const trafficTileLayerRef = useRef(null);
   const satelliteTileLayerRef = useRef(null);
 
   // Initialize Map
@@ -363,14 +365,17 @@ export default function FleetMapPage() {
         attributionControl: false
       }).setView([20.5937, 78.9629], 5);
 
-      defaultTileLayerRef.current = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-        maxZoom: 19,
-        subdomains: 'abcd'
-      }).addTo(map);
+      defaultTileLayerRef.current = createMapTileLayer("streets");
+      trafficTileLayerRef.current = createMapTileLayer("traffic");
+      satelliteTileLayerRef.current = createMapTileLayer("satellite");
 
-      satelliteTileLayerRef.current = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-        maxZoom: 19
-      });
+      if (isSatellite) {
+        satelliteTileLayerRef.current.addTo(map);
+      } else if (isTrafficOn) {
+        trafficTileLayerRef.current.addTo(map);
+      } else {
+        defaultTileLayerRef.current.addTo(map);
+      }
 
       L.control.zoom({
         position: "topright"
@@ -394,21 +399,25 @@ export default function FleetMapPage() {
     };
   }, []);
 
-  // Update satellite layer
+  // Update tile layers dynamically on style/traffic/satellite toggle
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !map._loaded) return;
 
     try {
+      if (map.hasLayer(defaultTileLayerRef.current)) map.removeLayer(defaultTileLayerRef.current);
+      if (map.hasLayer(trafficTileLayerRef.current)) map.removeLayer(trafficTileLayerRef.current);
+      if (map.hasLayer(satelliteTileLayerRef.current)) map.removeLayer(satelliteTileLayerRef.current);
+
       if (isSatellite) {
-        if (map.hasLayer(defaultTileLayerRef.current)) map.removeLayer(defaultTileLayerRef.current);
-        if (!map.hasLayer(satelliteTileLayerRef.current)) satelliteTileLayerRef.current.addTo(map);
+        if (satelliteTileLayerRef.current) satelliteTileLayerRef.current.addTo(map);
+      } else if (isTrafficOn) {
+        if (trafficTileLayerRef.current) trafficTileLayerRef.current.addTo(map);
       } else {
-        if (map.hasLayer(satelliteTileLayerRef.current)) map.removeLayer(satelliteTileLayerRef.current);
-        if (!map.hasLayer(defaultTileLayerRef.current)) defaultTileLayerRef.current.addTo(map);
+        if (defaultTileLayerRef.current) defaultTileLayerRef.current.addTo(map);
       }
     } catch (e) {}
-  }, [isSatellite]);
+  }, [isSatellite, isTrafficOn]);
 
   // Draw markers & route polylines dynamically and Auto-Pan moving truck
   useEffect(() => {

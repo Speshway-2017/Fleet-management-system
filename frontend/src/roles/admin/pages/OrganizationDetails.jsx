@@ -8,6 +8,7 @@ import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
 import AdminEmptyState from "@/components/common/AdminEmptyState";
 import { Plus, Eye, EyeOff, Pencil, Trash2, X } from "lucide-react";
 import { formatCurrency, formatFullCurrency } from "@/utils/currencyFormatter";
+import toast from "react-hot-toast";
 
 // ── Shared tab strip ──────────────────────────────────────────────────────
 function OrgTabs({ activeId, active }) {
@@ -34,7 +35,7 @@ function OrgTabs({ activeId, active }) {
 
 export default function OrganizationDetails() {
   const { id } = useParams();
-  const { getOrganization, fleetManagers } = useAdmin();
+  const { getOrganization, fleetManagers, deleteFleetManager, fetchOrganizations, fetchFleetManagers } = useAdmin();
   const contextOrg = id ? getOrganization(id) : null;
   const [org, setOrg] = useState(contextOrg);
   const [loading, setLoading] = useState(false);
@@ -45,7 +46,6 @@ export default function OrganizationDetails() {
   const [isSubmittingManager, setIsSubmittingManager] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { fetchOrganizations } = useAdmin();
 
   useEffect(() => {
     if (id) {
@@ -74,14 +74,19 @@ export default function OrganizationDetails() {
   );
 
   const handleDeleteManager = async (managerId) => {
+    if (!managerId) return;
     if (!window.confirm("Are you sure you want to delete this fleet manager?")) return;
     try {
-      await adminApi.deleteManager(managerId);
+      await (adminApi.deleteFleetManager ? adminApi.deleteFleetManager(managerId) : adminApi.deleteManager(managerId));
       toast.success("Manager deleted successfully");
+      if (deleteFleetManager) {
+        deleteFleetManager(managerId);
+      }
       // Refresh organization details to get updated managers list
       const res = await adminApi.getOrganizationDetails(id);
       setOrg(res.data?.data || res.data);
       if (fetchOrganizations) await fetchOrganizations();
+      if (fetchFleetManagers) await fetchFleetManagers();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to delete manager");
     }
@@ -596,7 +601,7 @@ export default function OrganizationDetails() {
                             <button onClick={() => openEditModal(m)} className="text-slate-400 hover:text-[#A14000] transition-colors" title="Edit">
                               <Pencil className="w-4 h-4" />
                             </button>
-                            <button onClick={() => handleDeleteManager(m.id)} className="text-slate-400 hover:text-red-500 transition-colors" title="Delete">
+                            <button onClick={() => handleDeleteManager(m.id || m._id)} className="text-slate-400 hover:text-red-500 transition-colors" title="Delete">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -618,7 +623,7 @@ export default function OrganizationDetails() {
             <div className="md:hidden flex flex-col p-4 gap-4 bg-slate-50/50">
               {orgManagers.length > 0 ? (
                 orgManagers.map(m => (
-                <div key={m.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                <div key={m.id || m._id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-500 shrink-0">
@@ -654,7 +659,7 @@ export default function OrganizationDetails() {
                     <button onClick={() => openEditModal(m)} className="text-slate-400 hover:text-[#A14000] transition-colors" title="Edit">
                       <Pencil className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleDeleteManager(m.id)} className="text-slate-400 hover:text-red-500 transition-colors" title="Delete">
+                    <button onClick={() => handleDeleteManager(m.id || m._id)} className="text-slate-400 hover:text-red-500 transition-colors" title="Delete">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>

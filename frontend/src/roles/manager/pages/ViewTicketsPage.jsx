@@ -25,6 +25,7 @@ import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
 import { validateSearchQuery } from "@/validations/common.schema.js";
 import CustomDatePicker from "@/components/common/CustomDatePicker";
+import { getSocket } from "@/api/socket";
 
 const resolveVehiclePlate = (t) => {
   if (!t) return "VEH-ASSIGNED";
@@ -361,11 +362,6 @@ export default function ViewTicketsPage() {
         updated[fieldName] = value;
       }
 
-      if (['mechanicName', 'mechanicPhone', 'mechanicLocation'].includes(fieldName)) {
-        if (value && updated.status === 'Open') {
-          updated.status = 'Mechanic Assigned';
-        }
-      }
       return updated;
     });
 
@@ -1031,8 +1027,41 @@ export default function ViewTicketsPage() {
 
   useEffect(() => {
     fetchTickets(true);
+
+    const socket = getSocket();
+    let cleanupSocket = () => {};
+
+    if (socket) {
+      const handleTicketUpdate = () => {
+        fetchTickets(false);
+      };
+
+      socket.on("complaint:created", handleTicketUpdate);
+      socket.on("complaint:updated", handleTicketUpdate);
+      socket.on("complaint:resolved", handleTicketUpdate);
+      socket.on("complaint:status-updated", handleTicketUpdate);
+      socket.on("ticket:created", handleTicketUpdate);
+      socket.on("ticket:updated", handleTicketUpdate);
+      socket.on("maintenance:updated", handleTicketUpdate);
+      socket.on("dashboard:refresh", handleTicketUpdate);
+
+      cleanupSocket = () => {
+        socket.off("complaint:created", handleTicketUpdate);
+        socket.off("complaint:updated", handleTicketUpdate);
+        socket.off("complaint:resolved", handleTicketUpdate);
+        socket.off("complaint:status-updated", handleTicketUpdate);
+        socket.off("ticket:created", handleTicketUpdate);
+        socket.off("ticket:updated", handleTicketUpdate);
+        socket.off("maintenance:updated", handleTicketUpdate);
+        socket.off("dashboard:refresh", handleTicketUpdate);
+      };
+    }
+
     const interval = setInterval(() => fetchTickets(false), 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      cleanupSocket();
+    };
   }, []);
 
   const handleUpdateTicket = async (e) => {
@@ -1069,6 +1098,17 @@ export default function ViewTicketsPage() {
         }
       };
 
+      // Optimistically update tickets state immediately so KPI counts update in real-time
+      setTickets(prev => prev.map(t =>
+        t._id === selectedTicket._id
+          ? {
+              ...t,
+              ...updateData,
+              completionDate: (updateData.status === 'Resolved' || updateData.status === 'Closed') ? new Date().toISOString() : t.completionDate
+            }
+          : t
+      ));
+
       if (String(selectedTicket._id).startsWith("mock-")) {
         const localNotifsStr = localStorage.getItem("local_complaints_notifications");
         if (localNotifsStr) {
@@ -1095,12 +1135,6 @@ export default function ViewTicketsPage() {
           localStorage.setItem("local_complaints_notifications", JSON.stringify(updated));
         }
 
-        setTickets(prev => prev.map(t =>
-          t._id === selectedTicket._id
-            ? { ...t, ...updateData, completionDate: (updateData.status === 'Resolved' || updateData.status === 'Closed') ? new Date().toISOString() : undefined }
-            : t
-        ));
-
         toast.success("Ticket updated successfully! (Simulation Fallback)");
         handleCloseModal();
       } else {
@@ -1117,24 +1151,33 @@ export default function ViewTicketsPage() {
     }
   };
 
+  const isStatusMatch = (statusVal, targetVal) => {
+    const s1 = String(statusVal || "").trim().toLowerCase();
+    const s2 = String(targetVal || "").trim().toLowerCase();
+    if (s1 === s2) return true;
+    if (s2 === "in progress" && (s1 === "repair in progress" || s1 === "in progress")) return true;
+    if (s2 === "resolved" && (s1 === "resolved" || s1 === "completed" || s1 === "repair completed")) return true;
+    return false;
+  };
+
   const filteredTickets = tickets.filter(t => {
     if (ticketSearchError) return false;
     const q = ticketSearch.toLowerCase();
     const dName = t.driver?.fullName || t.driverName || "";
     const matchesSearch =
-      t.ticketId.toLowerCase().includes(q) ||
+      (t.ticketId || "").toLowerCase().includes(q) ||
       (t.vehiclePlate || resolveVehiclePlate(t)).toLowerCase().includes(q) ||
       dName.toLowerCase().includes(q) ||
-      t.issueType.toLowerCase().includes(q);
+      (t.issueType || "").toLowerCase().includes(q);
 
     let matchesStatus = true;
     if (ticketStatusFilter !== "All") {
-      matchesStatus = t.status === ticketStatusFilter;
+      matchesStatus = isStatusMatch(t.status, ticketStatusFilter);
     }
 
     let matchesSeverity = true;
     if (ticketSeverityFilter !== "All") {
-      matchesSeverity = t.severity === ticketSeverityFilter;
+      matchesSeverity = String(t.severity || "").toLowerCase() === ticketSeverityFilter.toLowerCase();
     }
 
     return matchesSearch && matchesStatus && matchesSeverity;
@@ -1164,57 +1207,90 @@ export default function ViewTicketsPage() {
       </div>
 
       {/* Dashboard Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-        <div className="p-4 bg-white dark:bg-[#0F172A] border border-[#E7EAF0] dark:border-[#1E293B] rounded-2xl space-y-2 shadow-sm">
-          <span className="text-[10px] text-[#64748B] dark:text-white font-bold uppercase tracking-wider font-poppins block">Total Tickets</span>
-          <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-[#1E293B] dark:text-white font-poppins">{tickets.length}</span>
-            <span className="text-[10px] text-gray-400 dark:text-white font-medium">overall</span>
-          </div>
-        </div>
+      {(() => {
+        const totalTicketsCount = tickets.length;
+        const openTicketsCount = tickets.filter(t => isStatusMatch(t.status, "Open")).length;
+        const inProgressTicketsCount = tickets.filter(t => isStatusMatch(t.status, "In Progress")).length;
+        const resolvedTicketsCount = tickets.filter(t => isStatusMatch(t.status, "Resolved") || isStatusMatch(t.status, "Closed")).length;
+        
+        const totalCost = tickets.reduce((sum, t) => sum + (Number(t.actualCost) || Number(t.estimatedCost) || Number(t.cost) || 0), 0);
+        const costBearingTickets = tickets.filter(t => (Number(t.actualCost) || Number(t.estimatedCost) || Number(t.cost) || 0) > 0);
+        const averageCost = costBearingTickets.length > 0 ? Math.round(totalCost / costBearingTickets.length) : 0;
 
-        <div className="p-4 bg-blue-50/30 dark:bg-[#08203B] border border-blue-100/50 dark:border-blue-800/50 rounded-2xl space-y-2 shadow-sm">
-          <span className="text-[10px] text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider font-poppins block">Open</span>
-          <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-[#1E293B] dark:text-white font-poppins">{tickets.filter(t => t.status === "Open").length}</span>
-            <span className="text-[10px] text-blue-500 dark:text-blue-300 font-bold">pending</span>
-          </div>
-        </div>
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3.5 sm:gap-4 mb-6">
+            {/* Total Tickets */}
+            <div className="p-4 bg-white dark:bg-[#0F172A] border border-[#E7EAF0] dark:border-[#1E293B] rounded-2xl flex flex-col justify-between min-h-[96px] shadow-sm hover:shadow-md transition-all duration-200 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] text-[#64748B] dark:text-slate-300 font-bold uppercase tracking-wider font-poppins truncate">Total Tickets</span>
+                <span className="text-[10px] text-gray-400 dark:text-slate-400 font-semibold shrink-0">overall</span>
+              </div>
+              <div className="flex items-baseline justify-between mt-2 min-w-0">
+                <span className="text-xl sm:text-2xl font-bold text-[#1E293B] dark:text-white font-poppins truncate">{totalTicketsCount}</span>
+              </div>
+            </div>
 
-        <div className="p-4 bg-amber-50/30 dark:bg-[#2A1C06] border border-amber-100/40 dark:border-amber-800/50 rounded-2xl space-y-2 shadow-sm">
-          <span className="text-[10px] text-[#A14000] dark:text-amber-300 font-bold uppercase tracking-wider font-poppins block">In Progress</span>
-          <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-[#1E293B] dark:text-white font-poppins">{tickets.filter(t => t.status === "In Progress").length}</span>
-            <span className="text-[10px] text-amber-500 dark:text-amber-300 font-bold">active</span>
-          </div>
-        </div>
+            {/* Open */}
+            <div className="p-4 bg-blue-50/40 dark:bg-[#08203B] border border-blue-100/60 dark:border-blue-800/50 rounded-2xl flex flex-col justify-between min-h-[96px] shadow-sm hover:shadow-md transition-all duration-200 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider font-poppins truncate">Open</span>
+                <span className="text-[10px] text-blue-500 dark:text-blue-300 font-semibold shrink-0">pending</span>
+              </div>
+              <div className="flex items-baseline justify-between mt-2 min-w-0">
+                <span className="text-xl sm:text-2xl font-bold text-[#1E293B] dark:text-white font-poppins truncate">{openTicketsCount}</span>
+              </div>
+            </div>
 
-        <div className="p-4 bg-emerald-50/30 dark:bg-[#06291C] border border-emerald-100/40 dark:border-emerald-800/50 rounded-2xl space-y-2 shadow-sm">
-          <span className="text-[10px] text-emerald-600 dark:text-emerald-300 font-bold uppercase tracking-wider font-poppins block">Resolved</span>
-          <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-[#1E293B] dark:text-white font-poppins">{tickets.filter(t => t.status === "Resolved" || t.status === "Closed").length}</span>
-            <span className="text-[10px] text-emerald-500 dark:text-emerald-300 font-bold">solved</span>
-          </div>
-        </div>
+            {/* In Progress */}
+            <div className="p-4 bg-amber-50/40 dark:bg-[#2A1C06] border border-amber-100/60 dark:border-amber-800/50 rounded-2xl flex flex-col justify-between min-h-[96px] shadow-sm hover:shadow-md transition-all duration-200 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] text-[#A14000] dark:text-amber-300 font-bold uppercase tracking-wider font-poppins truncate">In Progress</span>
+                <span className="text-[10px] text-amber-600 dark:text-amber-300 font-semibold shrink-0">active</span>
+              </div>
+              <div className="flex items-baseline justify-between mt-2 min-w-0">
+                <span className="text-xl sm:text-2xl font-bold text-[#1E293B] dark:text-white font-poppins truncate">{inProgressTicketsCount}</span>
+              </div>
+            </div>
 
-        <div className="p-4 bg-indigo-50/20 dark:bg-[#1E1B4B] border border-indigo-100/30 dark:border-indigo-800/50 rounded-2xl space-y-2 shadow-sm">
-          <span className="text-[10px] text-indigo-650 dark:text-indigo-300 font-bold uppercase tracking-wider font-poppins block">Total Cost</span>
-          <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-indigo-650 dark:text-white font-poppins">₹{tickets.reduce((sum, t) => sum + (Number(t.actualCost) || 0), 0).toLocaleString('en-IN')}</span>
-          </div>
-        </div>
+            {/* Resolved */}
+            <div className="p-4 bg-emerald-50/40 dark:bg-[#06291C] border border-emerald-100/60 dark:border-emerald-800/50 rounded-2xl flex flex-col justify-between min-h-[96px] shadow-sm hover:shadow-md transition-all duration-200 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-300 font-bold uppercase tracking-wider font-poppins truncate">Resolved</span>
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-300 font-semibold shrink-0">solved</span>
+              </div>
+              <div className="flex items-baseline justify-between mt-2 min-w-0">
+                <span className="text-xl sm:text-2xl font-bold text-[#1E293B] dark:text-white font-poppins truncate">{resolvedTicketsCount}</span>
+              </div>
+            </div>
 
-        <div className="p-4 bg-purple-50/20 dark:bg-[#2E1065] border border-purple-100/30 dark:border-purple-800/50 rounded-2xl space-y-2 shadow-sm">
-          <span className="text-[10px] text-purple-600 dark:text-purple-300 font-bold uppercase tracking-wider font-poppins block">Avg Cost</span>
-          <div className="flex items-baseline justify-between">
-            {(() => {
-              const costList = tickets.filter(t => (Number(t.actualCost) || 0) > 0);
-              const avg = costList.length > 0 ? Math.round(costList.reduce((sum, t) => sum + t.actualCost, 0) / costList.length) : 0;
-              return <span className="text-2xl font-bold text-purple-700 dark:text-white font-poppins">₹{avg.toLocaleString('en-IN')}</span>;
-            })()}
+            {/* Total Cost */}
+            <div className="p-4 bg-indigo-50/40 dark:bg-[#1E1B4B] border border-indigo-100/60 dark:border-indigo-800/50 rounded-2xl flex flex-col justify-between min-h-[96px] shadow-sm hover:shadow-md transition-all duration-200 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] text-indigo-600 dark:text-indigo-300 font-bold uppercase tracking-wider font-poppins truncate">Total Cost</span>
+                <span className="text-[10px] text-indigo-500 dark:text-indigo-300 font-semibold shrink-0">expenses</span>
+              </div>
+              <div className="flex items-baseline justify-between mt-2 min-w-0" title={`₹${totalCost.toLocaleString('en-IN')}`}>
+                <span className="text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-200 font-poppins truncate">
+                  ₹{totalCost.toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+
+            {/* Average Cost */}
+            <div className="p-4 bg-purple-50/40 dark:bg-[#2E1065] border border-purple-100/60 dark:border-purple-800/50 rounded-2xl flex flex-col justify-between min-h-[96px] shadow-sm hover:shadow-md transition-all duration-200 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] text-purple-600 dark:text-purple-300 font-bold uppercase tracking-wider font-poppins truncate">Average Cost</span>
+                <span className="text-[10px] text-purple-500 dark:text-purple-300 font-semibold shrink-0">per ticket</span>
+              </div>
+              <div className="flex items-baseline justify-between mt-2 min-w-0" title={`₹${averageCost.toLocaleString('en-IN')}`}>
+                <span className="text-xl sm:text-2xl font-bold text-purple-700 dark:text-purple-200 font-poppins truncate">
+                  ₹{averageCost.toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Main panel card */}
       <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-[#E7EAF0] dark:border-[#1E293B] p-6 shadow-sm space-y-6">
@@ -1258,22 +1334,6 @@ export default function ViewTicketsPage() {
                   {st}
                 </button>
               ))}
-            </div>
-
-            {/* Severity Filter Dropdown */}
-            <div className="flex items-center gap-1.5 border border-gray-200 dark:border-slate-800 p-1.5 rounded-xl text-xs bg-white dark:bg-slate-900">
-              <Filter className="w-3.5 h-3.5 text-slate-400" />
-              <select
-                value={ticketSeverityFilter}
-                onChange={(e) => setTicketSeverityFilter(e.target.value)}
-                className="bg-transparent font-bold text-[#64748B] dark:text-white focus:outline-none cursor-pointer"
-              >
-                <option value="All" className="dark:bg-[#0F172A] dark:text-white">All Severities</option>
-                <option value="Low" className="dark:bg-[#0F172A] dark:text-white">Low Severity</option>
-                <option value="Medium" className="dark:bg-[#0F172A] dark:text-white">Medium Severity</option>
-                <option value="High" className="dark:bg-[#0F172A] dark:text-white">High Severity</option>
-                <option value="Critical">Critical Severity</option>
-              </select>
             </div>
           </div>
         </div>
@@ -1656,6 +1716,8 @@ export default function ViewTicketsPage() {
                     }`}
                   >
                     <option value="Open">Open</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Need Maintenance">Need Maintenance</option>
                     <option value="Mechanic Assigned">Mechanic Assigned</option>
                     {['Mechanic Arrived', 'Repair In Progress', 'Repair Completed'].includes(editingTicketData.status) && (
                       <option value={editingTicketData.status} disabled>

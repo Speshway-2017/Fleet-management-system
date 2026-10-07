@@ -43,6 +43,11 @@ import {
   deleteManagerNotification
 } from '../repositories/manager.repository.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import {
+  calculateTotalFuelSpend,
+  formatFuelSpend,
+  isEligibleFuelRecord
+} from '../utils/fuelCalculations.js';
 import { createAndEmitNotification } from '../utils/notification.js';
 import { processVehicleDocuments } from '../utils/documentHelper.js';
 import Trip from '../models/Trip.js';
@@ -128,15 +133,23 @@ export const getDashboard = async (req, res, next) => {
       driverStatus: 'AVAILABLE'
     });
 
-    // 5. Fuel Expense: sum up amounts from Fuel records
-    const fuelDocs = await Fuel.find({
-      $or: [
-        { vehicle: { $in: vehicleIds } },
-        { recordedBy: managerId }
-      ]
-    });
-    const fuelSum = fuelDocs.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-    const fuelExpense = `₹${fuelSum.toLocaleString('en-IN')}`;
+    // 5. Fuel Expense: sum up amounts from Approved/Eligible Fuel records with exact decimal/paise arithmetic
+    const managerDriversForFuel = await Driver.find({ assignedManager: managerId }, '_id employeeId');
+    const driverIdsForFuel = managerDriversForFuel.map(d => d._id);
+    const employeeIdsForFuel = managerDriversForFuel.map(d => d.employeeId).filter(Boolean);
+
+    const fuelConditions = [
+      { vehicle: { $in: vehicleIds } },
+      { recordedBy: managerId }
+    ];
+    if (driverIdsForFuel.length > 0) {
+      fuelConditions.push({ recordedBy: { $in: driverIdsForFuel } });
+      fuelConditions.push({ driverId: { $in: driverIdsForFuel.map(id => id.toString()).concat(employeeIdsForFuel) } });
+    }
+
+    const fuelDocs = await Fuel.find({ $or: fuelConditions });
+    const { totalSpend: fuelSum } = calculateTotalFuelSpend(fuelDocs);
+    const fuelExpense = formatFuelSpend(fuelSum);
 
     // 6. Total Earnings: sum up revenues from all trips to match earnings page
     const trips = await Trip.find({ assignedManager: managerId });
@@ -961,6 +974,38 @@ export const listTrips = async (req, res, next) => {
       if (!tripObj.estimatedDistance || Number(tripObj.estimatedDistance) <= 0) {
         tripObj.estimatedDistance = storedDist;
       }
+
+      // Check for start time (departure) or arrival time (ETA) delay
+      const now = new Date();
+      const isFinished = ['Completed', 'Complete Trip', 'Delivered', 'Cancelled', 'Rejected'].includes(tripObj.status);
+      if (!isFinished) {
+        let isLate = false;
+        let dynamicDelayReason = tripObj.delayReason || '';
+
+        // 1. Arrival Time (ETA) is late
+        if (tripObj.eta) {
+          const etaDate = parseDateTimeIST(tripObj.eta);
+          if (!isNaN(etaDate.getTime()) && now > etaDate) {
+            isLate = true;
+            if (!dynamicDelayReason) dynamicDelayReason = 'Overdue Arrival: ETA exceeded';
+          }
+        }
+
+        // 2. Start Time (Departure Time) is late
+        if (tripObj.departureTime && ['Scheduled', 'Assigned', 'Pending Driver Acceptance', 'Ready to Dispatch', 'Accepted', 'Draft'].includes(tripObj.status)) {
+          const depDate = parseDateTimeIST(tripObj.departureTime);
+          if (!isNaN(depDate.getTime()) && now > depDate) {
+            isLate = true;
+            if (!dynamicDelayReason) dynamicDelayReason = 'Late Start: Departure time passed without starting';
+          }
+        }
+
+        if (isLate) {
+          tripObj.isDelayed = true;
+          if (dynamicDelayReason) tripObj.delayReason = dynamicDelayReason;
+        }
+      }
+
       return tripObj;
     });
 
@@ -1442,6 +1487,9 @@ export const createTrip = async (req, res, next) => {
         if (io) {
           io.to(`driver:${driver}`).emit('trip:assigned', trip);
           io.to(`manager:${req.user._id}`).emit('trip:created', trip);
+          io.emit('trip:created', trip);
+          io.emit('dashboard:refresh', { type: 'trip_created', trip });
+          io.to('role:SUPER_ADMIN').emit('dashboard:refresh', { type: 'trip_created', trip });
         }
 
         if (driverDoc.fcmToken) {
@@ -1449,6 +1497,13 @@ export const createTrip = async (req, res, next) => {
         }
       } catch (notifErr) {
         console.error('Failed to send assignment notification to driver:', notifErr);
+      }
+    } else {
+      if (io) {
+        io.to(`manager:${req.user._id}`).emit('trip:created', trip);
+        io.emit('trip:created', trip);
+        io.emit('dashboard:refresh', { type: 'trip_created', trip });
+        io.to('role:SUPER_ADMIN').emit('dashboard:refresh', { type: 'trip_created', trip });
       }
     }
 
@@ -1529,13 +1584,17 @@ export const updateTrip = async (req, res, next) => {
     }
 
     // Validation: Prevent ending a trip that has not started
-    if (newStatus === 'Completed' && existingTrip.status !== 'In Progress') {
-      return sendError(res, 400, 'Cannot end a trip that is not currently in progress');
+    const allowedActiveStatuses = ['In Progress', 'Delayed', 'On Transit', 'In Transit', 'En Route', 'Dispatched', 'Customer Location Reached', 'Started', 'Loading', 'At Loading', 'On Trip'];
+    if (newStatus === 'Completed' && !allowedActiveStatuses.includes(existingTrip.status)) {
+      return sendError(res, 400, 'Cannot end a trip that is not currently active or in progress');
     }
 
-    // Handle Start Trip / End Trip specific fields automatically
+    // Handle Start Trip / End Trip / Delayed specific fields automatically
     if (newStatus === 'In Progress') {
-      req.body.actualStartTime = new Date();
+      req.body.actualStartTime = req.body.actualStartTime || new Date();
+      req.body.isDelayed = false;
+    } else if (newStatus === 'Delayed') {
+      req.body.isDelayed = true;
     } else if (newStatus === 'Completed') {
       req.body.actualEndTime = new Date();
       req.body.actualDistance = req.body.actualDistance || existingTrip.estimatedDistance || calculateDistance(existingTrip.startLocation, existingTrip.endLocation);
@@ -1590,7 +1649,7 @@ export const updateTrip = async (req, res, next) => {
           }
           await Driver.findByIdAndUpdate(updatedTrip.driver, driverUpdate);
         }
-      } else if (newStatus === 'In Progress') {
+      } else if (newStatus === 'In Progress' || newStatus === 'Delayed' || newStatus === 'On Transit' || newStatus === 'In Transit') {
         // Set statuses to On Trip / ON_TRIP
         if (updatedTrip.vehicle) {
           await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, {
@@ -1806,13 +1865,17 @@ export const updateTrip = async (req, res, next) => {
       console.error('Failed to send trip update notification:', notifErr);
     }
 
-    // Emit real-time status update to manager room
+    // Emit real-time status update to manager room and SUPER_ADMIN
     const io = req.app.get('socketio') || (req.app.locals ? req.app.locals.io : null);
     if (io) {
       const managerId = finalTrip.assignedManager || (req.user && req.user._id);
       if (managerId) {
         io.to(`manager:${managerId}`).emit('trip:status-updated', finalTrip);
       }
+      io.emit('trip:updated', finalTrip);
+      io.emit('trip:status-updated', finalTrip);
+      io.emit('dashboard:refresh', { type: 'trip_status_updated', trip: finalTrip });
+      io.to('role:SUPER_ADMIN').emit('dashboard:refresh', { type: 'trip_status_updated', trip: finalTrip });
     }
 
     return sendSuccess(res, 200, finalTrip, 'Trip updated');
@@ -1861,6 +1924,14 @@ export const deleteTrip = async (req, res, next) => {
       user: req.user,
       assignedManager: req.user._id
     });
+
+    const io = req.app.get('socketio') || (req.app.locals ? req.app.locals.io : null);
+    if (io) {
+      io.emit('trip:deleted', { id: tripId });
+      io.emit('dashboard:refresh', { type: 'trip_deleted', tripId });
+      io.to('role:SUPER_ADMIN').emit('dashboard:refresh', { type: 'trip_deleted', tripId });
+    }
+
     return sendSuccess(res, 200, null, 'Trip deleted successfully');
   } catch (error) {
     next(error);
@@ -1874,21 +1945,52 @@ export const listFuelRecords = async (req, res, next) => {
     const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id');
     const vehicleIds = managerVehicles.map(v => v._id);
 
-    const filter = { vehicle: { $in: vehicleIds } };
+    // 2. Fetch drivers assigned to this manager
+    const managerDrivers = await Driver.find({ assignedManager: req.user._id }, '_id employeeId');
+    const driverIds = managerDrivers.map(d => d._id);
+    const employeeIds = managerDrivers.map(d => d.employeeId).filter(Boolean);
+
+    const conditions = [];
+    if (vehicleIds.length > 0) {
+      conditions.push({ vehicle: { $in: vehicleIds } });
+    }
+    if (driverIds.length > 0) {
+      conditions.push({ recordedBy: { $in: driverIds } });
+      conditions.push({ driverId: { $in: driverIds.map(id => id.toString()).concat(employeeIds) } });
+    }
+    conditions.push({ recordedBy: req.user._id });
+
+    let filter = conditions.length > 0 ? { $or: conditions } : {};
     if (req.query.vehicle) {
-      filter.vehicle = req.query.vehicle;
+      filter = { $and: [filter, { vehicle: req.query.vehicle }] };
     }
     if (req.query.tripId) {
-      filter.tripId = req.query.tripId;
+      filter = { $and: [filter, { tripId: req.query.tripId }] };
     }
-    const records = await getFuelRecords(filter);
-    const formatted = records.map(r => {
+    let records = await getFuelRecords(filter);
+    if (!records || records.length === 0) {
+      records = await getFuelRecords({});
+    }
+
+    // Deduplicate records by unique _id to ensure exact 1:1 count and prevent duplicate aggregation
+    const seenIds = new Set();
+    const formatted = [];
+    for (const r of (records || [])) {
+      if (!r) continue;
       const obj = r.toObject ? r.toObject() : r;
+      const idStr = String(obj._id || obj.id || '');
+      if (idStr && seenIds.has(idStr)) {
+        continue;
+      }
+      if (idStr) {
+        seenIds.add(idStr);
+      }
       const img = obj.billUrl || obj.receiptImage || '';
       obj.billUrl = img;
       obj.receiptImage = img;
-      return obj;
-    });
+      formatted.push(obj);
+    }
+
     return sendSuccess(res, 200, formatted, 'Fuel records fetched');
   } catch (error) {
     next(error);
@@ -1917,7 +2019,63 @@ export const getFuelRecordDetails = async (req, res, next) => {
 
 export const createFuelRecord = async (req, res, next) => {
   try {
-    return sendError(res, 403, 'Managers are not authorized to create new fuel entries.');
+    const {
+      vehicle,
+      vehicleId,
+      vehicleName,
+      driver,
+      driverId,
+      tripId,
+      odometer,
+      fuelStation,
+      location,
+      amount,
+      liters,
+      status,
+      hasReceipt,
+      billUrl,
+      receiptImage,
+      fuelType,
+      notes
+    } = req.body;
+
+    const parsedAmount = Number(amount) || 0;
+    const parsedLiters = Number(liters) || 0;
+
+    const record = await createFuelRecordInRepo({
+      vehicle: vehicle || null,
+      vehicleId: vehicleId || '',
+      vehicleName: vehicleName || '',
+      driver: driver || 'Unassigned',
+      driverId: driverId || '',
+      tripId: tripId || '',
+      odometer: Number(odometer) || 0,
+      fuelStation: fuelStation || 'General Station',
+      location: location || 'Live GPS Location',
+      amount: parsedAmount,
+      liters: parsedLiters,
+      status: status || 'normal',
+      hasReceipt: hasReceipt !== false,
+      billUrl: billUrl || receiptImage || '',
+      receiptImage: receiptImage || billUrl || '',
+      approvalStatus: 'Approved',
+      billStatus: 'Approved',
+      approvedBy: req.user.name || 'Fleet Manager',
+      approvedAt: new Date(),
+      recordedBy: req.user._id,
+      fuelType: fuelType || 'Diesel',
+      dateTime: new Date(),
+      notes: notes || ''
+    });
+
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.emit('fuel:created', record);
+      io.emit('fuel:updated', record);
+      io.emit('dashboard:refresh');
+    }
+
+    return sendSuccess(res, 201, record, 'Fuel record created successfully');
   } catch (error) {
     next(error);
   }
@@ -1925,12 +2083,39 @@ export const createFuelRecord = async (req, res, next) => {
 
 export const updateFuelRecord = async (req, res, next) => {
   try {
-    const allowedKeys = ['status', 'resolutionComment', 'approvalStatus', 'rejectionReason', 'billStatus'];
+    const allowedKeys = [
+      'vehicle',
+      'vehicleId',
+      'vehicleName',
+      'driver',
+      'driverId',
+      'tripId',
+      'odometer',
+      'fuelStation',
+      'location',
+      'amount',
+      'liters',
+      'status',
+      'resolutionComment',
+      'approvalStatus',
+      'rejectionReason',
+      'billStatus',
+      'hasReceipt',
+      'billUrl',
+      'receiptImage'
+    ];
     const updates = Object.keys(req.body);
     const isValidUpdate = updates.every(key => allowedKeys.includes(key));
 
     if (!isValidUpdate) {
-      return sendError(res, 403, 'Managers are not authorized to edit driver fuel logs.');
+      return sendError(res, 400, 'Invalid update fields in fuel record payload');
+    }
+
+    if (req.body.amount !== undefined) {
+      req.body.amount = Number(req.body.amount) || 0;
+    }
+    if (req.body.liters !== undefined) {
+      req.body.liters = Number(req.body.liters) || 0;
     }
 
     // Automatically stamp approvedBy/rejectedBy and timestamps if status changes
@@ -1939,6 +2124,7 @@ export const updateFuelRecord = async (req, res, next) => {
         req.body.approvedBy = req.user.name || 'Fleet Manager';
         req.body.approvedAt = new Date();
         req.body.billStatus = 'Approved';
+        req.body.rejectionReason = '';
       } else if (req.body.approvalStatus === 'Rejected') {
         req.body.rejectedBy = req.user.name || 'Fleet Manager';
         req.body.rejectedAt = new Date();
@@ -1950,7 +2136,15 @@ export const updateFuelRecord = async (req, res, next) => {
     if (!record) {
       return sendError(res, 404, 'Fuel record not found');
     }
-    return sendSuccess(res, 200, record, 'Fuel record updated');
+
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.emit('fuel:updated', record);
+      io.emit('fuel:status-updated', record);
+      io.emit('dashboard:refresh');
+    }
+
+    return sendSuccess(res, 200, record, 'Fuel record updated successfully');
   } catch (error) {
     next(error);
   }
@@ -1958,7 +2152,19 @@ export const updateFuelRecord = async (req, res, next) => {
 
 export const deleteFuelRecord = async (req, res, next) => {
   try {
-    return sendError(res, 403, 'Managers are not authorized to delete driver fuel logs.');
+    const record = await deleteFuelRecordInRepo(req.params.id);
+    if (!record) {
+      return sendError(res, 404, 'Fuel record not found');
+    }
+
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.emit('fuel:deleted', { id: req.params.id, _id: req.params.id });
+      io.emit('fuel:updated', { id: req.params.id, _id: req.params.id, deleted: true });
+      io.emit('dashboard:refresh');
+    }
+
+    return sendSuccess(res, 200, record, 'Fuel record deleted successfully');
   } catch (error) {
     next(error);
   }
@@ -3055,6 +3261,9 @@ const checkAndCompleteTripIfApproved = async (tripId, req) => {
           driverStatus: 'AVAILABLE'
         });
       }
+      io.emit('trip:completed', { tripId: trip._id, tripNumber: trip.tripNumber, status: 'Completed', trip });
+      io.emit('dashboard:refresh', { type: 'trip_completed', tripId: trip._id });
+      io.to('role:SUPER_ADMIN').emit('dashboard:refresh', { type: 'trip_completed', tripId: trip._id });
     }
 
     if (trip.driver) {
@@ -3715,106 +3924,107 @@ export const updateVehicleComplaint = async (req, res, next) => {
       return sendError(res, 404, 'Vehicle complaint not found');
     }
 
-    // Handle Mechanic Assignment
-    if (mechanicName || status === 'Mechanic Assigned') {
+    // 1. Update mechanic details if provided
+    if (mechanicName || mechanicPhone || mechanicLocation) {
       complaint.assignedMechanic = {
-        name: mechanicName || complaint.assignedMechanic?.name || 'Assigned Mechanic',
+        name: mechanicName || complaint.assignedMechanic?.name || '',
         phone: mechanicPhone || complaint.assignedMechanic?.phone || '',
         location: mechanicLocation || complaint.assignedMechanic?.location || '',
-        assignedAt: new Date()
+        assignedAt: complaint.assignedMechanic?.assignedAt || new Date()
       };
-      complaint.status = 'Mechanic Assigned';
-      complaint.repairTimeline.push({
-        status: 'Mechanic Assigned',
-        updatedBy: `Manager (${req.user?.name || 'Fleet Manager'})`,
-        updatedAt: new Date(),
-        notes: `Assigned Mechanic: ${mechanicName || 'Offline Mechanic'} (${mechanicPhone || 'N/A'}, ${mechanicLocation || 'N/A'})`
-      });
+    }
 
-      // Send notification to Driver
+    // 2. Set authoritative status: explicitly use requested status, or fallback to current status
+    if (status !== undefined && status !== null && status !== '') {
+      complaint.status = status;
+    } else if (mechanicName && !complaint.status) {
+      complaint.status = 'Mechanic Assigned';
+    }
+
+    // 3. Log timeline entry
+    complaint.repairTimeline.push({
+      status: complaint.status,
+      updatedBy: `Manager (${req.user?.name || 'Fleet Manager'})`,
+      updatedAt: new Date(),
+      notes: notes || `Manager updated status to ${complaint.status}`
+    });
+
+    // 4. Send notification to Driver if Mechanic Assigned
+    if (complaint.status === 'Mechanic Assigned' && complaint.driver) {
+      try {
+        await createAndEmitNotification({
+          io: req.io,
+          recipient: complaint.driver,
+          recipientRole: 'DRIVER',
+          title: `Mechanic Assigned: ${complaint.ticketId}`,
+          message: `Manager assigned Mechanic ${mechanicName || complaint.assignedMechanic?.name || 'Offline Mechanic'} (${mechanicPhone || complaint.assignedMechanic?.phone || 'Contact Manager'}) at ${mechanicLocation || complaint.assignedMechanic?.location || 'Nearest Service Spot'}.`,
+          type: 'alert',
+          priority: 'normal',
+          metadata: {
+            ticketId: complaint.ticketId,
+            complaintId: complaint._id,
+            status: 'Mechanic Assigned',
+            mechanicName: mechanicName || complaint.assignedMechanic?.name || 'Offline Mechanic',
+            mechanicPhone: mechanicPhone || complaint.assignedMechanic?.phone || ''
+          }
+        });
+      } catch (notifErr) {
+        console.warn('Failed to send mechanic assigned notification to driver:', notifErr.message);
+      }
+    }
+
+    // 5. Handle ticket resolution / completion transitions
+    if (complaint.status === 'Resolved' || complaint.status === 'Closed') {
+      complaint.completionDate = new Date();
+
+      // Auto Vehicle Status Transition: Maintenance -> Active
+      try {
+        let vehicleIdToUpdate = complaint.vehicle;
+        if (!vehicleIdToUpdate && complaint.vehiclePlate) {
+          const vDoc = await Vehicle.findOne({
+            $or: [
+              { registrationNumber: complaint.vehiclePlate.trim() },
+              { plateNumber: complaint.vehiclePlate.trim() },
+              { vehicleNumber: complaint.vehiclePlate.trim() }
+            ]
+          });
+          if (vDoc) vehicleIdToUpdate = vDoc._id;
+        }
+
+        if (vehicleIdToUpdate) {
+          await Vehicle.findByIdAndUpdate(vehicleIdToUpdate, {
+            status: 'Active',
+            operationalStatus: 'Active'
+          });
+        }
+      } catch (vehErr) {
+        console.warn('Failed to auto-transition vehicle status to Active on ticket resolution:', vehErr.message);
+      }
+
+      // Notify Driver: "Ticket Resolved - Continue Trip"
       if (complaint.driver) {
         try {
           await createAndEmitNotification({
             io: req.io,
             recipient: complaint.driver,
             recipientRole: 'DRIVER',
-            title: `Mechanic Assigned: ${complaint.ticketId}`,
-            message: `Manager assigned Mechanic ${mechanicName || 'Offline Mechanic'} (${mechanicPhone || 'Contact Manager'}) at ${mechanicLocation || 'Nearest Service Spot'}.`,
-            type: 'alert',
-            priority: 'normal',
+            title: `Ticket Resolved - Continue Trip 🚚`,
+            message: `Vehicle complaint ${complaint.ticketId} is Resolved! Vehicle is now Active. You can continue your trip.`,
+            type: 'trip',
+            priority: 'high',
             metadata: {
               ticketId: complaint.ticketId,
               complaintId: complaint._id,
-              status: 'Mechanic Assigned',
-              mechanicName: mechanicName || 'Offline Mechanic',
-              mechanicPhone: mechanicPhone || ''
+              status: 'Resolved',
+              canContinueTrip: 'Yes'
             }
           });
         } catch (notifErr) {
-          console.warn('Failed to send mechanic assigned notification to driver:', notifErr.message);
+          console.warn('Failed to send ticket resolved notification to driver:', notifErr.message);
         }
       }
-    } else if (status !== undefined) {
-      complaint.status = status;
-      complaint.repairTimeline.push({
-        status,
-        updatedBy: `Manager (${req.user?.name || 'Fleet Manager'})`,
-        updatedAt: new Date(),
-        notes: notes || `Manager updated status to ${status}`
-      });
-
-      if (status === 'Resolved' || status === 'Closed') {
-        complaint.completionDate = new Date();
-
-        // 1. Auto Vehicle Status Transition: Maintenance -> Active
-        try {
-          let vehicleIdToUpdate = complaint.vehicle;
-          if (!vehicleIdToUpdate && complaint.vehiclePlate) {
-            const vDoc = await Vehicle.findOne({
-              $or: [
-                { registrationNumber: complaint.vehiclePlate.trim() },
-                { plateNumber: complaint.vehiclePlate.trim() },
-                { vehicleNumber: complaint.vehiclePlate.trim() }
-              ]
-            });
-            if (vDoc) vehicleIdToUpdate = vDoc._id;
-          }
-
-          if (vehicleIdToUpdate) {
-            await Vehicle.findByIdAndUpdate(vehicleIdToUpdate, {
-              status: 'Active',
-              operationalStatus: 'Active'
-            });
-          }
-        } catch (vehErr) {
-          console.warn('Failed to auto-transition vehicle status to Active on ticket resolution:', vehErr.message);
-        }
-
-        // 2. Notify Driver: "Ticket Resolved - Continue Trip"
-        if (complaint.driver) {
-          try {
-            await createAndEmitNotification({
-              io: req.io,
-              recipient: complaint.driver,
-              recipientRole: 'DRIVER',
-              title: `Ticket Resolved - Continue Trip 🚚`,
-              message: `Vehicle complaint ${complaint.ticketId} is Resolved! Vehicle is now Active. You can continue your trip.`,
-              type: 'trip',
-              priority: 'high',
-              metadata: {
-                ticketId: complaint.ticketId,
-                complaintId: complaint._id,
-                status: 'Resolved',
-                canContinueTrip: 'Yes'
-              }
-            });
-          } catch (notifErr) {
-            console.warn('Failed to send ticket resolved notification to driver:', notifErr.message);
-          }
-        }
-      } else {
-        complaint.completionDate = undefined;
-      }
+    } else {
+      complaint.completionDate = undefined;
     }
 
     if (estimatedCost !== undefined) complaint.estimatedCost = Number(estimatedCost) || 0;
@@ -3840,6 +4050,13 @@ export const updateVehicleComplaint = async (req, res, next) => {
       user: req.user._id?.toString() || req.user.name || 'Fleet Manager',
       assignedManager: req.user._id
     });
+
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.emit('complaint:updated', complaint);
+      io.emit('maintenance:updated', complaint);
+      io.emit('dashboard:refresh');
+    }
 
     return sendSuccess(res, 200, complaint, 'Vehicle complaint updated successfully');
   } catch (error) {
@@ -4107,6 +4324,12 @@ export const approveTripCompletion = async (req, res, next) => {
         io.to(`driver:${trip.driver}`).emit('trip:updated', trip);
         io.to(`driver:${trip.driver}`).emit('trip:approved', trip);
       }
+    }
+
+    if (io) {
+      io.emit('trip:completed', { tripId: trip._id, tripNumber: trip.tripNumber, status: 'Completed', trip });
+      io.emit('dashboard:refresh', { type: 'trip_completed', tripId: trip._id });
+      io.to('role:SUPER_ADMIN').emit('dashboard:refresh', { type: 'trip_completed', tripId: trip._id });
     }
 
     return sendSuccess(res, 200, trip, 'Trip completion approved successfully');

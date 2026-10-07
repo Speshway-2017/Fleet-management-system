@@ -51,26 +51,20 @@ export const formatCompactCurrency = (val) => {
   const absNum = Math.abs(num);
   const prefix = isNegative ? "-₹" : "₹";
 
-  // Very large values: >= 1,000 Crores (1e10 = 10,00,00,00,000)
-  if (absNum >= 1e10) {
-    const crores = absNum / 1e7;
-    const thousandsCrores = crores / 1000;
-    const formatted = parseFloat(thousandsCrores.toFixed(2));
-    return `${prefix}${formatted}K Cr`;
-  }
-
   // Crores: >= 1 Crore (1e7 = 1,00,00,000)
   if (absNum >= 1e7) {
     const crores = absNum / 1e7;
-    const formatted = parseFloat(crores.toFixed(2));
-    return `${prefix}${formatted}Cr`;
+    const formatted = crores >= 1000
+      ? Math.round(crores).toLocaleString("en-IN")
+      : (crores % 1 === 0 ? crores.toFixed(0) : parseFloat(crores.toFixed(2)).toString());
+    return `${prefix}${formatted} Cr`;
   }
 
   // Lakhs: >= 1 Lakh (1e5 = 1,00,000)
   if (absNum >= 1e5) {
     const lakhs = absNum / 1e5;
-    const formatted = parseFloat(lakhs.toFixed(2));
-    return `${prefix}${formatted}L`;
+    const formatted = lakhs % 1 === 0 ? lakhs.toFixed(0) : parseFloat(lakhs.toFixed(2)).toString();
+    return `${prefix}${formatted} L`;
   }
 
   // Standard numbers (< 1 Lakh)

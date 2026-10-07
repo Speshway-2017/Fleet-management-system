@@ -2523,6 +2523,13 @@ export const createDriverFuelEntry = async (req, res, next) => {
 
     await fuel.save();
 
+    const io = req.app.locals.io || req.io;
+    if (io) {
+      io.emit('fuel:created', fuel);
+      io.emit('fuel:updated', fuel);
+      io.emit('dashboard:refresh');
+    }
+
     return sendSuccess(res, 201, fuel, 'Fuel entry submitted successfully');
   } catch (error) {
     next(error);

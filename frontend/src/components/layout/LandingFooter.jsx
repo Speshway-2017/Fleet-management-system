@@ -14,15 +14,15 @@ export default function LandingFooter() {
   };
 
   return (
-    <footer className="bg-[#0D1B2A] text-gray-300 pt-12 sm:pt-16 pb-8 px-4 sm:px-6 md:px-8 mt-auto">
+    <footer className="bg-[#0D1B2A] text-gray-300 pt-12 sm:pt-16 pb-8 px-4 sm:px-6 md:px-8 mt-auto w-full overflow-hidden">
       <AnimeStaggerGroup direction="top" className="max-w-[1550px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 md:gap-12 pb-12 border-b border-gray-800">
         {/* Column 1: Brand Info */}
-        <div className="space-y-4 lg:col-span-1">
+        <div className="space-y-4 lg:col-span-1 min-w-0">
           <div className="flex items-center gap-3">
             <img src={platformSettings?.logoUrl || "/logo.png"} alt="Fleet Management Logo" className="h-9 w-auto object-contain bg-white rounded-lg p-1" />
           </div>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            {platformSettings?.footerDescription && !platformSettings.footerDescription.includes("jjj") && !platformSettings.footerDescription.includes("ujjj")
+          <p className="text-xs text-gray-400 leading-relaxed break-words [overflow-wrap:anywhere]">
+            {platformSettings?.footerDescription
               ? platformSettings.footerDescription
               : "A next-generation fleet management platform designed to help businesses streamline operations, improve efficiency, and drive growth."}
           </p>
@@ -48,7 +48,7 @@ export default function LandingFooter() {
         </div>
 
         {/* Column 2: QUICK LINKS */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <h5 className="font-display font-semibold text-white tracking-wider text-xs uppercase">Quick Links</h5>
           <ul className="space-y-2.5 text-xs text-gray-400">
             <li><NavLink to="/" className="hover:text-white transition-colors">Home</NavLink></li>
@@ -60,7 +60,7 @@ export default function LandingFooter() {
         </div>
 
         {/* Column 3: PLATFORM */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <h5 className="font-display font-semibold text-white tracking-wider text-xs uppercase">Platform</h5>
           <ul className="space-y-2.5 text-xs text-gray-400">
             <li><NavLink to="/features" className="hover:text-white transition-colors">Features</NavLink></li>
@@ -71,7 +71,7 @@ export default function LandingFooter() {
         </div>
 
         {/* Column 4: COMPANY */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <h5 className="font-display font-semibold text-white tracking-wider text-xs uppercase">Company</h5>
           <ul className="space-y-2.5 text-xs text-gray-400">
             <li><NavLink to="/about" className="hover:text-white transition-colors">About Us</NavLink></li>
@@ -83,7 +83,7 @@ export default function LandingFooter() {
         </div>
 
         {/* Column 5: CONTACT */}
-        <div className="space-y-4 text-xs text-gray-400">
+        <div className="space-y-4 text-xs text-gray-400 min-w-0">
           <NavLink
             to="/contact"
             className="font-display font-semibold text-white tracking-wider text-xs uppercase hover:text-orange-400 transition-colors inline-flex items-center gap-1"
@@ -94,23 +94,23 @@ export default function LandingFooter() {
             <li>
               <a
                 href={`tel:${(platformSettings?.contactPhone || "+91 1800 200 4567").replace(/\s+/g, "")}`}
-                className="flex items-center gap-2 hover:text-white transition-colors group"
+                className="flex items-center gap-2 hover:text-white transition-colors group min-w-0"
               >
                 <svg className="h-4 w-4 text-[#A14000] flex-shrink-0 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
-                <span className="hover:underline">{platformSettings?.contactPhone || "+91 1800 200 4567"}</span>
+                <span className="hover:underline break-all truncate">{platformSettings?.contactPhone || "+91 1800 200 4567"}</span>
               </a>
             </li>
             <li>
               <a
                 href={`mailto:${platformSettings?.contactEmail || "support@fleet.com"}`}
-                className="flex items-center gap-2 hover:text-white transition-colors group"
+                className="flex items-center gap-2 hover:text-white transition-colors group min-w-0"
               >
                 <svg className="h-4 w-4 text-[#A14000] flex-shrink-0 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                <span className="hover:underline">{platformSettings?.contactEmail || "support@fleet.com"}</span>
+                <span className="hover:underline break-all truncate">{platformSettings?.contactEmail || "support@fleet.com"}</span>
               </a>
             </li>
             <li>
@@ -118,13 +118,13 @@ export default function LandingFooter() {
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(platformSettings?.contactAddress || "Bengaluru, Karnataka, India")}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:text-white transition-colors group"
+                className="flex items-center gap-2 hover:text-white transition-colors group min-w-0"
               >
                 <svg className="h-4 w-4 text-[#A14000] flex-shrink-0 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span className="hover:underline">{platformSettings?.contactAddress || "Bengaluru, Karnataka, India"}</span>
+                <span className="hover:underline break-words [overflow-wrap:anywhere]">{platformSettings?.contactAddress || "Bengaluru, Karnataka, India"}</span>
               </a>
             </li>
             <li className="flex items-center gap-2">
