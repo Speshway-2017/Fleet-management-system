@@ -1213,8 +1213,12 @@ export default function ViewTicketsPage() {
         const inProgressTicketsCount = tickets.filter(t => isStatusMatch(t.status, "In Progress")).length;
         const resolvedTicketsCount = tickets.filter(t => isStatusMatch(t.status, "Resolved") || isStatusMatch(t.status, "Closed")).length;
         
-        const totalCost = tickets.reduce((sum, t) => sum + (Number(t.actualCost) || Number(t.estimatedCost) || Number(t.cost) || 0), 0);
-        const costBearingTickets = tickets.filter(t => (Number(t.actualCost) || Number(t.estimatedCost) || Number(t.cost) || 0) > 0);
+        const getTicketCost = (t) => {
+          const val = Number(t.actualCost) > 0 ? Number(t.actualCost) : (Number(t.estimatedCost) || Number(t.cost) || 0);
+          return isFinite(val) && val < 1e9 ? val : 0;
+        };
+        const totalCost = tickets.reduce((sum, t) => sum + getTicketCost(t), 0);
+        const costBearingTickets = tickets.filter(t => getTicketCost(t) > 0);
         const averageCost = costBearingTickets.length > 0 ? Math.round(totalCost / costBearingTickets.length) : 0;
 
         return (
